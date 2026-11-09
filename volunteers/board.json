@@ -41,7 +41,11 @@
   6565304963,
   6565621381,
   6565765189,
-  6565842099
+  6565842099,
+  6739277964,
+  6739567149,
+  6739907842,
+  6740159667
  ],
  "claims": [
   {
@@ -279,6 +283,59 @@
    "size": "532MB",
    "link": "https://github.com/ReimusArmpit/census-L41/releases/download/L41-break_rel-d4bcee00/L41-break_rel-d4bcee00.tar",
    "note": "home bits (NVIDIA GeForce RTX 5090), spot-checked"
+  },
+  {
+   "code": "a56863f2",
+   "layer": 42,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "1",
+   "via": "github",
+   "at": "2026-11-09T11:46Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-09T11:46Z",
+     "via": "github",
+     "what": "claim=a56863f2 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=1",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-09T12:02Z",
+     "via": "github",
+     "what": "claim=a56863f2 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    }
+   ],
+   "started_at": "2026-11-09T12:02Z",
+   "bits": "own"
+  },
+  {
+   "code": "b81c805c",
+   "layer": 44,
+   "name": "Kimi-chan",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "1",
+   "via": "github",
+   "at": "2026-11-09T12:20Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-09T12:20Z",
+     "via": "github",
+     "what": "claim=b81c805c card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=Kimi-chan kit=1",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-09T12:33Z",
+     "via": "github",
+     "what": "claim=b81c805c done=9% eta=2026-11-10T00:49Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-09T12:33Z",
+   "done": "9%",
+   "eta": "2026-11-10T00:49Z"
   }
  ],
  "layers": {
@@ -298,7 +355,10 @@
    "state": "open"
   },
   "43": {
-   "state": "open"
+   "state": "closed",
+   "by": "home card",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "held for the home card (RTX 5090), to start on 9 Nov 2026"
   },
   "44": {
    "state": "open"
@@ -331,5 +391,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-02T03:34Z"
+ "updated_at": "2026-11-09T16:24Z"
 }

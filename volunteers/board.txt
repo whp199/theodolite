@@ -1,9 +1,9 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
 L40 done (home card)
 L41 done (ReimusArmpit d4bcee00)
-L42 OPEN
-L43 OPEN
-L44 OPEN
+L42 running anon a56863f2 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB ?
+L43 closed
+L44 running Kimi-chan b81c805c NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 9%, ends ~2026-11-10T00:49Z
 L45 done (home card)
 L46 done (home card)
 L47 done (ReimusArmpit 2f018a18)
@@ -11,6 +11,6 @@ L48 OPEN
 L49 OPEN
 L50 OPEN
 
-6 open. To take one: https://github.com/whp199/theodolite/issues/1
+3 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints
