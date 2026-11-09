@@ -358,7 +358,7 @@
    "state": "closed",
    "by": "home card",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
-   "note": "held for the home card (RTX 5090), to start on 9 Nov 2026"
+   "note": "running on the home card (RTX 5090) since 9 Nov 16:31Z, ends ~10 Nov 05:40Z"
   },
   "44": {
    "state": "open"
@@ -391,5 +391,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-09T16:24Z"
+ "updated_at": "2026-11-09T16:36Z"
 }
