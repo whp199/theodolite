@@ -51,10 +51,10 @@ brings stand further above the random directions’ than nearly every random dir
 its push differs from a random one. It does not say that its words share a theme, or name what the neuron does when it
 fires. The doses are calibrated at layers 41–51 alone, so the census covers those eleven layers.
 
-Five are in so far: layers 41, 42, 46, 47 and 48 (40, 41, 45, 46 and 47 on the
-[census board](https://github.com/whp199/theodolite/issues/1), which counts from 0), two of them taken by a volunteer.
-Layer 46 was read against gates fixed before it ran, and the other four against the same gates after the fact. Every
-gate passes on all five. Between 95 and 2,873 of a layer’s 21,504 neurons beat all 2,048 random directions, where
+Seven are in so far: layers 41, 42, 43, 44, 46, 47 and 48 (40, 41, 42, 43, 45, 46 and 47 on the
+[census board](https://github.com/whp199/theodolite/issues/1), which counts from 0), three of them taken by volunteers.
+Layer 46 was read against gates fixed before it ran, and the other six against the same gates after the fact. Every
+gate passes on all seven. Between 95 and 2,873 of a layer’s 21,504 neurons beat all 2,048 random directions, where
 about ten would by chance. **Have a card of 32 GB or more? [Take a layer](VOLUNTEERS.md).**
 
 <table>

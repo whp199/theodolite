@@ -1,9 +1,9 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
 L40 done (home card)
 L41 done (ReimusArmpit d4bcee00)
-L42 checking anon a56863f2 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 2026-11-10T03:35Z
-L43 closed
-L44 running Kimi-chan b81c805c NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 9%, ends ~2026-11-10T00:49Z
+L42 done (anon a56863f2)
+L43 done (home card)
+L44 running Kimi-chan 5c3e7396 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 65%, ends ~2026-11-10T10:36Z
 L45 done (home card)
 L46 done (home card)
 L47 done (ReimusArmpit 2f018a18)

@@ -49,7 +49,9 @@
   6753937314,
   6756329097,
   6756387798,
-  6757323694
+  6757323694,
+  6760254423,
+  6760258773
  ],
  "claims": [
   {
@@ -296,7 +298,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-09T11:46Z",
-   "state": "checking",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-09T11:46Z",
@@ -325,6 +327,18 @@
     {
      "at": "2026-11-10T03:37Z",
      "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-10T06:24Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-10T06:29Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-10T07:06Z",
+     "what": "set accepted: 9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
     }
    ],
    "started_at": "2026-11-09T12:02Z",
@@ -335,7 +349,7 @@
    "bundle_sha256": "45c4ef42e8a97f8a",
    "size": "521MB",
    "link": "https://github.com/Asynonymous/census-L42/releases/download/L42-break_rel-a56863f2/L42-break_rel-a56863f2.tar",
-   "note": "on paper whole; own bits; spot-check next"
+   "note": "9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   {
    "code": "b81c805c",
@@ -345,7 +359,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-09T12:20Z",
-   "state": "running",
+   "state": "released",
    "events": [
     {
      "at": "2026-11-09T12:20Z",
@@ -358,11 +372,16 @@
      "via": "github",
      "what": "claim=b81c805c done=9% eta=2026-11-10T00:49Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-10T07:07Z",
+     "what": "set released: released by the owner on 10 Nov 2026: its holder lost the claim's secret (the folder was deleted) and claimed layer 44 again as 5c3e7396 from the same GitHub account (KimiChan-K2)"
     }
    ],
    "started_at": "2026-11-09T12:33Z",
    "done": "9%",
-   "eta": "2026-11-10T00:49Z"
+   "eta": "2026-11-10T00:49Z",
+   "note": "released by the owner on 10 Nov 2026: its holder lost the claim's secret (the folder was deleted) and claimed layer 44 again as 5c3e7396 from the same GitHub account (KimiChan-K2)"
   },
   {
    "code": "5cd76843",
@@ -397,6 +416,40 @@
    "bits": "own",
    "done": "1%",
    "eta": "2026-11-10T15:42Z"
+  },
+  {
+   "code": "5c3e7396",
+   "layer": 44,
+   "name": "Kimi-chan",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "1",
+   "via": "github",
+   "at": "2026-11-10T07:07Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-10T07:07Z",
+     "via": "github",
+     "what": "claim=5c3e7396 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=Kimi-chan kit=1",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-10T07:07Z",
+     "via": "github",
+     "what": "claim=5c3e7396 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-10T07:07Z",
+     "via": "github",
+     "what": "claim=5c3e7396 done=65% eta=2026-11-10T10:36Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-10T07:07Z",
+   "bits": "own",
+   "done": "65%",
+   "eta": "2026-11-10T10:36Z"
   }
  ],
  "layers": {
@@ -413,13 +466,16 @@
    "note": "1 Nov 2026, the home card's bits, spot-checked bit for bit; passed layer 45's gates"
   },
   "42": {
-   "state": "open"
+   "state": "done",
+   "by": "anon a56863f2",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   "43": {
-   "state": "closed",
+   "state": "done",
    "by": "home card",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
-   "note": "running on the home card (RTX 5090) since 9 Nov 16:31Z, ends ~10 Nov 05:40Z"
+   "note": "9-10 Nov 2026, passed layer 45's gates"
   },
   "44": {
    "state": "open"
@@ -452,5 +508,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-10T03:37Z"
+ "updated_at": "2026-11-10T07:07Z"
 }
