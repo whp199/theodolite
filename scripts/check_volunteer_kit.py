@@ -159,6 +159,15 @@ def run_checks(tmp: Path) -> int:
     check(r.returncode == 1 and "one layer a claim" in r.stdout, "one claim, one layer")
     r = run(b + ["add", start, progress.replace("done=100%", "done=40% eta=2026-11-01T08:00Z")], benv)
     check(r.returncode == 0 and "running" in r.stdout and "held until 2026-11-02T08:00Z" in r.stdout, f"START and PROGRESS ({r.stdout[:300]})")
+    # one post holding a START, its card's name wrapped over a line break, and a PROGRESS (L48's, 10 November 2026)
+    card = cv.parse_line(start)["card"]
+    wrapped = start.replace(f'card="{card}"', 'card="' + card.replace(" ", "\n", 1) + '"')
+    post = f"{wrapped}\n\n" + progress.replace("done=100%", "done=50% eta=2026-11-01T09:00Z")
+    r = run(b + ["add", post], benv)
+    held = next(c for c in json.loads(board.read_text())["claims"] if c["code"] == code)
+    check(" " in card and "\n" in wrapped and r.returncode == 0 and "held until 2026-11-02T09:00Z" in r.stdout
+          and held.get("card") == card and held.get("done") == "50%",
+          f"a post with two lines, a card's name wrapped: both read, the card whole ({r.stdout[:300]}, {held.get('card')!r})")
     r = run(b + ["add", f"CENSUS RELEASE L{LAYER} claim={code} secret=wrong"], benv)
     check(r.returncode == 1 and "without the claim's secret" in r.stdout, "a RELEASE without the secret is refused")
     r = run(b + ["add", f"CENSUS RESERVE L{other} claim=0badc0de name=lapses"], benv)

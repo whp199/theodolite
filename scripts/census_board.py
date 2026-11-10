@@ -131,6 +131,23 @@ def clean(s: Any, n: int = 40) -> str:
     return s[:n]
 
 
+def census_lines(text: str, wrap: int = 2) -> List[Dict[str, Any]]:
+    """Every CENSUS line in a post, in order (a post may hold a START and its first PROGRESS). A line whose quoted value
+    a post broke over a line break (a card's name wrapped: card="... 96<newline>GB") is read joined to the lines after it,
+    up to `wrap` of them, until its quote closes or the next CENSUS line."""
+    rows = str(text).replace("“", '"').replace("”", '"').splitlines()
+    out, i = [], 0
+    while i < len(rows):
+        raw, i = rows[i], i + 1
+        if cv.parse_line(raw) is None:
+            continue
+        joined = 0
+        while raw.count('"') % 2 and joined < wrap and i < len(rows) and cv.parse_line(rows[i]) is None:
+            raw, i, joined = f"{raw} {rows[i].strip()}", i + 1, joined + 1
+        out.append(cv.parse_line(raw))
+    return out
+
+
 def apply(board: Dict[str, Any], line: Dict[str, Any], via: str, who: Optional[str] = None) -> str:
     """One CENSUS line applied to the board; what it did, in words (a refusal starts "refused")."""
     lapse(board)
@@ -373,8 +390,7 @@ def cmd_sync(board: Dict[str, Any], a: argparse.Namespace) -> List[str]:
         if cid in seen:
             continue
         seen.add(cid)
-        line = cv.parse_line(body or "")
-        if line:
+        for line in census_lines(body or ""):
             said.append(f"{login}: " + apply(board, line, "github", who=login))
     board["seen_comments"] = sorted(seen)
     return said
@@ -450,11 +466,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         texts = [sys.stdin.read()] if a.text == ["-"] else a.text
         found = 0
         for t in texts:
-            for raw in t.splitlines():
-                line = cv.parse_line(raw)
-                if line:
-                    found += 1
-                    said.append(apply(board, line, a.via, a.who))
+            for line in census_lines(t):
+                found += 1
+                said.append(apply(board, line, a.via, a.who))
         if not found:
             said.append("no CENSUS line in what was given")
     elif a.cmd == "sync":

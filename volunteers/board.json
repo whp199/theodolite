@@ -45,7 +45,11 @@
   6739277964,
   6739567149,
   6739907842,
-  6740159667
+  6740159667,
+  6753937314,
+  6756329097,
+  6756387798,
+  6757323694
  ],
  "claims": [
   {
@@ -292,7 +296,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-09T11:46Z",
-   "state": "running",
+   "state": "checking",
    "events": [
     {
      "at": "2026-11-09T11:46Z",
@@ -305,10 +309,33 @@
      "via": "github",
      "what": "claim=a56863f2 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
      "verb": "START"
+    },
+    {
+     "at": "2026-11-10T03:35Z",
+     "via": "github",
+     "what": "claim=a56863f2 done=86% eta=2026-11-10T00:57Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-10T03:35Z",
+     "via": "github",
+     "what": "claim=a56863f2 sha256=45c4ef42e8a97f8a size=521MB link=https://github.com/Asynonymous/census-L42/releases/download/L42-break_rel-a56863f2/L42-break_rel-a56863f2.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-10T03:37Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
     }
    ],
    "started_at": "2026-11-09T12:02Z",
-   "bits": "own"
+   "bits": "own",
+   "done": "86%",
+   "eta": "2026-11-10T00:57Z",
+   "submitted_at": "2026-11-10T03:35Z",
+   "bundle_sha256": "45c4ef42e8a97f8a",
+   "size": "521MB",
+   "link": "https://github.com/Asynonymous/census-L42/releases/download/L42-break_rel-a56863f2/L42-break_rel-a56863f2.tar",
+   "note": "on paper whole; own bits; spot-check next"
   },
   {
    "code": "b81c805c",
@@ -336,6 +363,40 @@
    "started_at": "2026-11-09T12:33Z",
    "done": "9%",
    "eta": "2026-11-10T00:49Z"
+  },
+  {
+   "code": "5cd76843",
+   "layer": 48,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "1",
+   "via": "github",
+   "at": "2026-11-10T03:35Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-10T03:35Z",
+     "via": "github",
+     "what": "claim=5cd76843 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=1",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-10T03:35Z",
+     "via": "github",
+     "what": "claim=5cd76843 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-10T03:35Z",
+     "via": "github",
+     "what": "claim=5cd76843 done=1% eta=2026-11-10T15:42Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-10T03:35Z",
+   "bits": "own",
+   "done": "1%",
+   "eta": "2026-11-10T15:42Z"
   }
  ],
  "layers": {
@@ -391,5 +452,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-09T16:36Z"
+ "updated_at": "2026-11-10T03:37Z"
 }
