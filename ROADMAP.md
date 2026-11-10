@@ -317,7 +317,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
   each of six layers, below), two steer-lens layers timed into a scratch folder (45 and 5), the 16 + 8 determinism run
   of 29 October (868 answers), the `break_rel` trial taken and read that day (both below) and the whole `break_rel`
-  layers taken since 30 October, seven by 10 November 2026 (40–43 and 45–47; layer 45 and the volunteers’ below). The
+  layers taken since 30 October, eight by 10 November 2026 (40–47; layer 45 and the volunteers’ below). The
   pilot measured the cost: every
   decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6
   days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the
@@ -567,14 +567,14 @@ layers, the determinism run and the sampled push on 29 October). In this section
     own instrument.
 
   `scripts/check_volunteer_kit.py` runs it all on the stand-in, with a tampered run, a made-up one, a wrong secret
-  and a stray file refused, and another card class taken. By 10 November 2026 three volunteers' runs had come home
-  and been accepted. Layer 41, from an RTX 5090, wrote the home card's bits: its 5 spot chunks matched bit for bit.
-  Layers 47 and 42, each from an RTX PRO 6000 Blackwell, are a card class of their own and met its rules as amended on
-  31 October (`VOLUNTEERS.md`). On their spot chunks the first word-piece was the same in 0.981 and 0.975 of answers
-  (bar 0.90), and the log-probabilities differed by a median 0.0133 and 0.0146 (bar 0.028) and by 0.194 and 0.168 at
-  the 99th percentile (bar 0.37). Both runs' unpushed answers parted from ours at the same three near-ties (pieces 5,
-  21 and 27, which the home card writes at p = 0.50, 0.41 and 0.50; bar 0.6). All three pass layer 45's gates, read
-  after the fact.
+  and a stray file refused, and another card class taken. By 10 November 2026 four runs had come home from three
+  volunteers and been accepted. Layer 41, from an RTX 5090, wrote the home card's bits: its 5 spot chunks matched bit
+  for bit. Layers 47, 42 and 44, each from an RTX PRO 6000 Blackwell, are a card class of their own and met its rules
+  as amended on 31 October (`VOLUNTEERS.md`). On their spot chunks the first word-piece was the same in 0.981, 0.975
+  and 0.979 of answers (bar 0.90), and the log-probabilities differed by a median 0.0133, 0.0146 and 0.0140 (bar
+  0.028) and by 0.194, 0.168 and 0.155 at the 99th percentile (bar 0.37). Each run's unpushed answers parted from ours
+  at the same three near-ties (pieces 5, 21 and 27, which the home card writes at p = 0.50, 0.41 and 0.50; bar 0.6).
+  All four pass layer 45's gates, read after the fact.
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card

@@ -427,7 +427,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-10T07:07Z",
-   "state": "checking",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-10T07:07Z",
@@ -460,6 +460,14 @@
     {
      "at": "2026-11-10T14:19Z",
      "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-10T14:22Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-10T14:54Z",
+     "what": "set accepted: 9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
     }
    ],
    "started_at": "2026-11-10T07:07Z",
@@ -470,7 +478,7 @@
    "bundle_sha256": "dbf5d135869da9c6",
    "size": "509MB",
    "link": "https://huggingface.co/datasets/kimi-chan/theodolite-L44-break_rel/resolve/main/L44-break_rel-5c3e7396.tar",
-   "note": "spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+   "note": "9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   }
  ],
  "layers": {
@@ -499,7 +507,10 @@
    "note": "9-10 Nov 2026, passed layer 45's gates"
   },
   "44": {
-   "state": "open"
+   "state": "done",
+   "by": "Kimi-chan 5c3e7396",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   "46": {
    "state": "done",
@@ -520,7 +531,7 @@
    "state": "closed",
    "by": "home card",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
-   "note": "running on the home card (RTX 5090) since 10 Nov 14:22Z, ends ~11 Nov 04:00Z"
+   "note": "running on the home card (RTX 5090) since 10 Nov 14:19Z, ends ~11 Nov 07:30Z"
   },
   "50": {
    "state": "open"
@@ -532,5 +543,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-10T14:19Z"
+ "updated_at": "2026-11-10T14:54Z"
 }
