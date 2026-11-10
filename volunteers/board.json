@@ -51,7 +51,9 @@
   6756387798,
   6757323694,
   6760254423,
-  6760258773
+  6760258773,
+  6761353551,
+  6767328689
  ],
  "claims": [
   {
@@ -425,7 +427,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-10T07:07Z",
-   "state": "running",
+   "state": "checking",
    "events": [
     {
      "at": "2026-11-10T07:07Z",
@@ -444,12 +446,31 @@
      "via": "github",
      "what": "claim=5c3e7396 done=65% eta=2026-11-10T10:36Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-10T14:08Z",
+     "via": "github",
+     "what": "claim=5c3e7396 sha256=dbf5d135869da9c6 size=509MB link=https://huggingface.co/datasets/kimi-chan/theodolite-L44-break_rel/resolve/main/L44-break_rel-5c3e7396.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-10T14:09Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-10T14:19Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
     }
    ],
    "started_at": "2026-11-10T07:07Z",
    "bits": "own",
    "done": "65%",
-   "eta": "2026-11-10T10:36Z"
+   "eta": "2026-11-10T10:36Z",
+   "submitted_at": "2026-11-10T14:08Z",
+   "bundle_sha256": "dbf5d135869da9c6",
+   "size": "509MB",
+   "link": "https://huggingface.co/datasets/kimi-chan/theodolite-L44-break_rel/resolve/main/L44-break_rel-5c3e7396.tar",
+   "note": "spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
   }
  ],
  "layers": {
@@ -496,7 +517,10 @@
    "state": "open"
   },
   "49": {
-   "state": "open"
+   "state": "closed",
+   "by": "home card",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "running on the home card (RTX 5090) since 10 Nov 14:22Z, ends ~11 Nov 04:00Z"
   },
   "50": {
    "state": "open"
@@ -508,5 +532,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-10T07:07Z"
+ "updated_at": "2026-11-10T14:19Z"
 }
