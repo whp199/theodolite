@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <sub>Every layer of the census is taken, the last still running. <a href="VOLUNTEERS.md">How a layer is taken</a>.</sub>
+  <sub>Every layer of the census is done. <a href="VOLUNTEERS.md">How a layer was taken</a>.</sub>
 </p>
 
 <br>
@@ -51,13 +51,12 @@ brings stand further above the random directions’ than nearly every random dir
 its push differs from a random one. It does not say that its words share a theme, or name what the neuron does when it
 fires. The doses are calibrated at layers 41–51 alone, so the census covers those eleven layers.
 
-Ten are in so far: layers 41–50 (40–49 on the
-[census board](https://github.com/whp199/theodolite/issues/1), which counts from 0), five of them taken by volunteers.
-Layer 46 was read against gates fixed before it ran, and the other nine against the same gates after the fact. Every
-gate passes on all ten. Read at 48 word-pieces, between 3,534 and 9,133 of a layer’s 21,504 neurons have a
-false-discovery q of 0.05 or less, and between 95 and 4,794 beat all 2,048 random directions, where about ten would by
-chance (a count that rests on each layer’s one strongest random direction). **Every layer is taken now, the last
-still running; a claim that lapses opens again on the board ([how a layer is taken](VOLUNTEERS.md)).**
+All eleven are in: layers 41–51 (40–50 on the [census board](https://github.com/whp199/theodolite/issues/1), which
+counts from 0), six of them taken by volunteers. Layer 46 was read against gates fixed before it ran, and the other ten
+against the same gates after the fact. Every gate passes on all eleven. Read at 48 word-pieces, between 3,534 and 9,133
+of a layer’s 21,504 neurons have a false-discovery q of 0.05 or less, and between 95 and 4,794 beat all 2,048 random
+directions, where about ten would by chance (a count that rests on each layer’s one strongest random direction). How
+each was taken: [VOLUNTEERS.md](VOLUNTEERS.md).
 
 <table>
   <tr>

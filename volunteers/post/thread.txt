@@ -1,9 +1,10 @@
 >mapping what every MLP neuron of Gemma-4-31B writes
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
 >layer 45 done on one 5090 in 13 h, passed every check fixed before it ran
->all 11 calibrated layers taken: 40-49 done, 50 running. a claim that lapses opens again on the board
+>all 11 calibrated layers done (40-50), 6 of them by volunteers. thanks to everyone who ran one
+>the kit is closed: nothing is left to take, and the steps below are how each layer was taken
 
-what you get when it's done:
+what you get when the atlas is published:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side
 - watch a reply form through all 60 layers
 - point your own local model (LM Studio, Ollama, llama.cpp) at the map and let it hunt

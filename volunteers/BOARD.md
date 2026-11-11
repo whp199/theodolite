@@ -1,6 +1,6 @@
 # The census: which layer is whose
 
-Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).
+Kit 1 (census-kit-1). Every layer of the kit is done; how each was taken: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Layers count from 0 (page = layer + 1).
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
@@ -14,14 +14,15 @@ Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 47 | 48 | done | ReimusArmpit 2f018a18 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates |
 | 48 | 49 | done | anon 5cd76843 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
-| 50 | 51 | sent home | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 2026-11-11T06:04Z |  |
+| 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 
 Judged:
 
-- L47 ReimusArmpit 2f018a18: accepted (30-31 Oct 2026, its own card class, spot-checked passed layer 45s gates)
+- L47 ReimusArmpit 2f018a18: accepted (30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates)
 - L41 ReimusArmpit d4bcee00: accepted (home bits (NVIDIA GeForce RTX 5090), spot-checked)
-- L42 anon a56863f2: accepted (9-10 Nov 2026, its own card class, spot-checked passed layer 45s gates)
-- L48 anon 5cd76843: accepted (10 Nov 2026, its own card class, spot-checked passed layer 45s gates)
-- L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked passed layer 45s gates)
+- L42 anon a56863f2: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
+- L48 anon 5cd76843: accepted (10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
+- L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
+- L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-11T06:04Z.
+Updated 2026-11-11T15:07Z.

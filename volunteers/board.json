@@ -520,7 +520,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-10T17:11Z",
-   "state": "submitted",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-10T17:11Z",
@@ -539,6 +539,22 @@
      "via": "github",
      "what": "claim=b153da82 sha256=ee3b3021ad78dae2 size=458MB link=https://github.com/Asynonymous/census-L50/releases/download/L50-break_rel-b153da82/L50-break_rel-b153da82.tar",
      "verb": "DONE"
+    },
+    {
+     "at": "2026-11-11T06:07Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-11T06:15Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-11T14:12Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-11T14:29Z",
+     "what": "set accepted: 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
     }
    ],
    "started_at": "2026-11-10T17:11Z",
@@ -547,7 +563,8 @@
    "submitted_at": "2026-11-11T06:04Z",
    "bundle_sha256": "ee3b3021ad78dae2",
    "size": "458MB",
-   "link": "https://github.com/Asynonymous/census-L50/releases/download/L50-break_rel-b153da82/L50-break_rel-b153da82.tar"
+   "link": "https://github.com/Asynonymous/census-L50/releases/download/L50-break_rel-b153da82/L50-break_rel-b153da82.tar",
+   "note": "10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   }
  ],
  "layers": {
@@ -606,7 +623,10 @@
    "note": "10-11 Nov 2026, passed layer 45's gates"
   },
   "50": {
-   "state": "open"
+   "state": "done",
+   "by": "anon b153da82",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   "45": {
    "state": "done",
@@ -615,5 +635,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-11T06:04Z"
+ "updated_at": "2026-11-11T15:07Z"
 }

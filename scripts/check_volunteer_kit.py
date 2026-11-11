@@ -7,7 +7,8 @@ owner's (scripts/census_board.py, scripts/census_intake.py --dry-run), against a
    canary (the home card's bits), run (detached, waited for), status (the PROGRESS line), pack (the bundle and the DONE
    line), the bundle holding no path of this machine;
 3. the board: RESERVE, a second RESERVE on a held layer refused, one claim one layer, START, PROGRESS, DONE, a RELEASE
-   without the secret refused, a held claim lapsing on the clock, the renders (board.txt under 2,000 characters);
+   without the secret refused, a held claim lapsing on the clock, the renders (board.txt under 2,000 characters), and
+   the renders of a board with every layer done (saying so) and of one with a layer closed instead (not saying so);
 4. the intake: the bundle checked, spot-checked and judged bit for bit, accepted into a census folder, ranked, and its
    layer done on the board;
 5. the refusals: a run tampered after its canary (a spot chunk's answers changed, packed again as a cheat would) is
@@ -182,6 +183,25 @@ def run_checks(tmp: Path) -> int:
     r = run(b + ["render", "--out", tmp / "render", "--no-png"], benv)
     txt = (tmp / "render" / "board.txt").read_text() if (tmp / "render" / "board.txt").exists() else ""
     check(r.returncode == 0 and 0 < len(txt) <= 2000 and (tmp / "render" / "BOARD.md").exists(), "the renders, the post under 2,000 characters")
+    # the renders once every kit layer is done (a copy of the board), and with one layer closed for the home card instead
+    for case, closed in (("done", None), ("closed", kit["layers"][-1])):
+        cb = json.loads(board.read_text())
+        cb["layers"] = {str(l): ({"state": "closed"} if l == closed else {"state": "done", "by": "home card"}) for l in kit["layers"]}
+        (tmp / f"board_{case}.json").write_text(json.dumps(cb))
+        out = tmp / f"render_{case}"
+        r = run([PY, "-I", BOARD_PY, "--board", tmp / f"board_{case}.json", "render", "--out", out, "--no-png"], benv)
+        txt = (out / "board.txt").read_text() if (out / "board.txt").exists() else ""
+        md = (out / "BOARD.md").read_text() if (out / "BOARD.md").exists() else ""
+        # the image's words too (render --no-png skips them): render_html in a process of its own
+        h = run([PY, "-I", "-c", "import json, sys; sys.path.insert(0, sys.argv[1]); import census_board as b; "
+                 "print('Every layer of the kit is done.' in b.render_html(json.load(open(sys.argv[2]))))",
+                 BOARD_PY.parent, tmp / f"board_{case}.json"], benv)
+        says = ["every layer of the kit is done" in txt, "Every layer of the kit is done" in md, h.stdout.strip() == "True"]
+        asks = ["CENSUS line" in txt, "Holds:" in md]
+        ok = all(says) and not any(asks) if case == "done" else all(asks) and not any(says)
+        check(r.returncode == 0 and h.returncode == 0 and 0 < len(txt) <= 2000 and ok,
+              f"the renders with every layer {'done: each says so' if case == 'done' else 'done but one closed: none says all done'}"
+              f" (says {says}, asks {asks})")
     section("the board: claims, refusals, holds, lapses, the renders", before)
 
     # 4. the intake

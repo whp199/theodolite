@@ -1,23 +1,22 @@
-# Take a layer of the census
+# How a layer of the census was taken
 
-Theodolite is mapping what each MLP neuron of Gemma-4-31B writes. The census takes one layer at a time. Each of
-the layer's 21,504 neurons is pushed along its own write direction, at four strengths (±1 and ±2 of the stream), on six
+Theodolite is mapping what each MLP neuron of Gemma-4-31B writes. The census takes one layer at a time. Each of the
+layer's 21,504 neurons is pushed along its own write direction, at four strengths (±1 and ±2 of the stream), on six
 plain questions. Its 24 greedy answers are then read against those of 2,048 random directions pushed the same way.
 Layer 45 was the first done: 13.2 hours on one RTX 5090, and it passed every check set for it before it was run
-(`experiments/results/census_L45_whole/`). By 11 November 2026 nine more were done, **40 to 44 and 46 to 49**,
-five of them by volunteers, and each passed layer 45's gates, read after the fact.
+(`experiments/results/census_L45_whole/`). By 11 November 2026 the ten others were done too,
+**40 to 44 and 46 to 50**, six of them by volunteers, and each passed layer 45's gates, read after the fact.
 
-The kit holds the ten other layers where the push strengths have been calibrated: **40 to 44 and 46 to 50**. The board
-says which of them are open. On 11 November none was: 40 to 49 were done, and layer 50, the last, was running for a
-volunteer. If a claim lapses and you have a big enough card and a free night, you can take that layer. Layers count
-from 0, as every script counts them (the app's page = layer + 1).
+The kit holds the ten other layers where the push strengths have been calibrated: **40 to 44 and 46 to 50**. All ten
+are done, so this kit has no layer left to take; the board keeps the record of who took which. Layers count from 0, as
+every script counts them (the app's page = layer + 1).
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 
 ## What you get
 
-When the census is done, the atlas and its data are published, and the whole instrument runs on the same card you took
-your layer on:
+When the atlas and its data are published with the project, the whole instrument runs on the same card you took your
+layer on:
 
 - **Chat with Gemma with any neuron turned up or down.** The atlas's push tab writes three answers side by side, over
   several turns: the neuron pushed up, left alone, and pushed down. You find neurons by the words they write, or by
@@ -29,7 +28,7 @@ your layer on:
 - **Your name on the first public map of a 31B's neurons.** We found none published, only sparse autoencoders
   (`REFERENCES.md` §J). Your layer is credited to the name you gave, and you name the strongest neurons of your layer
   in the published atlas.
-- **Open data**: every answer of every layer, 565,254 a layer, published with the project.
+- **Open data**: every answer of every layer, 565,254 a layer, to be published with the project.
 - **Ready now: a neuron in your own frontend.** Any neuron exports as a llama.cpp control vector, for `llama-server`
   and SillyTavern or anything else on it. Keep the scale near ±1 (*Use a neuron in your own setup*, below).
 
@@ -53,6 +52,8 @@ chats, you try for yourself.
 No account, token or payment is needed anywhere.
 
 ## The steps
+
+Every layer of this kit is done, so the steps below are now the record of how each was taken.
 
 ```bash
 mkdir -p ~/theodolite-census && cd ~/theodolite-census

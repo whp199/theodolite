@@ -125,9 +125,14 @@ def find(board: Dict[str, Any], code: str) -> Optional[Dict[str, Any]]:
     return cs[-1] if cs else None
 
 
-def clean(s: Any, n: int = 40) -> str:
-    """A volunteer's words as the board may show them: printable, without markup, cut short."""
-    s = re.sub(r"[^\w .,:/+%()@#-]", "", str(s or ""), flags=re.ASCII)
+NOTE_MARKS = ";'"  # notes set with `set --note` (by hand, or by census_intake.py, which may quote a bundle's card name)
+                  # may keep these two marks, harmless in Markdown; the words of a CENSUS line may not
+
+
+def clean(s: Any, n: int = 40, keep: str = "") -> str:
+    """A volunteer's words as the board may show them: printable, without markup, cut short. `keep` lets through a few
+    more marks for notes (NOTE_MARKS keeps "spot-checked; passed layer 45's gates" whole)."""
+    s = re.sub(r"[^\w .,:/+%()@#" + re.escape(keep) + r"-]", "", str(s or ""), flags=re.ASCII)
     return s[:n]
 
 
@@ -239,22 +244,32 @@ STATE_WORDS = {"open": "OPEN", "reserved": "reserved", "running": "running", "su
                "done": "done", "closed": "closed"}
 
 
+def all_done(rows: List[Dict[str, Any]]) -> bool:
+    """Every layer of the kit done: nothing left to take, and no claim left to lapse. A closed layer (held for the home
+    card, or running there) is not done."""
+    return bool(rows) and all(r["state"] == "done" for r in rows)
+
+
 def render_md(board: Dict[str, Any]) -> str:
     kit = cv.read_kit()
-    lines = ["# The census: which layer is whose", "",
-             f"Kit {kit['KIT']} ({kit['KIT_TAG']}). How to take a layer: [VOLUNTEERS.md]"
-             f"(https://github.com/{board['repo']}/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in "
-             "the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).", "",
+    rows = layer_rows(board)
+    guide = f"[VOLUNTEERS.md](https://github.com/{board['repo']}/blob/main/VOLUNTEERS.md)"
+    intro = (f"Kit {kit['KIT']} ({kit['KIT_TAG']}). Every layer of the kit is done; how each was taken: {guide}. "
+             "Layers count from 0 (page = layer + 1)." if all_done(rows) else
+             f"Kit {kit['KIT']} ({kit['KIT_TAG']}). How to take a layer: {guide}. Post `CENSUS ...` lines as comments here "
+             "or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).")
+    lines = ["# The census: which layer is whose", "", intro, "",
              "| Layer | Page | State | Who | Card | When | Note |", "|---:|---:|---|---|---|---|---|"]
-    for r in layer_rows(board):
+    for r in rows:
         lines.append(f"| {r['layer']} | {r['page']} | {STATE_WORDS.get(r['state'], r['state'])} | {r['who']} | {r['card']} | "
-                     f"{r['when']} | {r['note']} |")
+                     f"{r['when']} | {clean(r['note'], 120, keep=NOTE_MARKS)} |")
     ended = [c for c in board["claims"] if c["state"] in ("accepted", "rejected")]
     if ended:
         lines += ["", "Judged:", ""] + [f"- L{c['layer']} {c['name']} {c['code']}: {c['state']}"
-                                        + (f" ({clean(c.get('note'), 120)})" if c.get("note") else "") for c in ended]
-    lines += ["", f"Holds: {HOLD_RESERVED} h after RESERVE to START; then the run's end time (from PROGRESS) plus {HOLD_GRACE} h; "
-              f"at most {HOLD_MAX_DAYS} days in all. Updated {board.get('updated_at') or iso(now())}.", ""]
+                                        + (f" ({clean(c.get('note'), 120, keep=NOTE_MARKS)})" if c.get("note") else "") for c in ended]
+    holds = ("" if all_done(rows) else f"Holds: {HOLD_RESERVED} h after RESERVE to START; then the run's end time (from "
+             f"PROGRESS) plus {HOLD_GRACE} h; at most {HOLD_MAX_DAYS} days in all. ")
+    lines += ["", f"{holds}Updated {board.get('updated_at') or iso(now())}.", ""]
     return "\n".join(lines)
 
 
@@ -269,9 +284,12 @@ def render_txt(board: Dict[str, Any]) -> str:
     n_open = sum(1 for r in rows if r["state"] == "open")
     # the board's own address, not kit.env's: the kit's tag keeps the address it was cut with (GitHub redirects it)
     url = f"https://github.com/{board['repo']}/issues/{board['issue']}" if board.get("issue") else kit["KIT_BOARD_URL"].rstrip("/")
-    out += ["", f"{n_open} open. To take one: {url}" if n_open else f"0 open; a claim that lapses opens again: {url}",
-            f"guide: https://github.com/{board['repo']}/blob/main/VOLUNTEERS.md",
-            "reply with the CENSUS line census.sh prints"]
+    guide = f"guide: https://github.com/{board['repo']}/blob/main/VOLUNTEERS.md"
+    if all_done(rows):
+        out += ["", f"every layer of the kit is done: {url}", guide]
+    else:
+        out += ["", f"{n_open} open. To take one: {url}" if n_open else f"0 open; a claim that lapses opens again: {url}",
+                guide, "reply with the CENSUS line census.sh prints"]
     text = "\n".join(out)
     return text if len(text) <= 2000 else text[:1990] + "\n(cut)"
 
@@ -285,6 +303,11 @@ def render_html(board: Dict[str, Any]) -> str:
                   f"<td class='st'>{html.escape(STATE_WORDS.get(st, st))}</td><td>{html.escape(r['who'])}</td>"
                   f"<td>{html.escape(r['card'])}</td><td>{html.escape(r['when'])}</td><td>{html.escape(r['note'])}</td></tr>")
     n_open = sum(1 for r in rows if r["state"] == "open")
+    done = all_done(rows)
+    sub = "Every layer of the kit is done." if done else f"{n_open} layers open."
+    foot = ("The guide: <code>VOLUNTEERS.md</code> in github.com/" + html.escape(board['repo']) + "." if done else
+            "To take one: the guide, <code>VOLUNTEERS.md</code> in github.com/" + html.escape(board['repo'])
+            + "; post the\n<code>CENSUS</code> line the script prints.")
     return f"""<!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono&display=block" rel="stylesheet">
@@ -306,11 +329,10 @@ tr.done td, tr.closed td {{ color:var(--muted); }}
 code {{ font-family:'IBM Plex Mono', monospace; font-size:16px; }}
 </style></head><body>
 <h1>The census: which layer is whose</h1>
-<p class="sub">{n_open} layers open. Gemma-4-31B, every neuron of a layer pushed and read against 2,048 random directions.</p>
+<p class="sub">{sub} Gemma-4-31B, every neuron of a layer pushed and read against 2,048 random directions.</p>
 <table><tr><th>layer</th><th>page</th><th>state</th><th>who</th><th>card</th><th>when</th><th>note</th></tr>
 {''.join(tr)}</table>
-<p class="foot">To take one: the guide, <code>VOLUNTEERS.md</code> in github.com/{html.escape(board['repo'])}; post the
-<code>CENSUS</code> line the script prints. Updated {html.escape(board.get('updated_at') or iso(now()) or '')}.</p>
+<p class="foot">{foot} Updated {html.escape(board.get('updated_at') or iso(now()) or '')}.</p>
 </body></html>"""
 
 
