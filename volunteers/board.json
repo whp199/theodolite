@@ -57,7 +57,8 @@
   6772314043,
   6772469219,
   6773220993,
-  6773958548
+  6773958548,
+  6788168275
  ],
  "claims": [
   {
@@ -519,7 +520,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-10T17:11Z",
-   "state": "running",
+   "state": "submitted",
    "events": [
     {
      "at": "2026-11-10T17:11Z",
@@ -532,11 +533,21 @@
      "via": "github",
      "what": "claim=b153da82 done=4% eta=2026-11-11T05:00Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-11T06:04Z",
+     "via": "github",
+     "what": "claim=b153da82 sha256=ee3b3021ad78dae2 size=458MB link=https://github.com/Asynonymous/census-L50/releases/download/L50-break_rel-b153da82/L50-break_rel-b153da82.tar",
+     "verb": "DONE"
     }
    ],
    "started_at": "2026-11-10T17:11Z",
    "done": "4%",
-   "eta": "2026-11-11T05:00Z"
+   "eta": "2026-11-11T05:00Z",
+   "submitted_at": "2026-11-11T06:04Z",
+   "bundle_sha256": "ee3b3021ad78dae2",
+   "size": "458MB",
+   "link": "https://github.com/Asynonymous/census-L50/releases/download/L50-break_rel-b153da82/L50-break_rel-b153da82.tar"
   }
  ],
  "layers": {
@@ -604,5 +615,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-11T06:00Z"
+ "updated_at": "2026-11-11T06:04Z"
 }

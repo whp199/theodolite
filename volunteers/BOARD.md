@@ -14,7 +14,7 @@ Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 47 | 48 | done | ReimusArmpit 2f018a18 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates |
 | 48 | 49 | done | anon 5cd76843 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
-| 50 | 51 | running | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 4%, ends ~2026-11-11T05:00Z |  |
+| 50 | 51 | sent home | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 2026-11-11T06:04Z |  |
 
 Judged:
 
@@ -24,4 +24,4 @@ Judged:
 - L48 anon 5cd76843: accepted (10 Nov 2026, its own card class, spot-checked passed layer 45s gates)
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked passed layer 45s gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-11T06:00Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-11T06:04Z.
