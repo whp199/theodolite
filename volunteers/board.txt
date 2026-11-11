@@ -7,10 +7,10 @@ L44 done (Kimi-chan 5c3e7396)
 L45 done (home card)
 L46 done (home card)
 L47 done (ReimusArmpit 2f018a18)
-L48 running anon 5cd76843 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 1%, ends ~2026-11-10T15:42Z
-L49 closed
-L50 OPEN
+L48 done (anon 5cd76843)
+L49 done (home card)
+L50 running anon b153da82 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 4%, ends ~2026-11-11T05:00Z
 
-1 open. To take one: https://github.com/whp199/theodolite/issues/1
+0 open; a claim that lapses opens again: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

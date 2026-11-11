@@ -4,12 +4,13 @@ Theodolite is mapping what each MLP neuron of Gemma-4-31B writes. The census tak
 the layer's 21,504 neurons is pushed along its own write direction, at four strengths (±1 and ±2 of the stream), on six
 plain questions. Its 24 greedy answers are then read against those of 2,048 random directions pushed the same way.
 Layer 45 was the first done: 13.2 hours on one RTX 5090, and it passed every check set for it before it was run
-(`experiments/results/census_L45_whole/`). By 10 November 2026 seven more were done, **40 to 44, 46 and 47**,
-four of them by volunteers, and each passed layer 45's gates, read after the fact.
+(`experiments/results/census_L45_whole/`). By 11 November 2026 nine more were done, **40 to 44 and 46 to 49**,
+five of them by volunteers, and each passed layer 45's gates, read after the fact.
 
 The kit holds the ten other layers where the push strengths have been calibrated: **40 to 44 and 46 to 50**. The board
-says which of them are still open. If you have a big enough card and a free night, you can take one. Layers count from
-0, as every script counts them (the app's page = layer + 1).
+says which of them are open. On 11 November none was: 40 to 49 were done, and layer 50, the last, was running for a
+volunteer. If a claim lapses and you have a big enough card and a free night, you can take that layer. Layers count
+from 0, as every script counts them (the app's page = layer + 1).
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 

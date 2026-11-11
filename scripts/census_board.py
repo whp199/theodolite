@@ -269,7 +269,7 @@ def render_txt(board: Dict[str, Any]) -> str:
     n_open = sum(1 for r in rows if r["state"] == "open")
     # the board's own address, not kit.env's: the kit's tag keeps the address it was cut with (GitHub redirects it)
     url = f"https://github.com/{board['repo']}/issues/{board['issue']}" if board.get("issue") else kit["KIT_BOARD_URL"].rstrip("/")
-    out += ["", f"{n_open} open. To take one: {url}",
+    out += ["", f"{n_open} open. To take one: {url}" if n_open else f"0 open; a claim that lapses opens again: {url}",
             f"guide: https://github.com/{board['repo']}/blob/main/VOLUNTEERS.md",
             "reply with the CENSUS line census.sh prints"]
     text = "\n".join(out)

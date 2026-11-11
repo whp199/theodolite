@@ -1,7 +1,7 @@
 >mapping what every MLP neuron of Gemma-4-31B writes
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
 >layer 45 done on one 5090 in 13 h, passed every check fixed before it ran
->10 layers left: 40-44, 46-50. got a 32GB+ card and a free night? take one
+>all 11 calibrated layers taken: 40-49 done, 50 running. a claim that lapses opens again on the board
 
 what you get when it's done:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side

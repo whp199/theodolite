@@ -53,7 +53,11 @@
   6760254423,
   6760258773,
   6761353551,
-  6767328689
+  6767328689,
+  6772314043,
+  6772469219,
+  6773220993,
+  6773958548
  ],
  "claims": [
   {
@@ -393,7 +397,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-10T03:35Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-10T03:35Z",
@@ -412,12 +416,39 @@
      "via": "github",
      "what": "claim=5cd76843 done=1% eta=2026-11-10T15:42Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-10T17:11Z",
+     "via": "github",
+     "what": "claim=5cd76843 sha256=5c1df4231a43f797 size=490MB link=https://github.com/Asynonymous/census-L48/releases/download/L48-break_rel-5cd76843/L48-break_rel-5cd76843.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-10T17:13Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-11T04:55Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-11T05:12Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-11T05:29Z",
+     "what": "set accepted: 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
     }
    ],
    "started_at": "2026-11-10T03:35Z",
    "bits": "own",
    "done": "1%",
-   "eta": "2026-11-10T15:42Z"
+   "eta": "2026-11-10T15:42Z",
+   "submitted_at": "2026-11-10T17:11Z",
+   "bundle_sha256": "5c1df4231a43f797",
+   "size": "490MB",
+   "link": "https://github.com/Asynonymous/census-L48/releases/download/L48-break_rel-5cd76843/L48-break_rel-5cd76843.tar",
+   "note": "10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   {
    "code": "5c3e7396",
@@ -479,6 +510,33 @@
    "size": "509MB",
    "link": "https://huggingface.co/datasets/kimi-chan/theodolite-L44-break_rel/resolve/main/L44-break_rel-5c3e7396.tar",
    "note": "9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
+  },
+  {
+   "code": "b153da82",
+   "layer": 50,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "1",
+   "via": "github",
+   "at": "2026-11-10T17:11Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-10T17:11Z",
+     "via": "github",
+     "what": "claim=b153da82 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=1",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-10T17:11Z",
+     "via": "github",
+     "what": "claim=b153da82 done=4% eta=2026-11-11T05:00Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-10T17:11Z",
+   "done": "4%",
+   "eta": "2026-11-11T05:00Z"
   }
  ],
  "layers": {
@@ -525,13 +583,16 @@
    "note": "30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   "48": {
-   "state": "open"
+   "state": "done",
+   "by": "anon 5cd76843",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "10 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   "49": {
-   "state": "closed",
+   "state": "done",
    "by": "home card",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
-   "note": "running on the home card (RTX 5090) since 10 Nov 14:19Z, ends ~11 Nov 07:30Z"
+   "note": "10-11 Nov 2026, passed layer 45's gates"
   },
   "50": {
    "state": "open"
@@ -543,5 +604,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-10T14:54Z"
+ "updated_at": "2026-11-11T06:00Z"
 }

@@ -317,12 +317,11 @@ layers, the determinism run and the sampled push on 29 October). In this section
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
   each of six layers, below), two steer-lens layers timed into a scratch folder (45 and 5), the 16 + 8 determinism run
   of 29 October (868 answers), the `break_rel` trial taken and read that day (both below) and the whole `break_rel`
-  layers taken since 30 October, eight by 10 November 2026 (40–47; layer 45 and the volunteers’ below). The
-  pilot measured the cost: every
-  decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6
-  days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the
-  model (COMPUTE §i). The steer lens was estimated at 15 to 20 hours for all 60 layers on a 5090. One layer timed on 29
-  October 2026 (layer 45, `compiled`, into a scratch folder, not served;
+  layers taken since 29 October, ten by 11 November 2026 (40–49; layer 45 and the volunteers’ below). The pilot
+  measured the cost: every decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole
+  `main_rel` layer is about 3.6 days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is
+  the 4-bit unpacking, not the model (COMPUTE §i). The steer lens was estimated at 15 to 20 hours for all 60 layers on
+  a 5090. One layer timed on 29 October 2026 (layer 45, `compiled`, into a scratch folder, not served;
   [`atlas_steer_timing/`](experiments/results/atlas_steer_timing/)) took 287 s; a layer runs only the layers after it
   (the forward starts at l + 1), 14 for layer 45, so its cost grows with their number. A shallow layer timed the same
   day checks it: layer 5, which runs 54, took 1,181 s, 7% more than layer 45’s rate gives. So all 60 would be about
@@ -552,8 +551,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
   columns`, a random mix of the layer’s own write directions, which can be taken alone (`--neurons none`) and joined
   to a layer’s run (`census_tools.py join`); on layer 45 it reads as the isotropic one does (above).
 - **The other ten layers, by volunteers** (built 30 October 2026; `VOLUNTEERS.md`). The calibrated layers left, 40–44
-  and 46–50, can be taken by anyone with one card of 32 GB or more. Each volunteer runs layer 45's command at another
-  layer, from the kit's tag, with the kit's pinned versions and stats index (`volunteers/kit.env`,
+  and 46–50, were opened to anyone with one card of 32 GB or more. By 11 November 2026 every one was taken: five by
+  volunteers, four on the home card, and layer 50 running for a volunteer. Each volunteer runs layer 45's command at
+  another layer, from the kit's tag, with the kit's pinned versions and stats index (`volunteers/kit.env`,
   `scripts/volunteer/census.sh`).
   - **Claims.** A layer is claimed by a one-line `CENSUS` message carrying a code whose secret the volunteer keeps,
     and the board keeps one claim a layer, with holds that lapse (`scripts/census_board.py`; the pinned issue, the
@@ -566,15 +566,27 @@ layers, the determinism run and the sampled push on 29 October). In this section
   - **Another card class.** A layer from another card class is recorded so in its provenance file, and is read as its
     own instrument.
 
-  `scripts/check_volunteer_kit.py` runs it all on the stand-in, with a tampered run, a made-up one, a wrong secret
-  and a stray file refused, and another card class taken. By 10 November 2026 four runs had come home from three
+  `scripts/check_volunteer_kit.py` runs it all on the stand-in, with a tampered run, a made-up one, a wrong secret and
+  a stray file refused, and another card class taken. By 11 November 2026 five runs had come home from three
   volunteers and been accepted. Layer 41, from an RTX 5090, wrote the home card's bits: its 5 spot chunks matched bit
-  for bit. Layers 47, 42 and 44, each from an RTX PRO 6000 Blackwell, are a card class of their own and met its rules
-  as amended on 31 October (`VOLUNTEERS.md`). On their spot chunks the first word-piece was the same in 0.981, 0.975
-  and 0.979 of answers (bar 0.90), and the log-probabilities differed by a median 0.0133, 0.0146 and 0.0140 (bar
-  0.028) and by 0.194, 0.168 and 0.155 at the 99th percentile (bar 0.37). Each run's unpushed answers parted from ours
-  at the same three near-ties (pieces 5, 21 and 27, which the home card writes at p = 0.50, 0.41 and 0.50; bar 0.6).
-  All four pass layer 45's gates, read after the fact.
+  for bit. Layers 47, 42, 44 and 48, each from an RTX PRO 6000 Blackwell, are a card class of their own and met its
+  rules as amended on 31 October (`VOLUNTEERS.md`). On their spot chunks the first word-piece was the same in 0.981,
+  0.975, 0.979 and 0.981 of answers (bar 0.90), and the log-probabilities differed by a median 0.0133, 0.0146, 0.0140
+  and 0.0145 (bar 0.028) and by 0.194, 0.168, 0.155 and 0.215 at the 99th percentile (bar 0.37). Each of those four
+  runs' unpushed answers parted from ours at the same three near-ties (pieces 5, 21 and 27, which the home card writes
+  at p = 0.50, 0.41 and 0.50; bar 0.6). All five pass layer 45's gates, read after the fact.
+  - **What layers 40–49 read** (`experiments/results/census_L40_whole/` to `census_L49_whole/`; every layer but 45
+    read against 45's gates after the fact). Every gate passes at every layer. The length rule would take 32
+    word-pieces at layers 40–43 and keeps 48 at 44–49 (at 49 on the replication drop alone, 0.026; the lead's was
+    0.0199); every figure here is at 48. Set layers side by side by q ≤ 0.05 (3,534 to 9,133 neurons) rather than by
+    the count above every control (95 to 4,794), which hangs on each layer's one largest control, as on layer 45's two
+    nulls (above): at layer 41 a control whose answers turn to Spanish stands 9.7 above the next, and 869 neurons beat
+    that next one. At layers 48 and 49 the ±1 push already breaks text: the neurons' answers lose 0.15–0.17 of their
+    distinct-4 and the controls' 0.09–0.13, against at most 0.07 and 0.02 at 40–47. Their strongest neurons also stand
+    nearer the controls: 1,408 and 1,407 lie more than five of the controls' standard deviations above the controls'
+    median, against 2,007 to 4,742 at 40–47. Their other counts stay in range (1,250 and 1,474 beat every control,
+    against 1,259 at layer 40 and 1,580 at 45; 6,554 and 5,899 have q ≤ 0.05), and the lead holds (0.736 and 0.743),
+    beyond text survival too (0.753 and 0.763). Layer 50, the last the doses were calibrated for, is read next.
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card
