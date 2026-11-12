@@ -1789,6 +1789,14 @@ pre.raw {
   background: var(--gilt);
   opacity: 0.55;
 }
+/* many layers: the bars closer, their numbers free to overhang (only a few are shown) */
+.atlas-depth.many {
+  gap: 1px;
+}
+.atlas-depth.many .no {
+  overflow: visible;
+  white-space: nowrap;
+}
 /* a layer whose doses are not calibrated: its bar an outline, not a fill */
 .atlas-depth button.hollow .bar {
   background: transparent;

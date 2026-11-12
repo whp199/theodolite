@@ -247,13 +247,14 @@ export async function loadCensusLayers() {
 /** Ink every layer with a census on the map at once (one byte a neuron, GET /census/levels). */
 export async function loadLevels() {
   try {
-    const r = await get<{ layers: number[]; n: number; levels: string }>("/api/atlas/census/levels");
+    const r = await get<{ layers: number[]; n: number; levels: string; uncalibrated?: number[] }>("/api/atlas/census/levels");
     const bin = atob(r.levels);
+    const uncal = new Set(r.uncalibrated ?? []);
     map?.setLevelsOf(
       r.layers.map((layer, i) => {
         const levels = new Uint8Array(r.n);
         for (let k = 0; k < r.n; k++) levels[k] = bin.charCodeAt(i * r.n + k);
-        return { layer, levels };
+        return { layer, levels, dull: uncal.has(layer) };
       }),
     );
   } catch {
@@ -298,7 +299,9 @@ export async function setLayer(l: number) {
     }
   }
   const us = st().units[l];
-  if (st().layer === l && us?.length) map?.setUnits(l, us);
+  // (whether its doses are calibrated there is the census strip's to say; unknown, the ink is left as it was)
+  const row = st().censusLayers?.find((c) => c.layer === l && c.ranked);
+  if (st().layer === l && us?.length) map?.setUnits(l, us, row ? !row.doses_calibrated : undefined);
   if (st().view === "spread") void loadSpread();
 }
 

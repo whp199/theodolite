@@ -40,7 +40,19 @@ the real MCP server (`fastmcp.Client`, in memory, on the same stand-in). It chec
    after, never between, its read made off the event loop; a call cancelled meanwhile (as the MCP SDK cancels one)
    keeps its turn until its thread ends, its edit made and heard; bound as the server binds it, the tools' lock is a
    no-op and the same two calls interleave (the server's _GPU_LOCK keeps them apart there); every tool is async and
-   runs in its turn, its parameters as a client sees them its function's, and the voice's schema VoiceRequest's.
+   runs in its turn, its parameters as a client sees them its function's, and the voice's schema VoiceRequest's;
+9. DESCRIBE POLE's field notes (`LarqlVaultEngine(runtime, field_notes=...)`, backend/field_notes.py `peek_neuron`),
+   on a stand-in the real `inspect_bipolar_slot` reads, the notes written to a temporary folder by the notes' own
+   writers: a vault given no reader replies as before; given one, "field_notes" comes after the record and just before
+   "label_gate", marked as kept by hand and not measured; a neuron's name and note with who wrote each, and both
+   faces of its field book, or the one face POLARITY names; a neuron with none has the field with nothing in it; a
+   proposal of the scientist's is not returned until the person keeps it, and never once discarded; a head's name is
+   not a neuron's; a neuron past the last is read as the record reads it; everything outside the field (each face's
+   words and label_check, the rule, the lens, the console's count of labels held back) is the same with the notes as
+   without, also when a note repeats a label's own word; the vault only reads (no file made, changed or moved aside,
+   an unreadable one named under `unread` and said so under `warning`, the record still whole; no lock waited for;
+   the reply's notes are copies); only DESCRIBE POLE reads them; the routes and the MCP tool `query_larql_vault` carry them from the
+   statement's worker thread, the server gives its vault the notes' own reader, and `inspect_pole` carries none.
 
 Run: .venv/bin/python -I scripts/check_vault_voice.py   (exits 0 when every check holds)
 """
@@ -58,6 +70,8 @@ import asyncio
 import inspect
 import json
 import logging
+import shutil
+import tempfile
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -69,6 +83,12 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+# the field notes this check writes (9) go to a folder of its own, never the user's (~/.local/share/theodolite)
+NOTES_DIR = Path(tempfile.mkdtemp(prefix="vault-voice-notes-"))
+os.environ["THEODOLITE_FIELD_NOTES"] = str(NOTES_DIR / "field_notes.json")
+os.environ["THEODOLITE_FIELD_BOOK"] = str(NOTES_DIR / "field_book.json")
+os.environ["THEODOLITE_FIELD_PROPOSALS"] = str(NOTES_DIR / "field_proposals.json")
+
 import anyio
 import torch
 import torch.nn.functional as F
@@ -78,6 +98,7 @@ from fastmcp.exceptions import ToolError
 from interp_engine.sampling import resolve_sampling
 
 import backend.engine_runtime as engine_runtime
+import backend.field_notes as field_notes
 import backend.larql_vault as larql_vault
 import backend.mcp_scientist as mcp_scientist
 import backend.server as server
@@ -774,6 +795,358 @@ def check_mcp() -> None:
         mcp_scientist._SHARED_VAULT = None
 
 
+# --------------------------------------------------------------------------------------------------------------------
+# 9. DESCRIBE POLE's field notes
+# --------------------------------------------------------------------------------------------------------------------
+
+PD, PV = 16, 300  # the pole stand-in's model width and vocabulary
+POLE_KEYS = ["layer", "neuron_idx", "requested_polarity", "w_down_norm", "w_gate_norm", "w_up_norm", "active_pole",
+             "north_pole", "south_pole", "gate_trigger_tokens"]
+FACE_KEYS = ["polarity", "j_vindex_tokens", "naive_tokens", "label_check"]
+NOTE_KEYS = ["measured", "caution", "notes", "faces", "unread", "warning"]
+
+
+class PoleRuntime:
+    """Just what DESCRIBE POLE's own read touches (the real `inspect_bipolar_slot`), on small random tensors: every
+    one of a layer's 21,504 neurons has a column, the same weights and lens at each layer."""
+
+    def __init__(self) -> None:
+        g = torch.Generator().manual_seed(7)
+        self.device = torch.device("cpu")
+        self.model_id = "stand-in"
+        self.tokenizer = FakeTokenizer()
+        self.lm_head_weight = (torch.randn(PV, PD, generator=g) * 0.5).bfloat16()
+        self.final_norm_weight = (1 + 0.1 * torch.randn(PD, generator=g)).bfloat16()
+        lens = (torch.eye(PD) + 0.3 * torch.randn(PD, PD, generator=g)).bfloat16()
+        self.jpp_lenses = {l: lens for l in range(N_LAYERS)}
+        self._w_down = (torch.randn(PD, D_FF, generator=g) * 0.1).bfloat16()
+        self._post_ffn_norm_weights: Dict[int, torch.Tensor] = {}
+
+    def lens_card(self) -> Dict[str, Any]:
+        return {"id": "jpp-base"}
+
+    def slice_w_down(self, l: int, idx: torch.Tensor) -> torch.Tensor:
+        return self._w_down[:, idx].T.contiguous()
+
+    slice_w_gate = slice_w_up = slice_w_down
+
+
+def held_back_in(v: Any, key: Optional[str] = None) -> int:
+    """The console's count of labels held back in a raw reply (frontend/src/screens/vault/live.ts `heldBackIn`): every
+    label_check with held_back true, at any depth, active_pole not counted again."""
+    if isinstance(v, list):
+        return sum(held_back_in(x) for x in v)
+    if not isinstance(v, dict) or key == "active_pole":
+        return 0
+    c = v.get("label_check")
+    return int(isinstance(c, dict) and c.get("held_back") is True) + sum(
+        held_back_in(x, k) for k, x in v.items() if k not in ("label_check", "label_gate"))
+
+
+def keys_at_any_depth(v: Any) -> List[str]:
+    if isinstance(v, list):
+        return [k for x in v for k in keys_at_any_depth(x)]
+    if isinstance(v, dict):
+        return list(v) + [k for x in v.values() for k in keys_at_any_depth(x)]
+    return []
+
+
+def notes_snapshot() -> Dict[str, Tuple[bytes, int]]:
+    """Every file in the notes' folder: its bytes and when it was last written."""
+    return {f.name: (f.read_bytes(), f.stat().st_mtime_ns) for f in sorted(NOTES_DIR.iterdir())}
+
+
+def without_notes(reply: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in reply.items() if k != "field_notes"}
+
+
+def check_field_notes() -> None:
+    print("9. DESCRIBE POLE returns the neuron's field notes: only read, and kept apart from the labels")
+    fn = field_notes
+    where = (fn.field_notes_path(), fn.field_book_path(), fn.field_proposals_path())
+    if not all(f.parent == NOTES_DIR for f in where):  # never the user's own notes
+        check(False, f"the notes this check writes are not in its own folder {NOTES_DIR}: {where}")
+        return
+    run = asyncio.run
+    rt = PoleRuntime()
+    calls: List[Tuple[int, int, bool]] = []  # (layer, neuron, on an event loop's thread?) for each read of the notes
+
+    def reader(layer: int, n: int) -> Dict[str, Any]:
+        try:
+            asyncio.get_running_loop()
+            on_loop = True
+        except RuntimeError:
+            on_loop = False
+        calls.append((layer, n, on_loop))
+        return fn.peek_neuron(layer, n)
+
+    vault = LarqlVaultEngine(rt, field_notes=reader)  # type: ignore[arg-type]
+    bare = LarqlVaultEngine(rt)  # type: ignore[arg-type]
+    L, N = 53, 16383
+    BOTH = f"DESCRIBE POLE LAYER {L} SLOT {N}"
+    key = fn.note_key(L, N)
+    empty = {"measured": False, "caution": larql_vault.FIELD_NOTES_CAUTION, "notes": None, "faces": {"+": None, "-": None},
+             "unread": [], "warning": None}
+    check(list(inspect.signature(LarqlVaultEngine.__init__).parameters) == ["self", "runtime", "field_notes"]
+          and inspect.signature(LarqlVaultEngine.__init__).parameters["field_notes"].default is None,
+          "LarqlVaultEngine(runtime, field_notes=None): the reader is passed in")
+
+    # ---- no notes anywhere yet: a vault given no reader replies as before; given one, the field is there and empty
+    old = bare.execute_lql(BOTH)
+    check(list(old) == POLE_KEYS + ["label_gate", "lens"], f"given no reader, DESCRIBE POLE replies as before: {list(old)}")
+    r = vault.execute_lql(BOTH)
+    check(list(r) == POLE_KEYS + ["field_notes", "label_gate", "lens"],
+          f"field_notes after the record, just before label_gate and lens: {list(r)}")
+    got_none = r.get("field_notes")
+    check(got_none == empty and list(got_none) == NOTE_KEYS and list(got_none["faces"]) == ["+", "-"],
+          f"no notes kept: the field is there with nothing in it: {got_none}")
+    check(without_notes(r) == old, "and the rest of the reply is the reply without it")
+    check(list(NOTES_DIR.iterdir()) == [], "reading notes that are not there makes no file")
+    check(calls == [(L, N, False)], f"the reader asked once, for the neuron, by layer and number from 0: {calls}")
+
+    # ---- a name by the reader; a note the scientist proposes, which waits; the two faces of the field book
+    run(fn.write_note("neuron", L, N, "be-verbs", None, "reader"))
+    run(fn.propose("neuron", L, N, None, "fires on forms of to be", "chat-1"))
+    r = vault.execute_lql(BOTH)
+    check(r["field_notes"]["notes"]["name"] == "be-verbs" and r["field_notes"]["notes"]["note"] == ""
+          and "forms of to be" not in json.dumps(r), "a note the scientist proposed, not yet kept, is not returned")
+    run(fn.decide("neuron", L, N, True))  # the person keeps it
+    run(fn.write_face(L, N, fn.check_face("+", "one", "the verb to be, in any tongue", {"other_pole": True, "long_contexts": True},
+                                          "reader", {"jobs", "pattern", "checked"})))
+    run(fn.write_face(L, N, fn.check_face("-", "unknown", None, None, "scientist", {"jobs"})))
+    run(fn.write_face(L, 6, fn.check_face("-", "two", "ends of lists", None, "reader", {"jobs", "pattern"})))  # one face, no name
+    run(fn.write_note("head", L, 3, "a head's name", "a head's note", "reader"))  # the same key as neuron 53:3, among the heads
+    run(fn.write_note("neuron", N_LAYERS - 1, D_FF - 1, "the last neuron", None, "reader"))
+    # proposals that wait: another name for this neuron, and a name and note for one with nothing kept
+    run(fn.propose("neuron", L, N, "a better name, says the scientist", None, "chat-2"))
+    run(fn.propose("neuron", 45, 7, "a guess nobody kept", "its note nobody kept", "chat-2"))
+    kept, book = fn.read_notes()["neurons"][key], fn.read_book()["neurons"][key]
+    before = notes_snapshot()
+
+    r = vault.execute_lql(BOTH)
+    f = r["field_notes"]
+    check(f["notes"] == kept and list(f["notes"]) == ["name", "note", "by", "at", "name_by", "note_by"]
+          and (kept["name"], kept["name_by"], kept["note"], kept["note_by"]) == ("be-verbs", "reader", "fires on forms of to be", "scientist")
+          and kept["at"].endswith("Z"),
+          f"the name with who gave it, the kept note as the scientist's, and when: {f['notes']}")
+    check(f["faces"] == book and list(f["faces"]) == ["+", "-"]
+          and f["faces"]["+"] == {"jobs": "one", "pattern": "the verb to be, in any tongue",
+                                  "checked": {"other_pole": True, "long_contexts": True, "steered": False, "readers_traced": False},
+                                  "by": "reader", "at": book["+"]["at"]}
+          and (f["faces"]["-"]["jobs"], f["faces"]["-"]["pattern"], f["faces"]["-"]["by"]) == ("unknown", "", "scientist")
+          and not any(f["faces"]["-"]["checked"].values()) and f["faces"]["-"]["at"].endswith("Z"),
+          f"both faces as the field book keeps them: jobs, the pattern, the four ticks, who and when: {f['faces']}")
+    check(list(f) == NOTE_KEYS and f["measured"] is False and f["caution"] == larql_vault.FIELD_NOTES_CAUTION
+          and "not a measurement" in f["caution"] and f["unread"] == [] and f["warning"] is None,
+          "marked as kept by hand, not measured; every part read")
+    check(fn.peek_neuron(L, N) == {"notes": kept, "faces": book, "unread": [], "warning": None},
+          "peek_neuron reads what read_notes and read_book read")
+
+    # ---- POLARITY picks one face; without it, both
+    for sg in "+-":
+        one = vault.execute_lql(f"{BOTH} POLARITY {sg}")
+        check(list(one["field_notes"]["faces"]) == [sg] and one["field_notes"]["faces"][sg] == book[sg]
+              and one["field_notes"]["notes"] == kept and one["requested_polarity"] == sg and list(one) == list(r),
+              f"POLARITY {sg}: that face's notes alone, with the neuron's name: {one['field_notes']['faces']}")
+    one = vault.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 6")
+    check(one["field_notes"]["notes"] is None and one["field_notes"]["faces"]["+"] is None
+          and one["field_notes"]["faces"]["-"]["pattern"] == "ends of lists", "a neuron with one face said and no name")
+    check(vault.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 6 POLARITY +")["field_notes"]["faces"] == {"+": None},
+          "POLARITY + of a neuron whose other face alone has notes: nothing said of this one")
+
+    # ---- a neuron with none: the field empty, not missing
+    none = vault.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 5")
+    check("field_notes" in none and none["field_notes"] == empty, f"a neuron with no notes: {none.get('field_notes')}")
+    check(vault.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 5 POLARITY -")["field_notes"] == {**empty, "faces": {"-": None}},
+          "and with POLARITY -, the one face, empty")
+    check(vault.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 3")["field_notes"] == empty, "a head's name and note are not a neuron's")
+
+    # ---- a proposal the person has not kept is no note
+    waiting = vault.execute_lql("DESCRIBE POLE LAYER 45 SLOT 7")
+    check(waiting["field_notes"] == empty and "nobody kept" not in json.dumps(waiting),
+          "a neuron with only a proposal waiting: no notes, and none of the proposal's words")
+    check("a better name" not in json.dumps(r) and f["notes"]["name"] == "be-verbs",
+          "a proposal waiting beside a kept name leaves the kept name")
+    opened: List[str] = []  # each time the proposals' file is asked for, or read
+    real_path, real_read = fn.field_proposals_path, fn.read_proposals
+    fn.field_proposals_path = lambda: opened.append("path") or real_path()  # type: ignore[assignment]
+    fn.read_proposals = lambda path=None: opened.append("read") or real_read(path)  # type: ignore[assignment]
+    try:
+        again = vault.execute_lql("DESCRIBE POLE LAYER 45 SLOT 7")
+    finally:
+        fn.field_proposals_path, fn.read_proposals = real_path, real_read  # type: ignore[assignment]
+    check(opened == [] and again == waiting and fn.field_proposals_path().exists(),
+          f"the proposals' file is there, and DESCRIBE POLE never opens it: {opened}")
+
+    # ---- the notes are no part of the labels: everything outside the field is as without them
+    check(without_notes(r) == old, "the record, both faces' words and label_check, the rule and the lens: as without the notes")
+    said = ("be-verbs", "fires on forms of to be", "the verb to be, in any tongue")
+    check(all(w in json.dumps(f) for w in said) and not any(w in json.dumps(without_notes(r)) for w in said),
+          "the notes' words stand under field_notes and nowhere else in the reply")
+    for face in ("active_pole", "north_pole", "south_pole"):
+        check(list(r[face]) == FACE_KEYS and r[face] == old[face], f"{face}: its words and its label_check untouched")
+    check(not {"label_check", "held_back", "shared_top10", "j_vindex_tokens", "naive_tokens", "token", "logit"}
+          & set(keys_at_any_depth(f)), f"no label, and no check of one, inside field_notes: {sorted(set(keys_at_any_depth(f)))}")
+    low = "DESCRIBE POLE LAYER 20 SLOT 4"  # below layer 41: both faces held back
+    low_old = bare.execute_lql(low)
+    run(fn.write_face(20, 4, fn.check_face("+", "one", "held back, the pages say", {"steered": True}, "reader", {"jobs", "pattern", "checked"})))
+    # a note that repeats a label's own word-pieces changes no label and no count
+    echo = " ".join(t["token"] for t in old["north_pole"]["j_vindex_tokens"])
+    run(fn.write_face(L, 9, fn.check_face("+", "one", echo, None, "reader", {"jobs", "pattern"})))
+    run(fn.write_note("neuron", L, 9, bare.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 9")["north_pole"]["naive_tokens"][0]["token"],
+                      None, "reader"))
+    before = notes_snapshot()
+    low_new = vault.execute_lql(low)
+    check(without_notes(low_new) == low_old and held_back_in(low_new) == held_back_in(low_old) == 2
+          and low_new["field_notes"]["faces"]["+"]["checked"]["steered"] is True,
+          f"a neuron whose labels are held back: its notes are sent, and the console counts the same two labels held back "
+          f"({held_back_in(low_new)}, {held_back_in(low_old)})")
+    nine_old, nine = bare.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 9"), vault.execute_lql(f"DESCRIBE POLE LAYER {L} SLOT 9")
+    check(without_notes(nine) == nine_old and nine["field_notes"]["faces"]["+"]["pattern"] == echo
+          and held_back_in(nine) == held_back_in(nine_old), "a note that repeats a label's own word-pieces changes no label and no count")
+
+    # ---- a layer or neuron past the last is read as the last: the notes are those of the neuron the record is of
+    last = vault.execute_lql("DESCRIBE POLE LAYER 99 SLOT 99999")
+    check((last["layer"], last["neuron_idx"]) == (N_LAYERS - 1, D_FF - 1) and (last["field_notes"]["notes"] or {}).get("name") == "the last neuron"
+          and calls[-1][:2] == (N_LAYERS - 1, D_FF - 1), f"past the last: the record's own neuron's notes: {calls[-1]}")
+
+    # ---- only DESCRIBE POLE reads them, and inspect_bipolar_slot's own reply (inspect_pole's) carries none
+    other = LarqlVaultEngine(rt, field_notes=reader)  # type: ignore[arg-type]
+    for name in ("describe_vault", "rollback_patches", "query_nearest_edges", "apply_patch_surgery"):
+        setattr(other, name, lambda _n=name, **kw: {"reached": _n})
+    n_calls = len(calls)
+    for st in ("DESCRIBE", "ROLLBACK", "SELECT * FROM EDGES NEAREST 'she' WHERE layer = 53 LIMIT 3", f"DELETE FROM LAYER {L} WHERE slot = {N}",
+               f"UPDATE LAYER {L} SLOT {N} SET object = 'she'", f"INSERT INTO LAYER {L} (subject, object) VALUES ('nurse', 'she')"):
+        check("field_notes" not in other.execute_lql(st), f"{st.split()[0]}: no field_notes")
+    check("field_notes" not in vault.inspect_bipolar_slot(L, N) and len(calls) == n_calls,
+          "no other statement, and not inspect_bipolar_slot itself, reads the notes")
+
+    # ---- the reply's notes are copies; a reader that fails is said so, and the record is still sent
+    shared = fn.peek_neuron(L, N)
+    lent = LarqlVaultEngine(rt, field_notes=lambda l, n: shared)  # type: ignore[arg-type]
+    m = lent.execute_lql(BOTH)
+    m["field_notes"]["notes"]["name"] = "changed"
+    m["field_notes"]["faces"]["+"]["checked"]["steered"] = True
+    check(shared == fn.peek_neuron(L, N) and lent.execute_lql(BOTH)["field_notes"] == f, "the reply's notes are copies of what the reader keeps")
+
+    def gone(layer: int, n: int) -> Dict[str, Any]:
+        raise OSError("the disk went away")
+
+    for bad, words in ((gone, "the disk went away"), (lambda l, n: None, "could not be read"),
+                       (lambda l, n: {"notes": 3, "faces": {"+": 4}}, "could not be read")):
+        w = LarqlVaultEngine(rt, field_notes=bad).execute_lql(BOTH)  # type: ignore[arg-type]
+        wf = w["field_notes"]
+        check(without_notes(w) == old and {**wf, "unread": [], "warning": None} == empty and wf["unread"] == ["notes", "faces"]
+              and "could not be read" in wf["warning"] and words in wf["warning"] and "nothing was changed" in wf["warning"],
+              f"a reader that fails: both parts not read, and said so, the record whole: {wf}")
+
+    # ---- the statement's worker thread waits for no lock: read while a write holds the notes' own
+    async def while_a_write_holds_the_lock() -> Dict[str, Any]:
+        async with fn._LOCK:
+            return await asyncio.wait_for(asyncio.to_thread(vault.execute_lql, BOTH), 20)
+
+    try:
+        got = run(while_a_write_holds_the_lock())
+    except Exception as exc:  # a reader that waited for the lock would time out here
+        got = {"error": repr(exc)}
+    check(got.get("field_notes") == f and calls[-1] == (L, N, False),
+          f"read from a worker thread while the notes' lock is held: it waits for none ({got.get('error')})")
+
+    # ---- the routes and the MCP tool, on a vault wired as the server wires its own
+    check("LarqlVaultEngine(_RUNTIME, field_notes=peek_neuron)" in inspect.getsource(server.lifespan)
+          and server.peek_neuron is fn.peek_neuron and not inspect.iscoroutinefunction(fn.peek_neuron),
+          "the server gives its vault the notes' own read-only reader (peek_neuron, synchronous)")
+    server._RUNTIME = rt  # type: ignore[assignment]
+    server._VAULT = vault
+
+    @asynccontextmanager
+    async def no_lifespan(_app):  # the real one loads the model
+        yield
+
+    server.app.router.lifespan_context = no_lifespan
+    client = TestClient(server.app, base_url="http://127.0.0.1:8765")
+    try:
+        resp = client.post("/api/larql", json={"query": BOTH + " POLARITY -"})
+        body = resp.json()
+        check(resp.status_code == 200 and list(body) == list(r) and body["field_notes"] == {**f, "faces": {"-": book["-"]}}
+              and calls[-1] == (L, N, False), f"HTTP: the face asked, its notes read off the event loop: {resp.text[:200]}")
+        with client.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
+            ws.send_json({"action": "larql", "query": BOTH})
+            msg = ws.receive_json()
+            check(msg["type"] == "larql_result" and msg["ok"] and msg["data"]["field_notes"] == f and calls[-1] == (L, N, False),
+                  f"WS: both faces' notes, read off the event loop: {msg.get('error')}")
+            ws.send_json({"action": "larql", "query": f"DESCRIBE POLE LAYER {L} SLOT 5"})
+            check(ws.receive_json()["data"].get("field_notes") == empty, "WS: a neuron with none, the field empty")
+
+        mcp_scientist.bind_runtime(rt, vault, caller_holds_lock=False)  # type: ignore[arg-type]
+
+        async def over_mcp() -> Tuple[Dict[str, Any], Dict[str, Any], int]:
+            async with Client(mcp_scientist.mcp) as c:
+                a = await c.call_tool("query_larql_vault", {"lql_query": BOTH})
+                n_read = len(calls)
+                b = await c.call_tool("inspect_pole", {"layer": L, "neuron_idx": N})
+                return a.data, b.data, n_read
+
+        n_before = len(calls)
+        a, b, n_read = run(over_mcp())
+        check(list(a) == list(r) and a["field_notes"] == f and n_read == n_before + 1 and calls[-1] == (L, N, False),
+              f"MCP: query_larql_vault's DESCRIBE POLE, on the server's vault, carries them: {list(a)}")
+        check(list(b) == POLE_KEYS + ["label_gate", "lens"] and len(calls) == n_read and b["north_pole"] == old["north_pole"],
+              f"MCP: inspect_pole reads the model alone: no notes read, none carried: {list(b)}")
+    finally:
+        mcp_scientist._SHARED_RUNTIME = None
+        mcp_scientist._SHARED_VAULT = None
+        server._RUNTIME = None
+        server._VAULT = None
+
+    # ---- nothing was written by any of it: no file made, changed or touched since the last note was kept
+    check(notes_snapshot() == before, "every DESCRIBE POLE since the last note was kept left the notes' files as they were")
+
+    # ---- a proposal kept is the scientist's; one discarded never shows
+    run(fn.decide("neuron", L, N, True, "name"))
+    run(fn.decide("neuron", 45, 7, False))
+    named = vault.execute_lql(BOTH)["field_notes"]["notes"]
+    check((named["name"], named["name_by"], named["note_by"]) == ("a better name, says the scientist", "scientist", "scientist"),
+          f"a proposed name the person kept is returned as the scientist's: {named}")
+    check(vault.execute_lql("DESCRIBE POLE LAYER 45 SLOT 7")["field_notes"] == empty, "a proposal the person discarded is never returned")
+
+    # ---- a file that cannot be read is said so and left where it is (the atlas's routes move it aside, not the vault)
+    kept = fn.read_notes()["neurons"][key]
+    pending, cache = dict(fn._pending), dict(fn._CACHE)
+    for file, part, what in ((fn.field_book_path(), "faces", "The field book file"), (fn.field_notes_path(), "notes", "The field notes file")):
+        good = file.read_bytes()
+        table = {"neurons": {key: {"+": {"jobs": "seven"}}}} if part == "faces" else {"neurons": {key: {"name": 3}}, "heads": {}}
+        for bad, why in ((b"{not json", "not JSON"), (b"\xff\xfe", "not UTF-8 text"),
+                         (json.dumps({"version": 1, **table}).encode(), "a malformed entry"),
+                         (json.dumps({"version": 2, "neurons": {}}).encode(), "not a version 1 file")):
+            file.write_bytes(bad)
+            w = vault.execute_lql(BOTH)
+            wf = w["field_notes"]
+            rest_kept = wf["notes"] == kept if part == "faces" else wf["faces"] == book
+            lost = wf["faces"] == {"+": None, "-": None} if part == "faces" else wf["notes"] is None
+            said_so = wf["warning"] or ""
+            check(lost and rest_kept and wf["unread"] == [part] and said_so.startswith(what + " could not be read (" + why)
+                  and "Nothing was changed" in said_so,
+                  f"{file.name}, {why}: that part named as not read, the other kept, and said so: {wf['unread']} {wf['warning']}")
+            check(file.read_bytes() == bad and not list(NOTES_DIR.glob("*.corrupt-*")) and fn._pending == pending and fn._CACHE == cache
+                  and without_notes(w) == old, f"{file.name}, {why}: left where it is, nothing moved aside, the record whole")
+        file.write_bytes(good)
+    whole = vault.execute_lql(BOTH)["field_notes"]
+    check(whole["warning"] is None and whole["unread"] == [] and whole["faces"] == book, "and read again once the files are whole")
+    for file in (fn.field_notes_path(), fn.field_book_path()):  # both at once
+        file.write_bytes(b"[]")
+    wf = vault.execute_lql(BOTH)["field_notes"]
+    check(wf["unread"] == ["notes", "faces"] and wf["notes"] is None and wf["faces"] == {"+": None, "-": None}
+          and "The field notes file" in wf["warning"] and "The field book file" in wf["warning"], f"neither file readable: {wf}")
+
+    # ---- the console sets them out in plain words, apart from the labels
+    console = " ".join((ROOT_DIR / "frontend" / "src" / "screens" / "vault" / "ConsolePanel.tsx").read_text(encoding="utf-8").split())
+    check("field_notes" in console and "its field notes · kept by hand, not measured" in console
+          and "No field notes are kept for this neuron." in console and "apart from each face’s words and its label_check" in console
+          and "f.unread" in console and "not read: the reason is given below" in console,
+          "the vault's console reads field_notes out in plain words, as a person's and not a measurement")
+
+
 def main() -> int:
     check_write_voice()
     check_without_voice()
@@ -783,6 +1156,10 @@ def main() -> int:
     check_ignored()
     check_routes()
     check_mcp()
+    try:
+        check_field_notes()
+    finally:
+        shutil.rmtree(NOTES_DIR, ignore_errors=True)
     if failures:
         print(f"\nvault voice: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

@@ -1059,19 +1059,24 @@ def census_levels(t: Any, n_neurons: int) -> np.ndarray:
 @router.get("/census/levels")
 async def census_levels_route() -> Dict[str, Any]:
     """Every ranked census at once, for the map: `layers` (counted from 0) and `levels`, one byte a neuron for each of
-    them in turn (base64; `census_levels`), so every layer with a census is inked without its list being read."""
+    them in turn (base64; `census_levels`), so every layer with a census is inked without its list being read.
+    `uncalibrated`: those of the layers whose doses are not calibrated there (census.doses_calibrated), which the map
+    inks without gilt: a rank there may only say the dose was wrong for the layer."""
     a = atlas()
 
     def work() -> Dict[str, Any]:
-        layers, rows = [], []
+        layers, rows, uncal = [], [], []
         for layer, path in sorted(cz.layer_runs(model=a.rt.model_id).items()):
             t = census_table(path)
             if t is None:
                 continue
             layers.append(int(layer))
             rows.append(census_levels(t, a.N))
+            meta = _run_meta(path)
+            if not cz.doses_calibrated(meta.get("design_name"), meta.get("layer"), meta.get("max_new")):
+                uncal.append(int(layer))
         data = np.concatenate(rows).tobytes() if rows else b""
-        return {"layers": layers, "n": int(a.N), "levels": base64.b64encode(data).decode()}
+        return {"layers": layers, "n": int(a.N), "levels": base64.b64encode(data).decode(), "uncalibrated": uncal}
 
     return await asyncio.to_thread(work)
 

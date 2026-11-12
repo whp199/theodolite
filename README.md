@@ -589,7 +589,9 @@ neuron's label tested by the study's N1A protocol at k = 10) are served over HTT
 `sweep` and `cancel_sweep` (ARCHITECTURE §4.5).
 Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§v).
 `test_motif_hypothesis` sets the gap it finds against chance (`selectivity`: Welch’s t, a permutation p, the n each side,
-no judgement below four sentences a side, `scripts/check_hypothesis_test.py`); its `verdict` as first built, a threshold
+no judgement below four sentences a side, `scripts/check_hypothesis_test.py`); it can read the two lists as matched pairs
+(`paired`, by sign flips), tests each sentence’s strongest word-piece as well as its last, and corrects the p’s of
+several neurons named in one call together (`also`, Benjamini–Hochberg); its `verdict` as first built, a threshold
 on d at any n, is kept for old callers.
 To check a build end to end, server, tools and pages together: `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
 

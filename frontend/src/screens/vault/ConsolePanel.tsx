@@ -42,6 +42,99 @@ const pyValue = (v: unknown): string =>
           ? "{" + Object.entries(v as Record<string, unknown>).map(([k, x]) => pyRepr(k) + ": " + pyValue(x)).join(", ") + "}"
           : String(v);
 
+/** A row of small-caps key and value, as "how the vault reads it" sets them. */
+type Fact = { k: string; v: string };
+const FactRows: React.FC<{ rows: Fact[] }> = ({ rows }) => (
+  <>
+    {rows.map((p, i) => (
+      <div
+        key={i}
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(96px, 150px) minmax(0, 1fr)",
+          gap: "2px 18px",
+          alignItems: "baseline",
+          padding: "5px 0 6px",
+          borderBottom: "1px solid var(--hair-faint)",
+        }}
+      >
+        <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", fontSize: 15, color: "var(--muted)" }}>{p.k}</span>
+        <span className="num" style={{ fontSize: 17, overflowWrap: "anywhere" }}>
+          {p.v}
+        </span>
+      </div>
+    ))}
+  </>
+);
+
+/* DESCRIBE POLE's field_notes (backend/larql_vault.py): the name and note the server keeps for the neuron and what its
+ * field book says of each face. A person's notes, not a measurement: read here in plain words, apart from the labels,
+ * in the folio's and the atlas's words for the jobs and the four ticks. */
+const JOBS_SAID: Record<string, string> = { one: "one job", two: "two related jobs", unknown: "not yet understood" };
+const TICKS_SAID: [string, string][] = [
+  ["other_pole", "the other face read"],
+  ["long_contexts", "read in long contexts"],
+  ["steered", "steered"],
+  ["readers_traced", "its readers traced"],
+];
+const FACE_SAID: [string, string][] = [
+  ["+", "positive face"],
+  ["-", "negative face"],
+];
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const who = (by: unknown) => (by === "scientist" ? "the scientist" : "the reader");
+const day = (at: unknown) => {
+  const d = new Date(typeof at === "string" ? at : NaN);
+  return isNaN(d.getTime()) ? "" : ", " + d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+};
+/** A note in quotation marks, a long one cut for the lines above the reply, which holds it whole. */
+const quoted = (t: string) => {
+  const cs = Array.from(t.trim());
+  return cs.length > 240 ? "“" + cs.slice(0, 240).join("").trimEnd() + "…” (cut here; whole in the reply below)" : "“" + cs.join("") + "”";
+};
+const NOT_READ = "not read: the reason is given below";
+
+/** What a pole reply's field_notes say: null when the reply carries none (an older server). `rows` is empty when the
+ * neuron has no notes (of the faces the reply holds) and every part was read; a part the server could not read
+ * (`unread`) is said to be not read, never passed off as empty. */
+function fieldNotesSaid(data: unknown): { rows: Fact[]; faces: string[]; warning: string | null } | null {
+  const f = isObj(data) ? data.field_notes : null;
+  if (!isObj(f)) return null;
+  const unread = Array.isArray(f.unread) ? f.unread : [];
+  const rows: Fact[] = [];
+  const e = isObj(f.notes) ? f.notes : null;
+  const name = e && typeof e.name === "string" ? e.name.trim() : "";
+  const note = e && typeof e.note === "string" ? e.note.trim() : "";
+  if (unread.includes("notes")) rows.push({ k: "name and note", v: NOT_READ });
+  if (e && name) rows.push({ k: "name", v: "“" + name + "”, given by " + who(e.name_by ?? e.by) + (note ? "" : day(e.at)) });
+  if (e && note) rows.push({ k: "note", v: quoted(note) + ", written by " + who(e.note_by ?? e.by) + day(e.at) });
+  const kept = isObj(f.faces) ? f.faces : {};
+  const faces = FACE_SAID.filter(([sg]) => sg in kept);
+  for (const [sg, said] of faces) {
+    const x = kept[sg];
+    if (!isObj(x)) {
+      rows.push({ k: said, v: unread.includes("faces") ? NOT_READ : "nothing said of it" });
+      continue;
+    }
+    const checked = isObj(x.checked) ? x.checked : {};
+    const ticked = TICKS_SAID.filter(([t]) => checked[t] === true).map(([, t]) => t);
+    const pattern = typeof x.pattern === "string" ? x.pattern.trim() : "";
+    rows.push({
+      k: said,
+      v:
+        (typeof x.jobs === "string" ? JOBS_SAID[x.jobs] ?? x.jobs : "jobs not yet said") +
+        (pattern ? " · " + quoted(pattern) : "") +
+        " · " +
+        (ticked.length ? "checked: " + ticked.join(", ") : "nothing checked yet") +
+        " · by " +
+        who(x.by) +
+        day(x.at),
+    });
+  }
+  const none = !unread.length && !name && !note && faces.every(([sg]) => !isObj(kept[sg]));
+  return { rows: none ? [] : rows, faces: faces.map(([, said]) => said), warning: typeof f.warning === "string" && f.warning ? f.warning : null };
+}
+
 /** "how the vault reads it" (board: parsedRows). */
 function parsedRows(p: Parsed, inForce: number, live: boolean): { k: string; v: string }[] {
   switch (p.kind) {
@@ -69,6 +162,10 @@ function parsedRows(p: Parsed, inForce: number, live: boolean): { k: string; v: 
         { k: "layer", v: layerTxt(p.layerS) },
         { k: "neuron", v: slotTxt(p.slotS) },
         { k: "face asked", v: (p.pol === "-" ? "negative (POLARITY -)" : "positive (POLARITY +)") + (p.polGiven ? "" : ", " + unread(p, "POLARITY")) },
+        {
+          k: "field notes",
+          v: "the neuron’s name and note, and what its field book says of " + (p.polGiven ? "the " + (p.pol === "-" ? "negative" : "positive") + " face" : "both faces"),
+        },
       ];
     case "delete":
       return [
@@ -149,10 +246,17 @@ export const ConsolePanel: React.FC = () => {
   let heldCaption = "";
   // what the edit run was heard to say, when it went with a voice
   let heardLine = "";
+  // a neuron's field notes, when DESCRIBE POLE's reply carries them: a person's, set out apart from the labels
+  let notesSaid: ReturnType<typeof fieldNotesSaid> = null;
+  let notesUnsent = false;
   if (R !== null) {
     if (entry && entry.ok) {
       json = esc(prettyJson(entry.data));
       held = heldBackIn(entry.data);
+      if (R.kind === "pole") {
+        notesSaid = fieldNotesSaid(entry.data);
+        notesUnsent = notesSaid === null;
+      }
       const v = ui.conVoice ? voiceOf((entry.data as { voice?: unknown } | null)?.voice) : null;
       // in the edit tab's words: an answer that did not change is said so
       if (ui.conVoice && v)
@@ -379,24 +483,7 @@ export const ConsolePanel: React.FC = () => {
           <h3 className="h-sub" style={{ margin: "0 0 4px" }}>
             how the vault reads it
           </h3>
-          {parsedRows(conP, inForce, live).map((p, i) => (
-            <div
-              key={i}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(96px, 150px) minmax(0, 1fr)",
-                gap: "2px 18px",
-                alignItems: "baseline",
-                padding: "5px 0 6px",
-                borderBottom: "1px solid var(--hair-faint)",
-              }}
-            >
-              <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", fontSize: 15, color: "var(--muted)" }}>{p.k}</span>
-              <span className="num" style={{ fontSize: 17, overflowWrap: "anywhere" }}>
-                {p.v}
-              </span>
-            </div>
-          ))}
+          <FactRows rows={parsedRows(conP, inForce, live)} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-live="polite">
           <h3 className="h-sub">the vault’s reply</h3>
@@ -420,6 +507,34 @@ export const ConsolePanel: React.FC = () => {
                 nothing: it shows the reply whole, so words held back elsewhere stand here too.
               </Rubric>
             </>
+          ) : null}
+          {notesSaid && json ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 820 }}>
+              <span style={smallCaps()}>its field notes · kept by hand, not measured</span>
+              {notesSaid.rows.length ? (
+                <FactRows rows={notesSaid.rows} />
+              ) : (
+                <p style={{ margin: 0, fontSize: 17 }}>
+                  {notesSaid.faces.length === 1
+                    ? "No name or note is kept for this neuron, and nothing is said of its " + notesSaid.faces[0] + "."
+                    : "No field notes are kept for this neuron."}
+                </p>
+              )}
+              {notesSaid.warning ? (
+                <p className="status-line" role="status">
+                  {notesSaid.warning}
+                </p>
+              ) : null}
+              <p style={{ margin: 0, fontSize: 15, color: "var(--muted)" }}>
+                These are a person’s notes, or the scientist’s where it says so, once the person has kept them: what someone thinks the
+                neuron does, not a reading of the model. The reply holds them under field_notes, apart from each face’s words and its
+                label_check; the vault reads them and never writes them. They are written on the neuron’s folio and in the atlas.
+              </p>
+            </div>
+          ) : notesUnsent && json ? (
+            <p style={{ margin: 0, fontSize: 15, color: "var(--muted)", maxWidth: 820 }}>
+              This server sent no field notes with the reply: it is older than this page.
+            </p>
           ) : null}
           {json ? (
             <pre className="raw" style={{ maxHeight: 420, padding: "12px 0", fontSize: 13, lineHeight: 1.55, overflowWrap: "anywhere" }}>
@@ -543,7 +658,17 @@ export const ConsolePanel: React.FC = () => {
             proposed fix. Each face, like each NEAREST row, also carries <span className="mono-wrap">label_check</span> (the word-pieces
             its two readings share in their first ten, and whether the reading pages hold the label back), and both replies carry the
             rule as <span className="mono-wrap">label_gate</span>, just before <span className="mono-wrap">lens</span>; an older server
-            sends neither.
+            sends neither. DESCRIBE POLE also returns the neuron’s field notes with its record, under{" "}
+            <span className="mono-wrap">field_notes</span>, just before <span className="mono-wrap">label_gate</span>: the name and note
+            the server keeps for it (<span className="mono-wrap">notes</span>) and what its field book says of each face (
+            <span className="mono-wrap">faces</span>: both, or the one face when POLARITY is written), with who wrote each and when.
+            They are a person’s notes, or the scientist’s once the person has kept them, not a measurement (
+            <span className="mono-wrap">measured</span> false, with a <span className="mono-wrap">caution</span>), and no part of the
+            labels or of <span className="mono-wrap">label_check</span>. The vault only reads them (
+            <span className="mono-wrap">field_notes.peek_neuron</span>), and a proposal of the scientist’s still waiting to be kept is
+            not among them; a neuron with none has the field with nothing in it, a part the server could not read is named under{" "}
+            <span className="mono-wrap">unread</span> with the reason under <span className="mono-wrap">warning</span>, and an older
+            server sends no such field.
           </dd>
           <dt>the original instrument’s buttons</dt>
           <dd style={{ margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>

@@ -28,6 +28,9 @@ export const INKS = {
   swept: C("#8b7d66"),
   lo: C("#c9a85f"),
   hi: C("#6a4b14"),
+  // a census whose doses are not calibrated at its layer: no gilt, a plain ramp
+  dullLo: C("#9a8f7c"),
+  dullHi: C("#554c40"),
   named: C("#8f2b1e"),
   ink: C("#2b2117"),
   up: C("#a07a2e"),
@@ -158,6 +161,8 @@ export class AtlasMap {
   /** the census's inks, one byte a neuron for each layer that has one: 0 not in it, 1 in it and no stronger than its
    * strongest control, 2 to 255 above every control */
   private levels = new Map<number, Uint8Array>();
+  /** layers whose census's doses are not calibrated there: inked without gilt */
+  private dull = new Set<number>();
   private named = new Set<number>();
   private notes: { layer: number; n: number; el: HTMLDivElement }[] = [];
   private homeDist = 90;
@@ -936,13 +941,16 @@ export class AtlasMap {
   /** The census's colours on every layer that has one: above every control from light to dark gilt, the rest a little
    * darker than idle; names keep the rubric's red on every layer. One layer's levels, a byte a neuron (GET
    * /census/levels). */
-  setLevels(layer: number, levels: Uint8Array) {
-    this.setLevelsOf([{ layer, levels }]);
+  setLevels(layer: number, levels: Uint8Array, dull?: boolean) {
+    this.setLevelsOf([{ layer, levels, dull }]);
   }
 
-  /** Several layers' levels at once, drawn once. */
-  setLevelsOf(rows: { layer: number; levels: Uint8Array }[]) {
-    for (const { layer, levels } of rows) {
+  /** Several layers' levels at once, drawn once. `dull`: the layer's doses are not calibrated there, so its neurons
+   * above every control are inked on a plain ramp, not in gilt (left as it was when not said). */
+  setLevelsOf(rows: { layer: number; levels: Uint8Array; dull?: boolean }[]) {
+    for (const { layer, levels, dull } of rows) {
+      if (dull === true) this.dull.add(layer);
+      else if (dull === false) this.dull.delete(layer);
       this.levels.set(layer, levels);
       this.dataLayers.add(layer);
       this.paintLevels(layer);
@@ -962,16 +970,17 @@ export class AtlasMap {
     if (!lv) return;
     const N = this.N;
     const c = new THREE.Color();
+    const [lo, hi] = this.dull.has(layer) ? [INKS.dullLo, INKS.dullHi] : [INKS.lo, INKS.hi];
     for (let n = 0; n < N && n < lv.length; n++) {
       const v = lv[n];
-      const ink = v === 0 ? INKS.idle : v === 1 ? INKS.swept : c.copy(INKS.lo).lerp(INKS.hi, (v - 2) / 253);
+      const ink = v === 0 ? INKS.idle : v === 1 ? INKS.swept : c.copy(lo).lerp(hi, (v - 2) / 253);
       ink.toArray(this.col, (layer * N + n) * 3);
     }
   }
 
   /** A layer's census list as it arrives: the same inks, worked out from the list (so a layer ranked since the page
    * opened is inked too). */
-  setUnits(layer: number, units: CensusUnitRow[]) {
+  setUnits(layer: number, units: CensusUnitRow[], dull?: boolean) {
     const zs = units.filter((u) => u.kind === "neuron").map((u) => u.z);
     const rnd = units.filter((u) => u.kind === "random").map((u) => u.z);
     const floor = rnd.length ? Math.max(...rnd) : Math.min(...zs, 0);
@@ -981,7 +990,7 @@ export class AtlasMap {
       if (u.kind !== "neuron" || u.n < 0 || u.n >= this.N) continue;
       lv[u.n] = u.z > floor ? 2 + Math.round(253 * Math.min(1, (u.z - floor) / (top - floor))) : 1;
     }
-    this.setLevels(layer, lv);
+    this.setLevels(layer, lv, dull);
   }
 
   /** Neurons with a name in the field notes (layer * N + n). */

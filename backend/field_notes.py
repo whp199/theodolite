@@ -44,6 +44,11 @@ notes as the scientist's (`name_by`, `note_by` "scientist") and removes it; disc
 Writes take this module's own lock (never the GPU's: notes are written while the model works) and replace the file
 atomically (`saved_prompts._write_atomic`). A file that cannot be read is moved aside to `<file>.corrupt-<UTC stamp>`,
 never written over, and the next reply says so once (`warning`), as the saved prompts do.
+
+The vault's DESCRIBE POLE returns a neuron's kept notes with its record (backend/larql_vault.py, "field_notes"). It
+runs in a worker thread, with no event loop to wait for the lock on, so it reads through `peek_neuron`, which takes no
+lock and needs none: it only reads (nothing is written, moved aside, cached or left as a warning), and each write
+replaces its file in one step, so what it reads is a whole file. It never opens the proposals.
 """
 
 from __future__ import annotations
@@ -498,3 +503,79 @@ async def all_proposals(path: Optional[Path] = None) -> Dict[str, Any]:
     """Every proposal waiting for the person, read under the module's lock."""
     async with _LOCK:
         return read_proposals(path or field_proposals_path())
+
+
+# ------------------------------------------------------------------- one neuron's kept notes, read and nothing more
+
+
+def _peek(path: Path, of_what: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """A version-1 file's JSON object, read and nothing more: (None, None) when there is no file yet, (None, why) when
+    it cannot be read as one. Where `_read_json` would move the file aside, this leaves it where it is."""
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return None, None
+    except OSError as exc:
+        return None, exc.strerror or type(exc).__name__
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except UnicodeDecodeError:
+        return None, "not UTF-8 text"
+    except ValueError:
+        return None, "not JSON"
+    except RecursionError:
+        return None, "nested too deeply to read"
+    if not isinstance(data, dict) or data.get("version") != FILE_VERSION:
+        return None, f"not a version {FILE_VERSION} file of {of_what}"
+    return data, None
+
+
+def peek_neuron(layer: int, n: int, notes_path: Optional[Path] = None, book_path: Optional[Path] = None) -> Dict[str, Any]:
+    """One neuron's kept notes, for a caller that only reads and has no event loop to wait on (the vault's DESCRIBE
+    POLE, in its worker thread): {"notes": its entry in the notes (name, note, by, at, name_by, note_by, as `read_notes`
+    gives it) or None, "faces": {"+": its face in the field book (jobs, pattern, checked, by, at, as `read_book` gives
+    it) or None, "-": likewise}, "unread": the parts a file could not be read for ("notes", "faces"; none as a rule),
+    "warning": None, or which file could not be read and why}.
+
+    Synchronous, and safe from any thread without the module's lock: it writes nothing (no file, no cache, no pending
+    warning), and every write replaces its file in one step (`_write_atomic`), so the bytes it reads are a whole file,
+    the one before a write or the one after. A file `read_notes` or `read_book` would move aside (one malformed entry
+    is enough) is left for them to move and warn of: here its part comes back empty and is named in `unread`, with
+    the reason in `warning`, so that not read is never taken for nothing kept.
+    The proposals' file is never opened: a name or note the person has not kept is no note."""
+    key = note_key(layer, n)
+    out: Dict[str, Any] = {"notes": None, "faces": {s: None for s in FACES}, "unread": [], "warning": None}
+    problems = []
+
+    data, why = _peek(notes_path or field_notes_path(), "notes")
+    if data is not None:
+        tables = [data.get(t, {}) for t in KINDS.values()]
+        if not all(isinstance(t, dict) and all(_valid_key(k) and _valid_entry(e) for k, e in t.items()) for t in tables):
+            why = "a malformed entry"
+        else:
+            e = data.get("neurons", {}).get(key)
+            if e is not None:
+                out["notes"] = {**{f: e[f] for f in ("name", "note", "by", "at")}, "name_by": e.get("name_by", e["by"]),
+                                "note_by": e.get("note_by", e["by"])}
+    if why:
+        out["unread"].append("notes")
+        problems.append(f"The field notes file could not be read ({why}), so this neuron's name and note, if it has any, are not shown.")
+
+    data, why = _peek(book_path or field_book_path(), "the field book")
+    if data is not None:
+        entries = data.get("neurons", {})
+        if not isinstance(entries, dict) or not all(
+                _valid_key(k) and isinstance(e, dict) and set(e) <= set(FACES) and all(_valid_face(f) for f in e.values())
+                for k, e in entries.items()):
+            why = "a malformed entry"
+        else:
+            for s, f in (entries.get(key) or {}).items():
+                out["faces"][s] = {"jobs": f["jobs"], "pattern": f["pattern"], "checked": {t: f["checked"][t] for t in TICKS},
+                                   "by": f["by"], "at": f["at"]}
+    if why:
+        out["unread"].append("faces")
+        problems.append(f"The field book file could not be read ({why}), so this neuron's faces, if anything is said of them, are not shown.")
+
+    if problems:
+        out["warning"] = " ".join(problems) + " Nothing was changed: the atlas moves such a file aside when it next reads it."
+    return out

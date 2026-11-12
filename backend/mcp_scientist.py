@@ -3,9 +3,12 @@
 Exposes four core mechanistic interpretability tools via FastMCP:
 1. `inspect_pole(layer, neuron_idx, polarity)`
 2. `trace_downstream_readers(layer, neuron_idx, prompt)`
-3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)`: whether the neuron tells two sets of
-   sentences apart, set against chance (`selectivity`, `motif_statistics`: Welch's t, a permutation p, at least four
-   sentences a side to judge)
+3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts, paired, also)`: whether the neuron tells two
+   sets of sentences apart, set against chance (`selectivity`, `motif_statistics`: Welch's t, a permutation p, at least
+   four sentences a side to judge); as matched pairs when `paired` says they are (`selectivity_paired`, sign flips, at
+   least six pairs); at each sentence's strongest word-piece too (`selectivity_peak`), with the choice between the two
+   readings paid for (`selectivity_either`); and, for the further neurons `also` names, their p's corrected together
+   (`correction`, Benjamini-Hochberg)
 4. `causal_spot_check(layer, neuron_idx, contexts, token_ids | prompt, k, write)`: the label tested causally (the
    study's N1A protocol at k = 10, `backend/causal_check.py`)
 Plus `query_larql_vault(lql_query, voice)` for declarative VINDEX3 queries and `.patch` edits (each one neuron's
@@ -128,7 +131,11 @@ def get_runtime_and_vault() -> tuple[TheodoliteRuntime, LarqlVaultEngine]:
         w4a16_fast.install(rt, unpacker)  # refused: raised as it is, an Exception, the runtime not kept
         _SHARED_RUNTIME = rt
     if _SHARED_VAULT is None:
-        _SHARED_VAULT = LarqlVaultEngine(_SHARED_RUNTIME)
+        # run alone, as under the server: DESCRIBE POLE returns the neuron's field notes with its record, read and
+        # never written (backend/field_notes.peek_neuron)
+        from backend.field_notes import peek_neuron
+
+        _SHARED_VAULT = LarqlVaultEngine(_SHARED_RUNTIME, field_notes=peek_neuron)
     return _SHARED_RUNTIME, _SHARED_VAULT
 
 
@@ -406,12 +413,32 @@ async def trace_downstream_readers(
     }
 
 
-# test_motif_hypothesis's test against chance (`motif_statistics`, its reply's `selectivity`)
+# test_motif_hypothesis's tests against chance: `motif_statistics` (its reply's `selectivity`), `paired_statistics`
+# (`selectivity_paired`), the same two on each sentence's strongest word-piece (`selectivity_peak`), `either_statistics`
+# (`selectivity_either`) and `benjamini_hochberg` over several neurons (`correction`)
 MOTIF_MIN_N = 4  # sentences a side before it judges: at three against three no split reaches p < 0.05 (the least is 0.1)
+MOTIF_MIN_PAIRS = 6  # pairs before the paired test judges: at five no flipping of signs reaches p < 0.05 (the least is 2/32)
 MOTIF_ALPHA = 0.05
-MOTIF_DRAWS = 10_000  # every split of the sentences when there are at most this many, else this many shuffles
+MOTIF_DRAWS = 10_000  # every relabelling of the sentences when there are at most this many, else this many at random
 MOTIF_SEED = 0
-MOTIF_CHUNK = 2048  # splits weighed at once
+MOTIF_CHUNK = 2048  # relabellings weighed at once
+MOTIF_MAX_NEURONS = 512  # neurons one call tests together
+LAST_PIECE = "last word-piece"
+PEAK_PIECE = "strongest word-piece"
+EITHER_PIECE = "last word-piece or strongest word-piece"
+_MOTIF_WHAT = {
+    LAST_PIECE: "each sentence's reading at its last word-piece",
+    PEAK_PIECE: "each sentence's reading at its strongest word-piece (the largest |activation| of all its word-pieces, the "
+                "start mark among them, its sign kept; the place is chosen in each sentence whatever its side, so it "
+                "stays with the sentence under every relabelling)",
+    EITHER_PIECE: "the larger of two |t|'s, the last word-piece's and the strongest word-piece's, both worked again under "
+                  "every relabelling and the larger taken, so the choice between the two readings is paid for",
+}
+_MOTIF_HOW = {
+    "unpaired": "the two sides as unmatched sets: Welch's t, its p from splitting the sentences between the sides afresh",
+    "paired": "the sentences as matched pairs: the mean of each pair's difference (where it should fire less where it "
+              "should stay quiet), its p from flipping the pairs' signs",
+}
 
 
 def _welch(x: np.ndarray, side: np.ndarray, floor: float) -> tuple:
@@ -435,6 +462,21 @@ def _welch(x: np.ndarray, side: np.ndarray, floor: float) -> tuple:
     return t, df, diff
 
 
+def _paired_t(d: np.ndarray, sign: np.ndarray, floor: float) -> tuple:
+    """The paired t (the mean of the differences over its standard error, len(d) - 1 degrees of freedom) and that mean,
+    for each flipping of the signs of the paired differences `d` (`sign`: [flips, len(d)], +1 or -1). A mean or a spread
+    within `floor` (rounding) counts as none, and a mean with no spread is an infinite t."""
+    x = sign * d
+    n = x.shape[1]
+    raw = x.mean(1)
+    v = ((x - raw[:, None]) ** 2).sum(1) / (n - 1)
+    v[v <= floor**2] = 0.0
+    m = np.where(np.abs(raw) <= floor, 0.0, raw)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = np.where(v > 0, m / np.sqrt(v / n), np.where(m == 0, 0.0, np.copysign(np.inf, m)))
+    return t, m
+
+
 def _p_words(p: float) -> str:
     """A p to two significant figures, or to more where two would round it up to MOTIF_ALPHA (0.0496 is not 0.05)."""
     for k in (2, 3, 4, 6):
@@ -450,6 +492,156 @@ def _sides(n: int, n1: int, picks: Any) -> np.ndarray:
     side = np.zeros((len(picks), n), dtype=bool)
     side[np.arange(len(picks))[:, None], picks] = True
     return side
+
+
+def _relabellings(n: int, n1: Optional[int], draws: int, seed: int) -> tuple:
+    """The relabellings a p is counted over, as (method, how many, the least p they can give, their chunks).
+
+    With `n1`, the `n` sentences are split afresh into `n1` + ones and the rest (chunks: [k, n] masks, True for +);
+    without, each of `n` pairs has the sign of its difference kept or flipped (chunks: [k, n] of +1 and -1). Every one
+    when there are at most `draws` ("exact"; comb(n, n1) splits, 2**n flippings, the labelling as given among them),
+    else `draws` at random under `seed` ("permutation"). The least p: the labelling as given always counts, and so does
+    its mirror where there is one (every sign flipped; the sides swapped, when they are the same size), so 2 / how
+    many, or 1 / how many for sides of unequal size; at random, 1 / (1 + draws)."""
+    total = math.comb(n, n1) if n1 is not None else 2**n
+    if total <= draws:
+        def every() -> Any:
+            if n1 is not None:
+                splits = itertools.combinations(range(n), n1)
+                for chunk in iter(lambda: list(itertools.islice(splits, MOTIF_CHUNK)), []):
+                    yield _sides(n, n1, chunk)
+            else:
+                for start in range(0, total, MOTIF_CHUNK):
+                    codes = np.arange(start, min(total, start + MOTIF_CHUNK), dtype=np.int64)
+                    yield 1.0 - 2.0 * ((codes[:, None] >> np.arange(n)) & 1)
+
+        return "exact", total, (1 if n1 is not None and 2 * n1 != n else 2) / total, every()
+
+    def some() -> Any:
+        rng = np.random.default_rng(seed)
+        for start in range(0, draws, MOTIF_CHUNK):
+            k = min(MOTIF_CHUNK, draws - start)
+            if n1 is not None:
+                yield _sides(n, n1, np.argsort(rng.random((k, n)), axis=1)[:, :n1])
+            else:
+                yield 1.0 - 2.0 * rng.integers(0, 2, (k, n))
+
+    return "permutation", int(draws), 1 / (1 + draws), some()
+
+
+def _chance(n: int, n1: Optional[int], draws: int, seed: int, weigh: Callable[[np.ndarray], np.ndarray], observed: float) -> tuple:
+    """A two-sided p for the weight `observed` (a |t|, a |mean|) of the labelling as given, as (p, method, how many
+    relabellings, the least p they can give): the share of `_relabellings` whose weight (`weigh`, one for each row of a
+    chunk) is at least `observed`, within rounding, the labelling as given among them when every one is counted, and
+    (1 + as large) / (1 + draws) when they are drawn at random, so never 0."""
+    method, total, least, chunks = _relabellings(n, n1, draws, seed)
+    at_least = abs(observed) * (1 - 1e-9)  # the given labelling's own weight, and its mirror's, within rounding
+    count = sum(int((weigh(chunk) >= at_least).sum()) for chunk in chunks)
+    return (count / total if method == "exact" else (1 + count) / (1 + total)), method, total, least
+
+
+def _judge(core: Dict[str, Any], q: Optional[float] = None, over: Optional[int] = None) -> tuple:
+    """(verdict, face, words) of one test, from what it found (`core`: the count of readings that are not finite
+    numbers, its too-few words when it has too few to judge, its p and the least p it could have had, the two sides'
+    means, its n in words, and what its words begin with). With `over`, it is judged by `q`, its p corrected among
+    `over` neurons' (`benjamini_hochberg`), and the words give both."""
+    bad, p, m1, m2, n_words = core["bad"], core["p"], core["m1"], core["m2"], core["n_words"]
+    by = p if over is None else q
+    said = None if p is None or by is None else f"p = {_p_words(p)}" if over is None else f"q = {_p_words(by)} over {over} neurons (p = {_p_words(p)})"
+    face = None
+    if bad:
+        verdict = "CANNOT_TEST"
+        words = f"cannot test: {bad} of the {core['readings']} readings {'is' if bad == 1 else 'are'} not a finite number, n = {n_words}"
+    elif core["short"]:
+        verdict, words = "TOO_FEW_TO_JUDGE", core["short"]
+    elif by is None or not by < MOTIF_ALPHA:
+        verdict = "NOT_SHOWN"
+        words = f"no difference shown: {'' if said is None else f'{said}, '}n = {n_words}"
+    elif m1 > m2 and m1 > 0:
+        verdict, face = "SELECTIVE_NORTH_POLE (+)", "+"
+        words = f"selective on its + face, {said}, n = {n_words}"
+    elif m1 < m2 and m1 < 0:
+        verdict, face = "SELECTIVE_SOUTH_POLE (-)", "-"
+        words = f"selective on its - face, {said}, n = {n_words}"
+    else:
+        verdict = "DIFFERS_NOT_AS_GUESSED"
+        words = (f"the sides differ, {said}, n = {n_words}, but not as guessed: the quiet sentences fire its "
+                 f"{'-' if m1 > m2 else '+'} face more")
+    return verdict, face, core["lead"] + words
+
+
+def _readings(pos: List[float], neg: List[float]) -> tuple:
+    """The two sides' readings as arrays, how many of them are not finite numbers, and the rounding floor of their
+    differences. An empty side is refused in plain words."""
+    a = np.asarray(pos, dtype=np.float64)
+    b = np.asarray(neg, dtype=np.float64)
+    if not len(a) or not len(b):
+        raise ValueError("The test needs sentences on both sides.")
+    bad = int(np.count_nonzero(~np.isfinite(a)) + np.count_nonzero(~np.isfinite(b)))
+    floor = 0.0 if bad else 4 * (len(a) + len(b)) * float(np.finfo(np.float64).eps) * float(max(np.abs(a).max(), np.abs(b).max()))
+    return a, b, bad, floor
+
+
+def _pairs(a: np.ndarray, b: np.ndarray) -> int:
+    """How many pairs two sides make; sides of unequal size are refused in plain words."""
+    if len(a) != len(b):
+        raise ValueError(
+            f"A paired test reads the sentences as matched pairs, the first where it should fire with the first where it "
+            f"should stay quiet, and so on, and there are {len(a)} and {len(b)}: give as many on each side, or leave "
+            f"`paired` off."
+        )
+    return len(a)
+
+
+def _unpaired(pos: List[float], neg: List[float], draws: int, seed: int, read_at: str = LAST_PIECE, lead: str = "") -> tuple:
+    """`motif_statistics` of readings taken at `read_at`, its words begun with `lead`; with what `_judge` judged it
+    from, for a q to judge it again."""
+    a, b, bad, floor = _readings(pos, neg)
+    n1, n2 = len(a), len(b)
+    m1, m2 = (float(a.mean()), float(b.mean())) if not bad else (None, None)
+    sd1 = float(a.std(ddof=1)) if n1 > 1 and not bad else None
+    sd2 = float(b.std(ddof=1)) if n2 > 1 and not bad else None
+    d = t = df = p = method = splits = least = None
+    if n1 > 1 and n2 > 1 and not bad:
+        x = np.concatenate([a, b])
+        n = len(x)
+        t_obs, df_obs, _ = _welch(x, _sides(n, n1, [range(n1)]), floor)
+        t, df = float(t_obs[0]), float(df_obs[0])
+        pooled = ((n1 - 1) * sd1**2 + (n2 - 1) * sd2**2) / (n1 + n2 - 2)
+        d = (m1 - m2) / math.sqrt(pooled) if pooled > floor**2 else None
+        p, method, splits, least = _chance(n, n1, draws, seed, lambda side: np.abs(_welch(x, side, floor)[0]), t)
+    n_words = f"{n1} a side" if n1 == n2 else f"{n1} and {n2}"
+    short = n1 < MOTIF_MIN_N or n2 < MOTIF_MIN_N
+    core = {
+        "bad": bad, "readings": n1 + n2, "p": p, "least": least, "m1": m1, "m2": m2, "n_words": n_words, "lead": lead,
+        "short": f"too few to judge: n = {n_words}, and the test needs at least {MOTIF_MIN_N} a side" if short else None,
+    }
+    verdict, face, words = _judge(core)
+    return {
+        "read_at": read_at,
+        "design": "unpaired",
+        "tested": f"{_MOTIF_WHAT[read_at]}, {_MOTIF_HOW['unpaired']}",
+        "n_pos": n1,
+        "n_neg": n2,
+        "mean_pos": _sig(m1),
+        "mean_neg": _sig(m2),
+        "sd_pos": _sig(sd1),
+        "sd_neg": _sig(sd2),
+        "cohens_d": _sig(d),
+        "welch_t": _sig(t),
+        "welch_df": _sig(df),
+        "p": _sig(p),
+        "p_text": None if p is None else _p_words(p),
+        "p_method": method,
+        "splits": splits,
+        "seed": int(seed) if method == "permutation" else None,
+        "least_p": _sig(least),
+        "min_n": MOTIF_MIN_N,
+        "alpha": MOTIF_ALPHA,
+        "verdict": verdict,
+        "face": face,
+        "words": words,
+    }, core
 
 
 def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAWS, seed: int = MOTIF_SEED) -> Dict[str, Any]:
@@ -469,85 +661,287 @@ def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAW
     else SELECTIVE_NORTH_POLE (+) when the + sentences read higher and their mean is above 0, SELECTIVE_SOUTH_POLE (-)
     when they read lower and their mean is below 0 (`face`), and DIFFERS_NOT_AS_GUESSED when the sides differ the other
     way: the quiet sentences fire a face more. `words` says it with its p and n, and `p_text` is that p as written
-    there (`_p_words`, from the p unrounded), for a page to show as it is. One test is one neuron's: p's from several
-    want correcting together (the study used Benjamini-Hochberg, E6 §2.3). An empty side is refused in plain words
-    (ValueError)."""
-    a = np.asarray(pos, dtype=np.float64)
-    b = np.asarray(neg, dtype=np.float64)
-    n1, n2 = len(a), len(b)
-    if not n1 or not n2:
-        raise ValueError("The test needs sentences on both sides.")
-    bad = int(np.count_nonzero(~np.isfinite(a)) + np.count_nonzero(~np.isfinite(b)))  # readings not finite numbers
+    there (`_p_words`, from the p unrounded), for a page to show as it is. `design` ("unpaired") and `tested` say what
+    was run, and `least_p` is the least p this many sentences can give (`_relabellings`). One test is one neuron's:
+    its p is corrected for no other neuron's, and those of several want correcting together (`benjamini_hochberg`,
+    which test_motif_hypothesis does over the neurons one call names; the study used it, E6 §2.3). An empty side is
+    refused in plain words (ValueError)."""
+    return _unpaired(pos, neg, draws, seed)[0]
+
+
+def _paired(pos: List[float], neg: List[float], draws: int, seed: int, read_at: str = LAST_PIECE, lead: str = "") -> tuple:
+    """`paired_statistics` of readings taken at `read_at`, its words begun with `lead`; with what `_judge` judged it
+    from."""
+    a, b, bad, floor = _readings(pos, neg)
+    n = _pairs(a, b)
     m1, m2 = (float(a.mean()), float(b.mean())) if not bad else (None, None)
-    sd1 = float(a.std(ddof=1)) if n1 > 1 and not bad else None
-    sd2 = float(b.std(ddof=1)) if n2 > 1 and not bad else None
-    d = t = df = p = method = splits = None
-    if n1 > 1 and n2 > 1 and not bad:
-        x = np.concatenate([a, b])
-        n = len(x)
-        floor = 4 * n * float(np.finfo(np.float64).eps) * float(np.abs(x).max())
-        t_obs, df_obs, _ = _welch(x, _sides(n, n1, [range(n1)]), floor)
-        t, df = float(t_obs[0]), float(df_obs[0])
-        pooled = ((n1 - 1) * sd1**2 + (n2 - 1) * sd2**2) / (n1 + n2 - 2)
-        d = (m1 - m2) / math.sqrt(pooled) if pooled > floor**2 else None
-        at_least = abs(t) * (1 - 1e-9)  # the observed split's own |t|, and its mirror's, within rounding
-        total = math.comb(n, n1)
-        count = 0
-        if total <= draws:
-            method, splits = "exact", total
-            every = itertools.combinations(range(n), n1)
-            for chunk in iter(lambda: list(itertools.islice(every, MOTIF_CHUNK)), []):
-                count += int((np.abs(_welch(x, _sides(n, n1, chunk), floor)[0]) >= at_least).sum())
-            p = count / total
-        else:
-            method, splits = "permutation", int(draws)
-            rng = np.random.default_rng(seed)
-            for start in range(0, draws, MOTIF_CHUNK):
-                k = min(MOTIF_CHUNK, draws - start)
-                picks = np.argsort(rng.random((k, n)), axis=1)[:, :n1]
-                count += int((np.abs(_welch(x, _sides(n, n1, picks), floor)[0]) >= at_least).sum())
-            p = (1 + count) / (1 + draws)
-    n_words = f"{n1} a side" if n1 == n2 else f"{n1} and {n2}"
-    face = None
-    if bad:
-        verdict = "CANNOT_TEST"
-        words = f"cannot test: {bad} of the {n1 + n2} readings {'is' if bad == 1 else 'are'} not a finite number, n = {n_words}"
-    elif n1 < MOTIF_MIN_N or n2 < MOTIF_MIN_N:
-        verdict = "TOO_FEW_TO_JUDGE"
-        words = f"too few to judge: n = {n_words}, and the test needs at least {MOTIF_MIN_N} a side"
-    elif p is None or not p < MOTIF_ALPHA:
-        verdict = "NOT_SHOWN"
-        words = f"no difference shown: {'' if p is None else f'p = {_p_words(p)}, '}n = {n_words}"
-    elif m1 > m2 and m1 > 0:
-        verdict, face = "SELECTIVE_NORTH_POLE (+)", "+"
-        words = f"selective on its + face, p = {_p_words(p)}, n = {n_words}"
-    elif m1 < m2 and m1 < 0:
-        verdict, face = "SELECTIVE_SOUTH_POLE (-)", "-"
-        words = f"selective on its - face, p = {_p_words(p)}, n = {n_words}"
-    else:
-        verdict = "DIFFERS_NOT_AS_GUESSED"
-        words = (f"the sides differ, p = {_p_words(p)}, n = {n_words}, but not as guessed: the quiet sentences fire its "
-                 f"{'-' if m1 > m2 else '+'} face more")
+    diff = a - b
+    mean_diff = None if bad else float(diff.mean())
+    sd = float(diff.std(ddof=1)) if n > 1 and not bad else None
+    t = p = method = flips = least = None
+    if n > 1 and not bad:
+        t_obs, m_obs = _paired_t(diff, np.ones((1, n)), floor)
+        t = float(t_obs[0])
+        p, method, flips, least = _chance(n, None, draws, seed, lambda sign: np.abs(_paired_t(diff, sign, floor)[1]), float(m_obs[0]))
+    n_words = f"{n} pair{'' if n == 1 else 's'}"
+    core = {
+        "bad": bad, "readings": 2 * n, "p": p, "least": least, "m1": m1, "m2": m2, "n_words": n_words, "lead": lead,
+        "short": f"too few to judge: n = {n_words}, and the paired test needs at least {MOTIF_MIN_PAIRS} pairs" if n < MOTIF_MIN_PAIRS else None,
+    }
+    verdict, face, words = _judge(core)
     return {
-        "read_at": "last word-piece",
+        "read_at": read_at,
+        "design": "paired",
+        "tested": f"{_MOTIF_WHAT[read_at]}, {_MOTIF_HOW['paired']}",
+        "n_pairs": n,
+        "n_pos": n,
+        "n_neg": n,
+        "mean_pos": _sig(m1),
+        "mean_neg": _sig(m2),
+        "mean_diff": _sig(mean_diff),
+        "sd_diff": _sig(sd),
+        "paired_t": _sig(t),
+        "paired_df": n - 1 if t is not None else None,
+        "p": _sig(p),
+        "p_text": None if p is None else _p_words(p),
+        "p_method": method,
+        "flips": flips,
+        "seed": int(seed) if method == "permutation" else None,
+        "least_p": _sig(least),
+        "min_n": MOTIF_MIN_PAIRS,
+        "alpha": MOTIF_ALPHA,
+        "verdict": verdict,
+        "face": face,
+        "words": words,
+    }, core
+
+
+def paired_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAWS, seed: int = MOTIF_SEED) -> Dict[str, Any]:
+    """The paired reading of test_motif_hypothesis (`selectivity_paired`), for sentences the caller says are matched
+    pairs: `pos[i]` (where it should fire) with `neg[i]` (where it should stay quiet), as E6's own test paired them.
+
+    The statistic is `mean_diff`, the mean of the pairs' differences pos[i] - neg[i] (`sd_diff`, their sample standard
+    deviation; `paired_t`, that mean over its standard error, on `paired_df` = pairs - 1, null when the differences
+    have no spread). Its p is two-sided, for |mean_diff|, from flipping the signs of the differences: exact over all
+    2**pairs flippings when there are at most `draws` (the share whose |mean| is at least the observed one, the pairs
+    as given among them), else from `draws` random flippings seeded with `seed`, (1 + as large) / (1 + draws), so never
+    0 (`p_method`, `flips`, `seed`). Under the null that within a pair it does not matter to the neuron which sentence
+    is which, each difference is as likely with either sign. Flipping signs leaves the sum of squared differences
+    alone, so the paired t rises and falls with |mean_diff| and gives the same p. Fewer than two pairs leave t and p
+    null.
+
+    `verdict`, `face` and `words` as `motif_statistics` gives them, but TOO_FEW_TO_JUDGE below MOTIF_MIN_PAIRS pairs
+    (`min_n`), since `least_p`, the least p the flippings can give, is 2 / 2**pairs: 0.125 at four pairs and 0.0625 at
+    five, so below six nothing could be shown. The pairing is the caller's word: pairs that are not matched lose the
+    test its power, and a sentence set against the wrong partner is not caught. As there, one test is one neuron's.
+    Sides of unequal size, or an empty one, are refused in plain words (ValueError)."""
+    return _paired(pos, neg, draws, seed)[0]
+
+
+def _either(last_pos: List[float], last_neg: List[float], peak_pos: List[float], peak_neg: List[float], paired: bool, draws: int, seed: int) -> tuple:
+    """`either_statistics`, with what `_judge` judged it from."""
+    a1, b1, bad1, floor1 = _readings(last_pos, last_neg)
+    a2, b2, bad2, floor2 = _readings(peak_pos, peak_neg)
+    if (len(a1), len(b1)) != (len(a2), len(b2)):
+        raise ValueError("The two readings are of the same sentences: as many of each on each side.")
+    n1, n2, bad = len(a1), len(b1), bad1 + bad2
+    design = "paired" if paired else "unpaired"
+    if paired:
+        _pairs(a1, b1)
+    t1 = t2 = p = method = total = least = stronger = None
+    m1 = m2 = None
+    if not bad and (n1 > 1 if paired else n1 > 1 and n2 > 1):
+        if paired:
+            d1, d2, n, split = a1 - b1, a2 - b2, n1, None
+            ones = np.ones((1, n))
+            t1, t2 = float(_paired_t(d1, ones, floor1)[0][0]), float(_paired_t(d2, ones, floor2)[0][0])
+            weigh = lambda sign: np.maximum(np.abs(_paired_t(d1, sign, floor1)[0]), np.abs(_paired_t(d2, sign, floor2)[0]))  # noqa: E731
+        else:
+            x1, x2, n, split = np.concatenate([a1, b1]), np.concatenate([a2, b2]), n1 + n2, n1
+            given = _sides(n, n1, [range(n1)])
+            t1, t2 = float(_welch(x1, given, floor1)[0][0]), float(_welch(x2, given, floor2)[0][0])
+            weigh = lambda side: np.maximum(np.abs(_welch(x1, side, floor1)[0]), np.abs(_welch(x2, side, floor2)[0]))  # noqa: E731
+        stronger = LAST_PIECE if abs(t1) >= abs(t2) else PEAK_PIECE
+        m1, m2 = (float(a1.mean()), float(b1.mean())) if stronger == LAST_PIECE else (float(a2.mean()), float(b2.mean()))
+        p, method, total, least = _chance(n, split, draws, seed, weigh, max(abs(t1), abs(t2)))
+    if paired:
+        n_words = f"{n1} pair{'' if n1 == 1 else 's'}"
+        short = f"too few to judge: n = {n_words}, and the paired test needs at least {MOTIF_MIN_PAIRS} pairs" if n1 < MOTIF_MIN_PAIRS else None
+    else:
+        n_words = f"{n1} a side" if n1 == n2 else f"{n1} and {n2}"
+        short = f"too few to judge: n = {n_words}, and the test needs at least {MOTIF_MIN_N} a side" if n1 < MOTIF_MIN_N or n2 < MOTIF_MIN_N else None
+    here = "" if stronger is None else f" (here the {'last' if stronger == LAST_PIECE else 'strongest'})"
+    core = {"bad": bad, "readings": 2 * (n1 + n2), "p": p, "least": least, "m1": m1, "m2": m2, "n_words": n_words,
+            "short": short, "lead": f"last word-piece or strongest, whichever tells the sides apart more{here}: "}
+    verdict, face, words = _judge(core)
+    return {
+        "read_at": EITHER_PIECE,
+        "design": design,
+        "tested": f"{_MOTIF_WHAT[EITHER_PIECE]}; {_MOTIF_HOW[design]}",
+        "stronger": stronger,
+        "t_last": _sig(t1),
+        "t_peak": _sig(t2),
+        **({"n_pairs": n1} if paired else {}),
         "n_pos": n1,
         "n_neg": n2,
         "mean_pos": _sig(m1),
         "mean_neg": _sig(m2),
-        "sd_pos": _sig(sd1),
-        "sd_neg": _sig(sd2),
-        "cohens_d": _sig(d),
-        "welch_t": _sig(t),
-        "welch_df": _sig(df),
         "p": _sig(p),
         "p_text": None if p is None else _p_words(p),
         "p_method": method,
-        "splits": splits,
+        ("flips" if paired else "splits"): total,
         "seed": int(seed) if method == "permutation" else None,
-        "min_n": MOTIF_MIN_N,
+        "least_p": _sig(least),
+        "min_n": MOTIF_MIN_PAIRS if paired else MOTIF_MIN_N,
         "alpha": MOTIF_ALPHA,
         "verdict": verdict,
         "face": face,
+        "words": words,
+    }, core
+
+
+def either_statistics(
+    last_pos: List[float],
+    last_neg: List[float],
+    peak_pos: List[float],
+    peak_neg: List[float],
+    paired: bool = False,
+    draws: int = MOTIF_DRAWS,
+    seed: int = MOTIF_SEED,
+) -> Dict[str, Any]:
+    """The price of having two readings of the same sentences to choose between (test_motif_hypothesis's
+    `selectivity_either`): the last word-piece's (`last_pos`, `last_neg`) and the strongest word-piece's (`peak_pos`,
+    `peak_neg`, sentence for sentence in the same order).
+
+    Its statistic is the larger of the two readings' |t| (`t_last`, `t_peak`: Welch's t, or the paired t when
+    `paired`; `stronger` names the reading it came from, the last word-piece's when they are equal). Its p is two-sided,
+    from relabelling the sentences as `motif_statistics` does (as `paired_statistics`, when `paired`), both readings of
+    a sentence moving together: under each relabelling both t's are worked again and the larger taken, so the share
+    that reaches the observed one is the chance, were a sentence's side nothing to the neuron at either place, of
+    either reading doing so well. It is never below the p of the reading it came from. `verdict`, `face` and `words`
+    are judged by that p and the stronger reading's means (`mean_pos`, `mean_neg`), with the design's own floor
+    (`min_n`).
+
+    What it does not pay for: any reading but these two, the choice of sentences, or other neurons (`correction`).
+    A reading that is not a finite number in either: CANNOT_TEST. Sides refused as the design's own test refuses
+    them (ValueError), and so are two readings of unequal size."""
+    return _either(last_pos, last_neg, peak_pos, peak_neg, paired, draws, seed)[0]
+
+
+def benjamini_hochberg(ps: List[Optional[float]]) -> List[Optional[float]]:
+    """Benjamini-Hochberg q's of several tests' p's, in their order: with the m p's that are numbers ranked from the
+    least (rank 1) to the greatest (rank m), q = p * m / rank, then made no greater than any q of a greater p, and at
+    most 1 (a None, a test that gave no p, stays None and is not counted in m). Calling every test with q < 0.05 a
+    finding holds the expected share of false findings among them to 5%, when the tests are independent or lean the
+    same way (neurons read on the same sentences are not independent). q is never below p, equals it for one test, and
+    corrects only among the p's given: not for tests run and left out, nor for how the sentences were chosen."""
+    order = sorted((i for i, p in enumerate(ps) if p is not None), key=lambda i: ps[i])
+    m = len(order)
+    qs: List[Optional[float]] = [None] * len(ps)
+    least = 1.0
+    for rank in range(m, 0, -1):
+        i = order[rank - 1]
+        least = min(least, float(ps[i]) * m / rank)
+        qs[i] = least
+    return qs
+
+
+def _last_and_peak(seq_act: torch.Tensor) -> tuple:
+    """A neuron's signed activation over one sentence's word-pieces ([seq_len]) as (the last word-piece's, the place of
+    the strongest, the strongest's): the strongest is the largest |activation|, the earliest of equals, its sign kept.
+    Place 0 is the start mark, which reads the same in every sentence."""
+    peak_pos = int(seq_act.abs().argmax().item())
+    return float(seq_act[-1].item()), peak_pos, float(seq_act[peak_pos].item())
+
+
+def _motif_tests(pos: Dict[str, Any], neg: Dict[str, Any], paired: bool) -> tuple:
+    """One neuron's tests against chance from its readings on the two sides (each side's `last` and `peak` readings
+    unrounded, and `at_start`, how many of its strongest word-pieces are the start mark), as (the reply's four blocks,
+    what `_judge` judged the three of the design asked for from): `selectivity` always (`motif_statistics`),
+    `selectivity_paired` when `paired` (`paired_statistics`, else None), `selectivity_peak` (the design's test on the
+    strongest word-pieces, with `at_start` and a `note` when any is the start mark) and `selectivity_either`
+    (`either_statistics`)."""
+    sel, c_last = _unpaired(pos["last"], neg["last"], MOTIF_DRAWS, MOTIF_SEED)
+    sel_paired = None
+    if paired:
+        sel_paired, c_last = _paired(pos["last"], neg["last"], MOTIF_DRAWS, MOTIF_SEED)
+    peak, c_peak = (_paired if paired else _unpaired)(
+        pos["peak"], neg["peak"], MOTIF_DRAWS, MOTIF_SEED, PEAK_PIECE, "at each sentence's strongest word-piece: "
+    )
+    at_start, n = pos["at_start"] + neg["at_start"], len(pos["peak"]) + len(neg["peak"])
+    peak["at_start"] = at_start
+    peak["note"] = (
+        f"in {at_start} of the {n} sentences the strongest word-piece is the first, the start mark, which reads the same "
+        f"in every sentence: there this reads the start mark, not the sentence"
+        if at_start else None
+    )
+    either, c_either = _either(pos["last"], neg["last"], pos["peak"], neg["peak"], paired, MOTIF_DRAWS, MOTIF_SEED)
+    blocks = {"selectivity": sel, "selectivity_paired": sel_paired, "selectivity_peak": peak, "selectivity_either": either}
+    return blocks, {"last": c_last, "peak": c_peak, "either": c_either}
+
+
+def _correction(neurons: List[tuple], tested: List[tuple], paired: bool) -> Dict[str, Any]:
+    """test_motif_hypothesis's `correction`: what the p's of this call are corrected for.
+
+    One neuron: nothing (`method` None, `tests` 1), and `words` say so. Several (`neurons`, with `tested`, each one's
+    `_motif_tests`): `rows`, one a neuron in the order asked, each with `last`, `peak` and `either`, the three readings
+    of the design asked for (`selectivity_paired` when paired, else `selectivity`; `selectivity_peak`;
+    `selectivity_either`). Each holds that reading's `p`, its `q` (`benjamini_hochberg` over the neurons' p's of that
+    same reading, one a neuron; `q_text` as `words` write it), `over` (how many p's that was: a neuron whose reading
+    could not be tested has none and is not counted), and `verdict`, `face` and `words` judged by q where the neuron's
+    own block judges by p, with the same floor. `found` counts, reading by reading, the neurons whose sides differ at
+    q < `alpha`. `least_p` is the least p these sentences can give at the last word-piece, and `needs` the fewest
+    neurons that must reach it for any q to fall under `alpha` (null when no p could be had): with few sentences and
+    many neurons one neuron cannot pass alone, which is not a sign that none is selective.
+
+    The q's are over the neurons of this one call, on these sentences. They correct for nothing else: not neurons
+    tested in other calls, not sentences tried and changed, and each reading is corrected among its own p's only, so
+    taking whichever of `last` and `peak` did better is paid for in `either` alone."""
+    m = len(neurons)
+    if m == 1:
+        return {
+            "method": None,
+            "tests": 1,
+            "alpha": MOTIF_ALPHA,
+            "words": "one neuron, tested alone: its p's are corrected for no other neuron's. Of several neurons tried, "
+                     "some pass by chance; name them in one call (`also`) and each gets a q over them all "
+                     "(Benjamini-Hochberg).",
+        }
+    rows: List[Dict[str, Any]] = [{"layer": l, "neuron_idx": n} for l, n in neurons]
+    found: Dict[str, int] = {}
+    for name in ("last", "peak", "either"):
+        cores = [c[name] for _, c in tested]
+        qs = benjamini_hochberg([c["p"] for c in cores])
+        over = sum(q is not None for q in qs)
+        found[name] = 0
+        for row, core, q in zip(rows, cores, qs):
+            verdict, face, words = _judge(core, q, over)
+            found[name] += verdict.startswith(("SELECTIVE", "DIFFERS"))
+            row[name] = {"p": _sig(core["p"]), "q": _sig(q), "q_text": None if q is None else _p_words(q), "over": over,
+                         "verdict": verdict, "face": face, "words": words}
+    least = next((c["last"]["least"] for _, c in tested if c["last"]["least"] is not None), None)
+    over = rows[0]["last"]["over"]
+    needs = None if least is None else next((k for k in range(1, over + 1) if least * over / k < MOTIF_ALPHA), None)
+    words = (
+        f"{m} neurons tested together on the same sentences: each q is a neuron's p corrected among the neurons' p's of "
+        f"the same reading, one a neuron (Benjamini-Hochberg). At q < {MOTIF_ALPHA} the sides differ in {found['last']} "
+        f"at the last word-piece, {found['peak']} at the strongest, {found['either']} taking whichever of the two tells "
+        f"them apart more."
+    )
+    if needs is not None and needs > 1:
+        words += (
+            f" These sentences can give no p under {_p_words(least)}, so no q falls under {MOTIF_ALPHA} unless at least "
+            f"{needs} of the {over} neurons reach it: with more sentences fewer need to."
+        )
+    return {
+        "method": "Benjamini-Hochberg",
+        "tests": m,
+        "alpha": MOTIF_ALPHA,
+        "design": "paired" if paired else "unpaired",
+        "least_p": _sig(least),
+        "needs": needs,
+        "found": found,
+        "rows": rows,
         "words": words,
     }
 
@@ -561,6 +955,8 @@ async def test_motif_hypothesis(
     neg_prompts: List[str],
     chat: bool = False,
     system: Optional[str] = None,
+    paired: bool = False,
+    also: Optional[List[List[int]]] = None,
 ) -> Dict[str, Any]:
     """Test whether Bipolar GeGLU neuron `(layer, neuron_idx)` selectively encodes a hypothesized
     motif on `pos_prompts` vs. `neg_prompts`.
@@ -578,10 +974,34 @@ async def test_motif_hypothesis(
     unrounded readings, the n each side, sample variances, Welch's t, a two-sided p for it by splitting the sentences
     afresh (exact over every split up to MOTIF_DRAWS of them, else MOTIF_DRAWS shuffles seeded MOTIF_SEED), and its own
     verdict and `words`, which judge nothing below MOTIF_MIN_N sentences a side, nor when a reading is not a finite
-    number (CANNOT_TEST: the reply still comes, with the keys as first built). The peak is reported but not tested.
+    number (CANNOT_TEST: the reply still comes, with the keys as first built).
 
-    Refusals are plain-word ValueErrors (an empty side, a layer or a neuron that does not exist), all before the model
-    is run; an empty side was once read as one reading of 0.0, and an out-of-range layer moved to the nearest.
+    `paired=True` says the two lists are matched pairs, the first of `pos_prompts` with the first of `neg_prompts` and
+    so on (as many on each side, or it is refused). `design` ("paired" or "unpaired") says which was run, and
+    `judged_by` names the block to quote for the last word-piece: `selectivity_paired` when paired
+    (`paired_statistics`: the mean of the pairs' differences, its p by flipping their signs, exact over all 2**pairs up
+    to MOTIF_DRAWS, no judgement below MOTIF_MIN_PAIRS pairs; null otherwise), else `selectivity`. `selectivity` is the
+    unpaired reading whichever was asked, and taking the better of the two is a choice nothing here pays for.
+
+    The peak is tested too, in the design asked for. `selectivity_peak` is the same test on each sentence's strongest
+    word-piece (`peak_signed_act`: the largest |activation| of all its word-pieces, its sign kept): the place is chosen
+    in each sentence whatever its side, so it stays with the sentence under every relabelling and the p is as sound as
+    the last word-piece's. Its `at_start` counts the sentences whose strongest word-piece is the start mark, which
+    reads the same in every sentence (`note` says so when there are any); it does not show that the + sentences are
+    not simply longer, with more places for a strong reading. `selectivity_either` (`either_statistics`) is for
+    quoting whichever of the two readings did better: the larger of their |t|'s, taken again under every relabelling,
+    so that choice is paid for. Each block's `design` and `tested` say what it ran.
+
+    `also` names further neurons, each `[layer, neuron_idx]`, to test on the same sentences in the same call (at most
+    MOTIF_MAX_NEURONS with the first; none twice), one run of the model a sentence whatever their number. `also` then
+    holds each one's blocks and per-sentence records, in the order asked, and `correction` their p's corrected together
+    (`_correction`: a Benjamini-Hochberg q for every neuron and reading, the first neuron's first, with how many tests
+    each q is over). With one neuron `correction` says in words that its p's are corrected for no other test: a p is one
+    neuron's, and nothing here knows of tests run in other calls.
+
+    Refusals are plain-word ValueErrors (an empty side, a layer or a neuron that does not exist, sides of unequal size
+    when paired, a further neuron given twice), all before the model is run; an empty side was once read as one reading
+    of 0.0, and an out-of-range layer moved to the nearest.
 
     `lens` names the lens the `pole_j_vindex_signature` words went through; read its `caution` before trusting them.
     `pole_label_check` marks that pole's label by the study's measure (`label_gate`, the rule, comes before `lens`).
@@ -592,49 +1012,71 @@ async def test_motif_hypothesis(
     n_layers = len(lm.layers)
 
     # plain-word refusals, all before the model is run
-    if not _whole(layer) or not 0 <= layer < n_layers:
-        raise ValueError(
-            f"layer is {layer!r}: layers count from 0 to {n_layers - 1} here (the pages count them 1 to {n_layers})."
-        )
-    d_ff = _ffn_width(lm.layers[layer].mlp.down_proj)
-    if not _whole(neuron_idx) or not 0 <= neuron_idx < d_ff:
-        raise ValueError(f"neuron_idx is {neuron_idx!r}: each layer's neurons count from 0 to {d_ff - 1}.")
+    def _neuron(l: Any, n: Any, l_name: str, n_name: str) -> tuple:
+        if not _whole(l) or not 0 <= l < n_layers:
+            raise ValueError(
+                f"{l_name} is {l!r}: layers count from 0 to {n_layers - 1} here (the pages count them 1 to {n_layers})."
+            )
+        d_ff = _ffn_width(lm.layers[l].mlp.down_proj)
+        if not _whole(n) or not 0 <= n < d_ff:
+            raise ValueError(f"{n_name} is {n!r}: each layer's neurons count from 0 to {d_ff - 1}.")
+        return int(l), int(n)
+
+    l_idx, n_idx = _neuron(layer, neuron_idx, "layer", "neuron_idx")
     for what, prompts in (("pos_prompts", pos_prompts), ("neg_prompts", neg_prompts)):
         if isinstance(prompts, (str, bytes)) or not prompts:
             raise ValueError(
                 f"{what} is empty: the test reads the neuron on sentences where it should fire (pos_prompts) and where "
                 f"it should stay quiet (neg_prompts), one or more on each side, and judges from {MOTIF_MIN_N} a side."
             )
+    paired = bool(paired)
+    if paired:
+        _pairs(pos_prompts, neg_prompts)
+    neurons = [(l_idx, n_idx)]
+    for item in also or []:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise ValueError(f"also holds {item!r}: each further neuron is given as [layer, neuron_idx].")
+        neurons.append(_neuron(item[0], item[1], "a layer in also", "a neuron_idx in also"))
+    for l, n in neurons:
+        if neurons.count((l, n)) > 1:
+            raise ValueError(
+                f"neuron {n} of layer {l} is named twice: each neuron is tested once, or the correction would count it twice."
+            )
+    if len(neurons) > MOTIF_MAX_NEURONS:
+        raise ValueError(f"{len(neurons)} neurons in one call: at most {MOTIF_MAX_NEURONS} are tested together.")
 
-    l_idx, n_idx = int(layer), int(neuron_idx)
-    addr = Address("mlp_act", l_idx)
+    addrs = {l: Address("mlp_act", l) for l in dict.fromkeys(l for l, _ in neurons)}
 
-    async def _eval_prompts(prompts: List[str]) -> tuple:
-        """Each prompt's record, and its last word-piece's reading unrounded."""
-        records: List[Dict[str, Any]] = []
-        lasts: List[float] = []
+    async def _eval_prompts(prompts: List[str]) -> List[Dict[str, Any]]:
+        """For each neuron in turn: each prompt's record, its last and its strongest word-piece's readings unrounded,
+        and how many of the strongest are the start mark. One run of the model a prompt, whatever the neurons."""
+        out: List[Dict[str, Any]] = [{"records": [], "last": [], "peak": [], "at_start": 0} for _ in neurons]
         for p_text in prompts:
             p_ids = runtime.tokenize_prompt(runtime.compose_prompt(p_text, chat=chat, system=system))
-            caps = await runtime.eager_model.capture(p_ids, [addr])
-            seq_act = caps[addr][:, n_idx].float()  # [seq_len]
-            last_act = float(seq_act[-1].item())
-            peak_pos = int(seq_act.abs().argmax().item())
-            peak_act = float(seq_act[peak_pos].item())
-            peak_tok = runtime.tokenizer.decode([p_ids[peak_pos]])
-            lasts.append(last_act)
-            records.append(
-                {
-                    "prompt": p_text,
-                    "last_token_signed_act": round(last_act, 4),
-                    "peak_signed_act": round(peak_act, 4),
-                    "peak_token": peak_tok,
-                    "polarity": "+" if last_act >= 0 else "-",
-                }
-            )
-        return records, lasts
+            caps = await runtime.eager_model.capture(p_ids, list(addrs.values()))
+            for got, (l, n) in zip(out, neurons):
+                seq_act = caps[addrs[l]][:, n].float()  # [seq_len]
+                last_act, peak_pos, peak_act = _last_and_peak(seq_act)
+                got["last"].append(last_act)
+                got["peak"].append(peak_act)
+                got["at_start"] += peak_pos == 0 and math.isfinite(peak_act)
+                got["records"].append(
+                    {
+                        "prompt": p_text,
+                        "last_token_signed_act": round(last_act, 4),
+                        "peak_signed_act": round(peak_act, 4),
+                        "peak_token": runtime.tokenizer.decode([p_ids[peak_pos]]),
+                        "polarity": "+" if last_act >= 0 else "-",
+                    }
+                )
+        return out
 
-    pos_records, pos_last = await _eval_prompts(pos_prompts)
-    neg_records, neg_last = await _eval_prompts(neg_prompts)
+    pos_read = await _eval_prompts(pos_prompts)
+    neg_read = await _eval_prompts(neg_prompts)
+    # the tests are arithmetic on the readings (seconds, for hundreds of neurons): in a worker thread, as inspect_pole's
+    # read, the event loop answering meanwhile
+    tested = await anyio.to_thread.run_sync(lambda: [_motif_tests(p_, n_, paired) for p_, n_ in zip(pos_read, neg_read)])
+    pos_records, neg_records = pos_read[0]["records"], neg_read[0]["records"]
 
     # as first built, for old callers: the rounded readings, population variances, a threshold on d at any n
     pos_vals = [r["last_token_signed_act"] for r in pos_records]
@@ -657,6 +1099,10 @@ async def test_motif_hypothesis(
         verdict = "REJECTED_OR_INCONCLUSIVE"
 
     pole_info = vault.inspect_bipolar_slot(l_idx, n_idx, polarity=1.0 if mean_pos >= 0 else -1.0, top_k_tokens=5)
+    further = [
+        {"layer": l, "neuron_idx": n, **blocks, "pos_prompt_results": p_["records"], "neg_prompt_results": n_["records"]}
+        for (l, n), (blocks, _), p_, n_ in list(zip(neurons, tested, pos_read, neg_read))[1:]
+    ]
 
     return {
         "layer": l_idx,
@@ -666,9 +1112,13 @@ async def test_motif_hypothesis(
         "cohens_d": round(cohens_d, 4),
         "mean_pos_signed_act": round(mean_pos, 4),
         "mean_neg_signed_act": round(mean_neg, 4),
-        "selectivity": motif_statistics(pos_last, neg_last),
+        "design": "paired" if paired else "unpaired",
+        "judged_by": "selectivity_paired" if paired else "selectivity",
+        **tested[0][0],
+        "correction": _correction(neurons, tested, paired),
         "pos_prompt_results": pos_records,
         "neg_prompt_results": neg_records,
+        **({"also": further} if further else {}),
         "pole_j_vindex_signature": pole_info["active_pole"]["j_vindex_tokens"],
         "pole_label_check": pole_info["active_pole"]["label_check"],
         "label_gate": LABEL_GATE_CARD,

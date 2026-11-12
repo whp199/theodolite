@@ -159,10 +159,14 @@ const Trail: React.FC = () => {
 };
 
 /** Bars over the layers named, one a layer, each as tall as its value against the tallest: the census by depth, or a
- * search's matches by depth. A layer whose doses are not calibrated is drawn hollow. A click opens the layer. */
+ * search's matches by depth. A layer whose doses are not calibrated is drawn hollow. A click opens the layer. With
+ * many layers (a census at every one is sixty) only the first, the last, every tenth and the open one are numbered,
+ * and each bar's title still names its layer. */
 const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string; hollow?: boolean }[]; label: string }> = ({ bars, label }) => {
   const layer = useAtlas((s) => s.layer);
   const top = Math.max(1e-9, ...bars.map((b) => b.value));
+  const many = bars.length > 20;
+  const numbered = (b: { layer: number }, i: number) => !many || i === 0 || i === bars.length - 1 || (b.layer + 1) % 10 === 0 || b.layer === layer;
   const go = (l: number) => {
     void setLayer(l);
     const m = theMap();
@@ -170,8 +174,8 @@ const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string;
     else m?.viewLayer(l);
   };
   return (
-    <div className="atlas-depth" role="group" aria-label={label}>
-      {bars.map((b) => (
+    <div className={`atlas-depth${many ? " many" : ""}`} role="group" aria-label={label}>
+      {bars.map((b, i) => (
         <button
           key={b.layer}
           type="button"
@@ -181,7 +185,7 @@ const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string;
           onClick={() => go(b.layer)}
         >
           <span className="bar" style={{ height: `${Math.round(2 + 22 * (b.value / top))}px` }} />
-          <span className="no">{b.layer + 1}</span>
+          <span className="no">{numbered(b, i) ? b.layer + 1 : " "}</span>
         </button>
       ))}
     </div>

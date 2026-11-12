@@ -1369,7 +1369,7 @@ def main() -> int:
     lv = c.get("/api/atlas/census/levels").json()
     inks = list(base64.b64decode(lv["levels"]))
     check(lv["layers"] == [3] and lv["n"] == atlas_routes.atlas().N and len(inks) == atlas_routes.atlas().N and sorted(i_ for i_, v_ in enumerate(inks) if v_) == [7, 9]
-          and max(inks) == 255 and min(inks[7], inks[9]) >= 2,
+          and max(inks) == 255 and min(inks[7], inks[9]) >= 2 and lv["uncalibrated"] == [3],
           f"/census/levels: a byte a neuron, the two above every control inked, the strongest darkest ({[inks[7], inks[9]]})")
     cs = c.get("/api/atlas/census/search", params={"q": "OCE"}).json()
     hit = (cs["results"] or [{}])[0]

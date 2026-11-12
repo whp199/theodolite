@@ -676,8 +676,9 @@ export interface TheodoliteState {
   inspectPole: (idx: number, neuron: number, face: number) => void;
   traceReaders: (idx: number, neuron: number, face: number, opts?: TraceOptions) => void;
   /** run test_motif_hypothesis; by default each sentence goes in as bare text and is read at its own last
-   * word-piece (with `chat`, the server reads the end of the template instead) */
-  testHypothesis: (idx: number, neuron: number, pos: string[], neg: string[], opts?: { chat?: boolean }) => Promise<void>;
+   * word-piece (with `chat`, the server reads the end of the template instead). With `paired` the two lists are sent
+   * as matched pairs, line for line, and the server tests them by sign flips (as many on each side, or it refuses) */
+  testHypothesis: (idx: number, neuron: number, pos: string[], neg: string[], opts?: { chat?: boolean; paired?: boolean }) => Promise<void>;
   /** test a neuron's label causally (causal_spot_check): turn it up on each face at the shown sighting's word-piece
    * ("given", by its exact ids) or on the study's 36 texts, and read the model's own odds */
   causalCheck: (idx: number, neuron: number, face: number, opts?: CausalOptions) => void;
@@ -1448,6 +1449,9 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
       neg_prompts: neg,
       chat,
       system: chat ? st.system.trim() || null : null,
+      // sent only when asked. A server from before the paired test takes no notice of it and answers unpaired; the
+      // folio says so, from the reply's `design`
+      ...(opts?.paired ? { paired: true } : {}),
     };
     set((s) => ({ hypotheses: { ...s.hypotheses, [key]: { pending: true, data: s.hypotheses[key]?.data ?? null, error: null, sent: body } } }));
     try {

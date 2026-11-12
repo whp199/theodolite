@@ -76,13 +76,18 @@ import {
   type Inspection,
   type Readers,
   type Tok,
+  ALONE_WORDS,
+  howCounted,
   hypothesisWords,
+  judged,
   nText,
   parseCausalCheck,
   parseHypothesis,
   parseInspection,
   parseReaders,
   pShown,
+  selectivityWords,
+  strongerWords,
 } from "./NeuronFolio/replies";
 import {
   type FaceNotes,
@@ -3959,16 +3964,21 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
   const [pos, setPos] = useState("");
   const [neg, setNeg] = useState("");
   const [ran, setRan] = useState(false);
+  // the two lists as matched pairs, line for line: the first that should fire with the first that should stay quiet
+  const [paired, setPaired] = useState(false);
   const P = lines(pos);
   const N = lines(neg);
+  const unmatched = paired && P.length !== N.length;
   const run = () => {
     setRan(true);
-    if (P.length && N.length) void testHypothesis(m.idx, m.neuron, P, N);
+    if (P.length && N.length && !unmatched) void testHypothesis(m.idx, m.neuron, P, N, { paired });
   };
   let status: React.ReactNode = "";
   if (entry?.pending)
-    status = `Sent to the instrument: ${count(P.length, "where it should fire")}, ${count(N.length, "where it should stay quiet")}. Its answer will fill the table marked “its answer”.`;
+    status = `Sent to the instrument${entry.sent?.paired === true ? " as matched pairs" : ""}: ${count(P.length, "where it should fire")}, ${count(N.length, "where it should stay quiet")}. Its answer will fill the table marked “its answer”.`;
   else if (ran && (P.length === 0 || N.length === 0)) status = "Write at least one sentence on each side first.";
+  else if (ran && unmatched)
+    status = `Matched pairs need as many sentences on each side, line for line: there are ${P.length} where it should fire and ${N.length} where it should stay quiet. Nothing was sent.`;
   else if (res) status = `Answered, on ${count(res.pos.length, "where it should fire")} and ${count(res.neg.length, "where it should stay quiet")}.`;
   const ph = <span style={PH}>[APPEARS AFTER THE TEST]</span>;
   const peakPos = res ? mean(res.pos.map((r) => r.peak)) : null;
@@ -3976,22 +3986,33 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
   const workFace = res && res.meanPos !== null ? (res.meanPos >= 0 ? 1 : -1) : null;
   // the test's d, from sample variances; an older server's, from population variances
   const dShown = res ? (res.test ? res.test.d : res.d) : null;
-  // how its p was counted: over every split, or from seeded shuffles
-  const sel = res?.test;
+  // the test of the last word-piece it is judged by (the paired one when the server read matched pairs), and how its
+  // p was counted: over every split or sign flipping, or from seeded random ones
+  const sel = res ? judged(res) : null;
+  const pairedRun = sel?.design === "paired";
   const pSel = sel ? pShown(sel) : null;
-  const howP =
-    sel?.pMethod === "exact" ? `, over all ${sel.splits ?? "?"} splits` : sel?.pMethod ? `, from ${sel.splits ?? "?"} shuffles (seed ${sel.seed ?? "?"})` : "";
+  const howP = sel ? howCounted(sel) : "";
+  // the same test on each sentence's strongest word-piece, and the stronger of the two readings with the choice paid for
+  const peakSel = res?.peak ?? null;
+  const eitherSel = res?.either ?? null;
+  const eitherOf = eitherSel ? strongerWords(eitherSel) : null;
   // what was (or will be) sent: the folio sends bare text, so each sentence is read at its own last word-piece
   const sentChat = entry?.sent?.chat === true;
   const sentSystem = typeof entry?.sent?.system === "string" ? (entry.sent.system as string) : null;
+  // as matched pairs: what the last test sent, or, before any, what the box says the next will
+  const sentPaired = entry?.sent ? entry.sent.paired === true : paired;
   const hypCode =
     "# MCP (backend/mcp_scientist.py)\n" +
     `test_motif_hypothesis(layer=${m.idx}, neuron_idx=${m.neuron},\n` +
     `    pos_prompts=${JSON.stringify(P)},\n` +
     `    neg_prompts=${JSON.stringify(N)},\n` +
-    `    chat=${sentChat ? "True" : "False"}, system=${sentSystem === null ? "None" : JSON.stringify(sentSystem)})\n\n` +
+    `    chat=${sentChat ? "True" : "False"}, system=${sentSystem === null ? "None" : JSON.stringify(sentSystem)}${sentPaired ? ", paired=True" : ""})\n\n` +
     "# HTTP\nPOST /api/scientist/test_hypothesis\n" +
-    JSON.stringify({ layer: m.idx, neuron_idx: m.neuron, pos_prompts: P, neg_prompts: N, chat: sentChat, system: sentSystem }, null, 2);
+    JSON.stringify(
+      { layer: m.idx, neuron_idx: m.neuron, pos_prompts: P, neg_prompts: N, chat: sentChat, system: sentSystem, ...(sentPaired ? { paired: true } : {}) },
+      null,
+      2,
+    );
   const rowsAll = res ? [...res.pos.map((r) => ({ r, side: "+" })), ...res.neg.map((r) => ({ r, side: "−" }))] : [];
   const fmt = (v: number | null) => (v === null ? "—" : signedRaw(v));
   const sides = (a: number | null, b: number | null) => (
@@ -4050,6 +4071,17 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
               reads neuron {m.neuron} in layer {m.layerNo} on every sentence
             </span>
           </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <label className="check">
+              <input type="checkbox" checked={paired} onChange={(e) => setPaired(e.target.checked)} aria-describedby="hyp-paired-says" />
+              the lines are matched pairs: line 1 with line 1, and so on
+            </label>
+            <span id="hyp-paired-says" style={{ fontSize: "15px", color: MUTED, maxWidth: "640px" }}>
+              Tick it when each sentence that should stay quiet is the twin of the one beside it, changed only in what you think wakes the
+              neuron. The test then asks whether the neuron tells the twins apart, pair by pair. It needs as many lines on each side, and
+              at least six pairs before it will judge: with fewer, no outcome could count as shown.
+            </span>
+          </div>
           <p role="status" style={{ margin: 0, fontSize: "16px", color: INK }}>
             {status}
           </p>
@@ -4058,7 +4090,17 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
         <div aria-live="polite" style={{ flex: "1 1 340px", minWidth: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
           <h3 className="h-sub">its answer</h3>
           <dl style={{ margin: 0, display: "flex", flexDirection: "column" }}>
-            <AnswerRow title="did it tell them apart?" first>
+            <AnswerRow
+              title="did it tell them apart?"
+              sub={
+                pairedRun
+                  ? "(the sentences read as matched pairs, line for line)"
+                  : res && !entry?.pending && entry?.sent?.paired === true
+                    ? "(asked as matched pairs, but this server read them unpaired: it is older than this page)"
+                    : undefined
+              }
+              first
+            >
               {res ? <i>{hypothesisWords(res)}</i> : ph}
             </AnswerRow>
             <AnswerRow
@@ -4069,12 +4111,16 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             </AnswerRow>
             <AnswerRow
               title="could chance do it?"
-              sub="(p: how often the sentences, split between the sides afresh, give a Welch’s t as large; under 0.05 counts)"
+              sub={
+                pairedRun
+                  ? "(p: how often the pairs, each kept or turned about, give a mean difference as large; under 0.05 counts)"
+                  : "(p: how often the sentences, split between the sides afresh, give a Welch’s t as large; under 0.05 counts)"
+              }
             >
-              {res?.test ? (
+              {sel ? (
                 <span style={NUM}>
                   {pSel === null ? "no p" : `p = ${pSel}`}
-                  {res.test.t !== null ? ` · t = ${signed(res.test.t, 2)}` : ""} · n = {nText(res.test)}
+                  {sel.t !== null ? ` · t = ${signed(sel.t, 2)}` : ""} · n = {nText(sel)}
                 </span>
               ) : res ? (
                 "not asked: an older server sets nothing against chance"
@@ -4090,6 +4136,38 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             </AnswerRow>
             <AnswerRow title="strength at its loudest word" sub="(signed, the strongest word-piece in each sentence)">
               {res ? sides(peakPos, peakNeg) : ph}
+            </AnswerRow>
+            <AnswerRow title="apart at its loudest word?" sub="(the same test, on each sentence’s strongest word-piece)">
+              {peakSel ? (
+                <>
+                  <i>{selectivityWords(peakSel)}</i>
+                  {peakSel.atStart ? (
+                    <span style={{ display: "block", fontSize: "15px", color: MUTED }}>
+                      In {peakSel.atStart} of the {res ? res.pos.length + res.neg.length : "?"} sentences the loudest word-piece is the start mark,
+                      which reads the same in every sentence.
+                    </span>
+                  ) : null}
+                </>
+              ) : res ? (
+                "not tested: an older server only reports it"
+              ) : (
+                ph
+              )}
+            </AnswerRow>
+            <AnswerRow
+              title="whichever is stronger"
+              sub="(the last word or the loudest: the choice is made again in every reshuffle, so it is paid for)"
+            >
+              {eitherSel ? (
+                <i>
+                  {eitherOf ? `${eitherOf}: ` : ""}
+                  {selectivityWords(eitherSel)}
+                </i>
+              ) : res ? (
+                "not tested: an older server only reports the peak"
+              ) : (
+                ph
+              )}
             </AnswerRow>
             <AnswerRow title="which face did the work" sub="(the pole your guess belongs to)" last>
               {res && workFace !== null ? (
@@ -4117,6 +4195,7 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             </AnswerRow>
           </dl>
           {res ? <p style={{ margin: 0, fontSize: "15px", color: MUTED }}>Strengths are means over each side’s sentences.</p> : null}
+          {sel ? <p style={{ margin: 0, fontSize: "15px", color: MUTED }}>{ALONE_WORDS}</p> : null}
         </div>
       </div>
       <IfRubrics>
@@ -4176,23 +4255,46 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             <sup>2</sup>/n<sub>+</sub> + s<sub>−</sub>
             <sup>2</sup>/n<sub>−</sub>). Its p is two-sided: of the ways to split all the sentences into n<sub>+</sub> and n<sub>−</sub>, the share
             whose |t| is as large as the one observed, counted over every split when there are at most 10,000, else over 10,000 random splits
-            (seed 0) as (1 + as large) / (1 + 10,000), never 0.
-            {res?.test ? (
+            (seed 0) as (1 + as large) / (1 + 10,000), never 0. Sent as matched pairs (<span className="mono">paired</span>, as many
+            sentences on each side, the first with the first), the test is the mean of the pairs’ differences, and its p the share of the ways
+            to keep or turn about each pair whose mean is as far from 0, counted alike (all 2<sup>pairs</sup> ways up to 10,000); the reply’s{" "}
+            <span className="mono">design</span> says which was run. This folio sends the sentences unpaired unless “the lines are matched
+            pairs” is ticked.
+            {sel ? (
               <>
                 {" "}
-                Returned here: {pSel === null ? "no p" : `p = ${pSel}`}
+                Returned here{pairedRun ? ", paired" : ""}: {pSel === null ? "no p" : `p = ${pSel}`}
                 {howP}
-                , t = {res.test.t === null ? "—" : signedRaw(res.test.t)} on {res.test.df === null ? "—" : res.test.df.toFixed(1)} degrees of freedom, n ={" "}
-                {nText(res.test)}.
+                , t = {sel.t === null ? "—" : signedRaw(sel.t)} on {sel.df === null ? "—" : sel.df.toFixed(1)} degrees of freedom, n ={" "}
+                {nText(sel)}.
               </>
             ) : res ? (
               " An older server sent none."
             ) : null}
           </dd>
+          <dt>the loudest word</dt>
+          <dd>
+            the same test on a<sub>t*</sub> (<span className="mono">selectivity_peak</span>). t* is chosen inside each sentence, whatever its
+            side, so it moves with the sentence in every split and the p is as sound as the last word-piece’s. The start mark is among the
+            word-pieces, and it reads the same in every sentence. To quote whichever of the two readings did better,{" "}
+            <span className="mono">selectivity_either</span> takes the larger of their two |t|’s, and takes it again in every split, so that
+            choice is paid for; its p is never below the p of the reading it came from.
+            {peakSel ? (
+              <>
+                {" "}
+                Returned here: at the loudest word {pShown(peakSel) === null ? "no p" : `p = ${pShown(peakSel)}`}
+                {howCounted(peakSel)}
+                {eitherSel ? `; whichever is stronger, ${pShown(eitherSel) === null ? "no p" : `p = ${pShown(eitherSel)}`}` : ""}.
+              </>
+            ) : res ? (
+              " An older server only reports the peak."
+            ) : null}
+          </dd>
           <dt>verdict</dt>
           <dd>
             a reading that is not a finite number: <span className="mono">CANNOT_TEST</span>; under 4 sentences a side:{" "}
-            <span className="mono">TOO_FEW_TO_JUDGE</span>, whatever the numbers (at three a side no split reaches p &lt; 0.05); p ≥ 0.05: <span className="mono">NOT_SHOWN</span>; else <span className="mono">SELECTIVE_NORTH_POLE (+)</span> when ā<sub>+</sub>{" "}
+            <span className="mono">TOO_FEW_TO_JUDGE</span>, whatever the numbers (at three a side no split reaches p &lt; 0.05; as matched pairs
+            under 6 pairs, since at five no turning about does); p ≥ 0.05: <span className="mono">NOT_SHOWN</span>; else <span className="mono">SELECTIVE_NORTH_POLE (+)</span> when ā<sub>+</sub>{" "}
             &gt; ā<sub>−</sub> and ā<sub>+</sub> &gt; 0, <span className="mono">SELECTIVE_SOUTH_POLE (-)</span> when ā<sub>+</sub> &lt; ā
             <sub>−</sub> and ā<sub>+</sub> &lt; 0, and <span className="mono">DIFFERS_NOT_AS_GUESSED</span> otherwise (the quiet sentences
             fire a face more). The verdict as first built is still sent, for old callers, and is not the answer above: d ≥ 0.8 and ā<sub>+</sub>{" "}
@@ -4203,8 +4305,8 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             {res ? (
               <>
                 {" "}
-                Returned here: {res.test ? <span className="mono">{res.test.verdict}</span> : null}
-                {res.test ? "; as first built " : ""}
+                Returned here: {sel ? <span className="mono">{sel.verdict}</span> : null}
+                {sel ? "; as first built " : ""}
                 <span className="mono">{res.verdict}</span>, d = {res.d === null ? "?" : signedRaw(res.d)}, ā<sub>+</sub> ={" "}
                 {res.meanPos === null ? "?" : signedRaw(res.meanPos)}, ā<sub>−</sub> = {res.meanNeg === null ? "?" : signedRaw(res.meanNeg)}.
               </>
@@ -4212,8 +4314,12 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
           </dd>
           <dt>caveat</dt>
           <dd>
-            the peak is reported but not tested, nor any word-piece but the last. A p is one neuron’s: testing several, correct their p’s together
-            (the study used Benjamini–Hochberg, E6 §2.3). “Selective” marks a gap that chance seldom makes between these sentences, not a cause.
+            two places are tested, the last word-piece and the loudest, and no other. A longer sentence has more word-pieces to be loud on, and
+            the loudest-word test does not tell that from the guess. A p is one neuron’s, and this folio tests one neuron at a time, so its p’s
+            are corrected for no other test: of several neurons tried, some pass by chance. The tool corrects together the neurons one call
+            names (<span className="mono">also</span>; Benjamini–Hochberg q’s under <span className="mono">correction</span>, as the study
+            did, E6 §2.3), and nothing corrects for tests run apart or for sentences tried and changed. “Selective” marks a gap that chance
+            seldom makes between these sentences, not a cause.
             The sentences go in as the instrument is set: each as the user’s turn of a chat when “send it as a chat” is ticked (the reading is then
             at the end of the model’s turn header), as bare text otherwise{res?.raw && (res.raw as { chat?: boolean }).chat !== undefined ? `; this test was sent ${(res.raw as { chat?: boolean }).chat ? "as chats" : "as bare text"}` : ""}. The
             study reads such tests against a matched control and checks them causally (REPORT §3.3, §3.5).

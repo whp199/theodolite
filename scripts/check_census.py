@@ -844,6 +844,20 @@ def run_checks(tmp: Path) -> int:
     check((um.get("unpacker") or {}).get("mode") == "reference" and "unpacker" not in rtm,
           f"the unpacker recorded beside the runtime class, not in it: {um.get('unpacker')}")
     check(cz.runtime_record(None, fa)["act_scale_sha256"] == hashlib.sha256(fa.read_bytes()).hexdigest(), "the runtime record: the stats index's sha256")
+    # the weights a run was taken from, beside the runtime class: recorded, and a run is not continued across them
+    check((um.get("weights") or {}).get("format") == "stand-in" and "weights" not in rtm and cz.weights_differ(um, um) is None
+          and cz.weights_differ({k_: v_ for k_, v_ in um.items() if k_ != "weights"}, um) is None,
+          f"the weights a run was taken from, recorded beside its runtime class; a meta from before the record agrees with any ({um.get('weights')})")
+    elsewhere = pdir / "L3-w.jsonl"
+    cz.take_census(rt, 3, NU, elsewhere, **kp)
+    wm = json.loads(cz.meta_path_of(elsewhere).read_text())
+    cz.write_json_atomic(cz.meta_path_of(elsewhere), {**wm, "weights": {"format": "gguf", "id": "another-file", "sha256_header": "0" * 64}})
+    try:
+        cz.take_census(rt, 3, NU, elsewhere, **kp)
+        said_w = ""
+    except ValueError as e_:
+        said_w = str(e_)
+    check("begun on other weights" in said_w and "name another run" in said_w, f"a run begun on other weights is not continued ({said_w[:120]})")
     calls = [0]
 
     def stop_after(n_: int) -> Any:

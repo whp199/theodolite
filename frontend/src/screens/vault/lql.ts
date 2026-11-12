@@ -191,7 +191,7 @@ export const FORMS: [string, string, string][] = [
   ],
   [
     "DESCRIBE POLE LAYER <l> SLOT <i> [POLARITY +|-]",
-    "Both faces of one neuron, read through the lens and by the naked eye.",
+    "Both faces of one neuron, read through the lens and by the naked eye, with the field notes kept for it.",
     "DESCRIBE POLE LAYER 50 SLOT 5313 POLARITY -",
   ],
   ["DELETE FROM LAYER <l> WHERE slot = <i>", "Silence one neuron, as on the second tab.", "DELETE FROM LAYER 50 WHERE slot = 5313"],

@@ -26,6 +26,17 @@ read neuron labels also mark each one: every NEAREST row and each DESCRIBE POLE 
 hold it back), and the reply carries "label_gate" (`LABEL_GATE_CARD`, the rule) just before "lens". The reply is
 otherwise unchanged: every old key is kept. DESCRIBE, DELETE and ROLLBACK touch no lens and reply as they always have.
 
+DESCRIBE POLE also returns the neuron's field notes with its record, under "field_notes", after the record's own keys
+and just before "label_gate": the name and note the server keeps for the neuron and what its field book says of each
+face (backend/field_notes.py), with who wrote each and when, as the files keep them. They are a person's (or the
+scientist's, once the person has kept them), not a measurement, and the field says so (`measured` false, `caution`);
+nothing of them enters a face's words or its "label_check". With POLARITY written, the field holds that face's notes;
+without, both faces'. A neuron with no notes has the field with nothing in it; a part that could not be read is
+named under `unread`, with the reason under `warning`, and is not passed off as empty. The vault only reads them, and
+through a reader it is given (`LarqlVaultEngine(runtime, field_notes=...)`; the server gives it
+`field_notes.peek_neuron`, which writes nothing and never opens the scientist's unkept proposals, and so does the MCP
+server run alone): given none, as a script's own vault is, it replies as before, without the key.
+
 An edit (DELETE, UPDATE, INSERT) can be heard: given a `voice` (a question, how it is sent, and how long an answer),
 `execute_lql` has the model write its answer the likeliest way just before the edit and again just after, with nothing
 between (`TheodoliteRuntime.write_voice`; the caller holds the GPU lock around all three). The reply then carries
@@ -38,6 +49,7 @@ imports it from here), and so does the MCP tool `query_larql_vault` (`voice_requ
 
 from __future__ import annotations
 
+import copy
 import re
 import shutil
 import subprocess
@@ -68,6 +80,17 @@ EDIT_METHOD = "one down_proj column per edit, rank one, no covariance solve: nam
 # V7 judged steering by 12-word-piece greedy answers (V7_tool_bugs_NOTES.md), hence 12.
 VOICE_MAX_NEW_TOKENS_DEFAULT = 12
 VOICE_MAX_NEW_TOKENS_LIMIT = 64
+# What a neuron's field notes are, said in the reply that carries them (DESCRIBE POLE's "field_notes")
+FIELD_NOTES_CAUTION = (
+    "Notes kept by hand, not a measurement: what a person thinks this neuron does, or what the scientist proposed and "
+    "the person kept (name_by, note_by and each face's by say which). No part of the lens's words or the naked eye's, "
+    "and not counted by label_check."
+)
+# The notes' reader a vault is given: (layer, neuron), both counted from 0 -> {"notes": the neuron's name-and-note entry
+# or None, "faces": {"+": that face's notes or None, "-": likewise}, "unread": the parts it could not read ("notes",
+# "faces"), "warning": None or why}.
+# It must only read, and be safe to call from a worker thread (backend/field_notes.py `peek_neuron`).
+FieldNotesReader = Callable[[int, int], Mapping[str, Any]]
 
 
 class VoiceRequest(BaseModel):
@@ -182,8 +205,10 @@ class PatchOperationRecord:
 class LarqlVaultEngine:
     """Static FFN Vault Index (`vindex-cli` / `larql-cli` VINDEX3) & Live J-VINDEX Weight Surgery."""
 
-    def __init__(self, runtime: TheodoliteRuntime) -> None:
+    def __init__(self, runtime: TheodoliteRuntime, field_notes: Optional[FieldNotesReader] = None) -> None:
         self.runtime = runtime
+        # how DESCRIBE POLE reads a neuron's field notes (`_field_notes`); None: it replies without them, as before
+        self.field_notes_reader = field_notes
         self.active_patches: List[PatchOperationRecord] = []
         self._patch_counter = 0
 
@@ -611,6 +636,39 @@ class LarqlVaultEngine:
         rec.voice = heard
         return {**reply, "patch": asdict(rec), "voice": heard}
 
+    def _field_notes(self, layer_idx: int, neuron_idx: int, face: Optional[str]) -> Dict[str, Any]:
+        """DESCRIBE POLE's "field_notes" for neuron `(layer_idx, neuron_idx)`, as the vault's reader keeps them: read,
+        never written. `notes` is the neuron's name and note with who wrote each and when (None when it has neither),
+        `faces` what the field book says of each face (None where nothing is said): `face` ("+" or "-") alone when the
+        statement wrote POLARITY, else both. `measured` (false) and `caution` say what they are. A file the reader
+        could not read leaves its part empty and named in `unread` ("notes", "faces"), with the reason under `warning`;
+        a reader that fails leaves both so. Either way the record is still sent."""
+        faces = (face,) if face in ("+", "-") else ("+", "-")
+        out: Dict[str, Any] = {
+            "measured": False,
+            "caution": FIELD_NOTES_CAUTION,
+            "notes": None,
+            "faces": {s: None for s in faces},
+            "unread": [],
+            "warning": None,
+        }
+        try:
+            got = self.field_notes_reader(layer_idx, neuron_idx)  # type: ignore[misc]
+            entry, kept = got.get("notes"), got.get("faces") or {}
+            # copies: the reply is the caller's to keep, and nothing it does to it reaches the reader's own tables
+            read = {
+                "notes": copy.deepcopy(dict(entry)) if entry else None,
+                "faces": {s: copy.deepcopy(dict(kept[s])) if kept.get(s) else None for s in faces},
+                "unread": [part for part in ("notes", "faces") if part in (got.get("unread") or ())],
+                "warning": got.get("warning"),
+            }
+        except Exception as exc:
+            read = {
+                "unread": ["notes", "faces"],
+                "warning": f"The field notes could not be read ({_plain(exc)}), so none are shown; nothing was changed.",
+            }
+        return {**out, **read}
+
     def _through_lens(self, reply: Dict[str, Any]) -> Dict[str, Any]:
         """`reply` with the lens its words were read, or its edit written, through named last, under "lens"."""
         return {**reply, "lens": self.runtime.lens_card()}
@@ -618,7 +676,8 @@ class LarqlVaultEngine:
     def execute_lql(self, query: str, voice: Optional[Any] = None) -> Dict[str, Any]:
         """Parse and execute a LARQL / `.patch` statement string. NEAREST, DESCRIBE POLE, UPDATE and INSERT go through
         the J++ lens, so their replies also carry "lens" (see the module docstring); NEAREST and DESCRIBE POLE, which
-        read neuron labels, carry "label_gate" just before it; the rest reply as before. With a `voice`, an edit
+        read neuron labels, carry "label_gate" just before it, and DESCRIBE POLE, given a notes' reader, the neuron's
+        "field_notes" just before that (`_field_notes`); the rest reply as before. With a `voice`, an edit
         (DELETE, UPDATE, INSERT) is heard before and after (`_heard`; the caller holds the GPU lock), and its reply
         carries "voice" before "lens"; every other statement ignores it."""
         q = query.strip().rstrip(";")
@@ -658,12 +717,15 @@ class LarqlVaultEngine:
         if m_pole:
             l_s, i_s, pol_s = m_pole.groups()
             pol = -1.0 if pol_s == "-" else 1.0
-            return self._through_lens(
-                {
-                    **self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol),
-                    "label_gate": LABEL_GATE_CARD,
-                }
-            )
+            record = self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol)
+            notes: Dict[str, Any] = {}
+            if self.field_notes_reader is not None:
+                # the neuron the record is of (a layer or neuron past the last is read as the last), and the face the
+                # statement wrote, if it wrote one; kept in a field of their own, apart from every label
+                l_read = max(0, min(int(l_s), N_LAYERS - 1))
+                n_read = max(0, min(int(i_s), D_FF - 1))
+                notes = {"field_notes": self._field_notes(l_read, n_read, pol_s)}
+            return self._through_lens({**record, **notes, "label_gate": LABEL_GATE_CARD})
 
         # DELETE FROM LAYER <l> WHERE slot = <i>
         m_del = re.search(

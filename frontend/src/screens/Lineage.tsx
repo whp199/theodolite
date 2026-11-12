@@ -11,7 +11,6 @@ import {
   LinApparatus,
   LinkRow,
   M,
-  NotInInstrument,
   To,
   type Dest,
 } from "./lineage/bits";
@@ -552,8 +551,10 @@ const Practices: React.FC = () => (
             whose two readings share none of their first ten, saying why and keeping it in the apparatus. The name a
             folio gives a neuron is the atlas’s name for it, and the folio’s notes, face by face, go to a field book
             the server keeps beside the atlas’s names and notes, for everyone who uses it; the atlas shows them in the
-            neuron’s details. With no server they stay in this browser, and the folio says so. Keeping them with the
-            vault: <NotInInstrument />
+            neuron’s details. With no server they stay in this browser, and the folio says so. The vault returns them
+            with a neuron’s record: <code>DESCRIBE POLE</code> sends its name and each face’s notes under{" "}
+            <code>field_notes</code>, marked as a person’s and not a measurement, apart from the labels; it reads them
+            and never writes them.
           </>
         }
         links={[
@@ -582,7 +583,8 @@ const Practices: React.FC = () => (
         d = −22; E6 §3, item 7: add a permutation p-value, a minimum n and multiple-comparison control); that verdict is
         still sent, for old callers. Its <M>selectivity</M> now gives sample variances, Welch’s t, a permutation p (exact
         up to 10,000 splits, else 10,000 seeded shuffles) and the n each side, and judges nothing below four a side;
-        correcting several neurons’ p’s together is left to the caller. Also{" "}
+        several neurons named in one call have their p’s corrected together (Benjamini–Hochberg), and those of separate
+        calls are left to the caller; it can read the two lists as matched pairs, and tests the peak as well. Also{" "}
         <M>POST /api/scientist/test_hypothesis</M>; on screen, a neuron’s folio, v. It tests when a neuron fires, not
         what it causes.
       </dd>

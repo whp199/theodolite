@@ -59,6 +59,7 @@ from backend.engine_runtime import (
     TheodoliteSweepBundle,
     study_mean_problem,
 )
+from backend.field_notes import peek_neuron
 from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import LarqlVaultEngine, VoiceRequest
 from backend.mcp_scientist import (
@@ -130,7 +131,9 @@ async def lifespan(_app: FastAPI):
         except w4a16_fast.Refused as exc:  # none was asked for, so the server still starts: on the reference, and says why
             logger.warning("%s The server runs on the reference unpacker (set $%s to choose one).", exc, w4a16_fast.UNPACKER_ENV)
             w4a16_fast.install(_RUNTIME, "reference", log=logger.info)
-    _VAULT = LarqlVaultEngine(_RUNTIME)
+    # DESCRIBE POLE returns a neuron's field notes with its record: the vault reads them through this reader, which
+    # only reads (no lock to wait for in the statement's worker thread, nothing written; backend/field_notes.py)
+    _VAULT = LarqlVaultEngine(_RUNTIME, field_notes=peek_neuron)
     bind_runtime(_RUNTIME, _VAULT)
     logger.info("TheodoliteRuntime & LarqlVaultEngine bound and ready.")
     yield
@@ -307,6 +310,10 @@ class MotifHypothesisRequest(BaseModel):
     neg_prompts: List[str]
     chat: bool = False
     system: Optional[str] = None
+    # the two lists are matched pairs, the first with the first and so on: the test pairs them (sign flips)
+    paired: bool = False
+    # further neurons, each [layer, neuron_idx], tested on the same sentences and their p's corrected together
+    also: Optional[List[List[StrictInt]]] = None
 
 
 STEERING_DIRECTIONS = ("legacy", "fnw")
@@ -1534,8 +1541,10 @@ async def api_test_hypothesis(req: MotifHypothesisRequest) -> Dict[str, Any]:
                 neg_prompts=req.neg_prompts,
                 chat=req.chat,
                 system=req.system,
+                paired=req.paired,
+                also=req.also,
             )
-    except ValueError as exc:  # its refusals, in plain words: an empty side, a layer or neuron that does not exist
+    except ValueError as exc:  # its refusals, in plain words: an empty side, a layer or neuron that does not exist, ...
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

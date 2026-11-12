@@ -153,10 +153,10 @@ Where the study read the lens on answers the model wrote itself, they were writt
 
 ## H. The instruct refit (R3)
 
-These entries were written on 2026-10-21 from the local files named in them. Their links were not opened then: R3's network use was limited to its three approved sources (J++'s code, its item files and WikiText-103).
+These entries were written on 2026-10-21 from the local files named in them. Their links were not opened then: R3's network use was limited to its three approved sources (J++'s code, its item files and WikiText-103). They were opened on 2026-11-12: each resolves, [45]'s title, authors and date are as arXiv lists them, and [46]'s repository, revision, file size and sha256 are as written here (Hugging Face's own listing of the file at that revision).
 
-45. **RelP (relevance patching). arXiv:2508.21258, 2025.** https://arxiv.org/abs/2508.21258
-    - *Use:* jpp_lens's LRP module (`src/workspace_lens/lrp/lrp.py` at the commit pinned under [4]) names RelP as what its R-lens backward pass computes: an LRP propagation coefficient in place of the raw gradient, obtained by ordinary autograd over a forward graph with chosen sub-expressions detached. `experiments/scripts/R3_lrp.py` reimplements those rules for Gemma 4 (see NOTICE). Its authors and full title are cited here only as far as jpp_lens cites them.
+45. **Jafari, F. R., Eberle, O., Khakzar, A., Nanda, N. *RelP: Faithful and Efficient Circuit Discovery in Language Models via Relevance Patching*. arXiv:2508.21258, 28 August 2025.** https://arxiv.org/abs/2508.21258
+    - *Use:* jpp_lens's LRP module (`src/workspace_lens/lrp/lrp.py` at the commit pinned under [4]) names RelP as what its R-lens backward pass computes: an LRP propagation coefficient in place of the raw gradient, obtained by ordinary autograd over a forward graph with chosen sub-expressions detached. `experiments/scripts/R3_lrp.py` reimplements those rules for Gemma 4 (see NOTICE). The paper itself was not read for R3: the rules were taken from jpp_lens's code.
 
 46. **returnmoe. *jlens-adapters*: Jacobian-lens adapters for Miru Tracer (Hugging Face; licence "other", named Unlicense on its card).** https://huggingface.co/returnmoe/jlens-adapters
     - Tool: Miru Tracer, https://github.com/returnmoe/miru-tracer (not read by this repository).

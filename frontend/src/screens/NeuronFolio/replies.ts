@@ -153,8 +153,11 @@ export interface HypRow {
   face: 1 | -1;
 }
 
-/** test_motif_hypothesis's test against chance (`selectivity`, backend/mcp_scientist.py motif_statistics): on the last
- * word-piece's readings, Welch's t and a p from splitting the sentences between the sides afresh. */
+/** One of test_motif_hypothesis's tests against chance (backend/mcp_scientist.py). `selectivity` (motif_statistics):
+ * on the last word-piece's readings, Welch's t and a p from splitting the sentences between the sides afresh.
+ * `selectivity_paired` (paired_statistics), when the sentences were sent as matched pairs: the mean of the pairs'
+ * differences and a p from flipping their signs. `selectivity_peak`: the design's test on each sentence's strongest
+ * word-piece. `selectivity_either` (either_statistics): the stronger of the two readings, the choice paid for. */
 export interface Selectivity {
   /** SELECTIVE_NORTH_POLE (+), SELECTIVE_SOUTH_POLE (-), DIFFERS_NOT_AS_GUESSED, NOT_SHOWN, TOO_FEW_TO_JUDGE or
    * CANNOT_TEST (a reading not a finite number) */
@@ -167,21 +170,47 @@ export interface Selectivity {
   meanNeg: number | null;
   /** Cohen's d over the pooled sample variance; null below two sentences a side, or when neither side varies */
   d: number | null;
-  /** Welch's t and its degrees of freedom; null below two sentences a side, or for a gap with no spread at all */
+  /** Welch's t and its degrees of freedom (the paired t and its, in a paired test); null below two sentences a side
+   * (two pairs), for a gap with no spread at all, and in the either test, which has two */
   t: number | null;
   df: number | null;
-  /** two-sided; null below two sentences a side */
+  /** two-sided; null below two sentences a side (two pairs) */
   p: number | null;
   /** p as the server's `words` write it (`p_text`): what the folio shows, since toPrecision rounds an exact tie up
    * where Python rounds it to even (0.125: "0.13" here, "0.12" there) */
   pWords: string | null;
-  /** "exact" (every split) or "permutation" (`splits` shuffles, seeded `seed`) */
+  /** "exact" (every split, or every flipping of the pairs' signs) or "permutation" (`splits` shuffles or `flips`
+   * random flippings, seeded `seed`) */
   pMethod: string | null;
   splits: number | null;
   seed: number | null;
-  /** sentences a side below which it does not judge, and the p it judges by */
+  /** sentences a side (pairs, in a paired test) below which it does not judge, and the p it judges by */
   minN: number | null;
   alpha: number | null;
+  /** "paired" (matched pairs, signs flipped) or "unpaired" (two sets, split afresh); null from a server that says
+   * neither, which ran the unpaired one */
+  design: string | null;
+  /** where each sentence was read: "last word-piece", "strongest word-piece", or both, in the either test */
+  readAt: string | null;
+  /** a paired test: how many pairs, the mean of their differences, and how many flippings its p was counted over */
+  nPairs: number | null;
+  meanDiff: number | null;
+  flips: number | null;
+  /** the least p this many sentences can give */
+  leastP: number | null;
+  /** the peak test: how many sentences have the start mark as their strongest word-piece, and the server's note of it */
+  atStart: number | null;
+  note: string | null;
+  /** the either test: the reading that told the sides apart more ("last word-piece" or "strongest word-piece") */
+  stronger: string | null;
+}
+
+/** What a call's p's are corrected for (`correction`): nothing when it tested one neuron (`tests` 1, `method` null),
+ * as the folio always does. */
+export interface Correction {
+  method: string | null;
+  tests: number | null;
+  words: string | null;
 }
 
 export interface Hypothesis {
@@ -193,6 +222,17 @@ export interface Hypothesis {
   meanNeg: number | null;
   /** the test against chance; null from an older server, which sends none */
   test: Selectivity | null;
+  /** "paired" when the server read the sentences as matched pairs, else "unpaired"; null from a server that cannot
+   * pair (it ran the unpaired test whatever was asked) */
+  design: string | null;
+  /** the paired test of the last word-piece, when the sentences were sent as matched pairs; else null */
+  paired: Selectivity | null;
+  /** the design's test on each sentence's strongest word-piece; null from a server that only reports the peak */
+  peak: Selectivity | null;
+  /** the stronger of the two readings, the choice between them paid for; null as `peak` */
+  either: Selectivity | null;
+  /** what the p's are corrected for; null from a server that does not say */
+  correction: Correction | null;
   pos: HypRow[];
   neg: HypRow[];
   signature: Tok[] | null;
@@ -212,8 +252,8 @@ function parseSelectivity(v: unknown): Selectivity | null {
     meanPos: num(s.mean_pos),
     meanNeg: num(s.mean_neg),
     d: num(s.cohens_d),
-    t: num(s.welch_t),
-    df: num(s.welch_df),
+    t: num(s.welch_t) ?? num(s.paired_t),
+    df: num(s.welch_df) ?? num(s.paired_df),
     p: num(s.p),
     pWords: str(s.p_text),
     pMethod: str(s.p_method),
@@ -221,7 +261,21 @@ function parseSelectivity(v: unknown): Selectivity | null {
     seed: num(s.seed),
     minN: num(s.min_n),
     alpha: num(s.alpha),
+    design: str(s.design),
+    readAt: str(s.read_at),
+    nPairs: num(s.n_pairs),
+    meanDiff: num(s.mean_diff),
+    flips: num(s.flips),
+    leastP: num(s.least_p),
+    atStart: num(s.at_start),
+    note: str(s.note),
+    stronger: str(s.stronger),
   };
+}
+
+function parseCorrection(v: unknown): Correction | null {
+  const c = obj(v);
+  return c ? { method: str(c.method), tests: num(c.tests), words: str(c.words) } : null;
 }
 
 export function parseHypothesis(d: unknown): Hypothesis | null {
@@ -244,6 +298,11 @@ export function parseHypothesis(d: unknown): Hypothesis | null {
     meanPos: num(o.mean_pos_signed_act),
     meanNeg: num(o.mean_neg_signed_act),
     test: parseSelectivity(o.selectivity),
+    design: str(o.design),
+    paired: parseSelectivity(o.selectivity_paired),
+    peak: parseSelectivity(o.selectivity_peak),
+    either: parseSelectivity(o.selectivity_either),
+    correction: parseCorrection(o.correction),
     pos: rows(o.pos_prompt_results),
     neg: rows(o.neg_prompt_results),
     signature: toks(o.pole_j_vindex_signature),
@@ -279,15 +338,25 @@ export function pText(p: number, alpha = 0.05): string {
 /** A test's p as shown: the server's own writing of it, else written here; null when it has none. */
 export const pShown = (t: Selectivity): string | null => t.pWords ?? (t.p === null ? null : pText(t.p, t.alpha ?? 0.05));
 
-/** How many sentences each side had: "4 a side", or "6 and 4" (where it should fire, then where quiet). */
+/** How many sentences each side had: "4 a side", or "6 and 4" (where it should fire, then where quiet); in a paired
+ * test, how many pairs: "6 pairs". */
 export const nText = (t: Selectivity): string =>
-  t.nPos !== null && t.nPos === t.nNeg ? `${t.nPos} a side` : `${t.nPos ?? "?"} and ${t.nNeg ?? "?"}`;
+  t.design === "paired"
+    ? `${t.nPairs ?? "?"} pair${t.nPairs === 1 ? "" : "s"}`
+    : t.nPos !== null && t.nPos === t.nNeg
+      ? `${t.nPos} a side`
+      : `${t.nPos ?? "?"} and ${t.nNeg ?? "?"}`;
 
-/** The test against chance in plain words, hedged as the server's own `words` are: what it found, its p and its n. */
+/** One test against chance in plain words, hedged as the server's own `words` are: what it found, its p and its n.
+ * Where it read the sentences (the last word-piece, the strongest, the stronger of the two) is for the page to say
+ * beside it: the server's words for the peak and the either test begin with that, and these do not. */
 export function selectivityWords(t: Selectivity): string {
   const p = pShown(t);
   const n = nText(t);
-  if (t.verdict === "TOO_FEW_TO_JUDGE") return `too few to judge: n = ${n}, and the test needs at least ${t.minN ?? 4} a side`;
+  if (t.verdict === "TOO_FEW_TO_JUDGE")
+    return t.design === "paired"
+      ? `too few to judge: n = ${n}, and the paired test needs at least ${t.minN ?? 6} pairs`
+      : `too few to judge: n = ${n}, and the test needs at least ${t.minN ?? 4} a side`;
   if (t.verdict === "NOT_SHOWN") return p === null ? `no difference shown: n = ${n}` : `no difference shown: p = ${p}, n = ${n}`;
   if (t.verdict.startsWith("SELECTIVE_NORTH_POLE")) return `selective on its positive face, p = ${p}, n = ${n}`;
   if (t.verdict.startsWith("SELECTIVE_SOUTH_POLE")) return `selective on its negative face, p = ${p}, n = ${n}`;
@@ -298,8 +367,30 @@ export function selectivityWords(t: Selectivity): string {
   return t.words ?? t.verdict;
 }
 
+/** The test of the last word-piece the folio judges by: the paired one when the sentences were read as matched pairs,
+ * else the unpaired one; null from an older server, which sends none. */
+export const judged = (h: Hypothesis): Selectivity | null => h.paired ?? h.test;
+
 /** What the folio says the test found: the test against chance, or an older server's threshold, hedged. */
-export const hypothesisWords = (h: Hypothesis): string => (h.test ? selectivityWords(h.test) : verdictWords(h.verdict));
+export const hypothesisWords = (h: Hypothesis): string => {
+  const t = judged(h);
+  return t ? selectivityWords(t) : verdictWords(h.verdict);
+};
+
+/** How a test's p was counted, to follow the p: over every relabelling, or from seeded random ones. */
+export function howCounted(t: Selectivity): string {
+  const [n, every, some] = t.design === "paired" ? [t.flips, "sign flippings", "random sign flippings"] : [t.splits, "splits", "shuffles"];
+  if (t.pMethod === "exact") return `, over all ${n ?? "?"} ${every}`;
+  return t.pMethod ? `, from ${n ?? "?"} ${some} (seed ${t.seed ?? "?"})` : "";
+}
+
+/** The either test's stronger reading as the folio names the two: "the last word" or "the loudest word". */
+export const strongerWords = (t: Selectivity): string | null =>
+  t.stronger === "last word-piece" ? "the last word" : t.stronger === "strongest word-piece" ? "the loudest word" : null;
+
+/** What one neuron's test is not corrected for, as the folio says it under its answer. */
+export const ALONE_WORDS =
+  "One neuron, one test: its p is corrected for no other. Try several neurons and some will pass by chance, so their p’s want correcting together.";
 
 /** One word-piece of a causal check: its change of log-probability c and its log-probability before and after (means
  * over the texts in study mode). */

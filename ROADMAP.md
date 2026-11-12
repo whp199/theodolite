@@ -14,7 +14,10 @@ its first calibration and for rented cards, built the passages, one field book, 
 night of 28–29 October 2026 (`f88dba5`, `88e832d`, `4e38b6d` and that night’s review), once the calibration, the
 passages and the wiring’s check had been taken on the model; sections iii and vi brought up to date on 29 October
 2026, after the drive, the sampled push, the vault’s example edit and a second steer-lens layer were checked on the
-model; what each hard job costs is in `COMPUTE.md`.</sub>
+model; section vii carried on through 2 November 2026 (the GGUFs on the card) and section vi through 12 November 2026
+(the eleven whole layers of the census, the census read by seeking and searched across layers, the trials beside the
+band and the second volunteer kit), each entry dated where it stands; what each hard job costs is in
+`COMPUTE.md`.</sub>
 
 <br>
 
@@ -121,8 +124,12 @@ against the instrument, leave three more:
 
 - read each face in long passages, not only its top word-pieces: the passages are built and gathered on the 31B
   (condition 1), not yet validated as labels;
-- keep the field notes with the vault: the server keeps them now, the name as the atlas’s and each face’s notes in a
-  field book beside it (§iii), but not with the vault’s records (`DESCRIBE POLE` does not return them);
+- keep the field notes with the vault: **done** (12 November 2026). The server keeps them, the name as the atlas’s and
+  each face’s notes in a field book beside it (§iii), and `DESCRIBE POLE` now returns them with the neuron’s record,
+  under `field_notes`: the name and note with who wrote each and when, and both faces’ notes, or the one face
+  `POLARITY` names. They are marked as kept by hand, not measured, and stand apart from the labels and their
+  `label_check`; the vault reads them and never writes them, and a proposal of the scientist’s not yet kept is not
+  among them (`check_vault_voice.py`). Not seen in a browser yet: the console’s lines were checked as text;
 - watch a neuron form across training checkpoints: no intermediate checkpoints of Gemma 4 31B are known; the base model
   against the instruct one is the nearest substitute, and needs the base model and the GPU.
 
@@ -203,9 +210,23 @@ Looking upstream at what builds a neuron is in the folio now (§iii).
   two-sided p from splitting the sentences between the sides afresh (exact over every split up to 10,000 of them, else
   10,000 shuffles under seed 0); hedged words (“selective on its + face, p = 0.029, n = 4 a side”), and no judgement
   below four sentences a side. The folio shows that; the verdict as first built is still sent, for old callers
-  (`scripts/check_hypothesis_test.py`). Still open: each test is one neuron’s, so p’s from several are not corrected
-  together (the study used Benjamini–Hochberg, E6 §2.3); it is unpaired, where E6’s own test paired matched sentences
-  with sign flips; the peak is reported, not tested.
+  (`scripts/check_hypothesis_test.py`). Since built (12 November 2026, each against a worked or enumerated reference
+  in that check, and a seeded run of 2,000 neurons with no effect, of which the peak and the either test each find
+  about one in twenty at 0.05, as they should, where the better of the two unpaid finds about one in ten): `paired` reads the
+  two lists as matched pairs, as E6’s own test did (`selectivity_paired`: the mean of the pairs’ differences, its p by
+  flipping their signs, exact over all 2ⁿ flippings up to 10,000, and no judgement below six pairs, since at five no
+  flipping reaches 0.05); the peak is tested as the last word-piece is (`selectivity_peak`), and `selectivity_either`
+  pays for quoting whichever of the two did better (the larger |t|, taken again under every relabelling); `also`
+  names further neurons to test on the same sentences in one call, and their p’s come back corrected together
+  (`correction`: Benjamini–Hochberg q’s, each with how many tests it is over; E6 §2.3). A neuron tested alone is told
+  in words, in the reply and the folio, that its p is corrected for no other. The folio has a box for pairing (“the
+  lines are matched pairs”), refuses unequal sides before anything is sent, and says so when a server from before the
+  paired test answered unpaired; the panel was driven in a headless browser on the CPU stand-in (an unequal pair of
+  lists refused, six pairs read as pairs, the same lines read unpaired with the box cleared), not yet on the 31B.
+  Still open: the folio tests one neuron at a time (`also` is the request’s); nothing corrects for tests run in
+  separate calls or for sentences tried and changed; the peak counts the start mark among a sentence’s word-pieces
+  (not yet looked at on the 31B: where the start mark is the loudest the peak test can show nothing) and does not tell
+  a longer sentence from a louder one; no place but the last word-piece and the peak is tested.
 - **One field book. Built.** A neuron’s folio reads and writes through the server whenever it answers for the neuron:
   its name is the atlas’s name (`field_notes.json`, by the reader), and its notes, face by face (how many jobs, the
   pattern in words, the four ticks), go to `field_book.json` beside it (`/api/atlas/fieldbook`; ARCHITECTURE §4.7), a
@@ -294,9 +315,9 @@ Still open here:
   was chosen from.
 - **The README’s pictures.** The views in README §iii were taken before this round, with the reading options as first
   built and before the label gate; their captions say so. They want retaking from a live sighting.
-- **References.** Section H of `REFERENCES.md` ([45] and [46], R3’s sources) was written from local files; its links
-  were not opened, and could not be from the machine of 28 October either (its network refused arxiv.org and
-  huggingface.co).
+- **References. Opened.** Section H of `REFERENCES.md` ([45] and [46], R3’s sources) was written from local files, its
+  links unopened. On 12 November 2026 each was opened: both resolve, [45] now carries its title, authors and date as
+  arXiv lists them, and [46]’s revision, file size and sha256 are as Hugging Face lists that file.
 
 <br>
 
@@ -667,7 +688,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card
   holds once, then keep that `--batch`. Each meta records the runtime it was written on (the card, the versions, the
-  commit, the stats index’s sha256) and warns when that changes; the unpacker is recorded beside it. `--shard i/n`
+  commit, the stats index’s sha256) and warns when that changes; the unpacker is recorded beside it, and, since 12
+  November 2026, the weights the answers were taken from (`weights`, the card the indexes carry: the checkpoint’s
+  weight files, or a GGUF’s fingerprint), across which a run is not continued, merged or joined. `--shard i/n`
   writes whole chunks, each shard but the first with a canary batch, and the merge refuses a missing shard or answer
   (unless `--partial`) and compares the canaries; a shard is never served as a layer’s census. The census frees the J++
   lens after loading and reads each step back in one transfer. `scripts/verify_atlas_writer.py` measures the writer’s
@@ -877,8 +900,9 @@ in order:
 - **The atlas’s builds and the census on the CPU.** Both take a GGUF and the CPU. The lens build and the wiring are
   products of the weights (hours on a CPU, inferred); the stats and passages passes are a forward per window (days
   even through int4mm); the steer lens stays the GPU’s; a whole census layer is weeks to months (about 21 s a step of 64
-  rows through int4mm, inferred), so the CPU serves pilots. The census meta’s runtime record should also carry the
-  weights card. Blocked by compute.
+  rows through int4mm, inferred), so the CPU serves pilots. A census meta now names the weights its answers were
+  taken from (`weights`, beside the runtime record, 12 November 2026; §vi), so a run begun on the checkpoint is not
+  continued from a GGUF. Blocked by compute.
 - **The CPU’s memory.** The estimates are arithmetic set against the card’s two measurements and lean high by about
   half: a pilot on a CPU should measure a sweep’s and a census batch’s peak and recalibrate them.
 - **Beyond the 31B.** Refused today: Gemma 4’s mixture of experts (26B-A4B), its per-layer embeddings (E2B, E4B), its

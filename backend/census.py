@@ -1674,6 +1674,12 @@ def runtime_record(device: Any = None, act_scale: Optional[Path] = None) -> Dict
     }
 
 
+def _weights_card(rt: Any) -> Dict[str, Any]:
+    from backend.runtime_factory import weights_card  # (imported here: the factory loads the runtimes)
+
+    return weights_card(rt)
+
+
 def runtime_differ(old: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> List[str]:
     """The fields two runtime records disagree on ([] where either is missing: a run taken before they were kept)."""
     if not old or not new:
@@ -1747,6 +1753,16 @@ def settings_differ(old: Dict[str, Any], new: Dict[str, Any]) -> List[str]:
     if p_old is not None and p_new is not None and abs(float(p_old) - float(p_new)) > 1e-4 * max(1.0, abs(float(p_new))):
         differ.append("p50")
     return differ
+
+
+def weights_differ(old: Dict[str, Any], new: Dict[str, Any]) -> Optional[str]:
+    """How the weights two runs' metas name differ (their `weights`, `runtime_factory.weights_card`: the checkpoint's
+    repo and weight files, or a GGUF's fingerprint), in plain words; None when they are the same as far as the two
+    cards tell, or when either meta is from before a run recorded its weights (`atlas_index.weights_differ`, which
+    the indexes are compared by). Answers written on two sets of weights are two models' answers, not one run."""
+    from backend.atlas_index import weights_differ as differ
+
+    return differ(old.get("weights"), new.get("weights"))
 
 
 def write_census_batch(rt: Any, layer: int, prompt_ids: Sequence[int], delta: Any, *, max_new: int, stop_ids: Sequence[int],
@@ -1949,6 +1965,9 @@ def take_census(
         "unpacker": w4a16_fast.describe(rt),
         "d_ff": int(N), "neuron_ids": neuron_ranges(neurons), "batch": int(batch),
         "runtime": runtime_record(w.device, p50_file),
+        # what the answers were taken from (runtime_factory.weights_card: the checkpoint's weight files, or a GGUF's
+        # fingerprint), beside the runtime class, not in it: a run is not continued, merged or joined across weights
+        "weights": _weights_card(rt),
     }
     if stage:
         if int(seed) == stage.get("screen_seed"):
@@ -2001,6 +2020,8 @@ def take_census(
         if was:
             # a canary already here is kept only where this command would write it: the same settings, the same runtime
             differ = settings_differ(was, meta) + [f"the runtime's {k}" for k in runtime_differ(was.get("runtime"), meta["runtime"])]
+            if weights_differ(was, meta):
+                differ.append(f"the weights: {weights_differ(was, meta)}")
             if differ:
                 raise ValueError(f"{canary.name} was taken with other settings or on another runtime ({', '.join(differ)}; "
                                  f"{about.name} holds what it was taken with); name another run (--run), or remove both to "
@@ -2032,6 +2053,10 @@ def take_census(
         if differ:
             raise ValueError(f"{out_path.name} was taken with other settings ({', '.join(differ)}); name another run "
                              "(--run) or remove it.")
+        other = weights_differ(old, meta)
+        if other:
+            raise ValueError(f"{out_path.name} was begun on other weights ({other}): two sets of weights do not write one "
+                             "run; name another run (--run).")
         was = old.get("shard") or {}
         if (was.get("i"), was.get("n")) != ((int(shard[0]), int(shard[1])) if shard else (None, None)):
             raise ValueError(f"{out_path.name} is shard {was['i']} of {was['n']} of a run: it is continued only as that shard "
@@ -2178,6 +2203,8 @@ def merge_runs(inputs: Sequence[Path], out: Path, partial: bool = False) -> Tupl
         differ = settings_differ(metas[0], m)
         if differ:
             raise ValueError(f"{p.name} was taken with other settings than {inputs[0].name} ({', '.join(differ)}).")
+        if weights_differ(metas[0], m):
+            raise ValueError(f"{p.name} was taken on other weights than {inputs[0].name} ({weights_differ(metas[0], m)}).")
     n_in, n_out, _, _ = _join_rows(inputs, Path(out))
     meta = dict(metas[0])
     meta["shards"] = [p.name for p in inputs]
@@ -2247,6 +2274,8 @@ def join_controls(neurons_run: Path, controls_run: Path, out: Path) -> Dict[str,
     differ = [k for k in settings_differ(mn, mc) if k not in JOIN_FREE]
     if differ:
         raise ValueError(f"{controls_run.name} was taken with other settings than {neurons_run.name} ({', '.join(differ)}).")
+    if weights_differ(mn, mc):
+        raise ValueError(f"{controls_run.name} was taken on other weights than {neurons_run.name} ({weights_differ(mn, mc)}).")
     unpushed: List[Dict[Tuple[str, int, str, float], Any]] = []
     for p, m in ((neurons_run, mn), (controls_run, mc)):
         keys = set()
