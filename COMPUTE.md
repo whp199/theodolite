@@ -154,10 +154,11 @@ the causal check would have to pass `verify_causal_check.py` against N1A and N1V
    (`census_tools.py curves <layer> --weights`), then `calib_rel` and `calib_ceil` on four to six layers (`census_run.py
    --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16`), on the home card.
    **Taken** (28 October 2026: both ladders at six layers, 64 + 64 units; `experiments/results/atlas_calibration/`).
-   `break_rel`’s doses, ±1 and ±2 of the stream, were chosen from them and are counted calibrated at layers 40–50 alone
-   (pages 41–51), the owner’s choice of 29 October 2026 on its trial (`census.DOSES_CALIBRATED`;
-   `experiments/results/census_break_rel_trial/`); the doses at every other layer, and `main_rel`’s, are not yet
-   calibrated (ROADMAP §vi).
+   `break_rel`’s doses, ±1 and ±2 of the stream, were chosen from them and are counted calibrated at layers 39–51
+   (pages 40–52): 40–50 the owner’s choice of 29 October 2026 on its trial (`census.DOSES_CALIBRATED`;
+   `experiments/results/census_break_rel_trial/`), 39 and 51 counted in on 12 November on a trial of each
+   (`experiments/results/census_neighbour_trials/`; a trial is about 80 minutes on the home card); the doses at every
+   other layer, and `main_rel`’s, are not yet calibrated (ROADMAP §vi).
 2. **A pilot on the card that will do the work**, one hour: the decode step and peak memory for each unpacker at several
    batches, the unpacker self-tests, the batch the card holds, the writer’s noise floor, one steer-lens layer timed, a
    canary batch against one written on the home card, the size of a run file once compressed (`scripts/pod/pilot.sh`).

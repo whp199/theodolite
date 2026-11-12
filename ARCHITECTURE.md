@@ -867,12 +867,14 @@ on Qwen3.5-4B, not calibrated here; `break_rel`'s, ±1 and ±2 of the stream, we
 ladders of 28 October 2026, 64 neurons and 64 controls at each of layers 20, 30, 40, 45, 50 and 57, on which text
 breaks first at ±2 of the stream at layers 40 and 45, at ±1 for the neurons at 50 and at +2 and −1 for them at 57 (the
 controls at ±2 at both), at ±0.5 at 20 and ±1 at 30, and calibrated at layers 40–50 by its trial of 29 October 2026,
-taken at layer 45 alone and carried to 40–50 by the rules fixed before it, `experiments/results/census_break_rel_trial`;
-the text the pages show counts these layers from 1, 41–58, 41–51 and 46).
+taken at layer 45 alone and carried to 40–50 by the rules fixed before it, `experiments/results/census_break_rel_trial`,
+and at 39 and 51 by a trial of each on 12 November 2026, `experiments/results/census_neighbour_trials`;
+the text the pages show counts these layers from 1, 41–58, 41–51, 46, and 40 and 52).
 The card says `doses_calibrated` where `DOSES_CALIBRATED` names the run's design and its layer lies in the span given
-there (`census.doses_calibrated`): `break_rel` at layers 40–50, the owner's choice on the trial's verdict, which by the
-rules fixed before it licensed 40–57, though at 57 its probe passed by 0.0008 and its lead could not be told from how
-the text survives. `doses_calibrated_layers` gives that span (None for a design calibrated at none), and a design named
+there (`census.doses_calibrated`): `break_rel` at layers 39–51. 40–50 was the owner's choice on the first trial's
+verdict, which by the rules fixed before it licensed 40–57, though at 57 its probe passed by 0.0008 and its lead could
+not be told from how the text survives; 39 and 51 were counted in on 12 November 2026, each on a trial of its own
+that passed, and the span grows only so: a passed trial at the layer, then the owner's word. `doses_calibrated_layers` gives that span (None for a design calibrated at none), and a design named
 there speaks on the card with `DOSES_FROM`'s words, not those its runs' metas recorded before its calibration was. Every
 other run's doses are said to be not yet calibrated on this model, or not at this layer for a design calibrated at
 others: in red on the census and details tabs, and in the left panel's census head (where the run has controls). Runs
@@ -924,7 +926,7 @@ mass and p still count them, and `census_layer` marks a ranking made before the 
 census card says what a lead says (`lead_says`, by the run's reading): the neuron's strongest words stand further above
 the mean they are set against than nearly every random direction's own do, not that they share a theme. A `break_rel`
 census takes 48 pieces, a batch of 64 and 2,048 controls unless told (`run_defaults`), and its doses count as calibrated
-only at layers 40–50 and for answers of 32 or 48 pieces (`DOSES_CALIBRATED_MAX_NEW`). `census_tools.py` ranks (`.units.jsonl`, with the word-shift score, each record carrying the reading it
+only at layers 39–51 and for answers of 32 or 48 pieces (`DOSES_CALIBRATED_MAX_NEW`). `census_tools.py` ranks (`.units.jsonl`, with the word-shift score, each record carrying the reading it
 was ranked with, `reading`, which the card reports; a file without one was ranked by `READING_DEFAULT`), merges
 shards, writes the depth report (each run read as its design is; each entry names its dose unit, design and reading,
 with the coherence at each of its doses and the neurons' AUC against the controls; in the stream's unit one nominal

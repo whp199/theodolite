@@ -1182,9 +1182,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             A rank is a lead, not a finding: with 256 controls about one neuron in 257 lands above all of them by chance
             alone, some 84 of a layer’s 21,504. A main_rel census’s doses are neuron-explorer’s, chosen on Qwen3.5-4B,
             and not yet calibrated on this model. break_rel’s were chosen for layers 41–58 on this model’s two
-            calibration ladders and are calibrated at layers 41–51 by a trial fixed before it was taken, at layer 46 on
-            1,022 fresh neurons against 1,024 controls; not at 52–58, where its probe at layer 58 passed by 0.0008 and its lead
-            could not be told from how the text survives.
+            calibration ladders and are calibrated at layers 40–52: at 41–51 by a trial fixed before it was taken, at
+            layer 46 on 1,022 fresh neurons against 1,024 controls, and at 40 and 52 by a trial of each like it (12
+            November 2026), both passing; not at 53–58, where its probe at layer 58 passed by 0.0008 and its lead could
+            not be told from how the text survives, nor below 40.
             Where a census’s doses are not calibrated at its layer, a low rank can mean only that the dose was wrong for
             the layer. break_rel is the design a census takes unless another is named. At its ±2 doses neurons and
             controls alike break into loops on the same few words (in its trial most neurons it named listed same, own or
@@ -1200,7 +1201,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             −2, −1, +1 and +2 of the stream (chosen for layers 41–58 on the ladders of 28 October, 64 + 64 units at
             layers 21, 31, 41, 46, 51 and 58, on which text breaks first at ±0.5 at layer 21, ±1 at 31 and ±2 at 41 and
             46, and for the neurons at ±1 at 51 and at +2 and −1 at 58, the controls at ±2 at both; calibrated at layers
-            41–51 by its trial of 29 October). Greedy answers. A
+            40–52: 41–51 by its trial of 29 October, 40 and 52 by their own of 12 November). Greedy answers. A
             word (three letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5), for main_rel
             against the average unit over pushes of at most 1.6 of the stream with every word of the unpushed answers
             left out, for break_rel against the controls’ mean alone over every answer with the answer’s own question’s

@@ -1380,7 +1380,7 @@ def run_checks(tmp: Path) -> int:
               and "write ceiling" not in str(exc), f"break_rel in the ceiling unit is refused, its doses named as they are ({exc})")
     rep = cz.depth_report({3: brun})
     check(rep and rep[0].get("design") == "break_rel" and set(rep[0]["coherence"]) == {"-2", "-1", "+1", "+2"} and 0.0 <= rep[0]["auc"] <= 1.0
-          and rep[0]["reading"] == cz.reading_of("break_rel") and "not yet calibrated on this model at this layer (only at layers 40-50, "
+          and rep[0]["reading"] == cz.reading_of("break_rel") and "not yet calibrated on this model at this layer (only at layers 39-51, "
           "counted from 0)" in rep[0]["dose_note"], f"depth report: a break_rel run read its way, coherence at its doses, its doses "
           f"not calibrated at the stand-in's layer 3 ({rep[:1]})")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "rank", str(brun)], env=env, capture_output=True, text=True, timeout=300)
@@ -1389,13 +1389,13 @@ def run_checks(tmp: Path) -> int:
     bunits = list(cz.read_rows(cz.units_path_of(brun))) if cz.units_path_of(brun).exists() else []
     check(bunits and all(u_.get("reading") == cz.reading_of("break_rel") for u_ in bunits), "the ranking file records the reading it was made with")
     bcard = atlas_routes.census_card({"path": brun, "meta": bmeta, "null": {}, "units": bunits})
-    # doses_calibrated follows census.DOSES_CALIBRATED at the run's layer: break_rel's at layers 40-50 (the owner's
-    # choice on its trial's verdict, 29 October 2026), so not at the stand-in's layer 3; a design named there speaks with
+    # doses_calibrated follows census.DOSES_CALIBRATED at the run's layer: break_rel's at layers 39-51 (the owner's
+    # choice on its trials' verdicts, 29 October and 12 November 2026), so not at the stand-in's layer 3; a design named there speaks with
     # DOSES_FROM's words, not the ones its meta recorded before its calibration was
-    check(cz.DOSES_CALIBRATED == {"break_rel": (40, 50)}
-          and [cz.doses_calibrated("break_rel", l_) for l_ in (39, 40, 45, 50, 51, 57)] == [False, True, True, True, False, False]
+    check(cz.DOSES_CALIBRATED == {"break_rel": (39, 51)}
+          and [cz.doses_calibrated("break_rel", l_) for l_ in (38, 39, 40, 45, 50, 51, 52, 57)] == [False, True, True, True, True, True, False, False]
           and not cz.doses_calibrated("main_rel", 45) and not cz.doses_calibrated(None, 45) and not cz.doses_calibrated("break_rel", None),
-          f"census.doses_calibrated: break_rel's doses at layers 40-50 alone ({cz.DOSES_CALIBRATED})")
+          f"census.doses_calibrated: break_rel's doses at layers 39-51 alone ({cz.DOSES_CALIBRATED})")
     kept_calibrated = cz.DOSES_CALIBRATED
     try:
         cz.DOSES_CALIBRATED = {"break_rel": (3, 3)}
@@ -1405,7 +1405,7 @@ def run_checks(tmp: Path) -> int:
         main_on = atlas_routes.census_card({"path": brun, "meta": {**stale, "design_name": "main_rel"}, "null": {}})
     finally:
         cz.DOSES_CALIBRATED = kept_calibrated
-    check(bmeta.get("layer") == 3 and bcard["doses_calibrated"] is False and bcard["doses_calibrated_layers"] == [40, 50]
+    check(bmeta.get("layer") == 3 and bcard["doses_calibrated"] is False and bcard["doses_calibrated_layers"] == [39, 51]
           and bcard["doses"] == [-2.0, -1.0, 1.0, 2.0] and bcard["reading"] == cz.reading_of("break_rel")
           and bcard_on["doses_calibrated"] is True and bcard_on["doses_calibrated_layers"] == [3, 3]
           and bcard_on["doses_from"] == cz.DOSES_FROM["break_rel"] and bcard_off["doses_calibrated"] is False

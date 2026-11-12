@@ -1,0 +1,155 @@
+{
+ "dose": 0.8,
+ "unit": "the stream's median length at the layer",
+ "layers": {
+  "45": {
+   "up": {
+    "kl_p50": 0.34,
+    "kl_p90": 0.731,
+    "first_piece_among_ten_commonest": 0.0579,
+    "distinct_pieces": 61825,
+    "commonest": [
+     [
+      "In",
+      0.056
+     ],
+     [
+      "in",
+      0.054
+     ],
+     [
+      "IN",
+      0.053
+     ],
+     [
+      "crept",
+      0.016
+     ],
+     [
+      "MY",
+      0.016
+     ],
+     [
+      "इन",
+      0.016
+     ]
+    ]
+   },
+   "down": {
+    "kl_p50": 0.332,
+    "kl_p90": 0.709,
+    "first_piece_among_ten_commonest": 0.0564,
+    "distinct_pieces": 61881,
+    "commonest": [
+     [
+      "In",
+      0.056
+     ],
+     [
+      "in",
+      0.047
+     ],
+     [
+      "IN",
+      0.046
+     ],
+     [
+      "Some",
+      0.016
+     ],
+     [
+      "इन",
+      0.016
+     ],
+     [
+      "MY",
+      0.016
+     ]
+    ]
+   }
+  },
+  "5": {
+   "up": {
+    "kl_p50": 7.502,
+    "kl_p90": 12.102,
+    "first_piece_among_ten_commonest": 0.5854,
+    "distinct_pieces": 7266,
+    "commonest": [
+     [
+      "Could",
+      0.49
+     ],
+     [
+      "Are",
+      0.458
+     ],
+     [
+      "These",
+      0.419
+     ],
+     [
+      "Based",
+      0.396
+     ],
+     [
+      "It",
+      0.275
+     ],
+     [
+      "If",
+      0.27
+     ]
+    ]
+   },
+   "down": {
+    "kl_p50": 7.63,
+    "kl_p90": 12.081,
+    "first_piece_among_ten_commonest": 0.587,
+    "distinct_pieces": 7288,
+    "commonest": [
+     [
+      "Could",
+      0.487
+     ],
+     [
+      "Are",
+      0.459
+     ],
+     [
+      "These",
+      0.411
+     ],
+     [
+      "Based",
+      0.398
+     ],
+     [
+      "It",
+      0.271
+     ],
+     [
+      "If",
+      0.271
+     ]
+    ]
+   }
+  }
+ },
+ "layer_45_against_its_census": {
+  "above every control": {
+   "neurons": 1580,
+   "matched": 0.9829,
+   "neurons_shuffled": 0.0208
+  },
+  "q <= 0.05": {
+   "neurons": 6307,
+   "matched": 0.9258,
+   "neurons_shuffled": 0.0231
+  },
+  "q > 0.05": {
+   "neurons": 15180,
+   "matched": 0.2383,
+   "neurons_shuffled": 0.0336
+  }
+ }
+}

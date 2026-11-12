@@ -347,7 +347,20 @@ layers, the determinism run and the sampled push on 29 October). In this section
   (the forward starts at l + 1), 14 for layer 45, so its cost grows with their number. A shallow layer timed the same
   day checks it: layer 5, which runs 54, took 1,181 s, 7% more than layer 45’s rate gives. So all 60 would be about
   10.1–10.8 hours (inferred, by either layer’s rate over 1,770 layer-forwards). Its dose, the census’s 0.8
-  of the stream, is still to be chosen against the calibration before it is built. On the home card, headless, time a
+  of the stream, is still to be chosen against the calibration before it is built. **What that dose does, read from
+  the two layers already built** (12 November 2026, CPU; [`atlas_steer_dose/`](experiments/results/atlas_steer_dose/)):
+  at layer 45 it moves the next word-piece by a median 0.34 nats (KL from the unpushed one), the readings differ
+  neuron by neuron, and they agree with the layer’s census. For 98.3% of the 1,580 neurons above every control a
+  steer-lens word-piece is one of the neuron’s five census words, or begins one (2.1% with the neurons shuffled);
+  for 92.6% of the 6,307 with q ≤ 0.05; for 23.8% of the rest. At layer 5 the same dose moves it by a median 7.5 nats,
+  and the reading is nearly one reading whichever neuron is pushed: “Could”, “Are”, “These” and “Based” are each
+  listed by 40–49% of the layer’s neurons, on both signs. So 0.8 of the stream is sound where the census is and
+  wrecks the early layers, and the lens needs a dose for each layer. Two rules are open, the owner’s to choose: a
+  push sized, layer by layer, to move the next word-piece as far as layer 45’s does (measured on a sample of neurons
+  at a few doses, about half an hour for the sixty layers), every neuron of a layer pushed alike as now; or a push of
+  one and a half to two times each neuron’s own write ceiling, which is what 0.8 of the stream comes to at layers
+  40–50 (a dose of 1 there is 1.8 to 2.5 ceilings, ARCHITECTURE §6). Either way each layer’s dose is recorded and
+  shown with its words. On the home card, headless, time a
   pilot first; on a rented one, `scripts/pod/pilot.sh` is that pilot (it times the step and the memory for each unpacker
   at several batches, takes a `calib_rel` run, times one steer-lens layer, sets a canary batch against the home card’s
   and projects each job × 1.25 against the owner’s approval, which `scripts/gpu_log.py` keeps with every pod against
@@ -555,7 +568,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   a control by the ceiling of a neuron it is paired with, so one dose is the same share of each neuron’s most at every
   layer and the depth curve compares like with like. Every answer records its ceiling and its push’s real share of the
   stream. Which unit, and which doses, a whole layer is taken at waits on the calibration, taken (above) but read so far
-  only as leads; `break_rel`’s doses, ±1 and ±2 of the stream, are counted calibrated at layers 40–50 alone (above),
+  only as leads; `break_rel`’s doses, ±1 and ±2 of the stream, were counted calibrated at layers 40–50 alone (above; at
+  39–51 since 12 November, on the two trials below),
   and since 29 October it keeps ±2 and is the default design. The steer lens’s and the census’s 0.8
   is to be chosen against the ceiling the same way before either is built on the model.
 - **The census’s null.** Its controls are drawn as unit(w_post ⊙ r), matched to within 1.2× (`check_census.py`); with C
@@ -681,9 +695,10 @@ layers, the determinism run and the sampled push on 29 October). In this section
       (18:43Z; the card drives a desktop too). The job stopped there, as it is written to, before layer 52’s began.
       Both are taken by the walk (below): the same command continues a run row for row.
     - **What a pass licenses, and what it does not.** By the rules fixed first: a whole layer at 39 and at 51,
-      offered to volunteers (kit 2, below). `DOSES_CALIBRATED` is as it was, 40–50: widening it is the owner’s word,
-      and until then the atlas marks a census at these layers “doses not calibrated at this layer” and inks it
-      without gilt. The gates are layer 45’s, read at another layer: a pass says that there, as at 45, a neuron’s
+      offered to volunteers (kit 2, below). `DOSES_CALIBRATED` was widened to 39–51 the same day, on the owner’s word
+      (it had been 40–50). It grows only so, a passed trial and then the owner’s word: a layer that passes later is
+      marked “doses not calibrated at this layer”, and inked without gilt, until it is counted in. The gates are layer
+      45’s, read at another layer: a pass says that there, as at 45, a neuron’s
       push is told from a random direction’s by the words it brings, in the ±1 answers and among neurons whose text
       survives as the controls’ does. It does not say ±1 and ±2 are the best doses for that layer.
     - **The walk** (the owner’s word, 12 November). After the four, `walk.sh` trials the next layer out on each side

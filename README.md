@@ -49,7 +49,7 @@ both ways, by once and by twice the stream’s usual length. Its answers are set
 pushed as far: 565,254 answers a layer, about thirteen hours on one RTX 5090. A neuron ranks high when the words its push
 brings stand further above the random directions’ than nearly every random direction’s own words do. So a high rank says
 its push differs from a random one. It does not say that its words share a theme, or name what the neuron does when it
-fires. The doses are calibrated at layers 41–51 alone, so the census covers those eleven layers.
+fires. The doses were first calibrated at layers 41–51, and the census covers those eleven layers so far.
 
 All eleven are in: layers 41–51 (40–50 on the [census board](https://github.com/whp199/theodolite/issues/1), which
 counts from 0), six of them taken by volunteers. Layer 46 was read against gates fixed before it ran, and the other ten
@@ -61,8 +61,9 @@ each was taken: [VOLUNTEERS.md](VOLUNTEERS.md).
 A second round is taking the other forty-nine. A layer outside 41–51 is not taken blind: about a thousand of its
 neurons are trialled first on one card, some 80 minutes, against gates fixed before any trial ran, and the layer is
 offered to volunteers only if it passes. On 12 November 2026 the first two read, layers 40 and 52 (39 and 51 on the
-board), passed and were opened; the board shows the rest as they are read. Until the doses are counted calibrated at
-such a layer, the atlas marks its census “doses not calibrated at this layer” and inks it without gilt.
+board), passed and were opened, and the doses are counted calibrated at both since that day; the board shows the rest
+as they are read. A layer that passes later waits for that count: until then the atlas marks its census “doses not
+calibrated at this layer” and inks it without gilt.
 
 <table>
   <tr>

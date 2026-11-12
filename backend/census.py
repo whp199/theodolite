@@ -39,7 +39,8 @@ dose of 0.8 there is already longer than the most a single neuron can write at m
 read by `dose_curves`: per dose, neurons against controls, the share of answers that part from the unpushed one and
 where, the share cut off, distinct 4-grams, and the push over each neuron's ceiling, with a hedged verdict per sign.
 Every page and tool that shows a census says so, save for a design calibrated at the run's layer (`DOSES_CALIBRATED`,
-`doses_calibrated`: break_rel at layers 40-50, counted from 0, by its trial of 29 October 2026). With 256 controls and
+`doses_calibrated`: break_rel at layers 39-51, counted from 0: 40-50 by its trial of 29 October 2026, 39 and 51 by a
+trial of each on 12 November). With 256 controls and
 21,504 neurons about 84 neurons land above every
 control by chance alone (N / (C + 1)), so a rank is a lead, not a finding: each unit carries an empirical p against the
 controls and a layer-wide false-discovery q (`compute_units`). A second stage retests a screen's strongest neurons
@@ -127,7 +128,8 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # and 57): +-1 and +-2 of the stream, on both signs, around where text first breaks there (at +-2 at layers 40 and
     # 45; at +-1 for the neurons at 50, at +2 and -1 for them at 57, the controls at +-2 at both; sooner at the earlier
     # layers, +-0.5 at 20 and +-1 at 30); asked on six questions. Calibrated at layers 40-50 by its trial of 29 October
-    # 2026 (DOSES_CALIBRATED; experiments/results/census_break_rel_trial)
+    # 2026 (DOSES_CALIBRATED; experiments/results/census_break_rel_trial), and at 39 and 51 by a trial of each on 12
+    # November 2026 (experiments/results/census_neighbour_trials)
     "break_rel": [(p, s * d) for p in DESIGN_QUESTIONS["break_rel"] for d in (1.0, 2.0) for s in (-1.0, 1.0)],
 }
 # the design a census takes when none is named, and the one a layer's run is read from first (layer_runs): break_rel,
@@ -149,16 +151,22 @@ DOSES_FROM = {
                  "neurons at 51 and at +2 and -1 for them at 58 (the controls at +-2 at both), at +-0.5 at layer 21 and at "
                  "+-1 at 31; calibrated at layers 41-51 by a trial fixed before it was taken (29 October 2026, layer 46, "
                  "1,022 fresh neurons against 1,024 controls), which passed every gate, its lead carried by the +-1 answers "
-                 "(at +-2 the text of neurons and controls alike breaks into loops); not at layers 52-58, where its probe at "
-                 "layer 58 passed by 0.0008 and its lead could not be told from how the text survives, nor below layer 41",
+                 "(at +-2 the text of neurons and controls alike breaks into loops), and at layers 40 and 52 by a trial of "
+                 "each (12 November 2026, 1,022 neurons against 1,024 controls), read by the same gates and two more fixed "
+                 "before any was read (the +-1 answers alone; the neurons whose text survives as the controls' does), "
+                 "both passing all three; not at layers 53-58, where its probe at layer 58 passed by 0.0008 and its lead "
+                 "could not be told from how the text survives, nor below layer 40",
 }
 # where a design's doses are calibrated on this model, its first and last layer (counted from 0, as the commands count
 # them): there the card says `doses_calibrated` and the page leaves out its red "not yet calibrated" line. break_rel's at
-# layers 40-50, the owner's choice of 29 October 2026 on its trial's verdict (experiments/results/census_break_rel_trial):
-# the rules fixed before the trial licensed 40-57, but at 57 its probe passed by 0.0008 and its lead could not be told
-# from how the text survives. A design named here speaks on every card with DOSES_FROM's words, which say where it is
+# layers 39-51. 40-50 was the owner's choice of 29 October 2026 on its trial's verdict
+# (experiments/results/census_break_rel_trial): the rules fixed before the trial licensed 40-57, but at 57 its probe
+# passed by 0.0008 and its lead could not be told from how the text survives. 39 and 51 were counted in on 12 November
+# 2026, the owner's word, each on a trial of its own that passed three gates fixed before any was read
+# (experiments/results/census_neighbour_trials): the span grows a layer at a time, on a passed trial and the owner's
+# word, never on a pass alone. A design named here speaks on every card with DOSES_FROM's words, which say where it is
 # calibrated, not with the words its runs' metas recorded before that was recorded (atlas.census_card).
-DOSES_CALIBRATED: Dict[str, Tuple[int, int]] = {"break_rel": (40, 50)}
+DOSES_CALIBRATED: Dict[str, Tuple[int, int]] = {"break_rel": (39, 51)}
 # the answer lengths a design's calibration was read at (break_rel's trial: 48 word-pieces, and 32 as those answers cut
 # short, both passing at layer 45): a run whose answers run longer is not calibrated, its doses read over more loops
 DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48)}

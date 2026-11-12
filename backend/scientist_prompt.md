@@ -102,9 +102,10 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   how its ranking read the answers and whether its doses are calibrated on this model from its card (`card` in
   `rollouts`: `design`, `doses_from`, `doses`, `reading`, `doses_calibrated`; `top_units` gives the same). `main_rel`'s
   doses are neuron-explorer's, chosen on Qwen3.5-4B; `break_rel`'s were chosen on this model's calibration ladders for
-  layers 41-58 and are calibrated at layers 41-51 by a trial fixed before it was taken, which tested layer 46 alone of
-  them (its rules licensed 41-58, but its one probe above 51, at layer 58, passed by 0.0008 and its lead could not be
-  told from how the text survives; `doses_from` says so). `break_rel` is the default design. Calibrated means that at
+  layers 41-58 and are calibrated at layers 40-52: at 41-51 by a trial fixed before it was taken, which tested layer 46
+  alone of them, and at 40 and 52 by a trial of each, read by the same gates and two more (its rules licensed 41-58,
+  but its one probe above 52, at layer 58, passed by 0.0008 and its lead could not be told from how the text survives;
+  `doses_from` says so). `break_rel` is the default design. Calibrated means that at
   layer 46 the neurons' mass beat the controls' beyond how the text survives and held on questions held out, not that a
   neuron's census words are its meaning: there most neurons the census singled out listed same, own or thought, words
   that come with text breaking into loops and that controls write too, and below the controls' 95th percentile the
