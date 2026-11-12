@@ -13,8 +13,10 @@ own card: about a thousand of its neurons against 1,024 random directions, some 
 any trial ran (`experiments/results/census_neighbour_trials/`). A layer whose trial passes is opened on the board; one
 whose trial fails is not taken with these push strengths. So the band grows outward from 40 to 50, a layer at a time,
 and **the board says which layers are open**. The first trials were read on 12 November 2026: layers 39 and 51
-passed and were opened that day, and the next layers out are being trialled in turn, each opened as it passes. Layers
-count from 0, as every script counts them (the app's page = layer + 1).
+passed and were opened that day. Layer 38 failed: there the same push is three times the most a neuron can write, and
+the text breaks. So layers 0 to 38 are not taken with these push strengths, and wait for ones scaled to the layer;
+upward, the next layers out are being trialled in turn, each opened as it passes. Layers count from 0, as every script
+counts them (the app's page = layer + 1).
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 

@@ -9,6 +9,56 @@
  "min_share_covered": 0.5,
  "layers": [
   {
+   "layer": 38,
+   "pass": false,
+   "whole": {
+    "pass": false,
+    "mass_c": 0.4969,
+    "mass_c_res": 0.6444,
+    "rep_AB": 0.559,
+    "rep_BA": 0.5549,
+    "mass_B": 0.4936
+   },
+   "pm1": {
+    "pass": false,
+    "mass_c": 0.4963,
+    "mass_c_res": 0.6459,
+    "rep_AB": 0.5754,
+    "rep_BA": 0.5751,
+    "mass_B": 0.5067
+   },
+   "covered": {
+    "pass": false,
+    "mass_c": 0.5105,
+    "mass_c_res": 0.6364,
+    "rep_AB": 0.5701,
+    "rep_BA": 0.5626,
+    "mass_B": 0.5016,
+    "neurons": 950,
+    "of": 1022
+   },
+   "reported": {
+    "above_every_control": 2,
+    "by_chance": 1.0,
+    "named": 0,
+    "max_new_rule": {
+     "shorter_passes": false,
+     "mass_c_drop": -0.0332,
+     "rep_min_drop": -0.031,
+     "take_shorter": false
+    },
+    "d4_loss_at_1": {
+     "neuron": -0.145,
+     "random": -0.097
+    },
+    "d4_loss_at_minus_1": {
+     "neuron": -0.15,
+     "random": -0.099
+    },
+    "answers_per_s": 10.85
+   }
+  },
+  {
    "layer": 39,
    "pass": true,
    "whole": {

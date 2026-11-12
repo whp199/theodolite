@@ -1,0 +1,308 @@
+{
+ "run": "L38-break_rel-trial.jsonl",
+ "layer": 38,
+ "design": "break_rel",
+ "max_new": 48,
+ "batch": 64,
+ "seed": 3,
+ "cut": 48,
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "N1 whole": {
+  "pass": false,
+  "gates": {
+   "G1 lead (mass, every answer)": {
+    "values": [
+     [
+      "mass_c",
+      0.4969,
+      0.6
+     ]
+    ],
+    "pass": false
+   },
+   "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+    "values": [
+     [
+      "mass_c_res",
+      0.6444,
+      0.58
+     ]
+    ],
+    "pass": true
+   },
+   "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+    "values": [
+     [
+      "rep_AB",
+      0.559,
+      0.57
+     ],
+     [
+      "rep_BA",
+      0.5549,
+      0.57
+     ]
+    ],
+    "pass": false
+   },
+   "G4 the new questions alone carry a lead (mass on half B)": {
+    "values": [
+     [
+      "mass_B",
+      0.4936,
+      0.56
+     ]
+    ],
+    "pass": false
+   },
+   "G5 sanity (null split, read gain, every answer present)": {
+    "values": [
+     [
+      "null_split_mean",
+      0.4968,
+      [
+       0.47,
+       0.53
+      ]
+     ],
+     [
+      "read_gain_ratio",
+      1.063,
+      [
+       0.8,
+       1.25
+      ]
+     ],
+     [
+      "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+      true,
+      true
+     ]
+    ],
+    "pass": true
+   },
+   "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+    "values": [
+     [
+      "max_abs_diff",
+      0.0005,
+      0.002
+     ]
+    ],
+    "pass": true
+   }
+  }
+ },
+ "N2 the +-1 answers alone": {
+  "pass": false,
+  "gates": {
+   "G1 lead (mass, every answer)": {
+    "values": [
+     [
+      "mass_c",
+      0.4963,
+      0.6
+     ]
+    ],
+    "pass": false
+   },
+   "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+    "values": [
+     [
+      "mass_c_res",
+      0.6459,
+      0.58
+     ]
+    ],
+    "pass": true
+   },
+   "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+    "values": [
+     [
+      "rep_AB",
+      0.5754,
+      0.57
+     ],
+     [
+      "rep_BA",
+      0.5751,
+      0.57
+     ]
+    ],
+    "pass": true
+   },
+   "G4 the new questions alone carry a lead (mass on half B)": {
+    "values": [
+     [
+      "mass_B",
+      0.5067,
+      0.56
+     ]
+    ],
+    "pass": false
+   },
+   "G5 sanity (null split, read gain, every answer present)": {
+    "values": [
+     [
+      "null_split_mean",
+      0.4965,
+      [
+       0.47,
+       0.53
+      ]
+     ],
+     [
+      "read_gain_ratio",
+      1.063,
+      [
+       0.8,
+       1.25
+      ]
+     ],
+     [
+      "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+      true,
+      true
+     ]
+    ],
+    "pass": true
+   }
+  }
+ },
+ "N3 the neurons the controls cover": {
+  "pass": false,
+  "gates": {
+   "G1 lead (mass, every answer)": {
+    "values": [
+     [
+      "mass_c",
+      0.5105,
+      0.6
+     ]
+    ],
+    "pass": false
+   },
+   "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+    "values": [
+     [
+      "mass_c_res",
+      0.6364,
+      0.58
+     ]
+    ],
+    "pass": true
+   },
+   "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+    "values": [
+     [
+      "rep_AB",
+      0.5701,
+      0.57
+     ],
+     [
+      "rep_BA",
+      0.5626,
+      0.57
+     ]
+    ],
+    "pass": false
+   },
+   "G4 the new questions alone carry a lead (mass on half B)": {
+    "values": [
+     [
+      "mass_B",
+      0.5016,
+      0.56
+     ]
+    ],
+    "pass": false
+   }
+  },
+  "covered": 950,
+  "neurons": 1022,
+  "share_covered": 0.9295,
+  "min_share": 0.5,
+  "outside_by_covariate": {
+   "lnw": 10,
+   "d4": 6,
+   "cut": 1,
+   "lp": 8,
+   "dep": 14,
+   "lost": 44
+  }
+ },
+ "pass": false,
+ "reported": {
+  "above_every_control": 2,
+  "by_chance": 1.0,
+  "text": {
+   "-2 neuron": {
+    "d4_minus_unpushed": -0.606,
+    "cut_off": 0.994
+   },
+   "-2 random": {
+    "d4_minus_unpushed": -0.602,
+    "cut_off": 0.996
+   },
+   "-1 neuron": {
+    "d4_minus_unpushed": -0.15,
+    "cut_off": 0.991
+   },
+   "-1 random": {
+    "d4_minus_unpushed": -0.099,
+    "cut_off": 0.991
+   },
+   "+1 neuron": {
+    "d4_minus_unpushed": -0.145,
+    "cut_off": 0.988
+   },
+   "+1 random": {
+    "d4_minus_unpushed": -0.097,
+    "cut_off": 0.994
+   },
+   "+2 neuron": {
+    "d4_minus_unpushed": -0.593,
+    "cut_off": 0.994
+   },
+   "+2 random": {
+    "d4_minus_unpushed": -0.613,
+    "cut_off": 0.995
+   }
+  },
+  "figures": {
+   "neurons": 1022,
+   "controls": 1024,
+   "above_every_control": 2,
+   "by_chance": 1.0,
+   "q05": 0,
+   "named": 0,
+   "named_by_halves": 0,
+   "above_ctl_p95": 0.1037,
+   "pA05_and_pB05": 44,
+   "pA05_and_pB05_by_chance": 2.6
+  },
+  "named": 0,
+  "max_new_rule": {
+   "shorter_passes": false,
+   "mass_c_drop": -0.0332,
+   "rep_min_drop": -0.031,
+   "take_shorter": false
+  },
+  "pm1_mass_c": 0.4963,
+  "throughput": {
+   "answers_written": 48662,
+   "seconds": 4486.0,
+   "answers_per_s": 10.85,
+   "sessions": 2
+  }
+ }
+}

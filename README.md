@@ -61,8 +61,9 @@ each was taken: [VOLUNTEERS.md](VOLUNTEERS.md).
 A second round is taking the other forty-nine. A layer outside 41–51 is not taken blind: about a thousand of its
 neurons are trialled first on one card, some 80 minutes, against gates fixed before any trial ran, and the layer is
 offered to volunteers only if it passes. On 12 November 2026 the first two read, layers 40 and 52 (39 and 51 on the
-board), passed and were opened, and the doses are counted calibrated at both since that day; the board shows the rest
-as they are read. A layer that passes later waits for that count: until then the atlas marks its census “doses not
+board), passed and were opened, and the doses are counted calibrated at both since that day. Layer 39 (38 on the
+board) failed: its stream is longer, so the same push is three times the most a neuron there can write, and the text
+breaks. Layers 1–39 therefore wait for doses scaled to the layer; upward the board shows the rest as they are read. A layer that passes later waits for that count: until then the atlas marks its census “doses not
 calibrated at this layer” and inks it without gilt.
 
 <table>

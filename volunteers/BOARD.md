@@ -4,7 +4,8 @@ Kit 2 (census-kit-2). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
-| 0–38 | 1–39 | trial first |  |  |  | opens when its trial on the home card passes |
+| 0–37 | 1–38 | not taken |  |  |  | below layer 38, whose trial failed: waits for push strengths scaled to the layer |
+| 38 | 39 | not taken |  |  |  | its trial failed, 12 November 2026: not taken with these doses |
 | 39 | 40 | OPEN |  |  |  | its trial passed, 12 November 2026 |
 | 40 | 41 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 30-31 Oct 2026, passed layer 45's gates |
 | 41 | 42 | done | ReimusArmpit d4bcee00 | NVIDIA GeForce RTX 5090 32 GB |  | 1 Nov 2026, the home card's bits, spot-checked bit for bit; passed layer 45's gates |
@@ -29,4 +30,4 @@ Judged:
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-12T18:54Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-12T19:16Z.

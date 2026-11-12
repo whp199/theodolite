@@ -691,9 +691,19 @@ layers, the determinism run and the sampled push on 29 October). In this section
       and 0.666, 0.662. The 948 covered: 0.766, 0.718, 0.698 and 0.698, 0.721. 238 beat every control and 266 are
       named. At ±1 its text loses 0.01 (the controls’ none); at ±2 0.78 to 0.80. Cut to 32 word-pieces its lead falls
       0.027 and its replication 0.045, so the length rule keeps 48 here, where at 39 it would take 32.
-    - **Layer 38’s trial was cut short**, at 35,776 of its 49,110 answers, by a CUDA launch timeout on the home card
-      (18:43Z; the card drives a desktop too). The job stopped there, as it is written to, before layer 52’s began.
-      Both are taken by the walk (below): the same command continues a run row for row.
+    - **Layer 38 fails, and the band stops there downward.** Whole: 0.497, 0.644, 0.559 and 0.555, 0.494. The ±1
+      answers alone: 0.496, 0.646, 0.575 and 0.575, 0.507. The 950 covered: 0.510, 0.636, 0.570 and 0.563, 0.502.
+      Its lead is at chance; two of 1,022 beat every control and none is named. (Its trial was cut short at 35,776
+      of 49,110 answers by a CUDA launch timeout on the home card, 18:43Z, and continued row for row by the walk;
+      every answer is there and the sanity gate passes.) The reason is in the push, not in the neurons. The stream’s
+      median length steps up below layer 39 (161 at layer 40, 174 at 39, 213 at 38, 240 at 37), so ±1 of it is 3.1
+      times the most a layer-38 neuron can write, where it is 2.1 times at 39 and 1.75 at 51; and at ±1 the text
+      already breaks at 38, the neurons losing 0.15 of their distinct 4-grams and the controls 0.10, against 0.04 and
+      0.01 at 39. The one gate it clears on every reading is the lead beyond how the text survives (0.644, 0.646,
+      0.636): the neurons still differ from random directions under the wreckage. So layer 38 is not shown to have
+      nothing to read; it is shown to be pushed too hard by this design. By the rule fixed first, no whole layer is
+      taken at 38 or below it with these doses: the board marks 0–38 *not taken*, and they wait for doses scaled to
+      the layer (step 3 of the plan; the pilot the steer lens needs, above, measures just that).
     - **What a pass licenses, and what it does not.** By the rules fixed first: a whole layer at 39 and at 51,
       offered to volunteers (kit 2, below). `DOSES_CALIBRATED` was widened to 39–51 the same day, on the owner’s word
       (it had been 40–50). It grows only so, a passed trial and then the owner’s word: a layer that passes later is
@@ -702,8 +712,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
       push is told from a random direction’s by the words it brings, in the ±1 answers and among neurons whose text
       survives as the controls’ does. It does not say ±1 and ±2 are the best doses for that layer.
     - **The walk** (the owner’s word, 12 November). After the four, `walk.sh` trials the next layer out on each side
-      in turn (38, 52, 37, 53, …), reads it, and goes on on that side only if it passed; a layer that passes is
-      opened on the board as it is read, one that fails is marked not taken, and the band stops there on that side.
+      in turn, reads it, and goes on on that side only if it passed; a layer that passes is opened on the board as
+      it is read, one that fails is marked not taken, and the band stops there on that side. Downward it stopped at
+      once, at 38; upward it goes on from 52.
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only
