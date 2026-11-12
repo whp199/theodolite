@@ -1344,6 +1344,49 @@ def main() -> int:
     check(set(cw) == {7, 9} and "ocean" in cw[7] and "banana" in cw[9], f"census words of a ranked layer: {cw}")
     into3 = [x for x in c.get("/api/atlas/neuron/wiring", params={"layer": 1, "n": 4, "k": 64}).json()["down"] if x["layer"] == 3]
     check(all(x["census"] == cw.get(x["n"], []) for x in into3), "/neuron/wiring: a linked neuron's census words")
+    # read by seeking: the rows index and the table lie beside the run, and a unit read through them is the run's own
+    by_hand = [x for x in rows_c if x["kind"] == "random" and x["neuron"] == 2]
+    ctl2 = c.get("/api/atlas/census/unit", params={"layer": 3, "n": 2, "kind": "random"}).json()
+    check(cz.rows_index_path_of(run).exists() and cz.table_path_of(run).exists()
+          and [(x["prompt"], x["dose"], x["text"]) for x in ctl2["rollouts"]] == [(x["prompt"], x["dose"], x["text"]) for x in by_hand]
+          and ctl2["stats"]["neuron"] == 2 and ctl2["stats"]["kind"] == "random"
+          and c.get("/api/atlas/census/unit", params={"layer": 3, "n": 7, "kind": "chair"}).status_code == 400,
+          "/census/unit: a control's answers found by seeking, as the run has them; an unknown kind refused")
+    cz.rows_index_path_of(run).unlink()
+    cz.table_path_of(run).unlink()
+    atlas_routes._rows_cache.clear()
+    atlas_routes._tables.clear()
+    atlas_routes._census_cache.clear()
+    check(c.get("/api/atlas/census/unit", params={"layer": 3, "n": 7}).json() == un and cz.rows_index_path_of(run).exists()
+          and c.get("/api/atlas/census/units", params={"layer": 3}).json() == units and cz.table_path_of(run).exists(),
+          "the index and the table are made again when missing, and give what they gave")
+    # every census at once: the layers, the map's inks, the search
+    cl = c.get("/api/atlas/census/layers").json()
+    check(len(cl) == 1 and cl[0]["layer"] == 3 and cl[0]["run"] == run.name and cl[0]["ranked"] is True and cl[0]["doses_calibrated"] is False
+          and {k_: cl[0][k_] for k_ in card["null"]} == card["null"] and cl[0]["q05_neurons"] == 0,
+          f"/census/layers: the layer with a census, its counts the card's ({cl})")
+    lv = c.get("/api/atlas/census/levels").json()
+    inks = list(base64.b64decode(lv["levels"]))
+    check(lv["layers"] == [3] and lv["n"] == atlas_routes.atlas().N and len(inks) == atlas_routes.atlas().N and sorted(i_ for i_, v_ in enumerate(inks) if v_) == [7, 9]
+          and max(inks) == 255 and min(inks[7], inks[9]) >= 2,
+          f"/census/levels: a byte a neuron, the two above every control inked, the strongest darkest ({[inks[7], inks[9]]})")
+    cs = c.get("/api/atlas/census/search", params={"q": "OCE"}).json()
+    hit = (cs["results"] or [{}])[0]
+    check(cs["terms"] == ["oce"] and cs["total"] == 1 and hit.get("layer") == 3 and hit.get("n") == 7 and hit.get("matched") == ["ocean"]
+          and hit.get("above") is True and hit.get("score", 0) > 0 and "ocean" in hit.get("all_words", []) and hit.get("rank") in (1, 2)
+          and cs["layers"] == [{"layer": 3, "neurons": 1, "above": 1, "controls": 0, "control_max": 0.0, "of_neurons": 2, "of_controls": 4}]
+          and cs["not_read"] == [] and "lead" in cs["says"],
+          f"/census/search: a neuron found by the beginning of a census word, whatever its case, with its layer's count ({cs})")
+    check(c.get("/api/atlas/census/search", params={"q": "cean"}).json()["total"] == 0
+          and [x["n"] for x in c.get("/api/atlas/census/search", params={"q": "*cean"}).json()["results"]] == [7]
+          and c.get("/api/atlas/census/search", params={"q": "ocean waves"}).json()["results"][0]["matched"] == ["ocean", "waves"]
+          and c.get("/api/atlas/census/search", params={"q": "ocean banana"}).json()["total"] == 0
+          and c.get("/api/atlas/census/search", params={"q": "  "}).json()["results"] == [],
+          "/census/search: a word matches from its beginning, anywhere only with a leading *; every word of the query must match")
+    # a word the controls bring is counted against them, and a neuron no stronger than a control is not above
+    num = c.get("/api/atlas/census/search", params={"q": "number"}).json()
+    check(num["total"] == 0 and num["layers"][0]["controls"] >= 1 and num["layers"][0]["control_max"] > 0,
+          f"/census/search: a word only the controls bring finds no neuron, and says how many controls brought it ({num['layers']})")
     section("the census routes", before)
 
     # ----------------------------------------------------------------------------------------------- 10. the GPU lock

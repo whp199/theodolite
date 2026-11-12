@@ -92,7 +92,7 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   calls.
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
-- **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed at its census design's fixed
+- **The census** (`rollouts`, `top_units`, `search_census`): what the model wrote with the neuron pushed at its census design's fixed
   doses on that design's questions, beside unpushed answers, with its distinctive words and their mass against
   random-direction controls. A control is shaped as a neuron's write is (a random direction through the layer's
   post-feed-forward norm), so the next layer reads it about as loudly. `null_pct` is the share of controls it beats,
@@ -116,6 +116,10 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   stand further above what random pushes bring than nearly every random push's own do, so its push differs from a
   random one; not that it has a theme. Wherever
   `doses_calibrated` is false, a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when you work without.
+  `search_census` finds neurons by a census word in every layer with a census at once. Its rows are leads the same way:
+  each layer's random controls are searched as the neurons are, so read `controls_matched` before counting hits (it
+  says how many of as many neurons would match were they random directions), and lean on a row only where
+  `above_controls` is true.
 - **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest (or in use, `model: "use"`, as
   above; `read` says which) and pooled: `downstream` `when_plus` / `when_minus`, what the neurons it drives write when
   it fires on its + / - face; `upstream` `drives_plus` / `drives_minus`, what the neurons that push it toward its + / -

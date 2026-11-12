@@ -18,6 +18,7 @@ import { openEvents, useScientist } from "./atlas/scientist";
 import { Spread } from "./atlas/Spread";
 import {
   loadArch,
+  loadLevels,
   loadNotes,
   loadSpread,
   openHead,
@@ -30,10 +31,24 @@ import {
   setQuery,
   theMap,
   useAtlas,
+  type QMode,
 } from "./atlas/state";
 import { hideTip, onMapHover, Tooltip } from "./atlas/Tooltip";
 
 type AtlasRoute = Extract<Route, { name: "atlas" }>;
+
+/** What the search box searches, as its placeholder says it and as its tooltip explains it. */
+const SEARCH_SAYS: Record<QMode, string> = {
+  lens: "search the neurons' words",
+  census: "search what pushes bring, in every census",
+  fires: "a text: what fires on it",
+};
+const SEARCH_TITLE: Record<QMode, string> = {
+  lens: "words: neurons one of whose faces carries the word through the lens, by the naked eye or in its steer lens, in all sixty layers",
+  census:
+    "census: neurons that made the model write the word when they were pushed, more than random directions pushed as far did, in every layer with a census at once",
+  fires: "fires: run a text and see which neurons fire hardest on each word-piece",
+};
 
 const Seg: React.FC<{ items: [string, string][]; value: string; onPick: (v: string) => void; label: string }> = ({ items, value, onPick, label }) => (
   <span className="atlas-seg" role="group" aria-label={label}>
@@ -164,15 +179,17 @@ const Controls: React.FC = () => {
           label="what the box searches"
           items={[
             ["lens", "words"],
+            ["census", "census"],
             ["fires", "fires"],
           ]}
           value={qMode}
-          onPick={(v) => setQuery(query, v as "lens" | "fires")}
+          onPick={(v) => setQuery(query, v as QMode)}
         />
         <input
           className="input-line"
-          placeholder={qMode === "fires" ? "a text: what fires on it" : "search the neurons' words"}
-          aria-label={qMode === "fires" ? "a text to run" : "search the neurons' words"}
+          placeholder={SEARCH_SAYS[qMode]}
+          aria-label={SEARCH_SAYS[qMode]}
+          title={SEARCH_TITLE[qMode]}
           spellCheck={false}
           autoComplete="off"
           value={query}
@@ -217,6 +234,7 @@ const MapStage: React.FC<{ deep: AtlasRoute; insets: { left: number; right: numb
     void setLayer(s.layer);
     void setLayout(s.layoutKind);
     void loadNotes();
+    void loadLevels();
     if (s.focus) {
       // the page came back with something open: show it on the new map
       const f = s.focus;

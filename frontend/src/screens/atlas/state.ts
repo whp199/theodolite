@@ -12,6 +12,8 @@ import {
   halfToFloat,
   post,
   type Arch,
+  type CensusLayerRow,
+  type CensusSearchReply,
   type CensusUnit,
   type CensusUnitRow,
   type HeadInfo,
@@ -34,6 +36,7 @@ import type { AtlasMap, Mark, MapNote } from "./map";
 export type Focus = { kind: "neuron" | "head"; layer: number; n: number };
 export type RightTab = "census" | "push" | "details" | "passages" | "scientist";
 export type LeftTab = "web" | "run";
+export type QMode = "lens" | "census" | "fires";
 
 export interface RunState {
   text: string | null;
@@ -79,9 +82,15 @@ export interface AtlasState {
   webSum: (WebSummary & { layer: number; n: number }) | null;
   leftTab: LeftTab;
   leftHidden: boolean;
-  qMode: "lens" | "fires";
+  /** what the search box searches: the neurons' words (lens and steer lens), every census's words, or a text to run */
+  qMode: QMode;
   query: string;
   search: SearchReply | null;
+  censusSearch: CensusSearchReply | null;
+  /** every layer with a census, from its ranking alone */
+  censusLayers: CensusLayerRow[] | null;
+  /** the neurons and heads opened lately in this browser, the latest first */
+  trail: Focus[];
   searchError: string | null;
   run: RunState;
   rightTab: RightTab;
@@ -121,6 +130,9 @@ export const useAtlas = create<AtlasState>(() => ({
   qMode: "lens",
   query: "",
   search: null,
+  censusSearch: null,
+  censusLayers: null,
+  trail: [],
   searchError: null,
   run: RUN0,
   rightTab: "scientist",
@@ -150,20 +162,36 @@ const message = (e: unknown) => (e instanceof AtlasError ? e.message : String((e
 
 const LAYER_KEY = "theodolite.atlas.layer";
 const FOCUS_KEY = "theodolite.atlas.focus";
+const TRAIL_KEY = "theodolite.atlas.trail";
+const TRAIL_MAX = 12;
+
+/** The layers with a census, shallowest first. */
+export const censusLayersOf = (arch: Arch | null) =>
+  Object.keys(arch?.census ?? {})
+    .map(Number)
+    .sort((a, b) => a - b);
 
 export async function loadArch(): Promise<Arch | null> {
   try {
     const arch = await get<Arch>("/api/atlas/arch");
-    let layer = Math.min(arch.n_layers - 1, 53);
+    // a first visit opens on a layer with a census (the middle one of those there are), where the lists have something
+    // to show; without any, on a late layer
+    const cl = censusLayersOf(arch).filter((l) => l < arch.n_layers);
+    let layer = cl.length ? cl[Math.floor(cl.length / 2)] : Math.min(arch.n_layers - 1, 53);
+    let trail: Focus[] = [];
     try {
       const v = localStorage.getItem(LAYER_KEY);
       if (v !== null && +v >= 0 && +v < arch.n_layers) layer = +v;
+      const t = JSON.parse(localStorage.getItem(TRAIL_KEY) || "[]") as Focus[];
+      if (Array.isArray(t))
+        trail = t.filter((f) => f && (f.kind === "neuron" || f.kind === "head") && f.layer >= 0 && f.layer < arch.n_layers && f.n >= 0).slice(0, TRAIL_MAX);
     } catch {
       // not remembered
     }
-    set({ arch, archError: null, layer, run: { ...st().run, hi: arch.n_layers } });
+    set({ arch, archError: null, layer, trail, run: { ...st().run, hi: arch.n_layers } });
     void loadNotes();
     void loadProposals();
+    void loadCensusLayers();
     return arch;
   } catch (e) {
     set({ archError: message(e) });
@@ -183,10 +211,48 @@ export function restoreFocus(deep?: { layer: number; n: number } | null) {
 }
 
 function saveFocus() {
+  const f = st().focus;
+  // the trail: what was opened lately, the latest first, each once
+  const trail = f ? [f, ...st().trail.filter((x) => !(x.kind === f.kind && x.layer === f.layer && x.n === f.n))].slice(0, TRAIL_MAX) : st().trail;
+  if (f) set({ trail });
   try {
-    localStorage.setItem(FOCUS_KEY, JSON.stringify(st().focus));
+    localStorage.setItem(FOCUS_KEY, JSON.stringify(f));
+    localStorage.setItem(TRAIL_KEY, JSON.stringify(trail));
   } catch {
     // not remembered
+  }
+}
+
+export function clearTrail() {
+  set({ trail: [] });
+  try {
+    localStorage.removeItem(TRAIL_KEY);
+  } catch {
+    // not remembered
+  }
+}
+
+/** Every layer with a census, counted from its ranking (no answers read). */
+export async function loadCensusLayers() {
+  try {
+    set({ censusLayers: await get<CensusLayerRow[]>("/api/atlas/census/layers") });
+  } catch {
+    // the strip stays empty
+  }
+}
+
+/** Ink every layer with a census on the map at once (one byte a neuron, GET /census/levels). */
+export async function loadLevels() {
+  try {
+    const r = await get<{ layers: number[]; n: number; levels: string }>("/api/atlas/census/levels");
+    const bin = atob(r.levels);
+    r.layers.forEach((l, i) => {
+      const lv = new Uint8Array(r.n);
+      for (let k = 0; k < r.n; k++) lv[k] = bin.charCodeAt(i * r.n + k);
+      map?.setLevels(l, lv);
+    });
+  } catch {
+    // the open layer is inked when its list arrives
   }
 }
 
@@ -429,7 +495,7 @@ export const headRoleLinks = (h: HeadInfo) =>
 let qGen = 0;
 let searchTimer: number | undefined;
 
-export function setQuery(q: string, mode?: "lens" | "fires") {
+export function setQuery(q: string, mode?: QMode) {
   const m = mode ?? st().qMode;
   set({ query: q, qMode: m, leftTab: m === "fires" ? "run" : "web", leftHidden: false });
   window.clearTimeout(searchTimer);
@@ -440,11 +506,22 @@ export async function runSearch() {
   const q = st().query.trim();
   const g = ++qGen;
   if (q.length < 2) {
-    set({ search: null, searchError: null, run: { ...st().run, text: null, tokens: [], pos: [], pin: -1, view: null } });
+    set({ search: null, censusSearch: null, searchError: null, run: { ...st().run, text: null, tokens: [], pos: [], pin: -1, view: null } });
     syncMarks();
     return;
   }
   if (st().qMode === "fires") return runText(q, g);
+  if (st().qMode === "census") {
+    try {
+      const r = await get<CensusSearchReply>("/api/atlas/census/search", { q, limit: 400 });
+      if (g !== qGen) return;
+      set({ censusSearch: r, searchError: null });
+      syncMarks();
+    } catch (e) {
+      if (g === qGen) set({ searchError: message(e) });
+    }
+    return;
+  }
   try {
     const r = await get<SearchReply>("/api/atlas/search", { q, limit: 400 });
     if (g !== qGen) return;
@@ -551,6 +628,13 @@ export function syncMarks() {
       if (v) marks.push({ layer: Math.floor(i / N), n: i % N, sign: v < 0 ? "-" : "+", w: Math.min(1, 0.3 + Math.abs(v) / 4) });
     }
     map?.setMarks(marks.length > 40000 ? marks.sort((a, b) => (b.w ?? 0) - (a.w ?? 0)).slice(0, 40000) : marks);
+    return;
+  }
+  if (leftTab === "web" && st().qMode === "census") {
+    // a census search: its hits in gilt, the strongest the brightest
+    const hits = st().censusSearch?.results ?? [];
+    const top = Math.max(1, ...hits.map((h) => h.score));
+    map?.setMarks(hits.map((h) => ({ layer: h.layer, n: h.n, sign: "+" as const, w: 0.45 + 0.55 * Math.min(1, h.score / top) })));
     return;
   }
   map?.setMarks(leftTab === "web" && search?.results ? search.results.map((r) => ({ layer: r.layer, n: r.n, sign: r.sign, w: 1 })) : []);

@@ -1496,6 +1496,14 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check(tu.get("design") == "main_rel" and tu.get("doses_calibrated") is False and tu.get("reading") == cz.READING_DEFAULT,
           f"top_units: the run's design, its reading, and its doses not calibrated on this model ({tu.get('design')}, {tu.get('reading')})")
     check((await st.call("top_units", {"layer": 2}, api)) == {"ranked": [], "note": "this layer has no census"}, "top_units: a layer without one")
+    found = await st.call("search_census", {"query": "Banana"}, api)
+    check([x["neuron"] for x in found["results"]] == ["L4 N9"] and found["results"][0]["matched"] == ["banana"] and "banana" in found["results"][0]["words"]
+          and found["results"][0]["above_controls"] is True and found["query"] == ["banana"] and found["total"] == 1 and "lead" in found["says"]
+          and found["layers"] == [{"layer": 4, "neurons_matched": 1, "above_controls": 1, "controls_matched": 0, "controls": 0}],
+          f"search_census: a neuron found by a census word, in the pages' count, with its layer's count and the controls' ({found})")
+    check((await st.call("search_census", {"query": "anana"}, api))["total"] == 0
+          and [x["neuron"] for x in (await st.call("search_census", {"query": "*anana"}, api))["results"]] == ["L4 N9"],
+          "search_census: a word matches from its beginning, anywhere only with a leading *")
     ro = await st.call("rollouts", {"layer": 4, "n": 7, "max_chars": 50}, api)
     check(ro["layer"] == 4 and len(ro["rollouts"]) == 2 and all(len(x["text"]) <= 50 for x in ro["rollouts"]), "rollouts cut to max_chars, page layer 4")
     ov = await st.call("overview", {}, api)

@@ -1478,8 +1478,9 @@ def run_checks(tmp: Path) -> int:
         else:
             os.environ[cz.CENSUS_DIR_ENV] = kept_env
     cardl = atlas_routes.census_card(dl) if dl else {}
-    check(picked == brun and dl is not None and all(isinstance(u_.get("collapse"), list) and "mass_shown" in u_ for u_ in dl["units"])
-          and [(u_["neuron"], u_["mass"], u_.get("p"), u_["reading"]["max_rel"]) for u_ in dl["units"]]
+    dl_units = dl["table"].records() if dl else []
+    check(picked == brun and dl is not None and all(isinstance(u_.get("collapse"), list) and "mass_shown" in u_ for u_ in dl_units)
+          and [(u_["neuron"], u_["mass"], u_.get("p"), u_["reading"]["max_rel"]) for u_ in dl_units]
           == [(u_["neuron"], u_["mass"], u_.get("p"), 1.6) for u_ in stripped] and dl["collapse"] == bcol
           and cardl.get("collapse") == bcol and cardl.get("lead_says") == cz.lead_says(cardl.get("reading"))
           and "random directions pushed as far" in cz.LEAD_SAYS and "what the run's units bring" in cz.lead_says(cz.READING_DEFAULT),
@@ -1545,6 +1546,63 @@ def run_checks(tmp: Path) -> int:
           f"break_rel: stopped and continued, torn and continued, and three shards merged, each equal the unbroken run row for row (cut at {cut})")
     section("break_rel: its design, questions and reading; older designs' job lists and plans unchanged; a stand-in run ranked its way, "
             "resumed, torn and sharded; the card; the floor on its questions", before)
+
+    # ------------------------------------------------------------------------ a run read without reading it whole
+    before = len(failures)
+    # where each answer lies (census.RowsIndex): rows numbered as read_rows numbers them, a blank line skipped, a last
+    # line cut off mid-write left out, and a kind and a neuron quoted inside an answer not taken for the row's own
+    irun = tmp / "runs" / "indexed.jsonl"
+    irows = [dict(r_) for r_ in brows[:40]]
+    irows[3] = {**irows[3], "text": 'it said "kind": "random", "neuron": 99999 and left'}
+    ilines = [json.dumps(r_) + "\n" for r_ in irows]
+    irun.write_text("".join(ilines[:5]) + "\n" + "".join(ilines[5:]) + '{"layer": 3, "kind": "neuron", "neu', encoding="utf-8")
+    ix = cz.build_rows_index(irun)
+    iread = list(cz.read_rows(irun, tolerate_tail=True))
+    check(len(ix) == len(iread) == 40 and ix.read(range(40)) == iread and iread[3]["text"].startswith("it said")
+          and [cz.KINDS[k_] for k_ in ix.kind] == [r_["kind"] for r_ in iread] and [int(n_) for n_ in ix.neuron] == [int(r_["neuron"]) for r_ in iread],
+          "the rows index numbers a run's answers as read_rows does: a blank line skipped, a torn last line left out, each row's own kind and neuron")
+    iunit = (iread[10]["kind"], int(iread[10]["neuron"]))
+    check(ix.of(*iunit) == [i_ for i_, r_ in enumerate(iread) if (r_["kind"], int(r_["neuron"])) == iunit] and len(ix.of(*iunit)) > 0
+          and ix.of("baseline", -1) == [i_ for i_, r_ in enumerate(iread) if r_["kind"] == "baseline"] and ix.of("neuron", 123456) == []
+          and ix.of("random", iunit[1]) == [i_ for i_, r_ in enumerate(iread) if (r_["kind"], int(r_["neuron"])) == ("random", iunit[1])],
+          "the rows index finds one unit's answers, in the file's order; a control is not its neuron's namesake; none for a unit not in it")
+    kept_ix = cz.load_rows_index(irun)
+    irun.write_text("".join(json.dumps(r_) + "\n" for r_ in brows[:41]), encoding="utf-8")
+    grown = cz.load_rows_index(irun)
+    check(cz.rows_index_path_of(irun).exists() and kept_ix.start.tolist() == ix.start.tolist() and kept_ix.stamp == ix.stamp
+          and len(grown) == 41 and grown.read([40]) == [brows[40]] and grown.stamp == cz.file_stamp(irun),
+          "the rows index is kept beside the run and read back; made again when the run has changed")
+    # the ranking cut to a table (census.UnitsTable): every unit in the ranking's order, its words as shown_words gives
+    # them at any cut, its numbers the ranking's, its whole record read from the ranking file
+    trecs = list(cz.read_rows(cz.units_path_of(brun)))
+    tb = cz.build_table(brun)
+    tneu = [u_ for u_ in trecs if u_["kind"] == "neuron"]
+    check(len(tb) == len(trecs) == 10 and all(tb.record(i_) == u_ for i_, u_ in enumerate(trecs)) and tb.records() == trecs
+          and all(tb.shown(i_, k_) == cz.shown_words(u_, k_) for i_, u_ in enumerate(trecs) for k_ in (None, 1, 4, 5, 12))
+          and all((cz.KINDS[tb.kind[i_]], int(tb.neuron[i_]), tb.opt("mass", i_), tb.opt("null_pct", i_), tb.opt("p", i_), tb.opt("q", i_),
+                   tb.opt("collapse_mass", i_), tb.opt("mass_shown", i_))
+                  == (u_["kind"], u_["neuron"], u_["mass"], u_["null_pct"], u_.get("p"), u_.get("q"), u_.get("collapse_mass"), u_.get("mass_shown"))
+                  for i_, u_ in enumerate(trecs)),
+          "the table holds every unit of the ranking in its order: its shown words at any cut, its numbers, its record by seeking")
+    check(tb.null == {"neurons": 8, "controls": 2, "above_all": sum(1 for u_ in tneu if u_["null_pct"] == 1.0),
+                      "above_all_by_chance": cz.chance_above_all(8, 2), "q05": sum(1 for u_ in trecs if u_.get("q") is not None and u_["q"] <= 0.05)}
+          and [int(tb.rank[tb.row_of("neuron", u_["neuron"])]) for u_ in tneu] == list(range(1, 9)) and tb.row_of("neuron", 999) is None
+          and tb.marked is True and tb.reading == trecs[0]["reading"]
+          and all(any(w_ in set(u_.get("collapse") or ()) for w_ in tb.shown(i_)) is False for i_, u_ in enumerate(trecs)),
+          f"the table's null, each neuron's place among the neurons, its reading; no collapse word among the words shown ({tb.null})")
+    kept_tb = cz.load_table(brun)
+    bare = [{k_: v_ for k_, v_ in u_.items() if k_ not in ("collapse", "collapse_mass", "mass_shown", "reading")} for u_ in trecs]
+    with open(cz.units_path_of(brun), "w", encoding="utf-8") as f_:
+        f_.writelines(json.dumps(u_) + "\n" for u_ in bare)
+    cut_again = cz.load_table(brun)
+    check(cz.table_path_of(brun).exists() and kept_tb.words == tb.words and kept_tb.stamp == tb.stamp
+          and cut_again.marked is False and cut_again.reading is None and cut_again.opt("mass_shown", 0) is None
+          and cut_again.stamp == cz.file_stamp(cz.units_path_of(brun))
+          and all(cut_again.shown(i_) == [w_ for w_, _, _ in u_["words"]] for i_, u_ in enumerate(bare)),
+          "the table is kept beside the run and read back; cut again when the ranking has changed (an unmarked one shows every word)")
+    with open(cz.units_path_of(brun), "w", encoding="utf-8") as f_:
+        f_.writelines(json.dumps(u_) + "\n" for u_ in trecs)
+    section("a run read without reading it whole: the rows index and the ranking's table", before)
 
     # ----------------------------------------------- 12b. controls mixed from the layer's own columns, and the join
     before = len(failures)

@@ -155,8 +155,9 @@ export class AtlasMap {
   private hoverCon: { src: { layer: number; n: number } | null; from?: THREE.Vector3; list: Linked[] } | null = null;
   private headSrc: THREE.Vector3 | null = null;
   private neuronHeads: { layer: number; head: number; z: number }[] = [];
-  private unitsLayer: number | null = null;
-  private units: CensusUnitRow[] | null = null;
+  /** the census's inks, one byte a neuron for each layer that has one: 0 not in it, 1 in it and no stronger than its
+   * strongest control, 2 to 255 above every control */
+  private levels = new Map<number, Uint8Array>();
   private named = new Set<number>();
   private notes: { layer: number; n: number; el: HTMLDivElement }[] = [];
   private homeDist = 90;
@@ -542,7 +543,7 @@ export class AtlasMap {
   }
 
   private paintNamed() {
-    // a named neuron shows on every layer in the rubric's red; the census's colours on the layer that is open
+    // a named neuron shows on every layer in the rubric's red, over the census's colours
     for (const id of this.named) INKS.named.toArray(this.col, id * 3);
     (this.geo.attributes.color as THREE.BufferAttribute).needsUpdate = true;
   }
@@ -932,24 +933,13 @@ export class AtlasMap {
     this.refreshHighlights();
   }
 
-  /** The census's colours on one layer at a time (the open one): above every control from light to dark gilt, the
-   * rest a little darker than idle; names keep the rubric's red on every layer. */
-  setUnits(layer: number, units: CensusUnitRow[]) {
-    const N = this.N;
-    if (this.unitsLayer !== null && this.unitsLayer !== layer) for (let n = 0; n < N; n++) INKS.idle.toArray(this.col, (this.unitsLayer * N + n) * 3);
-    this.unitsLayer = layer;
-    this.units = units;
+  /** The census's colours on every layer that has one: above every control from light to dark gilt, the rest a little
+   * darker than idle; names keep the rubric's red on every layer. One layer's levels, a byte a neuron (GET
+   * /census/levels). */
+  setLevels(layer: number, levels: Uint8Array) {
+    this.levels.set(layer, levels);
     this.dataLayers.add(layer);
-    const zs = units.filter((u) => u.kind === "neuron").map((u) => u.z);
-    const rnd = units.filter((u) => u.kind === "random").map((u) => u.z);
-    const floor = rnd.length ? Math.max(...rnd) : Math.min(...zs, 0);
-    const top = Math.max(...zs, floor + 1e-6);
-    for (const u of units) {
-      if (u.kind !== "neuron") continue;
-      let c = INKS.swept;
-      if (u.z > floor) c = INKS.lo.clone().lerp(INKS.hi, Math.min(1, (u.z - floor) / (top - floor)));
-      c.toArray(this.col, (layer * N + u.n) * 3);
-    }
+    this.paintLevels(layer);
     this.paintNamed();
     const dl: number[] = [];
     for (const l of this.dataLayers) {
@@ -960,6 +950,33 @@ export class AtlasMap {
     this.render();
   }
 
+  private paintLevels(layer: number) {
+    const lv = this.levels.get(layer);
+    if (!lv) return;
+    const N = this.N;
+    const c = new THREE.Color();
+    for (let n = 0; n < N && n < lv.length; n++) {
+      const v = lv[n];
+      const ink = v === 0 ? INKS.idle : v === 1 ? INKS.swept : c.copy(INKS.lo).lerp(INKS.hi, (v - 2) / 253);
+      ink.toArray(this.col, (layer * N + n) * 3);
+    }
+  }
+
+  /** A layer's census list as it arrives: the same inks, worked out from the list (so a layer ranked since the page
+   * opened is inked too). */
+  setUnits(layer: number, units: CensusUnitRow[]) {
+    const zs = units.filter((u) => u.kind === "neuron").map((u) => u.z);
+    const rnd = units.filter((u) => u.kind === "random").map((u) => u.z);
+    const floor = rnd.length ? Math.max(...rnd) : Math.min(...zs, 0);
+    const top = Math.max(...zs, floor + 1e-6);
+    const lv = new Uint8Array(this.N);
+    for (const u of units) {
+      if (u.kind !== "neuron" || u.n < 0 || u.n >= this.N) continue;
+      lv[u.n] = u.z > floor ? 2 + Math.round(253 * Math.min(1, (u.z - floor) / (top - floor))) : 1;
+    }
+    this.setLevels(layer, lv);
+  }
+
   /** Neurons with a name in the field notes (layer * N + n). */
   setNamed(keys: { layer: number; n: number }[]) {
     const N = this.N;
@@ -967,9 +984,9 @@ export class AtlasMap {
     const gone = [...this.named].some((id) => !next.has(id));
     for (const id of this.named) if (!next.has(id)) INKS.idle.toArray(this.col, id * 3);
     this.named = next;
-    // a name taken away on the open layer: its census colour comes back
-    if (gone && this.unitsLayer !== null && this.units) this.setUnits(this.unitsLayer, this.units);
-    else this.paintNamed();
+    // a name taken away: its census colour comes back
+    if (gone) for (const l of this.levels.keys()) this.paintLevels(l);
+    this.paintNamed();
     this.render();
   }
 

@@ -2,16 +2,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
-import { cite, citeHead, get, noteKey, type CensusCard, type RunRow, type SearchRow } from "./api";
+import { cite, citeHead, get, noteKey, type CensusCard, type CensusHit, type CensusSearchReply, type RunRow, type SearchRow } from "./api";
 import { censusChance, Chips, ErrorLine, FaceLine, NameMark, ProposalLine } from "./parts";
 import {
+  clearTrail,
   closeFocus,
   goToNeuron,
   openHead,
   runView,
   saveNote,
+  setLayer,
   setLeftTab,
   setQuery,
+  censusLayersOf,
   theMap,
   useAtlas,
 } from "./state";
@@ -69,6 +72,27 @@ const NameField: React.FC<{ layer: number; n: number }> = ({ layer, n }) => {
   );
 };
 
+/** A link that opens the atlas on this neuron or head (#/atlas/47/17966, #/atlas/54/h3), copied for a note or a
+ * message: the address bar forgets what is open, so this is how a find is passed on. */
+const CopyLink: React.FC<{ f: { kind: "neuron" | "head"; layer: number; n: number } }> = ({ f }) => {
+  const [said, setSaid] = useState<string | null>(null);
+  const url = `${window.location.origin}${window.location.pathname}#/atlas/${f.layer + 1}/${f.kind === "head" ? "h" : ""}${f.n}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setSaid("copied");
+    } catch {
+      setSaid(url); // the clipboard is closed to this page: the link is shown to copy by hand
+    }
+    window.setTimeout(() => setSaid(null), 4000);
+  };
+  return (
+    <button type="button" className="btn-link" title={`copy a link that opens the atlas here: ${url}`} onClick={() => void copy()}>
+      {said ?? "copy link"}
+    </button>
+  );
+};
+
 const FocusHead: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const unit = useAtlas((s) => s.unit);
@@ -78,9 +102,12 @@ const FocusHead: React.FC = () => {
     <div className="atlas-focus-head">
       <div className="row-between">
         <span className="atlas-id">{f.kind === "head" ? citeHead(f.layer, f.n) : cite(f.layer, f.n)}</span>
-        <button type="button" className="btn-link" aria-label="close" onClick={closeFocus}>
-          close
-        </button>
+        <span className="row" style={{ gap: 14 }}>
+          <CopyLink key={`${f.kind}/${f.layer}/${f.n}`} f={f} />
+          <button type="button" className="btn-link" aria-label="close" onClick={closeFocus}>
+            close
+          </button>
+        </span>
       </div>
       {f.kind === "neuron" && s ? (
         <div className="muted atlas-small">
@@ -94,6 +121,81 @@ const FocusHead: React.FC = () => {
       {f.kind === "neuron" ? <NameField layer={f.layer} n={f.n} /> : null}
       {f.kind === "neuron" ? <ProposalLine layer={f.layer} n={f.n} part="name" /> : null}
     </div>
+  );
+};
+
+/** What was opened lately in this browser, the latest first (the open one left out): a way back along a web of links. */
+const Trail: React.FC = () => {
+  const trail = useAtlas((s) => s.trail);
+  const f = useAtlas((s) => s.focus);
+  const notes = useAtlas((s) => s.notes);
+  const rest = trail.filter((x) => !(f && x.kind === f.kind && x.layer === f.layer && x.n === f.n)).slice(0, 8);
+  if (!rest.length) return null;
+  return (
+    <div className="atlas-trail" role="group" aria-label="opened lately, the latest first">
+      <span className="atlas-lab">lately</span>
+      {rest.map((x) => {
+        const name = x.kind === "neuron" ? notes?.neurons[noteKey(x.layer, x.n)]?.name : notes?.heads?.[noteKey(x.layer, x.n)]?.name;
+        return (
+          <button
+            key={`${x.kind}/${x.layer}/${x.n}`}
+            type="button"
+            className="atlas-chip"
+            title={name ? `${name}: open it again` : "open it again"}
+            onMouseEnter={() => (x.kind === "head" ? theMap()?.hoverHead(x.layer, x.n) : theMap()?.hover(x.layer, x.n))}
+            onMouseLeave={() => (x.kind === "head" ? theMap()?.hoverHead(null) : theMap()?.hover(null))}
+            onClick={() => (x.kind === "head" ? void openHead(x.layer, x.n) : goToNeuron(x.layer, x.n))}
+          >
+            {x.kind === "head" ? citeHead(x.layer, x.n) : cite(x.layer, x.n)}
+          </button>
+        );
+      })}
+      <button type="button" className="btn-link" onClick={clearTrail} title="forget what was opened lately">
+        forget
+      </button>
+    </div>
+  );
+};
+
+/** Bars over the layers named, one a layer, each as tall as its value against the tallest: the census by depth, or a
+ * search's hits by depth. A click opens the layer. */
+const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string }[]; label: string }> = ({ bars, label }) => {
+  const layer = useAtlas((s) => s.layer);
+  const top = Math.max(1e-9, ...bars.map((b) => b.value));
+  const go = (l: number) => {
+    void setLayer(l);
+    const m = theMap();
+    if (m && m.layerMode !== null) m.enterLayer(l);
+    else m?.viewLayer(l);
+  };
+  return (
+    <div className="atlas-depth" role="group" aria-label={label}>
+      {bars.map((b) => (
+        <button key={b.layer} type="button" className={b.layer === layer ? "on" : ""} title={b.title} aria-label={b.title} onClick={() => go(b.layer)}>
+          <span className="bar" style={{ height: `${Math.round(2 + 22 * (b.value / top))}px` }} />
+          <span className="no">{b.layer + 1}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+/** Every layer with a census, each bar the share of its neurons whose rank is set apart from random pushes (a
+ * false-discovery q of 0.05 or less): where the census is, and how much of each layer it singles out. */
+const CensusDepth: React.FC = () => {
+  const layers = useAtlas((s) => s.censusLayers);
+  if (!layers || layers.length < 2) return null;
+  return (
+    <LayerBars
+      label="the layers with a census"
+      bars={layers.map((c) => ({
+        layer: c.layer,
+        value: c.ranked && c.neurons ? (c.q05_neurons ?? 0) / c.neurons : 0,
+        title: c.ranked
+          ? `layer ${c.layer + 1}: ${(c.q05_neurons ?? 0).toLocaleString()} of ${(c.neurons ?? 0).toLocaleString()} neurons set apart from random pushes (q ≤ 0.05)${c.doses_calibrated ? "" : " · doses not calibrated at this layer"}`
+          : `layer ${c.layer + 1}: its census is not ranked yet (open the layer to rank it)`,
+      }))}
+    />
   );
 };
 
@@ -292,6 +394,94 @@ const SearchRowItem: React.FC<{ x: SearchRow }> = ({ x }) => (
   </li>
 );
 
+const CensusHitItem: React.FC<{ x: CensusHit }> = ({ x }) => {
+  const hit = new Set(x.matched);
+  const further = x.matched.filter((w) => !x.words.includes(w));
+  const place = `#${x.rank.toLocaleString()} of its layer's census${x.q != null ? ` · q ${x.q}` : ""}`;
+  return (
+    <li
+      className={x.above ? "" : "below"}
+      title={x.above ? `${place} · brought it harder than any random control of its layer` : `${place} · a random control of its layer brought it as hard: a weaker lead`}
+      onClick={() => goToNeuron(x.layer, x.n)}
+      onMouseEnter={() => theMap()?.hover(x.layer, x.n)}
+      onMouseLeave={() => theMap()?.hover(null)}
+    >
+      <span className="atlas-id-small">{cite(x.layer, x.n)}</span>
+      <span className="atlas-z">{x.score.toFixed(1)}</span>
+      <span className="atlas-w">
+        {x.name ? <NameMark layer={x.layer} n={x.n} name={x.name} /> : null}
+        {x.words.map((w, i) => (
+          <React.Fragment key={w}>
+            {i ? " " : ""}
+            {hit.has(w) ? <b>{w}</b> : w}
+          </React.Fragment>
+        ))}
+        {further.length ? (
+          <span className="muted" title="matched in a word further down its list than the five a list shows">
+            {" "}
+            · further down: <b>{further.join(" ")}</b>
+          </span>
+        ) : null}
+      </span>
+    </li>
+  );
+};
+
+/** A search of every census at once: the neurons whose push made the model write the word, with where they lie by
+ * depth. Each layer's random controls, searched the same way, are the null: a hit counts when it brought the word
+ * harder than every control of its layer did. */
+const CensusSearchRows: React.FC<{ r: CensusSearchReply }> = ({ r }) => {
+  const sum = (f: (c: CensusSearchReply["layers"][number]) => number) => r.layers.reduce((a, c) => a + f(c), 0);
+  const above = sum((c) => c.above);
+  const neurons = sum((c) => c.neurons);
+  const controls = sum((c) => c.controls);
+  const ofControls = sum((c) => c.of_controls);
+  // were the neurons random directions, as many of them would match as the controls' share gives
+  const byChance = sum((c) => (c.of_controls ? (c.controls * c.of_neurons) / c.of_controls : 0));
+  if (!r.layers.length)
+    return (
+      <p className="muted atlas-small" style={{ padding: "6px 0" }}>
+        No layer has a ranked census to search yet{r.not_read.length ? ` (layers ${r.not_read.map((l) => l + 1).join(", ")} are not ranked: open one to rank it)` : ""}.
+      </p>
+    );
+  return (
+    <>
+      <LayerBars
+        label="where the hits lie, by layer"
+        bars={r.layers.map((c) => ({
+          layer: c.layer,
+          value: c.above,
+          title: `layer ${c.layer + 1}: ${c.above} neurons brought it harder than every random control (${c.neurons} brought it at all; ${c.controls} of ${c.of_controls.toLocaleString()} controls did)`,
+        }))}
+      />
+      <ol className="atlas-rows atlas-hits">
+        <li className="atlas-rows-head">
+          {neurons.toLocaleString()} neurons in {r.layers.filter((c) => c.neurons).length} of {r.layers.length} layers brought it · random controls
+          brought it {controls === 1 ? "once" : `${controls} times`} in {ofControls.toLocaleString()}, which among as many neurons would be about{" "}
+          {byChance.toFixed(0)}
+          {neurons > above ? ` · ${(neurons - above).toLocaleString()} brought it no harder than a control of their layer (faded)` : ""}
+          {r.total > r.results.length ? ` · the first ${r.results.length} shown` : ""}
+          {r.not_read.length ? ` · layers ${r.not_read.map((l) => l + 1).join(", ")} not ranked yet` : ""}
+        </li>
+        {r.results.map((x) => (
+          <CensusHitItem key={`${x.layer}/${x.n}`} x={x} />
+        ))}
+      </ol>
+      {r.total === 0 ? (
+        <p className="muted atlas-small" style={{ padding: "6px 0" }}>
+          No neuron’s census words begin with it. A census word is a whole word of three letters or more; write *{r.terms[0]?.replace(/^\*/, "")} to
+          match inside words too.
+        </p>
+      ) : null}
+      <Rubric style={{ fontSize: 14, margin: "6px 0 0" }}>
+        Each of these made the model write the word more often when it was pushed than the average random direction pushed as far, on six
+        fixed questions. The number is how far the word stands above the random pushes. A lead to test with a push of your own, not what the
+        neuron means.
+      </Rubric>
+    </>
+  );
+};
+
 const CensusRows: React.FC = () => {
   const layer = useAtlas((s) => s.layer);
   const units = useAtlas((s) => s.units[s.layer]);
@@ -323,11 +513,18 @@ const CensusRows: React.FC = () => {
       : "doses not yet calibrated on this model";
   if (!arch?.census[String(layer)]) {
     const refused = arch?.census_refused?.[String(layer)];
+    const have = censusLayersOf(arch ?? null);
     return (
-      <p className="muted atlas-small" style={{ padding: "6px 0" }}>
-        Layer {layer + 1} has no census yet: no neuron of it has been pushed on the census's questions (scripts/census_run.py --layer {layer},
-        counting layers from 0).{refused ? ` A run of it is not read: ${refused}.` : ""}
-      </p>
+      <>
+        <CensusDepth />
+        <p className="muted atlas-small" style={{ padding: "6px 0" }}>
+          Layer {layer + 1} has no census yet: no neuron of it has been pushed on the census's questions (scripts/census_run.py --layer {layer},
+          counting layers from 0).{refused ? ` A run of it is not read: ${refused}.` : ""}
+          {have.length
+            ? ` The census covers layer${have.length > 1 ? "s" : ""} ${have.length > 2 && have[have.length - 1] - have[0] === have.length - 1 ? `${have[0] + 1}–${have[have.length - 1] + 1}` : have.map((l) => l + 1).join(", ")}: pick one above, or search every census at once from the box (census).`
+            : ""}
+        </p>
+      </>
     );
   }
   if (!units) return <p className="muted atlas-small">reading the census…</p>;
@@ -340,6 +537,7 @@ const CensusRows: React.FC = () => {
   );
   return (
     <>
+      <CensusDepth />
       <div className="row" style={{ gap: 10, padding: "4px 0" }}>
         <input className="input-line" placeholder="filter by word or name" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
         <label className="check atlas-small">
@@ -474,12 +672,14 @@ export const LeftPanel: React.FC = () => {
   const tab = useAtlas((s) => s.leftTab);
   const hidden = useAtlas((s) => s.leftHidden);
   const search = useAtlas((s) => s.search);
+  const censusSearch = useAtlas((s) => s.censusSearch);
   const searchError = useAtlas((s) => s.searchError);
   const qMode = useAtlas((s) => s.qMode);
   if (hidden) return null;
   return (
     <aside className="atlas-panel atlas-left" aria-label="the open neuron's web, the layer's census, the run of a text">
       <FocusHead />
+      <Trail />
       <nav className="atlas-tabs" role="tablist">
         {(["web", "run"] as const).map((t) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setLeftTab(t)}>
@@ -495,7 +695,9 @@ export const LeftPanel: React.FC = () => {
           <HeadWeb />
           <NeuronWeb />
           <ErrorLine error={searchError} />
-          {search && qMode === "lens" ? (
+          {censusSearch && qMode === "census" ? (
+            <CensusSearchRows r={censusSearch} />
+          ) : search && qMode === "lens" ? (
             search.ready ? (
               <SearchRows rows={search.results} held={search.held} total={search.total} tokens={search.tokens} />
             ) : (

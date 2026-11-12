@@ -316,6 +316,61 @@ export interface CensusUnitRow {
   mass_shown?: number;
   name: string;
 }
+/** A neuron found by its census words in any layer with a census (GET /census/search). */
+export interface CensusHit {
+  layer: number;
+  n: number;
+  /** the matched word's score against the controls' mean (the least over the query's words) */
+  score: number;
+  /** whether that score beats every control of its layer that matched the same way */
+  above: boolean;
+  matched: string[];
+  mass: number | null;
+  null_pct: number | null;
+  q: number | null;
+  /** the words a list shows for it (of its five strongest, those shown), and all it may show */
+  words: string[];
+  all_words: string[];
+  /** its place among its layer's neurons, 1 the strongest */
+  rank: number;
+  collapse_mass?: number;
+  name: string;
+}
+/** A layer's part of a census search: how many neurons matched, how many of them harder than every random control of
+ * the layer that matched the same way, how many controls matched and the strongest of them. The controls are the
+ * null: `controls / of_controls` of a layer's neurons would match were they random directions. */
+export interface CensusSearchLayer {
+  layer: number;
+  neurons: number;
+  above: number;
+  controls: number;
+  control_max: number;
+  of_neurons: number;
+  of_controls: number;
+}
+export interface CensusSearchReply {
+  terms: string[];
+  results: CensusHit[];
+  layers: CensusSearchLayer[];
+  total: number;
+  /** layers whose run is not ranked yet, so not searched */
+  not_read: number[];
+  says: string;
+}
+/** One layer with a census, from its ranking alone (GET /census/layers). */
+export interface CensusLayerRow {
+  layer: number;
+  run: string;
+  design: string | null;
+  ranked: boolean;
+  doses_calibrated: boolean;
+  neurons?: number;
+  controls?: number;
+  above_all?: number;
+  above_all_by_chance?: number | null;
+  q05?: number;
+  q05_neurons?: number;
+}
 /** What every census reply says of its run (backend/atlas.py census_card). */
 export interface CensusCard {
   run: string;

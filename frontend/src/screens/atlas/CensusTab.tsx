@@ -62,6 +62,7 @@ const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) 
     .filter((d) => count[d] > 1)
     .sort((a, b) => a - b);
   const relOf = (d: number) => rolls.find((r) => r.dose === d)?.rel_push.toFixed(2);
+  const calibrated = unit.card?.doses_calibrated === true;
   const cell = (r: Rollout | undefined, key: string, extra?: React.ReactNode, span?: number) =>
     r ? (
       <div
@@ -121,11 +122,14 @@ const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) 
         {unit.card?.dose_unit === "ceiling" ? "a multiple of the most it can write by itself" : "a share of the stream's usual length"}, its push
         measured beside it as a share of the stream). Click an answer to read all of it. <a href={href.lexicon("census")}>What the census is.</a>
       </Rubric>
-      <CensusProvenance card={unit.card} style={{ margin: "0 0 8px" }} />
+      {/* where its doses are not calibrated at this layer the card says so, in red, before any answer; where they are, the
+          answers come first and the card follows them */}
+      {calibrated ? null : <CensusProvenance card={unit.card} style={{ margin: "0 0 8px" }} />}
       <CeilingNote unit={unit.card?.dose_unit} doses={unit.card?.doses} />
       <div className="atlas-grid" style={{ gridTemplateColumns: `56px repeat(${1 + doses.length}, minmax(0, 1fr))` }}>
         {out}
       </div>
+      {calibrated ? <CensusProvenance card={unit.card} style={{ margin: "10px 0 0" }} /> : null}
       <p className="muted atlas-small" style={{ marginTop: 8 }}>
         {unit.run} · {unit.design}
       </p>

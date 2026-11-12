@@ -13,7 +13,7 @@ import { href } from "../../router";
 import type { BookFace, BookReply } from "../NeuronFolio/saved";
 import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
 import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, ProposalLine, words } from "./parts";
-import { goToNeuron, hoverCache, openHead, remember, saveNote, theMap, useAtlas } from "./state";
+import { goToNeuron, hoverCache, openHead, remember, saveNote, setQuery, theMap, useAtlas } from "./state";
 
 const CensusStats: React.FC = () => {
   const f = useAtlas((s) => s.focus);
@@ -31,9 +31,15 @@ const CensusStats: React.FC = () => {
       <div className="atlas-crumbs">
         {shown.length === 0 && s.words.length ? <span className="muted">only words random pushes bring as hard</span> : null}
         {shown.map(([w, c, z]) => (
-          <span key={w} className="atlas-tok" title={`${c} answers · z ${z.toFixed(1)} · ${(s.per_prompt[w] ?? []).join(" ")}`}>
+          <button
+            key={w}
+            type="button"
+            className="atlas-tok atlas-tok-btn"
+            title={`${c} answers · z ${z.toFixed(1)} · ${(s.per_prompt[w] ?? []).join(" ")} · click: the neurons of every census that bring it`}
+            onClick={() => setQuery(w, "census")}
+          >
             {w}
-          </span>
+          </button>
         ))}
       </div>
       {hide.size ? (

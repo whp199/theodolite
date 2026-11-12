@@ -981,6 +981,251 @@ def write_json_atomic(path: Path, data: Any, indent: Optional[int] = 1) -> None:
     os.replace(tmp, path)
 
 
+# ------------------------------------------------------------------------- a run read without reading it whole
+
+# A whole layer's run is some 2.7 GB of answers and its ranking 30 MB, and a page asks for one neuron's 24 answers, or
+# for a list of the layer's words. Two small files beside a run let it be read by seeking: where each answer starts
+# (`RowsIndex`, `<run>.rows.npz`) and the ranking cut to what a list or a search shows (`UnitsTable`,
+# `<run>.table.npz`). Each records the size and time of the file it was read from and is made again when that file
+# changes; neither holds anything its file does not, so deleting one costs only the seconds to make it again.
+
+_ROW_KIND = re.compile(rb'"kind":\s*"(\w+)"')
+_ROW_NEURON = re.compile(rb'"neuron":\s*(-?\d+)')
+ROWS_INDEX_VERSION = 1
+TABLE_VERSION = 1
+TABLE_WORDS = 12  # the words a ranking keeps for each unit (write_units' top_words)
+
+
+def rows_index_path_of(run_path: Path) -> Path:
+    return Path(str(run_path)[: -len(".jsonl")] + ".rows.npz")
+
+
+def table_path_of(run_path: Path) -> Path:
+    return Path(str(run_path)[: -len(".jsonl")] + ".table.npz")
+
+
+def file_stamp(path: Path) -> List[int]:
+    st = Path(path).stat()
+    return [int(st.st_size), int(st.st_mtime_ns)]
+
+
+def _save_npz_atomic(path: Path, **arrays: Any) -> None:
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "wb") as f:
+        np.savez_compressed(f, **arrays)
+    os.replace(tmp, path)
+
+
+class RowsIndex:
+    """Where each answer of a run lies in its file, and whose it is, so one unit's answers are read by seeking to them.
+    Rows are numbered as `read_rows(path, tolerate_tail=True)` yields them (blank lines skipped, a last line cut off
+    mid-write left out), which is the numbering a spread's `row` uses."""
+
+    def __init__(self, path: Path, start: np.ndarray, length: np.ndarray, kind: np.ndarray, neuron: np.ndarray, stamp: Sequence[int]) -> None:
+        self.path, self.stamp = Path(path), [int(x) for x in stamp]
+        self.start, self.length = start.astype(np.int64), length.astype(np.int32)
+        self.kind, self.neuron = kind.astype(np.uint8), neuron.astype(np.int32)
+        key = self.kind.astype(np.int64) * (1 << 33) + (self.neuron.astype(np.int64) + (1 << 31))
+        self._order = np.argsort(key, kind="stable")
+        self._key = key[self._order]
+
+    def __len__(self) -> int:
+        return int(len(self.start))
+
+    def of(self, kind: str, neuron: int) -> List[int]:
+        """The rows of one unit (a kind and its index), in the file's order; every baseline with kind "baseline", -1."""
+        k = KINDS.index(kind) * (1 << 33) + (int(neuron) + (1 << 31))
+        lo, hi = np.searchsorted(self._key, k, "left"), np.searchsorted(self._key, k, "right")
+        return [int(i) for i in self._order[lo:hi]]
+
+    def read(self, rows: Sequence[int]) -> List[Dict[str, Any]]:
+        """The rows named, whole, in the order asked."""
+        out: List[Dict[str, Any]] = []
+        with open(self.path, "rb") as f:
+            for i in rows:
+                f.seek(int(self.start[i]))
+                out.append(json.loads(f.read(int(self.length[i]))))
+        return out
+
+
+def build_rows_index(run_path: Path) -> RowsIndex:
+    """Read a run once for where its answers lie (one pass over its bytes: each line's kind and neuron are read from
+    the line's head, and by parsing the line where they are not found there), and keep it beside the run."""
+    run_path = Path(run_path)
+    stamp = file_stamp(run_path)
+    start: List[int] = []
+    length: List[int] = []
+    kind: List[int] = []
+    neuron: List[int] = []
+    off = 0
+    with open(run_path, "rb") as f:
+        for line in f:
+            at, off = off, off + len(line)
+            if not line.strip():
+                continue
+            k, n = _ROW_KIND.search(line, 0, 4096), _ROW_NEURON.search(line, 0, 4096)
+            whole = line.endswith(b"\n")
+            if k is None or n is None or k.group(1).decode() not in KINDS or not whole:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    if not whole:
+                        break  # a last line cut off mid-write
+                    raise
+                kk, nn = KINDS.index(r["kind"]), int(r["neuron"])
+            else:
+                kk, nn = KINDS.index(k.group(1).decode()), int(n.group(1))
+            start.append(at)
+            length.append(len(line))
+            kind.append(kk)
+            neuron.append(nn)
+    ix = RowsIndex(run_path, np.array(start, np.int64), np.array(length, np.int32), np.array(kind, np.uint8),
+                   np.array(neuron, np.int32), stamp)
+    try:
+        _save_npz_atomic(rows_index_path_of(run_path), start=ix.start, length=ix.length, kind=ix.kind, neuron=ix.neuron,
+                         stamp=np.array(stamp, np.int64), version=np.array(ROWS_INDEX_VERSION))
+    except OSError:
+        pass  # a folder that cannot be written: the index is made again next time
+    return ix
+
+
+def load_rows_index(run_path: Path) -> RowsIndex:
+    """A run's rows index, read from beside it when it was made from the run as it is now, else made (and kept)."""
+    run_path = Path(run_path)
+    p = rows_index_path_of(run_path)
+    if p.exists():
+        try:
+            with np.load(p) as z:
+                if int(z["version"]) == ROWS_INDEX_VERSION and [int(x) for x in z["stamp"]] == file_stamp(run_path):
+                    return RowsIndex(run_path, z["start"], z["length"], z["kind"], z["neuron"], z["stamp"])
+        except (OSError, ValueError, KeyError):
+            pass
+    return build_rows_index(run_path)
+
+
+class UnitsTable:
+    """A run's ranking cut to what a list or a search shows, its units in the ranking's order: each unit's kind and
+    index, its mass (z for a ranking without one), null_pct, p, q, collapse_mass and mass_shown (NaN where the ranking
+    has none), the words a page may show for it (`shown_words`: collapse words left out) with each word's score and
+    its place among all the unit's words (`place`: a list shows a neuron by those of its five strongest that are
+    shown, never by words further down), and where its whole record lies in the ranking file (`record`). `null`: how many neurons and controls, how many neurons beat every
+    control and how many would by chance, how many units have q <= 0.05. `reading`: how the ranking read its answers
+    (None for one that does not say). `marked`: whether the ranking carries its collapse marks."""
+
+    FIELDS = ("mass", "null_pct", "p", "q", "collapse_mass", "mass_shown")
+
+    def __init__(self, units_path: Path, a: Dict[str, Any]) -> None:
+        self.path = Path(units_path)
+        self.kind, self.neuron = a["kind"].astype(np.uint8), a["neuron"].astype(np.int32)
+        for k in self.FIELDS:
+            setattr(self, k, a[k].astype(np.float64))
+        self.place = a["place"].astype(np.int16)
+        self.scores = a["scores"].astype(np.float32)
+        self.start, self.length = a["start"].astype(np.int64), a["length"].astype(np.int32)
+        self.words: List[str] = bytes(a["words"]).decode("utf-8").split("\n") if len(a["kind"]) else []
+        head = json.loads(bytes(a["head"]).decode("utf-8"))
+        self.stamp, self.null, self.reading, self.marked = head["stamp"], head["null"], head["reading"], head["marked"]
+        self.is_neuron = self.kind == KINDS.index("neuron")
+        # a neuron's place among the neurons (1 the strongest), and where each neuron's row is
+        self.rank = np.cumsum(self.is_neuron) * self.is_neuron
+        self._row = {(int(k), int(n)): i for i, (k, n) in enumerate(zip(self.kind, self.neuron))}
+
+    def __len__(self) -> int:
+        return int(len(self.kind))
+
+    def row_of(self, kind: str, neuron: int) -> Optional[int]:
+        return self._row.get((KINDS.index(kind), int(neuron)))
+
+    def shown(self, i: int, k: Optional[int] = None) -> List[str]:
+        """Unit i's words as a page shows them: `shown_words(unit, k)` of its record, without reading the record."""
+        ws = self.words[i].split(" ") if self.words[i] else []
+        return ws if k is None else [w for w, at in zip(ws, self.place[i]) if at < k]
+
+    def opt(self, field: str, i: int) -> Optional[float]:
+        v = float(getattr(self, field)[i])
+        return None if math.isnan(v) else v
+
+    def record(self, i: int) -> Dict[str, Any]:
+        """Unit i's whole record, read from the ranking file."""
+        with open(self.path, "rb") as f:
+            f.seek(int(self.start[i]))
+            return json.loads(f.read(int(self.length[i])))
+
+    def records(self) -> List[Dict[str, Any]]:
+        return list(read_rows(self.path))
+
+
+def build_table(run_path: Path) -> UnitsTable:
+    """Cut a run's ranking file to its table (`UnitsTable`) and keep it beside the run."""
+    up = units_path_of(Path(run_path))
+    stamp = file_stamp(up)
+    cols: Dict[str, List[Any]] = {k: [] for k in ("kind", "neuron", "start", "length", *UnitsTable.FIELDS)}
+    words_: List[str] = []
+    scores, place = [], []
+    reading, marked, off = None, False, 0
+    nan = float("nan")
+    with open(up, "rb") as f:
+        for line in f:
+            at, off = off, off + len(line)
+            if not line.strip():
+                continue
+            u = json.loads(line)
+            if not cols["kind"]:
+                marked = "mass_shown" in u
+            reading = reading or u.get("reading")
+            hide = set(u.get("collapse") or ())
+            ws = [(w, float(z)) for w, _, z in (u.get("words") or [])[:TABLE_WORDS]]
+            keep = [(w, z, at) for at, (w, z) in enumerate(ws) if w not in hide]
+            cols["kind"].append(KINDS.index(u["kind"]))
+            cols["neuron"].append(int(u["neuron"]))
+            cols["start"].append(at)
+            cols["length"].append(len(line))
+            for k in UnitsTable.FIELDS:
+                v = u.get("mass", u.get("z")) if k == "mass" else u.get(k)
+                cols[k].append(nan if v is None else float(v))
+            words_.append(" ".join(w for w, _, _ in keep))
+            scores.append([z for _, z, _ in keep] + [nan] * (TABLE_WORDS - len(keep)))
+            place.append([at for _, _, at in keep] + [TABLE_WORDS] * (TABLE_WORDS - len(keep)))
+    kind = np.array(cols["kind"], np.uint8)
+    neu = kind == KINDS.index("neuron")
+    ctl = kind == KINDS.index("random")
+    npct, q = np.array(cols["null_pct"], np.float64), np.array(cols["q"], np.float64)
+    n_neu, n_ctl = int(neu.sum()), int(ctl.sum())
+    null = {"neurons": n_neu, "controls": n_ctl, "above_all": int((neu & (npct == 1.0)).sum()),
+            "above_all_by_chance": chance_above_all(n_neu, n_ctl), "q05": int((q <= 0.05).sum())}
+    head = {"version": TABLE_VERSION, "stamp": stamp, "null": null, "reading": reading, "marked": bool(marked)}
+    arrays: Dict[str, Any] = {
+        "kind": kind, "neuron": np.array(cols["neuron"], np.int32),
+        "place": np.array(place, np.int16).reshape(len(kind), TABLE_WORDS),
+        "start": np.array(cols["start"], np.int64), "length": np.array(cols["length"], np.int32),
+        **{k: np.array(cols[k], np.float64) for k in UnitsTable.FIELDS},
+        "scores": np.array(scores, np.float32).reshape(len(kind), TABLE_WORDS),
+        "words": np.frombuffer("\n".join(words_).encode("utf-8"), np.uint8),
+        "head": np.frombuffer(json.dumps(head).encode("utf-8"), np.uint8),
+    }
+    try:
+        _save_npz_atomic(table_path_of(Path(run_path)), **arrays)
+    except OSError:
+        pass  # a folder that cannot be written: the table is made again next time
+    return UnitsTable(up, arrays)
+
+
+def load_table(run_path: Path) -> UnitsTable:
+    """A run's table, read from beside it when it was cut from the ranking file as it is now, else cut again."""
+    run_path = Path(run_path)
+    p, up = table_path_of(run_path), units_path_of(run_path)
+    if p.exists():
+        try:
+            with np.load(p) as z:
+                a = {k: z[k] for k in z.files}
+            head = json.loads(bytes(a["head"]).decode("utf-8"))
+            if head.get("version") == TABLE_VERSION and head.get("stamp") == file_stamp(up):
+                return UnitsTable(up, a)
+        except (OSError, ValueError, KeyError):
+            pass
+    return build_table(run_path)
+
+
 # ---------------------------------------------------------------------------------------------- the writer's floor
 
 # The writer's floor (scripts/verify_atlas_writer.py, on the model): with no push, how far an answer written in a census

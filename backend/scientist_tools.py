@@ -188,6 +188,15 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "search_lens", "description": "Neurons one of whose faces carries a word-piece holding the query (ignoring case) among its first "
      "twelve, through the lens, by the naked eye or in its steer lens; best matches first, each with its words and the gate's verdict.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer", "default": 40}}, "required": ["query"]}},
+    {"name": "search_census", "description": "Neurons whose census words match the query, over every layer with a ranked census at once: "
+     "for each word of the query, one of the neuron's census words begins with it (holds it anywhere, when the query's word is "
+     "written with a leading *) and stands above the random controls' mean. The strongest first, each with the words matched, "
+     "that word's score, the neuron's census words, its q and its place in its own layer's census. Each layer's random controls "
+     "are searched the same way and are the null: `controls_matched` of `controls` says how many of as many neurons would match "
+     "were they random directions, and a row is `above_controls` only when it brought the word harder than every control of its "
+     "layer. A match is a lead to test with `steer` or `rollouts`, not what the neuron means, and it reaches only the layers "
+     "with a census (`layers`).",
+     "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer", "default": 40}}, "required": ["query"]}},
     {"name": "top_units", "description": "A layer's neurons ranked by their census words' mass against random-direction controls, with their "
      "words and names, and how many would land above every control by chance alone (N / (C + 1): with 256 controls about 84 "
      "of a whole layer), and the run's card: its design, where its doses come from, the doses, how the ranking read the "
@@ -516,6 +525,19 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         return {"word_pieces_matched": r["tokens"], "total": r["total"], "held_back_by_the_gate": r.get("held_back", 0),
                 "results": [{"neuron": cite(x["layer"], x["n"]), "face": x["sign"], "matched_in": x["src"], "rank": x["rank"],
                              **face_words(x["words"], 6), **({"census": x["census"]} if x.get("census") else {}),
+                             **({"name": x["name"]} if x.get("name") else {})} for x in r["results"]]}
+    if name == "search_census":
+        _need(a, "query")
+        r = await api.get("/api/atlas/census/search", q=a["query"], limit=a.get("limit", 40))
+        if not r["layers"]:
+            return {"results": [], "total": 0, "note": "no layer has a ranked census to search"}
+        return {"query": r["terms"], "total": r["total"], "says": r["says"],
+                "layers": [{"layer": int(c["layer"]) + 1, "neurons_matched": c["neurons"], "above_controls": c["above"],
+                            "controls_matched": c["controls"], "controls": c["of_controls"]} for c in r["layers"]],
+                **({"layers_not_ranked_yet": [int(l) + 1 for l in r["not_read"]]} if r.get("not_read") else {}),
+                "results": [{"neuron": cite(x["layer"], x["n"]), "matched": x["matched"], "score": x["score"],
+                             "above_controls": x["above"], "words": x["all_words"], "q": x["q"], "rank_in_its_layer": x["rank"],
+                             **({"mass_from_collapse_words": x["collapse_mass"]} if x.get("collapse_mass") else {}),
                              **({"name": x["name"]} if x.get("name") else {})} for x in r["results"]]}
     if name == "top_units":
         _need(a, "layer")

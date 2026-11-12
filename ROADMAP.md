@@ -595,6 +595,68 @@ layers, the determinism run and the sampled push on 29 October). In this section
     23.5 to 19.9 against 17.2 for the fifth, and 3,510 neurons beat that fifth. On its ±1 answers alone 6,145 beat
     every control, fourth of the eleven. It has 5,914 with q ≤ 0.05, and the lead holds (0.736, and 0.744 beyond text
     survival).
+- **The other forty-nine layers: whether, and in what order** (12 November 2026; a plan, none of it run yet).
+  - **What a census at every layer would add.** Three things the page cannot do without one. (1) Below layer 40 the
+    atlas’s main reading shows no words for a neuron: the label gate holds the lens’s labels back there (the apparatus
+    keeps them, marked as held back) and the steer lens is not built, so only its passages speak for it. A census there
+    would be the only reading of what a neuron writes that the page could show, for two thirds of the model. (2) The web runs off the census’s edge. Of the 24 strongest links each way of 150 neurons the
+    census leads on (30 drawn at each of layers 40, 43, 45, 47 and 50, seed 1, from the wiring index), 68% of the
+    upstream ends and 72% of the downstream ones lie in a layer with a census, so about three links in ten end where
+    no neuron has census words to show. Nearly all of those lie just outside the band: 1,123 of the 1,143 upstream ones at
+    layers 38 and 39, 879 of the 994 downstream ones at 51 and 52 (53 and 54 a further 102). With those four layers
+    taken, 99% and 97% of these links would end in a census. (3) The search of every census at once (below) follows a
+    word through eleven layers and no further.
+  - **Why it cannot simply be run.** A whole layer is 565,254 answers: 13.2 hours on the home 5090 and 2.7 GB kept. The
+    49 layers left are 27 days of that card, or as many volunteer-nights, and about 135 GB. And `break_rel`’s doses are
+    calibrated at 40–50 alone (above). Upward, the ±1 push already breaks text at 48–50 (the neurons lose 0.10–0.17 of
+    their distinct-4), and at 57 the trial’s probe passed by 0.0008, failed at 32 word-pieces, and its lead could not be
+    told from how the text survives. Downward, the ladders put the break at ±1 of the stream at layer 30 and ±0.5 at
+    layer 20, so ±1 and ±2 would be read at the break or past it; at layer 20 a neuron’s ceiling is 0.10 of the stream,
+    so ±1 is ten times the most it can write; and on the ladders’ 64 + 64 units the ranking told neurons from controls
+    not at all at 20 (0.52, 0.50) and weakly at 30 (0.58, 0.59). The ladders under-read, though: at layer 45 they gave
+    0.55–0.63 where the trial’s 1,022 neurons gave 0.714. So layers 20 and 30 are not shown to fail. They are not shown.
+  - **The plan: grow the band outward, a trial before every whole layer.**
+    1. *The four neighbours first* (38, 39, 51, 52), where a census would add the most to what is already taken and
+       the design is likeliest to hold. A trial at each as layer 45’s was: about 1,022 fresh neurons against 1,024
+       controls, `break_rel` as it is, read with the trial’s reader and its gates as fixed on 29 October (0.60, 0.58,
+       0.57, 0.56), with the review’s two checks made gates before any is run: the ±1 answers alone, and the units whose
+       text survival the controls cover (the check layer 57 failed). About 49,000 answers and 70 minutes each, one night
+       for the four. A whole layer follows only where its trial passes: 13.2 hours each, 53 for the four, or two nights
+       on the volunteers’ cards with the kit as it is (the design is the kit’s; a canary a layer on the home card).
+       `DOSES_CALIBRATED` is widened a layer at a time, on a passed trial and the owner’s word.
+    2. *On while trials pass* (37, 36, … and 53, 54, …), each next layer a 70-minute trial. Where one fails, the band
+       stops on that side under this design.
+    3. *Past where `break_rel` holds, a design scaled to each layer’s break.* At layer 45 the lead lay in the answers
+       just under the break (±1, where text breaks at ±2). A design that takes each layer at half its break and at its
+       break (±1 and ±2 at 40–47, as now; ±0.5 and ±1 at 30; ±0.25 and ±0.5 at 20) needs each layer’s break measured:
+       both ladders at the layers that have none (64 + 64 units, about 20 minutes a layer), then its own trial, its
+       gates fixed first, at some of 5, 10, 15, 20, 25, 30, 35 and 54, 57, 59. Not built. It would be a new design and,
+       since it changes what writes answers, a new kit. Whether to build it is the owner’s choice, best made once step
+       2 shows where the band stops.
+    4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
+       one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
+       word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
+       reading within a night’s reach of the layers below 40. Its dose is still to choose (above).
+- **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
+  driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
+  or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at
+  every third layer a web of links led to. A run is now read by seeking (`census.RowsIndex`, `census.UnitsTable`;
+  ARCHITECTURE §4.7): a layer’s list opens in 0.13 s and a neuron’s answers in 0.01 s, after 2.4–3.4 s once for each
+  layer’s rows index and 6 s once for the eleven tables. That is also what a census at sixty layers would need of the
+  page. With every table in memory:
+  - **Every layer with a census is inked on the map at once** (`GET /census/levels`), where only the open one was, and a
+    strip of bars over the census list shows each layer’s share of neurons with q ≤ 0.05; a bar opens its layer.
+  - **A search of every census at once** (`GET /census/search`; the search box’s `census`; the scientist’s
+    `search_census`): the neurons whose push brought a word, the strongest first. Each layer’s random controls are
+    searched the same way and are its null. For “rain”, 135 neurons in the eleven layers against 3 of the 22,528
+    controls, which among as many neurons would be about 32; layer 47’s N17966 comes first. A word is matched from its
+    beginning because inside words the controls keep pace: “\*rain” (train, brain, grain) finds 1,138 neurons against
+    77 controls, about 808 neurons’ worth. A hit no stronger than a control of its own layer is shown faded. A census
+    word in a neuron’s details searches for it.
+  - **Smaller things.** A first visit opens on a layer with a census (it opened on layer 54, which has none). A layer
+    without one says which layers have. The neurons and heads opened lately stay as a trail over the left panel. A
+    neuron’s link can be copied. Where a run’s doses are calibrated at its layer, a neuron’s census answers come before
+    the run’s card, which follows them; where they are not, the card stays first, in red.
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card
