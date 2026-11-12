@@ -39,6 +39,12 @@ backend/scientist_prompt.md, backend/scientist_methodology.md and `prompt.local.
 NDJSON (GET /events): state, sent, text, thinking, tool, tool_result, ui, error, done, note, stale, ping. The routes are
 in ARCHITECTURE.md §4.8.
 
+What a scientist writes in its work folder the person opens from the chat (GET /work/<path>, `work_file`): a page, a
+picture or a text in a browser tab, anything else as a download, each sent under a policy that runs no script and
+fetches nothing (`WORK_CSP`), since the file's author read the model's output. So a deliverable is a file written
+there, an HTML page with its styles inline say, not a script the person must run: at the folder reach Claude Code has
+no shell to run one with.
+
 A Claude Code or Codex chat reads its instructions and tools when its process starts (`agent_files`: the prompt, its
 methodology, `prompt.local.md`, the MCP server and the tools it serves). When they have changed since, the person's next
 message to a live, idle chat takes them up only where that cannot end anything else (`_take_up_changes`): a Claude Code
@@ -72,7 +78,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend import scientist_tools as st
@@ -106,6 +112,15 @@ MAX_ROUNDS = 40  # tool rounds in one openai turn
 TOOL_CUT = 16000  # characters of a tool's reply an openai-compatible model reads
 SHOWN_CUT = 1500  # characters of a tool's reply the page shows
 MAX_UPLOAD = 25 << 20
+# a file of the work folder as GET /work/<path> hands it to the person's browser: these open in a tab, anything else
+# is a download. Every one goes out under WORK_CSP: no script runs, nothing is fetched, no form is sent, and the page
+# has no origin of its own (sandbox), so a page a scientist wrote, or was talked into writing by what it read, can
+# show itself and nothing more; its styles and images must be in the file (inline CSS and SVG, data: images)
+WORK_TYPES = {".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".svg": "image/svg+xml",
+              **{ext: "text/plain; charset=utf-8" for ext in (".md", ".txt", ".py", ".json", ".jsonl", ".csv", ".tsv", ".log")},
+              ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp"}
+WORK_CSP = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:"
+WORK_ROUTE = "/api/atlas/scientist/work/"
 MAX_MESSAGE = 100_000
 # what the events and /restart say when a chat takes up changed instructions or tools (`_take_up_changes`)
 RESTARTED_WORDS = ("Its instructions or tools had changed since this chat's process started, so it was started again, resuming "
@@ -219,7 +234,8 @@ CODEX_FOLDER_NOTE = """
 ## This session
 
 You are running as Codex, your shell in a sandbox: it writes only in `{WORK}` and has no network, so a script cannot
-reach the instrument's API; use the atlas's tools for every reading."""
+reach the instrument's API; use the atlas's tools for every reading. A script that only writes a file in `{WORK}` from
+numbers you already have (a page, a table) you can run yourself: run it, and link what it wrote."""
 OPENAI_NOTE = """
 
 ## This session
@@ -230,7 +246,7 @@ web. Where an analysis needs a script, write the script in your reply for the pe
 
 def system_prompt(agent: str, self_url: str) -> str:
     """The scientist's instructions: the prompt and its methodology, then this machine's own additions
-    (`<scientist folder>/prompt.local.md`), with {ROOT}, {API}, {WORK} and {PYTHON} filled in; for an openai-compatible
+    (`<scientist folder>/prompt.local.md`), with {ROOT}, {API}, {WORK}, {WORK_URL} and {PYTHON} filled in; for an openai-compatible
     model the shell section is left out, as it has none."""
     text = "\n\n".join(p.read_text(encoding="utf-8").rstrip() for p in PROMPT_FILES)
     local = scientist_dir() / "prompt.local.md"
@@ -248,8 +264,8 @@ def system_prompt(agent: str, self_url: str) -> str:
         text = keep(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END)
         if agent == "codex":
             text += CODEX_FOLDER_NOTE
-    return (text.replace("{ROOT}", str(ROOT_DIR)).replace("{API}", self_url).replace("{WORK}", str(work_dir()))
-            .replace("{PYTHON}", sys.executable).strip() + "\n")
+    return (text.replace("{ROOT}", str(ROOT_DIR)).replace("{API}", self_url).replace("{WORK_URL}", WORK_ROUTE)
+            .replace("{WORK}", str(work_dir())).replace("{PYTHON}", sys.executable).strip() + "\n")
 
 
 def prompt_file(agent: str, self_url: str) -> Path:
@@ -1123,6 +1139,8 @@ async def backends() -> Dict[str, Any]:
             "codex": {"available": bool(shutil.which(_bin("codex")))},
             "openai": [profile_card(k, v) for k, v in ps.items()], "warning": _profile_warning,
             "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()]},
+            # where a Claude Code or Codex scientist keeps its files, and the route the page opens one through
+            "work": {"folder": str(work_dir()), "route": WORK_ROUTE},
             "prompt": {"files": [str(p) for p in PROMPT_FILES], "local": str(scientist_dir() / "prompt.local.md")}}
 
 
@@ -1492,6 +1510,26 @@ async def upload(req: UploadRequest) -> Dict[str, Any]:
     (d / f"{fid}-{name}").write_bytes(raw)
     (d / f"{fid}.json").write_text(json.dumps({"name": name, "type": req.type or "", "size": len(raw)}), encoding="utf-8")
     return {"id": fid, "name": name, "size": len(raw)}
+
+
+@router.get("/work/{path:path}")
+async def work_file(path: str) -> FileResponse:
+    """A file in the scientist's work folder, for the person to open from the chat: a page, a picture or a text shown
+    in the tab (WORK_TYPES), anything else downloaded. Only files inside the folder, links followed first, so one
+    pointing out of it is not there. Each goes out under WORK_CSP (no scripts, no network, no origin), not sniffed."""
+    root = work_dir().resolve()
+    try:
+        target = (root / path).resolve()
+    except (OSError, ValueError):
+        target = root
+    if not path or not target.is_relative_to(root) or not target.is_file():
+        raise HTTPException(status_code=404, detail="No such file in the scientist's work folder.")
+    headers = {"Content-Security-Policy": WORK_CSP, "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store",
+               "Referrer-Policy": "no-referrer"}
+    kind = WORK_TYPES.get(target.suffix.lower())
+    if kind is None:
+        return FileResponse(str(target), media_type="application/octet-stream", filename=target.name, headers=headers)
+    return FileResponse(str(target), media_type=kind, headers=headers)
 
 
 @router.get("/prompt")

@@ -675,6 +675,41 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
         with TestClient(server.app, base_url="http://127.0.0.1:8765") as client:
             un = client.get("/api/health").json().get("unpacker") or {}
         check(un.get("mode") == "reference", f"without $THEODOLITE_UNPACKER, the reference: {un}")
+        # unset, the server takes `default_mode`: compiled where every 4-bit linear sits on a CUDA card, else the
+        # reference (as here, on the CPU); and when the one it takes is refused it still starts, on the reference
+        import types
+
+        def packed_on(*devices: str) -> torch.nn.Module:
+            model = torch.nn.Module()
+            for i, dev in enumerate(devices):
+                lin = torch.nn.Module()
+                lin.weight_packed, lin.weight_scale = types.SimpleNamespace(device=dev), None
+                model.add_module(f"l{i}", lin)
+            return model
+
+        check(wf.default_mode(rt) == "reference" and wf.default_mode(packed_on("cuda:0", "cuda:1")) == "compiled"
+              and wf.default_mode(packed_on("cuda:0", "cpu")) == "reference" and wf.default_mode(packed_on()) == "reference",
+              "default_mode: compiled only where every 4-bit linear is on a CUDA card; the reference on the CPU and for a model with none")
+        true_default, true_install = wf.default_mode, wf.install
+        try:
+            wf.default_mode = lambda _rt: "compiled"  # type: ignore[assignment]
+            with TestClient(server.app, base_url="http://127.0.0.1:8765") as client:
+                un = client.get("/api/health").json().get("unpacker") or {}
+            check(un.get("mode") == "compiled" and (un.get("self_test") or {}).get("same_bits") is True,
+                  f"without $THEODOLITE_UNPACKER the server installs the default mode, tested as any other: {un}")
+
+            def refusing(rt_: Any, mode: str = "reference", **kw: Any) -> Dict[str, Any]:
+                if mode == "compiled":
+                    raise wf.Refused("The compiled unpacker could not be run here (a test's refusal); nothing was installed, "
+                                     "and the runtime keeps the reference unpacker.")
+                return true_install(rt_, mode, **kw)
+
+            wf.install = refusing  # type: ignore[assignment]
+            with TestClient(server.app, base_url="http://127.0.0.1:8765") as client:
+                un = client.get("/api/health").json().get("unpacker") or {}
+            check(un.get("mode") == "reference", f"the default mode refused: the server still starts, on the reference ({un})")
+        finally:
+            wf.default_mode, wf.install = true_default, true_install  # type: ignore[assignment]
     finally:
         server.TheodoliteRuntime = true_rt  # type: ignore[misc]
         server.make_runtime = true_make  # type: ignore[assignment]

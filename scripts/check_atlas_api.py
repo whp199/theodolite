@@ -428,6 +428,134 @@ def main() -> int:
     evs = events(c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": "x", "max_new": 6, "sampler": {"temperature": 1e-39, "seed": 1}}).text)
     check(not voices(evs)[0] and "no chances to draw from" in (evs[-1].get("error") or ""),
           f"/push at temperature 1e-39: nothing written, the error in plain words ({evs[-1:]})")
+    # one steer, many rows: several prompts under the same pushes, and several candidate sets of pushes on one prompt
+    def write_iv(rows: List[List[int]], iv: Any, max_new: int, sampler: Any = None) -> List[str]:
+        td = ao.TextDeltas(tok, len(rows))
+        out = [""] * len(rows)
+        for st in ao.write_rows(lm, W_U, rows, iv, max_new=max_new, stop_ids=rt.end_of_turn_ids(), bos_id=bos, softcap=cap, sampler=sampler,
+                                samples_of=[0] * len(rows) if sampler is not None else None):
+            out[st.row] += td.add(st.row, st.token_id, st.end)
+        return out
+
+    res = lambda ps, hs, signs: ao.resolve(w, ps, hs, signs, p50=lambda l: p50[l], act_scale=act_scale)  # noqa: E731
+    qs = [prompt, "And then what happened to the car?"]
+    rows2 = [chat_ids([{"role": "user", "content": q}]) for q in qs]
+    six = [x for i in rows2 for x in (i, i, i)]
+    r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompts": qs, "max_new": 12}).json()
+    direct = write_iv(six, res([ao.Push(2, 5, "add", 0.8)], [], ao.THREE_VOICES * 2), 12)
+    check([[x["up"], x["baseline"], x["down"]] for x in r["runs"]] == [direct[0:3], direct[3:6]] and [x["prompt"] for x in r["runs"]] == qs
+          and r["pushed"] == [{"layer": 2, "n": 5, "mode": "add", "dose": 0.8}] and r["sampling"] == "greedy" and "up" not in r,
+          "/steer with prompts: three rows a prompt in one batch, as write_rows writes them, the pushes echoed once")
+    alone = [c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": q, "max_new": 12}).json() for q in qs]
+    check(all(r["runs"][i][k] == alone[i][k] for i in range(2) for k in ("up", "baseline", "down")) and len(rows2[0]) != len(rows2[1]),
+          "/steer with prompts: each prompt's voices are those of a steer of it alone, the prompts of different lengths (float32, on the CPU)")
+    r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompts": qs, "max_new": 12, "sampler": {"temperature": 0.9, "seed": 7}}).json()
+    direct = write_iv(six, res([ao.Push(2, 5, "add", 0.8)], [], ao.THREE_VOICES * 2), 12, sampler=SamplerSettings(temperature=0.9, seed=7))
+    check([[x["up"], x["baseline"], x["down"]] for x in r["runs"]] == [direct[0:3], direct[3:6]] and r["sampling"]["seeds"] == [7] and r["sampling"]["samples"] == 1,
+          f"/steer with prompts, sampled: every prompt drawn with the one seed ({r['sampling']})")
+    cands = [{"label": "a", "neurons": [{"layer": 2, "n": 5}]},
+             {"neurons": [{"layer": 1, "n": 3, "dose": 2.0}, {"layer": 3, "n": 7, "mode": "mul", "dose": 0.0}, {"layer": 4, "head": 1}]}]
+    r = c.post("/api/atlas/steer", json={"prompt": prompt, "candidates": cands, "max_new": 12}).json()
+    parts = [res([ao.Push(2, 5, "add", 0.8)], [], [0, 1, 0, -1, 0]),
+             res([ao.Push(1, 3, "add", 2.0), ao.Push(3, 7, "mul", 0.0)], [ao.HeadScale(4, 1, 0.0)], [0, 0, 1, 0, -1])]
+    direct = write_iv([one[0]] * 5, ao.merge(parts, 5), 12)
+    check(r["baseline"] == direct[0] and [x["up"] for x in r["candidates"]] == direct[1:3] and [x["down"] for x in r["candidates"]] == direct[3:5]
+          and [x["label"] for x in r["candidates"]] == ["a", "c2"] and r["prompt"] == prompt and r["sampling"] == "greedy",
+          "/steer with candidates: the unpushed row once, then each set on a row of its own and the other way on another, as write_rows writes them")
+    check(r["candidates"][0]["pushed"] == [{"layer": 2, "n": 5, "mode": "add", "dose": 0.8}]
+          and r["candidates"][1]["pushed"] == [{"layer": 1, "n": 3, "mode": "add", "dose": 2.0}, {"layer": 3, "n": 7, "mode": "mul", "dose": 0.0},
+                                               {"layer": 4, "head": 1, "scale": 0.0}], f"/steer with candidates: each set's pushes echoed ({r['candidates'][1]['pushed']})")
+    asked_b = c.post("/api/atlas/steer", json={"neurons": cands[1]["neurons"], "prompt": prompt, "max_new": 12}).json()
+    check([r["baseline"], r["candidates"][0]["up"], r["candidates"][0]["down"]] == [alone[0]["baseline"], alone[0]["up"], alone[0]["down"]]
+          and [r["candidates"][1]["up"], r["candidates"][1]["down"]] == [asked_b["up"], asked_b["down"]],
+          "/steer with candidates: each candidate's rows are those of a steer of it alone (float32, on the CPU)")
+    r1 = c.post("/api/atlas/steer", json={"prompt": prompt, "candidates": cands, "both": False, "max_new": 12, "dose": 1.5}).json()
+    direct = write_iv([one[0]] * 3, ao.merge([res([ao.Push(2, 5, "add", 1.5)], [], [0, 1, 0]),
+                                              res([ao.Push(1, 3, "add", 2.0), ao.Push(3, 7, "mul", 0.0)], [ao.HeadScale(4, 1, 0.0)], [0, 0, 1])], 3), 12)
+    check(all("down" not in x for x in r1["candidates"]) and [r1["baseline"]] + [x["up"] for x in r1["candidates"]] == direct
+          and r1["candidates"][0]["pushed"][0]["dose"] == 1.5 and r1["candidates"][1]["pushed"][0]["dose"] == 2.0,
+          "/steer with candidates, both false: each pushed only as asked; the request's dose fills the adds that name none")
+    check(ao.merge([None, None], 3) is None and ao.merge([parts[0], None], 5).adds.keys() == {2}, "atlas_ops.merge: nothing pushed is None; a set kept as it is")
+    try:
+        ao.merge([parts[0]], 4)
+        check(False, "atlas_ops.merge: sets over another number of rows were not refused")
+    except ValueError as exc:
+        check("5 rows of pushes merged into 4" in str(exc), f"atlas_ops.merge: sets over another number of rows refused ({exc})")
+    for bad, says in [({"prompt": "x", "prompts": qs, "layer": 2, "n": 5}, "not both"), ({"layer": 2, "n": 5}, "Give a prompt"),
+                      ({"prompts": ["x", ""], "layer": 2, "n": 5}, "Each prompt is a text"),
+                      ({"prompts": qs, "layer": 2, "n": 5, "sampler": {"temperature": 0.7}, "samples": 2}, "Several prompts are written one sample each"),
+                      ({"prompt": "x", "candidates": cands, "layer": 2, "n": 5}, "not both"), ({"prompt": "x", "candidates": cands, "neurons": [{"layer": 1, "n": 3}]}, "not both"),
+                      ({"prompts": qs, "candidates": cands}, "Candidates are tried on one prompt"),
+                      ({"prompt": "x", "candidates": cands, "sampler": {"temperature": 0.7}, "samples": 2}, "Candidates are written one sample each"),
+                      ({"prompt": "x", "candidates": [{"neurons": [{"layer": 6, "n": 0}]}]}, "Layer 6 does not exist"),
+                      # 24 rows of the prompt and 512 written are past the 6,144 word-pieces more than three rows may hold
+                      ({"prompts": ["x"] * 8, "layer": 2, "n": 5, "max_new": 512}, "8 prompts are 24 rows"),
+                      ({"prompt": "x", "candidates": [cands[0]] * 12, "max_new": 512}, "12 candidates, each pushed both ways, are 25 rows")]:
+        r = c.post("/api/atlas/steer", json=bad)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/steer refused: {bad} -> {r.status_code} {r.text[:160]}")
+    check(c.post("/api/atlas/steer", json={"prompts": ["x"] * 9, "layer": 2, "n": 5}).status_code == 422
+          and c.post("/api/atlas/steer", json={"prompt": "x", "candidates": [cands[0]] * 13}).status_code == 422, "/steer: at most 8 prompts and 12 candidates")
+
+    # a push as a llama.cpp control vector (backend/control_vector.py): the add `resolve` gives, under direction.<layer>
+    import export_control_vector as ecv
+    from backend import control_vector as cvm
+
+    recipe = [{"layer": 2, "n": 5, "dose": 0.35}, {"layer": 3, "n": 7, "dose": -0.5}, {"layer": 3, "n": 9, "dose": 0.25}]
+    several_name = lambda rs: cvm.file_name(None, [ecv.Entry(e["layer"], e["n"], e["dose"]) for e in rs])  # noqa: E731
+    r = c.post("/api/atlas/control_vector", json={"neurons": recipe, "name": "caring"})
+    j = r.json()
+    check(r.status_code == 200 and j["file"] == "caring.gguf" and j["path"] == str(cvm.exports_dir() / "caring.gguf") and Path(j["path"]).stat().st_size == j["bytes"],
+          f"/control_vector: the file written into the atlas folder's exports ({r.text[:160]})")
+    dirs, meta = ecv.read_control_vector(Path(j["path"]))
+    iv = res([ao.Push(e["layer"], e["n"], "add", e["dose"]) for e in recipe], [], (1,))
+    check(sorted(dirs) == [2, 3] and all(dirs[l].dtype == np.float32 and np.array_equal(dirs[l], iv.adds[l][0].numpy()) for l in dirs),
+          "/control_vector: each direction.<layer> is the add the atlas's own push resolves to at that layer, bit for bit, a layer's entries summed")
+    check(j["entries"] == [{**e, "p50": round(p50[e["layer"]], 4)} for e in recipe]
+          and [(d["layer"], d["tensor"]) for d in j["directions"]] == [(2, "direction.2"), (3, "direction.3")]
+          and all(close(d["length"], float(np.linalg.norm(dirs[d["layer"]].astype(np.float64)))) for d in j["directions"]) and j["directions"][0]["of_p50"] == 0.35
+          and j["unit_source"]["kind"] == "study_texts" and j["vault_edits_in_force"] == []
+          and j["load_with"] == f"llama-server -m <a Gemma-4-31B-it GGUF> --control-vector-scaled {j['path']}:1",
+          f"/control_vector: its entries, each direction's length, where the push's unit was read, and the command ({j['directions']})")
+    rec_ = {k[len(ecv.KEY):]: v for k, v in meta.items() if k.startswith(ecv.KEY)}
+    check(meta["general.architecture"] == ecv.ARCH and meta[f"{ecv.ARCH}.model_hint"] == ecv.MODEL_HINT and meta[f"{ecv.ARCH}.layer_count"] == 2
+          and rec_["layers"] == [2, 3, 3] and rec_["pages"] == [3, 4, 4] and rec_["neurons"] == [5, 7, 9] and rec_["model"] == rt.model_id
+          and all(close(a_, b_) for a_, b_ in zip(rec_["doses"], [0.35, -0.5, 0.25])) and all(close(a_, p50[l]) for a_, l in zip(rec_["p50"], [2, 3, 3]))
+          and "stand-in" in rec_["weights"] and "study's 36 texts" in rec_["stats_index"] and rec_["vault_edits_in_force"] == "none on these neurons"
+          and rec_["push"] == ecv.PUSH and rec_["start_mark"] == ecv.START_MARK and "backend/control_vector.py" in rec_["made_by"],
+          "/control_vector: the file says what it was made from, as the script's files do, and that it came from the server's model")
+    g = c.get(f"/api/atlas/exports/{j['file']}")
+    check(g.status_code == 200 and g.content == Path(j["path"]).read_bytes() and g.headers["content-disposition"] == 'attachment; filename="caring.gguf"',
+          "/exports/<file>: the file, as a download")
+    check([c.get(f"/api/atlas/exports/{bad}").status_code for bad in ("none.gguf", "caring", "..%2Fcaring.gguf", "caring.gguf.tmp")] == [404] * 4
+          and c.get("/api/atlas/exports/caring.gguf", headers={"Origin": "http://evil.example"}).status_code == 403,
+          "/exports: only a control vector exported here, and only to this machine's pages")
+    one_n = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": -0.35}]}).json()
+    again = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.35}], "name": "caring.gguf"}).json()
+    plus = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.8}]}).json()
+    check(plus["file"] == "theodolite-page3-n5-dose0.8.gguf" and c.get(f"/api/atlas/exports/{plus['file']}").status_code == 200
+          and c.get(f"/api/atlas/exports/{one_n['file']}").status_code == 200 and c.get(f"/api/atlas/exports/{several_name(recipe)}").status_code == 404,
+          f"/control_vector: a file it names itself is one /exports hands over, whatever the dose's sign ({plus['file']})")
+    check(one_n["file"] == "theodolite-page3-n5-dose-0.35.gguf" and again["file"] == "caring.gguf"
+          and sorted(ecv.read_control_vector(Path(again["path"]))[0]) == [2]
+          and np.array_equal(ecv.read_control_vector(Path(again["path"]))[0][2], -ecv.read_control_vector(Path(one_n["path"]))[0][2]),
+          "/control_vector: a file left unnamed says what is in it, in the pages' count; a name given again is written over; the other sign is the other way")
+    several = c.post("/api/atlas/control_vector", json={"neurons": recipe}).json()
+    check(several["file"].startswith("theodolite-set-of-3-") and several["file"] == several_name(recipe)
+          and several["file"] == c.post("/api/atlas/control_vector", json={"neurons": recipe}).json()["file"]
+          and c.get(f"/api/atlas/exports/{several['file']}").status_code == 200,
+          f"/control_vector: a set left unnamed is named by its size and its entries ({several['file']})")
+    for bad, says in [({"neurons": [{"layer": 0, "n": 5, "dose": 1}]}, "no control vector after layer 0"), ({"neurons": [{"layer": 2, "n": 5}]}, "Give each neuron its dose"),
+                      ({"neurons": [{"layer": 2, "n": 5, "dose": 1, "mode": "mul"}]}, 'only "add" pushes'), ({"neurons": [{"layer": 2, "n": 5, "dose": 1, "mode": "act"}]}, 'only "add" pushes'),
+                      ({"neurons": [{"layer": 2, "all": True}]}, 'only "add" pushes'), ({"neurons": [{"layer": 2, "head": 1}]}, "a head's scale goes out as a LoRA"),
+                      ({"neurons": [{"layer": 6, "n": 0, "dose": 1}]}, "Layer 6 does not exist"), ({"neurons": [{"layer": 2, "n": 128, "dose": 1}]}, "Neuron 128 does not exist"),
+                      ({"neurons": [{"layer": 2, "n": 5, "dose": 1}], "name": "../x"}, "file name is letters"),
+                      ({"neurons": [{"layer": 2, "n": 5, "dose": 1}], "name": ".hidden"}, "file name is letters")]:
+        r = c.post("/api/atlas/control_vector", json=bad)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/control_vector refused: {bad} -> {r.status_code} {r.text[:160]}")
+    check(c.post("/api/atlas/control_vector", json={"neurons": []}).status_code == 422
+          and c.post("/api/atlas/control_vector", json={"neurons": recipe}, headers={"Origin": "http://evil.example"}).status_code == 403,
+          "/control_vector: no neurons, and a page from elsewhere, refused")
+
     pc = c.get("/api/atlas/arch").json()["push"]
     check(pc["defaults"] == {"add": 0.8, "mul": 2.0, "act": 0.8, "head": 0.0, "all": 0.0}
           and pc["most"] == {"pushes": 32, "head_scales": 64, "neurons_items": 32}
@@ -963,6 +1091,13 @@ def main() -> int:
     hv = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()
     check("stale" in hv["faces"]["+"] and hv["faces"]["+"]["check"]["edited"] and not hv["faces"]["+"]["check"]["lens_validated"],
           "/hover: an edited neuron's index words are marked stale")
+    # a control vector is read from the model as it now stands: a neuron the vault silenced has no direction to export,
+    # and one from the stats index now built says so
+    r = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 3, "n": 7, "dose": 1.0}, {"layer": 2, "n": 5, "dose": 0.5}]})
+    check(r.status_code == 400 and "Layer 2 (page 3) neuron 5 writes nothing" in r.json()["detail"] and "under the vault edit in force on it" in r.json()["detail"],
+          f"/control_vector: a neuron silenced in the vault refused in plain words ({r.text[:200]})")
+    ok_ = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 3, "n": 7, "dose": 1.0}], "name": "after-edit"}).json()
+    check(ok_.get("unit_source", {}).get("kind") == "index" and ok_["vault_edits_in_force"] == [], f"/control_vector: the push's unit from the stats index once built ({ok_.get('unit_source')})")
     roles_after = c.get("/api/atlas/neuron/heads", params={"layer": 2, "n": 5}).json()
     check(roles_after != roles_before and all(x["z"] == 0 for x in roles_after["roles"]["q"]), "/neuron/heads: not the cache from before the edit")
     nl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()

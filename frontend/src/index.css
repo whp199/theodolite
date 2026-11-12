@@ -1907,6 +1907,13 @@ textarea.atlas-note-box {
   color: var(--rubric);
   white-space: nowrap;
 }
+/* a file the scientist left for the person (a page in its work folder, an exported control vector) */
+.atlas-file-link {
+  overflow-wrap: anywhere;
+}
+.atlas-tool-file {
+  margin: -2px 0 6px 14px;
+}
 .atlas-tool,
 .atlas-think {
   font-size: 14px;

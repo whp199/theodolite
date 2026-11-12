@@ -53,10 +53,17 @@ study found about Gemma-4-31B. It uses the vocabulary above (faces, steer lens, 
 2. **Look at the right unit.** Topic neurons peak on the noun; stance and mood neurons at summary positions (the end of
    a clause, `.`, a line end, a turn mark) and on the word-piece before the object.
 3. **Steer every candidate on unrelated prompts** at 0.6, 1.0 and 1.5. Success is the behaviour appearing unprompted
-   while the text stays coherent; a neuron that only repeats the word is a word writer, not the lever.
+   while the text stays coherent; a neuron that only repeats the word is a word writer, not the lever. Screen them
+   together: `steer` with `candidates` puts up to 12 on one prompt in one batch, beside one unpushed answer, each
+   pushed both ways, in about the time one alone takes.
 4. **When a clean detector steers badly, steer its drivers.** The tone often sits downstream and the idea upstream.
 5. **Stack two or three levers at lower doses** and confirm with `logprobs` on a fork ("Right now I'd love a ___").
-6. **Report a recipe** as neuron, face and dose (`L44 N1234 +1.3`), with one short example output per prompt.
+6. **Hold it out.** Run the stack on five prompts it was not tuned on (a coding question, a recipe, a poem, a health
+   worry, small talk: `steer` with `prompts`, one call), greedy, and again with `spare_bos: false`. Count the prompts
+   where the behaviour shows and note where the text breaks: a lever that shows only where the prompt invites it is a
+   different finding from one that shows everywhere.
+7. **Report a recipe** as neuron, face and dose (`L44 N1234 +1.3`), with one short example output per prompt; when the
+   person wants others to run it, `export_control_vector` writes it as a llama.cpp control vector.
 
 ## Reading each source
 

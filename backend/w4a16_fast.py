@@ -407,6 +407,17 @@ def _self_test(linears: Sequence[Tuple[str, nn.Module]], fast: Unpacker, *, tabl
     return rec, bad, table_bad
 
 
+def default_mode(rt_or_model: Any) -> str:
+    """The unpacker the server takes when $THEODOLITE_UNPACKER names none: "compiled" for a W4A16 checkpoint whose
+    4-bit linears all sit on a CUDA card (there it shortens a step about seven times, 0.71 s to 0.10 s on the RTX 5090,
+    and its bits are tested against the reference's on every linear before anything is read), else "reference": on the
+    CPU its graphs need a C++ compiler and about a minute, and a GGUF's packed layers take it only when asked. The
+    scripts keep their own default (`--unpacker reference`), which a census run's and an index's meta record."""
+    linears = packed_linears(_model_of(rt_or_model))
+    on_cuda = bool(linears) and all(str(m.weight_packed.device).startswith("cuda") for _n, m in linears)
+    return "compiled" if on_cuda else "reference"
+
+
 def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bool] = None,
             log: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
     """Install the unpacker `mode` (MODES) on a loaded runtime (or its model), after putting back whatever was

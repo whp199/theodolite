@@ -108,19 +108,28 @@ def get_app_state() -> Tuple[TheodoliteRuntime, LarqlVaultEngine]:
 async def lifespan(_app: FastAPI):
     global _RUNTIME, _VAULT
     # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
-    # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set;
-    # compiled serves a GGUF's packed layers too, backend/gguf_fast.py, where lut and resident are refused), its name
-    # checked before the model loads, which takes minutes on the 31B
-    unpacker = os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference"
-    if unpacker not in w4a16_fast.MODES:
+    # before anything is read where install tests it: compiled, resident, and lut on CUDA; compiled serves a GGUF's
+    # packed layers too, backend/gguf_fast.py, where lut and resident are refused), its name checked before the model
+    # loads, which takes minutes on the 31B. Unset, the W4A16 checkpoint on a CUDA card takes compiled
+    # (`w4a16_fast.default_mode`: a step about seven times shorter, so a pushed answer of 100 word-pieces comes in
+    # about 10 s where the reference takes 70), and anything else the reference
+    asked = os.environ.get(w4a16_fast.UNPACKER_ENV) or None
+    if asked is not None and asked not in w4a16_fast.MODES:
         raise w4a16_fast.Refused(f"${w4a16_fast.UNPACKER_ENV} names the unpackers {', '.join(w4a16_fast.MODES)}, not "
-                                 f"{unpacker!r}; nothing was loaded.")
+                                 f"{asked!r}; nothing was loaded.")
     logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
     _RUNTIME = make_runtime(load_jlens=False).load()  # THEODOLITE_GGUF / THEODOLITE_DEVICE (backend/runtime_factory.py)
-    try:
-        w4a16_fast.install(_RUNTIME, unpacker, log=logger.info)
-    except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as census_run.py and atlas_build.py do
-        raise SystemExit(str(exc)) from exc
+    if asked is not None:
+        try:
+            w4a16_fast.install(_RUNTIME, asked, log=logger.info)
+        except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as census_run.py and atlas_build.py do
+            raise SystemExit(str(exc)) from exc
+    else:
+        try:
+            w4a16_fast.install(_RUNTIME, w4a16_fast.default_mode(_RUNTIME), log=logger.info)
+        except w4a16_fast.Refused as exc:  # none was asked for, so the server still starts: on the reference, and says why
+            logger.warning("%s The server runs on the reference unpacker (set $%s to choose one).", exc, w4a16_fast.UNPACKER_ENV)
+            w4a16_fast.install(_RUNTIME, "reference", log=logger.info)
     _VAULT = LarqlVaultEngine(_RUNTIME)
     bind_runtime(_RUNTIME, _VAULT)
     logger.info("TheodoliteRuntime & LarqlVaultEngine bound and ready.")

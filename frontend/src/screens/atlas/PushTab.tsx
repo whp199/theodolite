@@ -5,13 +5,14 @@
  * layer; "×" multiplies its activation. The voices are written greedily, the census's reading, unless "sampled" is
  * chosen: then the instrument's own sampler draws them at the temperature and seed shown, the three sharing each draw,
  * and each turn says how it was written (push.ts). "reads you" shows instead where in a text of the person's the neuron
- * fires.
+ * fires. "save for llama.cpp" writes the add push at the dose shown as a llama.cpp control vector and downloads it
+ * (POST /api/atlas/control_vector, backend/control_vector.py).
  */
 import React, { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { Rubric } from "../../components/kit";
 import { href } from "../../router";
-import { AtlasError, post, streamLines, type ReadsReply } from "./api";
+import { AtlasError, exportUrl, post, streamLines, type ControlVectorReply, type ReadsReply } from "./api";
 import { ErrorLine, FaceLine, overCeiling } from "./parts";
 import { MAX_SEED, MAX_TEMPERATURE, MIN_TEMPERATURE, WRITING_DEFAULT, newSeed, pushBody, writtenAs, type Sampling, type Writing } from "./push";
 import { useAtlas } from "./state";
@@ -43,6 +44,9 @@ interface PushState {
   reads: (ReadsReply & { text: string }) | null;
   readsError: string | null;
   reading: boolean;
+  /** the control vector last saved for this neuron, being written ("saving"), or why it could not be */
+  vector: ControlVectorReply | "saving" | null;
+  vectorError: string | null;
 }
 
 const usePush = create<PushState>(() => ({
@@ -56,6 +60,8 @@ const usePush = create<PushState>(() => ({
   reads: null,
   readsError: null,
   reading: false,
+  vector: null,
+  vectorError: null,
 }));
 
 const keyOf = () => {
@@ -70,7 +76,7 @@ useAtlas.subscribe((s, prev) => {
   const p = usePush.getState();
   if (k === p.key) return;
   p.running?.abort();
-  usePush.setState({ key: k, thread: [], running: null, reads: null, readsError: null });
+  usePush.setState({ key: k, thread: [], running: null, reads: null, readsError: null, vector: null, vectorError: null });
 });
 
 const labels = (t: Turn) => (t.mode === "mul" ? [`▲ ×${t.dose}`, "×1", `▼ ×−${t.dose}`] : [`▲ +${t.dose}`, "0", `▼ −${t.dose}`]);
@@ -151,6 +157,39 @@ async function runReads(text: string) {
     usePush.setState({ reading: false });
   }
 }
+
+/** The add push at the dose shown, written as a llama.cpp control vector on the server and handed to the browser as a
+ * download (the reply's file; its Content-Disposition keeps the page where it is). */
+async function saveVector() {
+  const f = useAtlas.getState().focus;
+  const p = usePush.getState();
+  if (!f || f.kind !== "neuron" || p.vector === "saving") return;
+  usePush.setState({ vector: "saving", vectorError: null });
+  try {
+    const r = await post<ControlVectorReply>("/api/atlas/control_vector", { neurons: [{ layer: f.layer, n: f.n, dose: p.dose.add }] });
+    if (keyOf() !== `${f.layer}/${f.n}`) return;
+    usePush.setState({ vector: r });
+    window.location.assign(exportUrl(r.file));
+  } catch (e) {
+    usePush.setState({ vector: null, vectorError: (e as Error).message });
+  }
+}
+
+/** What was saved, and how llama.cpp loads it. */
+const VectorNote: React.FC = () => {
+  const v = usePush((s) => s.vector);
+  const err = usePush((s) => s.vectorError);
+  if (err) return <ErrorLine error={err} />;
+  if (!v || v === "saving") return null;
+  const e = v.entries[0];
+  return (
+    <p className="muted atlas-small" style={{ margin: "2px 0 0" }}>
+      Saved <a href={exportUrl(v.file)}>{v.file}</a>: this neuron’s push at {e.dose > 0 ? "+" : ""}
+      {e.dose}. <code>llama-server -m &lt;a Gemma-4-31B-it GGUF&gt; --control-vector-scaled {v.file}:1</code> pushes it so; <code>:-1</code>{" "}
+      the other way. llama.cpp pushes the start mark too, which this page spares: stay near 1.
+    </p>
+  );
+};
 
 function step(dir: 1 | -1) {
   const p = usePush.getState();
@@ -335,6 +374,7 @@ export const PushTab: React.FC = () => {
   const dir = usePush((s) => s.dir);
   const running = usePush((s) => s.running);
   const reading = usePush((s) => s.reading);
+  const saving = usePush((s) => s.vector === "saving");
   const [text, setText] = useState("");
   const [typed, setTyped] = useState<string | null>(null);
   if (!f || f.kind !== "neuron") return null;
@@ -420,8 +460,20 @@ export const PushTab: React.FC = () => {
               clear
             </button>
           ) : null}
+          {dir === "writes" && mode === "add" && f.layer > 0 ? (
+            <button
+              type="button"
+              className="btn-link"
+              disabled={saving}
+              title="write this push, at the dose shown, as a llama.cpp control vector: a file llama-server loads beside any Gemma-4-31B-it GGUF"
+              onClick={() => void saveVector()}
+            >
+              {saving ? "saving…" : "save for llama.cpp"}
+            </button>
+          ) : null}
         </div>
         {dir === "writes" && mode === "add" ? <DoseNote dose={dose.add} /> : null}
+        {dir === "writes" && mode === "add" ? <VectorNote /> : null}
         {dir === "writes" ? <WritingFields /> : null}
         <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
           <input className="input-line" value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} aria-label={placeholder} />

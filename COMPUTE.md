@@ -58,7 +58,10 @@ the home 5090 that evening (a GGUF’s on 2 November), the rest not yet:
 
   `lut` is about 2.5 times shorter and `compiled` about seven (its graphs compile in about 4 s at load). With
   `compiled` the step grows with the batch, the products now counting beside the unpacking; 128 rows and more were
-  not tried.
+  not tried. Since 11 November 2026 the server takes `compiled` for the checkpoint on a CUDA card when
+  `THEODOLITE_UNPACKER` is unset (`w4a16_fast.default_mode`), so the atlas's live readings run at this step without a
+  flag: three pushed answers of 80 word-pieces in 8.3 s where a scientist chat that day, on `reference`, waited 50 to
+  54 s for the same text. The scripts keep `--unpacker reference` as their default.
 - **A GGUF’s packed layers, the same way** (`backend/gguf_fast.py`, 2 November 2026; ARCHITECTURE §5). `compiled`
   serves them too: the reference’s own arithmetic compiled, one graph per type and layer shape, contraction off on
   CUDA, tested at load on every packed layer and on every pattern of each type’s fp16 fields, refused in plain words

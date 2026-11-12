@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Rubric } from "../../components/kit";
 import { href } from "../../router";
-import { cite, citeHead, type PastChat } from "./api";
+import { cite, citeHead, exportUrl, type PastChat } from "./api";
 import { ErrorLine, ProposalLine } from "./parts";
 import {
   askWeb,
@@ -28,23 +28,43 @@ import { goToNeuron, loadProposals, openHead, useAtlas } from "./state";
 
 /* --------------------------------------------------------------------------- a little markdown, made as elements */
 
-/** Inline marks: `code`, **bold**, *italic*, and citations in the pages' count (L54 N15491, L54 h3) as links. */
+/** The only addresses a link in the scientist's reply may open: a file in its work folder and an exported control
+ * vector, both on this server (backend/scientist_chat.py `work_file`, backend/atlas.py `export_file`). Any other link is
+ * left as the text it was written as. */
+const FILE_LINK = /^\/api\/atlas\/(?:scientist\/work|exports)\/[A-Za-z0-9._~%+\-/]+$/;
+export const fileLink = (url: string) => FILE_LINK.test(url) && !url.includes("..") && !url.includes("//");
+
+/** Inline marks: `code`, **bold**, *italic*, a link to one of the scientist's files ([name](/api/atlas/scientist/work/…)),
+ * and citations in the pages' count (L54 N15491, L54 h3) as links. */
 function inline(text: string, key = "i"): React.ReactNode[] {
   const arch = useAtlas.getState().arch;
   const out: React.ReactNode[] = [];
-  const re = /`([^`]+)`|\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|\bL(\d{1,2})[ /·]?N(\d{1,5})\b|\bL(\d{1,2}) h(\d{1,2})\b/g;
+  const re = /\[([^\]\n]+)\]\(([^)\s]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|\bL(\d{1,2})[ /·]?N(\d{1,5})\b|\bL(\d{1,2}) h(\d{1,2})\b/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let k = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(text.slice(last, m.index));
     const id = `${key}.${k++}`;
-    if (m[1] != null) out.push(<code key={id}>{m[1]}</code>);
-    else if (m[2] != null) out.push(<b key={id}>{inline(m[2], id)}</b>);
-    else if (m[3] != null) out.push(<i key={id}>{inline(m[3], id)}</i>);
-    else if (m[4] != null) {
-      const l = +m[4] - 1;
-      const n = +m[5];
+    if (m[1] != null) {
+      out.push(
+        fileLink(m[2]) ? (
+          <a key={id} className="atlas-file-link" href={m[2]} target="_blank" rel="noreferrer">
+            {m[1]}
+          </a>
+        ) : (
+          m[0]
+        ),
+      );
+      last = re.lastIndex;
+      continue;
+    }
+    if (m[3] != null) out.push(<code key={id}>{m[3]}</code>);
+    else if (m[4] != null) out.push(<b key={id}>{inline(m[4], id)}</b>);
+    else if (m[5] != null) out.push(<i key={id}>{inline(m[5], id)}</i>);
+    else if (m[6] != null) {
+      const l = +m[6] - 1;
+      const n = +m[7];
       const ok = !!arch && l >= 0 && l < arch.n_layers && n < arch.d_ff;
       out.push(
         ok ? (
@@ -64,8 +84,8 @@ function inline(text: string, key = "i"): React.ReactNode[] {
         ),
       );
     } else {
-      const l = +m[6] - 1;
-      const h = +m[7];
+      const l = +m[8] - 1;
+      const h = +m[9];
       const ok = !!arch && l >= 0 && l < arch.n_layers && h < (arch.layers[l]?.n_heads ?? 0);
       out.push(
         ok ? (
@@ -146,10 +166,30 @@ function toolLabel(name: string, input: unknown): string {
             ? `“${a.query}”`
             : typeof a.text === "string"
               ? `“${short(a.text)}”`
-              : Array.isArray(a.neurons)
-                ? `${a.neurons.length} neurons`
-                : "";
-  return [name.replace(/_/g, " "), ref, extra].filter(Boolean).join(" ");
+              : Array.isArray(a.candidates)
+                ? `${a.candidates.length} candidates`
+                : Array.isArray(a.neurons)
+                  ? `${a.neurons.length} neurons`
+                  : "";
+  const many = Array.isArray(a.prompts) ? `on ${a.prompts.length} prompts` : "";
+  return [name.replace(/_/g, " "), ref, extra, many].filter(Boolean).join(" ");
+}
+
+/** The file a finished tool call left for the person, with where the page opens it: a control vector the scientist
+ * exported (its reply begins with the file's name), or a file it wrote or edited in its work folder. */
+function toolFile(name: string, input: unknown, output: string): { href: string; name: string; verb: string } | null {
+  if (name === "export_control_vector") {
+    const m = /^\{"file": "([A-Za-z0-9][A-Za-z0-9._-]*\.gguf)"/.exec(output);
+    return m ? { href: exportUrl(m[1]), name: m[1], verb: "download" } : null;
+  }
+  const work = useScientist.getState().backends?.work;
+  const path = (input as { file_path?: unknown } | null)?.file_path;
+  if (!work || (name !== "Write" && name !== "Edit") || typeof path !== "string") return null;
+  const root = work.folder.replace(/\/+$/, "") + "/";
+  if (!path.startsWith(root)) return null;
+  const rel = path.slice(root.length);
+  const href = work.route + rel.split("/").map(encodeURIComponent).join("/");
+  return fileLink(href) ? { href, name: rel, verb: "open" } : null;
 }
 
 const pretty = (t: string) => {
@@ -160,26 +200,53 @@ const pretty = (t: string) => {
   }
 };
 
-const PartView: React.FC<{ p: Part; box: number }> = ({ p, box }) => {
+/** For each file a reply's tool calls left, the last call that wrote it: the link goes under that one, once, however
+ * many edits the file took. */
+function fileParts(parts: Part[]): Map<number, { href: string; name: string; verb: string }> {
+  const last = new Map<string, number>();
+  const files = new Map<number, { href: string; name: string; verb: string }>();
+  parts.forEach((p, j) => {
+    if (p.t !== "tool" || p.error || p.output == null) return;
+    const f = toolFile(p.name, p.input, p.output);
+    if (!f) return;
+    const before = last.get(f.href);
+    if (before !== undefined) files.delete(before);
+    last.set(f.href, j);
+    files.set(j, f);
+  });
+  return files;
+}
+
+const PartView: React.FC<{ p: Part; box: number; file?: { href: string; name: string; verb: string } }> = ({ p, box, file }) => {
   switch (p.t) {
     case "md":
       return <Md text={p.text} />;
     case "thinking":
-      return (
+      // a model whose thinking is not shown leaves these empty: no row for nothing
+      return p.text.trim() ? (
         <details className="atlas-think">
           <summary>thinking</summary>
           <pre>{p.text}</pre>
         </details>
-      );
+      ) : null;
     case "tool":
       return (
-        <details className="atlas-tool">
-          <summary>{toolLabel(p.name, p.input)}</summary>
-          <pre className="atlas-io">
-            <b>{p.name}</b> {JSON.stringify(p.input ?? {}, null, 1)}
-          </pre>
-          <pre className={`atlas-io out${p.error ? " err" : ""}`}>{p.output == null ? "running…" : pretty(p.output)}</pre>
-        </details>
+        <>
+          <details className="atlas-tool">
+            <summary>{toolLabel(p.name, p.input)}</summary>
+            <pre className="atlas-io">
+              <b>{p.name}</b> {JSON.stringify(p.input ?? {}, null, 1)}
+            </pre>
+            <pre className={`atlas-io out${p.error ? " err" : ""}`}>{p.output == null ? "running…" : pretty(p.output)}</pre>
+          </details>
+          {file ? (
+            <p className="atlas-small atlas-tool-file">
+              <a className="atlas-file-link" href={file.href} target="_blank" rel="noreferrer">
+                {file.verb} {file.name}
+              </a>
+            </p>
+          ) : null}
+        </>
       );
     case "error":
       return <p className="error-line atlas-small">{p.text}</p>;
@@ -242,9 +309,7 @@ const Thread: React.FC = () => {
           </div>
         ) : (
           <div key={i} className="atlas-msg assistant">
-            {it.parts.map((p, j) => (
-              <PartView key={j} p={p} box={i} />
-            ))}
+            {((files) => it.parts.map((p, j) => <PartView key={j} p={p} box={i} file={files.get(j)} />))(fileParts(it.parts))}
             {busy && i === box ? <p className="atlas-busy">working…</p> : null}
             {i === lastReply && !busy ? (
               <span className="atlas-ctl">

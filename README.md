@@ -626,7 +626,11 @@ passages --stand-in`); what it shows is random, and the page says so.
 Every forward unpacks the checkpoint’s 4-bit weights afresh, and a GGUF’s packed layers too (`THEODOLITE_GGUF_LINEARS`,
 above). `--unpacker lut` or `--unpacker compiled` on `atlas_build.py` and `census_run.py` (`THEODOLITE_UNPACKER` for the
 server, the lab daemon and the scientist’s MCP server run alone) unpacks the checkpoint’s weights faster with the same
-bits, tested against the runtime’s own unpacker at load on a GPU and refused in plain words on any difference;
+bits, tested against the runtime’s own unpacker at load on a GPU and refused in plain words on any difference. The
+server needs no flag for it: with `THEODOLITE_UNPACKER` unset it takes `compiled` for the checkpoint on a CUDA card
+(about 4 s more at load; a push’s three answers of 80 word-pieces then come in about 8 s where `reference` took 52,
+the same text to the letter), and `reference` on the CPU or for a GGUF, whose packed layers take `compiled` when asked;
+`THEODOLITE_UNPACKER=reference` keeps the old way.
 `--unpacker resident` keeps them unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit
 weights (an 80 GB card holds it, with little left for a batch). On a GGUF only `compiled` serves
 (`backend/gguf_fast.py`: the reference’s bits, tested on every packed layer at load, on the card or the CPU); `lut` and
@@ -654,6 +658,14 @@ endpoint its model, in the scientist’s tab; a key is read from the environment
 that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code chat
 at the default reach with your next message to it while idle; any other chat says it runs the old ones and offers a
 restart, since that also ends its process group, with any commands it left running in it.
+
+What the scientist makes for you, a page or a table say, it writes into its work folder and links in its reply; the
+link opens the file in a browser tab, shown with no scripts and no network. Its `steer` puts several prompts, or
+several candidate neurons, into one batch, which costs about the time of one. A push you want to run elsewhere leaves
+as a llama.cpp control vector: the push tab’s “save for llama.cpp” writes the open neuron’s push at the dose shown, and
+the scientist’s `export_control_vector` writes a recipe of several neurons, into `<atlas folder>/exports/`; load it with
+`llama-server -m <a Gemma-4-31B-it GGUF> --control-vector-scaled FILE:1` (ARCHITECTURE §6: where llama.cpp adds it, what
+still differs, and the three recipes taken through llama.cpp on 11 November 2026).
 
 > [!WARNING]
 > By default, under Claude Code the scientist reads, writes and edits files only in its own work folder and has no

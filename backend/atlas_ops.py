@@ -315,6 +315,25 @@ def resolve(
     return out
 
 
+def merge(parts: Sequence[Optional[Interventions]], rows: int) -> Optional[Interventions]:
+    """Several sets of interventions over the same `rows` rows as one: each set acts on the rows its own signs named
+    and leaves the others as they are (an add or an act of 0 there, a factor of 1), so sets resolved with signs that
+    name different rows give each row its own pushes. Adds at one layer sum; the rest are kept side by side, in order.
+    None when nothing is pushed."""
+    out = Interventions(rows=int(rows))
+    for iv in parts:
+        if iv is None:
+            continue
+        if iv.rows != out.rows:
+            raise ValueError(f"{iv.rows} rows of pushes merged into {out.rows}.")
+        for l, delta in iv.adds.items():
+            out.adds[l] = out.adds[l] + delta if l in out.adds else delta
+        for name in ("acts", "muls", "heads"):
+            for l, items in getattr(iv, name).items():
+                getattr(out, name).setdefault(l, []).extend(items)
+    return None if out.empty() else out
+
+
 class _Keep:
     """Which positions the interventions act on in the forward under way: [B, T] bool, or None for all of them."""
 

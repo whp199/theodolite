@@ -36,7 +36,7 @@ import anyio
 import numpy as np
 import torch
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, StrictInt
 
 from backend import atlas_ops as ao
@@ -62,6 +62,10 @@ MAX_PUSH_NEW = 512
 # one sample is taken as before
 MAX_STEER_SAMPLES = 8
 MAX_STEER_ROW_PIECES = 3 * MAX_TEXT_POSITIONS
+# one steer over several prompts (three rows each) or several candidate sets of pushes (the unpushed row, then each set
+# one way or both): at most 24 and 25 rows, held to the same MAX_STEER_ROW_PIECES as several samples are
+MAX_STEER_PROMPTS = 8
+MAX_STEER_CANDIDATES = 12
 MAX_COMPARE_NEURONS = 300
 MAX_COMPARE_TEXTS = 24
 # a neuron's push where it names no dose, in its mode's units (the push tab's defaults); a head or a whole block, 0
@@ -477,17 +481,33 @@ class DriveRequest(BaseModel):
     top: int = Field(8, ge=1, le=32)
 
 
+class CandidateIn(BaseModel):
+    label: Optional[str] = Field(None, max_length=80)
+    neurons: List[PushIn] = Field(..., min_length=1, max_length=ao.MAX_PUSHES)
+
+
 class SteerRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, max_length=32000)
+    prompt: Optional[str] = Field(None, min_length=1, max_length=32000)
+    # several prompts under the same pushes, three rows each in one batch (`_steer_prompts`): `runs`, one per prompt
+    prompts: List[str] = Field(default_factory=list, max_length=MAX_STEER_PROMPTS)
     layer: Optional[StrictInt] = None
     n: Optional[StrictInt] = None
     neurons: List[PushIn] = Field(default_factory=list, max_length=ao.MAX_PUSHES)
+    # several sets of pushes on one prompt in one batch (`_steer_candidates`): the unpushed row once, then each set
+    # pushed as asked and, with `both`, the other way
+    candidates: List[CandidateIn] = Field(default_factory=list, max_length=MAX_STEER_CANDIDATES)
+    both: bool = True
     dose: Optional[float] = None  # as the push chat's
     mode: str = Field("add", max_length=8)
     max_new: int = Field(150, ge=1, le=MAX_PUSH_NEW)
     spare_bos: bool = True  # False pushes the start mark too, as a llama.cpp control vector does
     sampler: Any = None  # as the push chat's
     samples: StrictInt = 1  # 1 to MAX_STEER_SAMPLES, sampled only: sample s drawn with seed + s, 3 rows each in one batch
+
+
+class ControlVectorRequest(BaseModel):
+    neurons: List[PushIn] = Field(..., min_length=1, max_length=ao.MAX_PUSHES)
+    name: Optional[str] = Field(None, max_length=120)
 
 
 class NoteRequest(BaseModel):
@@ -1484,10 +1504,7 @@ async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse
 
 def _push_items(req: Union[PushChatRequest, "SteerRequest"]) -> List[PushIn]:
     """The neurons a push chat (or a whole-text steer) pushes: its `neurons`, else the one neuron (layer, n); refused when
-    it names both, rather than one of them dropped. A neuron that names no mode takes the request's, and one that names
-    no dose takes the request's only when pushed in the request's mode, a dose being in its mode's units (an add's share
-    of the stream is no factor for a mul); the rest take their mode's default in `parse_pushes`, as do a head's scale
-    and a whole block's factor, which the request's dose never fills."""
+    it names both, rather than one of them dropped. Each is then filled from the request (`_fill`)."""
     if req.neurons:
         if req.layer is not None or req.n is not None:
             raise HTTPException(status_code=400, detail="Name the neuron to push (layer and n) or give `neurons`, not both: "
@@ -1497,13 +1514,21 @@ def _push_items(req: Union[PushChatRequest, "SteerRequest"]) -> List[PushIn]:
         raise HTTPException(status_code=400, detail="Name the neuron to push (layer and n), or give `neurons`.")
     else:
         items = [PushIn(layer=req.layer, n=req.n)]
+    return _fill(items, req.mode, req.dose)
+
+
+def _fill(items: List[PushIn], mode: str, dose: Optional[float]) -> List[PushIn]:
+    """A request's mode and dose given to the neurons that name none: a neuron that names no mode takes the request's,
+    and one that names no dose takes the request's only when pushed in the request's mode, a dose being in its mode's
+    units (an add's share of the stream is no factor for a mul); the rest take their mode's default in `parse_pushes`,
+    as do a head's scale and a whole block's factor, which the request's dose never fills."""
     for p in items:
         if p.head is not None or p.all:
             continue
         if p.mode is None:
-            p.mode = req.mode
-        if p.dose is None and p.mode == req.mode:
-            p.dose = req.dose
+            p.mode = mode
+        if p.dose is None and p.mode == mode:
+            p.dose = dose
     return items
 
 
@@ -1514,6 +1539,29 @@ def _sampler(req: Union[PushChatRequest, "SteerRequest"]) -> Tuple[Any, Union[st
     if isinstance(k, bool) or not 1 <= int(k) <= MAX_STEER_SAMPLES:
         raise ValueError(f"A steer writes 1 to {MAX_STEER_SAMPLES} samples (three rows each, in one batch), not {k}.")
     return sr.for_writing(sr.sampler_of(req.sampler), int(k))
+
+
+def _steer_fits(rows: int, longest: int, max_new: int, what: str, less: str) -> None:
+    """Refuse, in plain words, a batch of more than three rows whose rows would hold more than MAX_STEER_ROW_PIECES
+    word-pieces in all (prompt and answer): `what` names the rows, `less` what to ask for instead."""
+    n = int(longest) + int(max_new)
+    if rows > 3 and rows * n > MAX_STEER_ROW_PIECES:
+        raise ValueError(f"{what} are {rows} rows of up to {n:,} word-pieces (the prompt's {int(longest):,} and {int(max_new)} "
+                         f"written), {rows * n:,} in all; more than three rows are written only while they hold at most "
+                         f"{MAX_STEER_ROW_PIECES:,}. Ask for {less}, or a shorter answer (max_new).")
+
+
+def _write_texts(a: Atlas, rows: List[List[int]], iv: Optional[ao.Interventions], req: SteerRequest, smp: Any,
+                 samples_of: Optional[List[int]]) -> List[str]:
+    """Each row's whole answer, the rows written together in one batch (`atlas_ops.write_rows`)."""
+    td = ao.TextDeltas(a.rt.tokenizer, len(rows))
+    texts = [""] * len(rows)
+    for st in ao.write_rows(a.lm, a.W_U, rows, iv, max_new=req.max_new, stop_ids=a.rt.end_of_turn_ids(),
+                            bos_id=a.rt.tokenizer.bos_token_id, spare_bos=req.spare_bos,
+                            softcap=ao.softcap_of(a.rt.hf_model), sampler=smp,
+                            samples_of=samples_of if smp is not None else None):
+        texts[st.row] += td.add(st.row, st.token_id, st.end)
+    return texts
 
 
 def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.HeadScale], smp: Any,
@@ -1528,18 +1576,82 @@ def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.Hea
                          f"{MAX_STEER_ROW_PIECES:,}. Ask for " + (f"at most {most} samples" if most > 1 else "one sample")
                          + " at this length, or a shorter answer (max_new).")
     iv, echo = a.interventions(ps, hs, ao.THREE_VOICES * k)
-    rows = [ids] * (3 * k)
-    td = ao.TextDeltas(a.rt.tokenizer, 3 * k)
-    texts = [""] * (3 * k)
-    for st in ao.write_rows(a.lm, a.W_U, rows, iv, max_new=req.max_new, stop_ids=a.rt.end_of_turn_ids(),
-                            bos_id=a.rt.tokenizer.bos_token_id, spare_bos=req.spare_bos,
-                            softcap=ao.softcap_of(a.rt.hf_model), sampler=smp,
-                            samples_of=[r // 3 for r in range(3 * k)] if smp is not None else None):
-        texts[st.row] += td.add(st.row, st.token_id, st.end)
+    texts = _write_texts(a, [ids] * (3 * k), iv, req, smp, [r // 3 for r in range(3 * k)])
     voices: Dict[str, Any] = {"up": texts[0::3], "baseline": texts[1::3], "down": texts[2::3]}
     if k == 1:  # one sample: the whole texts, as before
         voices = {key: v[0] for key, v in voices.items()}
     return {"prompt": req.prompt, "pushed": echo, **voices, "sampling": sampling}
+
+
+def _steer_prompts(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.HeadScale], smp: Any,
+                   sampling: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Several prompts under the same pushes: three rows a prompt (up, as it is, down) in one batch, left-padded, each
+    prompt's rows as a steer of that prompt alone would write them but for what a batch's shape moves on a GPU. Sampled,
+    every prompt is drawn with the one seed."""
+    ids = [a.chat_ids([{"role": "user", "content": p}]) for p in req.prompts]
+    P = len(ids)
+    _steer_fits(3 * P, max(map(len, ids)), req.max_new, f"{P} prompts", "fewer prompts")
+    iv, echo = a.interventions(ps, hs, ao.THREE_VOICES * P)
+    texts = _write_texts(a, [x for i in ids for x in (i, i, i)], iv, req, smp, [0] * (3 * P))
+    runs = [{"prompt": p, "up": texts[3 * i], "baseline": texts[3 * i + 1], "down": texts[3 * i + 2]} for i, p in enumerate(req.prompts)]
+    return {"runs": runs, "pushed": echo, "sampling": sampling}
+
+
+def _steer_candidates(a: Atlas, req: SteerRequest, cands: List[Tuple[Optional[str], List[ao.Push], List[ao.HeadScale]]], smp: Any,
+                      sampling: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Several sets of pushes tried on one prompt in one batch: the unpushed row once, then each set pushed as asked on
+    a row of its own and, with `both`, the other way on another (`atlas_ops.merge`: each row its own pushes). Sampled,
+    every row shares the one draw, so a row parts from the unpushed one only where its push moves the odds."""
+    ids = a.chat_ids([{"role": "user", "content": req.prompt}])
+    C = len(cands)
+    B = 1 + C * (2 if req.both else 1)
+    _steer_fits(B, len(ids), req.max_new, f"{C} candidates" + (", each pushed both ways," if req.both else ""),
+                "fewer candidates" + (", or one way only (both: false)" if req.both else ""))
+    parts, echoes = [], []
+    for c, (_label, ps, hs) in enumerate(cands):
+        signs = [0] * B
+        signs[1 + c] = 1
+        if req.both:
+            signs[1 + C + c] = -1
+        iv, echo = a.interventions(ps, hs, signs)
+        parts.append(iv)
+        echoes.append(echo)
+    texts = _write_texts(a, [ids] * B, ao.merge(parts, B), req, smp, [0] * B)
+    return {"prompt": req.prompt, "baseline": texts[0],
+            "candidates": [{"label": label or f"c{c + 1}", "pushed": echoes[c], "up": texts[1 + c],
+                            **({"down": texts[1 + C + c]} if req.both else {})} for c, (label, _ps, _hs) in enumerate(cands)],
+            "sampling": sampling}
+
+
+def _steer_asks(a: Atlas, req: SteerRequest) -> Tuple[str, Any]:
+    """What a steer asks for, checked without running the model: ("whole", (pushes, heads)) for one prompt,
+    ("prompts", (pushes, heads)) for several under the same pushes, ("candidates", [(label, pushes, heads)]) for
+    several sets of pushes on one prompt. Refused in plain words: no prompt or both kinds, candidates beside a set of
+    pushes or beside several prompts, and several samples of either batch."""
+    if req.prompts and req.prompt is not None:
+        raise ValueError("Give one prompt (prompt) or several (prompts), not both.")
+    if not req.prompts and req.prompt is None:
+        raise ValueError("Give a prompt for the model to answer (prompt), or several (prompts).")
+    if any(not isinstance(p, str) or not 1 <= len(p) <= 32000 for p in req.prompts):
+        raise ValueError("Each prompt is a text of 1 to 32,000 characters.")
+    several = "written one sample each: ask for samples of one prompt under one set of pushes, or leave samples at 1."
+    if req.candidates:
+        if req.neurons or req.layer is not None or req.n is not None:
+            raise ValueError("Give `candidates` (several sets of pushes, each tried on rows of its own) or one set (layer and "
+                             "n, or `neurons`), not both.")
+        if req.prompts:
+            raise ValueError("Candidates are tried on one prompt (prompt): screen them there, then steer the ones worth "
+                             "keeping on several (prompts).")
+        if int(req.samples) != 1:
+            raise ValueError("Candidates are " + several)
+        return "candidates", [(c.label, *a.parse_pushes(_fill([p.model_copy() for p in c.neurons], req.mode, req.dose)))
+                              for c in req.candidates]
+    ps, hs = a.parse_pushes(_push_items(req))
+    if req.prompts:
+        if int(req.samples) != 1:
+            raise ValueError("Several prompts are " + several)
+        return "prompts", (ps, hs)
+    return "whole", (ps, hs)
 
 
 @router.post("/steer")
@@ -1547,11 +1659,63 @@ async def steer(req: SteerRequest) -> Dict[str, Any]:
     """The three voices as whole texts (the scientist's `steer`): pushed up, as it is, pushed down; greedily, or with
     the instrument's sampler, `samples` of them (each voice a list when more than one, sample s drawn with seed + s, and
     several only while their rows hold at most MAX_STEER_ROW_PIECES word-pieces), the three voices of a sample sharing
-    each draw. `sampling` says how they were written."""
+    each draw. `sampling` says how they were written.
+
+    One call can hold more, a step costing about the same for 1 to 64 rows on the 31B: `prompts` (up to
+    MAX_STEER_PROMPTS) answers several prompts under the same pushes, three rows each, and replies {runs: [{prompt, up,
+    baseline, down}], pushed, sampling}; `candidates` (up to MAX_STEER_CANDIDATES: [{label?, neurons}]) tries several
+    sets of pushes on one prompt, the unpushed row once and each set on a row of its own (and, unless `both` is false,
+    the other way on another), and replies {prompt, baseline, candidates: [{label, pushed, up, down?}], sampling}.
+    Either holds one sample, and more than three rows only while they hold at most MAX_STEER_ROW_PIECES word-pieces.
+    In float32 on the CPU each row is the row a steer of it alone writes (scripts/check_atlas_api.py); on a GPU a batch's
+    shape can move a row's numbers (`atlas_ops.write_rows`), so a greedy row may part from it: on Gemma-4-31B, 11
+    November 2026, 6 of the 15 rows of five prompts did (two of them unpushed rows) and 6 of the 13 of six candidates
+    (not the unpushed one), each set against its own batch of three, which wrote the reference unpacker's text to the
+    letter. A pushed row is read against the unpushed row of its own batch."""
     a = atlas()
-    ps, hs = off_gpu(a.parse_pushes, _push_items(req))
+    kind, asked = off_gpu(_steer_asks, a, req)
     smp, sampling = off_gpu(_sampler, req)
-    return await on_gpu(_steer_whole, a, req, ps, hs, smp, sampling)
+    if kind == "candidates":
+        return await on_gpu(_steer_candidates, a, req, asked, smp, sampling)
+    return await on_gpu(_steer_prompts if kind == "prompts" else _steer_whole, a, req, *asked, smp, sampling)
+
+
+def _control_vector(a: Atlas, req: ControlVectorRequest) -> Dict[str, Any]:
+    from backend import control_vector as cv
+    from backend.runtime_factory import weights_card
+
+    for p in req.neurons:
+        if p.head is None and not p.all and p.dose is None:
+            raise ValueError("Give each neuron its dose (a share of the stream's median length, as the push tab's add): the "
+                             "file is written at the doses it is loaded with.")
+    ps, hs = a.parse_pushes(req.neurons)
+    if hs:
+        raise ValueError("A control vector carries only add pushes of neurons; a head's scale goes out as a LoRA adapter "
+                         "(scripts/export_lora.py).")
+    return cv.build(a.w, a.scales(), str(getattr(a.rt, "model_id", "")), weights_card(a.rt), sorted(a.edited()), ps, req.name)
+
+
+@router.post("/control_vector")
+async def control_vector(req: ControlVectorRequest) -> Dict[str, Any]:
+    """An add push, of one neuron or of a recipe of several (`neurons`: [{layer, n, dose}], layers from 0, each with its
+    dose), written as a llama.cpp control vector into the atlas folder's exports/ (backend/control_vector.py: the file
+    scripts/export_control_vector.py writes, read from the model this server holds, the vault's edits in force
+    included): {file, path, bytes, entries, directions, load_with, says}, and GET /exports/<file> downloads it. `name`
+    names the file (letters, digits, '.', '_', '-'); a file of that name is written over. Under the GPU lock: the
+    columns are read from the model, and without a stats index the push's unit is read by running it."""
+    return await on_gpu(_control_vector, atlas(), req)
+
+
+@router.get("/exports/{name}")
+async def export_file(name: str) -> FileResponse:
+    """A control vector written by POST /control_vector, as a download."""
+    from backend import control_vector as cv
+
+    stem = name[:-5] if name.lower().endswith(".gguf") else ""
+    path = cv.exports_dir() / name
+    if not stem or not cv.NAME_OK.fullmatch(stem) or ".." in name or not path.is_file():
+        raise HTTPException(status_code=404, detail=f"No control vector {name!r} has been exported here.")
+    return FileResponse(str(path), media_type="application/octet-stream", filename=name, headers={"Cache-Control": "no-store"})
 
 
 def read_ids(a: Atlas, ids: Sequence[int]) -> List[int]:

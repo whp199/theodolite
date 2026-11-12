@@ -38,6 +38,7 @@ theodolite2/
 │   ├── census.py                    # the census: every neuron of a layer pushed on fixed questions, ranked vs controls
 │   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat; the folio's field book
 │   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex or an OpenAI-compatible endpoint (§4.8)
+│   ├── control_vector.py            # a push or a recipe as a llama.cpp control vector, from the running server (§6)
 │   ├── scientist_tools.py           # the scientist's 30 tools, in the pages' count of layers (stdlib only)
 │   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code and Codex
 │   ├── scientist_prompt.md          # the scientist's instructions (with scientist_methodology.md)
@@ -130,7 +131,11 @@ theodolite2/
 weights: compressed-tensors' pack-quantized layout) and are unpacked to bf16 on every forward by
 `engine_runtime.dequantize_w4a16_full`, whose file R4 pins by sha256. `backend/w4a16_fast.py` installs a faster unpacker
 from outside it, chosen by `--unpacker` (`scripts/census_run.py`, `scripts/atlas_build.py`) or `$THEODOLITE_UNPACKER`
-(the server, the lab daemon and the scientist's MCP server run alone): `lut`, a 256-entry table over the packed bytes
+(the server, the lab daemon and the scientist's MCP server run alone). The scripts' default is `reference`; the server,
+when the variable is unset, takes `compiled` for the checkpoint on a CUDA card and `reference` anywhere else
+(`w4a16_fast.default_mode`, since 11 November 2026: a pushed answer of 80 word-pieces then comes in about 8 s where the
+reference took 52, the text the same to the letter), and starts on `reference`, saying why, should `compiled` be
+refused there; a mode asked for by name and refused still stops it. The modes: `lut`, a 256-entry table over the packed bytes
 and then the same multiply by the scale; `compiled`, the same arithmetic through `torch.compile`, the unpacker alone,
 the model left eager with its hooks; `resident`, each weight unpacked once and kept beside the packed one, overlays
 applied to a clone as the pinned forward applies them. Each gives the reference's bits: the pieces minus 8 are exact in
@@ -801,7 +806,9 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `GET /web/summary?layer&n&…&src&model` | the cone's words, followed from rest (or in use, `model=use`: not ready, with `missing` and `why`, without the passages index) and pooled: `down["+"]` / `down["-"]`, what the neurons it drives write when it fires on its + / − face; `up["+"]` / `up["-"]`, what the neurons that push it toward its + / − face write; weighted by the reaching link's strength (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out); not ready, with `missing`, without the wiring index or without any words to pool |
 | `GET /layout` | `cell` [L, N] int16 as base64 |
 | `POST /push` | the three voices (server-sent events): `{prompt, history: [{user, replies: [3]}], layer, n, dose (by mode: 0.8, × 2 for mul), mode ("add"), neurons (in place of layer and n), system, max_new (160, ≤ 512), spare_bos (true), sampler}`; `sampler` as §4.1's (greedy unless a temperature is set; a seed drawn and echoed when none is given; a presence penalty only with a temperature; no min_p or repetition_penalty, `backend/sampler_request.py` says why), drawn once a step for all three voices: one exponential race over the vocabulary, its noise from a CPU generator seeded `seed`, so the voices part only where the push moves the odds (a row's draw follows the sampler's chances but is not interp_engine's, so a seed does not repeat a sweep's); events `{row, t}` per piece of text, then `{row: null, done: true, sampling}` (`"greedy"`, or `{temperature, top_k, top_p, presence_penalty, seed, seed_drawn, samples, seeds, draw: "shared across the three voices"}`) or `{row: null, error}` |
-| `POST /steer` | the three voices as whole texts, with `sampling`; the push chat's fields but `history` and `system`, `spare_bos` among them, and `max_new` 150 (not 160); `samples` (1–8, sampled only): 3k rows in one batch, sample s drawn with seed + s (on the GPU not always what one sample at seed + s writes alone: the same for only 3 of 8 on the 31B, `atlas_steer_sampling/`), `up`, `baseline` and `down` lists when samples > 1; several samples only while their 3k rows hold at most 6,144 word-pieces in all (prompt and answer), about 4.9 GB of context on the 31B (inferred from the census pilot, not measured) |
+| `POST /steer` | the three voices as whole texts, with `sampling`; the push chat's fields but `history` and `system`, `spare_bos` among them, and `max_new` 150 (not 160); `samples` (1–8, sampled only): 3k rows in one batch, sample s drawn with seed + s (on the GPU not always what one sample at seed + s writes alone: the same for only 3 of 8 on the 31B, `atlas_steer_sampling/`), `up`, `baseline` and `down` lists when samples > 1; several samples only while their 3k rows hold at most 6,144 word-pieces in all (prompt and answer), about 4.9 GB of context on the 31B (inferred from the census pilot, not measured). In place of `prompt`, `prompts` (at most 8) answers several prompts under the same pushes, three rows each in one batch: `{runs: [{prompt, up, baseline, down}], pushed, sampling}`, sampled with the one seed for every prompt. In place of the pushes, `candidates` (at most 12: `[{label, neurons}]`) tries several sets of pushes on one prompt: the unpushed row once, then each set on a row of its own and, unless `both` is false, the other way on another (`atlas_ops.merge` gives each row its own pushes): `{prompt, baseline, candidates: [{label, pushed, up, down}], sampling}`. Either holds one sample and, past three rows, at most 6,144 word-pieces over its rows. In float32 on the CPU each row is the one a steer of it alone writes (`check_atlas_api.py`); on the GPU a batch's shape can move a row's numbers: on the 31B (11 November 2026) 6 of the 15 rows of five prompts and 6 of the 13 of six candidates parted from their own batch of three before 80 word-pieces, two unpushed rows among them, so a pushed row is read against the unpushed row of its own call. Five prompts took 9.2 s and six candidates 8.8 s with `compiled`, where a call of three rows takes 8.3 |
+| `POST /control_vector` | `{neurons: [{layer, n, dose}], name}`: an add push, of one neuron or a recipe of several, written as a llama.cpp control vector into `<atlas folder>/exports/` from the model the server holds (§6): `{file, path, bytes, entries, directions: [{layer, tensor, length, of_p50}], unit_source, vault_edits_in_force, load_with, says}`; refused in plain words: a push that is not an add of one neuron, one at layer 0, a neuron with no dose or that writes nothing, a name that is not letters, digits, `.`, `_` and `-` |
+| `GET /exports/<file>` | a control vector exported here, as a download |
 | `POST /reads` | one neuron's activation at every display unit of a text (`{layer, n, text, chat, neurons, heads}`, or `ids` in place of `text`, read exactly as given, a stored passage's among them; at most 2,048 positions), with `act_range` |
 | `POST /logprobs` | the next word-piece's log-probabilities (fp32, softcapped), with pushes or head scales: both rows, their KL and the pieces that gained and lost most |
 | `POST /compare` | up to 300 neurons over up to 24 texts, one forward a text: per neuron and text its largest and smallest activation with their units, and its peak score against its usual range |
@@ -987,7 +994,7 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 
 | route | |
 |---|---|
-| `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}` |
+| `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach`; `work` `{folder, route}`: the work folder and the route the page opens its files through |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
 | `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
 | `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, README §vi), or a stop would wait on every page left open |
@@ -998,14 +1005,21 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 | `POST /restart` | `{chat}`: end its process group, with any commands it left running in that group (409 while it answers), so the next message resumes it on its files as they now stand → `{ended, note}` |
 | `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
 | `GET /prompt?agent` | the system prompt as built |
+| `GET /work/<path>` | a file of the work folder, for the person to open from the chat: `.html`, `.svg`, texts and pictures shown in the tab, anything else a download; only files inside the folder (links followed first); each sent with `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:` and `nosniff`, so a page the scientist wrote runs no script, fetches nothing and has no origin |
 
-The tools (`backend/scientist_tools.py`, 30, standard library only) take and give layers in the pages' count (L54 N15491)
+The tools (`backend/scientist_tools.py`, 31, standard library only) take and give layers in the pages' count (L54 N15491)
 and call the atlas's routes: reading the atlas (`overview`, `neuron`, `passages`, `rollouts`, `cone`, `web_summary`,
 `search_lens`, `top_units`), names and notes (`set_name` and `write_note` propose, for the person to keep or discard on the
 page; `names` lists those kept), live readings (`steer`, `activations`, `compare`,
-`logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), and the
+`logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), a recipe
+handed over (`export_control_vector`, §6), and the
 person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
-`show_text`, `show_search`). scripts/check_scientist.py checks the tools, the MCP server and all three backends against
+`show_text`, `show_search`). `steer` takes several prompts (`prompts`) or several candidate sets of pushes
+(`candidates`) in one call, as `POST /steer` does (§4.7): every live tool waits for the one GPU, and a step costs about
+the same for 3 rows as for 24, so the prompt tells the scientist to fill a call (a screen of candidates, a held-out
+set) rather than send several. What the scientist makes for the person is a file in its work folder, linked in its
+reply as `[name](/api/atlas/scientist/work/name)`; the page turns only such a link, or one to `/api/atlas/exports/`,
+into a link, and puts one under the last call that wrote each file. scripts/check_scientist.py checks the tools, the MCP server and all three backends against
 fakes, over real connections. scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on
 PATH) against a stand-in Messages API, with no model, no network and no login: what each allows and refuses, the
 atlas's tools through the real MCP server, and that no planted CLAUDE.md or rules file reaches a request and no planted
@@ -1420,6 +1434,10 @@ of one MLP neuron, or of a set of them, is written as a llama.cpp control vector
 beside any Gemma-4-31B-it GGUF, so every frontend that talks to it (SillyTavern and the rest) gets the push. Since
 2 November 2026 the pushes a control vector cannot carry (a neuron's mul, a head's scale, a vault edit, a whole block
 silenced) go out too, as a LoRA adapter or a copy of the model (`scripts/export_lora.py`, the end of this section).
+Since 11 November 2026 the running server writes the same file (`backend/control_vector.py`, `POST
+/api/atlas/control_vector`, §4.7), behind the push tab's "save for llama.cpp" and the scientist's
+`export_control_vector` (§4.8), so a recipe found in a chat leaves the instrument without a shell: "From the server",
+below.
 
 ```bash
 .venv/bin/python -I scripts/export_control_vector.py --layer 45 --neuron 13641            # dose +1: theodolite-L45-n13641.gguf
@@ -1475,6 +1493,33 @@ file's own quantisation, unpacked to float32 (gguf-py's numbers). How far that i
 The QAT Q4_0 file holds the checkpoint's norms exactly, but its down columns were quantised again (11% of the values
 equal at layer 45), so it is near the checkpoint and not the same weights. The default stays the checkpoint's
 direction: it is the one the census measured.
+
+**From the server** (`backend/control_vector.py`). `POST /api/atlas/control_vector` takes the pushes as the atlas's
+other routes do (`neurons`, layers from 0, each with its add dose) and writes the file with the script's own code
+(`pushes`, `write_control_vector`): `dose × p50_l × u` for each entry, summed over a layer's entries, under
+`direction.<l>`. It differs from the script only in where the numbers are read. The columns and the post-feed-forward
+norms are the loaded model's (`atlas_ops.Weights.down_cols` and `.norm`, which the atlas's own pushes read), so the
+vault's edits in force are in the direction (`theodolite.vault_edits_in_force` names them, and a neuron an edit has
+silenced is refused: it writes nothing); p50 is the atlas's own (`Atlas.scales`: the stats index, or until that is
+built the study's 36 texts, and `theodolite.stats_index` says which). The file goes into `<atlas folder>/exports/`
+under the name asked for, or one that says what is in it in the pages' count (`theodolite-page36-n1095-dose-0.35.gguf`,
+`theodolite-set-of-3-<hash>.gguf`), a file of that name written over, and `GET /api/atlas/exports/<file>` downloads it.
+Checked: on the stand-in every direction is the add `atlas_ops.resolve` gives the push, bit for bit
+(`scripts/check_atlas_api.py`); on the 31B (11 November 2026, the checkpoint on the 5090) the three files of the
+recipes below came out bit for bit as `scripts/export_control_vector.py --set` writes them from the checkpoint's files
+on the CPU.
+
+Those three were the first recipes of several neurons taken through llama.cpp (b1-cd26896, the QAT Q4_0 GGUF, every
+layer on the card, `--control-vector-scaled FILE:1`, greedy, 80 word-pieces, thinking off, the instrument's prompt ids;
+three prompts; the answers of both engines are kept beside the files, `gemma4-31b-recipes-llama-check.json`, in the
+owner's exports folder, which is not in the repository): "caring" (page 36 N1095 +0.35, page 44 N9148 +0.5, page 44
+N2057 −0.25), "contempt" (the same, every sign flipped) and "villainy" (page 40 N21379 −1.0, page 42 N4330 −0.5, page
+43 N8862 +0.4), found in a scientist chat that day. Described, not judged against a bar fixed beforehand: each showed
+in llama.cpp on the prompts where it showed in the instrument, the caring and contempt answers opening as the
+instrument's did ("I know how heartbreaking and discouraging it feels…"; "First off, stop reading this and just get it
+over with: **Who cares?**"), the caring file at SCALE −1 writing the contempt file's answers to the letter, and the
+villainy file leaking the collapse word `own` into two of its three answers, where the instrument's leaked it into one
+with the start mark pushed and into none with it spared: that recipe sits nearer its breaking point in llama.cpp.
 
 **The check** (`scripts/check_control_vector.py`, CPU only, 48 checks in about 15 s). The stand-in's down projections
 are packed as W4A16 and written as a checkpoint, with a stats index of its own stream lengths. Every push a census of

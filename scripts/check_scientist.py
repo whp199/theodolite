@@ -5,7 +5,8 @@ scripts/atlas_stand_in.py bound in place of the model, served by uvicorn on a fr
 so the chat is driven over real connections):
 1. the tools' schemas, and the pages' count: layers from 1 in every argument and reply, refused below 1;
 2. each tool against the atlas's routes in this process, its reply the routes' own in the pages' count (a neuron, its
-   links, reads, steering (greedy, and sampled with its knobs passed through and its seeds given back), odds, compare,
+   links, reads, steering (greedy, and sampled with its knobs passed through and its seeds given back; several prompts
+   or several candidate sets of pushes in one call; a recipe exported as a llama.cpp control vector), odds, compare,
    fires, heads, the drive, the census, names and notes proposed by set_name and write_note and read by nothing (names,
    neuron, the notes) until the person keeps them, kept without overwriting each other, the cone and the web once the
    indexes are built), and each screen action reaching the chat's page in the API's count, a proposal among them, each
@@ -41,7 +42,10 @@ so the chat is driven over real connections):
    and an openai chat's log and of a Claude Code session: the reader leaves it out, and any line that does not parse;
    the history reads as before, the chat is among the past ones, a rewind works; the next event is logged on a line
    of its own, the torn one cut off first;
-8. who may ask: the chat's routes refuse a page from another machine;
+8. who may ask: the chat's routes refuse a page from another machine; the work folder's files as the person opens them
+   (GET /work/<path>: a page as a page, a text as text, anything else a download, each under a policy that runs no
+   script and fetches nothing; nothing outside the folder, a link out of it included), and what the prompt says of
+   deliverables, of filling a call's rows and of handing a recipe over;
 9. a stop: scripts/atlas_stand_in.py --serve in a process of its own, a chat's event stream held open (it never ends
    of itself), then SIGINT: the server exits within 6 s (its graceful-shutdown limit is 3 s; with none it would wait
    for as long as the stream stays open).
@@ -1096,6 +1100,44 @@ def run_checks() -> int:
     check(r.status_code == 403, "a page served from another machine")
     section("who may ask", before)
 
+    # ------------------------------------------------------------------- 8b. the work folder's files, for the person
+    before = len(failures)
+    work = sc.work_dir()
+    (work / "persona.html").write_text("<!doctype html><title>t</title><script>fetch('/api/atlas/arch')</script><p style='color:red'>hi</p>", encoding="utf-8")
+    (work / "sub").mkdir(exist_ok=True)
+    (work / "sub" / "notes.md").write_text("# notes\n", encoding="utf-8")
+    (work / "blob.bin").write_bytes(b"\x00\x01")
+    (TMP / "outside.txt").write_text("not the scientist's", encoding="utf-8")
+    (work / "leak.txt").symlink_to(TMP / "outside.txt")
+    wk = hc.get("/api/atlas/scientist/backends").json()["work"]
+    check(wk == {"folder": str(work), "route": "/api/atlas/scientist/work/"}, f"/backends says where the work folder is and how the page opens a file of it: {wk}")
+    r = hc.get(wk["route"] + "persona.html")
+    csp = r.headers.get("content-security-policy", "")
+    check(r.status_code == 200 and r.headers["content-type"].startswith("text/html") and "<p style='color:red'>hi</p>" in r.text,
+          f"a page in the work folder opens as a page: {r.status_code} {r.headers.get('content-type')}")
+    check(csp.split(";")[0].strip() == "sandbox" and "default-src 'none'" in csp and "script" not in csp and "allow-" not in csp
+          and r.headers.get("x-content-type-options") == "nosniff" and "attachment" not in r.headers.get("content-disposition", ""),
+          f"under a policy that runs no script, fetches nothing and gives it no origin: {csp}")
+    r = hc.get(wk["route"] + "sub/notes.md")
+    check(r.status_code == 200 and r.headers["content-type"].startswith("text/plain") and r.text == "# notes\n"
+          and r.headers.get("content-security-policy") == csp, "a text in a folder of it is shown as plain text, under the same policy")
+    r = hc.get(wk["route"] + "blob.bin")
+    check(r.status_code == 200 and "attachment" in r.headers.get("content-disposition", "") and r.content == b"\x00\x01",
+          "anything else is a download")
+    check([hc.get(wk["route"] + bad).status_code for bad in ("leak.txt", "..%2Foutside.txt", "%2E%2E/outside.txt", "sub", "nope.html", "sub/../../outside.txt")]
+          == [404] * 6, "only files inside the folder: a link out of it, a path above it, a folder and a missing file are not there")
+    check(hc.get(wk["route"] + "persona.html", headers={"Origin": "http://evil.example"}).status_code == 403
+          and hc.get(wk["route"] + "persona.html", headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "no-cors"}).status_code == 403,
+          "a page from elsewhere cannot read them")
+    folder_p, home_p, codex_p, open_p = (sc.system_prompt("claude", srv.url), None, sc.system_prompt("codex", srv.url), sc.system_prompt("openai", srv.url))
+    link = "[persona.html](/api/atlas/scientist/work/persona.html)"
+    check(link in folder_p and "never\na script that would write it" in folder_p and "{WORK_URL}" not in folder_p and link in codex_p
+          and "you can run yourself" in codex_p and link not in open_p,
+          "the prompt: a deliverable is a file written in the work folder and linked, not a script to run (an endpoint has no files)")
+    check(all("## One call, many rows" in t and "## A recipe others can run" in t and "`export_control_vector`" in t and "no shift of layer" in t
+              for t in (folder_p, codex_p, open_p)), "the prompt: rows go into one call, and how a recipe is handed over")
+    section("the work folder's files open from the chat, under a policy that runs nothing; the prompt says so", before)
+
     hc.close()
     for c in list(sc._chats.values()):
         p = c.get("proc")
@@ -1211,6 +1253,72 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
         check(False, "steer: one neuron and `neurons` together were not refused")
     except st.ToolError as exc:
         check("not both" in str(exc), f"steer: one neuron and `neurons` together refused in plain words ({exc})")
+    # one call, many rows: several prompts under the same pushes, and several candidate sets of pushes on one prompt
+    two = ["Who are you?", "And then what?"]
+    pv = await st.call("steer", {"layer": 3, "n": 5, "prompts": two, "max_new": 6}, rec)
+    singles = [hc.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": q, "max_new": 6}).json() for q in two]
+    check([x["prompt"] for x in pv["runs"]] == two and all(pv["runs"][i][k] == singles[i][k] for i in range(2) for k in ("up", "baseline", "down"))
+          and pv["pushed"] == [{"neuron": "L3 N5", "mode": "add", "dose": 0.8}] and pv["sampling"] == "greedy"
+          and rec.bodies[-1]["prompts"] == two and "prompt" not in rec.bodies[-1],
+          f"steer with prompts: each prompt's three voices as a steer of it alone writes them, the push cited once ({pv['pushed']})")
+    cands = [{"label": "one", "neurons": [{"layer": 3, "n": 5}]},
+             {"neurons": [{"layer": 4, "n": 7, "dose": -1.5}, {"layer": 2, "n": 3, "mode": "mul", "dose": 0}]}]
+    cv = await st.call("steer", {"prompt": two[0], "candidates": cands, "max_new": 6}, rec)
+    alone = hc.post("/api/atlas/steer", json={"neurons": [{"layer": 3, "n": 7, "dose": -1.5}, {"layer": 1, "n": 3, "mode": "mul", "dose": 0}],
+                                              "prompt": two[0], "max_new": 6}).json()
+    check(cv["baseline"] == singles[0]["baseline"] and [c["label"] for c in cv["candidates"]] == ["one", "c2"]
+          and [cv["candidates"][0][k] for k in ("up", "down")] == [singles[0][k] for k in ("up", "down")]
+          and [cv["candidates"][1][k] for k in ("up", "down")] == [alone[k] for k in ("up", "down")]
+          and cv["candidates"][0]["pushed"] == [{"neuron": "L3 N5", "mode": "add", "dose": 0.8}]
+          and cv["candidates"][1]["pushed"] == [{"neuron": "L4 N7", "mode": "add", "dose": -1.5}, {"neuron": "L2 N3", "mode": "mul", "dose": 0.0}]
+          and rec.bodies[-1]["candidates"][1]["neurons"][0]["layer"] == 3,
+          f"steer with candidates: one unpushed answer, each candidate's two rows those of a steer of it alone, cited in the pages' count ({cv['candidates'][1]['pushed']})")
+    one_way = await st.call("steer", {"prompt": two[0], "candidates": cands, "both": False, "max_new": 6}, rec)
+    check(all("down" not in c for c in one_way["candidates"]) and [c["up"] for c in one_way["candidates"]] == [c["up"] for c in cv["candidates"]]
+          and rec.bodies[-1]["both"] is False, "steer with candidates, both false: each pushed only as asked")
+    for bad, says in (({"prompt": "x", "prompts": two, "layer": 3, "n": 5}, "not both"), ({"prompts": two, "candidates": cands}, "tried on one prompt"),
+                      ({"prompt": "x", "candidates": cands, "layer": 3, "n": 5}, "not both"), ({"layer": 3, "n": 5}, "needs prompt"),
+                      ({"prompts": two, "layer": 3, "n": 5, "temperature": 1.0, "seed": 1, "samples": 2}, "one sample each")):
+        try:
+            await st.call("steer", bad, api)
+            check(False, f"steer {bad} was not refused")
+        except st.ToolError as exc:
+            check(says in str(exc), f"steer {bad} refused in plain words ({exc})")
+    check("`prompts`" in desc and "`candidates`" in desc and "wait in line for the one GPU" in desc,
+          "steer's description: several prompts or candidates go into one call, and why")
+    # a recipe as a llama.cpp control vector: the route's file, cited in the pages' count, the file's name first
+    recipe = [{"layer": 3, "n": 5, "dose": 0.35}, {"layer": 4, "n": 7, "dose": -0.5}]
+    xv = await st.call("export_control_vector", {"neurons": recipe, "name": "caring"}, rec)
+    raw = hc.post("/api/atlas/control_vector", json={"neurons": [{**e, "layer": e["layer"] - 1} for e in recipe], "name": "caring"}).json()
+    check(list(xv)[0] == "file" and xv["file"] == "caring.gguf" and xv["path"] == raw["path"] == str(TMP / "atlas" / "exports" / "caring.gguf")
+          and Path(xv["path"]).is_file() and xv["bytes"] == Path(xv["path"]).stat().st_size
+          and [e["neuron"] for e in xv["entries"]] == ["L3 N5", "L4 N7"] and [e["dose"] for e in xv["entries"]] == [0.35, -0.5]
+          and [(d["tensor"], d["page_layer"]) for d in xv["directions"]] == [("direction.2", 3), ("direction.3", 4)]
+          and [d["of_p50"] for d in xv["directions"]] == [0.35, 0.5]
+          and rec.bodies[-1] == {"neurons": [{"layer": 2, "n": 5, "dose": 0.35}, {"layer": 3, "n": 7, "dose": -0.5}], "name": "caring"}
+          and xv["load_with"].endswith(f"--control-vector-scaled {xv['path']}:1") and "start mark" in xv["says"],
+          f"export_control_vector: the file, its entries in the pages' count, llama.cpp's tensor names beside their page layers ({xv['directions']})")
+    import export_control_vector as ecv
+
+    dirs, meta = ecv.read_control_vector(Path(xv["path"]))
+    check(sorted(dirs) == [2, 3] and meta["general.architecture"] == "controlvector" and meta["theodolite.pages"] == [3, 4]
+          and meta["theodolite.neurons"] == [5, 7] and "backend/control_vector.py" in meta["theodolite.made_by"],
+          "the file is a llama.cpp control vector: direction.<layer from 0>, and what it was made from")
+    dl = hc.get(f"/api/atlas/exports/{xv['file']}")
+    check(dl.status_code == 200 and "attachment" in dl.headers.get("content-disposition", "") and dl.content == Path(xv["path"]).read_bytes(),
+          "GET /exports/<file>: the file, as a download")
+    check(hc.get("/api/atlas/exports/none.gguf").status_code == 404 and hc.get("/api/atlas/exports/caring.gguf", headers={"Origin": "http://evil.example"}).status_code == 403,
+          "GET /exports: a file not exported is not there, and a page from elsewhere is refused")
+    auto = await st.call("export_control_vector", {"neurons": [{"layer": 3, "n": 5, "dose": -0.35}]}, api)
+    check(auto["file"] == "theodolite-page3-n5-dose-0.35.gguf", f"a file left unnamed says what is in it, in the pages' count ({auto['file']})")
+    for bad, says in (({"neurons": [{"layer": 1, "n": 5, "dose": 1}]}, "after layer 0"), ({"neurons": [{"layer": 3, "n": 5}]}, "its dose"),
+                      ({"neurons": [{"layer": 3, "n": 5, "dose": 1, "mode": "mul"}]}, 'only "add" pushes'),
+                      ({"neurons": recipe, "name": "../caring"}, "file name")):
+        try:
+            await st.call("export_control_vector", bad, api)
+            check(False, f"export_control_vector {bad} was not refused")
+        except st.ToolError as exc:
+            check(says in str(exc), f"export_control_vector {bad} refused in plain words ({exc})")
     lp = await st.call("logprobs", {"text": "Who are you?", "k": 3, "neurons": [{"layer": 5, "n": 9, "dose": 2.0}]}, api)
     check(lp["kl"] >= 0 and lp["pushed"] == [{"neuron": "L5 N9", "mode": "add", "dose": 2.0}], "logprobs with a push")
     cmp_ = await st.call("compare", {"neurons": [{"layer": 1, "n": 1}, {"layer": 6, "n": 127}], "texts": ["hello there", "def merge(a, b):"]}, api)

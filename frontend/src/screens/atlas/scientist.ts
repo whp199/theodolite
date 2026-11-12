@@ -230,7 +230,10 @@ function onEvent(e: ChatEvent) {
   if (e.t === "text") {
     appendText(b, "md", String(e.text ?? ""));
     reply += String(e.text ?? "");
-  } else if (e.t === "thinking") appendText(b, "thinking", String(e.text ?? ""));
+  } else if (e.t === "thinking") {
+    // a model whose thinking is not shown still sends the events, empty: they make no row
+    if (e.text) appendText(b, "thinking", String(e.text));
+  }
   else if (e.t === "tool") pushPart(b, { t: "tool", id: (e.id as string) ?? null, name: String(e.name ?? ""), input: e.input ?? {} });
   else if (e.t === "tool_result")
     editParts(b, (parts) => parts.map((p) => (p.t === "tool" && p.id === e.id ? { ...p, output: String(e.output ?? ""), error: !!e.error } : p)));

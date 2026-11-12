@@ -218,8 +218,31 @@ TOOLS: List[Dict[str, Any]] = [
      "Greedy by default, the reading the census and the method use; a loop is part of what a push "
      "shows. Sample (temperature, a seed, samples up to 8: the three voices share each draw, so they differ only where the push "
      "moves the odds, and on Gemma-4-31B eight samples cost about the time of one) to see whether a theme survives the draw; say "
-     "which seeds (`sampling` gives them). Never sample, or add a presence penalty, to make an answer read better.",
-     "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"}, "neurons": PUSHES,
+     "which seeds (`sampling` gives them). Never sample, or add a presence penalty, to make an answer read better. "
+     "One call can hold more than one prompt or one set of pushes, and should: calls wait in line for the one GPU, and a "
+     "step costs about the same for 3 rows as for 24. `prompts` (up to 8, in place of `prompt`) answers several prompts "
+     "under the same pushes: `runs`, one {prompt, up, baseline, down} each; use it for a held-out set. `candidates` (up to "
+     "12, in place of layer and n or `neurons`: [{label?, neurons}]) tries several sets of pushes on one prompt: `baseline` "
+     "once, then each candidate's `up` (pushed as asked) and, unless `both` is false, its `down` (the other way); use it to "
+     "screen neurons before you steer any alone. Either takes one sample, and their rows (prompt and answer) hold at most "
+     "6,144 word-pieces together, so many rows want a short max_new. On the GPU a batch's shape can move a row's numbers, "
+     "so a greedy row in a larger batch sometimes parts from what it writes in a batch of three (on Gemma-4-31B about four "
+     "rows in ten did, unpushed ones among them): read each pushed answer against the `baseline` of its own call, and quote an "
+     "answer with the call it came from.",
+     "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"},
+                                                       "prompts": {"type": "array", "items": {"type": "string"}, "description":
+                                                                   "several prompts in one batch, in place of prompt (up to 8)"},
+                                                       "neurons": PUSHES,
+                                                       "candidates": {"type": "array", "description": "several sets of pushes "
+                                                                      "tried on one prompt in one batch (up to 12), in place "
+                                                                      "of layer and n or neurons",
+                                                                      "items": {"type": "object", "properties": {
+                                                                          "label": {"type": "string", "description": "a few "
+                                                                                    "words to tell it by in the reply"},
+                                                                          "neurons": PUSHES}, "required": ["neurons"]}},
+                                                       "both": {"type": "boolean", "default": True, "description": "with "
+                                                                "candidates: also push each the other way (false: only as "
+                                                                "asked, half the rows)"},
                                                        "dose": {"type": "number", "description": "in the mode's units; left out: 0.8 for "
                                                                 "add and act, 2 for mul. With `neurons`, it fills only those "
                                                                 "pushed in `mode` that name no dose"},
@@ -239,7 +262,24 @@ TOOLS: List[Dict[str, Any]] = [
                                                                    "the GPU: ask for the same samples and seed to write it again); "
                                                                    "several hold at most 6,144 word-pieces over "
                                                                    "their rows (prompt and answer), so fewer at a long max_new"}},
-                     "required": ["prompt"]}},
+                     "required": []}},
+    {"name": "export_control_vector", "description": "Write an add push, of one neuron or a recipe of several, as a llama.cpp "
+     "control vector: a GGUF file that `llama-server --control-vector-scaled FILE:SCALE` loads beside any Gemma-4-31B-it GGUF, "
+     "so others can run the push without this instrument. Give every neuron its dose, as you steered it (mode add; a mul, a "
+     "head's scale and a silenced block cannot go into one, nor a push at page layer 1). The file holds dose x the stream's "
+     "median length x the neuron's write direction, summed per layer, read from the model this server holds; llama.cpp adds "
+     "each to the stream leaving its layer, after the layer scalar, where the instrument adds its push (read in llama.cpp's "
+     "source and checked through llama.cpp itself), so SCALE 1 is your doses, -1 the opposite recipe. llama.cpp pushes the "
+     "start mark too: steer the recipe with spare_bos false before you export it, and say what you saw. The reply names "
+     "the file and its path, each direction's length, and the command; the person's page shows a download link under the "
+     "call. Export when the person asks for something others can run, not after every push.",
+     "inputSchema": {"type": "object", "properties": {
+         "neurons": {"type": "array", "description": "the recipe: each neuron with its add dose (a share of the stream's "
+                     "median length leaving its layer, any sign), at most 32",
+                     "items": {"type": "object", "properties": {**LN, "dose": {"type": "number"}}, "required": ["layer", "n", "dose"]}},
+         "name": {"type": "string", "description": "the file's name: letters, digits, '.', '_' and '-' (.gguf is added); a "
+                  "file of that name among the exports is written over. Left out: a name that says what is in it"}},
+                     "required": ["neurons"]}},
     {"name": "activations", "description": "Live: the neuron's activation at every display unit of a text (chat: true makes it a user turn), "
      "beside its range from `neuron`. `neurons` and `heads` are pushed or scaled in the same pass, to test what drives it: compare "
      "with the same call without them. Only what comes before its own feed-forward block can move it.",
@@ -520,16 +560,37 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         by_sci += [cite_head(*map(int, k.split(":"))) for k, e in notes.get("heads", {}).items() if e.get("name") and e.get("name_by") == "scientist"]
         return {"neurons": out_n, "heads": out_h, "named_by_a_scientist": by_sci, "awaiting_the_person": await _waiting(api)}
     if name == "steer":
-        _need(a, "prompt")
-        if not a.get("neurons"):
+        if not a.get("prompts"):
+            _need(a, "prompt")
+        if not a.get("neurons") and not a.get("candidates"):
             _need(a, "layer", "n")
-        body = {k: a[k] for k in ("layer", "n", "neurons", "prompt", "dose", "mode", "max_new", "samples", "spare_bos") if a.get(k) is not None}
+        body = {k: a[k] for k in ("layer", "n", "neurons", "candidates", "both", "prompt", "prompts", "dose", "mode", "max_new", "samples",
+                                  "spare_bos") if a.get(k) is not None}
         sampler = {k: a[k] for k in ("temperature", "top_k", "top_p", "presence_penalty", "seed") if a.get(k) is not None}
         if sampler:
             body["sampler"] = sampler
         r = await api.post("/api/atlas/steer", body)
+        if "runs" in r:  # several prompts under the same pushes
+            return {"pushed": [_cite_push(p) for p in r["pushed"]], "runs": r["runs"], "sampling": r.get("sampling")}
+        if "candidates" in r:  # several sets of pushes on one prompt
+            return {"prompt": r["prompt"], "baseline": r["baseline"],
+                    "candidates": [{"label": c["label"], "pushed": [_cite_push(p) for p in c["pushed"]], "up": c["up"],
+                                    **({"down": c["down"]} if "down" in c else {})} for c in r["candidates"]],
+                    "sampling": r.get("sampling")}
         return {"prompt": r["prompt"], "pushed": [_cite_push(p) for p in r["pushed"]], "up": r["up"], "baseline": r["baseline"], "down": r["down"],
                 "sampling": r.get("sampling")}
+    if name == "export_control_vector":
+        _need(a, "neurons")
+        r = await api.post("/api/atlas/control_vector", {"neurons": a["neurons"], **({"name": a["name"]} if a.get("name") else {})})
+        # the file first: the page finds it there, to offer the download under the call
+        return {"file": r["file"], "path": r["path"], "bytes": r["bytes"],
+                "entries": [{"neuron": cite(e["layer"], e["n"]), "dose": e["dose"], "p50": e["p50"]} for e in r["entries"]],
+                "directions": [{"tensor": d["tensor"], "page_layer": d["layer"] + 1, "length": d["length"], "of_p50": d["of_p50"]}
+                               for d in r["directions"]],
+                "tensors_count": "llama.cpp counts layers from 0: direction.<k> is page layer k + 1",
+                "unit_source": r.get("unit_source"),
+                **({"vault_edits_in_force": [cite(e["layer"], e["n"]) for e in r["vault_edits_in_force"]]} if r.get("vault_edits_in_force") else {}),
+                "load_with": r["load_with"], "says": r["says"]}
     if name == "activations":
         _need(a, "layer", "n", "text")
         body = {k: a[k] for k in ("layer", "n", "text", "chat", "neurons", "heads", "spare_bos") if a.get(k) is not None}

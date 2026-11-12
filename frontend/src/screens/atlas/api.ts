@@ -577,7 +577,22 @@ export interface Backends {
   warning: string | null;
   /** what each backend can do beyond the atlas's tools: "folder" (the default) or "home" (a shell over the home folder) */
   reach?: { mode: "folder" | "home"; env: string; claude: string; codex: string; openai: string };
+  /** where a Claude Code or Codex scientist keeps its files, and the route that opens one in a browser tab */
+  work?: { folder: string; route: string };
 }
+
+/** What POST /api/atlas/control_vector says of the file it wrote (backend/control_vector.py); layers count from 0. */
+export interface ControlVectorReply {
+  file: string;
+  path: string;
+  bytes: number;
+  entries: { layer: number; n: number; dose: number; p50: number }[];
+  directions: { layer: number; tensor: string; length: number; of_p50: number | null }[];
+  load_with: string;
+  says: string;
+}
+/** Where the page downloads an exported control vector from. */
+export const exportUrl = (file: string) => `/api/atlas/exports/${encodeURIComponent(file)}`;
 export interface ChatEvent {
   t: "state" | "sent" | "text" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "note" | "stale" | "ping" | "user";
   [k: string]: unknown;
