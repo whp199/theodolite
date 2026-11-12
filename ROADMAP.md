@@ -651,8 +651,14 @@ layers, the determinism run and the sampled push on 29 October). In this section
     searched the same way and are its null. For “rain”, 135 neurons in the eleven layers against 3 of the 22,528
     controls, which among as many neurons would be about 32; layer 47’s N17966 comes first. A word is matched from its
     beginning because inside words the controls keep pace: “\*rain” (train, brain, grain) finds 1,138 neurons against
-    77 controls, about 808 neurons’ worth. A hit no stronger than a control of its own layer is shown faded. A census
-    word in a neuron’s details searches for it.
+    77 controls, about 808 neurons’ worth. That count is the search’s null, and the list says it first; where no
+    control brought the word (“king”: 74 neurons, none of 22,528 controls) it says “fewer than about 32”, not none.
+    A hit no stronger than a control of its own layer is shown faded, as a weaker lead, but a bright row is not
+    thereby beyond chance: the review of 12 November found “bridge” with 108 bright rows of 5,729 where about 6,437
+    matches, and about 115 rows above every control, are what chance gives, and “ocean” with 53 bright of 66 where
+    about 42 are chance. The page, the route and the scientist’s tool now say so, and none is bright in a layer
+    without controls. A per-row null worth the name needs more controls than 2,048 a layer, or a statistic pooled
+    over layers; neither is built. A census word in a neuron’s details searches for it.
   - **Smaller things.** A first visit opens on a layer with a census (it opened on layer 54, which has none). A layer
     without one says which layers have. The neurons and heads opened lately stay as a trail over the left panel. A
     neuron’s link can be copied. Where a run’s doses are calibrated at its layer, a neuron’s census answers come before

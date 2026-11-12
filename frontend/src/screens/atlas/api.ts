@@ -322,7 +322,9 @@ export interface CensusHit {
   n: number;
   /** the matched word's score against the controls' mean (the least over the query's words) */
   score: number;
-  /** whether that score beats every control of its layer that matched the same way */
+  /** whether no random control of its layer brought the word as hard (false throughout a layer without controls). A
+   * row that is not above is a weaker lead; one that is above is not thereby set apart from chance (where no control
+   * matched, every match is above): `chance` on the reply does that, for the list as a whole */
   above: boolean;
   matched: string[];
   mass: number | null;
@@ -338,7 +340,8 @@ export interface CensusHit {
 }
 /** A layer's part of a census search: how many neurons matched, how many of them harder than every random control of
  * the layer that matched the same way, how many controls matched and the strongest of them. The controls are the
- * null: `controls / of_controls` of a layer's neurons would match were they random directions. */
+ * null: `controls / of_controls` of a layer's neurons would match were they random directions (`by_chance`, null for
+ * a layer without controls). Where its doses are not calibrated a match or a miss may only say the dose was wrong. */
 export interface CensusSearchLayer {
   layer: number;
   neurons: number;
@@ -347,12 +350,27 @@ export interface CensusSearchLayer {
   control_max: number;
   of_neurons: number;
   of_controls: number;
+  by_chance: number | null;
+  doses_calibrated: boolean;
+}
+/** A census search set against chance, over the layers that have controls: `neurons` matched where `expected` would
+ * were they random directions; where no control matched at all, `at_most` (a match rate of 3 in as many controls
+ * would still show none one time in twenty). */
+export interface CensusSearchChance {
+  neurons: number;
+  of_neurons: number;
+  controls: number;
+  of_controls: number;
+  expected: number;
+  at_most: number | null;
 }
 export interface CensusSearchReply {
   terms: string[];
   results: CensusHit[];
   layers: CensusSearchLayer[];
   total: number;
+  /** null when no layer searched has random controls: nothing in the list is set against chance */
+  chance: CensusSearchChance | null;
   /** layers whose run is not ranked yet, so not searched */
   not_read: number[];
   says: string;

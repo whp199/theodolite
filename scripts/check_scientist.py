@@ -1498,9 +1498,15 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check((await st.call("top_units", {"layer": 2}, api)) == {"ranked": [], "note": "this layer has no census"}, "top_units: a layer without one")
     found = await st.call("search_census", {"query": "Banana"}, api)
     check([x["neuron"] for x in found["results"]] == ["L4 N9"] and found["results"][0]["matched"] == ["banana"] and "banana" in found["results"][0]["words"]
-          and found["results"][0]["above_controls"] is True and found["query"] == ["banana"] and found["total"] == 1 and "lead" in found["says"]
-          and found["layers"] == [{"layer": 4, "neurons_matched": 1, "above_controls": 1, "controls_matched": 0, "controls": 0}],
-          f"search_census: a neuron found by a census word, in the pages' count, with its layer's count and the controls' ({found})")
+          and found["query"] == ["banana"] and found["total"] == 1 and "lead" in found["says"],
+          f"search_census: a neuron found by a census word, in the pages' count ({found})")
+    # this layer's run has no random controls: nothing is above them, and the reply says nothing is set against chance
+    check(found["results"][0]["above_controls"] is False and "no layer searched has random controls" in found["against_chance"].get("note", "")
+          and found["layers"] == [{"layer": 4, "neurons_matched": 1, "by_chance_alone": None, "above_controls": 0, "controls_matched": 0,
+                                   "controls": 0, "doses_calibrated": False}],
+          f"search_census: in a layer without controls no row is above them, and its doses are said not to be calibrated ({found})")
+    check((await st.call("search_census", {"query": " * "}, api)) == {"results": [], "total": 0, "note": "the query has no word to search for"},
+          "search_census: a query with no word in it says so, and does not blame the census")
     check((await st.call("search_census", {"query": "anana"}, api))["total"] == 0
           and [x["neuron"] for x in (await st.call("search_census", {"query": "*anana"}, api))["results"]] == ["L4 N9"],
           "search_census: a word matches from its beginning, anywhere only with a leading *")

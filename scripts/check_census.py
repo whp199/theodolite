@@ -1602,6 +1602,22 @@ def run_checks(tmp: Path) -> int:
           "the table is kept beside the run and read back; cut again when the ranking has changed (an unmarked one shows every word)")
     with open(cz.units_path_of(brun), "w", encoding="utf-8") as f_:
         f_.writelines(json.dumps(u_) + "\n" for u_ in trecs)
+    # a file beside a run that cannot be read back (empty, cut short, a part that does not unpack) is made again: it
+    # holds nothing its run does not, so it must never be what keeps a layer from opening
+    mended = []
+    for how in ("empty", "cut short", "a part damaged"):
+        for src_, path_of_, load_ in ((irun, cz.rows_index_path_of, cz.load_rows_index), (brun, cz.table_path_of, cz.load_table)):
+            good_ = load_(src_)
+            side_ = path_of_(src_)
+            raw_ = side_.read_bytes()
+            bad_ = b"" if how == "empty" else raw_[: len(raw_) // 2] if how == "cut short" else raw_[:60] + bytes(b_ ^ 0xFF for b_ in raw_[60:120]) + raw_[120:]
+            side_.write_bytes(bad_)
+            try:
+                again_ = load_(src_)
+                mended.append(len(again_) == len(good_) and side_.read_bytes() == raw_ and not list(side_.parent.glob(side_.name + ".*.tmp")))
+            except Exception as e_:  # noqa: BLE001
+                mended.append(f"{how}: {type(e_).__name__}")
+    check(mended == [True] * 6, f"an index or a table that cannot be read back (empty, cut short, a part damaged) is made again, nothing left behind ({mended})")
     section("a run read without reading it whole: the rows index and the ranking's table", before)
 
     # ----------------------------------------------- 12b. controls mixed from the layer's own columns, and the join

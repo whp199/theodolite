@@ -78,6 +78,7 @@ import math
 import os
 import random
 import re
+import threading
 import zlib
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -1010,10 +1011,19 @@ def file_stamp(path: Path) -> List[int]:
 
 
 def _save_npz_atomic(path: Path, **arrays: Any) -> None:
-    tmp = path.with_name(path.name + ".tmp")
-    with open(tmp, "wb") as f:
-        np.savez_compressed(f, **arrays)
-    os.replace(tmp, path)
+    # a name of this writer's own, so two that make the same file at once (the server and a script) do not write into
+    # each other's; nothing is left behind when the write fails
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        with open(tmp, "wb") as f:
+            np.savez_compressed(f, **arrays)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 class RowsIndex:
@@ -1098,7 +1108,9 @@ def load_rows_index(run_path: Path) -> RowsIndex:
             with np.load(p) as z:
                 if int(z["version"]) == ROWS_INDEX_VERSION and [int(x) for x in z["stamp"]] == file_stamp(run_path):
                     return RowsIndex(run_path, z["start"], z["length"], z["kind"], z["neuron"], z["stamp"])
-        except (OSError, ValueError, KeyError):
+        except Exception:  # noqa: BLE001
+            # a file that cannot be read back (empty, cut short, a part that does not unpack: EOFError,
+            # zipfile.BadZipFile, zlib.error among others) holds nothing the run does not: it is made again
             pass
     return build_rows_index(run_path)
 
@@ -1108,9 +1120,10 @@ class UnitsTable:
     index, its mass (z for a ranking without one), null_pct, p, q, collapse_mass and mass_shown (NaN where the ranking
     has none), the words a page may show for it (`shown_words`: collapse words left out) with each word's score and
     its place among all the unit's words (`place`: a list shows a neuron by those of its five strongest that are
-    shown, never by words further down), and where its whole record lies in the ranking file (`record`). `null`: how many neurons and controls, how many neurons beat every
-    control and how many would by chance, how many units have q <= 0.05. `reading`: how the ranking read its answers
-    (None for one that does not say). `marked`: whether the ranking carries its collapse marks."""
+    shown, never by words further down), and where its whole record lies in the ranking file (`record`). `null`: how
+    many neurons and controls, how many neurons beat every control and how many would by chance, how many units have
+    q <= 0.05. `reading`: how the ranking read its answers (None for one that does not say). `marked`: whether the
+    ranking carries its collapse marks."""
 
     FIELDS = ("mass", "null_pct", "p", "q", "collapse_mass", "mass_shown")
 
@@ -1221,8 +1234,8 @@ def load_table(run_path: Path) -> UnitsTable:
             head = json.loads(bytes(a["head"]).decode("utf-8"))
             if head.get("version") == TABLE_VERSION and head.get("stamp") == file_stamp(up):
                 return UnitsTable(up, a)
-        except (OSError, ValueError, KeyError):
-            pass
+        except Exception:  # noqa: BLE001
+            pass  # as for the rows index: a table that cannot be read back is cut again from the ranking
     return build_table(run_path)
 
 

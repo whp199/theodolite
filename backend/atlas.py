@@ -977,7 +977,7 @@ async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any
     out: Dict[str, Any] = {"layer": layer, "n": n, "kind": kind, "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", "")}
     if d is None:
         return out
-    if kind not in cz.KINDS:
+    if kind not in ("neuron", "random"):
         raise HTTPException(status_code=400, detail='A unit\'s kind is "neuron" or "random" (a control).')
 
     def work() -> Dict[str, Any]:
@@ -1007,6 +1007,15 @@ async def census_rollout(layer: int, i: int) -> Dict[str, Any]:
     return {k: r[k] for k in ("kind", "neuron", "prompt", "dose", "rel_push", "text")}
 
 
+def _run_meta(path: Any) -> Dict[str, Any]:
+    """A run's meta ({} for one that cannot be read)."""
+    try:
+        meta = json.loads(cz.meta_path_of(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return meta if isinstance(meta, dict) else {}
+
+
 @router.get("/census/layers")
 async def census_layers() -> List[Dict[str, Any]]:
     """Every layer with a census, shallowest first, from the rankings' tables alone: its run and design, how many
@@ -1019,10 +1028,7 @@ async def census_layers() -> List[Dict[str, Any]]:
         out = []
         for layer, path in sorted(cz.layer_runs(model=model).items()):
             t = census_table(path)
-            try:
-                meta = json.loads(cz.meta_path_of(path).read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                meta = {}
+            meta = _run_meta(path)
             design = meta.get("design_name")
             out.append({"layer": int(layer), "run": path.name, "design": design, "ranked": t is not None,
                         "doses_calibrated": cz.doses_calibrated(design, meta.get("layer"), meta.get("max_new")),
@@ -1070,16 +1076,16 @@ async def census_levels_route() -> Dict[str, Any]:
     return await asyncio.to_thread(work)
 
 
-CENSUS_SEARCH_SAYS = ("a match says the model wrote that word more often with the neuron pushed than with random directions "
-                      "pushed as far, on six questions at a census's fixed doses: a lead to test with a push of your own, "
-                      "not what the neuron means")
+CENSUS_SEARCH_SAYS = ("a match says the model wrote that word more often with the neuron pushed than the average random "
+                      "direction pushed as far did, on six questions at a census's fixed doses: a lead to test with a push of "
+                      "your own, not what the neuron means. Some matches are chance: `chance` says about how many")
 
 
 def _census_search(model: Optional[str], q: str, limit: int, notes: Dict[str, Any]) -> Dict[str, Any]:
     # each word of the query: (what a census word must begin with, or hold when the query's word begins with "*")
     terms = [(w.lstrip("*"), w.startswith("*")) for w in re.split(r"\s+", q.lower().strip()) if w.lstrip("*")]
     out: Dict[str, Any] = {"terms": [("*" if anywhere else "") + w for w, anywhere in terms], "results": [], "layers": [],
-                           "total": 0, "not_read": [], "says": CENSUS_SEARCH_SAYS}
+                           "total": 0, "chance": None, "not_read": [], "says": CENSUS_SEARCH_SAYS}
     if not terms:
         return out
     hits: List[Tuple[bool, float, int, int, List[str], Any]] = []
@@ -1106,12 +1112,26 @@ def _census_search(model: Optional[str], q: str, limit: int, notes: Dict[str, An
             else:
                 ctl.append(score)
         ctl_max = max(ctl, default=0.0)
-        hits += [(score > ctl_max, score, int(layer), i, matched, t) for score, i, matched in found]
-        out["layers"].append({"layer": int(layer), "neurons": len(found), "above": sum(1 for sc, _, _ in found if sc > ctl_max),
-                              "controls": len(ctl), "control_max": round(ctl_max, 2), "of_neurons": int(t.null["neurons"]),
-                              "of_controls": int(t.null["controls"])})
+        n_neu, n_ctl = int(t.null["neurons"]), int(t.null["controls"])
+        # above: no control of the layer brought the word as hard. Never in a layer without controls, where there is
+        # nothing to set a match against.
+        over = [bool(n_ctl) and score > ctl_max for score, _, _ in found]
+        hits += [(o, score, int(layer), i, matched, t) for o, (score, i, matched) in zip(over, found)]
+        meta = _run_meta(path)
+        out["layers"].append({"layer": int(layer), "neurons": len(found), "above": sum(over), "controls": len(ctl),
+                              "control_max": round(ctl_max, 2), "of_neurons": n_neu, "of_controls": n_ctl,
+                              "by_chance": round(len(ctl) * n_neu / n_ctl, 1) if n_ctl else None,
+                              "doses_calibrated": cz.doses_calibrated(meta.get("design_name"), meta.get("layer"), meta.get("max_new"))})
     hits.sort(key=lambda h: (not h[0], -h[1], h[2], h[3]))
     out["total"] = len(hits)
+    nulled = [c for c in out["layers"] if c["of_controls"]]
+    if nulled:
+        of_n, of_c = sum(c["of_neurons"] for c in nulled), sum(c["of_controls"] for c in nulled)
+        ctl_hits = sum(c["controls"] for c in nulled)
+        out["chance"] = {"neurons": sum(c["neurons"] for c in nulled), "of_neurons": of_n, "controls": ctl_hits, "of_controls": of_c,
+                         "expected": round(sum(c["by_chance"] for c in nulled), 1),
+                         # no control matched: a rate of 3 in as many controls would still show none one time in twenty
+                         "at_most": round(3.0 * of_n / of_c, 1) if ctl_hits == 0 else None}
     for above, score, layer, i, matched, t in hits[:limit]:
         row = _unit_row(t, i)
         out["results"].append({"layer": layer, "n": row["n"], "score": round(score, 2), "above": above, "matched": matched,
@@ -1130,10 +1150,18 @@ async def census_search(q: str, limit: int = 400) -> Dict[str, Any]:
     with a leading "*") and stands above the controls' mean (score > 0); its `score` is that census word's (the least
     over the query's words). The layer's random controls are matched the same way, and they are the null: how often
     they match says how many of a layer's neurons would match were they random directions (`controls` of
-    `of_controls`, against `neurons` of `of_neurons`), and a neuron is `above` when its score beats every matching
-    control's of its own layer (`control_max`, 0 when none matched). Those above come first, the strongest first. Each row: the neuron, the words matched, its mass, null_pct and q in its own layer's census, its place
-    among its layer's neurons (`rank`), the words a list shows for it (`words`) and all it may show (`all_words`), and
-    its name. `layers`: per layer, how many neurons matched, how many of them above, and how many controls matched.
+    `of_controls`, against `neurons` of `of_neurons`: `by_chance`, None for a layer without controls). `chance` sets
+    the whole list against that, over the layers that have controls: `neurons` matched where `expected` would by
+    chance alone, and, where no control matched at all, `at_most` (a match rate of 3 in as many controls would still
+    show none one time in twenty). That count is what sets a search against chance. A row's `above` says less: that no
+    control of its own layer brought the word as hard (`control_max`, 0 when none matched), so a row that is not above
+    is a weaker lead; it is false throughout a layer without controls. It does not set a row apart from chance: where
+    no control matched, every match is above, and on a word any push brings about N / (C + 1) neurons of a layer beat
+    every control by chance. Those above come first, the strongest first. Each row: the neuron, the words matched, its
+    mass, null_pct and q in its own layer's census, its place among its layer's neurons (`rank`), the words a list
+    shows for it (`words`) and all it may show (`all_words`), and its name. `layers`: per layer, how many neurons
+    matched, how many of them above, how many controls matched, and whether the layer's doses are calibrated
+    (`doses_calibrated`: where they are not, a match or a miss may only say the dose was wrong for the layer).
     `not_read`: layers whose run is not ranked yet. Layers counted from 0. Every census here is a push at fixed
     doses: `says`."""
     notes = (await fn.all_notes())["neurons"]

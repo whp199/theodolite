@@ -1350,8 +1350,9 @@ def main() -> int:
     check(cz.rows_index_path_of(run).exists() and cz.table_path_of(run).exists()
           and [(x["prompt"], x["dose"], x["text"]) for x in ctl2["rollouts"]] == [(x["prompt"], x["dose"], x["text"]) for x in by_hand]
           and ctl2["stats"]["neuron"] == 2 and ctl2["stats"]["kind"] == "random"
-          and c.get("/api/atlas/census/unit", params={"layer": 3, "n": 7, "kind": "chair"}).status_code == 400,
-          "/census/unit: a control's answers found by seeking, as the run has them; an unknown kind refused")
+          and c.get("/api/atlas/census/unit", params={"layer": 3, "n": 7, "kind": "chair"}).status_code == 400
+          and c.get("/api/atlas/census/unit", params={"layer": 3, "n": -1, "kind": "baseline"}).status_code == 400,
+          "/census/unit: a control's answers found by seeking, as the run has them; a kind that is no unit's refused")
     cz.rows_index_path_of(run).unlink()
     cz.table_path_of(run).unlink()
     atlas_routes._rows_cache.clear()
@@ -1374,9 +1375,13 @@ def main() -> int:
     hit = (cs["results"] or [{}])[0]
     check(cs["terms"] == ["oce"] and cs["total"] == 1 and hit.get("layer") == 3 and hit.get("n") == 7 and hit.get("matched") == ["ocean"]
           and hit.get("above") is True and hit.get("score", 0) > 0 and "ocean" in hit.get("all_words", []) and hit.get("rank") in (1, 2)
-          and cs["layers"] == [{"layer": 3, "neurons": 1, "above": 1, "controls": 0, "control_max": 0.0, "of_neurons": 2, "of_controls": 4}]
-          and cs["not_read"] == [] and "lead" in cs["says"],
+          and cs["layers"] == [{"layer": 3, "neurons": 1, "above": 1, "controls": 0, "control_max": 0.0, "of_neurons": 2, "of_controls": 4,
+                                "by_chance": 0.0, "doses_calibrated": False}]
+          and cs["not_read"] == [] and "lead" in cs["says"] and "chance" in cs["says"],
           f"/census/search: a neuron found by the beginning of a census word, whatever its case, with its layer's count ({cs})")
+    # the list set against chance: no control brought the word, so not "none by chance" but at most 3 in as many controls
+    check(cs["chance"] == {"neurons": 1, "of_neurons": 2, "controls": 0, "of_controls": 4, "expected": 0.0, "at_most": 1.5},
+          f"/census/search: with no control matching, chance is bounded (3 in as many controls), not put at none ({cs['chance']})")
     check(c.get("/api/atlas/census/search", params={"q": "cean"}).json()["total"] == 0
           and [x["n"] for x in c.get("/api/atlas/census/search", params={"q": "*cean"}).json()["results"]] == [7]
           and c.get("/api/atlas/census/search", params={"q": "ocean waves"}).json()["results"][0]["matched"] == ["ocean", "waves"]
@@ -1385,8 +1390,10 @@ def main() -> int:
           "/census/search: a word matches from its beginning, anywhere only with a leading *; every word of the query must match")
     # a word the controls bring is counted against them, and a neuron no stronger than a control is not above
     num = c.get("/api/atlas/census/search", params={"q": "number"}).json()
-    check(num["total"] == 0 and num["layers"][0]["controls"] >= 1 and num["layers"][0]["control_max"] > 0,
-          f"/census/search: a word only the controls bring finds no neuron, and says how many controls brought it ({num['layers']})")
+    check(num["total"] == 0 and num["layers"][0]["controls"] >= 1 and num["layers"][0]["control_max"] > 0
+          and num["layers"][0]["by_chance"] == round(num["layers"][0]["controls"] * 2 / 4, 1)
+          and num["chance"]["expected"] == num["layers"][0]["by_chance"] and num["chance"]["at_most"] is None,
+          f"/census/search: a word only the controls bring finds no neuron, and says how many neurons that rate would give ({num['layers']})")
     section("the census routes", before)
 
     # ----------------------------------------------------------------------------------------------- 10. the GPU lock

@@ -1789,6 +1789,12 @@ pre.raw {
   background: var(--gilt);
   opacity: 0.55;
 }
+/* a layer whose doses are not calibrated: its bar an outline, not a fill */
+.atlas-depth button.hollow .bar {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--rubric);
+  min-height: 4px;
+}
 .atlas-depth .no {
   font-size: 11.5px;
   line-height: 1.2;

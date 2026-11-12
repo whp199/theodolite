@@ -183,8 +183,11 @@ export async function loadArch(): Promise<Arch | null> {
       const v = localStorage.getItem(LAYER_KEY);
       if (v !== null && +v >= 0 && +v < arch.n_layers) layer = +v;
       const t = JSON.parse(localStorage.getItem(TRAIL_KEY) || "[]") as Focus[];
-      if (Array.isArray(t))
-        trail = t.filter((f) => f && (f.kind === "neuron" || f.kind === "head") && f.layer >= 0 && f.layer < arch.n_layers && f.n >= 0).slice(0, TRAIL_MAX);
+      // only what this model has: a trail kept under another model at the same address may name neurons it lacks
+      const has = (f: Focus) =>
+        Number.isInteger(f.layer) && f.layer >= 0 && f.layer < arch.n_layers && Number.isInteger(f.n) && f.n >= 0 &&
+        (f.kind === "neuron" ? f.n < arch.d_ff : f.kind === "head" && f.n < (arch.layers[f.layer]?.n_heads ?? 0));
+      if (Array.isArray(t)) trail = t.filter((f) => f && has(f)).slice(0, TRAIL_MAX);
     } catch {
       // not remembered
     }
@@ -246,11 +249,13 @@ export async function loadLevels() {
   try {
     const r = await get<{ layers: number[]; n: number; levels: string }>("/api/atlas/census/levels");
     const bin = atob(r.levels);
-    r.layers.forEach((l, i) => {
-      const lv = new Uint8Array(r.n);
-      for (let k = 0; k < r.n; k++) lv[k] = bin.charCodeAt(i * r.n + k);
-      map?.setLevels(l, lv);
-    });
+    map?.setLevelsOf(
+      r.layers.map((layer, i) => {
+        const levels = new Uint8Array(r.n);
+        for (let k = 0; k < r.n; k++) levels[k] = bin.charCodeAt(i * r.n + k);
+        return { layer, levels };
+      }),
+    );
   } catch {
     // the open layer is inked when its list arrives
   }
@@ -286,6 +291,8 @@ export async function setLayer(l: number) {
     try {
       const us = await get<CensusUnitRow[]>("/api/atlas/census/units", { layer: l });
       set({ units: { ...st().units, [l]: us } });
+      // opening a layer ranks a run not ranked before: the strip of census layers is read again
+      if (st().censusLayers?.some((c) => c.layer === l && !c.ranked)) void loadCensusLayers();
     } catch {
       set({ units: { ...st().units, [l]: [] } });
     }

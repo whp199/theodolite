@@ -76,7 +76,8 @@ const NameField: React.FC<{ layer: number; n: number }> = ({ layer, n }) => {
  * message: the address bar forgets what is open, so this is how a find is passed on. */
 const CopyLink: React.FC<{ f: { kind: "neuron" | "head"; layer: number; n: number } }> = ({ f }) => {
   const [said, setSaid] = useState<string | null>(null);
-  const url = `${window.location.origin}${window.location.pathname}#/atlas/${f.layer + 1}/${f.kind === "head" ? "h" : ""}${f.n}`;
+  const hash = f.kind === "head" ? `#/atlas/${f.layer + 1}/h${f.n}` : href.atlas(f.layer + 1, f.n);
+  const url = `${window.location.origin}${window.location.pathname}${hash}`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -158,8 +159,8 @@ const Trail: React.FC = () => {
 };
 
 /** Bars over the layers named, one a layer, each as tall as its value against the tallest: the census by depth, or a
- * search's hits by depth. A click opens the layer. */
-const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string }[]; label: string }> = ({ bars, label }) => {
+ * search's matches by depth. A layer whose doses are not calibrated is drawn hollow. A click opens the layer. */
+const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string; hollow?: boolean }[]; label: string }> = ({ bars, label }) => {
   const layer = useAtlas((s) => s.layer);
   const top = Math.max(1e-9, ...bars.map((b) => b.value));
   const go = (l: number) => {
@@ -171,7 +172,14 @@ const LayerBars: React.FC<{ bars: { layer: number; value: number; title: string 
   return (
     <div className="atlas-depth" role="group" aria-label={label}>
       {bars.map((b) => (
-        <button key={b.layer} type="button" className={b.layer === layer ? "on" : ""} title={b.title} aria-label={b.title} onClick={() => go(b.layer)}>
+        <button
+          key={b.layer}
+          type="button"
+          className={`${b.layer === layer ? "on" : ""}${b.hollow ? " hollow" : ""}`}
+          title={b.title}
+          aria-label={b.title}
+          onClick={() => go(b.layer)}
+        >
           <span className="bar" style={{ height: `${Math.round(2 + 22 * (b.value / top))}px` }} />
           <span className="no">{b.layer + 1}</span>
         </button>
@@ -191,6 +199,7 @@ const CensusDepth: React.FC = () => {
       bars={layers.map((c) => ({
         layer: c.layer,
         value: c.ranked && c.neurons ? (c.q05_neurons ?? 0) / c.neurons : 0,
+        hollow: c.ranked && !c.doses_calibrated,
         title: c.ranked
           ? `layer ${c.layer + 1}: ${(c.q05_neurons ?? 0).toLocaleString()} of ${(c.neurons ?? 0).toLocaleString()} neurons set apart from random pushes (q ≤ 0.05)${c.doses_calibrated ? "" : " · doses not calibrated at this layer"}`
           : `layer ${c.layer + 1}: its census is not ranked yet (open the layer to rank it)`,
@@ -394,14 +403,19 @@ const SearchRowItem: React.FC<{ x: SearchRow }> = ({ x }) => (
   </li>
 );
 
-const CensusHitItem: React.FC<{ x: CensusHit }> = ({ x }) => {
+const CensusHitItem: React.FC<{ x: CensusHit; bare: boolean }> = ({ x, bare }) => {
   const hit = new Set(x.matched);
   const further = x.matched.filter((w) => !x.words.includes(w));
   const place = `#${x.rank.toLocaleString()} of its layer's census${x.q != null ? ` · q ${x.q}` : ""}`;
+  const why = x.above
+    ? "no random control of its layer brought it as hard"
+    : bare
+      ? "its layer's census has no random controls: nothing to set it against"
+      : "a random control of its layer brought it as hard: a weaker lead";
   return (
     <li
       className={x.above ? "" : "below"}
-      title={x.above ? `${place} · brought it harder than any random control of its layer` : `${place} · a random control of its layer brought it as hard: a weaker lead`}
+      title={`${place} · ${why}`}
       onClick={() => goToNeuron(x.layer, x.n)}
       onMouseEnter={() => theMap()?.hover(x.layer, x.n)}
       onMouseLeave={() => theMap()?.hover(null)}
@@ -428,16 +442,24 @@ const CensusHitItem: React.FC<{ x: CensusHit }> = ({ x }) => {
 };
 
 /** A search of every census at once: the neurons whose push made the model write the word, with where they lie by
- * depth. Each layer's random controls, searched the same way, are the null: a hit counts when it brought the word
- * harder than every control of its layer did. */
+ * depth. Each layer's random controls, searched the same way, are the null: how often they match says how many of the
+ * neurons would by chance alone, and that count is what sets the list against chance. A row is faded where a control
+ * of its layer brought the word as hard (or its layer has no controls); a bright row is not thereby beyond chance. */
 const CensusSearchRows: React.FC<{ r: CensusSearchReply }> = ({ r }) => {
   const sum = (f: (c: CensusSearchReply["layers"][number]) => number) => r.layers.reduce((a, c) => a + f(c), 0);
-  const above = sum((c) => c.above);
   const neurons = sum((c) => c.neurons);
-  const controls = sum((c) => c.controls);
-  const ofControls = sum((c) => c.of_controls);
-  // were the neurons random directions, as many of them would match as the controls' share gives
-  const byChance = sum((c) => (c.of_controls ? (c.controls * c.of_neurons) / c.of_controls : 0));
+  const ch = r.chance;
+  const bare = new Set(r.layers.filter((c) => !c.of_controls).map((c) => c.layer));
+  const unset = sum((c) => (c.of_controls ? 0 : c.neurons));
+  const weaker = sum((c) => (c.of_controls ? c.neurons - c.above : 0));
+  const uncal = r.layers.filter((c) => !c.doses_calibrated && c.neurons).map((c) => c.layer + 1);
+  const against = !ch
+    ? "none of these layers has random controls, so nothing here is set against chance"
+    : `${unset ? `of the ${ch.neurons.toLocaleString()} in layers with controls, ` : ""}${
+        ch.at_most != null
+          ? `fewer than about ${Math.round(ch.at_most).toLocaleString()} would by chance alone (none of ${ch.of_controls.toLocaleString()} random controls brought it)`
+          : `about ${Math.round(ch.expected).toLocaleString()} would by chance alone (random controls brought it ${ch.controls === 1 ? "once" : `${ch.controls.toLocaleString()} times`} in ${ch.of_controls.toLocaleString()})`
+      }`;
   if (!r.layers.length)
     return (
       <p className="muted atlas-small" style={{ padding: "6px 0" }}>
@@ -447,36 +469,48 @@ const CensusSearchRows: React.FC<{ r: CensusSearchReply }> = ({ r }) => {
   return (
     <>
       <LayerBars
-        label="where the hits lie, by layer"
+        label="where the matches lie, by layer"
         bars={r.layers.map((c) => ({
           layer: c.layer,
-          value: c.above,
-          title: `layer ${c.layer + 1}: ${c.above} neurons brought it harder than every random control (${c.neurons} brought it at all; ${c.controls} of ${c.of_controls.toLocaleString()} controls did)`,
+          value: c.neurons,
+          hollow: !c.doses_calibrated,
+          title:
+            `layer ${c.layer + 1}: ${c.neurons.toLocaleString()} neurons brought it; ` +
+            (c.by_chance == null
+              ? "its census has no random controls, so nothing sets that against chance"
+              : `${c.controls} of ${c.of_controls.toLocaleString()} random controls did, which among its neurons would be about ${Math.round(c.by_chance).toLocaleString()}`) +
+            (c.doses_calibrated ? "" : " · doses not calibrated at this layer"),
         }))}
       />
       <ol className="atlas-rows atlas-hits">
         <li className="atlas-rows-head">
-          {neurons.toLocaleString()} neurons in {r.layers.filter((c) => c.neurons).length} of {r.layers.length} layers brought it · random controls
-          brought it {controls === 1 ? "once" : `${controls} times`} in {ofControls.toLocaleString()}, which among as many neurons would be about{" "}
-          {byChance.toFixed(0)}
-          {neurons > above ? ` · ${(neurons - above).toLocaleString()} brought it no harder than a control of their layer (faded)` : ""}
+          {neurons.toLocaleString()} neurons in {r.layers.filter((c) => c.neurons).length} of {r.layers.length} layers brought it; {against}
+          {weaker ? ` · ${weaker.toLocaleString()} no harder than a random control of their layer (faded)` : ""}
+          {unset ? ` · ${unset.toLocaleString()} in layers without controls (faded)` : ""}
+          {uncal.length ? (
+            <span className="red">
+              {" "}
+              · layer{uncal.length > 1 ? "s" : ""} {uncal.join(", ")}: doses not calibrated there, so a match or a miss may only say the dose was
+              wrong
+            </span>
+          ) : null}
           {r.total > r.results.length ? ` · the first ${r.results.length} shown` : ""}
           {r.not_read.length ? ` · layers ${r.not_read.map((l) => l + 1).join(", ")} not ranked yet` : ""}
         </li>
         {r.results.map((x) => (
-          <CensusHitItem key={`${x.layer}/${x.n}`} x={x} />
+          <CensusHitItem key={`${x.layer}/${x.n}`} x={x} bare={bare.has(x.layer)} />
         ))}
       </ol>
       {r.total === 0 ? (
         <p className="muted atlas-small" style={{ padding: "6px 0" }}>
-          No neuron’s census words begin with it. A census word is a whole word of three letters or more; write *{r.terms[0]?.replace(/^\*/, "")} to
-          match inside words too.
+          No neuron’s census words {r.terms[0]?.startsWith("*") ? "hold" : "begin with"} it. A census word is a whole word of three letters or more
+          {r.terms[0]?.startsWith("*") ? "." : `; write *${r.terms[0] ?? ""} to match inside words too.`}
         </p>
       ) : null}
       <Rubric style={{ fontSize: 14, margin: "6px 0 0" }}>
         Each of these made the model write the word more often when it was pushed than the average random direction pushed as far, on six
-        fixed questions. The number is how far the word stands above the random pushes. A lead to test with a push of your own, not what the
-        neuron means.
+        fixed questions. The number is how far the word stands above the random pushes. Some of any list is chance: the line above says about
+        how many, not which. A faded row is a weaker lead still. A lead to test with a push of your own, not what the neuron means.
       </Rubric>
     </>
   );

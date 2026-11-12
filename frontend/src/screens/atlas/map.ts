@@ -937,9 +937,16 @@ export class AtlasMap {
    * darker than idle; names keep the rubric's red on every layer. One layer's levels, a byte a neuron (GET
    * /census/levels). */
   setLevels(layer: number, levels: Uint8Array) {
-    this.levels.set(layer, levels);
-    this.dataLayers.add(layer);
-    this.paintLevels(layer);
+    this.setLevelsOf([{ layer, levels }]);
+  }
+
+  /** Several layers' levels at once, drawn once. */
+  setLevelsOf(rows: { layer: number; levels: Uint8Array }[]) {
+    for (const { layer, levels } of rows) {
+      this.levels.set(layer, levels);
+      this.dataLayers.add(layer);
+      this.paintLevels(layer);
+    }
     this.paintNamed();
     const dl: number[] = [];
     for (const l of this.dataLayers) {
