@@ -801,37 +801,37 @@
    "note": "its trial passed, 12 November 2026"
   },
   "52": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "its trial failed, 12 November 2026: not taken with these doses"
   },
   "53": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   },
   "54": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   },
   "55": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   },
   "56": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   },
   "57": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   },
   "58": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   },
   "59": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "stopped",
+   "note": "above layer 52, whose trial failed: waits for push strengths scaled to the layer"
   }
  },
- "updated_at": "2026-11-12T19:16Z"
+ "updated_at": "2026-11-12T20:34Z"
 }

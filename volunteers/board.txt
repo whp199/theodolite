@@ -14,7 +14,8 @@ L48 done (anon 5cd76843)
 L49 done (home card)
 L50 done (anon b153da82)
 L51 OPEN
-L52–59 trial first
+L52 not taken
+L53–59 not taken
 
 2 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md

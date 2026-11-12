@@ -727,6 +727,16 @@ layers, the determinism run and the sampled push on 29 October). In this section
       nothing to read; it is shown to be pushed too hard by this design. By the rule fixed first, no whole layer is
       taken at 38 or below it with these doses: the board marks 0–38 *not taken*, and they wait for doses scaled to
       the layer (step 3 of the plan; the pilot the steer lens needs, above, measures just that).
+    - **Layer 52 fails, as predicted before it was read** (`census_scaled_design/PREDICTION.md`, committed in
+      `c9c5a82` while its trial was still being written). Its whole reading passes, and strongly: 0.802, 0.620, 0.598
+      and 0.601, 0.777, with 229 of 1,022 above every control. The 819 covered pass too (0.780, 0.625, 0.587 and
+      0.604, 0.750). But its ±1 answers alone do not: 0.603, 0.592, then 0.546 and 0.577 on replication (bar 0.57)
+      and 0.554 on the new questions (bar 0.56). At layer 52 ±1 of the stream is 1.06 of a neuron’s write ceilings,
+      the least of any layer, and those answers barely move (nothing lost of their distinct 4-grams); the lead is all
+      in the ±2 answers, which are 2.1 ceilings, where the neurons’ text has lost 0.39 to 0.42 and the controls’ 0.58
+      to 0.59. It is layer 57’s failure again, and the mirror of layer 38’s: there the lower dose was three ceilings
+      and too hard, here it is one and too soft. By the rule fixed first the band stops at 51 upward under
+      `break_rel`, and the board marks 52–59 *not taken*.
     - **What a pass licenses, and what it does not.** By the rules fixed first: a whole layer at 39 and at 51,
       offered to volunteers (kit 2, below). `DOSES_CALIBRATED` was widened to 39–51 the same day, on the owner’s word
       (it had been 40–50). It grows only so, a passed trial and then the owner’s word: a layer that passes later is
@@ -736,8 +746,10 @@ layers, the determinism run and the sampled push on 29 October). In this section
       survives as the controls’ does. It does not say ±1 and ±2 are the best doses for that layer.
     - **The walk** (the owner’s word, 12 November). After the four, `walk.sh` trials the next layer out on each side
       in turn, reads it, and goes on on that side only if it passed; a layer that passes is opened on the board as
-      it is read, one that fails is marked not taken, and the band stops there on that side. Downward it stopped at
-      once, at 38; upward it goes on from 52.
+      it is read, one that fails is marked not taken, and the band stops there on that side. It stopped at once on
+      both sides, at 38 and at 52: under `break_rel` the census is layers 39–51, thirteen of the sixty. What takes it
+      further is a dose counted in ceilings (`break_ceil`, step 3 above): its first trial, layer 38 again, was
+      registered in `e853e5c` and started at 20:33Z that evening.
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only
