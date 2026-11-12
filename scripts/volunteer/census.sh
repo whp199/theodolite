@@ -84,7 +84,7 @@ need_layer() {
     LAYER=${LAYER#L}
     case " $KIT_LAYERS " in
         *" $LAYER "*) ;;
-        *) die "the kit takes layers $KIT_LAYERS (counting from 0), not $LAYER: break_rel's doses are calibrated at 40-50 alone, and 45 is taken" ;;
+        *) die "the kit takes layers $KIT_LAYERS (counting from 0), not $LAYER: the others are done" ;;
     esac
     RUN=L$LAYER-$KIT_DESIGN
     CLAIM=$CLAIMS/L$LAYER.claim
@@ -187,10 +187,45 @@ cmd_check() {
     fi
 }
 
+board_state() {  # the layer's state on the published board: "open", another state's word, "held <who>", or "" (not read)
+    [ -n "${KIT_BOARD_JSON_URL:-}" ] || return 0
+    command -v python3 >/dev/null || return 0
+    local json
+    json=$(curl -fsL --max-time 15 "${THEODOLITE_BOARD_JSON:-$KIT_BOARD_JSON_URL}" 2>/dev/null) || return 0
+    printf '%s' "$json" | python3 -c '
+import json, sys
+try:
+    b = json.load(sys.stdin)
+    layer = int(sys.argv[1])
+    st = (b.get("layers") or {}).get(str(layer), {}).get("state") or "not on the board"
+    live = [c for c in b.get("claims") or [] if c.get("layer") == layer and c.get("state") in ("reserved", "running", "submitted", "checking")]
+    if str(b.get("kit")) != sys.argv[2]:
+        print("another kit")
+    elif st == "open" and live:
+        print("held " + str(live[0].get("code") or "")[:8])
+    else:
+        print({"waiting": "trial first", "stopped": "not taken"}.get(st, st))
+except Exception:
+    pass' "$LAYER" "$KIT" 2>/dev/null || true
+}
+
 cmd_reserve() {
     need_layer
     mkdir -p "$CLAIMS"
     chmod 700 "$CLAIMS"
+    # the board says which layers are open: one whose trial has not passed, or that someone holds, is not claimed
+    if [ "$DRY" = 0 ] || [ -n "${THEODOLITE_BOARD_JSON:-}" ]; then
+        local st
+        st=$(board_state)
+        case "$st" in
+            open) ;;
+            "") say "warning: could not read the board ($KIT_BOARD_URL): look there that layer $LAYER is open before you go on" ;;
+            "another kit") die "the board is another kit's, not kit $KIT's: git fetch --tags, check out the board's kit, and reserve again" ;;
+            "held "*) [ -f "$CLAIM" ] && [ "$(claim_field code)" = "${st#held }" ] \
+                || die "layer $LAYER is held by claim ${st#held } on the board ($KIT_BOARD_URL): pick a layer shown OPEN" ;;
+            *) die "layer $LAYER is not open on the board ($st): pick a layer shown OPEN ($KIT_BOARD_URL). A layer opens once its trial on the home card has passed" ;;
+        esac
+    fi
     if [ -f "$CLAIM" ] && [ -z "$(claim_field released)" ]; then
         say "you hold a claim on layer $LAYER already ($CLAIM); its line again:"
     else

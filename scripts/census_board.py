@@ -11,6 +11,8 @@ home, kept in volunteers/board.json and shown on a pinned GitHub issue, in volun
     census_board.py expire                            # claims past their hold given back
     census_board.py set 3f9a1c2e accepted --note "checked bit for bit"   # census_intake.py sets these
     census_board.py layer 45 done --note "the home card, 30 October 2026"
+    census_board.py layer 39 open --note "its trial passed, 12 November 2026"   # or waiting (trial first), stopped
+    census_board.py kit                               # the board brought to volunteers/kit.env's kit, its new layers waiting
     census_board.py render                            # BOARD.md, board.txt and board.png
     census_board.py publish                           # what would go to the issue; --yes to send it, --create to make it
 
@@ -20,6 +22,11 @@ claim holds a layer at a time. A claim holds for HOLD_RESERVED hours after its R
 HOLD_STARTED hours after START until its first PROGRESS with an end time, then until that end time and HOLD_GRACE hours
 more, each PROGRESS moving it; never past HOLD_MAX_DAYS after the RESERVE. A submitted claim holds until it is judged.
 A claim past its hold is lapsed when the board is shown, and its layer open again; its holder may claim it anew.
+
+A layer's own state: open (it can be claimed), done, closed (held for the home card, or running there), waiting (its
+trial is not yet taken or read: a layer outside the band the doses were first calibrated for is trialled on the home
+card before it is opened, ROADMAP §vi), or stopped (its trial failed: not taken under this design). Only an open layer
+takes a RESERVE.
 
 Anyone may post a line, so a line is taken as what it says only so far as it can be checked: a RESERVE on a layer held
 is refused, a RELEASE needs the claim's secret, and a DONE's bundle is known to be the claim's only by the secret in its
@@ -163,9 +170,12 @@ def apply(board: Dict[str, Any], line: Dict[str, Any], via: str, who: Optional[s
     ev = {"at": t, "via": via, "what": " ".join(f"{k}={v}" for k, v in line.items() if k not in ("verb", "layer", "words"))}
     c = find(board, code)
     if verb == "RESERVE":
+        if line.get("kit") is not None and str(line["kit"]) != str(board.get("kit")):
+            return (f"refused: the line is kit {clean(line['kit'], 4)}'s and the board is kit {board.get('kit')}'s: "
+                    f"git fetch --tags && git checkout census-kit-{board.get('kit')}, then reserve again")
         st = board["layers"].get(str(layer), {}).get("state")
         if st != "open":
-            return f"refused: layer {layer} is not open ({st or 'not a kit layer'})"
+            return f"refused: layer {layer} is not open ({STATE_WORDS.get(st, st) if st else 'not a kit layer'})"
         held = live_claim(board, layer)
         if held and held["code"] != code:
             return f"refused: layer {layer} is held by {held['code']} ({held['state']}) until {iso(holds_until(held)) or 'judged'}"
@@ -241,7 +251,25 @@ def layer_rows(board: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 STATE_WORDS = {"open": "OPEN", "reserved": "reserved", "running": "running", "submitted": "sent home", "checking": "checking",
-               "done": "done", "closed": "closed"}
+               "done": "done", "closed": "closed", "waiting": "trial first", "stopped": "not taken"}
+WAITS = ("waiting", "stopped")  # not open: its trial not yet taken or read, or failed
+WAITING_NOTE = "opens when its trial on the home card passes"
+LAYER_STATES = ("open", "done", "closed", "waiting", "stopped")
+
+
+def grouped(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The board's rows as shown: a run of neighbouring layers that all wait for their trial (or were all stopped),
+    with one note, drawn as one row ("0–37"), so sixty layers stay a board and not a list."""
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        last = out[-1] if out else None
+        if (r["state"] in WAITS and last is not None and last["state"] == r["state"] and last["note"] == r["note"]
+                and last["_to"] + 1 == r["layer"]):
+            last["_to"] = r["layer"]
+            last["layer"], last["page"] = f"{last['_from']}–{r['layer']}", f"{last['_from'] + 1}–{r['layer'] + 1}"
+            continue
+        out.append({**r, "_from": r["layer"], "_to": r["layer"]})
+    return out
 
 
 def all_done(rows: List[Dict[str, Any]]) -> bool:
@@ -258,9 +286,12 @@ def render_md(board: Dict[str, Any]) -> str:
              "Layers count from 0 (page = layer + 1)." if all_done(rows) else
              f"Kit {kit['KIT']} ({kit['KIT_TAG']}). How to take a layer: {guide}. Post `CENSUS ...` lines as comments here "
              "or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).")
+    if any(r["state"] in WAITS for r in rows):
+        intro += (" A layer marked *trial first* is not open yet: each layer outside 40–50 is trialled on the home card "
+                  "(about 70 minutes) before it is offered, and opens here when its trial passes.")
     lines = ["# The census: which layer is whose", "", intro, "",
              "| Layer | Page | State | Who | Card | When | Note |", "|---:|---:|---|---|---|---|---|"]
-    for r in rows:
+    for r in grouped(rows):
         lines.append(f"| {r['layer']} | {r['page']} | {STATE_WORDS.get(r['state'], r['state'])} | {r['who']} | {r['card']} | "
                      f"{r['when']} | {clean(r['note'], 120, keep=NOTE_MARKS)} |")
     ended = [c for c in board["claims"] if c["state"] in ("accepted", "rejected")]
@@ -277,7 +308,7 @@ def render_txt(board: Dict[str, Any]) -> str:
     kit = cv.read_kit()
     rows = layer_rows(board)
     out = ["CENSUS BOARD (layers count from 0; page = layer + 1)"]
-    for r in rows:
+    for r in grouped(rows):
         s = STATE_WORDS.get(r["state"], r["state"])
         bits = [f"L{r['layer']}", s] + [x for x in (r["who"], r["card"], r["when"]) if x]
         out.append(" ".join(bits) if r["state"] != "done" else f"L{r['layer']} done ({r['who']})")
@@ -288,7 +319,9 @@ def render_txt(board: Dict[str, Any]) -> str:
     if all_done(rows):
         out += ["", f"every layer of the kit is done: {url}", guide]
     else:
-        out += ["", f"{n_open} open. To take one: {url}" if n_open else f"0 open; a claim that lapses opens again: {url}",
+        waits = any(r["state"] == "waiting" for r in rows)
+        out += ["", f"{n_open} open. To take one: {url}" if n_open else
+                f"0 open yet; a layer opens when its trial passes: {url}" if waits else f"0 open; a claim that lapses opens again: {url}",
                 guide, "reply with the CENSUS line census.sh prints"]
     text = "\n".join(out)
     return text if len(text) <= 2000 else text[:1990] + "\n(cut)"
@@ -297,14 +330,14 @@ def render_txt(board: Dict[str, Any]) -> str:
 def render_html(board: Dict[str, Any]) -> str:
     rows = layer_rows(board)
     tr = []
-    for r in rows:
+    for r in grouped(rows):
         st = r["state"]
         tr.append(f"<tr class='{html.escape(st)}'><td class='n'>{r['layer']}</td><td class='n'>{r['page']}</td>"
                   f"<td class='st'>{html.escape(STATE_WORDS.get(st, st))}</td><td>{html.escape(r['who'])}</td>"
                   f"<td>{html.escape(r['card'])}</td><td>{html.escape(r['when'])}</td><td>{html.escape(r['note'])}</td></tr>")
     n_open = sum(1 for r in rows if r["state"] == "open")
     done = all_done(rows)
-    sub = "Every layer of the kit is done." if done else f"{n_open} layers open."
+    sub = "Every layer of the kit is done." if done else f"{n_open} layer{'' if n_open == 1 else 's'} open."
     foot = ("The guide: <code>VOLUNTEERS.md</code> in github.com/" + html.escape(board['repo']) + "." if done else
             "To take one: the guide, <code>VOLUNTEERS.md</code> in github.com/" + html.escape(board['repo'])
             + "; post the\n<code>CENSUS</code> line the script prints.")
@@ -321,10 +354,10 @@ table {{ border-collapse:collapse; width:100%; }}
 th {{ font-variant:small-caps; letter-spacing:.06em; font-weight:600; color:var(--gilt-text); text-align:left;
       border-bottom:1px solid var(--gilt); padding:4px 8px; }}
 td {{ border-bottom:1px solid rgba(160,122,46,.35); padding:5px 8px; vertical-align:top; }}
-td.n {{ font-variant-numeric:tabular-nums; text-align:right; width:44px; }}
-td.st {{ font-variant:small-caps; letter-spacing:.05em; }}
+td.n {{ font-variant-numeric:tabular-nums; text-align:right; width:44px; white-space:nowrap; }}
+td.st {{ font-variant:small-caps; letter-spacing:.05em; white-space:nowrap; }}
 tr.open td.st {{ color:var(--rubric); font-weight:600; }}
-tr.done td, tr.closed td {{ color:var(--muted); }}
+tr.done td, tr.closed td, tr.waiting td, tr.stopped td {{ color:var(--muted); }}
 .foot {{ margin-top:16px; color:var(--muted); font-size:18px; }}
 code {{ font-family:'IBM Plex Mono', monospace; font-size:16px; }}
 </style></head><body>
@@ -449,8 +482,8 @@ def cmd_publish(board: Dict[str, Any], a: argparse.Namespace, path: Path) -> Non
 
 
 def show(board: Dict[str, Any]) -> None:
-    for r in layer_rows(board):
-        print(f"L{r['layer']:<3} page {r['page']:<3} {STATE_WORDS.get(r['state'], r['state']):<10} {r['who']:<24} {r['card']:<30} {r['when']}"
+    for r in grouped(layer_rows(board)):
+        print(f"L{str(r['layer']):<5} page {str(r['page']):<5} {STATE_WORDS.get(r['state'], r['state']):<11} {r['who']:<24} {r['card']:<30} {r['when']}"
               + (f"  {r['note']}" if r["note"] else ""))
 
 
@@ -470,10 +503,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     s.add_argument("--note", default="")
     lp = sub.add_parser("layer", help="a layer's own state")
     lp.add_argument("layer", type=int)
-    lp.add_argument("state", choices=["open", "done", "closed"])
+    lp.add_argument("state", choices=list(LAYER_STATES))
     lp.add_argument("--by", default="")
     lp.add_argument("--card", default="")
     lp.add_argument("--note", default="")
+    sub.add_parser("kit", help="bring the board to volunteers/kit.env's kit: its number, and each kit layer the board "
+                               "lacks added as waiting (trial first)")
     r = sub.add_parser("render", help="BOARD.md, board.txt and board.png")
     r.add_argument("--out", default=str(ROOT_DIR / "volunteers"))
     r.add_argument("--no-png", action="store_true")
@@ -508,18 +543,29 @@ def main(argv: Optional[List[str]] = None) -> int:
                                                 "note": a.note}
         said.append(f"L{c['layer']} {c['code']} {a.state}")
     elif a.cmd == "layer":
+        held = live_claim(board, a.layer)
+        if held and a.state != "open":
+            raise SystemExit(f"Layer {a.layer} is held by claim {held['code']} ({held['state']}): judge or release it first.")
         board["layers"][str(a.layer)] = {"state": a.state, **{k: v for k, v in (("by", a.by), ("card", a.card), ("note", a.note)) if v}}
         said.append(f"L{a.layer} {a.state}")
+    elif a.cmd == "kit":
+        kit = cv.read_kit()
+        added = [l for l in kit["layers"] if str(l) not in board["layers"]]
+        for l in added:
+            board["layers"][str(l)] = {"state": "waiting", "note": WAITING_NOTE}
+        was, board["kit"] = board.get("kit"), kit["KIT"]
+        said.append(f"the board is kit {kit['KIT']}'s" + (f" (was kit {was}'s)" if was != kit["KIT"] else "")
+                    + (f"; {len(added)} layers added, each waiting for its trial" if added else "; no layer added"))
     for s_ in said:
         print(s_)
-    if a.cmd in ("add", "sync", "expire", "set", "layer") or (said and a.cmd is None):
+    if a.cmd in ("add", "sync", "expire", "set", "layer", "kit") or (said and a.cmd is None):
         save(board, path)
     if a.cmd == "render":
         save(board, path)
         cmd_render(board, a)
     elif a.cmd == "publish":
         cmd_publish(board, a, path)
-    elif a.cmd in (None, "add", "sync", "expire", "set", "layer"):
+    elif a.cmd in (None, "add", "sync", "expire", "set", "layer", "kit"):
         show(board)
     return 1 if any(s_.startswith("refused") for s_ in said) else 0
 

@@ -1,5 +1,5 @@
 {
- "kit": 1,
+ "kit": 2,
  "repo": "whp199/theodolite",
  "issue": 1,
  "seen_comments": [
@@ -633,7 +633,203 @@
    "by": "home card",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
    "note": "29-30 Oct 2026, passed every gate"
+  },
+  "0": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "1": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "2": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "3": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "4": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "5": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "6": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "7": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "8": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "9": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "10": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "11": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "12": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "13": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "14": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "15": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "16": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "17": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "18": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "19": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "20": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "21": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "22": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "23": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "24": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "25": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "26": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "27": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "28": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "29": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "30": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "31": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "32": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "33": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "34": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "35": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "36": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "37": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "38": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "39": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "51": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "52": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "53": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "54": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "55": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "56": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "57": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "58": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
+  },
+  "59": {
+   "state": "waiting",
+   "note": "opens when its trial on the home card passes"
   }
  },
- "updated_at": "2026-11-11T15:07Z"
+ "updated_at": "2026-11-12T16:09Z"
 }

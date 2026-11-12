@@ -1,8 +1,9 @@
 >mapping what every MLP neuron of Gemma-4-31B writes
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
->layer 45 done on one 5090 in 13 h, passed every check fixed before it ran
->all 11 calibrated layers done (40-50), 6 of them by volunteers. thanks to everyone who ran one
->the kit is closed: nothing is left to take, and the steps below are how each layer was taken
+>11 layers done (40-50), 6 of them by volunteers. thanks to everyone who ran one
+>round two: the other 49 layers, same command, kit 2
+>each new layer gets an 80-min trial on our card first and opens on the board when it passes
+>none is open yet: the first four trials (39, 51, 38, 52) are running
 
 what you get when the atlas is published:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side
@@ -14,14 +15,15 @@ what you get when the atlas is published:
 needs: one NVIDIA card 32GB+ (5090, PRO 6000, A6000, A100, H100...), CUDA 13 driver, Linux, ~60 GB disk. 24 GB won't fit
 time: ~13 h a layer on a 5090 + ~1 h setup. stop and resume any time
 
-git clone https://github.com/whp199/theodolite && cd theodolite && git checkout census-kit-1
+git clone https://github.com/whp199/theodolite && cd theodolite && git checkout census-kit-2
+(ran kit 1? in your checkout: git fetch --tags && git checkout census-kit-2, downloads are reused)
 scripts/volunteer/census.sh check
-scripts/volunteer/census.sh reserve 47   <- post the RESERVE line it prints
+scripts/volunteer/census.sh reserve 39   <- an OPEN layer; post the RESERVE line it prints
 scripts/volunteer/census.sh setup
-scripts/volunteer/census.sh canary 47
-scripts/volunteer/census.sh run 47       <- post the START line
-scripts/volunteer/census.sh status 47    <- post a PROGRESS line now and then
-scripts/volunteer/census.sh pack 47      <- upload the ~500 MB .tar, post the DONE line + link
+scripts/volunteer/census.sh canary 39
+scripts/volunteer/census.sh run 39       <- post the START line
+scripts/volunteer/census.sh status 39    <- post a PROGRESS line now and then
+scripts/volunteer/census.sh pack 39      <- upload the ~500 MB .tar, post the DONE line + link
 
 no account, no token. don't change code or settings. every run is spot-checked on our card
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md

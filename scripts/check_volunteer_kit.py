@@ -204,6 +204,66 @@ def run_checks(tmp: Path) -> int:
               f" (says {says}, asks {asks})")
     section("the board: claims, refusals, holds, lapses, the renders", before)
 
+    # 3b. a board of sixty layers: most wait for their trial, one opens when its trial passes, one is stopped
+    before = len(failures)
+    wide = tmp / "board_wide.json"
+    states = {**{str(l): {"state": "waiting"} for l in range(60)}, **{str(l): {"state": "done", "by": "home card"} for l in range(40, 51)}}
+    wide.write_text(json.dumps({"kit": kit["KIT"], "repo": "whp199/theodolite", "issue": None, "seen_comments": [], "claims": [], "layers": states}))
+    w = [PY, "-I", BOARD_PY, "--board", wide]
+    r = run(w + ["add", f"CENSUS RESERVE L39 claim=0badc0de name=early kit={kit['KIT']}"], benv)
+    check(r.returncode == 1 and "refused" in r.stdout and "not open (trial first)" in r.stdout, f"a RESERVE on a layer still waiting for its trial is refused ({r.stdout[:200]})")
+    run(w + ["layer", "39", "open", "--note", "its trial passed"], benv)
+    run(w + ["layer", "57", "stopped", "--note", "its trial failed"], benv)
+    r = run(w + ["add", f"CENSUS RESERVE L39 claim=0badc0de name=early kit={kit['KIT'] + 1}"], benv)
+    check(r.returncode == 1 and "refused" in r.stdout and f"the board is kit {kit['KIT']}'s" in r.stdout, f"a RESERVE made with another kit is refused ({r.stdout[:200]})")
+    r = run(w + ["add", f"CENSUS RESERVE L57 claim=0badc0de name=early kit={kit['KIT']}"], benv)
+    check(r.returncode == 1 and "not open (not taken)" in r.stdout, "a RESERVE on a stopped layer is refused")
+    r = run(w + ["add", f"CENSUS RESERVE L39 claim=0badc0de name=early kit={kit['KIT']}"], benv)
+    check(r.returncode == 0 and "L39 reserved by 0badc0de" in r.stdout, f"a RESERVE on the layer whose trial passed is taken ({r.stdout[:200]})")
+    r = run(w + ["layer", "39", "waiting"], benv)
+    check(r.returncode != 0 and "held by claim 0badc0de" in r.stderr, "a held layer's state is not changed under its claim")
+    r = run(w + ["render", "--out", tmp / "render_wide", "--no-png"], benv)
+    txt = (tmp / "render_wide" / "board.txt").read_text() if (tmp / "render_wide" / "board.txt").exists() else ""
+    md = (tmp / "render_wide" / "BOARD.md").read_text() if (tmp / "render_wide" / "BOARD.md").exists() else ""
+    check(r.returncode == 0 and 0 < len(txt) <= 2000 and "L0–38 trial first" in txt and "L51–56 trial first" in txt and "L58–59 trial first" in txt
+          and "L57 not taken" in txt and "L39 reserved" in txt and "| 0–38 | 1–39 | trial first |" in md and "trial first* is not open yet" in md
+          and md.count("\n| ") < 24,
+          f"sixty layers stay a board: the waiting ones drawn as runs, the post under 2,000 characters ({len(txt)} characters)")
+    # the kit command: a board of the first kit brought to this one, its new layers waiting, its record kept
+    old = tmp / "board_old.json"
+    old.write_text(json.dumps({"kit": kit["KIT"] - 1, "repo": "whp199/theodolite", "issue": 1, "seen_comments": [5], "updated_at": "x",
+                               "claims": [{"code": "aaaaaaaa", "layer": 99, "name": "kept", "state": "accepted", "at": "2026-10-31T03:41Z"}],
+                               "layers": {"99": {"state": "done", "by": "kept aaaaaaaa"}}}))
+    r = run([PY, "-I", BOARD_PY, "--board", old, "kit"], benv)
+    ob = json.loads(old.read_text())
+    check(r.returncode == 0 and ob["kit"] == kit["KIT"] and ob["layers"]["99"] == {"state": "done", "by": "kept aaaaaaaa"}
+          and all(ob["layers"][str(l)].get("state") == "waiting" and "trial" in ob["layers"][str(l)].get("note", "") for l in kit["layers"])
+          and ob["claims"][0]["code"] == "aaaaaaaa"
+          and ob["issue"] == 1 and ob["seen_comments"] == [5],
+          f"the kit command: the board is this kit's, its layers added waiting, the first kit's record kept ({r.stdout[:200]})")
+    # the volunteer's reserve asks the published board: a waiting layer, a held one and another kit's board are refused
+    pub = tmp / "published.json"
+    other_layer = [l for l in kit["layers"] if l != LAYER][0]
+
+    def published(state: Dict[str, Any], claims: List[Dict[str, Any]], k: int = kit["KIT"]) -> Dict[str, str]:
+        pub.write_text(json.dumps({"kit": k, "claims": claims, "layers": {str(other_layer): state}}))
+        return {**env, "THEODOLITE_BOARD_JSON": pub.as_uri()}
+
+    v2 = ["bash", CENSUS_SH, "--dry-run", "--root", tmp / "volunteer2"]
+    r = run(v2 + ["reserve", str(other_layer)], published({"state": "waiting"}, []))
+    check(r.returncode != 0 and "not open on the board (trial first)" in r.stderr and not (tmp / "volunteer2" / "claims" / f"L{other_layer}.claim").exists(),
+          f"reserve: a layer the board shows waiting for its trial is not claimed ({r.stderr[-200:]})")
+    r = run(v2 + ["reserve", str(other_layer)], published({"state": "open"}, [{"code": "0badc0de", "layer": other_layer, "state": "running"}]))
+    check(r.returncode != 0 and "held by claim 0badc0de" in r.stderr, "reserve: a layer someone holds on the board is not claimed")
+    r = run(v2 + ["reserve", str(other_layer)], published({"state": "open"}, [], k=kit["KIT"] + 1))
+    check(r.returncode != 0 and "another kit's" in r.stderr, "reserve: a board of another kit is refused")
+    r = run(v2 + ["reserve", str(other_layer)], {**env, "THEODOLITE_BOARD_JSON": (tmp / "no-such-board.json").as_uri()})
+    check(r.returncode == 0 and "could not read the board" in r.stdout + r.stderr and last_line(r.stdout, "CENSUS RESERVE"),
+          "reserve: with the board out of reach the claim is made, with a warning to look")
+    r = run(["bash", CENSUS_SH, "--dry-run", "--root", tmp / "volunteer3", "reserve", str(other_layer)], published({"state": "open"}, []))
+    check(r.returncode == 0 and last_line(r.stdout, "CENSUS RESERVE") and "warning" not in r.stdout + r.stderr, "reserve: an open layer is claimed")
+    section("a board of sixty layers: trial first, opened, stopped; the kit command; reserve asks the board", before)
+
     # 4. the intake
     before = len(failures)
     i = [PY, "-I", INTAKE_PY, "--dry-run", "--board", board]
