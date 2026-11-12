@@ -791,12 +791,12 @@
    "note": "opens when its trial on the home card passes"
   },
   "39": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "open",
+   "note": "its trial passed, 12 November 2026"
   },
   "51": {
-   "state": "waiting",
-   "note": "opens when its trial on the home card passes"
+   "state": "open",
+   "note": "its trial passed, 12 November 2026"
   },
   "52": {
    "state": "waiting",
@@ -831,5 +831,5 @@
    "note": "opens when its trial on the home card passes"
   }
  },
- "updated_at": "2026-11-12T16:09Z"
+ "updated_at": "2026-11-12T18:54Z"
 }

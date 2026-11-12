@@ -1,0 +1,112 @@
+{
+ "gates": {
+  "mass_c": 0.6,
+  "mass_c_res": 0.58,
+  "rep_AB": 0.57,
+  "rep_BA": 0.57,
+  "mass_B": 0.56
+ },
+ "min_share_covered": 0.5,
+ "layers": [
+  {
+   "layer": 39,
+   "pass": true,
+   "whole": {
+    "pass": true,
+    "mass_c": 0.6937,
+    "mass_c_res": 0.7378,
+    "rep_AB": 0.6784,
+    "rep_BA": 0.6792,
+    "mass_B": 0.6896
+   },
+   "pm1": {
+    "pass": true,
+    "mass_c": 0.6903,
+    "mass_c_res": 0.7282,
+    "rep_AB": 0.673,
+    "rep_BA": 0.6799,
+    "mass_B": 0.6524
+   },
+   "covered": {
+    "pass": true,
+    "mass_c": 0.7072,
+    "mass_c_res": 0.7266,
+    "rep_AB": 0.6789,
+    "rep_BA": 0.6818,
+    "mass_B": 0.703,
+    "neurons": 930,
+    "of": 1022
+   },
+   "reported": {
+    "above_every_control": 28,
+    "by_chance": 1.0,
+    "named": 80,
+    "max_new_rule": {
+     "shorter_passes": true,
+     "mass_c_drop": -0.0079,
+     "rep_min_drop": -0.0016,
+     "take_shorter": true
+    },
+    "d4_loss_at_1": {
+     "neuron": -0.037,
+     "random": -0.007
+    },
+    "d4_loss_at_minus_1": {
+     "neuron": -0.038,
+     "random": -0.008
+    },
+    "answers_per_s": 10.88
+   }
+  },
+  {
+   "layer": 51,
+   "pass": true,
+   "whole": {
+    "pass": true,
+    "mass_c": 0.7734,
+    "mass_c_res": 0.73,
+    "rep_AB": 0.7072,
+    "rep_BA": 0.709,
+    "mass_B": 0.728
+   },
+   "pm1": {
+    "pass": true,
+    "mass_c": 0.7231,
+    "mass_c_res": 0.7099,
+    "rep_AB": 0.6794,
+    "rep_BA": 0.6656,
+    "mass_B": 0.6625
+   },
+   "covered": {
+    "pass": true,
+    "mass_c": 0.766,
+    "mass_c_res": 0.718,
+    "rep_AB": 0.6976,
+    "rep_BA": 0.6975,
+    "mass_B": 0.7214,
+    "neurons": 948,
+    "of": 1022
+   },
+   "reported": {
+    "above_every_control": 238,
+    "by_chance": 1.0,
+    "named": 266,
+    "max_new_rule": {
+     "shorter_passes": true,
+     "mass_c_drop": 0.0269,
+     "rep_min_drop": 0.0451,
+     "take_shorter": false
+    },
+    "d4_loss_at_1": {
+     "neuron": -0.012,
+     "random": -0.0
+    },
+    "d4_loss_at_minus_1": {
+     "neuron": -0.008,
+     "random": -0.0
+    },
+    "answers_per_s": 10.48
+   }
+  }
+ ]
+}

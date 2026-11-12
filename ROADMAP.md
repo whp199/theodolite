@@ -658,6 +658,45 @@ layers, the determinism run and the sampled push on 29 October). In this section
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
        reading within a night’s reach of the layers below 40. Its dose is still to choose (above).
+  - **The first trials** (12 November 2026; [`census_neighbour_trials/`](experiments/results/census_neighbour_trials/),
+    `summary.json`). They were registered in `08fd50b` while the first was still being written: the reader (the first
+    trial’s own, unchanged), three gates and each layer’s neurons, hashed before any answer was read (the sha256 of
+    its `SHA256SUMS` is `ea5a984e6d80…`). Each trial is 1,022 neurons against 1,024 controls, 49,110 answers, 76 to
+    80 minutes at 10.5 to 10.9 answers a second beside a desktop. A trial passes when three readings all clear layer
+    45’s bars (0.60, 0.58, 0.57 and 0.57, 0.56) at 48 word-pieces: the whole reading; the ±1 answers alone; and the
+    neurons whose six text-survival covariates all lie inside the controls’ range (at least half of them must). The
+    last two are the checks the review of the first trial made after the fact, which layer 45 passed and layer 57
+    failed; here they were gates from the start. On the first trial’s own answers the new reader gives the review’s
+    figures, and it fails layer 57’s probe on all three.
+    - **Layer 39 passes.** Whole: 0.694, 0.738, 0.678 and 0.679, 0.690. The ±1 answers alone: 0.690, 0.728, 0.673
+      and 0.680, 0.652. The 930 of 1,022 neurons the controls cover: 0.707, 0.727, 0.679 and 0.682, 0.703. Layer
+      45’s own trial read 0.714, 0.724, 0.688 and 0.674, 0.669. Fewer of its neurons stand apart: 28 of the 1,022 beat
+      every control (about one by chance; 169 at layer 45 by the same count) and 80 are named. At ±1 its text loses
+      0.04 of its distinct 4-grams (the controls’ 0.01), as at 45; at ±2 0.54 to 0.58, where 45 loses 0.79.
+    - **Layer 51 passes.** Whole: 0.773, 0.730, 0.707 and 0.709, 0.728. The ±1 answers alone: 0.723, 0.710, 0.679
+      and 0.666, 0.662. The 948 covered: 0.766, 0.718, 0.698 and 0.698, 0.721. 238 beat every control and 266 are
+      named. At ±1 its text loses 0.01 (the controls’ none); at ±2 0.78 to 0.80. Cut to 32 word-pieces its lead falls
+      0.027 and its replication 0.045, so the length rule keeps 48 here, where at 39 it would take 32.
+    - **Layer 38’s trial was cut short**, at 35,776 of its 49,110 answers, by a CUDA launch timeout on the home card
+      (18:43Z; the card drives a desktop too). The job stopped there, as it is written to, before layer 52’s began.
+      Both are taken by the walk (below): the same command continues a run row for row.
+    - **What a pass licenses, and what it does not.** By the rules fixed first: a whole layer at 39 and at 51,
+      offered to volunteers (kit 2, below). `DOSES_CALIBRATED` is as it was, 40–50: widening it is the owner’s word,
+      and until then the atlas marks a census at these layers “doses not calibrated at this layer” and inks it
+      without gilt. The gates are layer 45’s, read at another layer: a pass says that there, as at 45, a neuron’s
+      push is told from a random direction’s by the words it brings, in the ±1 answers and among neurons whose text
+      survives as the controls’ does. It does not say ±1 and ±2 are the best doses for that layer.
+    - **The walk** (the owner’s word, 12 November). After the four, `walk.sh` trials the next layer out on each side
+      in turn (38, 52, 37, 53, …), reads it, and goes on on that side only if it passed; a layer that passes is
+      opened on the board as it is read, one that fails is marked not taken, and the band stops there on that side.
+  - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
+    `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
+    addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only
+    an open layer takes a claim; `census.sh reserve` asks the published board before it makes one. The home canaries
+    of all 49 layers were taken at the kit’s commit `95deead` in seven minutes on the 5090, between two trials.
+    Layer 45’s, taken again there, is kit 1’s canary bit for bit, so the code still writes kit 1’s answers; and the
+    eleven old canaries against their whole runs are the same at the six layers of the home card’s bits (40, 41, 43,
+    45, 46, 49) and not at the five taken on RTX PRO 6000 cards, as their class says. Opened that day: 39 and 51.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at

@@ -1,5 +1,6 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
-L0–39 trial first
+L0–38 trial first
+L39 OPEN
 L40 done (home card)
 L41 done (ReimusArmpit d4bcee00)
 L42 done (anon a56863f2)
@@ -11,8 +12,9 @@ L47 done (ReimusArmpit 2f018a18)
 L48 done (anon 5cd76843)
 L49 done (home card)
 L50 done (anon b153da82)
-L51–59 trial first
+L51 OPEN
+L52–59 trial first
 
-0 open yet; a layer opens when its trial passes: https://github.com/whp199/theodolite/issues/1
+2 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <sub>Every layer of the census is done. <a href="VOLUNTEERS.md">How a layer was taken</a>.</sub>
+  <sub>Eleven layers of the census are done, and the other forty-nine are opening to volunteers a layer at a time. <a href="VOLUNTEERS.md">Take a layer</a>.</sub>
 </p>
 
 <br>
@@ -57,6 +57,12 @@ against the same gates after the fact. Every gate passes on all eleven. Read at 
 of a layer’s 21,504 neurons have a false-discovery q of 0.05 or less, and between 95 and 4,794 beat all 2,048 random
 directions, where about ten would by chance (a count that rests on each layer’s one strongest random direction). How
 each was taken: [VOLUNTEERS.md](VOLUNTEERS.md).
+
+A second round is taking the other forty-nine. A layer outside 41–51 is not taken blind: about a thousand of its
+neurons are trialled first on one card, some 80 minutes, against gates fixed before any trial ran, and the layer is
+offered to volunteers only if it passes. On 12 November 2026 the first two read, layers 40 and 52 (39 and 51 on the
+board), passed and were opened; the board shows the rest as they are read. Until the doses are counted calibrated at
+such a layer, the atlas marks its census “doses not calibrated at this layer” and inks it without gilt.
 
 <table>
   <tr>
