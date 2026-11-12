@@ -1204,9 +1204,10 @@ def _lens_reply(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
     }
     st = a.index.get("steer_lens")
     if st is not None and not out["edited"]:
+        sd = a.index.steer_dose(layer)
         out["steer"] = {"source": "index", "up": a.words(st["up"][layer, n], 12), "down": a.words(st["down"][layer, n], 12),
                         "kl_up": round(float(st["up_kl"][layer, n]), 3), "kl_down": round(float(st["down_kl"][layer, n]), 3),
-                        "dose": float(st["dose"])}
+                        "dose": sd["dose"], "dose_rule": sd["rule"], "dose_from": sd["from"]}
     else:
         out["steer"] = a.cache["steer"].get((a.edit_key(), layer, n))
         if st is not None and out["steer"] is None:
@@ -1242,18 +1243,23 @@ def _steer_lens_live(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
     sc = a.scales()
     ctx = [a.rt.tokenize_prompt(a.rt.compose_prompt(c, chat=True)) for c in ao.STEER_LENS_CHATS]
     ctx += [a.rt.tokenize_prompt(p) for p in ao.STEER_LENS_PLAIN]
-    r = ao.steer_lens(a.lm, a.W_U, ctx, a.w, layer, n, sc["p50"][layer], k=12, bos_id=a.rt.tokenizer.bos_token_id)
+    # at the layer's own dose where one is known (the built index's, else the pilot's), else the reference's 0.8
+    sd = a.index.steer_dose(layer)
+    r = ao.steer_lens(a.lm, a.W_U, ctx, a.w, layer, n, sc["p50"][layer], dose=sd["dose"], k=12, bos_id=a.rt.tokenizer.bos_token_id)
     out = {"source": "live", "up": a.words(r["up"], 12), "down": a.words(r["down"], 12), "kl_up": r["kl_up"],
-           "kl_down": r["kl_down"], "dose": r["dose"], "scale_source": sc["source"]}
+           "kl_down": r["kl_down"], "dose": r["dose"], "dose_rule": sd["rule"], "dose_from": sd["from"],
+           **({"dose_note": sd["note"]} if sd.get("note") else {}), "scale_source": sc["source"]}
     a.cache["steer"].put((a.edit_key(), layer, n), out)
     return out
 
 
 @router.post("/neuron/steer_lens")
 async def neuron_steer_lens(layer: int, n: int) -> Dict[str, Any]:
-    """The steer lens of one neuron, read live: ±0.8 of the stream's median length along its write direction at every
-    piece of four contexts but the start mark, the next piece's mean change of log-probability (fp32, softcapped) and
-    KL (atlas_ops.steer_lens)."""
+    """The steer lens of one neuron, read live: ± the layer's dose of the stream's median length along its write
+    direction at every piece of four contexts but the start mark, the next piece's mean change of log-probability
+    (fp32, softcapped) and KL (atlas_ops.steer_lens). The dose is the layer's own where one is known (`dose_from`:
+    "index", the built lens's; "pilot", the dose the pilot measured for the layer), else the reference's 0.8
+    ("reference", which is not sized to the layer); `dose_rule` says how it was chosen."""
     a = atlas()
     _check_neuron(a, layer, n)
     return await on_gpu(_steer_lens_live, a, layer, n)

@@ -163,7 +163,10 @@ the causal check would have to pass `verify_causal_check.py` against N1A and N1V
    batches, the unpacker self-tests, the batch the card holds, the writer’s noise floor, one steer-lens layer timed, a
    canary batch against one written on the home card, the size of a run file once compressed (`scripts/pod/pilot.sh`).
    Its numbers then replace this page’s arithmetic and the scripts’ help, as `cbbb5fa` did for the 5090.
-3. **The steer lens**, all 60 layers (shards by depth), once its dose is chosen: about 10.1–10.8 hours on the 5090 (§i).
+3. **The steer lens**, all 60 layers (shards by depth): about 10.1–10.8 hours on the 5090 (§i), after its dose pilot
+   (`atlas_build.py steer_dose`: 128 neurons a layer at nine doses, about a twentieth of each layer’s build, so about
+   half an hour for the sixty; inferred from the build’s rate, not timed). The dose is each layer’s own since 12
+   November 2026: the push that moves the next word-piece as far as layer 45’s 0.8 does (ROADMAP §vi).
 4. **A passages pass** of 2 to 10 million word-pieces, the wiring rebuilt with the links’ gate and up values, and the
    wiring’s measured check. **Done** for 2 million word-pieces (the night of 28–29 October 2026, §i), and the check run
    again with `--fresh` keeping each reader’s g₀ and u₀ (29 October, about 32 minutes; ROADMAP §vi).

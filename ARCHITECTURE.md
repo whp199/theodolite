@@ -669,7 +669,7 @@ stand-in's never; `GET /arch` names a refused one).
 | `lens.npz` | `lens_pos`, `lens_neg`, `eye_pos`, `eye_neg` [L, N, 12] int32: each face's first twelve word-pieces through the lens and by the naked eye (the first ten are its label's, ranked as `label_top_ids`); `silenced` [L, N]; `built` [L], the layers read so far (`--layers` adds to the file; an unread layer shows no words) | `all`, minutes |
 | `act_scale.npz` | `pos`, `neg` and the GeGLU sign regimes `pp`, `nn`, `pn`, `np` [L, N] float32: each neuron's extremes over a corpus, start marks left out; `resid_q` [L, 3]: the stream's length leaving each layer (10th, 50th, 90th percentile); `mlp_rms_q`, `mid_rms_q` [L, 3]: the same of the feed-forward block's output rms and of the stream's rms entering it, the norms' usual scales the wiring is weighed by | `stats` (in `all`, before wiring), over `--text`, `--jsonl` or `--hf` corpora, else the study's 36 texts |
 | `wiring.npz` | `{down,up}_{layer, n, z, lw, sign, gate}` [L, N, 24]: each neuron's 24 strongest direct-path links each way, by strength across layers (below); `{down,up}_{g, u}` float16, each link's two weight products, which the sign in use is read from (248 MB more on the 31B; a build before 28 October 2026 lacks them and serves the sign from rest only) | `all`, minutes |
-| `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable |
+| `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N], `dose` [L]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable; its doses from `steer_dose` (`steer_dose.json`), about half an hour, first |
 | `layout_writes.npz` | `cell` [L, N] int16: each neuron's cell on its layer's square grid, neurons writing alike side by side (unit write directions, PCA to 50, UMAP where installed, else the first two principal directions, snapped to the grid) | `all` |
 | `passages.d/` | one `.npy` per array, memory-mapped, and `meta.json` (written last): `windows` [W, seq] int32, the windows' word-piece ids (−1 past a short one's end; the corpus's own text, never committed); `unigram` [V] int32, each word-piece's count over the word-pieces read; per face `{pos,neg}_{win, at}` [L, N, 16] and `{pos,neg}_{act, g, u}` float16: its 16 strongest windows, one event a window (each window's peak past the start mark, then the 16 largest, ties to the lower window), with the activation and the gate and up pre-activations there; `{pos,neg}_smp_*` [L, N, S], S events drawn at random above half the face's extreme in `act_scale.npz`, at most one a window. About 0.7 GB on the 31B with S = 6 | `passages`, over the corpus it is given (give it the one `stats` read: `rel` and the samples' threshold are against the stats index's extremes, and the route says when the two corpora differ); parts of 1,024 windows, resumable, merged exactly; not in `all` |
 | `wiring_check.npz` | the links measured (below): per layer `L{l}_*`, the writers and their pushes, each one's linked readers and the null's, each pair's g, u, signs, scale `f` and strength, the readers' operating points from the passages (`op`), every read [W, R, 4, 3, 2], and each reader's own gate and up values on the unpushed row, `g0`, `u0` [W, R, 4, P] (every word-piece past the start mark, the last at [..., −1]: where it sits); `layers`; the meta, all the server reads of it, holds each layer's summary and cost (`GET /arch` → `links.measured`); a check whose meta has no `format` (measured before g₀ and u₀ were recorded, as the 31B's of the night of 28–29 October 2026 was) lacks `f`, `g0` and `u0` | `wiring_check`, after wiring (and passages, for the sign in use the atlas serves): one `wiring_check.d/L{l}.npz` a layer, resumable (a run with other settings, against another wiring, passages or stats index, or against a folder holding a layer measured before `g0` and `u0` were recorded or a merged file of that format it would replace, refused before it measures anything; `--fresh` sets the folder and the merged file aside, renamed, and starts again), merged as it goes |
@@ -798,9 +798,26 @@ alone, medians over layers, linked / null: at the site 0.841 / 0.853, as served 
 ρ 0.89 / 0.87 against 0.31; by regime for linked readers the gate open at 7% of pairs (from rest 0.82, at the site
 0.86), shut above the minimum at 14% (0.47, 0.74), below it at 80% (0.19, 0.88).
 
-**The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
+**The steer lens.** ±d<sub>ℓ</sub> · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
 you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change
 of the next word-piece's log-probability (fp32, softcapped at 30), its twelve largest rises, and KL(pushed ‖ base).
+
+*Its dose, a layer at a time* (12 November 2026). The reference pushes every layer by 0.8 of the stream. On the 31B that
+is sound at layer 45 (the next word-piece moves by a median 0.34 nats, and for 98% of the neurons above every census
+control a steer-lens word-piece is one of the neuron's census words) and wrecks layer 5 (a median 7.5 nats, and nearly
+every neuron reads alike; `experiments/results/atlas_steer_dose/`). So d<sub>ℓ</sub> is measured: `atlas_build.py steer_dose`
+(`atlas_build.steer_dose_pilot`) pushes a sample of each layer's neurons (128) at each dose of a ladder (0.0125 to 3.2
+of the stream, doubling), keeps the median over the sample of each neuron's KL (its two signs averaged), and takes as
+the layer's dose the point where that meets the reference layer's median at the reference dose (layer 45 at 0.8), by a
+straight line in log dose against log KL between the two ladder doses that bracket it (`steer_dose_for`; a target off
+the ladder takes its end, with a note). Every neuron of a layer is still pushed alike. The pilot is kept as
+`steer_dose.json` beside the index (the ladders, the reference, each layer's dose, the model and weights; a stopped
+pilot goes on). `atlas_build.py steer` takes those doses by default (`--steer-dose pilot`; a number pushes every layer
+alike), records each layer's dose and the rule in its file, refuses a layer already built at another dose, and merges
+a dose for each layer into `steer_lens.npz` (`dose` [L]). `AtlasIndex.steer_dose(layer)` says what a layer's dose is
+and where it comes from: the built lens's (`index`), the pilot's for a neuron read live (`pilot`), or the reference's
+0.8 at every layer (`reference`), which the details tab then says in red is not sized to the layer. Not yet run on the
+31B: the pilot and the build wait for the card.
 
 | route | what it answers |
 |---|---|

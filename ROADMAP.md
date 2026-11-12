@@ -355,12 +355,21 @@ layers, the determinism run and the sampled push on 29 October). In this section
   for 92.6% of the 6,307 with q ≤ 0.05; for 23.8% of the rest. At layer 5 the same dose moves it by a median 7.5 nats,
   and the reading is nearly one reading whichever neuron is pushed: “Could”, “Are”, “These” and “Based” are each
   listed by 40–49% of the layer’s neurons, on both signs. So 0.8 of the stream is sound where the census is and
-  wrecks the early layers, and the lens needs a dose for each layer. Two rules are open, the owner’s to choose: a
-  push sized, layer by layer, to move the next word-piece as far as layer 45’s does (measured on a sample of neurons
-  at a few doses, about half an hour for the sixty layers), every neuron of a layer pushed alike as now; or a push of
-  one and a half to two times each neuron’s own write ceiling, which is what 0.8 of the stream comes to at layers
-  40–50 (a dose of 1 there is 1.8 to 2.5 ceilings, ARCHITECTURE §6). Either way each layer’s dose is recorded and
-  shown with its words. On the home card, headless, time a
+  wrecks the early layers, and the lens needs a dose for each layer. Two rules were open: a push sized, layer by
+  layer, to move the next word-piece as far as layer 45’s does, every neuron of a layer pushed alike as now; or a
+  push of one and a half to two times each neuron’s own write ceiling, which is what 0.8 of the stream comes to at
+  layers 40–50 (a dose of 1 there is 1.8 to 2.5 ceilings, ARCHITECTURE §6). **The owner chose the first** (12
+  November), **and it is built, on the CPU stand-in** (ARCHITECTURE §4.7, “Its dose, a layer at a time”):
+  `atlas_build.py steer_dose` is the pilot (128 neurons a layer at nine doses from 0.0125 to 3.2 of the stream; each
+  layer’s dose is where its median KL meets layer 45’s at 0.8), `atlas_build.py steer` takes its doses, each layer’s
+  file and the merged index record them, a layer built at another dose is refused, and the details tab, the
+  scientist’s `steer_lens` and the lexicon say what a reading was pushed by and how that was chosen. Until the lens
+  is built a neuron read live is pushed at the pilot’s dose for its layer once the pilot is taken, and before that
+  at 0.8, which the page now says in red is not sized to the layer. Still to do, on the card: the pilot (about half
+  an hour, inferred) and the build (10.1–10.8 hours), then the lens set against the census at layers 39–51 as it was
+  at 45 above (`against_census.py` in that folder). Below 39 nothing can check it: those layers’ readings will be
+  marked as resting on the dose rule alone. The pilot’s ladders are also each layer’s dose curve, which a census
+  design scaled to the layer needs (the plan’s step 3, below; layer 38 failed for want of one). On the home card, headless, time a
   pilot first; on a rented one, `scripts/pod/pilot.sh` is that pilot (it times the step and the memory for each unpacker
   at several batches, takes a `calib_rel` run, times one steer-lens layer, sets a canary batch against the home card’s
   and projects each job × 1.25 against the owner’s approval, which `scripts/gpu_log.py` keeps with every pod against

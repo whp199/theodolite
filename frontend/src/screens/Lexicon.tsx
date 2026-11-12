@@ -1264,7 +1264,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             lens disagree, neither wins: test with a smaller push and with what the neuron reads.
           </Note>
           <EntryApparatus title="the steer lens">
-            ±0.8 · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M> of its layer,
+            ±d<sub>ℓ</sub> · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M> of its
+            layer (d<sub>ℓ</sub> the layer’s dose: where a pilot has measured it, the push that moves the next word-piece as
+            far, in median KL over a sample of the layer’s neurons, as ±0.8 does at layer 46; else 0.8 at every layer, which
+            on this model swamps the early layers),
             at every position but the start mark, of two chat turns (“Who are you?”, “Write whatever you like.”) and two
             plain openings; the mean Δ log p of the next word-piece (fp32, softcapped at 30), its twelve largest rises
             each way, and KL(pushed ‖ base). <M>steer_lens.npz</M>, or read live for one neuron.

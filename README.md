@@ -254,7 +254,7 @@ in [`NOTICE`](NOTICE).
 | **the atlas** | a neuron explorer: every feed-forward neuron on one map (after neuron-explorer [47]) |
 | **a push** · **the three voices** | steering along one neuron’s write direction, `w_post ⊙ W_down[:, n]`, by a share of the stream’s median length leaving its layer · the same answer written pushed up, unpushed and pushed down |
 | **the census** | a steering sweep of every neuron of a layer on fixed prompts, ranked by word-cluster mass against random-direction controls |
-| **the steer lens** | the mean change in the next token’s log-probability under a ±0.8 push (Δ log p, with its KL) |
+| **the steer lens** | the mean change in the next token’s log-probability under a push sized to the neuron’s layer (Δ log p, with its KL) |
 | **the web** | the neuron’s connection cone: direct-path weight links chained hop by hop |
 | **the scientist** | an LLM agent with the atlas’s tools (MCP, or OpenAI-style function calling) |
 
@@ -612,6 +612,7 @@ process at a time):
 ```bash
 .venv/bin/python scripts/atlas_build.py all                          # words, activation ranges, wiring, layout (minutes)
 .venv/bin/python scripts/atlas_build.py stats --hf <dataset> --tokens 2000000   # optional: ranges over a corpus of your choosing
+.venv/bin/python scripts/atlas_build.py steer_dose                   # the steer lens's dose for each layer, measured first (half an hour)
 .venv/bin/python scripts/atlas_build.py steer --layers 40-59         # the steer lens, a range of layers at a time (hours)
 .venv/bin/python scripts/atlas_build.py passages --hf <dataset> --tokens 2000000   # each face's strongest passages (the corpus stats read)
 .venv/bin/python scripts/atlas_build.py wiring        # once, if built before 28 October 2026: each link's g and u, for the sign in use (minutes)

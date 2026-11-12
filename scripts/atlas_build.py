@@ -7,6 +7,7 @@
         --hf HuggingFaceH4/ultrachat_200k::train_sft --tokens 2000000   # the reference's mix, a document of each in turn
     .venv/bin/python scripts/atlas_build.py wiring                # every neuron's 24 strongest weight links each way
     .venv/bin/python scripts/atlas_build.py layout                # each layer's sheet, neighbours writing alike
+    .venv/bin/python scripts/atlas_build.py steer_dose            # the steer lens's dose for each layer, measured first
     .venv/bin/python scripts/atlas_build.py steer --layers 40-59  # the steer lens, a range of layers at a time
     .venv/bin/python scripts/atlas_build.py passages --hf HuggingFaceFW/fineweb-edu:sample-10BT \
         --hf HuggingFaceH4/ultrachat_200k::train_sft --tokens 2000000 --k 16 --sample 6   # each face's passages
@@ -39,7 +40,14 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
 - steer: for every neuron, both signs and four contexts, a forward of every layer after its own: about 2 x 4 x 21,504
   rows of ~25 pieces through 30 layers on average, per layer: on the order of 10^17 FLOP a layer, so hours for all 60.
   Each layer is written as its own file under steer_lens.d/ and a stopped run resumes; steer_lens.npz is merged when
-  all 60 are there.
+  all 60 are there. Each layer is pushed at its own dose (--steer-dose pilot, the default: steer_dose.json, which the
+  steer_dose step measures); one number pushes every layer alike (--steer-dose 0.8 is the reference's, and on the 31B
+  wrecks the early layers: at layer 5 nearly every neuron reads alike, ROADMAP section vi).
+- steer_dose: the pilot the steer lens's doses come from. For each layer, a sample of its neurons (--pilot-neurons, 128)
+  is pushed at each dose of a ladder (0.0125 to 3.2 of the stream, doubling) and the median KL of the next word-piece
+  from the unpushed one is kept; the layer's dose is where that meets the reference layer's median at 0.8 (--ref-layer,
+  45: where the lens agrees with the census). About a twentieth of a layer's build each, so about half an hour for the
+  31B's sixty (inferred from the build's rate, not timed). A stopped pilot goes on where it stopped.
 - passages: the same forward per window as stats over the same corpus (give it the same --hf, --tokens and --seq), each
   neuron's 16 strongest windows a face kept on the card with the gate and up values at each (about 0.8 GiB more than
   stats needs with --sample 6, as both keep each layer's gate and up outputs to a window's end): on the 31B (28 October
@@ -162,7 +170,7 @@ def corpus_texts(a: argparse.Namespace, rt: Any) -> tuple:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__.split("\n\n", 1)[1])
-    ap.add_argument("what", choices=["lens", "stats", "wiring", "steer", "layout", "passages", "wiring_check", "all"])
+    ap.add_argument("what", choices=["lens", "stats", "wiring", "steer", "steer_dose", "layout", "passages", "wiring_check", "all"])
     ap.add_argument("--out", help="the index folder (default: the atlas's)")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in, not the model")
     ap.add_argument("--layers", default="", help='for lens, steer and wiring_check: "40-59" or "3,7,11"')
@@ -181,7 +189,12 @@ def main() -> int:
                     "(needs the stats index; 0 for none)")
     ap.add_argument("--seed", type=int, default=0, help="passages, wiring_check: the seed of the random draw")
     ap.add_argument("--keep-parts", action="store_true", help="passages: keep the parts after merging them")
-    ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward; wiring_check: rows per prefill at most (3 at least)")
+    ap.add_argument("--batch", type=int, default=64, help="steer, steer_dose: neurons per forward; wiring_check: rows per prefill at most (3 at least)")
+    ap.add_argument("--steer-dose", default="pilot", help="steer: 'pilot' (each layer at the dose steer_dose measured for it) or one "
+                    "number of the stream's median length for every layer (0.8 is the reference's)")
+    ap.add_argument("--pilot-neurons", type=int, default=128, help="steer_dose: the neurons sampled at each layer")
+    ap.add_argument("--ref-layer", type=int, default=None, help="steer_dose: the layer whose nudge at 0.8 every layer is matched to "
+                    "(default 45, counted from 0: where the lens at 0.8 agrees with the census)")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
     ap.add_argument("--replace", action="store_true", help="replace an index built for another model or other weights "
                     "(by default refused: build into another folder, --out or $THEODOLITE_ATLAS_DIR, to keep both)")
@@ -236,7 +249,7 @@ def main() -> int:
     # one folder holds one model's indexes: a build for another model id (the checkpoint on the CPU, a GGUF) or other
     # weights would write over the files the server reads for the first, so it is refused unless asked for
     for step in steps:
-        name = {"stats": "act_scale", "steer": "steer_lens"}.get(step, step)
+        name = {"stats": "act_scale", "steer": "steer_lens", "steer_dose": "steer_lens"}.get(step, step)
         if here.get(name) is None and (here.refused(name) or "").startswith(("built for ", "built from other weights")):
             if not a.replace:
                 raise SystemExit(f"{step}: {here.path(name)} was {here.refused(name).split(': rebuild it')[0]}, and this build "
@@ -304,10 +317,36 @@ def main() -> int:
             print("->", ab.build_passages(rt, out, wins, name, k=a.k, sample=a.sample, extremes=ext, extremes_source=src,
                                           seed=a.seed, chunk=a.chunk or 1024, keep_parts=a.keep_parts))
             disagreement()
+        elif step == "steer_dose":
+            sc = scales()
+            print(f"steer_dose: the push's unit is the stream's median length from {sc['source']}")
+            ref = ab.STEER_DOSE_REF_LAYER if a.ref_layer is None else a.ref_layer
+            path = ab.steer_dose_pilot(rt, out, sc["p50"], layers=layers, neurons=a.pilot_neurons, ref_layer=ref, seed=a.seed, batch=a.batch)
+            got = ab.steer_doses(out, rt) or {"layers": {}, "reference": {}}
+            print(f"-> {path}: the reference, layer {ref} at 0.8, moves the next word-piece by a median "
+                  f"{got['reference'].get('kl', float('nan')):.3f} nats; each layer's dose, in its stream's median length:")
+            print("   " + "  ".join(f"L{l}:{v['dose']:g}{'*' if v.get('note') else ''}" for l, v in sorted(got["layers"].items(), key=lambda kv: int(kv[0]))))
+            if any(v.get("note") for v in got["layers"].values()):
+                print("   (* off the ladder: its note in the file says which way)")
         elif step == "steer":
             sc = scales()
-            print(f"steer: the push's unit is the stream's median length from {sc['source']}")
-            print("->", ab.build_steer_lens(rt, out, sc["p50"], layers=layers, batch=a.batch))
+            if a.steer_dose == "pilot":
+                dose = ab.steer_doses(out, rt)
+                if dose is None:
+                    raise SystemExit("steer: no dose is measured yet. Take the pilot first (atlas_build.py steer_dose), or give one "
+                                     "dose for every layer (--steer-dose 0.8, the reference's, which on the 31B wrecks the early "
+                                     "layers: ROADMAP section vi).")
+            else:
+                try:
+                    dose = float(a.steer_dose)
+                except ValueError:
+                    raise SystemExit(f"steer: --steer-dose is 'pilot' or a number, not {a.steer_dose!r}.")
+            print(f"steer: the push's unit is the stream's median length from {sc['source']}; its dose {ab.steer_dose_rule(dose if isinstance(dose, dict) else None)}"
+                  + ("" if isinstance(dose, dict) else f" ({dose:g})"))
+            try:
+                print("->", ab.build_steer_lens(rt, out, sc["p50"], layers=layers, batch=a.batch, dose=dose))
+            except ValueError as exc:
+                raise SystemExit(f"steer: {exc}")
         elif step == "wiring_check":
             sc = scales()
             print(f"wiring_check: each link's strength |P| f^2 weighed with the norms' scales from {sc['source']}")

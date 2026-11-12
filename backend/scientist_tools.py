@@ -321,8 +321,11 @@ TOOLS: List[Dict[str, Any]] = [
                                                        "layers": {"type": "array", "items": {"type": "integer"}},
                                                        "chat": {"type": "boolean", "default": False}}, "required": ["text"]}},
     {"name": "steer_lens", "description": "Live: read one neuron's steer lens now (when the steer-lens index is not built, or the neuron is "
-     "edited): ±0.8 of the stream's median length along its write direction at every word-piece of four contexts, the next "
-     "piece's mean change of log-probability (its 12 biggest rises each way) and KL.",
+     "edited): ± the layer's dose of the stream's median length along its write direction at every word-piece of four contexts, "
+     "the next piece's mean change of log-probability (its 12 biggest rises each way) and KL. `dose` is the push and `dose_from` "
+     "where it comes from: 'index' or 'pilot' is sized to the layer; 'reference' is 0.8 at every layer, which on this model "
+     "agrees with the census near layer 46 and swamps the early layers (nearly every neuron then reads alike), so do not "
+     "name an early-layer neuron from it.",
      "inputSchema": {"type": "object", "properties": LN, "required": ["layer", "n"]}},
     {"name": "causal_check", "description": "Live: the instrument's own causal test of a face's label (the study's N1A protocol): the "
      "neuron's activation written k times its scale on the face's side at the last word-piece of a prompt, and how the model's own "
@@ -649,7 +652,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
     if name == "steer_lens":
         _need(a, "layer", "n")
         r = await api.post(f"/api/atlas/neuron/steer_lens?layer={int(a['layer'])}&n={int(a['n'])}", {})
-        return {"neuron": cite(a["layer"], a["n"]), **{k: r[k] for k in ("up", "down", "kl_up", "kl_down", "dose")}}
+        return {"neuron": cite(a["layer"], a["n"]), **{k: r[k] for k in ("up", "down", "kl_up", "kl_down", "dose")},
+                **{k: r[k] for k in ("dose_from", "dose_rule", "dose_note") if r.get(k) is not None}}
     if name == "causal_check":
         _need(a, "layer", "n", "prompt")
         body = {"layer": a["layer"], "neuron_idx": a["n"], "polarity": -1.0 if a.get("face") == "-" else 1.0, "contexts": "given",

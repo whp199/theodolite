@@ -25,7 +25,10 @@ git ignores), each with its provenance in a `meta` field (model, lens id, built_
   link's strength over the neuron's strongest; z below -1e4 marks an empty slot; g and u, the link's two weight
   products, which the sign in use is read from, are missing from a build before 28 October 2026, which still serves
   the sign from rest).
-- steer_lens.npz: up, down [L, N, 12] int32, up_kl, down_kl [L, N] float16, dose, contexts (`atlas_ops.steer_lens`).
+- steer_lens.npz: up, down [L, N, 12] int32, up_kl, down_kl [L, N] float16, dose [L] (each layer's own, in its stream's
+  median length; one number in a file built before layers had their own), contexts (`atlas_ops.steer_lens`).
+- steer_dose.json: the pilot the lens's doses come from (`atlas_build.steer_dose_pilot`): each layer's dose, the ladder
+  it was read off, and the reference it is matched to.
 - layout_writes.npz: cell [L, N] int16, side (each neuron's place on its layer's sheet, neighbours writing alike).
 - passages.d/: one .npy per array, memory-mapped (on the 31B about 0.5 GB at K = 16, 0.7 GB with six sampled events a
   face), and meta.json, written last (`atlas_build.build_passages`): windows [W, seq] int32 (the windows' word-piece ids, -1 past a short one's end:
@@ -106,6 +109,19 @@ def atlas_dir() -> Path:
     if env:
         return Path(env).expanduser()
     return Path(__file__).resolve().parent.parent / "atlas_data"
+
+
+STEER_DOSE_FILE = "steer_dose.json"
+STEER_DOSE_REFERENCE = 0.8  # the reference's dose, the one every layer was pushed at before layers had their own
+
+
+def steer_dose_rule(doses: Optional[Dict[str, Any]]) -> str:
+    """How the steer lens's dose was chosen, in a line a page can show (`doses`: the pilot's file, or None)."""
+    if not doses:
+        return "one dose for every layer"
+    ref = doses["reference"]
+    return (f"sized, layer by layer, to move the next word-piece as far as layer {int(ref['layer']) + 1}'s "
+            f"±{ref['dose']:g} does (a median {ref['kl']:.2f} nats over {doses['neurons']} of the layer's neurons)")
 
 
 def index_dir() -> Path:
@@ -195,6 +211,32 @@ class AtlasIndex:
 
     def path(self, name: str) -> Path:
         return self.root / FILES[name]
+
+    def steer_dose(self, layer: int) -> Dict[str, Any]:
+        """The steer lens's dose at a layer (in the stream's median length there), how it was chosen (`rule`) and
+        where that is read from (`from`): the built index's own dose for the layer ("index"; one number for every
+        layer in a file from before layers had their own); else, for a neuron read live, the pilot's dose for the
+        layer when a pilot was taken on this model and its weights ("pilot"); else the reference's 0.8 at every layer
+        ("reference": not sized to the layer, which a page should say, since on the 31B it wrecks the early layers)."""
+        st = self.get("steer_lens")
+        if st is not None:
+            d = np.asarray(st["dose"], dtype=np.float64).reshape(-1)
+            meta = st.get("meta") or {}
+            return {"dose": float(d[int(layer)] if d.size > 1 else d[0]), "from": "index",
+                    "rule": meta.get("dose_rule") or "one dose for every layer"}
+        p = self.root / STEER_DOSE_FILE
+        if p.exists():
+            try:
+                pilot = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pilot = None
+            row = ((pilot or {}).get("layers") or {}).get(str(int(layer)))
+            if (row is not None and (self.model is None or pilot.get("model") == self.model)
+                    and weights_differ(pilot.get("weights"), self.weights) is None):
+                return {"dose": float(row["dose"]), "from": "pilot", "rule": steer_dose_rule(pilot),
+                        **({"note": row["note"]} if row.get("note") else {})}
+        return {"dose": STEER_DOSE_REFERENCE, "from": "reference",
+                "rule": "one dose for every layer, the reference's: not sized to this layer"}
 
     def get(self, name: str) -> Optional[Dict[str, Any]]:
         p = self.path(name)

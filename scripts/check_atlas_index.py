@@ -940,6 +940,82 @@ def main() -> int:
         check(abs(float(st["up_kl"][l, n]) - live["kl_up"]) < 2e-3 * max(1, live["kl_up"]), f"steer: L{l} N{n} KL")
     section("the steer lens index is steer_lens's, neuron by neuron (a partial run resumes, then merges)", before)
 
+    # the steer lens's dose, a layer at a time: the pilot that measures it, the build that takes it, what the index says
+    before = len(failures)
+    sd_dir = Path(tempfile.mkdtemp(prefix="atlas-dosed-"))
+    sd_ladder = (0.05, 0.1, 0.2, 0.4, 0.8, 1.6)
+    check(ab.steer_dose_for((0.1, 0.2, 0.4, 0.8), (0.01, 0.04, 0.16, 0.64), 0.36) == (0.6, None)
+          and ab.steer_dose_for((0.1, 0.2), (1.0, 2.0), 0.36)[0] == 0.1 and "below the ladder" in ab.steer_dose_for((0.1, 0.2), (1.0, 2.0), 0.36)[1]
+          and ab.steer_dose_for((0.1, 0.2), (0.01, 0.02), 0.36)[0] == 0.2 and "above the ladder" in ab.steer_dose_for((0.1, 0.2), (0.01, 0.02), 0.36)[1],
+          "a layer's dose read off its ladder: where KL goes as the dose squared, 0.36 lies at 0.6; off either end, the end and a note")
+    sd_whole = ab.build_steer_layer(rt, 2, p50[2], dose=0.4, batch=13)
+    sd_some = ab.build_steer_layer(rt, 2, p50[2], dose=0.4, batch=5, neurons=[7, 3, 100])
+    check(sd_some["up"].tolist() == sd_whole["up"][[7, 3, 100]].tolist() and sd_some["down"].tolist() == sd_whole["down"][[7, 3, 100]].tolist()
+          and np.allclose(sd_some["up_kl"], sd_whole["up_kl"][[7, 3, 100]], rtol=2e-3, atol=1e-6) and sd_some["up"].shape == (3, 12),
+          "a sample of a layer's neurons reads as those neurons do in the whole layer, in the order asked")
+    sd_said: List[str] = []
+    sd_kw = dict(neurons=24, ladder=sd_ladder, ref_layer=3, seed=5, batch=11)
+    sd_path = ab.steer_dose_pilot(rt, sd_dir, p50, **sd_kw, log=sd_said.append)
+    sd = json.loads(sd_path.read_text())
+    sd_target = sd["reference"]["kl"]
+    check(sd_path.name == "steer_dose.json" and sorted(sd["layers"], key=int) == [str(l) for l in range(L)] and sd["layers"]["3"] == {"dose": 0.8}
+          and sd["missing"] == [] and len(sd_said) == L and sd_said[0].startswith("steer dose: layer 3 ") and sd_target > 0
+          and sd["reference"] == {"layer": 3, "dose": 0.8, "kl": sd["measured"]["3"]["kl"][sd_ladder.index(0.8)]}
+          and all(len(sd["measured"][str(l)]["kl"]) == len(sd_ladder) for l in range(L)),
+          f"the pilot: a ladder for every layer, the reference layer first and kept at 0.8, its median KL the target ({sd_target})")
+    sd_met = []
+    for l in range(L):
+        sd_row = sd["layers"][str(l)]
+        sd_sample = sorted(int(i) for i in np.random.default_rng(5 + l).choice(N, 24, replace=False))
+        sd_res = ab.build_steer_layer(rt, l, p50[l], dose=sd_row["dose"], k=1, batch=11, neurons=sd_sample)
+        sd_med = float(np.median((sd_res["up_kl"].astype(np.float64) + sd_res["down_kl"].astype(np.float64)) / 2))
+        sd_met.append((l, sd_row["dose"], round(sd_med, 4), bool(sd_row.get("note")) or abs(math.log(sd_med / sd_target)) < 0.3))
+    check(all(ok_ for *_, ok_ in sd_met) and len({d_ for _, d_, _, _ in sd_met}) > 1,
+          f"each layer's dose moves the next word-piece as far as the reference's does, measured again at that dose on the pilot's own "
+          f"sample (within a third, or its note says the ladder did not reach): {[(l_, d_, m_) for l_, d_, m_, _ in sd_met]} against {sd_target:.4f}")
+    sd_again: List[str] = []
+    ab.steer_dose_pilot(rt, sd_dir, p50, **sd_kw, log=sd_again.append)
+    check(sd_again == [] and json.loads(sd_path.read_text())["layers"] == sd["layers"]
+          and "other settings" in raises(ab.steer_dose_pilot, rt, sd_dir, p50, **{**sd_kw, "neurons": 25}, log=quiet)
+          and "not on the ladder" in raises(ab.steer_dose_pilot, rt, Path(tempfile.mkdtemp(prefix="atlas-dosed-")), p50, ladder=(0.1, 0.2), ref_layer=3, log=quiet)
+          and "not a layer of this model" in raises(ab.steer_dose_pilot, rt, Path(tempfile.mkdtemp(prefix="atlas-dosed-")), p50, ladder=sd_ladder, log=quiet),
+          "the pilot goes on where it stopped and measures nothing twice; other settings, a reference dose off the ladder and a reference "
+          "layer the model lacks are refused in plain words")
+    sd_part_dir = Path(tempfile.mkdtemp(prefix="atlas-dosed-"))
+    ab.steer_dose_pilot(rt, sd_part_dir, p50, **sd_kw, layers=[0], log=quiet)
+    sd_part = ab.steer_doses(sd_part_dir, rt)
+    check(sorted(sd_part["layers"], key=int) == ["0", "3"] and sd_part["missing"] == [l for l in range(L) if l not in (0, 3)]
+          and "has no dose for layers 1, 2" in raises(ab.build_steer_lens, rt, sd_part_dir, p50, dose=sd_part, log=quiet)
+          and ab.steer_doses(Path(tempfile.mkdtemp(prefix="atlas-dosed-")), rt) is None,
+          "a pilot of some layers names the layers still to measure, and the lens is not built past them; no pilot, no doses")
+    sd_doses = ab.steer_doses(sd_dir, rt)
+    ab.build_steer_lens(rt, sd_dir, p50, layers=[1], batch=7, dose=sd_doses, log=quiet)
+    with np.load(sd_dir / "steer_lens.d" / "L1.npz", allow_pickle=False) as sd_z:
+        sd_m1 = json.loads(str(sd_z["meta"]))
+    check(sd_m1["dose"] == sd_doses["layers"]["1"]["dose"] and "as far as layer 4's ±0.8 does" in sd_m1["dose_rule"]
+          and "24 of the layer's neurons" in sd_m1["dose_rule"]
+          and "was built at a dose of" in raises(ab.build_steer_lens, rt, sd_dir, p50, layers=[1], dose=0.8, log=quiet),
+          f"a layer built at the pilot's dose records it and the rule; the same layer asked for at another dose is refused, not mixed in ({sd_m1['dose_rule']})")
+    ab.build_steer_lens(rt, sd_dir, p50, batch=9, dose=sd_doses, log=quiet)
+    sd_idx = AtlasIndex(sd_dir)
+    sd_st = sd_idx.get("steer_lens")
+    sd_want = [sd_doses["layers"][str(l)]["dose"] for l in range(L)]
+    sd_lives = [(l, n, ao.steer_lens(lm, W_U, ctx, w, l, n, p50[l], dose=sd_want[l], k=12, bos_id=tok.bos_token_id)) for l, n in ((0, 30), (1, 66), (4, 127))]
+    check(sd_st is not None and np.allclose(np.asarray(sd_st["dose"]), sd_want) and sd_st["meta"]["dose_reference"]["layer"] == 3
+          and all(sd_st["up"][l, n].tolist() == r_["up"] and sd_st["down"][l, n].tolist() == r_["down"] for l, n, r_ in sd_lives),
+          "the lens built at the pilot's doses keeps a dose for each layer, and each neuron's rises are steer_lens's at its layer's dose")
+    sd_only = Path(tempfile.mkdtemp(prefix="atlas-dosed-"))
+    shutil.copyfile(sd_path, sd_only / "steer_dose.json")
+    check(sd_idx.steer_dose(1) == {"dose": sd_want[1], "from": "index", "rule": sd_m1["dose_rule"]}
+          and idx.steer_dose(2) == {"dose": 0.8, "from": "index", "rule": "one dose for every layer"}
+          and AtlasIndex(sd_only).steer_dose(1) == {"dose": sd_want[1], "from": "pilot", "rule": sd_m1["dose_rule"]}
+          and AtlasIndex(sd_only, model="another model").steer_dose(1)["from"] == "reference"
+          and AtlasIndex(Path(tempfile.mkdtemp(prefix="atlas-dosed-"))).steer_dose(1)
+          == {"dose": 0.8, "from": "reference", "rule": "one dose for every layer, the reference's: not sized to this layer"},
+          "what a layer's dose is: the built lens's own; with a pilot and no lens, the pilot's (not another model's); with neither, the "
+          "reference's 0.8, said to be unsized")
+    section("the steer lens's dose a layer: read off a ladder, measured by the pilot, taken by the build, said by the index", before)
+
     before = len(failures)
     ab.build_layout(rt, out, method="pca", log=quiet)
     lay = idx.layout()

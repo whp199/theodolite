@@ -310,6 +310,24 @@ def main() -> int:
           "/neuron/steer_lens: its KL, on the study texts' scale")
     nl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()
     check(nl["steer"] == sl, "/neuron/lens: the steer lens read live is kept")
+    # its dose: with no lens built and no pilot taken, the reference's 0.8, said to be unsized; with a pilot's dose for
+    # the layer (steer_dose.json beside the index, of this model and its weights), the neuron is read at that dose
+    check(sl["dose"] == 0.8 and sl["dose_from"] == "reference" and "not sized to this layer" in sl["dose_rule"],
+          f"/neuron/steer_lens: without a pilot, the reference's dose, said to be unsized ({sl['dose_rule']})")
+    a_ix = atlas_routes.atlas().index
+    pilot_file = a_ix.root / "steer_dose.json"
+    pilot_file.parent.mkdir(parents=True, exist_ok=True)
+    pilot_file.write_text(json.dumps({"model": a_ix.model, "weights": a_ix.weights, "neurons": 24, "layers": {"2": {"dose": 0.2}},
+                                      "reference": {"layer": 3, "dose": 0.8, "kl": 0.5}}))
+    sl2 = c.post("/api/atlas/neuron/steer_lens", params={"layer": 2, "n": 5}).json()
+    d2 = ao.steer_lens(lm, W_U, ctx, w, 2, 5, p50[2], dose=0.2, k=12, bos_id=bos)
+    sl3 = c.post("/api/atlas/neuron/steer_lens", params={"layer": 1, "n": 5}).json()
+    pilot_file.unlink()
+    check(sl2["dose"] == 0.2 and sl2["dose_from"] == "pilot" and "as far as layer 4's ±0.8 does" in sl2["dose_rule"]
+          and sl2["up"] == [vocab[i] for i in d2["up"]] and close(sl2["kl_up"], d2["kl_up"]) and sl2["kl_up"] < sl["kl_up"]
+          and sl3["dose"] == 0.8 and sl3["dose_from"] == "reference",
+          "/neuron/steer_lens: read at the pilot's dose for its layer where the pilot has one, at the reference's where it has none")
+    c.post("/api/atlas/neuron/steer_lens", params={"layer": 2, "n": 5})  # (read again without the pilot: the kept reading is as before)
     check(nl["act_range"] == {"act_max": round(float(ex.pos[2, 5]), 4), "act_min": round(float(ex.neg[2, 5]), 4),
                               "over_tokens": ex.tokens, "source": "the study's 36 texts (provisional)",
                               "regimes": {k: round(float(getattr(ex, k)[2, 5]), 4) for k in ("pp", "nn", "pn", "np")}},

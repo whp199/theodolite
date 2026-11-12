@@ -230,7 +230,13 @@ export interface SteerLens {
   down: string[];
   kl_up: number;
   kl_down: number;
+  /** the push, in the stream's median length at the neuron's layer */
   dose: number;
+  /** how that dose was chosen, in words; and where it comes from: the built lens's own dose for the layer, the pilot's
+   * for a neuron read live, or the reference's 0.8 at every layer, which is not sized to the layer */
+  dose_rule?: string;
+  dose_from?: "index" | "pilot" | "reference";
+  dose_note?: string;
 }
 export interface LensFace {
   lens: string[];

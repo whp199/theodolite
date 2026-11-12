@@ -54,9 +54,13 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   the census, `logprobs` and `steer`. A neuron edited in the vault (`edited_in_vault`) is read through its edit, and
   the index's words for it are marked `stale`.
 - **The steer lens** is measured, not read through a lens: the next word-piece's mean change in log-probability when
-  the neuron is pushed by ±0.8 of the stream's median length, over four contexts, with its KL; the gate does not cover
-  it. That push is not small: at most layers it is longer than anything the neuron can write by itself (`neuron`'s
-  `ceiling.rel` is that most, as a share of the stream; 0.8 / rel is how many times over the push is). So the steer
+  the neuron is pushed by ± its layer's dose of the stream's median length (`dose`), over four contexts, with its KL;
+  the gate does not cover it. `dose_from` says where the dose comes from: `index` and `pilot` are sized to the layer
+  (the push that moves the next word-piece as far as ±0.8 does at layer 46, where the lens agrees with the census);
+  `reference` is 0.8 at every layer, which swamps the early layers, where nearly every neuron then reads alike, so
+  take no early-layer neuron's meaning from it. That push is not small: at most layers it is longer than anything the
+  neuron can write by itself (`neuron`'s `ceiling.rel` is that most, as a share of the stream; `dose` / rel is how
+  many times over the push is). So the steer
   lens says what a push that large along the neuron's direction does, not what the neuron does when it fires. Weigh
   it beside the lens and the neuron's firing, and confirm with a push near its own ceiling.
 - **Lens-derived directions break the model.** About 180 dimensions of Gemma 4's stream are read, through its norms,

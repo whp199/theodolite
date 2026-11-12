@@ -28,8 +28,8 @@ import numpy as np
 import torch
 
 from backend import atlas_ops as ao
-from backend.atlas_index import (EMPTY_Z, FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, SITE_SCORE_RERUN, WIRING_CHECK_DIR, WIRING_K,
-                                  AtlasIndex, save_npz, weights_differ)
+from backend.atlas_index import (EMPTY_Z, FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, SITE_SCORE_RERUN, STEER_DOSE_FILE,
+                                  WIRING_CHECK_DIR, WIRING_K, AtlasIndex, save_npz, steer_dose_rule, weights_differ)
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right
 from backend.label_gate import label_top_ids, writes_nothing
 from backend.theodolite_math import unembed_gemma4
@@ -774,14 +774,17 @@ def steer_contexts(rt: Any) -> List[List[int]]:
 
 @torch.no_grad()
 def build_steer_layer(rt: Any, layer: int, p50: float, *, dose: float = ao.STEER_LENS_DOSE, k: int = 12,
-                      batch: int = 64, spare_bos: bool = True) -> Dict[str, np.ndarray]:
+                      batch: int = 64, spare_bos: bool = True, neurons: Optional[Sequence[int]] = None) -> Dict[str, np.ndarray]:
     """One layer of the steer lens (`atlas_ops.steer_lens` for every neuron of it): the four contexts are read to the
     stream leaving the layer once; then each batch of neurons pushes it, both signs, and only the later layers run
     (`forward_from_layer`), the unpushed rows of the batch in the same forward. Returns up, down [N, k] int32 and
-    up_kl, down_kl [N] float32."""
+    up_kl, down_kl [N] float32. With `neurons`, only those are pushed, in the order given, and the arrays hold one
+    row for each (the dose pilot reads a sample of a layer so, `steer_dose_pilot`)."""
     lm = language_model(rt.hf_model)
     w = ao.Weights(lm, rt)
     N, dev, l = w.d_ff, model_device(lm), int(layer)
+    todo = list(range(N)) if neurons is None else [int(n) for n in neurons]
+    M = len(todo)
     ctx = steer_contexts(rt)
     C = len(ctx)
     inp, att, last, _ = pad_right(ctx, dev)
@@ -795,17 +798,17 @@ def build_steer_layer(rt: Any, layer: int, p50: float, *, dose: float = ao.STEER
     h_l = seen["h"]  # [C, T, D]
     from backend import cpu_memory  # on the CPU, a batch's forward against MemAvailable, refused in plain words
 
-    rows = C + 2 * min(int(batch), N) * C
+    rows = C + 2 * min(int(batch), M) * C
     cpu_memory.ensure(rt, lambda: cpu_memory.forward_need(rt, rows, int(inp.shape[1])),
                       f"A steer lens batch of {batch} neurons", "lower --batch")
     keep = ao.keep_mask(inp, att, rt.tokenizer.bos_token_id, spare_bos).to(h_l.dtype)  # [C, T]
     W_U = rt.lm_head_weight
-    up = np.zeros((N, k), np.int32)
-    down = np.zeros((N, k), np.int32)
-    up_kl = np.zeros(N, np.float32)
-    down_kl = np.zeros(N, np.float32)
-    for s in range(0, N, int(batch)):
-        idx = list(range(s, min(s + int(batch), N)))
+    up = np.zeros((M, k), np.int32)
+    down = np.zeros((M, k), np.int32)
+    up_kl = np.zeros(M, np.float32)
+    down_kl = np.zeros(M, np.float32)
+    for s in range(0, M, int(batch)):
+        idx = todo[s : s + int(batch)]
         B = len(idx)
         u = w.write_dirs(l, idx).to(h_l.dtype)  # [B, D]
         delta = float(dose) * float(p50) * u
@@ -833,6 +836,132 @@ def build_steer_layer(rt: Any, layer: int, p50: float, *, dose: float = ao.STEER
     return {"up": up, "down": down, "up_kl": up_kl, "down_kl": down_kl}
 
 
+# The steer lens's dose, a layer at a time. One dose for every layer (the reference's 0.8 of the stream's median
+# length) is sound where the 31B's census is and wrecks its early layers: at layer 45 it moves the next word-piece by a
+# median 0.34 nats, the readings differ neuron by neuron and agree with the layer's census; at layer 5 it moves it by
+# 7.5 nats and nearly every neuron reads alike (experiments/results/atlas_steer_dose, 12 November 2026). So each layer
+# is pushed as far as it takes to move the next word-piece as much as the reference layer's reference dose does
+# (the owner's choice that day), measured on a sample of the layer's neurons over a ladder of doses.
+STEER_DOSE_LADDER: Tuple[float, ...] = (0.0125, 0.025, 0.05, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2)
+STEER_DOSE_REF_LAYER = 45
+STEER_DOSE_VERSION = 1
+
+
+def steer_dose_for(ladder: Sequence[float], kl: Sequence[float], target: float) -> Tuple[float, Optional[str]]:
+    """The dose at which a layer's median KL is `target`, read off its ladder (`kl[i]` at `ladder[i]`, doses rising):
+    between the first two neighbouring doses whose KLs bracket the target, a straight line in log dose against log KL
+    (a small push moves the next word-piece by about its square, so the line is close). A target under the smallest
+    dose's KL gives the smallest dose, one over the largest dose's the largest, each said in the note, since the dose
+    asked for lies off the ladder; None when the ladder brackets it."""
+    import math
+
+    ladder, kl = [float(d) for d in ladder], [float(x) for x in kl]
+    if target <= kl[0]:
+        return ladder[0], (None if target == kl[0] else "below the ladder: its smallest dose already moves the next word-piece further")
+    for i in range(len(ladder) - 1):
+        a, b = kl[i], kl[i + 1]
+        if a <= target <= b and b > a > 0:
+            t = (math.log(target) - math.log(a)) / (math.log(b) - math.log(a))
+            return float(f"{math.exp(math.log(ladder[i]) + t * (math.log(ladder[i + 1]) - math.log(ladder[i]))):.4g}"), None
+        if a <= target <= b:  # (a KL of 0 at the lower dose: no log to take)
+            return ladder[i + 1], None
+    return ladder[-1], "above the ladder: its largest dose does not move the next word-piece that far"
+
+
+def steer_dose_pilot(rt: Any, out_dir: Path, p50: Sequence[float], *, layers: Optional[Sequence[int]] = None,
+                     neurons: int = 128, ladder: Sequence[float] = STEER_DOSE_LADDER, ref_layer: int = STEER_DOSE_REF_LAYER,
+                     ref_dose: float = ao.STEER_LENS_DOSE, seed: int = 0, batch: int = 64, log: Log = print) -> Path:
+    """Measure each layer's steer-lens dose and keep it in `steer_dose.json` beside the index. For each layer, a
+    sample of its neurons (`neurons` of them, drawn with `seed` + the layer) is pushed at every dose of `ladder` (in
+    the stream's median length at that layer), as the lens pushes them, and the median over the sample of each
+    neuron's KL from the unpushed next word-piece (its two signs averaged) is kept. The target is the reference
+    layer's median at the reference dose (`ref_layer`, `ref_dose`: layer 45 at 0.8, where the lens agrees with the
+    census), and each layer's dose is where its own ladder meets that target (`steer_dose_for`); the reference layer
+    keeps the reference dose. A layer already measured with the same settings and weights is kept, so a stopped pilot
+    goes on; `layers` measures only those now (the reference layer first, always), and the file names the layers
+    still to measure. Every neuron of a layer is pushed alike, as before: only the layer's dose changes."""
+    lm = language_model(rt.hf_model)
+    L, N = len(lm.layers), ao.ffn_width(lm, 0)
+    ladder = [float(d) for d in ladder]
+    if not 0 <= int(ref_layer) < L:
+        raise ValueError(f"The reference layer {ref_layer} is not a layer of this model (0 to {L - 1}).")
+    if float(ref_dose) not in ladder:
+        raise ValueError(f"The reference dose {ref_dose} is not on the ladder ({', '.join(f'{d:g}' for d in ladder)}).")
+    path = Path(out_dir) / STEER_DOSE_FILE
+    settings = {"version": STEER_DOSE_VERSION, "ladder": ladder, "neurons": int(min(neurons, N)), "seed": int(seed),
+                "reference": {"layer": int(ref_layer), "dose": float(ref_dose)}, "model": getattr(rt, "model_id", None)}
+    kept: Dict[str, Any] = {}
+    if path.exists():
+        was = json.loads(path.read_text(encoding="utf-8"))
+        same = all(json.dumps((was.get("reference") or {}).get(k_)) == json.dumps(settings["reference"][k_]) for k_ in ("layer", "dose")) \
+            and all(json.dumps(was.get(k_)) == json.dumps(settings[k_]) for k_ in ("version", "ladder", "neurons", "seed", "model"))
+        other = weights_differ(was.get("weights"), _weights_here(rt))
+        if not same or other:
+            raise ValueError(f"{path} was measured with other settings or on other weights"
+                             + (f" ({other})" if other else "") + ": remove it to measure again, or build into another folder (--out).")
+        kept = dict(was.get("measured") or {})
+    todo = list(range(L)) if layers is None else [int(l) for l in layers]
+    todo = [int(ref_layer)] + [l for l in todo if l != int(ref_layer)]
+    t0 = time.time()
+    for l in todo:
+        if str(l) in kept:
+            continue
+        rng = np.random.default_rng(int(seed) + l)
+        sample = sorted(int(i) for i in rng.choice(N, settings["neurons"], replace=False))
+        med, p10, p90 = [], [], []
+        for d in ladder:
+            res = build_steer_layer(rt, l, float(p50[l]), dose=d, k=1, batch=batch, neurons=sample)
+            kl = (res["up_kl"].astype(np.float64) + res["down_kl"].astype(np.float64)) / 2
+            med.append(round(float(np.median(kl)), 6))
+            p10.append(round(float(np.percentile(kl, 10)), 6))
+            p90.append(round(float(np.percentile(kl, 90)), 6))
+        kept[str(l)] = {"kl": med, "kl_p10": p10, "kl_p90": p90, "p50": float(p50[l])}
+        _write_steer_doses(path, rt, settings, kept, L)
+        log(f"steer dose: layer {l} measured ({time.time() - t0:.0f} s): median KL " + ", ".join(f"{x:.3g}" for x in med))
+    return _write_steer_doses(path, rt, settings, kept, L)
+
+
+def _write_steer_doses(path: Path, rt: Any, settings: Dict[str, Any], measured: Dict[str, Any], L: int) -> Path:
+    """`steer_dose.json` from the ladders measured so far: each measured layer's dose where its ladder meets the
+    reference layer's median KL at the reference dose (none until the reference layer is measured)."""
+    ref = settings["reference"]
+    out = {**settings, "weights": _weights_here(rt), "written_at": _now(),
+           "what": "the steer lens's dose for each layer, in the stream's median length at that layer: where the median, over a "
+                   "sample of the layer's neurons, of the next word-piece's KL from the unpushed one meets the reference "
+                   "layer's at the reference dose (backend/atlas_build.py steer_dose_pilot)",
+           "measured": measured, "layers": {}, "missing": [l for l in range(L) if str(l) not in measured]}
+    got = measured.get(str(ref["layer"]))
+    if got is not None:
+        target = float(got["kl"][settings["ladder"].index(ref["dose"])])
+        out["reference"] = {**ref, "kl": target}
+        for key, m in measured.items():
+            if int(key) == ref["layer"]:
+                dose, note = float(ref["dose"]), None
+            else:
+                dose, note = steer_dose_for(settings["ladder"], m["kl"], target)
+            out["layers"][key] = {"dose": dose, **({"note": note} if note else {})}
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(out, indent=1) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+    return path
+
+
+def steer_doses(out_dir: Path, rt: Any = None) -> Optional[Dict[str, Any]]:
+    """The doses the pilot chose, as `steer_dose.json` keeps them ({"layers": {layer: {"dose", "note"?}}, "reference":
+    {layer, dose, kl}, ...}); None when no pilot has been taken, or none past its reference layer. With `rt`, a file
+    measured for another model or on other weights is refused in plain words."""
+    path = Path(out_dir) / STEER_DOSE_FILE
+    if not path.exists():
+        return None
+    d = json.loads(path.read_text(encoding="utf-8"))
+    if rt is not None:
+        other = weights_differ(d.get("weights"), _weights_here(rt))
+        if d.get("model") != getattr(rt, "model_id", None) or other:
+            raise ValueError(f"{path} was measured for {d.get('model')}" + (f" on other weights ({other})" if other else "")
+                             + f", not for {getattr(rt, 'model_id', None)} as loaded: take the pilot again into another folder (--out).")
+    return d if d.get("layers") else None
+
+
 def _shard_refusal(rt: Any, shard: Path) -> Optional[str]:
     """Why a steer lens layer already built (`steer_lens.d/L{l}.npz`) was not built on this runtime's model and weights,
     in plain words; None when it was, or when it was built before the layers kept a meta (it is then kept, as before)."""
@@ -853,13 +982,28 @@ def _shard_refusal(rt: Any, shard: Path) -> Optional[str]:
 
 
 def build_steer_lens(rt: Any, out_dir: Path, p50: Sequence[float], *, layers: Optional[Sequence[int]] = None,
-                     dose: float = ao.STEER_LENS_DOSE, k: int = 12, batch: int = 64, log: Log = print) -> Path:
+                     dose: Any = ao.STEER_LENS_DOSE, k: int = 12, batch: int = 64, log: Log = print) -> Path:
     """The steer lens of every neuron, a layer at a time into `steer_lens.d/L{l}.npz` beside the index (a run stopped
     part-way resumes at the first missing layer), merged into steer_lens.npz once every layer is there. Each layer's
     file names the model and weights it was built on (`meta`), and a run on another model or other weights is refused
-    in plain words (`_shard_refusal`), not resumed into the same folder."""
+    in plain words (`_shard_refusal`), not resumed into the same folder.
+
+    `dose`: one number for every layer (the reference's 0.8 of the stream, which on the 31B wrecks the early layers),
+    or the pilot's doses (`steer_doses(out_dir)`, a dose a layer, each layer pushed as far as moves the next
+    word-piece as much as the reference layer's reference dose does). Each layer's file records its dose and the rule
+    (`dose`, `dose_rule` in its meta), a layer built at another dose than the one asked for now is refused, not mixed
+    in, and the merged file keeps a dose for each layer (`dose` [L])."""
     lm = language_model(rt.hf_model)
     L, N = len(lm.layers), ao.ffn_width(lm, 0)
+    by_pilot = isinstance(dose, dict)
+    if by_pilot:
+        lacking = [l for l in (range(L) if layers is None else layers) if str(int(l)) not in dose["layers"]]
+        if lacking:
+            raise ValueError(f"The pilot has no dose for layer{'s' if len(lacking) > 1 else ''} "
+                             f"{', '.join(str(int(l)) for l in lacking[:8])}{'…' if len(lacking) > 8 else ''}: measure "
+                             "them first (atlas_build.py steer_dose).")
+    rule = steer_dose_rule(dose if by_pilot else None)
+    dose_of = (lambda l: float(dose["layers"][str(int(l))]["dose"])) if by_pilot else (lambda l: float(dose))
     shard_dir = Path(out_dir) / "steer_lens.d"
     shard_dir.mkdir(parents=True, exist_ok=True)
     for l in range(L):
@@ -867,14 +1011,27 @@ def build_steer_lens(rt: Any, out_dir: Path, p50: Sequence[float], *, layers: Op
         if why:
             raise ValueError(why)
     todo = list(range(L)) if layers is None else [int(l) for l in layers]
+
+    def dose_built(l: int) -> Optional[float]:
+        with np.load(shard_dir / f"L{l}.npz", allow_pickle=False) as z:
+            m = json.loads(str(z["meta"])) if "meta" in z.files else {}
+        return None if m.get("dose") is None else float(m["dose"])
+
+    for l in todo:
+        if (shard_dir / f"L{l}.npz").exists():
+            was = dose_built(l)
+            if was is not None and abs(was - dose_of(l)) > 1e-9 * max(1.0, abs(was)):
+                raise ValueError(f"{shard_dir / f'L{l}.npz'} was built at a dose of {was:g} of the stream, and {dose_of(l):g} is "
+                                 f"asked for now: remove {shard_dir.name} from {shard_dir.parent} to build the lens again at the "
+                                 "new doses, or build into another folder (--out).")
     t0 = time.time()
     for l in todo:
         shard = shard_dir / f"L{l}.npz"
         if shard.exists():
             continue
-        res = build_steer_layer(rt, l, float(p50[l]), dose=dose, k=k, batch=batch)
-        save_npz(shard, **res, p50=np.array(float(p50[l])), meta=_meta(rt, layer=l, dose=float(dose)))
-        log(f"steer lens: layer {l} done ({time.time() - t0:.0f} s)")
+        res = build_steer_layer(rt, l, float(p50[l]), dose=dose_of(l), k=k, batch=batch)
+        save_npz(shard, **res, p50=np.array(float(p50[l])), meta=_meta(rt, layer=l, dose=dose_of(l), dose_rule=rule))
+        log(f"steer lens: layer {l} done at a dose of {dose_of(l):g} ({time.time() - t0:.0f} s)")
     missing = [l for l in range(L) if not (shard_dir / f"L{l}.npz").exists()]
     if missing:
         log(f"steer lens: {len(missing)} layers still to build ({missing[:6]}{'…' if len(missing) > 6 else ''}); not merged yet")
@@ -883,12 +1040,18 @@ def build_steer_lens(rt: Any, out_dir: Path, p50: Sequence[float], *, layers: Op
     down = np.zeros((L, N, k), np.int32)
     up_kl = np.zeros((L, N), np.float16)
     down_kl = np.zeros((L, N), np.float16)
+    doses = np.zeros(L, np.float64)
     for l in range(L):
         with np.load(shard_dir / f"L{l}.npz") as z:
             up[l], down[l], up_kl[l], down_kl[l] = z["up"], z["down"], z["up_kl"], z["down_kl"]
+        was = dose_built(l)
+        doses[l] = dose_of(l) if was is None else was  # (a layer built before layers kept their dose: the one asked for)
     path = Path(out_dir) / FILES["steer_lens"]
-    save_npz(path, up=up, down=down, up_kl=up_kl, down_kl=down_kl, dose=np.array(float(dose)),
-             contexts=np.array(list(ao.STEER_LENS_CHATS) + list(ao.STEER_LENS_PLAIN)), meta=_meta(rt, dose=float(dose)))
+    reference = ({"layer": int(dose["reference"]["layer"]), "dose": float(dose["reference"]["dose"]), "kl": float(dose["reference"]["kl"]),
+                  "neurons": int(dose["neurons"])} if by_pilot else None)
+    save_npz(path, up=up, down=down, up_kl=up_kl, down_kl=down_kl, dose=doses,
+             contexts=np.array(list(ao.STEER_LENS_CHATS) + list(ao.STEER_LENS_PLAIN)),
+             meta=_meta(rt, dose=[float(x) for x in doses], dose_rule=rule, dose_reference=reference))
     return path
 
 

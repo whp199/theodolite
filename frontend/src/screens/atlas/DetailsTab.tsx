@@ -219,8 +219,21 @@ const Steer: React.FC = () => {
         ) : null}
         <a href={href.lexicon("steer-lens")}>What the steer lens is.</a>
       </Rubric>
+      {st && st.dose_from === "reference" ? (
+        <p className="atlas-small red" style={{ margin: "4px 0 0" }}>
+          Pushed ±{st.dose} of the stream, the same at every layer and not sized to this one. On this model that push agrees with the census
+          near layer 46 and swamps the early layers, where nearly every neuron then reads alike: read these words with that in mind until
+          the lens’s doses are measured.
+        </p>
+      ) : null}
       <IfApparatus>
-        {st ? <p className="muted atlas-small">from the {st.source === "index" ? "steer-lens index" : "model, read just now"} · dose {st.dose}</p> : null}
+        {st ? (
+          <p className="muted atlas-small">
+            from the {st.source === "index" ? "steer-lens index" : "model, read just now"} · pushed ±{st.dose} of the stream at this layer
+            {st.dose_rule ? `, ${st.dose_rule}` : ""}
+            {st.dose_note ? ` · ${st.dose_note}` : ""}
+          </p>
+        ) : null}
       </IfApparatus>
     </section>
   );
