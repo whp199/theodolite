@@ -43,6 +43,43 @@
     "neurons": 946,
     "of": 1022
    }
+  },
+  {
+   "layer": 52,
+   "pass": false,
+   "doses": [
+    -4.6,
+    -2.3,
+    2.3,
+    4.6
+   ],
+   "dose_unit": "ceiling",
+   "whole": {
+    "pass": false,
+    "lead": 0.6759,
+    "beyond_text": 0.5535,
+    "rep_AB": 0.5831,
+    "rep_BA": 0.6053,
+    "new_questions": 0.6312
+   },
+   "the lower dose alone": {
+    "pass": true,
+    "lead": 0.7899,
+    "beyond_text": 0.6793,
+    "rep_AB": 0.6488,
+    "rep_BA": 0.6918,
+    "new_questions": 0.6921
+   },
+   "covered": {
+    "pass": false,
+    "lead": 0.6753,
+    "beyond_text": 0.5514,
+    "rep_AB": 0.5838,
+    "rep_BA": 0.6058,
+    "new_questions": 0.6301,
+    "neurons": 1010,
+    "of": 1022
+   }
   }
  ]
 }

@@ -720,6 +720,19 @@ layers, the determinism run and the sampled push on 29 October). In this section
        layer 52’s trial was read): 1,022 neurons neither earlier trial there asked, 1,024 fresh controls, the same
        reader and three gates. Said beforehand: the whole reading and the covered neurons pass; whether ±1.6 alone
        carries a lead is the open question. It runs after layer 52’s trial and before the steer lens.
+       **Layer 52’s `break_ceil` trial, read at 23:30Z: it fails too, and by the same dose.** Its whole reading
+       leads by 0.676, but that lead is not told from how the text survives: 0.553 beyond text survival against a
+       bar of 0.58, on every neuron and on the 1,010 of 1,022 the controls cover. That is the doubt its registration
+       named. The lower dose alone passes every gate on these new neurons (0.790, 0.679, 0.649 and 0.692, 0.692),
+       repeating what the first trial’s ±2 of the stream (2.12 ceilings) showed on other neurons. Read alone
+       afterwards (`by_dose.py`, gating nothing), the ±4.6 answers lead by 0.485, which is chance: their text has
+       lost 0.83 of its distinct 4-grams, neurons and controls alike. So on both sides of the band a push of 2.3
+       ceilings reads and one of 4.6 reads nothing, and the 4.6 answers are what fail each trial: at 38 they pull
+       the lead down to its bar, at 52 the lead beyond text survival under its bar. By the registration no whole
+       layer is taken at 52 with ±2.3 and ±4.6. One caution about layer 52: even 2.3 ceilings is 2.2 of the stream
+       there, and at that dose the text has already lost 0.60 (neurons) to 0.73 (controls), so the lower dose’s
+       lead rests on the covariate fit holding in broken text. Whether `soft_ceil` is trialled at 52 as well is
+       the owner’s choice; it would want a third draw of neurons, both earlier draws having been read at 2.3.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based

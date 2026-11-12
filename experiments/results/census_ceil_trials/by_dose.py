@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Where layer 38's lead lies, dose by dose. Gates nothing: of these figures only the rho between the two designs was
+"""Where the lead lies, dose by dose, at layers 38 and 52. Gates nothing: of these figures only the rho between the two designs was
 named in the registration (RULES.md, "Reported"); the rest were looked at after the verdict was read, to say what the
 verdict means, and are not a second reading of it. CPU only; reads the trials' runs in atlas_data, writes by_dose.json.
 
-  - each dose pair read alone by the registered reader (trial_read.py, layer 45's gates, 48 word-pieces): layer 38
-    under break_ceil and under break_rel, and layer 39 under break_rel beside them, each with its push in ceilings;
+  - each dose pair read alone by the registered reader (trial_read.py, layer 45's gates, 48 word-pieces): layers 38
+    and 52 under break_ceil and under break_rel, and layer 39 under break_rel beside them, each with its push in
+    ceilings (a pair already in by_dose.json is kept, not read again);
   - Spearman's rho, over the 1,022 neurons both trials asked, of a neuron's mass under break_ceil with its mass under
     break_rel at layer 38;
   - how firmly the whole lead sits on its bar: a bootstrap of the lead over neurons and controls (4,000 draws).
@@ -30,7 +31,9 @@ import trial_read as TR  # noqa: E402
 CEILINGS = json.loads((HERE.parent / "census_scaled_design" / "ceilings.json").read_text())["layers"]
 RUNS = (("L38 break_ceil", TRIALS / "ceil" / "L38-break_ceil-trial.jsonl", 38, "ceiling", (2.3, 4.6)),
         ("L38 break_rel", TRIALS / "neighbours" / "L38-break_rel-trial.jsonl", 38, "stream", (1.0, 2.0)),
-        ("L39 break_rel", TRIALS / "neighbours" / "L39-break_rel-trial.jsonl", 39, "stream", (1.0, 2.0)))
+        ("L39 break_rel", TRIALS / "neighbours" / "L39-break_rel-trial.jsonl", 39, "stream", (1.0, 2.0)),
+        ("L52 break_ceil", TRIALS / "ceil" / "L52-break_ceil-trial.jsonl", 52, "ceiling", (2.3, 4.6)),
+        ("L52 break_rel", TRIALS / "neighbours" / "L52-break_rel-trial.jsonl", 52, "stream", (1.0, 2.0)))
 
 
 def alone(run, dose, tmp):
@@ -60,10 +63,18 @@ def auc(x, y):
 
 def main():
     doses = []
+    kept = {}
+    if (HERE / "by_dose.json").exists():
+        kept = {(d["trial"], d["dose"]): d for d in json.loads((HERE / "by_dose.json").read_text())["each_dose_pair_alone"]}
     with tempfile.TemporaryDirectory() as t:
         for name, run, layer, unit, pair in RUNS:
             per = float(CEILINGS[str(layer)]["ceilings_in_one_stream"])
             for d in pair:
+                if (name, d) in kept:
+                    doses.append(kept[(name, d)])
+                    continue
+                if not run.exists():
+                    continue
                 fig = alone(run, d, Path(t))
                 doses.append({"trial": name, "layer": layer, "dose": d, "unit": unit,
                               "ceilings": round(d if unit == "ceiling" else d * per, 2), **fig})

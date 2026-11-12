@@ -183,3 +183,34 @@ plain next design keeps the dose that reads and brings the other inside it (both
 it would be chosen on these answers, so its trial must ask neurons this one did not. Whether to build and trial it
 is the owner's choice.
 
+## What the trial at layer 52 said (12 November 2026, 23:30Z)
+
+Registered beside layer 38's (`RULES_L52.md`): 1,022 neurons the first trial there did not ask, fresh controls.
+
+| | lead | beyond text | words carry over | | new questions |
+|---|---|---|---|---|---|
+| bars | 0.60 | 0.58 | 0.57 | 0.57 | 0.56 |
+| the whole reading | 0.676 | **0.553** | 0.583 | 0.605 | 0.631 |
+| the lower dose alone (±2.3) | 0.790 | 0.679 | 0.649 | 0.692 | 0.692 |
+| the neurons the controls cover (1,010 of 1,022) | 0.675 | **0.551** | 0.584 | 0.606 | 0.630 |
+
+**It fails**, on the lead beyond text survival, in the whole reading and among the covered neurons. That is the
+doubt the registration named, and by its rule no whole layer is taken at 52 with this design.
+
+**The lower dose passes every gate, on new neurons.** It repeats what `break_rel`'s ±2 of the stream (2.12
+ceilings) showed there on other neurons (0.797 read alone).
+
+**The upper dose is again what fails.** Read alone afterwards (`by_dose.py`, gating nothing), the ±4.6 answers lead
+by 0.485, with 0.504 beyond text survival: chance. Their text has lost 0.83 of its distinct 4-grams, neurons and
+controls alike.
+
+| layer | ±2.3 alone | ±4.6 alone | whole |
+|---|---|---|---|
+| 38 | 0.682 | 0.506 | 0.599 |
+| 52 | 0.790 | 0.485 | 0.676 |
+
+**A caution about layer 52.** A ceiling there is nearly the whole stream, so 2.3 ceilings is 2.2 of the stream, and
+at that dose the text has already lost 0.60 (neurons) to 0.73 (controls). The lower dose's lead rests on the
+covariate fit holding in text that broken. A softer pair of doses would test it in text that survives; whether to
+trial `soft_ceil` at 52 is the owner's choice ([`SOFT.md`](SOFT.md)).
+
