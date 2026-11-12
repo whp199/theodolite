@@ -711,6 +711,15 @@ layers, the determinism run and the sampled push on 29 October). In this section
        registered: a neuron’s mass under the two designs goes together, Spearman’s rho 0.54 over the 1,022.)
        **Layer 52 with the same doses** was registered beside it in `a09f1bf` (1,022 neurons its first trial did
        not ask, fresh controls) and started at 22:01Z.
+       **The softer design, `soft_ceil`** (the owner’s word that evening; built in `b6f7b54`,
+       [`SOFT.md`](experiments/results/census_scaled_design/SOFT.md); not yet run): `break_ceil` with its doses at
+       ±1.6 and ±2.3 ceilings, the dose that read at layer 38 and one half a doubling under it. The ladders of 28
+       October point the same way as far as 64 units can: at layer 30 a push of two ceilings leads (0.604) and one of
+       one or of four does not. Its trial at layer 38 is registered
+       ([`census_soft_trials/prereg/`](experiments/results/census_soft_trials/prereg/), hashed at 22:34Z before
+       layer 52’s trial was read): 1,022 neurons neither earlier trial there asked, 1,024 fresh controls, the same
+       reader and three gates. Said beforehand: the whole reading and the covered neurons pass; whether ±1.6 alone
+       carries a lead is the open question. It runs after layer 52’s trial and before the steer lens.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
