@@ -114,6 +114,11 @@ ALL_PROMPTS: Dict[str, str] = {**PROMPTS, **MORE_PROMPTS}
 DESIGN_QUESTIONS: Dict[str, Tuple[str, ...]] = {"break_rel": ("who", "orange", "free", "bicycle", "walk", "chair")}
 DESIGN_HALVES: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
     "break_rel": (("who", "orange", "free"), ("bicycle", "walk", "chair"))}
+# break_ceil is break_rel with its doses counted in write ceilings (below): the same questions, read as the same halves
+DESIGN_QUESTIONS["break_ceil"] = DESIGN_QUESTIONS["break_rel"]
+DESIGN_HALVES["break_ceil"] = DESIGN_HALVES["break_rel"]
+# what break_ceil's lower dose is, in each neuron's own write ceiling; its upper dose is twice it
+BREAK_CEIL = 2.3
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -131,6 +136,13 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # 2026 (DOSES_CALIBRATED; experiments/results/census_break_rel_trial), and at 39 and 51 by a trial of each on 12
     # November 2026 (experiments/results/census_neighbour_trials)
     "break_rel": [(p, s * d) for p in DESIGN_QUESTIONS["break_rel"] for d in (1.0, 2.0) for s in (-1.0, 1.0)],
+    # break_rel for the layers its doses overdrive (designed 12 November 2026, once layer 38's trial had failed;
+    # experiments/results/census_scaled_design): the same design with its two doses counted in each neuron's own write
+    # ceiling (dose_unit "ceiling"), +-2.3 and +-4.6. Where break_rel passes its trial (layers 39 to 51) its lower dose,
+    # 1 of the stream, is 1.76 to 2.76 ceilings; at layer 38, where it failed, 3.14, and below it more (5 at layer 30,
+    # 11 at 20); at 57, where its probe failed on the +-1 answers, 1.21. 2.3 is the middle of the band that passes. Not
+    # calibrated anywhere until a trial of it passes
+    "break_ceil": [(p, s * d) for p in DESIGN_QUESTIONS["break_ceil"] for d in (BREAK_CEIL, 2 * BREAK_CEIL) for s in (-1.0, 1.0)],
 }
 # the design a census takes when none is named, and the one a layer's run is read from first (layer_runs): break_rel,
 # whose doses come from this model's own ladders, since 29 October 2026 (the owner's choice; main_rel before it)
@@ -156,6 +168,11 @@ DOSES_FROM = {
                  "before any was read (the +-1 answers alone; the neurons whose text survives as the controls' does), "
                  "both passing all three; not at layers 53-58, where its probe at layer 58 passed by 0.0008 and its lead "
                  "could not be told from how the text survives, nor below layer 40",
+    "break_ceil": "+-2.3 and +-4.6 times each neuron's own write ceiling, the most it can write by itself: break_rel's design "
+                  "with its doses counted in ceilings, for the layers where 1 of the stream is too hard a push. Where "
+                  "break_rel passes its trial (layers 40-52, as the pages count them) its lower dose is 1.76 to 2.76 "
+                  "ceilings, and 2.3 is the middle of that; at layer 39, where it failed, it is 3.14, and more below. Not "
+                  "calibrated at any layer until a trial of it passes there",
 }
 # where a design's doses are calibrated on this model, its first and last layer (counted from 0, as the commands count
 # them): there the card says `doses_calibrated` and the page leaves out its red "not yet calibrated" line. break_rel's at
@@ -174,6 +191,7 @@ DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48)}
 # October 2026 for a whole layer, its trial's length and batch (the step-0 rule) with 2,048 controls; other designs
 # keep the command's own (256 word-pieces, a batch of 32, 256 controls)
 DESIGN_RUN_DEFAULTS: Dict[str, Dict[str, int]] = {"break_rel": {"max_new": 48, "batch": 64, "random_controls": 2048}}
+DESIGN_RUN_DEFAULTS["break_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # taken as break_rel is
 RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
@@ -216,6 +234,11 @@ def meta_questions(meta: Dict[str, Any]) -> List[str]:
 READING_DEFAULT: Dict[str, Any] = {"max_rel": 1.6, "reference": "units", "exclude": "all"}
 DESIGN_READING: Dict[str, Dict[str, Any]] = {
     "break_rel": {"max_rel": 2.5, "reference": "controls", "exclude": "own"},
+    # read as break_rel is, every answer counted and each word against the controls alone. Its doses are in ceilings,
+    # so a push's share of the stream differs by neuron and by layer (on the 31B the upper dose is at most 1.5 of the
+    # stream below layer 39, but 2.4 at layer 1, and more for a neuron with a large ceiling): the cap is set where no
+    # push of the design reaches, since a cap that cut some neurons' upper answers would rank them on half their answers
+    "break_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},
 }
 
 
@@ -234,6 +257,7 @@ def reading_of(design_name: Optional[str]) -> Dict[str, Any]:
 # every word, as the design was calibrated; the ranking file keeps every word and marks these (`collapse`), and
 # `<run>.collapse.json` keeps the layer's list.
 COLLAPSE_RULE: Dict[str, Dict[str, Any]] = {"break_rel": {"doses": (2.0,), "answers": 2, "per_1024": 10}}
+COLLAPSE_RULE["break_ceil"] = {"doses": (2 * BREAK_CEIL,), "answers": 2, "per_1024": 10}  # the same rule, at its upper dose
 
 # What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
 # pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
@@ -379,7 +403,7 @@ def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
 # the neurons' and one dose is the same share of each neuron's most at every layer. A design whose doses only mean
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
-DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream"}
+DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -1532,7 +1556,7 @@ def neuron_ranges(neurons: Iterable[int]) -> str:
 PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
-DESIGN_PLAN = {"break_rel": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
+DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:

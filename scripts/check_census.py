@@ -1561,6 +1561,53 @@ def run_checks(tmp: Path) -> int:
     section("break_rel: its design, questions and reading; older designs' job lists and plans unchanged; a stand-in run ranked its way, "
             "resumed, torn and sharded; the card; the floor on its questions", before)
 
+    # ------------------------------------------------------------- 14b. break_ceil: break_rel's doses in write ceilings
+    before = len(failures)
+    bc = cz.DESIGNS["break_ceil"]
+    check(len(bc) == 24 and [p_ for p_ in dict.fromkeys(p_ for p_, _ in bc)] == list(q6) and sorted({d_ for _, d_ in bc}) == [-4.6, -2.3, 2.3, 4.6]
+          and cz.DESIGN_HALVES["break_ceil"] == cz.DESIGN_HALVES["break_rel"] and cz.DESIGN_UNITS["break_ceil"] == "ceiling"
+          and cz.reading_of("break_ceil") == {"max_rel": 100.0, "reference": "controls", "exclude": "own"}
+          and cz.run_defaults("break_ceil") == cz.run_defaults("break_rel")
+          and cz.COLLAPSE_RULE["break_ceil"] == {"doses": (4.6,), "answers": 2, "per_1024": 10} and cz.DESIGN_PLAN["break_ceil"] == "12 x batch"
+          and not any(cz.doses_calibrated("break_ceil", l_) for l_ in (20, 38, 45)) and "write ceiling" in cz.DOSES_FROM["break_ceil"],
+          "break_ceil: break_rel's six questions and halves at -4.6, -2.3, +2.3, +4.6 of each neuron's write ceiling; read, taken and "
+          "marked as break_rel is; calibrated nowhere")
+    crun = tmp / "runs" / "L3-break_ceil.jsonl"
+    cz.take_census(rt, 3, list(range(8)), crun, **{**kw, "design_name": "break_ceil"})
+    crows = list(cz.read_rows(crun))
+    cmeta = json.loads(cz.meta_path_of(crun).read_text())
+    cneu = [r_ for r_ in crows if r_["kind"] == "neuron"]
+    cctl = [r_ for r_ in crows if r_["kind"] == "random"]
+    ceil_all = w.write_ceiling(3, list(range(w.d_ff))).tolist()
+    off_push = max(abs(abs(r_["push"]) - abs(r_["dose"]) * r_["ceiling"]) / abs(r_["push"]) for r_ in cneu + cctl)
+    off_rel = max(abs(r_["rel_push"] - abs(r_["push"]) / cmeta["p50"]) for r_ in cneu + cctl)
+    off_own = max(abs(r_["ceiling"] - ceil_all[r_["neuron"]]) for r_ in cneu)
+    off_pair = max(abs(r_["ceiling"] - ceil_all[r_["ref_neuron"]]) for r_ in cctl)
+    c_ctl = int(cmeta["random_controls"])  # (as many controls as this script's runs take here)
+    check(c_ctl >= 2 and len(crows) == (8 + c_ctl) * 24 + 6 and cmeta["dose_unit"] == "ceiling" and cmeta["design_name"] == "break_ceil"
+          and cmeta["doses_from"] == cz.DOSES_FROM["break_ceil"] and list(cmeta["prompts"]) == list(q6)
+          and off_push <= 2e-3 and off_rel <= 2e-3 and off_own <= 1e-4 and off_pair <= 1e-4 and len(cneu) == 8 * 24 and len(cctl) == c_ctl * 24,
+          f"a break_ceil run: each neuron pushed by its dose times its own write ceiling, a control by that of the neuron it is paired "
+          f"with, each answer's push kept as a share of the stream too (off by {off_push:.2g}, {off_rel:.2g}, {off_own:.2g}, {off_pair:.2g}; "
+          f"{cmeta.get('dose_unit')}, {len(crows)} rows)")
+    try:
+        cz.take_census(rt, 3, [0], tmp / "runs" / "bc-stream.jsonl", **{**kw, "design_name": "break_ceil", "dose_unit": "stream"})
+        check(False, "break_ceil in the stream unit is refused")
+    except ValueError as exc:
+        check("multiples of each neuron's write ceiling" in str(exc) and "not the stream unit" in str(exc),
+              f"break_ceil in the stream unit is refused, its doses named as they are ({exc})")
+    cz.write_units(crun)
+    cunits = list(cz.read_rows(cz.units_path_of(crun)))
+    ccol = json.loads(cz.collapse_path_of(crun).read_text()) if cz.collapse_path_of(crun).exists() else {}
+    ccard = atlas_routes.census_card({"path": crun, "meta": cmeta, "null": {}, "units": cunits})
+    check(len(cunits) == 8 + c_ctl and all(u_["reading"] == cz.reading_of("break_ceil") and "mass_shown" in u_ for u_ in cunits)
+          and all(set(u_["dose"]) == {"-4.6", "-2.3", "+2.3", "+4.6"} for u_ in cunits) and ccol.get("doses") == [4.6]
+          and ccard["doses_calibrated"] is False and ccard["dose_unit"] == "ceiling" and ccard["doses_from"] == cz.DOSES_FROM["break_ceil"],
+          f"a break_ceil run is ranked on every answer, each word against the controls, its collapse words read at its upper dose, and "
+          f"its card says its unit and that its doses are calibrated nowhere ({ccol.get('doses')}, {ccard.get('doses_calibrated')}, "
+          f"{sorted(cunits[0]['dose']) if cunits else None}, {ccard.get('dose_unit')})")
+    section("break_ceil: the design, a stand-in run in the ceiling unit, its ranking, marks and card", before)
+
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)
     # where each answer lies (census.RowsIndex): rows numbered as read_rows numbers them, a blank line skipped, a last
