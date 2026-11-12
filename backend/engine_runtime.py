@@ -377,6 +377,31 @@ def _make_w4a16_linear_forward(module: nn.Module) -> Callable[[torch.Tensor], to
     return types.MethodType(_w4a16_forward, module)
 
 
+def text_only_device_map(device: Any) -> Any:
+    """The device map a load is made with: every weight on `device`, but on a CUDA card the vision tower and its
+    embedding load on the CPU. patch_compressed_tensors_for_low_vram drops them right after the load, so they are
+    never read. On the card they took about 1.07 GiB at the load's peak, which is the most a run ever holds (the
+    checkpoint's own lm_head is on the card then too, until it is tied to embed_tokens): on a 24 GB card, the
+    difference between a load with under 256 MiB to spare and one with over a GiB. The text model's weights, and so
+    every answer, are the same."""
+    dev = str(device)
+    if not dev.startswith("cuda"):
+        return dev
+    return {"model.language_model": dev, "lm_head": dev, "model.vision_tower": "cpu", "model.embed_vision": "cpu"}
+
+
+def settle_text_only_device_map(hf_model: nn.Module, device: Any) -> None:
+    """Called after a load by text_only_device_map and before patch_compressed_tensors_for_low_vram (which drops the
+    vision tower, leaving every weight on `device`, as a one-device load leaves it): the hooks accelerate set on each
+    module to move inputs between the map's devices are taken off and the map is recorded as one device's. Before the
+    patch, not after: taking a hook off puts back the forward the module had when it was hooked, which would undo the
+    patch's own."""
+    from accelerate.hooks import remove_hook_from_module
+
+    remove_hook_from_module(hf_model, recurse=True)
+    hf_model.hf_device_map = {"": str(device)}
+
+
 def patch_compressed_tensors_for_low_vram(hf_model: nn.Module) -> int:
     """Prevent `compressed-tensors` from unpacking 4-bit weights to 62GB bf16 at load/first-forward,
     drop unused vision towers on multimodal Gemma-4, and install on-the-fly W4A16 GPU linear kernels.
@@ -781,7 +806,7 @@ class TheodoliteRuntime:
             hf_model, loading_info = Gemma4ForConditionalGeneration.from_pretrained(
                 self.model_id,
                 dtype="auto",
-                device_map=str(self.device),
+                device_map=text_only_device_map(self.device),
                 trust_remote_code=False,
                 output_loading_info=True,
                 local_files_only=True,
@@ -791,13 +816,20 @@ class TheodoliteRuntime:
             hf_model, loading_info = Gemma4ForConditionalGeneration.from_pretrained(
                 self.model_id,
                 dtype="auto",
-                device_map=str(self.device),
+                device_map=text_only_device_map(self.device),
                 trust_remote_code=False,
                 output_loading_info=True,
             )
         setattr(hf_model, "ie_missing_keys", frozenset(loading_info.get("missing_keys", ()) or ()))
 
+        split_map = isinstance(text_only_device_map(self.device), dict)
+        if split_map:
+            settle_text_only_device_map(hf_model, self.device)
         n_patched = patch_compressed_tensors_for_low_vram(hf_model)
+        if split_map:
+            # the cache the load left free, handed back: the unpacker's self-test and the first batch are otherwise
+            # refused on a 24 GB card for want of a block that is free but cut up
+            torch.cuda.empty_cache()
         logger.info("Patched %d W4A16 compressed-tensors linear modules for on-the-fly GPU execution.", n_patched)
 
         self.eager_model = EagerModel(
