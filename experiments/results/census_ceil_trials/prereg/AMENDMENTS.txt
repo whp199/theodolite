@@ -1,0 +1,1 @@
+2026-11-12T20:57:57Z: added, not amended. RULES_L52.md, draw_fresh.py, neurons_L52_fresh.txt and night_L52.sh register a second break_ceil trial, at layer 52, on the owner's word; their hashes are in SHA256SUMS.L52. No file listed in SHA256SUMS is changed, and layer 38's trial was being written when this was added.
