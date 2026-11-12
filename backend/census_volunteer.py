@@ -78,7 +78,8 @@ def read_kit(path: Optional[Path] = None, dry: bool = False) -> Dict[str, Any]:
             kit["KIT_" + k[len("KIT_DRY_"):]] = kit[k]
     out: Dict[str, Any] = dict(kit)
     out["layers"] = [int(x) for x in kit.get("KIT_LAYERS", "").split()]
-    for k in ("KIT", "KIT_CONTROLS", "KIT_SEED", "KIT_BATCH", "KIT_MAX_NEW", "KIT_MIN_VRAM_MIB", "KIT_MIN_DISK_GB"):
+    for k in ("KIT", "KIT_CONTROLS", "KIT_SEED", "KIT_BATCH", "KIT_MAX_NEW", "KIT_MIN_VRAM_MIB", "KIT_MIN_FREE_VRAM_MIB",
+              "KIT_MIN_DISK_GB"):
         if k in kit:
             out[k] = int(kit[k])
     out["dry"] = dry
