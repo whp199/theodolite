@@ -1,0 +1,1598 @@
+{
+ "cut": 48,
+ "runs": {
+  "L20-calib_ceil.jsonl": {
+   "layer": 20,
+   "design": "calib_ceil",
+   "p50": 342.3707275390625,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.0467,
+     "ceilings": 0.5,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.0934,
+     "ceilings": 1.0,
+     "d4_loss": 0.0007
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.1867,
+     "ceilings": 2.0,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 0.3734,
+     "ceilings": 4.0,
+     "d4_loss": 0.1418
+    },
+    {
+     "kind": "neuron",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 0.7469,
+     "ceilings": 8.0,
+     "d4_loss": 0.7967
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.0463,
+     "ceilings": 0.5,
+     "d4_loss": 0.0003
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.0926,
+     "ceilings": 1.0,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.1853,
+     "ceilings": 2.0,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 0.3705,
+     "ceilings": 4.0,
+     "d4_loss": 0.1515
+    },
+    {
+     "kind": "random",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 0.741,
+     "ceilings": 8.0,
+     "d4_loss": 0.8203
+    }
+   ]
+  },
+  "L20-calib_rel.jsonl": {
+   "layer": 20,
+   "design": "calib_rel",
+   "p50": 342.3707275390625,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 1.071,
+     "d4_loss": 0.0007
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 2.678,
+     "d4_loss": 0.0006
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 5.356,
+     "d4_loss": 0.4922
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 10.711,
+     "d4_loss": 0.8329
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 21.422,
+     "d4_loss": 0.8427
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 42.844,
+     "d4_loss": 0.711
+    },
+    {
+     "kind": "random",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 1.08,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 2.699,
+     "d4_loss": 0.0005
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 5.398,
+     "d4_loss": 0.5716
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 10.796,
+     "d4_loss": 0.8376
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 21.591,
+     "d4_loss": 0.8381
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 43.183,
+     "d4_loss": 0.6903
+    }
+   ]
+  },
+  "L30-calib_ceil.jsonl": {
+   "layer": 30,
+   "design": "calib_ceil",
+   "p50": 247.4567108154297,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.1042,
+     "ceilings": 0.5,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.2085,
+     "ceilings": 1.0,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.4169,
+     "ceilings": 2.0,
+     "d4_loss": 0.001
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 0.8339,
+     "ceilings": 4.0,
+     "d4_loss": 0.0489
+    },
+    {
+     "kind": "neuron",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 1.6678,
+     "ceilings": 8.0,
+     "d4_loss": 0.4178
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.104,
+     "ceilings": 0.5,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.208,
+     "ceilings": 1.0,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.416,
+     "ceilings": 2.0,
+     "d4_loss": 0.0006
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 0.8321,
+     "ceilings": 4.0,
+     "d4_loss": 0.0287
+    },
+    {
+     "kind": "random",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 1.6642,
+     "ceilings": 8.0,
+     "d4_loss": 0.5283
+    }
+   ]
+  },
+  "L30-calib_rel.jsonl": {
+   "layer": 30,
+   "design": "calib_rel",
+   "p50": 247.4567108154297,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.48,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 1.199,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 2.398,
+     "d4_loss": 0.0045
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 4.797,
+     "d4_loss": 0.1071
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 9.594,
+     "d4_loss": 0.573
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 19.187,
+     "d4_loss": 0.7436
+    },
+    {
+     "kind": "random",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.481,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 1.202,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 2.404,
+     "d4_loss": 0.0015
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 4.807,
+     "d4_loss": 0.0781
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 9.614,
+     "d4_loss": 0.6428
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 19.228,
+     "d4_loss": 0.7262
+    }
+   ]
+  },
+  "L40-calib_ceil.jsonl": {
+   "layer": 40,
+   "design": "calib_ceil",
+   "p50": 160.59725952148438,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.2829,
+     "ceilings": 0.5,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.5659,
+     "ceilings": 1.0,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 1.1318,
+     "ceilings": 2.0,
+     "d4_loss": 0.0611
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 2.2635,
+     "ceilings": 4.0,
+     "d4_loss": 0.6116
+    },
+    {
+     "kind": "neuron",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 4.5271,
+     "ceilings": 8.0,
+     "d4_loss": 0.8326
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.2819,
+     "ceilings": 0.5,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.5638,
+     "ceilings": 1.0,
+     "d4_loss": 0.0006
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 1.1275,
+     "ceilings": 2.0,
+     "d4_loss": 0.0203
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 2.2551,
+     "ceilings": 4.0,
+     "d4_loss": 0.6765
+    },
+    {
+     "kind": "random",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 4.5101,
+     "ceilings": 8.0,
+     "d4_loss": 0.8728
+    }
+   ]
+  },
+  "L40-calib_rel.jsonl": {
+   "layer": 40,
+   "design": "calib_rel",
+   "p50": 160.59725952148438,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.177,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.442,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 0.884,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 1.767,
+     "d4_loss": 0.0421
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 3.534,
+     "d4_loss": 0.5688
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 7.069,
+     "d4_loss": 0.8149
+    },
+    {
+     "kind": "random",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.177,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "random",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.443,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 0.887,
+     "d4_loss": 0.0007
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 1.774,
+     "d4_loss": 0.0042
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 3.548,
+     "d4_loss": 0.6273
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 7.095,
+     "d4_loss": 0.8424
+    }
+   ]
+  },
+  "L45-calib_ceil.jsonl": {
+   "layer": 45,
+   "design": "calib_ceil",
+   "p50": 144.42271423339844,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.1969,
+     "ceilings": 0.5,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.3939,
+     "ceilings": 1.0,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.7878,
+     "ceilings": 2.0,
+     "d4_loss": 0.0152
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 1.5756,
+     "ceilings": 4.0,
+     "d4_loss": 0.7109
+    },
+    {
+     "kind": "neuron",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 3.1511,
+     "ceilings": 8.0,
+     "d4_loss": 0.869
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.1973,
+     "ceilings": 0.5,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.3945,
+     "ceilings": 1.0,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.7891,
+     "ceilings": 2.0,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 1.5781,
+     "ceilings": 4.0,
+     "d4_loss": 0.6902
+    },
+    {
+     "kind": "random",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 3.1562,
+     "ceilings": 8.0,
+     "d4_loss": 0.8755
+    }
+   ]
+  },
+  "L45-calib_rel.jsonl": {
+   "layer": 45,
+   "design": "calib_rel",
+   "p50": 144.42271423339844,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.254,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.635,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 1.269,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 2.539,
+     "d4_loss": 0.0592
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 5.078,
+     "d4_loss": 0.8062
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 10.155,
+     "d4_loss": 0.8688
+    },
+    {
+     "kind": "random",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.253,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.634,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 1.267,
+     "d4_loss": 0.0003
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 2.535,
+     "d4_loss": 0.0067
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 5.069,
+     "d4_loss": 0.7956
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 10.139,
+     "d4_loss": 0.8832
+    }
+   ]
+  },
+  "L50-calib_ceil.jsonl": {
+   "layer": 50,
+   "design": "calib_ceil",
+   "p50": 120.03677368164062,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.2152,
+     "ceilings": 0.5,
+     "d4_loss": 0.0004
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.4304,
+     "ceilings": 1.0,
+     "d4_loss": 0.0003
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.8608,
+     "ceilings": 2.0,
+     "d4_loss": 0.0235
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 1.7216,
+     "ceilings": 4.0,
+     "d4_loss": 0.7931
+    },
+    {
+     "kind": "neuron",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 3.4431,
+     "ceilings": 8.0,
+     "d4_loss": 0.8777
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.2151,
+     "ceilings": 0.5,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.4301,
+     "ceilings": 1.0,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 0.8603,
+     "ceilings": 2.0,
+     "d4_loss": 0.0012
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 1.7205,
+     "ceilings": 4.0,
+     "d4_loss": 0.805
+    },
+    {
+     "kind": "random",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 3.441,
+     "ceilings": 8.0,
+     "d4_loss": 0.8797
+    }
+   ]
+  },
+  "L50-calib_rel.jsonl": {
+   "layer": 50,
+   "design": "calib_rel",
+   "p50": 120.03677368164062,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.232,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.581,
+     "d4_loss": 0.0005
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 1.162,
+     "d4_loss": 0.0003
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 2.323,
+     "d4_loss": 0.0891
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 4.647,
+     "d4_loss": 0.8106
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 9.294,
+     "d4_loss": 0.8807
+    },
+    {
+     "kind": "random",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.232,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.581,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 1.162,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 2.325,
+     "d4_loss": 0.0509
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 4.65,
+     "d4_loss": 0.8466
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 9.299,
+     "d4_loss": 0.8792
+    }
+   ]
+  },
+  "L57-calib_ceil.jsonl": {
+   "layer": 57,
+   "design": "calib_ceil",
+   "p50": 85.09976196289062,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.4146,
+     "ceilings": 0.5,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.8292,
+     "ceilings": 1.0,
+     "d4_loss": 0.0332
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 1.6585,
+     "ceilings": 2.0,
+     "d4_loss": 0.5827
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 3.3169,
+     "ceilings": 4.0,
+     "d4_loss": 0.9064
+    },
+    {
+     "kind": "neuron",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 6.6338,
+     "ceilings": 8.0,
+     "d4_loss": 0.9672
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.4142,
+     "ceilings": 0.5,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 0.8283,
+     "ceilings": 1.0,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 1.6566,
+     "ceilings": 2.0,
+     "d4_loss": 0.7389
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 3.3133,
+     "ceilings": 4.0,
+     "d4_loss": 0.8875
+    },
+    {
+     "kind": "random",
+     "dose": 8.0,
+     "n": 384,
+     "rel": 6.6265,
+     "ceilings": 8.0,
+     "d4_loss": 0.9498
+    }
+   ]
+  },
+  "L57-calib_rel.jsonl": {
+   "layer": 57,
+   "design": "calib_rel",
+   "p50": 85.09976196289062,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.121,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.301,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "neuron",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 0.603,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 1.206,
+     "d4_loss": 0.0817
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 2.412,
+     "d4_loss": 0.843
+    },
+    {
+     "kind": "neuron",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 4.824,
+     "d4_loss": 0.9337
+    },
+    {
+     "kind": "random",
+     "dose": 0.1,
+     "n": 384,
+     "rel": 0.1,
+     "ceilings": 0.121,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "random",
+     "dose": 0.25,
+     "n": 384,
+     "rel": 0.25,
+     "ceilings": 0.302,
+     "d4_loss": 0.0
+    },
+    {
+     "kind": "random",
+     "dose": 0.5,
+     "n": 384,
+     "rel": 0.5,
+     "ceilings": 0.604,
+     "d4_loss": 0.0002
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 384,
+     "rel": 1.0,
+     "ceilings": 1.207,
+     "d4_loss": 0.0017
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 384,
+     "rel": 2.0,
+     "ceilings": 2.415,
+     "d4_loss": 0.8344
+    },
+    {
+     "kind": "random",
+     "dose": 4.0,
+     "n": 384,
+     "rel": 4.0,
+     "ceilings": 4.829,
+     "d4_loss": 0.91
+    }
+   ]
+  },
+  "L45-break_rel-trial.jsonl": {
+   "layer": 45,
+   "design": "break_rel",
+   "p50": 144.42271423339844,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 13032,
+     "rel": 1.0,
+     "ceilings": 2.542,
+     "d4_loss": 0.0381
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 13032,
+     "rel": 2.0,
+     "ceilings": 5.084,
+     "d4_loss": 0.7902
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 12288,
+     "rel": 1.0,
+     "ceilings": 2.54,
+     "d4_loss": 0.0039
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 12288,
+     "rel": 2.0,
+     "ceilings": 5.081,
+     "d4_loss": 0.7924
+    }
+   ]
+  },
+  "L57-break_rel-probe.jsonl": {
+   "layer": 57,
+   "design": "break_rel",
+   "p50": 85.09976196289062,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 6084,
+     "rel": 1.0,
+     "ceilings": 1.207,
+     "d4_loss": 0.0525
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 6084,
+     "rel": 2.0,
+     "ceilings": 2.414,
+     "d4_loss": 0.8284
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 6144,
+     "rel": 1.0,
+     "ceilings": 1.207,
+     "d4_loss": 0.0029
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 6144,
+     "rel": 2.0,
+     "ceilings": 2.414,
+     "d4_loss": 0.816
+    }
+   ]
+  },
+  "L38-break_rel-trial.jsonl": {
+   "layer": 38,
+   "design": "break_rel",
+   "p50": 212.71026611328125,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 12264,
+     "rel": 1.0,
+     "ceilings": 3.149,
+     "d4_loss": 0.1474
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 12264,
+     "rel": 2.0,
+     "ceilings": 6.298,
+     "d4_loss": 0.5996
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 12288,
+     "rel": 1.0,
+     "ceilings": 3.149,
+     "d4_loss": 0.0984
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 12288,
+     "rel": 2.0,
+     "ceilings": 6.298,
+     "d4_loss": 0.6079
+    }
+   ]
+  },
+  "L39-break_rel-trial.jsonl": {
+   "layer": 39,
+   "design": "break_rel",
+   "p50": 173.57530212402344,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 12264,
+     "rel": 1.0,
+     "ceilings": 2.139,
+     "d4_loss": 0.0378
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 12264,
+     "rel": 2.0,
+     "ceilings": 4.279,
+     "d4_loss": 0.5439
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 12288,
+     "rel": 1.0,
+     "ceilings": 2.141,
+     "d4_loss": 0.0074
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 12288,
+     "rel": 2.0,
+     "ceilings": 4.281,
+     "d4_loss": 0.5658
+    }
+   ]
+  },
+  "L51-break_rel-trial.jsonl": {
+   "layer": 51,
+   "design": "break_rel",
+   "p50": 97.26368713378906,
+   "table": [
+    {
+     "kind": "neuron",
+     "dose": 1.0,
+     "n": 12264,
+     "rel": 1.0,
+     "ceilings": 1.761,
+     "d4_loss": 0.01
+    },
+    {
+     "kind": "neuron",
+     "dose": 2.0,
+     "n": 12264,
+     "rel": 2.0,
+     "ceilings": 3.523,
+     "d4_loss": 0.7789
+    },
+    {
+     "kind": "random",
+     "dose": 1.0,
+     "n": 12288,
+     "rel": 1.0,
+     "ceilings": 1.76,
+     "d4_loss": 0.0001
+    },
+    {
+     "kind": "random",
+     "dose": 2.0,
+     "n": 12288,
+     "rel": 2.0,
+     "ceilings": 3.52,
+     "d4_loss": 0.7971
+    }
+   ]
+  }
+ },
+ "layers": {
+  "20": {
+   "L20-calib_ceil.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.2269,
+     "rel_at_loss_10": 0.3044,
+     "ceilings_at_loss_04": 2.4311,
+     "ceilings_at_loss_10": 3.2603
+    },
+    "random": {
+     "rel_at_loss_04": 0.2223,
+     "rel_at_loss_10": 0.2927,
+     "ceilings_at_loss_04": 2.4,
+     "ceilings_at_loss_10": 3.1593
+    }
+   },
+   "L20-calib_rel.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.2643,
+     "rel_at_loss_10": 0.2876,
+     "ceilings_at_loss_04": 2.831,
+     "ceilings_at_loss_10": 3.0809
+    },
+    "random": {
+     "rel_at_loss_04": 0.2623,
+     "rel_at_loss_10": 0.2821,
+     "ceilings_at_loss_04": 2.8315,
+     "ceilings_at_loss_10": 3.0454
+    }
+   }
+  },
+  "30": {
+   "L30-calib_ceil.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.7331,
+     "rel_at_loss_10": 0.9179,
+     "ceilings_at_loss_04": 3.5166,
+     "ceilings_at_loss_10": 4.4031
+    },
+    "random": {
+     "rel_at_loss_04": 0.8452,
+     "rel_at_loss_10": 0.9186,
+     "ceilings_at_loss_04": 4.0632,
+     "ceilings_at_loss_10": 4.4159
+    }
+   },
+   "L30-calib_rel.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.6355,
+     "rel_at_loss_10": 0.9532,
+     "ceilings_at_loss_04": 3.0482,
+     "ceilings_at_loss_10": 4.5723
+    },
+    "random": {
+     "rel_at_loss_04": 0.7084,
+     "rel_at_loss_10": 1.0272,
+     "ceilings_at_loss_04": 3.4056,
+     "ceilings_at_loss_10": 4.938
+    }
+   }
+  },
+  "40": {
+   "L40-calib_ceil.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.8902,
+     "rel_at_loss_10": 1.1886,
+     "ceilings_at_loss_04": 1.573,
+     "ceilings_at_loss_10": 2.1004
+    },
+    "random": {
+     "rel_at_loss_04": 1.1512,
+     "rel_at_loss_10": 1.2265,
+     "ceilings_at_loss_04": 2.0421,
+     "ceilings_at_loss_10": 2.1757
+    }
+   },
+   "L40-calib_rel.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.9659,
+     "rel_at_loss_10": 1.0792,
+     "ceilings_at_loss_04": 1.7069,
+     "ceilings_at_loss_10": 1.9069
+    },
+    "random": {
+     "rel_at_loss_04": 1.0406,
+     "rel_at_loss_10": 1.1125,
+     "ceilings_at_loss_04": 1.8461,
+     "ceilings_at_loss_10": 1.9735
+    }
+   }
+  },
+  "45": {
+   "L45-calib_ceil.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.8075,
+     "rel_at_loss_10": 0.8573,
+     "ceilings_at_loss_04": 2.05,
+     "ceilings_at_loss_10": 2.1763
+    },
+    "random": {
+     "rel_at_loss_04": 0.8214,
+     "rel_at_loss_10": 0.8724,
+     "ceilings_at_loss_04": 2.0818,
+     "ceilings_at_loss_10": 2.2111
+    }
+   },
+   "L45-calib_rel.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.7984,
+     "rel_at_loss_10": 1.0386,
+     "ceilings_at_loss_04": 2.0268,
+     "ceilings_at_loss_10": 2.637
+    },
+    "random": {
+     "rel_at_loss_04": 1.0297,
+     "rel_at_loss_10": 1.0854,
+     "ceilings_at_loss_04": 2.6102,
+     "ceilings_at_loss_10": 2.7515
+    }
+   },
+   "L45-break_rel-trial.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 1.0018,
+     "rel_at_loss_10": 1.0587,
+     "ceilings_at_loss_04": 2.5465,
+     "ceilings_at_loss_10": 2.6912
+    },
+    "random": {
+     "rel_at_loss_04": 1.0322,
+     "rel_at_loss_10": 1.0881,
+     "ceilings_at_loss_04": 2.6219,
+     "ceilings_at_loss_10": 2.764
+    }
+   }
+  },
+  "50": {
+   "L50-calib_ceil.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.8737,
+     "rel_at_loss_10": 0.9222,
+     "ceilings_at_loss_04": 2.0299,
+     "ceilings_at_loss_10": 2.1427
+    },
+    "random": {
+     "rel_at_loss_04": 0.8896,
+     "rel_at_loss_10": 0.9368,
+     "ceilings_at_loss_04": 2.068,
+     "ceilings_at_loss_10": 2.1779
+    }
+   },
+   "L50-calib_rel.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.6816,
+     "rel_at_loss_10": 1.0105,
+     "ceilings_at_loss_04": 1.5838,
+     "ceilings_at_loss_10": 2.3475
+    },
+    "random": {
+     "rel_at_loss_04": 0.8618,
+     "rel_at_loss_10": 1.0437,
+     "ceilings_at_loss_04": 2.0035,
+     "ceilings_at_loss_10": 2.4266
+    }
+   }
+  },
+  "57": {
+   "L57-calib_ceil.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.8363,
+     "rel_at_loss_10": 0.9021,
+     "ceilings_at_loss_04": 1.0086,
+     "ceilings_at_loss_10": 1.0879
+    },
+    "random": {
+     "rel_at_loss_04": 0.8598,
+     "rel_at_loss_10": 0.9096,
+     "ceilings_at_loss_04": 1.0381,
+     "ceilings_at_loss_10": 1.0982
+    }
+   },
+   "L57-calib_rel.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 0.7014,
+     "rel_at_loss_10": 1.0168,
+     "ceilings_at_loss_04": 0.8459,
+     "ceilings_at_loss_10": 1.2263
+    },
+    "random": {
+     "rel_at_loss_04": 1.0324,
+     "rel_at_loss_10": 1.0853,
+     "ceilings_at_loss_04": 1.2461,
+     "ceilings_at_loss_10": 1.31
+    }
+   },
+   "L57-break_rel-probe.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": null,
+     "rel_at_loss_10": 1.0433,
+     "ceilings_at_loss_04": null,
+     "ceilings_at_loss_10": 1.2593
+    },
+    "random": {
+     "rel_at_loss_04": 1.0321,
+     "rel_at_loss_10": 1.0863,
+     "ceilings_at_loss_04": 1.2458,
+     "ceilings_at_loss_10": 1.3112
+    }
+   }
+  },
+  "38": {
+   "L38-break_rel-trial.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": null,
+     "rel_at_loss_10": null,
+     "ceilings_at_loss_04": null,
+     "ceilings_at_loss_10": null
+    },
+    "random": {
+     "rel_at_loss_04": null,
+     "rel_at_loss_10": 1.0022,
+     "ceilings_at_loss_04": null,
+     "ceilings_at_loss_10": 3.1559
+    }
+   }
+  },
+  "39": {
+   "L39-break_rel-trial.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 1.003,
+     "rel_at_loss_10": 1.0889,
+     "ceilings_at_loss_04": 2.1455,
+     "ceilings_at_loss_10": 2.3293
+    },
+    "random": {
+     "rel_at_loss_04": 1.0413,
+     "rel_at_loss_10": 1.1218,
+     "ceilings_at_loss_04": 2.2294,
+     "ceilings_at_loss_10": 2.4017
+    }
+   }
+  },
+  "51": {
+   "L51-break_rel-trial.jsonl": {
+    "neuron": {
+     "rel_at_loss_04": 1.0274,
+     "rel_at_loss_10": 1.0845,
+     "ceilings_at_loss_04": 1.8093,
+     "ceilings_at_loss_10": 1.9099
+    },
+    "random": {
+     "rel_at_loss_04": 1.0353,
+     "rel_at_loss_10": 1.0908,
+     "ceilings_at_loss_04": 1.8221,
+     "ceilings_at_loss_10": 1.9198
+    }
+   }
+  }
+ }
+}

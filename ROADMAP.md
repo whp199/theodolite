@@ -676,7 +676,21 @@ layers, the determinism run and the sampled push on 29 October). In this section
        both ladders at the layers that have none (64 + 64 units, about 20 minutes a layer), then its own trial, its
        gates fixed first, at some of 5, 10, 15, 20, 25, 30, 35 and 54, 57, 59. Not built. It would be a new design and,
        since it changes what writes answers, a new kit. Whether to build it is the owner’s choice, best made once step
-       2 shows where the band stops.
+       2 shows where the band stops. **Designed, 12 November 2026, once layer 38 had failed**
+       ([`census_scaled_design/`](experiments/results/census_scaled_design/), `DESIGN.md`; nothing of it run). Not
+       the half-break rule above: what separates the layers that pass from the two that fail is the push counted in
+       write ceilings. Read from the checkpoint for all sixty layers (`ceilings.py`), 1 of the stream is 1.76 to
+       2.76 ceilings at every layer from 39 to 51, 3.14 at layer 38, 1.21 at layer 57, and it climbs below 38: 3.9 at
+       35–37, 4.2 to 5.0 at 26–34, 5 to 19 at 2–25. So the design, `break_ceil`, is `break_rel` with its two doses
+       counted in ceilings: ±2.3 and ±4.6 of each neuron’s own write ceiling (2.3 the middle of the passing band),
+       the questions, lengths, controls, reading and gates unchanged. That is 0.73 and 1.46 of the stream at layer
+       38, 0.48 and 0.96 at 30, 0.21 and 0.43 at 20; at 20 and 30 the ladders show the lower dose leaving text whole
+       and the upper at or past the break’s edge. It may not mend layer 38: its fall from 0.694 to 0.497 in one layer
+       is a cliff where 39–51 show no slope, and it lies one layer from where the lens’s labels stop being trusted,
+       so the trouble may be depth and not dose (a neuron that does not yet write towards words gives a census
+       nothing to read). One trial decides: layer 38 again with `break_ceil`, the same 1,022 neurons, 75 minutes.
+       A prediction was committed before layer 52’s trial was read (`PREDICTION.md`, `c9c5a82`): at 1.06 ceilings,
+       the least of any layer, it fails as 57 did.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
