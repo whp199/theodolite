@@ -350,7 +350,8 @@ def main(argv=None) -> int:
             rd = cz.run_reading(out)
             against = "the controls' mean" if rd["reference"] == "controls" else "every unit's mean"
             left_out = "each answer's own question's" if rd["exclude"] == "own" else "every question's"
-            print(f"-> {units} (ranked as {a.design} is read: pushes of at most {rd['max_rel']:g} of the stream, each word "
+            counted = "every push counted" if rd["max_rel"] >= 50 else f"pushes of at most {rd['max_rel']:g} of the stream"
+            print(f"-> {units} (ranked as {a.design} is read: {counted}, each word "
                   f"against {against}, {left_out} unpushed words left out)")
         if res["stopped"]:
             left = layers[layers.index(layer) + 1 :]

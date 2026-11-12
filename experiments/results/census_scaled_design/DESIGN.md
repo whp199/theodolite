@@ -142,3 +142,44 @@ stops), and a whole layer each for those that pass (13 hours a layer, the volunt
    pushes by each neuron's own; `break_rel` pushed every neuron of a layer alike.
 3. When the layer-38 trial runs: before the steer lens's build (it is short, and it decides whether layers 0 to 38
    have a census at all), or after.
+
+## What the trial at layer 38 said (12 November 2026, 22:01Z)
+
+Read by the registered reader ([`../census_ceil_trials/`](../census_ceil_trials/), `L38_verdict.txt`, `summary.json`).
+
+| | lead | beyond text | words carry over | | new questions |
+|---|---|---|---|---|---|
+| bars | 0.60 | 0.58 | 0.57 | 0.57 | 0.56 |
+| the whole reading | **0.599** | 0.635 | 0.595 | 0.585 | 0.616 |
+| the lower dose alone (±2.3) | 0.682 | 0.727 | 0.652 | 0.636 | 0.649 |
+| the neurons the controls cover (946 of 1,022) | 0.608 | 0.622 | 0.597 | 0.589 | 0.630 |
+| `break_rel` at this layer, whole, the same neurons | 0.497 | 0.644 | 0.559 | 0.555 | 0.494 |
+
+**It fails**, on the whole reading's lead alone, by 0.001. Drawing the neurons and controls again puts that lead
+between 0.573 and 0.623: it sits on the bar. The rule was fixed beforehand, and it counts this a fail.
+
+**The dose was the trouble, not the depth.** At 2.3 ceilings layer 38 reads as layer 39 does at its own lower dose
+(2.14 ceilings: 0.690, 0.728, 0.673 and 0.680, 0.652). The second outcome above, a lead still near chance, did not
+happen.
+
+**The upper dose is what fails here.** Each pair of doses read alone (`by_dose.py`; looked at after the verdict, so
+it gates nothing and is no second reading of it):
+
+| layer | design | dose | in ceilings | lead |
+|---|---|---|---|---|
+| 39 | `break_rel` | ±1 | 2.14 | 0.690 |
+| 38 | `break_ceil` | ±2.3 | 2.30 | 0.682 |
+| 38 | `break_rel` | ±1 | 3.14 | 0.496 |
+| 39 | `break_rel` | ±2 | 4.28 | 0.595 |
+| 38 | `break_ceil` | ±4.6 | 4.60 | 0.506 |
+| 38 | `break_rel` | ±2 | 6.29 | 0.506 |
+
+At layer 38 the lead is gone by 3.1 ceilings; at 39 it has thinned by 4.3. So counting the push in ceilings does
+not make one upper dose serve every layer: the room between a push that shows a neuron's words and one that drowns
+them narrows going down, and 4.6 is outside it at 38. Half of this design's answers there carry nothing.
+
+**What it leaves to choose.** By the registration no whole layer is taken at 38 or below with ±2.3 and ±4.6. The
+plain next design keeps the dose that reads and brings the other inside it (both at or under about 2.3 ceilings);
+it would be chosen on these answers, so its trial must ask neurons this one did not. Whether to build and trial it
+is the owner's choice.
+

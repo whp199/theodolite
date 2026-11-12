@@ -691,6 +691,26 @@ layers, the determinism run and the sampled push on 29 October). In this section
        nothing to read). One trial decides: layer 38 again with `break_ceil`, the same 1,022 neurons, 75 minutes.
        A prediction was committed before layer 52’s trial was read (`PREDICTION.md`, `c9c5a82`): at 1.06 ceilings,
        the least of any layer, it fails as 57 did.
+       **Trialled at layer 38 that evening** ([`census_ceil_trials/`](experiments/results/census_ceil_trials/),
+       registered in `e853e5c`; `summary.json`). **It fails, on one figure of one gate:** the whole reading’s lead
+       is 0.599 against a bar of 0.60. Drawing the neurons and controls again puts it between 0.573 and 0.623, so it
+       sits on the bar; the rule fixed beforehand counts that a fail, and it is one. Everything else passes. The
+       lower dose alone reads 0.682, 0.727, 0.652 and 0.636, 0.649, which is layer 39’s lower dose over again (0.690,
+       0.728, 0.673 and 0.680, 0.652, at 2.14 ceilings); the neurons the controls cover (946 of 1,022) read 0.608,
+       0.622, 0.597 and 0.589, 0.630. Under `break_rel` the same neurons led by 0.497. **So the dose was the trouble,
+       not the depth:** at 2.3 ceilings a layer-38 neuron is told from a random direction as well as a layer-39 one.
+       What holds the whole reading down is the upper dose. Read alone (`by_dose.py`; looked at after the verdict,
+       gating nothing), the ±4.6 answers lead by 0.506, which is chance, where layer 39’s upper dose (4.28 ceilings)
+       still leads by 0.595; and `break_rel`’s lower dose at 38, 3.14 ceilings, was already at chance (0.496). At
+       layer 38 the lead is gone somewhere between 2.3 and 3.1 ceilings; at 39 it thins by 4.3, and at 45 the whole
+       reading holds with an upper dose of 5.1. Half of this design’s answers at layer 38 therefore carry nothing.
+       By the registration this is its third case: the lead has risen clear of chance and falls short of the bars,
+       no whole layer is taken at 38 or below with ±2.3 and ±4.6, and what to try next is the owner’s choice. The
+       plain candidate is the same design with both doses at or under about 2.3 ceilings, registered anew and
+       trialled on neurons this trial did not ask, since the choice would be made on these answers. (Reported as
+       registered: a neuron’s mass under the two designs goes together, Spearman’s rho 0.54 over the 1,022.)
+       **Layer 52 with the same doses** was registered beside it in `a09f1bf` (1,022 neurons its first trial did
+       not ask, fresh controls) and started at 22:01Z.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -749,7 +769,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
       it is read, one that fails is marked not taken, and the band stops there on that side. It stopped at once on
       both sides, at 38 and at 52: under `break_rel` the census is layers 39–51, thirteen of the sixty. What takes it
       further is a dose counted in ceilings (`break_ceil`, step 3 above): its first trial, layer 38 again, was
-      registered in `e853e5c` and started at 20:33Z that evening.
+      registered in `e853e5c` and read at 22:01Z that evening. It fails by a hair on the whole reading (0.599
+      against 0.60) and passes on its lower dose alone (0.682): the gentler push gives layer 38 a lead, and the
+      design’s upper dose takes half of it back (step 3).
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only

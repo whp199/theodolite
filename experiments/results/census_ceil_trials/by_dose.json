@@ -1,0 +1,127 @@
+{
+ "what": "report only; gates nothing (by_dose.py)",
+ "gates": "layer 45's: 0.60, 0.58, 0.57 and 0.57, 0.56",
+ "each_dose_pair_alone": [
+  {
+   "trial": "L38 break_ceil",
+   "layer": 38,
+   "dose": 2.3,
+   "unit": "ceiling",
+   "ceilings": 2.3,
+   "lead": 0.6821,
+   "beyond_text": 0.7272,
+   "rep_AB": 0.6517,
+   "rep_BA": 0.6358,
+   "new_questions": 0.6493,
+   "text_lost": {
+    "-2.3 neuron": -0.04,
+    "-2.3 random": -0.005,
+    "+2.3 neuron": -0.035,
+    "+2.3 random": -0.004
+   }
+  },
+  {
+   "trial": "L38 break_ceil",
+   "layer": 38,
+   "dose": 4.6,
+   "unit": "ceiling",
+   "ceilings": 4.6,
+   "lead": 0.5056,
+   "beyond_text": 0.4655,
+   "rep_AB": 0.5415,
+   "rep_BA": 0.5245,
+   "new_questions": 0.528,
+   "text_lost": {
+    "-4.6 neuron": -0.532,
+    "-4.6 random": -0.523,
+    "+4.6 neuron": -0.534,
+    "+4.6 random": -0.521
+   }
+  },
+  {
+   "trial": "L38 break_rel",
+   "layer": 38,
+   "dose": 1.0,
+   "unit": "stream",
+   "ceilings": 3.14,
+   "lead": 0.4963,
+   "beyond_text": 0.6459,
+   "rep_AB": 0.5754,
+   "rep_BA": 0.5751,
+   "new_questions": 0.5067,
+   "text_lost": {
+    "-1 neuron": -0.15,
+    "-1 random": -0.099,
+    "+1 neuron": -0.145,
+    "+1 random": -0.097
+   }
+  },
+  {
+   "trial": "L38 break_rel",
+   "layer": 38,
+   "dose": 2.0,
+   "unit": "stream",
+   "ceilings": 6.29,
+   "lead": 0.5064,
+   "beyond_text": 0.4466,
+   "rep_AB": 0.5008,
+   "rep_BA": 0.497,
+   "new_questions": 0.5036,
+   "text_lost": {
+    "-2 neuron": -0.606,
+    "-2 random": -0.602,
+    "+2 neuron": -0.593,
+    "+2 random": -0.613
+   }
+  },
+  {
+   "trial": "L39 break_rel",
+   "layer": 39,
+   "dose": 1.0,
+   "unit": "stream",
+   "ceilings": 2.14,
+   "lead": 0.6903,
+   "beyond_text": 0.7282,
+   "rep_AB": 0.673,
+   "rep_BA": 0.6799,
+   "new_questions": 0.6524,
+   "text_lost": {
+    "-1 neuron": -0.038,
+    "-1 random": -0.008,
+    "+1 neuron": -0.037,
+    "+1 random": -0.007
+   }
+  },
+  {
+   "trial": "L39 break_rel",
+   "layer": 39,
+   "dose": 2.0,
+   "unit": "stream",
+   "ceilings": 4.28,
+   "lead": 0.5952,
+   "beyond_text": 0.4833,
+   "rep_AB": 0.5915,
+   "rep_BA": 0.58,
+   "new_questions": 0.5988,
+   "text_lost": {
+    "-2 neuron": -0.551,
+    "-2 random": -0.556,
+    "+2 neuron": -0.537,
+    "+2 random": -0.576
+   }
+  }
+ ],
+ "between_designs_L38": {
+  "neurons": 1022,
+  "spearman_rho": 0.5409,
+  "p": 1.0173443927706128e-78
+ },
+ "whole_lead_L38_break_ceil": {
+  "lead": 0.5988,
+  "bar": 0.6,
+  "bootstrap_draws": 4000,
+  "p2_5": 0.5734,
+  "p97_5": 0.6225,
+  "share_of_draws_at_or_over_the_bar": 0.46
+ }
+}

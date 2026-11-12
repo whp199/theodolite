@@ -1606,6 +1606,10 @@ def run_checks(tmp: Path) -> int:
           f"a break_ceil run is ranked on every answer, each word against the controls, its collapse words read at its upper dose, and "
           f"its card says its unit and that its doses are calibrated nowhere ({ccol.get('doses')}, {ccard.get('doses_calibrated')}, "
           f"{sorted(cunits[0]['dose']) if cunits else None}, {ccard.get('dose_unit')})")
+    check("x the write ceiling of the neuron each is paired with" in ccol.get("rule", "") and "of the stream" not in ccol.get("rule", "")
+          and "±2 of the stream" in col["rule"] and "ceiling" not in col["rule"],
+          f"the collapse rule names its doses in the run's own unit: ceilings for break_ceil, the stream for break_rel "
+          f"({ccol.get('rule', '')[:110]} / {col['rule'][:110]})")
     section("break_ceil: the design, a stand-in run in the ceiling unit, its ranking, marks and card", before)
 
     # ------------------------------------------------------------------------ a run read without reading it whole

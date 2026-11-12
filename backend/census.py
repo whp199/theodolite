@@ -331,8 +331,10 @@ def collapse_words(rows: Iterable[Dict[str, Any]], design_name: Optional[str]) -
     held = sorted(rows.vocab[w] for w, h in holders.items() if h >= need)
     joined = joined_of(set(held), rows.vocab) if held else []
     size = "/".join(f"{d:g}" for d in sorted(doses))
+    by = (f"±{size} x the write ceiling of the neuron each is paired with" if DESIGN_UNITS.get(design_name or "") == "ceiling"
+          else f"±{size} of the stream")
     return {"rule": (f"a word at least {need} of the run's {len(controls):,} controls hold in {rule['answers']} or more of "
-                     f"their answers pushed by ±{size} of the stream (or one made of such words run together): what random "
+                     f"their answers pushed by {by} (or one made of such words run together): what random "
                      f"pushes bring that hard, not a neuron's own"),
             "doses": sorted(doses), "answers": int(rule["answers"]), "controls": len(controls), "controls_needed": need,
             "held": held, "joined": joined, "words": sorted(set(held) | set(joined))}

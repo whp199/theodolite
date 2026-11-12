@@ -1,0 +1,48 @@
+{
+ "bars": {
+  "lead": 0.6,
+  "beyond_text": 0.58,
+  "rep_AB": 0.57,
+  "rep_BA": 0.57,
+  "new_questions": 0.56
+ },
+ "layers": [
+  {
+   "layer": 38,
+   "pass": false,
+   "doses": [
+    -4.6,
+    -2.3,
+    2.3,
+    4.6
+   ],
+   "dose_unit": "ceiling",
+   "whole": {
+    "pass": false,
+    "lead": 0.5988,
+    "beyond_text": 0.6353,
+    "rep_AB": 0.595,
+    "rep_BA": 0.5848,
+    "new_questions": 0.6158
+   },
+   "the lower dose alone": {
+    "pass": true,
+    "lead": 0.6821,
+    "beyond_text": 0.7272,
+    "rep_AB": 0.6517,
+    "rep_BA": 0.6358,
+    "new_questions": 0.6493
+   },
+   "covered": {
+    "pass": true,
+    "lead": 0.6079,
+    "beyond_text": 0.6223,
+    "rep_AB": 0.5972,
+    "rep_BA": 0.5886,
+    "new_questions": 0.6302,
+    "neurons": 946,
+    "of": 1022
+   }
+  }
+ ]
+}
