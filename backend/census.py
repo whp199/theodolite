@@ -119,6 +119,11 @@ DESIGN_QUESTIONS["break_ceil"] = DESIGN_QUESTIONS["break_rel"]
 DESIGN_HALVES["break_ceil"] = DESIGN_HALVES["break_rel"]
 # what break_ceil's lower dose is, in each neuron's own write ceiling; its upper dose is twice it
 BREAK_CEIL = 2.3
+# soft_ceil is break_ceil with its upper dose brought under its lower (below): the same questions and halves again. Its
+# doses, in each neuron's own write ceiling: break_ceil's lower dose, and that less half a doubling (2.3 / sqrt 2)
+DESIGN_QUESTIONS["soft_ceil"] = DESIGN_QUESTIONS["break_rel"]
+DESIGN_HALVES["soft_ceil"] = DESIGN_HALVES["break_rel"]
+SOFT_CEIL = (1.6, BREAK_CEIL)
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -143,6 +148,13 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # 11 at 20); at 57, where its probe failed on the +-1 answers, 1.21. 2.3 is the middle of the band that passes. Not
     # calibrated anywhere until a trial of it passes
     "break_ceil": [(p, s * d) for p in DESIGN_QUESTIONS["break_ceil"] for d in (BREAK_CEIL, 2 * BREAK_CEIL) for s in (-1.0, 1.0)],
+    # break_ceil with both doses inside what reads below the band (designed 12 November 2026, once break_ceil's trial
+    # at layer 38 had failed by 0.001 on its whole reading; experiments/results/census_scaled_design, SOFT.md): +-1.6
+    # and +-2.3 of each neuron's own write ceiling. At layer 38 the +-2.3 answers alone passed every gate (lead 0.682)
+    # and the +-4.6 answers read at chance (0.506), as break_rel's 3.14 ceilings had there (0.496): the lead is gone
+    # by about three ceilings, so the upper dose is now the one that read and the other lies half a doubling under
+    # it. Not calibrated anywhere until a trial of it passes
+    "soft_ceil": [(p, s * d) for p in DESIGN_QUESTIONS["soft_ceil"] for d in SOFT_CEIL for s in (-1.0, 1.0)],
 }
 # the design a census takes when none is named, and the one a layer's run is read from first (layer_runs): break_rel,
 # whose doses come from this model's own ladders, since 29 October 2026 (the owner's choice; main_rel before it)
@@ -173,6 +185,11 @@ DOSES_FROM = {
                   "break_rel passes its trial (layers 40-52, as the pages count them) its lower dose is 1.76 to 2.76 "
                   "ceilings, and 2.3 is the middle of that; at layer 39, where it failed, it is 3.14, and more below. Not "
                   "calibrated at any layer until a trial of it passes there",
+    "soft_ceil": "+-1.6 and +-2.3 times each neuron's own write ceiling: break_ceil with its upper dose brought under its "
+                 "lower, for the layers where 4.6 ceilings is too hard a push. At layer 39 (as the pages count them) "
+                 "break_ceil's trial read a lead in the +-2.3 answers alone (0.682) and none in the +-4.6 answers "
+                 "(0.506), so 2.3 is kept as the upper dose and the lower is half a doubling under it. Not calibrated "
+                 "at any layer until a trial of it passes there",
 }
 # where a design's doses are calibrated on this model, its first and last layer (counted from 0, as the commands count
 # them): there the card says `doses_calibrated` and the page leaves out its red "not yet calibrated" line. break_rel's at
@@ -192,6 +209,7 @@ DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48)}
 # keep the command's own (256 word-pieces, a batch of 32, 256 controls)
 DESIGN_RUN_DEFAULTS: Dict[str, Dict[str, int]] = {"break_rel": {"max_new": 48, "batch": 64, "random_controls": 2048}}
 DESIGN_RUN_DEFAULTS["break_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # taken as break_rel is
+DESIGN_RUN_DEFAULTS["soft_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and so is this
 RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
@@ -239,6 +257,7 @@ DESIGN_READING: Dict[str, Dict[str, Any]] = {
     # stream below layer 39, but 2.4 at layer 1, and more for a neuron with a large ceiling): the cap is set where no
     # push of the design reaches, since a cap that cut some neurons' upper answers would rank them on half their answers
     "break_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},
+    "soft_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # as break_ceil: every answer counted
 }
 
 
@@ -258,6 +277,7 @@ def reading_of(design_name: Optional[str]) -> Dict[str, Any]:
 # `<run>.collapse.json` keeps the layer's list.
 COLLAPSE_RULE: Dict[str, Dict[str, Any]] = {"break_rel": {"doses": (2.0,), "answers": 2, "per_1024": 10}}
 COLLAPSE_RULE["break_ceil"] = {"doses": (2 * BREAK_CEIL,), "answers": 2, "per_1024": 10}  # the same rule, at its upper dose
+COLLAPSE_RULE["soft_ceil"] = {"doses": (SOFT_CEIL[1],), "answers": 2, "per_1024": 10}  # and at this design's upper dose
 
 # What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
 # pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
@@ -405,7 +425,7 @@ def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
 # the neurons' and one dose is the same share of each neuron's most at every layer. A design whose doses only mean
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
-DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling"}
+DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -1558,7 +1578,7 @@ def neuron_ranges(neurons: Iterable[int]) -> str:
 PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
-DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
+DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch", "soft_ceil": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:

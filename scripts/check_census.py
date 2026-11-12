@@ -1612,6 +1612,44 @@ def run_checks(tmp: Path) -> int:
           f"({ccol.get('rule', '')[:110]} / {col['rule'][:110]})")
     section("break_ceil: the design, a stand-in run in the ceiling unit, its ranking, marks and card", before)
 
+    # ------------------------------------------------------------- 14c. soft_ceil: break_ceil with both doses under 2.3
+    before = len(failures)
+    sc_d = cz.DESIGNS["soft_ceil"]
+    check(len(sc_d) == 24 and [p_ for p_ in dict.fromkeys(p_ for p_, _ in sc_d)] == list(q6) and sorted({d_ for _, d_ in sc_d}) == [-2.3, -1.6, 1.6, 2.3]
+          and cz.DESIGN_HALVES["soft_ceil"] == cz.DESIGN_HALVES["break_rel"] and cz.DESIGN_UNITS["soft_ceil"] == "ceiling"
+          and cz.reading_of("soft_ceil") == cz.reading_of("break_ceil") and cz.run_defaults("soft_ceil") == cz.run_defaults("break_rel")
+          and cz.COLLAPSE_RULE["soft_ceil"] == {"doses": (2.3,), "answers": 2, "per_1024": 10} and cz.DESIGN_PLAN["soft_ceil"] == "12 x batch"
+          and not any(cz.doses_calibrated("soft_ceil", l_) for l_ in (20, 38, 45)) and "write ceiling" in cz.DOSES_FROM["soft_ceil"]
+          and max(abs(d_) for _, d_ in sc_d) == min(abs(d_) for _, d_ in bc),
+          "soft_ceil: break_rel's six questions and halves at -2.3, -1.6, +1.6, +2.3 of each neuron's write ceiling, its upper dose "
+          "break_ceil's lower; read, taken and marked as break_ceil is; calibrated nowhere")
+    srun = tmp / "runs" / "L3-soft_ceil.jsonl"
+    cz.take_census(rt, 3, list(range(8)), srun, **{**kw, "design_name": "soft_ceil"})
+    srows = list(cz.read_rows(srun))
+    smeta = json.loads(cz.meta_path_of(srun).read_text())
+    spushed = [r_ for r_ in srows if r_["kind"] in ("neuron", "random")]
+    s_off = max(abs(abs(r_["push"]) - abs(r_["dose"]) * r_["ceiling"]) / abs(r_["push"]) for r_ in spushed)
+    s_ctl = int(smeta["random_controls"])
+    # the same neurons and controls under break_ceil (crun, above): the +-2.3 pushes are the same pushes
+    s23 = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in spushed if abs(abs(r_["dose"]) - 2.3) < 1e-9}
+    c23 = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in cneu + cctl if abs(abs(r_["dose"]) - 2.3) < 1e-9}
+    check(len(srows) == (8 + s_ctl) * 24 + 6 and smeta["dose_unit"] == "ceiling" and smeta["design_name"] == "soft_ceil"
+          and smeta["doses_from"] == cz.DOSES_FROM["soft_ceil"] and list(smeta["prompts"]) == list(q6) and s_off <= 2e-3
+          and sorted({r_["dose"] for r_ in spushed}) == [-2.3, -1.6, 1.6, 2.3]
+          and set(s23) == set(c23) and max(abs(s23[k_] - c23[k_]) for k_ in s23) <= 1e-4 * max(abs(v_) for v_ in c23.values()),
+          f"a soft_ceil run: each unit pushed by its dose times a write ceiling, and its +-2.3 pushes the very pushes break_ceil "
+          f"makes of the same units (off by {s_off:.2g}; {len(srows)} rows, {smeta.get('dose_unit')})")
+    cz.write_units(srun)
+    sunits = list(cz.read_rows(cz.units_path_of(srun)))
+    scol = json.loads(cz.collapse_path_of(srun).read_text()) if cz.collapse_path_of(srun).exists() else {}
+    scard = atlas_routes.census_card({"path": srun, "meta": smeta, "null": {}, "units": sunits})
+    check(len(sunits) == 8 + s_ctl and all(u_["reading"] == cz.reading_of("soft_ceil") and set(u_["dose"]) == {"-2.3", "-1.6", "+1.6", "+2.3"} for u_ in sunits)
+          and scol.get("doses") == [2.3] and "±2.3 x the write ceiling" in scol.get("rule", "")
+          and scard["doses_calibrated"] is False and scard["dose_unit"] == "ceiling" and scard["doses_from"] == cz.DOSES_FROM["soft_ceil"],
+          f"a soft_ceil run is ranked on every answer, its collapse words read at +-2.3, and its card says its unit and that its doses "
+          f"are calibrated nowhere ({scol.get('doses')}, {scard.get('doses_calibrated')}, {sorted(sunits[0]['dose']) if sunits else None})")
+    section("soft_ceil: the design, a stand-in run, its ranking and card", before)
+
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)
     # where each answer lies (census.RowsIndex): rows numbered as read_rows numbers them, a blank line skipped, a last
