@@ -54,9 +54,8 @@ chats, you try for yourself.
 - **Linux**, about **60 GB** free disk, 32 GB of memory, and `git`, `curl`, `zstd`, `tar` and `flock` (util-linux),
   and a C compiler (`gcc`), which Triton may need for its kernels.
 - **Time**: about 13 hours for a layer on a 5090, plus about an hour of setup, mostly downloading about 35 GB. Other
-  cards will differ (an RTX 3090 writes a batch of 64 at its longest in about 14.5 s: at most about 35 hours for a layer's
-  8,832 batches), and the
-  status line tells you yours. The run can be stopped and continued at any point.
+  cards will differ (an RTX 3090 held at its 83 °C limit wrote a sixteenth of layer 45 at 3.7 answers a second: about
+  43 hours for a layer), and the status line tells you yours. The run can be stopped and continued at any point.
 - **A quiet machine**: the card at full load, and nothing else heavy on it or on the CPU. Our own run was once stopped
   by NVIDIA's watchdog in the middle of a big kernel build.
 
