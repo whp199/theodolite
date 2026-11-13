@@ -1,0 +1,424 @@
+{
+ "run": "L33-match_ceil-trial.jsonl",
+ "layer": 33,
+ "design": "match_ceil",
+ "batch": 64,
+ "max_new": 48,
+ "seed": 7,
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "doses": [
+  -2.31,
+  2.31
+ ],
+ "read_gain": {
+  "neurons": 3.9472,
+  "controls": 4.0597,
+  "ratio": 1.028,
+  "read_by": "the next layer's input norm (the final norm after the last layer)"
+ },
+ "readings": {
+  "48": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.7097,
+     "p": 5.99e-61
+    },
+    "mass_u": {
+     "auc": 0.7028,
+     "p": 3.95e-57
+    },
+    "shift": {
+     "auc": 0.7171,
+     "p": 3.86e-65
+    },
+    "shift_up": {
+     "auc": 0.7076,
+     "p": 9.43e-60
+    },
+    "shift_down": {
+     "auc": 0.625,
+     "p": 6.02e-23
+    },
+    "mass_A": {
+     "auc": 0.6117,
+     "p": 1.11e-18
+    },
+    "mass_B": {
+     "auc": 0.6605,
+     "p": 1.47e-36
+    },
+    "rep_AB": {
+     "auc": 0.6008,
+     "p": 1.49e-15
+    },
+    "rep_BA": {
+     "auc": 0.6168,
+     "p": 2.98e-20
+    },
+    "rep": {
+     "auc": 0.6239,
+     "p": 1.46e-22
+    },
+    "xq": {
+     "auc": 0.6979,
+     "p": 1.81e-54
+    },
+    "cov_lnw": {
+     "auc": 0.6271,
+     "p": 1.19e-23
+    },
+    "cov_d4": {
+     "auc": 0.4962,
+     "p": 0.624
+    },
+    "cov_cut": {
+     "auc": 0.5136,
+     "p": 0.118
+    },
+    "cov_lp": {
+     "auc": 0.4768,
+     "p": 0.965
+    },
+    "cov_dep": {
+     "auc": 0.3914,
+     "p": 1.0
+    },
+    "cov_lost": {
+     "auc": 0.6451,
+     "p": 3.22e-30
+    },
+    "mass_c_res": {
+     "auc": 0.7058,
+     "p": 9.1e-59
+    },
+    "shift_res": {
+     "auc": 0.7184,
+     "p": 6.68e-66
+    },
+    "shift_up_res": {
+     "auc": 0.709,
+     "p": 1.59e-60
+    },
+    "rep_res": {
+     "auc": 0.6104,
+     "p": 2.58e-18
+    },
+    "rho_AB_neurons": 0.29187545159532485,
+    "rho_AB_controls": -0.002277387831675549,
+    "counts": {
+     "neurons": 1022,
+     "controls": 1024,
+     "above_every_control": 11,
+     "by_chance": 1.0,
+     "q05": 174,
+     "named": 78,
+     "named_by_halves": 76,
+     "above_ctl_p95": 0.3503,
+     "pA05_and_pB05": 91,
+     "pA05_and_pB05_by_chance": 2.6
+    },
+    "null_split_auc": {
+     "mean": 0.5013,
+     "min": 0.4655,
+     "max": 0.5495,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.6199,
+    "-": 0.6078
+   },
+   "text": {
+    "-2.31 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.944
+    },
+    "-2.31 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.944
+    },
+    "+2.31 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.945
+    },
+    "+2.31 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.942
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 1022,
+    "controls": 1024,
+    "units_in_run": 2046,
+    "units_planned": 2046,
+    "answers": 49110,
+    "answers_planned": 49110
+   },
+   "gates": {
+    "G1 lead (mass, every answer)": {
+     "values": [
+      [
+       "mass_c",
+       0.7097,
+       0.6
+      ]
+     ],
+     "pass": true
+    },
+    "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+     "values": [
+      [
+       "mass_c_res",
+       0.7058,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+     "values": [
+      [
+       "rep_AB",
+       0.6008,
+       0.57
+      ],
+      [
+       "rep_BA",
+       0.6168,
+       0.57
+      ]
+     ],
+     "pass": true
+    },
+    "G4 the new questions alone carry a lead (mass on half B)": {
+     "values": [
+      [
+       "mass_B",
+       0.6605,
+       0.56
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.5013,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.028,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    },
+    "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+     "values": [
+      [
+       "max_abs_diff",
+       31.25161,
+       0.002
+      ]
+     ],
+     "pass": false
+    }
+   },
+   "pass": false,
+   "named": [
+    20099,
+    19029,
+    13122,
+    12965,
+    12892,
+    11033,
+    10101,
+    9429,
+    8583,
+    8582,
+    7207,
+    5698,
+    5097,
+    4630,
+    3316,
+    1036,
+    18363,
+    17555,
+    15479,
+    14431,
+    13770,
+    11565,
+    10220,
+    9028,
+    7756,
+    6964,
+    5567,
+    5405,
+    5365,
+    3815,
+    3271,
+    2460,
+    2083,
+    369,
+    20954,
+    20953,
+    20835,
+    20208,
+    19177,
+    18520,
+    17433,
+    17267,
+    16134,
+    15853,
+    15767,
+    15376,
+    15115,
+    14651,
+    14114,
+    14015,
+    13780,
+    13731,
+    13166,
+    13004,
+    12516,
+    12095,
+    11998,
+    11568,
+    10056,
+    9438,
+    8740,
+    8581,
+    8388,
+    7014,
+    6791,
+    6255,
+    5383,
+    2373,
+    21466,
+    18652,
+    12469,
+    11560,
+    6803,
+    6586,
+    5402,
+    4427,
+    2074,
+    1683
+   ],
+   "named_by_halves": [
+    12115,
+    12111,
+    9059,
+    20750,
+    20704,
+    20341,
+    17709,
+    16273,
+    15201,
+    12965,
+    11033,
+    9306,
+    8752,
+    8583,
+    5698,
+    4893,
+    3316,
+    0,
+    3495,
+    2476,
+    20885,
+    19699,
+    17546,
+    15479,
+    13770,
+    12093,
+    11565,
+    10220,
+    8978,
+    7756,
+    2795,
+    21422,
+    20954,
+    20953,
+    20835,
+    20114,
+    19704,
+    18433,
+    17904,
+    17433,
+    17267,
+    15853,
+    15767,
+    15115,
+    14651,
+    14150,
+    14114,
+    14015,
+    13780,
+    13731,
+    13166,
+    13004,
+    11998,
+    11568,
+    10544,
+    8740,
+    7014,
+    6868,
+    6791,
+    6701,
+    6255,
+    4162,
+    3384,
+    3031,
+    2373,
+    21466,
+    21224,
+    18652,
+    12469,
+    11560,
+    6803,
+    6586,
+    5402,
+    4427,
+    2074,
+    1683
+   ]
+  }
+ },
+ "pass": false,
+ "throughput": {
+  "answers": 49110,
+  "seconds": 4373.0,
+  "answers_per_s": 11.23,
+  "sessions": 1
+ },
+ "writing": {
+  "answers_written": 49110,
+  "seconds": 4346.0,
+  "answers_per_s": 11.3,
+  "sessions": 1
+ }
+}

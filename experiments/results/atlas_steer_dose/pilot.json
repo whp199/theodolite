@@ -2955,6 +2955,16 @@
    "from": "soft_ceil lower dose, registered gate, read after the span was drawn (census_soft_trials)"
   },
   {
+   "layer": 33,
+   "dose": 2.31,
+   "unit": "ceiling",
+   "in_ceilings": 2.31,
+   "of_the_stream": 0.473,
+   "kl": 0.834,
+   "lead": 0.71,
+   "from": "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"
+  },
+  {
    "layer": 36,
    "dose": 2.27,
    "unit": "ceiling",
@@ -3003,6 +3013,16 @@
    "kl": 1.003,
    "lead": 0.69,
    "from": "break_rel lower dose, registered gate"
+  },
+  {
+   "layer": 33,
+   "dose": 2.51,
+   "unit": "ceiling",
+   "in_ceilings": 2.51,
+   "of_the_stream": 0.514,
+   "kl": 1.078,
+   "lead": 0.702,
+   "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
   },
   {
    "layer": 35,
