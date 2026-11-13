@@ -1,8 +1,9 @@
 # `soft_ceil`: the census design with both doses inside what reads at layer 38
 
 Designed on 12 November 2026, the evening `break_ceil`'s trial at layer 38 was read (the owner's word: "Yes, design
-it"). Built and checked on the stand-in; nothing of it has been run on the model. Its trial is registered in
-[`../census_soft_trials/prereg/`](../census_soft_trials/prereg/).
+it"). Built and checked on the stand-in, then trialled at layer 38 that night: **it passed all three gates**
+(the last section but one). The trial's registration is in
+[`../census_soft_trials/prereg/`](../census_soft_trials/prereg/) and its verdict beside it.
 
 ## Why another design
 
@@ -79,8 +80,38 @@ As shares of the stream this is 0.51 and 0.73 at layer 38, 0.41 and 0.60 at 35 t
 The trial: 49,110 answers, about 85 minutes on the home card. If it passes, a trial before each layer going down,
 and a whole layer (13 hours) for each that passes.
 
+## What the trial at layer 38 said
+
+Read at 00:52Z on 13 November 2026: 1,022 neurons no trial had asked, 1,024 fresh controls, 49,110 answers in 81
+minutes. **It passes all three gates.** The bars are layer 45's.
+
+| reading | lead (0.60) | beyond text survival (0.58) | across the halves (0.57, 0.57) | new questions (0.56) | |
+|---|---|---|---|---|---|
+| whole, all four doses | 0.675 | 0.712 | 0.636, 0.630 | 0.643 | pass |
+| the lower dose alone, ±1.6 | 0.654 | 0.671 | 0.594, 0.605 | 0.623 | pass |
+| the neurons the controls cover, 839 of 1,022 | 0.628 | 0.673 | 0.589, 0.583 | 0.598 | pass |
+| *reported:* the upper dose alone, ±2.3 | 0.655 | 0.706 | 0.647, 0.631 | 0.673 | gates nothing |
+
+- **Against what was said beforehand.** Met: the whole lead (said 0.64 to 0.70), the lower dose's lead, which was
+  the open question (said 0.60 to 0.66), and the ±2.3 answers alone on new neurons (said 0.64 to 0.72; 0.682 on
+  the first neurons, 0.655 on these). Missed: nine neurons in ten covered or more. It is eight in ten.
+- **Why fewer are covered.** At these doses a random direction hardly moves the text: it loses 0.004 of its
+  distinct 4-grams at ±2.3 and 0.001 at ±1.6. A neuron moves it more (0.03 and 0.005). So the controls' range is
+  narrow and 183 neurons fall outside it, most on the text's likelihood (120) and its distinct 4-grams (107). The
+  lead among the covered is lower than the whole lead for that reason.
+- **The thinnest figure** is the covered neurons' second replication figure, 0.583 against 0.57. Everything else
+  clears its bar by 0.019 or more.
+- **Reported.** 110 neurons beat every control, where chance gives one. Cut to 32 word-pieces the whole reading
+  passes as well (lead 0.687).
+
+By the registration this is the design for the walk downward: a trial before every whole layer (37, 36, …: 1,022
+neurons a layer were drawn in the `break_ceil` registration and none has been asked). The pass does not show that
+any layer below 38 reads with these doses, nor that layer 52 does.
+
 ## Choices that are the owner's
 
 1. Whether layers that pass are offered to volunteers. A new design is a new kit: its tag and its canaries.
 2. Widening `DOSES_CALIBRATED` to a layer, on its passed trial.
-3. Whether the same design is trialled above the band, at layer 52, once that layer's `break_ceil` trial is read.
+3. Whether the same design is trialled above the band, at layer 52. Its `break_ceil` trial failed on the lead
+   beyond text survival with its ±2.3 answers alone passing ([`DESIGN.md`](DESIGN.md), the last section).
+4. Whether layer 38 is taken whole with this design (13 hours) before the walk goes further down.

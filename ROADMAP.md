@@ -712,14 +712,14 @@ layers, the determinism run and the sampled push on 29 October). In this section
        **Layer 52 with the same doses** was registered beside it in `a09f1bf` (1,022 neurons its first trial did
        not ask, fresh controls) and started at 22:01Z.
        **The softer design, `soft_ceil`** (the owner’s word that evening; built in `b6f7b54`,
-       [`SOFT.md`](experiments/results/census_scaled_design/SOFT.md); not yet run): `break_ceil` with its doses at
+       [`SOFT.md`](experiments/results/census_scaled_design/SOFT.md)): `break_ceil` with its doses at
        ±1.6 and ±2.3 ceilings, the dose that read at layer 38 and one half a doubling under it. The ladders of 28
        October point the same way as far as 64 units can: at layer 30 a push of two ceilings leads (0.604) and one of
        one or of four does not. Its trial at layer 38 is registered
        ([`census_soft_trials/prereg/`](experiments/results/census_soft_trials/prereg/), hashed at 22:34Z before
        layer 52’s trial was read): 1,022 neurons neither earlier trial there asked, 1,024 fresh controls, the same
        reader and three gates. Said beforehand: the whole reading and the covered neurons pass; whether ±1.6 alone
-       carries a lead is the open question. It runs after layer 52’s trial and before the steer lens.
+       carries a lead is the open question. It ran after layer 52’s trial and before the steer lens.
        **Layer 52’s `break_ceil` trial, read at 23:30Z: it fails too, and by the same dose.** Its whole reading
        leads by 0.676, but that lead is not told from how the text survives: 0.553 beyond text survival against a
        bar of 0.58, on every neuron and on the 1,010 of 1,022 the controls cover. That is the doubt its registration
@@ -733,6 +733,23 @@ layers, the determinism run and the sampled push on 29 October). In this section
        there, and at that dose the text has already lost 0.60 (neurons) to 0.73 (controls), so the lower dose’s
        lead rests on the covariate fit holding in broken text. Whether `soft_ceil` is trialled at 52 as well is
        the owner’s choice; it would want a third draw of neurons, both earlier draws having been read at 2.3.
+       **Layer 38’s `soft_ceil` trial, read at 00:52Z on 13 November: it passes all three gates**
+       ([`census_soft_trials/`](experiments/results/census_soft_trials/)). The whole reading leads by 0.675 (0.712
+       beyond text survival; 0.636 and 0.630 across the question halves; 0.643 on the new questions). The lower
+       dose alone, ±1.6 ceilings, which nothing had read before, leads by 0.654 (0.671; 0.594 and 0.605; 0.623).
+       The 839 of 1,022 neurons the controls cover lead by 0.628 (0.673; 0.589 and 0.583; 0.598): the thinnest of
+       the three, 0.013 over its bar on one replication figure. 110 neurons beat every control, where chance
+       gives one. Said beforehand and met: the whole lead (0.64 to 0.70), the lower dose’s (0.60 to 0.66), and the
+       ±2.3 answers alone on new neurons (0.655; said 0.64 to 0.72, and 0.682 on the first neurons). Said
+       beforehand and missed: nine neurons in ten covered or more. It is eight in ten, because at these doses a
+       random direction hardly moves the text (0.004 of its distinct 4-grams lost at ±2.3) and a neuron moves it
+       more (0.03), so more neurons fall outside the controls’ range; the lead among the covered is lower than the
+       whole lead for the same reason. By the registration this is the design for the walk downward: a trial
+       before every whole layer (37, 36, …: 1,022 neurons a layer were drawn in the `break_ceil` registration and
+       none has been asked), and a layer that passes may go to volunteers under a kit of its own.
+       `DOSES_CALIBRATED` names no layer for `soft_ceil` yet: widening it to 38 is the owner’s word. What the pass
+       does not show: that any layer below 38 reads with these doses, or that layer 52 does. The steer lens
+       started behind this trial at 00:52Z.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -794,6 +811,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
       registered in `e853e5c` and read at 22:01Z that evening. It fails by a hair on the whole reading (0.599
       against 0.60) and passes on its lower dose alone (0.682): the gentler push gives layer 38 a lead, and the
       design’s upper dose takes half of it back (step 3).
+      With both doses inside what reads (±1.6 and ±2.3 ceilings, `soft_ceil`) layer 38 passes its trial on new
+      neurons (13 November, step 3). The walk downward goes on with that design, a trial before each layer;
+      layer 38 stays *not taken* on kit 2’s board, since a new design is a new kit.
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only
