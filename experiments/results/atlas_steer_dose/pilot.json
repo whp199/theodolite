@@ -2995,6 +2995,16 @@
    "from": "break_rel lower dose, registered gate"
   },
   {
+   "layer": 35,
+   "dose": 2.27,
+   "unit": "ceiling",
+   "in_ceilings": 2.27,
+   "of_the_stream": 0.592,
+   "kl": 1.095,
+   "lead": 0.667,
+   "from": "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"
+  },
+  {
    "layer": 37,
    "dose": 2.41,
    "unit": "ceiling",
@@ -3033,6 +3043,16 @@
    "kl": 1.34,
    "lead": 0.682,
    "from": "break_ceil lower dose, registered gate (census_ceil_trials)"
+  },
+  {
+   "layer": 35,
+   "dose": 2.41,
+   "unit": "ceiling",
+   "in_ceilings": 2.41,
+   "of_the_stream": 0.628,
+   "kl": 1.35,
+   "lead": 0.645,
+   "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
   },
   {
    "layer": 37,
