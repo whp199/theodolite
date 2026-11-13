@@ -2985,6 +2985,16 @@
    "from": "soft_ceil upper dose, reported, read after the span was drawn (census_soft_walk)"
   },
   {
+   "layer": 34,
+   "dose": 2.62,
+   "unit": "ceiling",
+   "in_ceilings": 2.62,
+   "of_the_stream": 0.574,
+   "kl": 0.998,
+   "lead": 0.745,
+   "from": "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"
+  },
+  {
    "layer": 39,
    "dose": 1.0,
    "unit": "stream",
@@ -3022,6 +3032,16 @@
    "of_the_stream": 0.626,
    "kl": 1.142,
    "lead": 0.601,
+   "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
+  },
+  {
+   "layer": 34,
+   "dose": 2.79,
+   "unit": "ceiling",
+   "in_ceilings": 2.79,
+   "of_the_stream": 0.611,
+   "kl": 1.237,
+   "lead": 0.728,
    "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
   },
   {

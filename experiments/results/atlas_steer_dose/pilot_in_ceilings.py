@@ -58,6 +58,8 @@ READ_ALONE = (
     (36, "ceiling", 2.46, 0.601, "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"),
     (35, "ceiling", 2.27, 0.667, "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"),
     (35, "ceiling", 2.41, 0.645, "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"),
+    (34, "ceiling", 2.62, 0.745, "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"),
+    (34, "ceiling", 2.79, 0.728, "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"),
 )
 CENSUS_CEILINGS = (1.6, 2.3, 4.6)   # soft_ceil's two doses and break_ceil's upper one
 CENSUS_STREAM = (1.0, 2.0)          # break_rel's

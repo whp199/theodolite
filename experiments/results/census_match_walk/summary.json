@@ -8,6 +8,101 @@
  },
  "layers": [
   {
+   "layer": 34,
+   "pass": true,
+   "doses": [
+    -2.79,
+    -2.62,
+    2.62,
+    2.79
+   ],
+   "lower_doses": [
+    -2.62,
+    2.62
+   ],
+   "dose_unit": "ceiling",
+   "whole": {
+    "pass": true,
+    "lead": 0.7576,
+    "beyond_text": 0.7465,
+    "rep_AB": 0.6828,
+    "rep_BA": 0.6921,
+    "new_questions": 0.7088
+   },
+   "the lower dose alone": {
+    "pass": true,
+    "lead": 0.7454,
+    "beyond_text": 0.74,
+    "rep_AB": 0.6401,
+    "rep_BA": 0.6499,
+    "new_questions": 0.675
+   },
+   "covered": {
+    "pass": true,
+    "lead": 0.7551,
+    "beyond_text": 0.7418,
+    "rep_AB": 0.6758,
+    "rep_BA": 0.6872,
+    "new_questions": 0.7059,
+    "neurons": 977,
+    "of": 1022,
+    "outside_by_covariate": {
+     "lnw": 6,
+     "d4": 4,
+     "cut": 8,
+     "lp": 8,
+     "dep": 24,
+     "lost": 2
+    }
+   },
+   "text": {
+    "-2.79 neuron": {
+     "d4_minus_unpushed": -0.009,
+     "cut_off": 0.954
+    },
+    "-2.79 random": {
+     "d4_minus_unpushed": -0.006,
+     "cut_off": 0.954
+    },
+    "-2.62 neuron": {
+     "d4_minus_unpushed": -0.006,
+     "cut_off": 0.953
+    },
+    "-2.62 random": {
+     "d4_minus_unpushed": -0.004,
+     "cut_off": 0.951
+    },
+    "+2.62 neuron": {
+     "d4_minus_unpushed": -0.006,
+     "cut_off": 0.951
+    },
+    "+2.62 random": {
+     "d4_minus_unpushed": -0.004,
+     "cut_off": 0.953
+    },
+    "+2.79 neuron": {
+     "d4_minus_unpushed": -0.008,
+     "cut_off": 0.955
+    },
+    "+2.79 random": {
+     "d4_minus_unpushed": -0.007,
+     "cut_off": 0.956
+    }
+   },
+   "above_every_control": 8,
+   "the upper dose alone (reported)": {
+    "doses": [
+     -2.79,
+     2.79
+    ],
+    "lead": 0.7279,
+    "beyond_text": 0.7226,
+    "rep_AB": 0.6568,
+    "rep_BA": 0.6534,
+    "new_questions": 0.6586
+   }
+  },
+  {
    "layer": 35,
    "pass": true,
    "doses": [

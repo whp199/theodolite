@@ -1,0 +1,12 @@
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.7279 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7226 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6568 (bar 0.57), rep_BA 0.6534 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6586 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5 (bar (0.47, 0.53)), read_gain_ratio 1.036 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 33.29576 (bar 0.002)
+  reported: shift 0.727, shift_up 0.730, shift_down 0.579, xq 0.719, rep 0.668, mass_A 0.642, mass_u 0.723, shift_res 0.723, rep_res 0.653
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 10, 'by_chance': 1.0, 'q05': 40, 'named': 39, 'named_by_halves': 37, 'above_ctl_p95': 0.3503, 'pA05_and_pB05': 131, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.394 controls 0.090; signs {'+': 0.6328, '-': 0.6055}
+throughput (wall): {'answers': 49110, 'seconds': 4101.0, 'answers_per_s': 11.98, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 49110, 'seconds': 4072.1, 'answers_per_s': 12.06, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/match_walk/L34_upper.json: FAIL
