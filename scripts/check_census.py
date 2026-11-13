@@ -1650,6 +1650,76 @@ def run_checks(tmp: Path) -> int:
           f"are calibrated nowhere ({scol.get('doses')}, {scard.get('doses_calibrated')}, {sorted(sunits[0]['dose']) if sunits else None})")
     section("soft_ceil: the design, a stand-in run, its ranking and card", before)
 
+    # ---------------------------------------------- 14d. match_ceil: two counts of ceilings that differ by layer, from a table
+    before = len(failures)
+    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-1] == "match_ceil" and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
+          and cz.DESIGN_QUESTIONS["match_ceil"] == q6 and cz.DESIGN_HALVES["match_ceil"] == cz.DESIGN_HALVES["break_rel"]
+          and cz.DESIGN_UNITS["match_ceil"] == "ceiling" and cz.reading_of("match_ceil") == cz.reading_of("break_ceil")
+          and cz.run_defaults("match_ceil") == cz.run_defaults("break_rel") and cz.DESIGN_PLAN["match_ceil"] == "12 x batch"
+          and cz.COLLAPSE_RULE["match_ceil"] == {"doses": "upper", "answers": 2, "per_1024": 10} and cz.MATCH_NATS == (1.0, 1.4)
+          and not any(cz.doses_calibrated("match_ceil", l_) for l_ in (20, 37, 45)) and "nats" in cz.DOSES_FROM["match_ceil"]
+          and all(cz.design_at(d_, 3) is cz.DESIGNS[d_] and cz.design_at(d_) is cz.DESIGNS[d_] for d_ in cz.DESIGNS)
+          and all(len(v_) == 2 and 0 < v_[0] < v_[1] < 3.2 for v_ in cz.MATCH_CEIL.values()),
+          "match_ceil: break_rel's six questions and halves in the ceiling unit, read, taken and marked as break_ceil is, calibrated "
+          "nowhere, not among the designs with one list; every other design's list is the same at every layer; each layer's "
+          "two doses in its table rise and stay under 3.2 ceilings")
+    had3 = cz.MATCH_CEIL.pop(3, None)  # (the 31B's table may one day hold layer 3: the stand-in's layer 3 is given its own)
+    mrun = tmp / "runs" / "L3-match_ceil.jsonl"
+    said = []
+    for what in (lambda: cz.design_at("match_ceil", 3), lambda: cz.design_at("match_ceil"),
+                 lambda: cz.take_census(rt, 3, list(range(8)), mrun, **{**kw, "design_name": "match_ceil"})):
+        try:
+            what()
+            said.append("")
+        except ValueError as exc:
+            said.append(str(exc))
+    check(all("has no doses for layer" in s_ and "fine dose pilot" in s_ for s_ in said) and not mrun.exists(),
+          f"match_ceil at a layer its table does not hold is refused before anything is written ({said[0][:90]})")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "3", "--design", "match_ceil", "--neurons",
+                             "random:4", "--random-controls", "4", "--max-new", "8", "--batch", "16", "--no-rank"],
+                       env=env, capture_output=True, text=True, timeout=600)
+    check(r.returncode != 0 and "has no doses for layer 3" in (r.stderr + r.stdout),
+          f"census_run.py --design match_ceil: named among the designs, and refused in plain words at such a layer ({r.returncode})")
+    cz.MATCH_CEIL[3] = (1.9, 2.3)
+    try:
+        md = cz.design_at("match_ceil", 3)
+        check(len(md) == 24 and [p_ for p_ in dict.fromkeys(p_ for p_, _ in md)] == list(q6) and sorted({d_ for _, d_ in md}) == [-2.3, -1.9, 1.9, 2.3],
+              "match_ceil at a layer in its table: the six questions at plus and minus that layer's two doses")
+        cz.take_census(rt, 3, list(range(8)), mrun, **{**kw, "design_name": "match_ceil"})
+        mrows = list(cz.read_rows(mrun))
+        mmeta = json.loads(cz.meta_path_of(mrun).read_text())
+        mpushed = [r_ for r_ in mrows if r_["kind"] in ("neuron", "random")]
+        m_off = max(abs(abs(r_["push"]) - abs(r_["dose"]) * r_["ceiling"]) / abs(r_["push"]) for r_ in mpushed)
+        m_ctl = int(mmeta["random_controls"])
+        m23 = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in mpushed if abs(abs(r_["dose"]) - 2.3) < 1e-9}
+        check(len(mrows) == (8 + m_ctl) * 24 + 6 and mmeta["dose_unit"] == "ceiling" and mmeta["design_name"] == "match_ceil"
+              and mmeta["doses_from"] == cz.DOSES_FROM["match_ceil"] and [list(c_) for c_ in mmeta["design"]] == [[p_, d_] for p_, d_ in md]
+              and m_off <= 2e-3 and sorted({r_["dose"] for r_ in mpushed}) == [-2.3, -1.9, 1.9, 2.3]
+              and set(m23) == set(c23) and max(abs(m23[k_] - c23[k_]) for k_ in m23) <= 1e-4 * max(abs(v_) for v_ in c23.values()),
+              f"a match_ceil run: each unit pushed by its layer's dose times a write ceiling, its meta holding the cells it took, and "
+              f"its +-2.3 pushes the very pushes break_ceil makes of the same units (off by {m_off:.2g}; {len(mrows)} rows)")
+        cz.write_units(mrun)
+        munits = list(cz.read_rows(cz.units_path_of(mrun)))
+        mcol = json.loads(cz.collapse_path_of(mrun).read_text()) if cz.collapse_path_of(mrun).exists() else {}
+        mcard = atlas_routes.census_card({"path": mrun, "meta": mmeta, "null": {}, "units": munits})
+        check(len(munits) == 8 + m_ctl and all(u_["reading"] == cz.reading_of("match_ceil") and set(u_["dose"]) == {"-2.3", "-1.9", "+1.9", "+2.3"} for u_ in munits)
+              and mcol.get("doses") == [2.3] and "±2.3 x the write ceiling" in mcol.get("rule", "")
+              and mcard["doses_calibrated"] is False and mcard["dose_unit"] == "ceiling" and mcard["doses_from"] == cz.DOSES_FROM["match_ceil"],
+              f"a match_ceil run is ranked on every answer, its collapse words read at the run's upper dose, and its card says its "
+              f"unit and that its doses are calibrated nowhere ({mcol.get('doses')}, {mcard.get('doses_calibrated')}, "
+              f"{sorted(munits[0]['dose']) if munits else None})")
+        cz.MATCH_CEIL[3] = (1.8, 2.3)  # the table changed under a run already begun: the run is not continued with other doses
+        try:
+            cz.take_census(rt, 3, list(range(8)), mrun, **{**kw, "design_name": "match_ceil"})
+            check(False, "a match_ceil run begun at other doses was continued")
+        except ValueError as exc:
+            check("design" in str(exc), f"a match_ceil run begun at other doses is refused, not continued ({str(exc)[:110]})")
+    finally:
+        cz.MATCH_CEIL.pop(3, None)
+        if had3 is not None:
+            cz.MATCH_CEIL[3] = had3
+    section("match_ceil: its table and refusals, a stand-in run at a layer's own doses, its ranking and card", before)
+
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)
     # where each answer lies (census.RowsIndex): rows numbered as read_rows numbers them, a blank line skipped, a last

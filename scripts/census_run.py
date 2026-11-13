@@ -175,8 +175,8 @@ def main(argv=None) -> int:
     ap.add_argument("--top", type=int, default=0, help="with --neurons-from: how many of the screen's strongest to retest")
     from backend import census as cz_designs  # the designs' names and units (numpy only: torch is imported below)
 
-    ap.add_argument("--design", default=cz_designs.DEFAULT_DESIGN, choices=list(cz_designs.DESIGNS),
-                    help=f"{' | '.join(cz_designs.DESIGNS)} (default {cz_designs.DEFAULT_DESIGN})")
+    ap.add_argument("--design", default=cz_designs.DEFAULT_DESIGN, choices=cz_designs.design_names(),
+                    help=f"{' | '.join(cz_designs.design_names())} (default {cz_designs.DEFAULT_DESIGN})")
     ap.add_argument("--dose-unit", default=None, choices=list(cz_designs.DOSE_UNITS),
                     help="stream: dose x p50, the same push for every unit; ceiling: dose x each neuron's write ceiling "
                          "(default: the design's own, ceiling for calib_ceil, else stream; break_rel only in the stream)")

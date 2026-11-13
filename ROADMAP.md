@@ -800,6 +800,16 @@ layers, the determinism run and the sampled push on 29 October). In this section
        [`census_soft_trials/prereg_L52/`](experiments/results/census_soft_trials/prereg_L52/), hashed at 02:50Z
        while layer 37 was being written): a third draw of 1,022 neurons that neither earlier trial there asked,
        1,024 fresh controls. It started at 03:48Z, behind the walk and ahead of the steer lens’s build.
+       **The design with each layer’s own doses, `match_ceil`** (the owner’s word, 13 November: “Yes, design it”;
+       [`MATCH.md`](experiments/results/census_scaled_design/MATCH.md)): `soft_ceil` with its two counts of ceilings
+       set a layer at a time, at the pushes that move the next word-piece by 1.0 and by 1.4 nats there. 1.0 nats is
+       what `break_rel`’s lower dose makes at layers 39 and 45 and the push that passed alone at layer 37; 1.4 is
+       the hardest push that has passed below the band. The counts come from a finer dose pilot
+       (`scripts/census_dose_pilot.py`: the steer lens’s measurement on rungs 7% apart, where the first pilot’s
+       rungs are a factor of two apart and every dose in question lies between the same two), by a rule fixed
+       before that pilot is seen. Built and checked on the stand-in; a layer without measured doses is refused.
+       The fine pilot (layers 30–38) and a trial at layer 37 on neurons the walk did not ask are queued behind
+       layer 52’s trial, ahead of the steer lens’s build.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based

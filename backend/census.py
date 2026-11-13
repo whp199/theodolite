@@ -124,6 +124,18 @@ BREAK_CEIL = 2.3
 DESIGN_QUESTIONS["soft_ceil"] = DESIGN_QUESTIONS["break_rel"]
 DESIGN_HALVES["soft_ceil"] = DESIGN_HALVES["break_rel"]
 SOFT_CEIL = (1.6, BREAK_CEIL)
+# match_ceil asks break_rel's questions too, in its halves. Its two doses are counts of each neuron's write ceiling, as
+# soft_ceil's are, but the counts differ by layer: at each layer they are the pushes that move the next word-piece by
+# MATCH_NATS nats (the median over 128 of the layer's neurons), as the census's fine dose pilot measured them there
+# (scripts/census_dose_pilot.py; experiments/results/census_scaled_design/MATCH.md). MATCH_CEIL holds them, a layer
+# (counted from 0) to its lower and upper count; a layer the pilot has not measured has none, and is refused
+DESIGN_QUESTIONS["match_ceil"] = DESIGN_QUESTIONS["break_rel"]
+DESIGN_HALVES["match_ceil"] = DESIGN_HALVES["break_rel"]
+MATCH_NATS = (1.0, 1.4)
+MATCH_CEIL: Dict[int, Tuple[float, float]] = {}
+# the designs whose doses are set a layer at a time: a name to its table. They are not in DESIGNS, which holds one
+# list a design; `design_at` gives the list a run takes at its layer, for these and for the others
+LAYER_DOSES: Dict[str, Dict[int, Tuple[float, ...]]] = {"match_ceil": MATCH_CEIL}
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -160,6 +172,32 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
 # whose doses come from this model's own ladders, since 29 October 2026 (the owner's choice; main_rel before it)
 DEFAULT_DESIGN = "break_rel"
 CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil")
+
+
+def design_names() -> List[str]:
+    """Every design a census can be taken with: DESIGNS' and those whose doses are set a layer at a time (LAYER_DOSES)."""
+    return list(DESIGNS) + [n for n in LAYER_DOSES if n not in DESIGNS]
+
+
+def design_at(design_name: str, layer: Optional[int] = None) -> List[Tuple[str, float]]:
+    """The (question, dose) cells a run of this design takes at `layer` (counted from 0): DESIGNS' list for a design
+    with one, whatever the layer; for a design whose doses are set a layer at a time (LAYER_DOSES), its questions at
+    plus and minus each of that layer's doses. Such a design is refused at a layer its table does not hold, in plain
+    words: its doses there are to measure first."""
+    if design_name in DESIGNS:
+        return DESIGNS[design_name]
+    if design_name not in LAYER_DOSES:
+        raise ValueError(f"The census's designs are {', '.join(design_names())}, not {design_name!r}.")
+    table = LAYER_DOSES[design_name]
+    doses = table.get(int(layer)) if layer is not None else None
+    if doses is None:
+        have = ", ".join(str(l) for l in sorted(table)) or "none yet"
+        raise ValueError(f"{design_name} has no doses for layer {layer}: its doses are set a layer at a time from the "
+                         f"census's fine dose pilot (scripts/census_dose_pilot.py), which has given them for layers "
+                         f"{have} (counted from 0). Take the pilot at this layer first.")
+    return [(p, s * float(d)) for p in DESIGN_QUESTIONS[design_name] for d in doses for s in (-1.0, 1.0)]
+
+
 # where the doses come from, said wherever a census is shown or handed to the scientist
 DOSES_FROM = {
     "main_rel": "neuron-explorer's doses, chosen on Qwen3.5-4B; not yet calibrated on this model (take calib_rel and "
@@ -190,6 +228,12 @@ DOSES_FROM = {
                  "break_ceil's trial read a lead in the +-2.3 answers alone (0.682) and none in the +-4.6 answers "
                  "(0.506), so 2.3 is kept as the upper dose and the lower is half a doubling under it. Not calibrated "
                  "at any layer until a trial of it passes there",
+    "match_ceil": "two counts of each neuron's own write ceiling that differ by layer: at each layer, the pushes that move "
+                  "the next word-piece by 1.0 and by 1.4 nats (the median over 128 of the layer's neurons), as the census's "
+                  "fine dose pilot measured them there. soft_ceil's fixed counts passed at layer 39 (as the pages count "
+                  "them) and failed at layer 38, where its lower dose moved the next word-piece too little to carry a lead "
+                  "alone; a push of about 1 nat is what break_rel's lower dose makes where it is calibrated. Not calibrated "
+                  "at any layer until a trial of it passes there",
 }
 # where a design's doses are calibrated on this model, its first and last layer (counted from 0, as the commands count
 # them): there the card says `doses_calibrated` and the page leaves out its red "not yet calibrated" line. break_rel's at
@@ -210,6 +254,7 @@ DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48)}
 DESIGN_RUN_DEFAULTS: Dict[str, Dict[str, int]] = {"break_rel": {"max_new": 48, "batch": 64, "random_controls": 2048}}
 DESIGN_RUN_DEFAULTS["break_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # taken as break_rel is
 DESIGN_RUN_DEFAULTS["soft_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and so is this
+DESIGN_RUN_DEFAULTS["match_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
@@ -258,6 +303,7 @@ DESIGN_READING: Dict[str, Dict[str, Any]] = {
     # push of the design reaches, since a cap that cut some neurons' upper answers would rank them on half their answers
     "break_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},
     "soft_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # as break_ceil: every answer counted
+    "match_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and so here
 }
 
 
@@ -278,6 +324,8 @@ def reading_of(design_name: Optional[str]) -> Dict[str, Any]:
 COLLAPSE_RULE: Dict[str, Dict[str, Any]] = {"break_rel": {"doses": (2.0,), "answers": 2, "per_1024": 10}}
 COLLAPSE_RULE["break_ceil"] = {"doses": (2 * BREAK_CEIL,), "answers": 2, "per_1024": 10}  # the same rule, at its upper dose
 COLLAPSE_RULE["soft_ceil"] = {"doses": (SOFT_CEIL[1],), "answers": 2, "per_1024": 10}  # and at this design's upper dose
+# match_ceil's upper dose differs by layer, so its rule names it as the run's largest dose ("upper"), read from the rows
+COLLAPSE_RULE["match_ceil"] = {"doses": "upper", "answers": 2, "per_1024": 10}
 
 # What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
 # pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
@@ -334,7 +382,11 @@ def collapse_words(rows: Iterable[Dict[str, Any]], design_name: Optional[str]) -
         if r["kind"] == "baseline":
             base_of[str(r["prompt"])].update(r["wid"])
     base_ids: set = set().union(*base_of.values()) if base_of else set()
-    doses = {abs(float(d)) for d in rule["doses"]}
+    if rule["doses"] == "upper":  # a design whose doses are set a layer at a time: the largest dose the run pushed by
+        pushed = [abs(float(r["dose"])) for r in rows if r["kind"] != "baseline"]
+        doses = {max(pushed)} if pushed else set()
+    else:
+        doses = {abs(float(d)) for d in rule["doses"]}
     per_ctl: Dict[int, collections.Counter] = collections.defaultdict(collections.Counter)
     controls = set()
     for r in rows:
@@ -425,7 +477,8 @@ def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
 # the neurons' and one dose is the same share of each neuron's most at every layer. A design whose doses only mean
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
-DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling"}
+DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling",
+                "match_ceil": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -1578,7 +1631,7 @@ def neuron_ranges(neurons: Iterable[int]) -> str:
 PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
-DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch", "soft_ceil": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
+DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch", "soft_ceil": "12 x batch", "match_ceil": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:
@@ -1906,8 +1959,8 @@ def take_census(
     from backend import w4a16_fast
     from backend.causal_check import language_model
 
-    if design_name not in DESIGNS:
-        raise ValueError(f"The census's designs are {', '.join(DESIGNS)}, not {design_name!r}.")
+    if design_name not in DESIGNS and design_name not in LAYER_DOSES:
+        raise ValueError(f"The census's designs are {', '.join(design_names())}, not {design_name!r}.")
     unit = dose_unit or DESIGN_UNITS.get(design_name, "stream")
     if unit not in DOSE_UNITS:
         raise ValueError(f"The census's dose units are {', '.join(DOSE_UNITS)}, not {unit!r}.")
@@ -1925,7 +1978,7 @@ def take_census(
     bad = [n for n in neurons if not 0 <= int(n) < N]
     if bad:
         raise ValueError(f"Neurons count from 0 to {N - 1}; {bad[:5]} do not exist.")
-    design = DESIGNS[design_name]
+    design = design_at(design_name, int(layer))
     tok = rt.tokenizer
     prompts = design_questions(design_name)  # the four PROMPTS for every design but those naming their own
     prompt_ids = {k: rt.tokenize_prompt(rt.compose_prompt(v, chat=True)) for k, v in prompts.items()}
