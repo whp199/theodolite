@@ -55,7 +55,7 @@ from interp_engine.steer import generate_stream as ie_generate_stream
 from interp_engine.steer import steer as ie_steer
 from interp_engine.steer import steering_spec_to_eager_specs
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, OrthogonalDecompSpec, SteeringSpec
-from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
+from transformers import AutoConfig, AutoTokenizer, Gemma4ForConditionalGeneration
 
 from backend.label_gate import label_check, label_top_ids, writes_nothing
 from backend.theodolite_math import (
@@ -377,9 +377,11 @@ def _make_w4a16_linear_forward(module: nn.Module) -> Callable[[torch.Tensor], to
     return types.MethodType(_w4a16_forward, module)
 
 
-def text_only_device_map(device: Any) -> Any:
+def text_only_device_map(device: Any, audio: bool = False) -> Any:
     """The device map a load is made with: every weight on `device`, but on a CUDA card the vision tower and its
-    embedding load on the CPU. patch_compressed_tensors_for_low_vram drops them right after the load, so they are
+    embedding load on the CPU, and the audio tower and its embedding too when the checkpoint has them (`audio`: its
+    config's audio_config is set; the pinned checkpoint's is null, and a map naming a module the model lacks is not
+    risked). patch_compressed_tensors_for_low_vram drops them right after the load, so they are
     never read. On the card they took about 1.07 GiB at the load's peak, which is the most a run ever holds (the
     checkpoint's own lm_head is on the card then too, until it is tied to embed_tokens): on a 24 GB card, the
     difference between a load with under 256 MiB to spare and one with over a GiB. The text model's weights, and so
@@ -387,7 +389,10 @@ def text_only_device_map(device: Any) -> Any:
     dev = str(device)
     if not dev.startswith("cuda"):
         return dev
-    return {"model.language_model": dev, "lm_head": dev, "model.vision_tower": "cpu", "model.embed_vision": "cpu"}
+    dm = {"model.language_model": dev, "lm_head": dev, "model.vision_tower": "cpu", "model.embed_vision": "cpu"}
+    if audio:
+        dm.update({"model.audio_tower": "cpu", "model.embed_audio": "cpu"})
+    return dm
 
 
 def settle_text_only_device_map(hf_model: nn.Module, device: Any) -> None:
@@ -802,11 +807,16 @@ class TheodoliteRuntime:
         logger.info("Loading Gemma-4-31B W4A16 model from %s on %s...", self.model_id, self.device)
 
         try:
+            config = AutoConfig.from_pretrained(self.model_id, trust_remote_code=False, local_files_only=True)
+        except Exception:
+            config = AutoConfig.from_pretrained(self.model_id, trust_remote_code=False)
+        device_map = text_only_device_map(self.device, audio=getattr(config, "audio_config", None) is not None)
+        try:
             tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=False, local_files_only=True)
             hf_model, loading_info = Gemma4ForConditionalGeneration.from_pretrained(
                 self.model_id,
                 dtype="auto",
-                device_map=text_only_device_map(self.device),
+                device_map=device_map,
                 trust_remote_code=False,
                 output_loading_info=True,
                 local_files_only=True,
@@ -816,13 +826,13 @@ class TheodoliteRuntime:
             hf_model, loading_info = Gemma4ForConditionalGeneration.from_pretrained(
                 self.model_id,
                 dtype="auto",
-                device_map=text_only_device_map(self.device),
+                device_map=device_map,
                 trust_remote_code=False,
                 output_loading_info=True,
             )
         setattr(hf_model, "ie_missing_keys", frozenset(loading_info.get("missing_keys", ()) or ()))
 
-        split_map = isinstance(text_only_device_map(self.device), dict)
+        split_map = isinstance(device_map, dict)
         if split_map:
             settle_text_only_device_map(hf_model, self.device)
         n_patched = patch_compressed_tensors_for_low_vram(hf_model)

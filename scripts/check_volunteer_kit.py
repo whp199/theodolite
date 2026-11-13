@@ -72,6 +72,42 @@ def last_line(text: str, start: str) -> str:
     return next((ln for ln in reversed(text.splitlines()) if ln.startswith(start)), "")
 
 
+def check_split_load() -> None:
+    """engine_runtime's split load, without a card: the device map each device is given, settle_text_only_device_map
+    taking accelerate's hooks off a module and leaving a patch made after it in place, and TheodoliteRuntime.load
+    calling it before patch_compressed_tensors_for_low_vram (after, it would put back the forwards the patch
+    replaces)."""
+    import inspect
+
+    import torch.nn as nn
+    from accelerate.hooks import ModelHook, add_hook_to_module
+
+    from backend import engine_runtime as er
+
+    dm = er.text_only_device_map("cuda:0")
+    check(isinstance(dm, dict) and dm.get("model.language_model") == "cuda:0" and dm.get("lm_head") == "cuda:0"
+          and dm.get("model.vision_tower") == "cpu" and dm.get("model.embed_vision") == "cpu"
+          and "model.audio_tower" not in dm, f"a card's map: the text model on the card, the vision tower on the CPU ({dm})")
+    dma = er.text_only_device_map("cuda:0", audio=True)
+    check(dma.get("model.audio_tower") == "cpu" and dma.get("model.embed_audio") == "cpu",
+          f"a card's map for a checkpoint with audio: the audio tower on the CPU too ({dma})")
+    check(er.text_only_device_map("cpu") == "cpu" and er.text_only_device_map("cpu", audio=True) == "cpu",
+          "the CPU's map: one device, as before")
+
+    m = nn.Module()
+    m.lin = nn.Linear(4, 4)
+    add_hook_to_module(m.lin, ModelHook())
+    er.settle_text_only_device_map(m, "cuda:0")
+    patched = lambda x: "patched"  # noqa: E731  (what the W4A16 patch does: a new forward, set after the settle)
+    m.lin.forward = patched
+    check(not hasattr(m.lin, "_hf_hook") and m.lin.forward is patched and m.hf_device_map == {"": "cuda:0"},
+          "settle takes the hooks off and leaves a later patch in place")
+
+    src = inspect.getsource(er.TheodoliteRuntime.load)
+    i_settle, i_patch = src.find("settle_text_only_device_map(hf_model"), src.find("patch_compressed_tensors_for_low_vram(hf_model")
+    check(0 <= i_settle < i_patch, "load settles the split map before the W4A16 patch")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory(prefix="volunteer-kit-") as d:
         return run_checks(Path(d))
@@ -394,6 +430,11 @@ def run_checks(tmp: Path) -> int:
     check(r.returncode != 0 and "which a pack does not write" in r.stderr and not (tmp / "work-odd" / "bundle" / "run.sh").exists(),
           "a bundle holding a file a pack does not write is not unpacked")
     section("the refusals: made up after its canary, made up throughout, another card class taken, a wrong secret, a stray file", before)
+
+    # 6. the load on a 24 GB card, on the CPU: the stand-in never takes the split map, so its pieces are checked here
+    before = len(failures)
+    check_split_load()
+    section("the 24 GB load: the map a card is given, the hooks taken off before the patch", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

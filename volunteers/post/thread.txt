@@ -12,7 +12,7 @@ what you get when the atlas is published:
 - your name on the first public neuron map of a 31B, and you name your layer's strongest neurons
 - ready now: any neuron as a llama.cpp control vector for your own frontend (keep the scale near 1)
 
-needs: one NVIDIA card 32GB+ (5090, PRO 6000, A6000, A100, H100...), CUDA 13 driver, Linux, ~60 GB disk. 24 GB won't fit
+needs: one NVIDIA card 24GB+ (5090, 4090, 3090, PRO 6000, A6000, A100, H100...), CUDA 13 driver, Linux, ~60 GB disk. a 24 GB card must be headless (no desktop on it)
 time: ~13 h a layer on a 5090 + ~1 h setup. stop and resume any time
 
 git clone https://github.com/whp199/theodolite && cd theodolite && git checkout census-kit-2

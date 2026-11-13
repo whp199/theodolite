@@ -62,8 +62,13 @@ def main() -> int:
     from backend.atlas_index import AtlasIndex
     from backend.runtime_factory import weights_card
 
-    stats = AtlasIndex(model=getattr(rt, "model_id", None), shape=(len(lm.layers), lm.layers[0].mlp.down_proj.weight_packed.shape[1] * 8
-                       if hasattr(lm.layers[0].mlp.down_proj, "weight_packed") else 0), weights=weights_card(rt)).get("act_scale")
+    from backend import atlas_ops as ao
+
+    # the stats index as census_run.py takes it: the runtime's own layer count and width
+    stats = AtlasIndex(model=getattr(rt, "model_id", None), shape=(len(lm.layers), ao.ffn_width(lm, 0)),
+                       weights=weights_card(rt)).get("act_scale")
+    if stats is None:
+        raise SystemExit("No stats index (act_scale) for this model and shape: the push's unit, p50, is read from it.")
     push = 2.0 * float(stats["resid_q"][a.layer, 1])  # break_rel's largest dose, x p50
     print(f"rows pushed along random directions at {push:.1f} (2 x p50 at layer {a.layer})", flush=True)
     g = torch.Generator(device="cpu").manual_seed(0)
