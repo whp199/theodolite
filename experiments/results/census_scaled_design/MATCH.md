@@ -62,6 +62,39 @@ the layer's ceilings in one stream, [`ceilings.json`](ceilings.json)), each roun
 Those two numbers go into `MATCH_CEIL` in `backend/census.py` as they come out. A layer whose ladder does not hold
 both targets gets no doses and is refused until it is measured on a ladder that does.
 
+## What the fine pilot said
+
+Taken on 13 November at 05:14Z to 05:24Z, at layers 30 to 38 and the reference layer 45
+([`fine_pilot.json`](fine_pilot.json)). Every ladder rises all the way. This section was written after the pilot;
+everything above it was written before.
+
+| layer | ceilings for 1.0 nats | ceilings for 1.4 nats | nats at 1.6 ceilings | nats at 2.3 ceilings |
+|---|---|---|---|---|
+| 30 | 2.42 | 2.67 | 0.23 | 0.80 |
+| 31 | 2.58 | 2.76 | 0.24 | 0.57 |
+| 32 | 2.21 | 2.44 | 0.35 | 1.15 |
+| 33 | 2.31 | 2.51 | 0.31 | 0.99 |
+| 34 | 2.62 | 2.79 | 0.22 | 0.54 |
+| 35 | 2.27 | 2.41 | 0.30 | 1.09 |
+| 36 | 2.27 | 2.46 | 0.26 | 1.07 |
+| 37 | 2.41 | 2.55 | 0.25 | 0.77 |
+| 38 | 2.14 | 2.30 | 0.26 | 1.39 |
+
+Those pairs are in `MATCH_CEIL` as they came out. Layer 45 has none: its ladder ends at 0.55 nats, under both
+targets.
+
+The finer rungs correct four things said above, which were read off the coarse pilot:
+
+- **Layer 37's 2.3 ceilings is 0.77 nats, not 0.95.** So the push that passed alone at layer 37 is softer than the
+  lower target, and both of layer 37's doses here (2.41 and 2.55 ceilings) are harder than any push read at that
+  layer. The rule was fixed before the pilot, and the doses stand as they came out.
+- **Layer 38's 1.6 ceilings is 0.26 nats, not 0.35, and layer 37's is 0.25.** At that dose the two layers were
+  pushed alike by this measure. One passed thinly and the other failed thinly, so the pilot does not say why they
+  differ, as the second section above claims it does.
+- **Layer 38's 2.3 ceilings is 1.39 nats.** At layer 38 the design's upper dose is `soft_ceil`'s own, 2.30.
+- **The curve is steeper than said.** At layer 37, near the doses, one rung (a push 7% larger) moves the next
+  word-piece between 1.3 and 1.5 times as far. The two doses are 6% apart.
+
 ## What it may not do
 
 - **Layer 37 may fail whatever the dose.** It carried less between the question halves than layer 38 at every

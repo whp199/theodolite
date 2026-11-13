@@ -132,7 +132,13 @@ SOFT_CEIL = (1.6, BREAK_CEIL)
 DESIGN_QUESTIONS["match_ceil"] = DESIGN_QUESTIONS["break_rel"]
 DESIGN_HALVES["match_ceil"] = DESIGN_HALVES["break_rel"]
 MATCH_NATS = (1.0, 1.4)
-MATCH_CEIL: Dict[int, Tuple[float, float]] = {}
+# the fine pilot of 13 November 2026 (05:24Z; experiments/results/census_scaled_design/fine_pilot.json), layers 30
+# to 38, each pair as `census_dose_pilot.py doses --targets 1.0,1.4` gave it. Layer 45, the pilot's reference, is
+# not here: its ladder ends under 1.0 nats
+MATCH_CEIL: Dict[int, Tuple[float, float]] = {
+    30: (2.42, 2.67), 31: (2.58, 2.76), 32: (2.21, 2.44), 33: (2.31, 2.51), 34: (2.62, 2.79),
+    35: (2.27, 2.41), 36: (2.27, 2.46), 37: (2.41, 2.55), 38: (2.14, 2.30),
+}
 # the designs whose doses are set a layer at a time: a name to its table. They are not in DESIGNS, which holds one
 # list a design; `design_at` gives the list a run takes at its layer, for these and for the others
 LAYER_DOSES: Dict[str, Dict[int, Tuple[float, ...]]] = {"match_ceil": MATCH_CEIL}

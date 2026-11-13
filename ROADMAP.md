@@ -822,8 +822,16 @@ layers, the determinism run and the sampled push on 29 October). In this section
        (`scripts/census_dose_pilot.py`: the steer lens’s measurement on rungs 7% apart, where the first pilot’s
        rungs are a factor of two apart and every dose in question lies between the same two), by a rule fixed
        before that pilot is seen. Built and checked on the stand-in; a layer without measured doses is refused.
-       The fine pilot (layers 30–38) and a trial at layer 37 on neurons the walk did not ask are queued behind
-       layer 52’s trial, ahead of the steer lens’s build.
+       **The fine pilot, taken at 05:14Z to 05:24Z** (layers 30–38 and the reference layer 45;
+       [`fine_pilot.json`](experiments/results/census_scaled_design/fine_pilot.json)). The two counts of ceilings a
+       layer, for 1.0 and for 1.4 nats, as they came out and as `MATCH_CEIL` now holds them: 2.42 and 2.67 at layer
+       30, 2.58 and 2.76 at 31, 2.21 and 2.44 at 32, 2.31 and 2.51 at 33, 2.62 and 2.79 at 34, 2.27 and 2.41 at 35,
+       2.27 and 2.46 at 36, 2.41 and 2.55 at 37, 2.14 and 2.30 at 38. The finer rungs correct the coarse pilot’s
+       figures in ways that matter. Layer 37’s 2.3 ceilings, which passed alone, is 0.77 nats and not 0.95, so both
+       of layer 37’s doses are harder than any push read there. Layer 38’s 1.6 ceilings is 0.26 nats and layer 37’s
+       is 0.25, so at that dose the two layers were pushed alike by this measure, and the pilot does not explain why
+       one passed and the other failed. Near the doses a push 7% larger moves the next word-piece 1.3 to 1.5 times
+       as far, and the two doses are 6% apart.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
