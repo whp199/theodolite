@@ -1,0 +1,134 @@
+{
+ "what": "Layer 35's trial answers around the card's fault, against the same answers written again.",
+ "layer": 35,
+ "trial": "L35-match_ceil-trial.jsonl",
+ "trial_answers": 49110,
+ "written_before_the_fault": 18240,
+ "trial_jobs": {
+  "n": 49110,
+  "sha256": "b3300bafcc634cbb"
+ },
+ "chunks": {
+  "22": {
+   "batches": [
+    268,
+    280
+   ],
+   "started_at": "2026-11-13T14:53:18Z",
+   "same_jobs": true,
+   "rows_in_the_trial": [
+    16896,
+    17663
+   ],
+   "all": {
+    "answers": 768,
+    "present": 768,
+    "identical": 768,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 12,
+    "lp_pieces": 25196,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   },
+   "written_before_the_fault": {
+    "answers": 768,
+    "present": 768,
+    "identical": 768,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 12,
+    "lp_pieces": 25196,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   },
+   "written_after_the_fault": {
+    "answers": 0,
+    "present": 0,
+    "identical": 0,
+    "first_piece": null,
+    "prefix_median": null,
+    "prefix_min": null,
+    "lp_pieces": 0,
+    "lp_median": null,
+    "lp_p99": null,
+    "lp_max": null
+   },
+   "canary": {
+    "answers": 64,
+    "present": 64,
+    "identical": 64,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 12,
+    "lp_pieces": 1637,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   }
+  },
+  "23": {
+   "batches": [
+    280,
+    292
+   ],
+   "started_at": "2026-11-13T14:54:42Z",
+   "same_jobs": true,
+   "rows_in_the_trial": [
+    17664,
+    18431
+   ],
+   "all": {
+    "answers": 768,
+    "present": 768,
+    "identical": 768,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 12,
+    "lp_pieces": 24550,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   },
+   "written_before_the_fault": {
+    "answers": 576,
+    "present": 576,
+    "identical": 576,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 12,
+    "lp_pieces": 18194,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   },
+   "written_after_the_fault": {
+    "answers": 192,
+    "present": 192,
+    "identical": 192,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 48,
+    "lp_pieces": 6356,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   },
+   "canary": {
+    "answers": 64,
+    "present": 64,
+    "identical": 64,
+    "first_piece": 1.0,
+    "prefix_median": 48.0,
+    "prefix_min": 12,
+    "lp_pieces": 1637,
+    "lp_median": 0.0,
+    "lp_p99": 0.0,
+    "lp_max": 0.0
+   }
+  }
+ },
+ "every_answer_the_same": true
+}

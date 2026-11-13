@@ -374,8 +374,10 @@ layers, the determinism run and the sampled push on 29 October). In this section
   ceilings is close to the right measure through the middle of the model, and not below layer 9 (1.8 to 6.9
   ceilings there, most of them 3 or more) or in the last three layers (0.5 to 1.0). **The build started at 01:31Z** on all sixty layers (10.1–10.8
   hours; its first two layers took 22.5 minutes each). It was paused at 02:18Z with layers 0 and 1 built, on the
-  owner’s word, to let the census’s walk downward have the card first (step 3, below); it is queued behind the
-  walk and goes on from layer 2. The lens is then set against the census at layers 39–51 as it was at 45 above (`against_census.py`
+  owner’s word, to let the census’s walk downward have the card first (step 3, below). It built layers 2 to 4
+  between 06:45Z and 07:26Z, waited again behind the `match_ceil` walk, and went on from layer 5 at 14:56Z on 13
+  November when that walk had stopped; about ten hours of building are left.
+  The lens is then set against the census at layers 39–51 as it was at 45 above (`against_census.py`
   in that folder). Below 39 nothing can check it: those layers’ readings will be
   marked as resting on the dose rule alone. The pilot’s ladders are also each layer’s dose curve, which a census
   design scaled to the layer needs (the plan’s step 3, below, where it is set beside every dose a trial has read). On the home card, headless, time a
@@ -883,8 +885,10 @@ layers, the determinism run and the sampled push on 29 October). In this section
        more (a correlation of 0.13, against 0.05 at 36 and 0.01 at 38); the gate made for that is met by 0.06.
        3 of the 1,022 beat every control. The card faulted once while the layer was written (Xid 8 at 09:17:31Z,
        after 18,240 answers); the walk’s script began it again as registered and every answer is there. The two
-       chunks written just before the fault are queued to be written again and compared bit for bit when the
-       walk frees the card, ahead of the lens; until then that they are sound is not shown. By the registration
+       chunks written around the fault (1,536 answers, 1,344 of them the last before it) were written again at
+       14:53Z when the walk had freed the card: every one is the trial’s answer bit for bit, and both canaries
+       too (`census_match_walk/spot_compare.py`). The answers of the two minutes before the fault are sound;
+       the 16,896 written earlier were not asked again. By the registration
        layer 35 may be offered under a kit of its own, and the walk went on to layer 34 at 10:01Z. Five layers
        outside 39–51 now pass a trial: 35, 36 and 37 with `match_ceil`, 38 and 52 with `soft_ceil`.
        **Layer 34, read at 11:11Z: it passes all three, by more than any layer below the band.** ±2.62 and ±2.79
@@ -917,6 +921,17 @@ layers, the determinism run and the sampled push on 29 October). In this section
        control. By the registration layer 32 may be offered under a kit of its own, and the walk went on to layer
        31 at 13:40Z. Eight layers outside 39–51 now pass a trial: 32 to 37 with `match_ceil`, 38 and 52 with
        `soft_ceil`.
+       **Layer 31, read at 14:52Z: it fails, and the walk stops.** ±2.58 and ±2.76 ceilings, one session, no
+       fault. Whole: 0.631, 0.634, 0.582 and 0.580, 0.618. The ±2.58 answers alone: 0.634, 0.632, 0.553 and
+       0.548, 0.587. The 971 of 1,022 neurons the controls cover: 0.631, 0.628, 0.581 and 0.579, 0.616. The ±2.76
+       answers alone, reported: 0.615, 0.620, 0.556 and 0.550, 0.601. It fails on one gate: the lower dose’s
+       answers alone do not carry their words between the question halves (0.553 and 0.548 against 0.57), the
+       failure said beforehand to come first. The lead holds at both doses. Neither dose alone carries and the
+       two together do, so the trial points at no other push. Said beforehand: the walk would more likely than
+       not stop at 34 or above; it stopped three layers further down. By the registration no whole layer is taken
+       at 31 with this design and layer 30 is not asked. `match_ceil` passes at 32 to 37 and fails at 31. Eight
+       layers outside 39–51 pass a trial: 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`;
+       `DOSES_CALIBRATED` is widened for none of them.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -985,8 +1000,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
       the covered neurons (13 November, step 3). With these two doses the census reaches 38 and no further down.
       With doses set for the layer (±2.41 and ±2.55 ceilings, `match_ceil`) layer 37 passes its trial on new
       neurons the same night (step 3). Layer 36 passes with its own doses the next morning, one gate by a
-      thousandth, layer 35 with more room, layers 34 and 33 widely, layer 32 with less; the walk is at layer
-      31 (step 3).
+      thousandth, layer 35 with more room, layers 34 and 33 widely, layer 32 with less; layer 31 fails that
+      afternoon and the walk stops there (step 3).
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only

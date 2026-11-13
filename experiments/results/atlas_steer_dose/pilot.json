@@ -2995,6 +2995,16 @@
    "from": "break_rel lower dose, the first trial's review"
   },
   {
+   "layer": 31,
+   "dose": 2.58,
+   "unit": "ceiling",
+   "in_ceilings": 2.58,
+   "of_the_stream": 0.522,
+   "kl": 0.938,
+   "lead": 0.634,
+   "from": "match_ceil lower dose, registered gate, the trial failed; 1.0 nats by the fine pilot (census_match_walk)"
+  },
+  {
    "layer": 37,
    "dose": 2.3,
    "unit": "ceiling",
@@ -3063,6 +3073,16 @@
    "kl": 1.142,
    "lead": 0.601,
    "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
+  },
+  {
+   "layer": 31,
+   "dose": 2.76,
+   "unit": "ceiling",
+   "in_ceilings": 2.76,
+   "of_the_stream": 0.558,
+   "kl": 1.177,
+   "lead": 0.615,
+   "from": "match_ceil upper dose, reported, the trial failed; 1.4 nats by the fine pilot (census_match_walk)"
   },
   {
    "layer": 32,

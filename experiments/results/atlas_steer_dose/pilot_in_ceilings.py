@@ -64,6 +64,9 @@ READ_ALONE = (
     (33, "ceiling", 2.51, 0.702, "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"),
     (32, "ceiling", 2.21, 0.671, "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"),
     (32, "ceiling", 2.44, 0.690, "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"),
+    # layer 31 failed its trial: the lead is clear at both doses, the words do not carry between the question halves
+    (31, "ceiling", 2.58, 0.634, "match_ceil lower dose, registered gate, the trial failed; 1.0 nats by the fine pilot (census_match_walk)"),
+    (31, "ceiling", 2.76, 0.615, "match_ceil upper dose, reported, the trial failed; 1.4 nats by the fine pilot (census_match_walk)"),
 )
 CENSUS_CEILINGS = (1.6, 2.3, 4.6)   # soft_ceil's two doses and break_ceil's upper one
 CENSUS_STREAM = (1.0, 2.0)          # break_rel's

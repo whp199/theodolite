@@ -219,10 +219,14 @@ design, and the walk goes on to layer 35 (±2.27 and ±2.41 ceilings), which beg
 - **The card faulted once while the layer was written.** At 09:17:31Z the driver's watchdog stopped the run (Xid 8)
   after 18,240 answers. The walk's script began it again thirty seconds later, as it is registered to, and the
   second session wrote the other 30,870. Every answer of the job list is there. A stop of this kind ends the work
-  in flight; that it left the answers already written as they should be is not shown by the reading. The two
-  chunks written in the two minutes before the fault (chunks 22 and 23 of 64: 1,536 answers, 1,344 of them from
-  before it) are queued to be written again when the walk frees the card, ahead of the steer lens, and compared
-  bit for bit. That check is no part of the registration and is written here when it is made.
+  in flight; that it left the answers already written as they should be is not shown by the reading. So the two
+  chunks written around the fault (chunks 22 and 23 of 64: 1,536 answers, 1,344 of them the last written before
+  it, about two minutes' worth, and 192 the first written after) were written again at 14:53Z, when the walk had
+  freed the card, by the trial's own command from the trial's own checkout. **All 1,536 are the trial's answers in
+  every field, bit for bit**, and so is each chunk's canary (the plan's first 64 answers, written again both
+  times). The answers of the two minutes before the fault are sound. The 16,896 written earlier were not asked
+  again. The check is no part of the registration ([`spot_compare.py`](../census_match_walk/spot_compare.py),
+  [`spot_L35.json`](../census_match_walk/spot_L35.json)).
 
 **What it decides, by the registration:** layer 35 may be offered to volunteers under a kit of its own for this
 design, and the walk goes on to layer 34 (±2.62 and ±2.79 ceilings), which began to be written at 10:01Z.
@@ -334,6 +338,66 @@ design, and the walk goes on to layer 32 (±2.21 and ±2.44 ceilings), which beg
 design, and the walk goes on to layer 31 (±2.58 and ±2.76 ceilings), which began to be written at 13:40Z.
 `DOSES_CALIBRATED` is not widened without the owner's word.
 
+### Layer 31: it fails, and the walk stops
+
+±2.58 and ±2.76 ceilings, 1,022 neurons none of which had been asked anything, 1,024 controls. Read at 14:52Z.
+49,110 answers in 70 minutes, in one session.
+
+| reading | lead | beyond text survival | across the halves | new questions |
+|---|---|---|---|---|
+| whole | 0.631 | 0.634 | 0.582, 0.580 | 0.618 |
+| the ±2.58 answers alone | 0.634 | 0.632 | **0.553, 0.548** | 0.587 |
+| the 971 of 1,022 the controls cover | 0.631 | 0.628 | 0.581, 0.579 | 0.616 |
+| the ±2.76 answers alone (reported) | 0.615 | 0.620 | 0.556, 0.550 | 0.601 |
+| bars | 0.60 | 0.58 | 0.57, 0.57 | 0.56 |
+
+- **It fails on one gate of the three: the lower dose's answers alone do not carry their words between the
+  question halves.** 0.553 and 0.548 against 0.57. The whole reading and the covered neurons pass, across the
+  halves by about 0.01 each. A trial passes only if all three do. The card did not fault: one session, nothing in
+  the run's log or the kernel's.
+- **The lead holds; the carrying between questions gives way.** The lower dose alone leads by 0.634, by 0.632
+  beyond text survival and by 0.587 on the new questions, all over their bars. This is the failure said
+  beforehand to come first: the two figures for words carrying between the halves, before the lead. The other
+  case the registration names, the lead failing with the halves clear, which would have pointed at the doses, did
+  not happen.
+- **Neither dose alone carries, and the two together do.** The upper dose alone gives 0.556 and 0.550. The whole
+  reading, with twice the answers a neuron, gives 0.582 and 0.580. So the trial points at no push between or
+  beside these two. At this layer one dose's twelve answers a neuron do not carry a neuron's words to questions
+  they were not picked on, and the twenty-four of both doses barely do.
+- **The whole reading cut to 32 word-pieces fails too**, the first of the walk to: across the halves 0.567 one
+  way, against 0.57. The whole's pass at 48 leans on the last sixteen word-pieces.
+- **What was said beforehand.** The walk was more likely than not to stop at layer 34 or above: it stopped three
+  layers further down. All seven layers passing was put at one chance in twenty: five passed and the sixth
+  failed. The whole lead was to lie between 0.61 and 0.68: it is 0.631, inside the range for the first time
+  since layer 35. It was to fall a little from layer to layer: it fell by 0.068 from layer 32's, more than a
+  little. The upper dose alone leads by less than the lower, as said (0.615 against 0.634), and not under 0.60.
+  95 neurons in 100 are covered, above the seven to nine in ten said, as at every layer.
+- **Fewer neurons stand out.** 23 in 100 beat 95 in 100 of the controls (32 at layer 32). 19 of the 1,022 beat
+  every control.
+- **The size of the push in ceilings does not say which layer reads.** This layer's doses are the second largest
+  of the walk, a little under layer 34's (±2.62 and ±2.79); 34 passes by the most and 31 fails. The text itself
+  is hardly broken here either: the neurons' answers lose under 0.005 of their distinct 4-grams.
+
+**What it decides, by the registration:** no whole layer is taken at 31 with this design, and the walk stops.
+Layer 30 is not asked. `DOSES_CALIBRATED` is unchanged.
+
+### The walk as a whole
+
+| layer | 37 | 36 | 35 | 34 | 33 | 32 | 31 |
+|---|---|---|---|---|---|---|---|
+| doses, in ceilings | 2.41, 2.55 | 2.27, 2.46 | 2.27, 2.41 | 2.62, 2.79 | 2.31, 2.51 | 2.21, 2.44 | 2.58, 2.76 |
+| whole lead | 0.653 | 0.627 | 0.664 | 0.758 | 0.726 | 0.699 | 0.631 |
+| lower dose alone, across the halves (the lesser) | 0.599 | 0.571 | 0.582 | 0.640 | 0.601 | 0.589 | 0.548 |
+| in 100 beating 95 in 100 of the controls | 31 | 21 | 24 | 42 | 37 | 32 | 23 |
+| trial | pass | pass | pass | pass | pass | pass | **fail** |
+
+Layer 37 is the earlier trial of this design (above); 36 to 31 are the walk. With doses set a layer at a time by
+the next word-piece, the census design passes at six layers below 38, where `soft_ceil`'s two fixed doses failed
+at the first layer tried, 37. It stops at 31. From 36 down the figure nearest its bar is the same one at every
+layer: whether the lower dose's twelve answers carry a neuron's words to the other half of the questions.
+Neither the size of the doses in ceilings nor the layer's depth tracks it: 34 reads best, and the layers on both
+sides of it read worse.
+
 ## What it may not do
 
 - **Layer 37 may fail whatever the dose.** It carried less between the question halves than layer 38 at every
@@ -346,7 +410,8 @@ design, and the walk goes on to layer 31 (±2.58 and ±2.76 ceilings), which beg
 
 ## Cost
 
-The fine pilot: ten minutes for layers 30 to 38. A trial: 49,110 answers, 75 to 88 minutes.
+The fine pilot: ten minutes for layers 30 to 38. A trial: 49,110 answers, 75 to 88 minutes said beforehand; the
+walk's six took 68 to 73.
 
 ## Choices that are the owner's
 
@@ -355,7 +420,9 @@ The fine pilot: ten minutes for layers 30 to 38. A trial: 49,110 answers, 75 to 
    the thinnest of the eight and layer 34's the widest below the band. At 35 and 36 few neurons stand out
    singly, so a whole layer there tells less about each neuron.
 2. Widening `DOSES_CALIBRATED` to a layer, on its passed trial.
-3. The walk below 32 is under way by its registration, layer 31 next, and stops by itself at the first failure
-   and at layer 30. Going on below 30 wants the fine pilot taken there first.
+3. What to do at layer 31 and below. The walk stopped at 31 and layer 30 was not asked. At 31 neither dose alone
+   carries a neuron's words between the question halves and the two together do, so a different push is not what
+   the trial points at; more answers a neuron (more questions) might be, at more cost a layer. That would be a new
+   design with a registration of its own. Below 30 the fine pilot has not been taken.
 4. Whether one design is to cover every layer outside the band. `match_ceil` has no doses at 52 and above (the
    fine pilot was not taken there) and no trial at 38.
