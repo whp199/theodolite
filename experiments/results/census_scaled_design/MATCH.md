@@ -95,6 +95,51 @@ The finer rungs correct four things said above, which were read off the coarse p
 - **The curve is steeper than said.** At layer 37, near the doses, one rung (a push 7% larger) moves the next
   word-piece between 1.3 and 1.5 times as far. The two doses are 6% apart.
 
+## What the trial at layer 37 said: it passes
+
+Registered in [`../census_match_trials/prereg/`](../census_match_trials/prereg/) (hashed at 05:28Z on 13 November,
+before any answer of the design existed): ±2.41 and ±2.55 ceilings, 1,022 neurons the walk's trial did not ask,
+1,024 controls drawn afresh. Read at 06:45Z. 49,110 answers in 75 minutes.
+
+| reading | lead | beyond text survival | across the halves | new questions |
+|---|---|---|---|---|
+| whole | 0.653 | 0.678 | 0.609, 0.627 | 0.654 |
+| the ±2.41 answers alone | 0.647 | 0.672 | 0.599, 0.600 | 0.628 |
+| the 857 of 1,022 the controls cover | 0.629 | 0.664 | 0.585, 0.606 | 0.636 |
+| the ±2.55 answers alone (reported) | 0.616 | 0.635 | 0.615, 0.596 | 0.618 |
+| bars | 0.60 | 0.58 | 0.57, 0.57 | 0.56 |
+
+- **All three gates pass**, and the whole reading cut to 32 word-pieces passes too. The thinnest gating figure is the covered
+  neurons' across the halves, 0.585 against 0.57. 30 of the 1,022 neurons beat every control, where one would by
+  chance; the walk's trial here had 28.
+- **What was said beforehand held, but for the share covered.** About as likely to pass as not: it passes. The
+  whole lead (0.64 to 0.70 was said) is 0.653, the lower dose's (0.63 to 0.69) is 0.647. 84 neurons in 100 are
+  covered, where between seven and eight in ten was said.
+- **The text is hardly broken at these doses.** The neurons' answers lose 0.02 to 0.03 of their distinct 4-grams
+  against the unpushed answers, the controls' under 0.01.
+- **The harder dose leads by less.** The ±2.55 answers alone lead by 0.616, the ±2.41 answers by 0.647, and the
+  walk's ±2.3 answers led by 0.657 on other neurons. So at this layer the lead is already falling between 0.77 and
+  1.4 nats, and 1.4 nats is nearer the edge here than at layer 38, where it led by 0.655 and 0.682. For the layers
+  below, the upper target is the one to watch.
+
+What the pass does not show:
+
+- **It is close to one dose read twice.** The two doses are 6% apart, so the gate on the lower dose alone is not
+  the separate test it is under `soft_ceil`. The trial shows that layer 37 reads at a push of about 2.4 to 2.55
+  ceilings on neurons not asked before. It does not show a second, softer dose reading alone.
+- **It is this layer's second trial.** Layer 37 failed narrowly with 1.6 and 2.3 ceilings and passes with 2.41 and
+  2.55. The second design was made after the first trial was read, and its targets were chosen knowing what that
+  trial showed. The neurons, the controls and the registration were new, and the dose rule was fixed before the
+  pilot that set the doses; the choice to try again at this layer was not blind.
+- **It says nothing of layers 36 and below.** Their doses are in the table from the same pilot; none is trialled.
+- **The rule it rests on is weaker than when it was made.** Layer 52's reading showed that the movement of the
+  next word-piece does not sort the leads closely from layer to layer, and the fine pilot showed that it does not
+  explain why 38 passed and 37 failed at 1.6 ceilings. The rule gave doses that pass here. That is one layer.
+
+**What it decides, by its registration:** `match_ceil` is the design for the layers below 38, a trial before each,
+and layer 37 may be offered to volunteers under a kit of its own. `DOSES_CALIBRATED` is not widened, and the walk
+does not go on at 36, without the owner's word.
+
 ## What it may not do
 
 - **Layer 37 may fail whatever the dose.** It carried less between the question halves than layer 38 at every
@@ -107,10 +152,13 @@ The finer rungs correct four things said above, which were read off the coarse p
 
 ## Cost
 
-The fine pilot: about a quarter of an hour for layers 30 to 38. A trial: 49,110 answers, about 88 minutes.
+The fine pilot: ten minutes for layers 30 to 38. A trial: 49,110 answers, 75 to 88 minutes.
 
 ## Choices that are the owner's
 
-1. Whether a layer that passes is offered to volunteers, and under which kit.
+1. Whether a layer that passes is offered to volunteers, and under which kit. Three layers outside 39 to 51 now
+   pass a trial, under two designs: 37 with `match_ceil`, 38 and 52 with `soft_ceil`.
 2. Widening `DOSES_CALIBRATED` to a layer, on its passed trial.
-3. Whether the walk goes on below a layer that passes.
+3. Whether the walk goes on below a layer that passes: the next is layer 36, at ±2.27 and ±2.46 ceilings.
+4. Whether one design is to cover every layer outside the band. `match_ceil` has no doses at 52 and above (the
+   fine pilot was not taken there) and no trial at 38.

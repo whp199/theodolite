@@ -1,6 +1,6 @@
 {
  "what": "The steer lens's dose pilot, kept here (atlas_data is not in the repository) and set beside the census's doses.",
- "written_at": "2026-11-13T01:31:02Z",
+ "written_at": "2026-11-13T06:45:37Z",
  "model": "google/gemma-4-31B-it-qat-w4a16-ct",
  "reference": {
   "layer": 45,
@@ -2985,6 +2985,16 @@
    "from": "break_rel lower dose, registered gate"
   },
   {
+   "layer": 37,
+   "dose": 2.41,
+   "unit": "ceiling",
+   "in_ceilings": 2.41,
+   "of_the_stream": 0.624,
+   "kl": 1.123,
+   "lead": 0.647,
+   "from": "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_trials)"
+  },
+  {
    "layer": 38,
    "dose": 2.3,
    "unit": "ceiling",
@@ -3003,6 +3013,16 @@
    "kl": 1.34,
    "lead": 0.682,
    "from": "break_ceil lower dose, registered gate (census_ceil_trials)"
+  },
+  {
+   "layer": 37,
+   "dose": 2.55,
+   "unit": "ceiling",
+   "in_ceilings": 2.55,
+   "of_the_stream": 0.66,
+   "kl": 1.37,
+   "lead": 0.616,
+   "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_trials)"
   },
   {
    "layer": 52,

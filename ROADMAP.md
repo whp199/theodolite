@@ -837,7 +837,20 @@ layers, the determinism run and the sampled push on 29 October). In this section
        November before any answer of the design existed; the sha256 of its `SHA256SUMS` is `d4ebb22feb1a…`): ±2.41
        and ±2.55 ceilings, on 1,022 neurons the walk did not ask against 1,024 controls drawn afresh, the same
        reader and three gates. Said beforehand: about as likely to pass all three as not, the covered neurons the
-       least sure. It runs ahead of the steer lens’s build.
+       least sure. It ran ahead of the steer lens’s build.
+       **Read at 06:45Z: it passes all three** ([`census_match_trials/`](experiments/results/census_match_trials/),
+       `summary.json`). Whole: 0.653, 0.678, 0.609 and 0.627, 0.654. The ±2.41 answers alone: 0.647, 0.672, 0.599
+       and 0.600, 0.628. The 857 of 1,022 neurons the controls cover: 0.629, 0.664, 0.585 and 0.606, 0.636. The
+       ±2.55 answers alone, reported: 0.616, 0.635, 0.615 and 0.596, 0.618. 30 of the 1,022 beat every control (one
+       by chance). 75 minutes at 10.9 answers a second. What was said beforehand held, but for the share covered
+       (84 in 100; seven to eight in ten was said). Four cautions, each in `MATCH.md`: the two doses are 6% apart,
+       so this is close to one dose read twice; it is layer 37’s second trial, and the second design was made
+       knowing what the first showed; the harder dose leads by less (0.616 against 0.647), so 1.4 nats is nearer
+       the edge here than at layer 38 and is the target to watch further down; and the rule the doses come from
+       is weaker than when it was made. By its registration `match_ceil` is the design for the layers below 38, a
+       trial before each, and layer 37 may be offered to volunteers under a kit of its own. `DOSES_CALIBRATED` is
+       not widened, and the walk does not go on at 36, without the owner’s word. Three layers outside 39–51 now
+       pass a trial, under two designs: 37 with `match_ceil`, 38 and 52 with `soft_ceil`.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -904,6 +917,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
       layer 38 stays *not taken* on kit 2’s board, since a new design is a new kit.
       The walk downward with it stopped at its first layer: 37 fails on the lower dose alone and, by 0.002, on
       the covered neurons (13 November, step 3). With these two doses the census reaches 38 and no further down.
+      With doses set for the layer (±2.41 and ±2.55 ceilings, `match_ceil`) layer 37 passes its trial on new
+      neurons the same night (step 3); layers 36 and below are not trialled.
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only

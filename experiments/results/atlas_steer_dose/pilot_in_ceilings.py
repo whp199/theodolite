@@ -49,6 +49,10 @@ READ_ALONE = (
     (37, "ceiling", 2.3, 0.657, "soft_ceil upper dose, reported, read after the span was drawn (census_soft_walk)"),
     (52, "ceiling", 1.6, 0.633, "soft_ceil lower dose, registered gate, read after the span was drawn (census_soft_trials)"),
     (52, "ceiling", 2.3, 0.783, "soft_ceil upper dose, reported, a third draw of neurons, read after the span was drawn (census_soft_trials)"),
+    # match_ceil at layer 37 (census_match_trials). The census's fine pilot puts these two at 1.0 and 1.4 nats; the kl
+    # column here is this coarser pilot's line
+    (37, "ceiling", 2.41, 0.647, "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_trials)"),
+    (37, "ceiling", 2.55, 0.616, "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_trials)"),
 )
 CENSUS_CEILINGS = (1.6, 2.3, 4.6)   # soft_ceil's two doses and break_ceil's upper one
 CENSUS_STREAM = (1.0, 2.0)          # break_rel's

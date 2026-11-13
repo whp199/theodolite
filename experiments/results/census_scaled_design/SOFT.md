@@ -235,4 +235,5 @@ asked, 1,024 controls drawn afresh. Read at 05:14Z. 49,110 answers in 86 minutes
 3. Whether layer 52, which passes its trial, is offered to volunteers with this design, and whether layers 53 and
    above are trialled.
 4. Whether layer 38 is taken whole with this design (13 hours).
-5. Whether a design with each layer's doses taken from the pilot's curve is built and trialled at layer 37.
+5. Built and trialled since: `match_ceil` passes at layer 37 ([`MATCH.md`](MATCH.md)). Whether its walk goes on
+   at 36 is the owner's.
