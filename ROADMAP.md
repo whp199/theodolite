@@ -365,11 +365,18 @@ layers, the determinism run and the sampled push on 29 October). In this section
   file and the merged index record them, a layer built at another dose is refused, and the details tab, the
   scientist’s `steer_lens` and the lexicon say what a reading was pushed by and how that was chosen. Until the lens
   is built a neuron read live is pushed at the pilot’s dose for its layer once the pilot is taken, and before that
-  at 0.8, which the page now says in red is not sized to the layer. Still to do, on the card: the pilot (about half
-  an hour, inferred) and the build (10.1–10.8 hours), then the lens set against the census at layers 39–51 as it was
-  at 45 above (`against_census.py` in that folder). Below 39 nothing can check it: those layers’ readings will be
+  at 0.8, which the page now says in red is not sized to the layer. **The pilot is taken** (13 November, 00:52Z to
+  01:31Z, 38 minutes on the home card): all sixty layers measured, none off its ladder
+  ([`pilot.json`](experiments/results/atlas_steer_dose/pilot.json), written by `pilot_in_ceilings.py` there). The
+  dose runs from 0.11 to 0.19 of the stream at layers 9–21, through 0.3 to 0.5 at 26–38, to 0.68 to 0.91 at 39–51
+  and 1.28 at 52; layers 0–8 jump between 0.21 and 0.90. Counted in write ceilings it hardly moves: between 1.3
+  and 2.3 ceilings at every layer from 9 to 56, where as a share of the stream it changes elevenfold. So a count of
+  ceilings is close to the right measure through the middle of the model, and not below layer 9 (1.8 to 6.9
+  ceilings there, most of them 3 or more) or in the last three layers (0.5 to 1.0). **The build started at 01:31Z** on all sixty layers (10.1–10.8
+  hours), and the lens is then set against the census at layers 39–51 as it was at 45 above (`against_census.py`
+  in that folder). Below 39 nothing can check it: those layers’ readings will be
   marked as resting on the dose rule alone. The pilot’s ladders are also each layer’s dose curve, which a census
-  design scaled to the layer needs (the plan’s step 3, below; layer 38 failed for want of one). On the home card, headless, time a
+  design scaled to the layer needs (the plan’s step 3, below, where it is set beside every dose a trial has read). On the home card, headless, time a
   pilot first; on a rented one, `scripts/pod/pilot.sh` is that pilot (it times the step and the memory for each unpacker
   at several batches, takes a `calib_rel` run, times one steer-lens layer, sets a canary batch against the home card’s
   and projects each job × 1.25 against the owner’s approval, which `scripts/gpu_log.py` keeps with every pod against
@@ -750,6 +757,17 @@ layers, the determinism run and the sampled push on 29 October). In this section
        `DOSES_CALIBRATED` names no layer for `soft_ceil` yet: widening it to 38 is the owner’s word. What the pass
        does not show: that any layer below 38 reads with these doses, or that layer 52 does. The steer lens
        started behind this trial at 00:52Z.
+       **What the steer lens’s pilot says of these doses** (taken that night, read afterwards; it gates nothing:
+       `pilot_in_ceilings.py`, [`pilot.json`](experiments/results/atlas_steer_dose/pilot.json)). The pilot gives, at
+       every layer, how far a push of a given size moves the next word-piece. Set beside the fourteen doses a trial
+       has read alone, it sorts them cleanly where neither a share of the stream nor a count of ceilings did: the
+       eight that move the next word-piece by 0.35 to 2.4 nats lead by 0.65 to 0.80, at five layers; the one that
+       moves it by 0.18 leads by 0.60; the five that move it by more than 3 nats lead by 0.485 to 0.595. At layer 38,
+       `soft_ceil`’s two doses are 0.35 and 1.34 nats. Going down, its upper dose stays inside that span at layers
+       25–37 (0.64 to 1.31 nats) and leaves it at 23 and 24 (3.4 and 3.1). Its lower dose sits at the span’s low
+       edge or under it at most layers below 38: 0.27 nats at 37 and 36, 0.21 at 34, 0.24 at 31. So the gate to
+       watch on the walk is again the lower dose alone. The span was drawn after its fourteen readings were known,
+       and the figures between the pilot’s rungs are read off a line; a trial is what tests it.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based

@@ -108,6 +108,59 @@ By the registration this is the design for the walk downward: a trial before eve
 neurons a layer were drawn in the `break_ceil` registration and none has been asked). The pass does not show that
 any layer below 38 reads with these doses, nor that layer 52 does.
 
+## What the steer lens's pilot says about these doses
+
+The third measure named above came in the same night (13 November, 01:31Z): at every layer, how far a push of a
+given size moves the next word-piece, as the median KL in nats over 128 of the layer's neurons
+([`../atlas_steer_dose/pilot.json`](../atlas_steer_dose/pilot.json), `pilot_in_ceilings.py` beside it). It was read
+after layer 38's trial and gates nothing.
+
+**Ceilings are close to the right measure through the middle of the model.** The steer lens's dose is the push
+that moves the next word-piece as far as layer 45's does (0.355 nats). Counted in ceilings it lies between 1.3 and
+2.3 at every layer from 9 to 56, while as a share of the stream it changes elevenfold (0.11 to 1.28). Below layer
+9 it takes 1.8 to 6.9 ceilings, most often 3 or more, and in the last three layers 0.5 to 1.0.
+
+**Every dose a trial has read alone, by how far it moves the next word-piece:**
+
+| layer | push | nats | lead |
+|---|---|---|---|
+| 52 | 1.06 ceilings | 0.18 | 0.603 |
+| 38 | 1.6 | 0.35 | 0.654 |
+| 51 | 1.76 | 0.53 | 0.723 |
+| 45 | 2.54 | 0.92 | 0.706 |
+| 39 | 2.14 | 1.00 | 0.690 |
+| 38 | 2.3 | 1.34 | 0.655 and 0.682 (two draws of neurons) |
+| 52 | 2.12 | 1.72 | 0.797 |
+| 52 | 2.3 | 2.39 | 0.790 |
+| 38 | 3.14 | 3.25 | 0.496 |
+| 39 | 4.28 | 8.3 | 0.595 |
+| 38 | 4.6 | 8.4 | 0.506 |
+| 38 | 6.29 | 11.2 | 0.506 |
+| 52 | 4.6 | 11.7 | 0.485 |
+
+A push that moves the next word-piece by 0.35 to 2.4 nats leads by 0.65 or more, eight times out of eight at five
+layers. One of more than 3 nats does not reach the bar, five times out of five. Counted in ceilings the same
+readings overlap: 2.3 ceilings reads at layer 52 and 3.14 does not at layer 38, yet 4.28 half reads at 39.
+
+**What that says of `soft_ceil` below 38**, a layer at a time (nats at 1.6 and at 2.3 ceilings):
+
+| 37 | 36 | 35 | 34 | 33 | 32 | 31 | 30 | 25–29 | 23, 24 | 20–22 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0.27, 0.95 | 0.27, 0.91 | 0.32, 1.15 | 0.21, 0.64 | 0.30, 0.82 | 0.37, 1.01 | 0.24, 0.64 | 0.30, 0.73 | 0.23 to 0.40, 0.89 to 1.31 | 0.69, 3.4 and 3.1 | 0.21 to 0.31, 0.47 to 1.1 |
+
+- The upper dose stays inside the span that reads from layer 37 down to 25. At 23 and 24 it leaves it.
+- The lower dose sits at the span's low edge or under it at most of these layers. The gate to watch on the walk is
+  the lower dose alone, most at 34 and 31.
+- At layers 2 to 8 both doses move the next word-piece by 0.05 to 0.23 nats: ceilings stop being the measure there.
+
+**How far to trust it.** The span was drawn after all fourteen readings were known. The pilot's rungs are a factor
+of two apart and the figures between them are read off a line; the curve is steep (twice the lens's dose moves
+the next word-piece by a median 4.5 nats, between 1.6 and 11.3 across the layers, where the dose itself moves it
+by 0.36). The pilot pushes 128 neurons a layer and reads one next
+word-piece, not an answer. A trial is what tests it. If the walk fails where this says it should, a design that
+takes each layer's two doses from the pilot's curve (say 0.35 and 1.3 nats, what `soft_ceil` is at layer 38) is the
+next candidate; it is not built.
+
 ## Choices that are the owner's
 
 1. Whether layers that pass are offered to volunteers. A new design is a new kit: its tag and its canaries.
