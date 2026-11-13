@@ -68,8 +68,8 @@ layers 40–52. For the layers outside, two designs that count the push in what 
 trialled on 13 November 2026 (ROADMAP §vi). One with two fixed counts passes at layers 39 and 53 (38 and 52 on the
 board) and fails at 38. One whose two counts are set a layer at a time, where the next word-piece moves by a fixed
 amount, passes at layers 33–38 (32–37 on the board) and fails at 32. The doses are counted calibrated at those eight
-layers, and a third kit that offers them to volunteers is being prepared; they are not open yet. The other
-thirty-nine layers (1–32 and 54–60) have no design that passed there. Where a census’s doses are not counted
+layers, and a third kit offers them to volunteers beside layers 40 and 52, each with the design that passed there
+([VOLUNTEERS.md](VOLUNTEERS.md)). The other thirty-nine layers (1–32 and 54–60) have no design that passed there. Where a census’s doses are not counted
 calibrated the atlas marks it “doses not calibrated at this layer” and inks it without gilt.
 
 <table>

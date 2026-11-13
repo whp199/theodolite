@@ -3,19 +3,20 @@
 # kit's fixed settings (volunteers/kit.env), and pack it to send. Run it from a checkout at the kit's tag:
 #
 #     scripts/volunteer/census.sh check            # can this machine take a layer? the card, its memory, the driver, the disk
-#     scripts/volunteer/census.sh reserve 47       # a claim on layer 47, and the line to post
+#     scripts/volunteer/census.sh reserve 34       # a claim on layer 34, and the line to post
 #     scripts/volunteer/census.sh setup            # the venv, the checkpoint, the lenses and the stats index (about 35 GB)
-#     scripts/volunteer/census.sh canary 47        # one batch and the writer's floor, set against the home card's
-#     scripts/volunteer/census.sh run 47           # the whole layer, detached (about 13 hours on a 5090); again to continue
-#     scripts/volunteer/census.sh status 47        # how far, how fast, when: the line to post
-#     scripts/volunteer/census.sh pack 47          # the run checked whole and packed: the file to send, the line to post
-#     scripts/volunteer/census.sh release 47       # give the layer back
+#     scripts/volunteer/census.sh canary 34        # one batch and the writer's floor, set against the home card's
+#     scripts/volunteer/census.sh run 34           # the whole layer, detached (about 13 hours on a 5090); again to continue
+#     scripts/volunteer/census.sh status 34        # how far, how fast, when: the line to post
+#     scripts/volunteer/census.sh pack 34          # the run checked whole and packed: the file to send, the line to post
+#     scripts/volunteer/census.sh release 34       # give the layer back
 #     scripts/volunteer/census.sh --dry-run --root /tmp/v ...   # the same on the CPU stand-in (its layers 2 and 3)
 #
 # Everything lives under one folder (--root, default $THEODOLITE_POD_ROOT, else ~/theodolite-census): the env file,
 # the downloads, the venv's caches, the runs, the logs, and claims/ with each claim's secret. Keep the secret: the
 # bundle you send carries it, and it is how the bundle is known to come from the claim. Layers count from 0
-# (page = layer + 1), and the kit takes only volunteers/kit.env's KIT_LAYERS.
+# (page = layer + 1), and the kit takes only volunteers/kit.env's KIT_LAYERS, each with the design the kit names for
+# it (KIT_DESIGNS: the one whose trial passed at that layer). The script picks it: there is nothing to choose.
 #
 # What goes home is the pack's bundle alone: the answers, the run's meta (the card's name, torch, CUDA and the library
 # versions, the commit), the canary, the writer's floor and a manifest with the claim. The logs stay here (they name
@@ -61,15 +62,23 @@ done
 case "$NAME" in *[!A-Za-z0-9._-]*|"") die "--name is letters, digits, '.', '_' and '-' only" ;; esac
 [ ${#NAME} -le 24 ] || die "--name is 24 characters at most"
 
-# the kit's settings, the stand-in's in their place on a dry run
+# the kit's settings, the stand-in's in their place on a dry run ($THEODOLITE_KIT_FILE: another kit file, for a check,
+# as backend/census_volunteer.py reads it)
 # shellcheck source=volunteers/kit.env
-. "$REPO/volunteers/kit.env"
+. "${THEODOLITE_KIT_FILE:-$REPO/volunteers/kit.env}"
 if [ "$DRY" = 1 ]; then
     KIT_LAYERS=$KIT_DRY_LAYERS KIT_NEURONS=$KIT_DRY_NEURONS KIT_CONTROLS=$KIT_DRY_CONTROLS
     KIT_BATCH=$KIT_DRY_BATCH KIT_MAX_NEW=$KIT_DRY_MAX_NEW
+    [ -z "${KIT_DESIGNS:-}" ] || KIT_DESIGNS=${KIT_DRY_DESIGNS:-}
 fi
-RUN_ARGS=(--design "$KIT_DESIGN" --neurons "$KIT_NEURONS" --random-controls "$KIT_CONTROLS" --seed "$KIT_SEED"
-          --batch "$KIT_BATCH" --max-new "$KIT_MAX_NEW" --unpacker "$KIT_UNPACKER")
+design_of() {  # the design the kit takes a layer with: KIT_DESIGNS' (layer:design), else KIT_DESIGN, a kit of one design
+    local pair
+    for pair in ${KIT_DESIGNS:-}; do
+        if [ "${pair%%:*}" = "$1" ]; then printf '%s' "${pair#*:}"; return; fi
+    done
+    printf '%s' "${KIT_DESIGN:-}"
+}
+RUN_ARGS=()  # set with the layer (need_layer): its design first, then the kit's settings
 DRYF=()
 [ "$DRY" = 1 ] && DRYF=(--dry-run)
 
@@ -84,8 +93,12 @@ need_layer() {
     LAYER=${LAYER#L}
     case " $KIT_LAYERS " in
         *" $LAYER "*) ;;
-        *) die "the kit takes layers $KIT_LAYERS (counting from 0), not $LAYER: the others are done" ;;
+        *) die "the kit takes layers $KIT_LAYERS (counting from 0), not $LAYER: the others are done, or no kit offers them yet" ;;
     esac
+    KIT_DESIGN=$(design_of "$LAYER")
+    [ -n "$KIT_DESIGN" ] || die "the kit names no design for layer $LAYER (volunteers/kit.env, KIT_DESIGNS): ask on the board"
+    RUN_ARGS=(--design "$KIT_DESIGN" --neurons "$KIT_NEURONS" --random-controls "$KIT_CONTROLS" --seed "$KIT_SEED"
+              --batch "$KIT_BATCH" --max-new "$KIT_MAX_NEW" --unpacker "$KIT_UNPACKER")
     RUN=L$LAYER-$KIT_DESIGN
     CLAIM=$CLAIMS/L$LAYER.claim
 }
@@ -275,7 +288,7 @@ cmd_canary() {
     local out
     out=$(canary_dir)
     cd "$REPO"
-    say "1. the canary: plan batch 0 of layer $LAYER's run, written alone (the model loads first)"
+    say "1. the canary: plan batch 0 of layer $LAYER's run (the kit's design at this layer: $KIT_DESIGN), written alone (the model loads first)"
     scrubbed "$PY" -I scripts/census_run.py "${STAND[@]}" --layer "$LAYER" "${RUN_ARGS[@]}" --canary-only --out-dir "$out"
     say "2. the writer's floor: with no push, how far an answer agrees with itself across batch shapes, on this card"
     scrubbed "$PY" -I scripts/verify_atlas_writer.py "${STAND[@]}" --layer "$LAYER" --design "$KIT_DESIGN" --batches "$KIT_BATCH" \

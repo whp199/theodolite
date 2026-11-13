@@ -1,23 +1,33 @@
 # Take a layer of the census
 
 Theodolite is mapping what each MLP neuron of Gemma-4-31B writes. The census takes one layer at a time. Each of the
-layer's 21,504 neurons is pushed along its own write direction, at four strengths (±1 and ±2 of the stream), on six
-plain questions. Its 24 greedy answers are then read against those of 2,048 random directions pushed the same way.
-Layer 45 was the first done: 13.2 hours on one RTX 5090, and it passed every check set for it before it was run
+layer's 21,504 neurons is pushed along its own write direction, at four strengths, on six plain questions. Its 24
+greedy answers are then read against those of 2,048 random directions pushed the same way. Layer 45 was the first
+done: 13.2 hours on one RTX 5090, and it passed every check set for it before it was run
 (`experiments/results/census_L45_whole/`). By 11 November 2026 the ten beside it were done too,
 **40 to 44 and 46 to 50**, six of them by volunteers, and each passed layer 45's gates, read after the fact.
 
-Those eleven are the layers the push strengths were first calibrated for. **Kit 2 takes the other forty-nine**: the
-same command, at every layer left. A layer outside 40 to 50 is not offered blind. We first take a trial of it on our
-own card: about a thousand of its neurons against 1,024 random directions, some 80 minutes, read by rules fixed before
-any trial ran (`experiments/results/census_neighbour_trials/`). A layer whose trial passes is opened on the board; one
-whose trial fails is not taken with these push strengths. So the band grows outward from 40 to 50, a layer at a time,
-and **the board says which layers are open**. The first trials were read on 12 November 2026: layers 39 and 51
-passed and were opened that day. Layers 38 and 52 failed, from opposite sides: at 38 the same push is three times the
-most a neuron can write, and the text breaks; at 52 it is barely once, and the gentler half of the answers hardly
-moves. So layers 0 to 38 and 52 to 59 are not taken with these push strengths. They wait for a design that counts its
-push in what a neuron can write, which is being trialled now and would come as a kit of its own. Layers count from 0,
-as every script counts them (the app's page = layer + 1).
+Those eleven are the layers the first push strengths, ±1 and ±2 of the stream, were calibrated for. **A layer outside
+them is not offered blind.** We first take a trial of it on our own card: about a thousand of its neurons against
+1,024 random directions, some 70 minutes, read by rules fixed before any trial ran. A layer whose trial passes is
+opened on the board; one whose trial fails is not taken. The first push strengths passed at layers 39 and 51 and no
+further out. At 38 the same push is three times the most a neuron can write, and the text breaks; at 52 it is barely
+once, and the gentler half of the answers hardly moves.
+
+**Kit 3 gives each layer the push strengths whose trial passed there.** Two newer designs count the push in what each
+neuron can write by itself, its *write ceiling*:
+
+| Layers | Push strengths | Its trial |
+|---|---|---|
+| 32 to 37 | two counts of the neuron's write ceiling, set for each layer where the next word-piece moves by a fixed amount (between 2.2 and 2.8 ceilings) | passed at each, 13 November 2026 |
+| 38 and 52 | ±1.6 and ±2.3 of the neuron's write ceiling | passed at each, 13 November 2026 |
+| 39 and 51 | ±1 and ±2 of the stream, as at layers 40 to 50 | passed at each, 12 November 2026 |
+
+The script picks the right one for the layer you take; there is nothing to choose. The trials did not pass equally:
+layer 34 passed by the most, and layer 36 by a thousandth on one of its three checks
+(`experiments/results/census_scaled_design/MATCH.md` has every figure). Layer 31 failed its trial, and no push
+strengths have passed a trial at layers 0 to 30 or 53 to 59, so those are not taken yet. **The board says which layers
+are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 
@@ -61,23 +71,24 @@ No account, token or payment is needed anywhere.
 
 ## The steps
 
-If you took a layer with kit 1, most of this is already on your machine: see *If you ran kit 1*, below.
+If you took a layer with kit 1 or kit 2, most of this is already on your machine: see *If you ran an earlier kit*,
+below.
 
 ```bash
 mkdir -p ~/theodolite-census && cd ~/theodolite-census
 git clone https://github.com/whp199/theodolite.git && cd theodolite
-git checkout census-kit-2
+git checkout census-kit-3
 scripts/volunteer/census.sh check                      # can this machine take a layer?
 ```
 
 1. **Pick an open layer on the board and claim it.**
 
    ```bash
-   scripts/volunteer/census.sh reserve 39 --name yourname
+   scripts/volunteer/census.sh reserve 34 --name yourname
    ```
 
    The script reads the board first and refuses a layer that is not open there. Then it prints one line,
-   `CENSUS RESERVE L39 claim=… card=… name=… kit=2`. Post it in the thread, or as a comment on the board issue. The claim's secret stays in `~/theodolite-census/claims/`, and the bundle you send carries it: that is
+   `CENSUS RESERVE L34 claim=… card=… name=… kit=3`. Post it in the thread, or as a comment on the board issue. The claim's secret stays in `~/theodolite-census/claims/`, and the bundle you send carries it: that is
    how it is known to come from your claim. The board is kept by hand, so give it a while, and pick another layer if
    someone was there first.
 
@@ -99,7 +110,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 3. **The canary** (a few minutes):
 
    ```bash
-   scripts/volunteer/census.sh canary 39
+   scripts/volunteer/census.sh canary 34
    ```
 
    It writes the run's first batch on your card and sets it against the same batch written on ours. It also measures
@@ -109,7 +120,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 4. **Run the layer:**
 
    ```bash
-   scripts/volunteer/census.sh run 39
+   scripts/volunteer/census.sh run 34
    ```
 
    It runs detached, so you can close the terminal. Post the `CENSUS START` line it prints. If it stops (a reboot, a
@@ -119,7 +130,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 5. **Check on it** now and then:
 
    ```bash
-   scripts/volunteer/census.sh status 39
+   scripts/volunteer/census.sh status 34
    ```
 
    It prints the answers written, the rate, when it should finish, and a `CENSUS PROGRESS` line. Post that line every
@@ -128,27 +139,29 @@ scripts/volunteer/census.sh check                      # can this machine take a
 6. **Pack it** when it is whole (10–20 minutes):
 
    ```bash
-   scripts/volunteer/census.sh pack 39
+   scripts/volunteer/census.sh pack 34
    ```
 
    It checks the run is whole and taken with the kit's settings, then packs about 500 MB into
-   `~/theodolite-census/outbox/L39-break_rel-<claim>.tar`. Upload that somewhere anyone can download it for a week
-   or more: a Hugging Face dataset, a torrent, a file host. Post the `CENSUS DONE` line with your link in it.
+   `~/theodolite-census/outbox/L34-match_ceil-<claim>.tar` (the name carries the layer's design). Upload that
+   somewhere anyone can download it for a week or more: a Hugging Face dataset, a torrent, a file host. Post the
+   `CENSUS DONE` line with your link in it.
 
-If you can't finish, run `scripts/volunteer/census.sh release 39` and post the line it prints. That frees the layer
+If you can't finish, run `scripts/volunteer/census.sh release 34` and post the line it prints. That frees the layer
 for someone else.
 
-### If you ran kit 1
+### If you ran an earlier kit
 
 ```bash
 cd ~/theodolite-census/theodolite          # logos-theodolite, in a checkout cloned before the repository was renamed
-git fetch --tags && git checkout census-kit-2
+git fetch --tags && git checkout census-kit-3
 scripts/volunteer/census.sh check
 ```
 
-Kit 2 pins the same Python packages, the same checkpoint and the same stats index as kit 1, so `setup` finds them and
-has little left to do. Run it once anyway, then go on from step 1 with a new `reserve`: a kit 1 claim does not carry
-over, and the board refuses a line made with the old kit.
+Kit 3 pins the same Python packages, the same checkpoint and the same stats index as kits 1 and 2, so `setup` finds
+them and has little left to do. Run it once anyway, then go on from step 1 with a new `reserve`: a claim made with an
+earlier kit does not carry over, and the board refuses a line made with one. Layers 39 and 51 are taken with kit 3
+now, by the same command kit 2 took them with.
 
 ## The rules
 
@@ -211,15 +224,16 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
 
    Results: [`census_unpushed_ties/`](experiments/results/census_unpushed_ties/).
 
-A layer from another card class is recorded as such beside the run (`L<layer>-break_rel.provenance.json`). Its
+A layer from another card class is recorded as such beside the run (`L<layer>-<design>.provenance.json`). Its
 neurons and its controls were pushed on the same card, so the layer's own reading stands. Wherever layers are compared
 with each other, the card is named.
 
-**A layer outside 40 to 50** is read, once it is accepted, by the same three checks its trial was read by
-(`experiments/results/census_neighbour_trials/prereg/RULES.md`): the whole reading against layer 45's gates, the ±1
-answers alone, and the neurons whose text survives as the random directions' does. Until its push strengths are
-counted calibrated there, the atlas marks that layer's census "doses not calibrated at this layer", and its strongest
-neurons are drawn on the map without gilt.
+**A layer outside 40 to 50** is read, once it is accepted, by the same three checks its trial was read by: the whole
+reading against layer 45's gates, the gentler push's answers alone, and the neurons whose text survives as the random
+directions' does (the rules are in `experiments/results/census_neighbour_trials/prereg/`, `census_soft_trials/prereg/`
+and `census_match_walk/prereg/`). The push strengths are counted calibrated at each of the ten layers this kit opens
+with. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
+drawn on the map without gilt.
 
 ## What you send, and what runs on your machine
 
@@ -246,8 +260,11 @@ neurons are drawn on the map without gilt.
 - **`check` says no**: the line says why.
 - **`reserve` says the layer is not open**: the board shows it waiting for its trial, not taken, or held by someone
   else. Pick a layer shown OPEN.
-- **The canary refuses "other settings"**: the checkout isn't at `census-kit-2`, or the stats index isn't the kit's.
-- **The run stopped**: run the same `census.sh run` again. The log is `~/theodolite-census/logs/L<layer>-break_rel.log`.
+- **`reserve` says the board is another kit's**: your checkout is at an older tag. `git fetch --tags && git checkout
+  census-kit-3`, then reserve again.
+- **The canary refuses "other settings"**: the checkout isn't at `census-kit-3`, or the stats index isn't the kit's.
+- **The run stopped**: run the same `census.sh run` again. The log is `~/theodolite-census/logs/L<layer>-<design>.log`
+  (`L34-match_ceil.log`).
 - **Out of memory**: close everything else on the card. The batch is fixed at 64, so a card that can't hold it
   can't take part.
 - **Anything else**: ask in the thread or on the board issue.
@@ -264,15 +281,17 @@ llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-
 
 - **The layer** counts from 0. The atlas's page, the first number in its address (`#/atlas/46/13641`), is layer + 1,
   and `--page 46` takes it as it is.
-- **The scale is the dose.** At 1 the push is as long as the stream's typical length at that layer: the census's +1.
-  `:-1` pushes the other way. **Stay near ±1**: at ±2 llama.cpp's text collapses, because it also pushes the first
-  token, which the census left alone. Other values work, but the census measured only ±1 and ±2. For several
-  neurons: `--set 45:13641,44:801:-0.5 -o mix.gguf`.
+- **The scale is the dose.** At 1 the push is as long as the stream's typical length at that layer: the census's +1
+  at layers 39 to 51. `:-1` pushes the other way. **Stay near ±1**: at ±2 llama.cpp's text collapses, because it also
+  pushes the first token, which the census left alone. Other values work, but the census measured only ±1 and ±2
+  there. At layers 32 to 38 and 52 the census pushed each neuron by a count of its own write ceiling instead. For a
+  typical neuron that is about 0.45 to 0.75 of the stream at layers 32 to 38, and about 1.5 and 2.2 at layer 52, so
+  those are the scales the census read there. For several neurons: `--set 45:13641,44:801:-0.5 -o mix.gguf`.
 - **What it reads**: two tensors of the layer and the 31 MB stats index, on the CPU, in seconds. Nothing is downloaded.
   - With the kit set up, run `. ~/theodolite-census/env.sh` first: it finds the checkpoint and the stats index you
-    already have. Kit 2's checkout holds the script; run it there with the kit's Python
+    already have. Kit 2's and kit 3's checkouts hold the script; run it there with the kit's Python
     (`~/theodolite-census/theodolite/.venv/bin/python`). It writes one new file and changes none, so the checkout
-    stays as `census.sh` needs it. (Kit 1's tag is older than the script: check out `census-kit-2`.)
+    stays as `census.sh` needs it. (Kit 1's tag is older than the script: check out `census-kit-3`.)
   - Without the kit: add `--gguf` with your own GGUF of Gemma-4-31B-it and `--stats` with the kit's stats index
     (`https://github.com/whp199/theodolite/releases/download/census-kit-1/act_scale.npz`, sha256
     `23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa`). It needs Python 3.12 with numpy, torch (the
@@ -281,10 +300,10 @@ llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-
 - **`--show FILE`** prints what a file was made from: the model, the weights, each neuron, dose and p50, the stats
   index's sha256 and the commit.
 
-**What a census label can and can't tell you.** The census read each neuron from six questions, at ±1 and ±2, one
-neuron at a time, from greedy answers of 48 word-pieces with thinking off, on the 4-bit W4A16 checkpoint. A neuron's
-words are those its pushed answers used more often than 2,048 random pushes did: a lead, not a proof. Three things
-differ when you load the file:
+**What a census label can and can't tell you.** The census read each neuron from six questions, at four push strengths
+(±1 and ±2 of the stream at layers 39 to 51), one neuron at a time, from greedy answers of 48 word-pieces with
+thinking off, on the 4-bit W4A16 checkpoint. A neuron's words are those its pushed answers used more often than 2,048
+random pushes did: a lead, not a proof. Three things differ when you load the file:
 - the push is along the neuron's write direction, and about 1.8 to 2.5 times longer than anything the neuron can
   write by itself, so it is not "the neuron turned up";
 - llama.cpp also pushes the first token (`<bos>`), which the census left alone;
@@ -301,14 +320,18 @@ Two neurons are not a layer. Sums of neurons, other scales, sampling, long chats
 - `scripts/census_board.py` keeps the board:
   - `add` takes `CENSUS` lines pasted from the thread;
   - `sync` reads them from the board issue's comments;
-  - `layer <n> open` opens a layer whose trial passed (`waiting`: trial first; `stopped`: its trial failed), and
-    `kit` brings the board to a new kit, its new layers waiting;
+  - `layer <n> open` opens a layer whose trial passed (`waiting`: trial first; `stopped`: not taken), and `kit` brings
+    the board to a new kit, layers it lacks added waiting;
   - `render` writes `volunteers/BOARD.md`, `board.txt`, `board.png` and the guide image `volunteers/post/guide.png`
     (the thread post is `volunteers/post/thread.txt`);
   - `publish --yes` updates the issue.
 - `scripts/census_intake.py` brings a bundle home: `check`, then `spot --run` (with the server stopped), then `judge`,
-  then `accept`. `home-canaries` takes the canaries a kit's runs are set against.
-- `experiments/results/census_neighbour_trials/` holds the trials: `walk.sh` takes and reads the next layer out on each
-  side while trials pass, and `read_whole.sh <layer>` reads an accepted layer the trial's way.
-- `scripts/check_volunteer_kit.py` runs all of it on the CPU stand-in.
-- The kit's settings are in `volunteers/kit.env`.
+  then `accept`. `home-canaries` takes the canaries a kit's runs are set against, each layer's with that layer's
+  design. A bundle packed with an earlier kit is checked with that kit's file
+  (`THEODOLITE_KIT_FILE=<its kit.env> scripts/census_intake.py check …`).
+- The trials: `experiments/results/census_neighbour_trials/` (`break_rel`), `census_soft_trials/` and
+  `census_soft_walk/` (`soft_ceil`), `census_match_trials/` and `census_match_walk/` (`match_ceil`). Each holds its
+  rules as registered, the reader, and every verdict. A layer is opened only on a passed trial with the design the
+  kit names for it (`volunteers/kit.env`, `KIT_DESIGNS`).
+- `scripts/check_volunteer_kit.py` runs all of it on the CPU stand-in, a kit of two designs.
+- The kit's settings are in `volunteers/kit.env`. A change of any of them is a new kit.

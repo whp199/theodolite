@@ -3,7 +3,7 @@
 checked"). A bundle is someone else's file: it is unpacked into a folder of its own, only the names a pack writes are
 taken from it, and nothing in it is run.
 
-    census_intake.py home-canaries                     # on the home card: each kit layer's canary, into volunteers/home_canaries/
+    census_intake.py home-canaries                     # on the home card: each kit layer's canary, with that layer's design, into volunteers/home_canaries/
     census_intake.py check ~/Downloads/L47-break_rel-3f9a1c2e.tar   # unpack, check, plan the spot chunks
     census_intake.py spot atlas_data/census/volunteer/L47-3f9a1c2e --run    # those chunks written again on the home card
     census_intake.py judge atlas_data/census/volunteer/L47-3f9a1c2e         # the spot chunks against the volunteer's
@@ -70,8 +70,8 @@ def work_root() -> Path:
     return atlas_dir() / "census" / "volunteer"
 
 
-def kit_args(kit: Dict[str, Any]) -> List[str]:
-    return ["--design", kit["KIT_DESIGN"], "--neurons", str(kit["KIT_NEURONS"]), "--random-controls", str(kit["KIT_CONTROLS"]),
+def kit_args(kit: Dict[str, Any], design: str) -> List[str]:
+    return ["--design", design, "--neurons", str(kit["KIT_NEURONS"]), "--random-controls", str(kit["KIT_CONTROLS"]),
             "--seed", str(kit["KIT_SEED"]), "--batch", str(kit["KIT_BATCH"]), "--max-new", str(kit["KIT_MAX_NEW"]),
             "--unpacker", kit["KIT_UNPACKER"]]
 
@@ -84,30 +84,51 @@ def run(cmd: List[str], **kw: Any) -> subprocess.CompletedProcess:
 # ------------------------------------------------------------------------------------------------------- home canaries
 
 def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
-    """Each kit layer's canary on this card, and the six unpushed answers a volunteer's are set against."""
+    """Each kit layer's canary on this card, taken with the design the kit names for that layer, and the six unpushed
+    answers a volunteer's are set against."""
+    wrong = cv.kit_problems(kit)
+    if wrong:
+        raise SystemExit("The kit's layers and designs do not hold together: " + "; ".join(wrong))
+    if a.design and a.design not in cz.design_names():
+        raise SystemExit(f"The census's designs are {', '.join(cz.design_names())}, not {a.design!r}.")
     out = home_dir()
     out.mkdir(parents=True, exist_ok=True)
-    layers = a.layers or ",".join(str(l) for l in kit["layers"])
+    asked = [int(x) for x in a.layers.split(",") if x.strip()] if a.layers else list(kit["layers"])
     stand = ["--stand-in"] if a.dry_run else []
-    got = run([PY, "-I", "scripts/census_run.py", *stand, "--layers", layers, *kit_args(kit), "--canary-only",
-               "--out-dir", str(out), "--run", "L{layer}-" + kit["KIT_DESIGN"]], cwd=ROOT_DIR)
-    if got.returncode != 0:
-        return got.returncode
-    src = Path(a.baselines_from) if a.baselines_from else cz.census_dir() / f"L45-{kit['KIT_DESIGN']}.jsonl"
+    # one command a design (the model loads once for each), its layers together
+    by_design: Dict[str, List[int]] = {}
+    for layer in asked:
+        by_design.setdefault(cv.kit_design(kit, layer, a.design or None), []).append(layer)
+    taken: List[Path] = []
+    for design, layers in by_design.items():
+        got = run([PY, "-I", "scripts/census_run.py", *stand, "--layers", ",".join(map(str, layers)), *kit_args(kit, design),
+                   "--canary-only", "--out-dir", str(out), "--run", "L{layer}-" + design], cwd=ROOT_DIR)
+        if got.returncode != 0:
+            return got.returncode
+        taken += [out / f"L{layer}-{design}.canary.jsonl" for layer in layers]
+    # the six unpushed answers: no push, so they are the same at every layer and under every design that asks the kit's
+    # six questions (the home card's layer 45 break_rel run holds them; each canary's own unpushed row is set against them)
+    src = Path(a.baselines_from) if a.baselines_from else cz.census_dir() / "L45-break_rel.jsonl"
     base = {}
     for r in cz.read_rows(src):
         if r["kind"] == "baseline":
             base[r["prompt"]] = {"token_ids": r["token_ids"], "logprob": r["logprob"]}
         elif len(base) >= 6:
             break
-    cz.write_json_atomic(out / "baselines.json", {"what": "the six unpushed answers of the kit's design on the home card (they "
-                                                          "are the same at every layer)", "from": src.name, "baselines": base})
+    cz.write_json_atomic(out / "baselines.json", {"what": "the six unpushed answers of the kit's questions on the home card (they "
+                                                          "are the same at every layer and under every design of the kit)",
+                                                  "from": src.name, "baselines": base})
+    for p in taken:
+        for r in cz.read_rows(p):
+            b = base.get(r["prompt"]) if r["kind"] == "baseline" else None
+            if b is not None and (b["token_ids"], b["logprob"]) != (r["token_ids"], r["logprob"]):
+                print(f"{p.name}: its unpushed answer to {r['prompt']!r} is NOT the one in baselines.json")
     prints = {}
-    for p in sorted(out.glob(f"L*-{kit['KIT_DESIGN']}.canary.jsonl")):
+    for p in sorted(out.glob("L*-*.canary.jsonl")):  # every canary in the folder, earlier kits' among them
         prints[p.name] = cv.rows_fingerprint(list(cz.read_rows(p)))
     cz.write_json_atomic(out / "fingerprints.json", prints)
     # a fresh canary of a layer the home card has taken whole must be that run's first batch
-    for p in sorted(out.glob(f"L*-{kit['KIT_DESIGN']}.canary.jsonl")):
+    for p in taken:
         whole = cz.census_dir() / p.name.replace(".canary.jsonl", ".jsonl")
         if whole.exists() and not a.dry_run:
             rows = list(cz.read_rows(p))
@@ -115,7 +136,8 @@ def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
 
             first = list(itertools.islice(cz.read_rows(whole), len(rows)))
             print(f"{p.name}: {'the same as' if first == rows else 'NOT the same as'} {whole.name}'s first batch")
-    print(f"-> {out}: {len(prints)} canaries, baselines from {src.name}")
+    print(f"-> {out}: {len(taken)} canaries taken (" + ", ".join(f"{d} at {' '.join(map(str, ls))}" for d, ls in by_design.items())
+          + f"), {len(prints)} in the folder, baselines from {src.name}")
     return 0
 
 
@@ -183,7 +205,11 @@ def check_bundle(a: argparse.Namespace, kit: Dict[str, Any]) -> Dict[str, Any]:
             out["board_state"] = c["state"]
             if c.get("bundle_sha256") and not out["bundle_sha256"].startswith(c["bundle_sha256"]):
                 fails.append(f"the bundle's sha256 is not the one its DONE line gave ({c['bundle_sha256']})")
-    design = kit["KIT_DESIGN"]
+    try:
+        design = cv.kit_design(kit, layer)  # the design the kit takes this layer with
+    except ValueError as exc:
+        out.update({"fails": fails + [str(exc)], "notes": notes})
+        return out
     stem = f"L{layer}-{design}"
     zst, meta_p = files.get(f"{stem}.jsonl.zst"), files.get(f"{stem}.meta.json")
     if fails or zst is None or meta_p is None:
@@ -320,7 +346,7 @@ def cmd_spot(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     if chk["fails"]:
         raise SystemExit("This bundle failed its check: it is not spot-checked.")
     stand = ["--stand-in"] if a.dry_run else []
-    cmds = [[PY, "-I", "scripts/census_run.py", *stand, "--layer", str(chk["layer"]), *kit_args(kit), "--shard", f"{c}/{chk['spot']['of']}",
+    cmds = [[PY, "-I", "scripts/census_run.py", *stand, "--layer", str(chk["layer"]), *kit_args(kit, cv.kit_design(kit, chk["layer"])), "--shard", f"{c}/{chk['spot']['of']}",
              "--run", f"L{chk['layer']}-spot", "--out-dir", str(work / "spot"), "--no-rank"] for c in chk["spot"]["chunks"]]
     if not a.run:
         print("on the home card, the server stopped (its model holds the card's memory):")
@@ -346,7 +372,7 @@ def cmd_judge(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
         ours += list(cz.read_rows(p))
     keys = {cz.row_key(r) for r in ours}
     theirs = {}
-    for r in cz.read_rows(work / f"L{chk['layer']}-{kit['KIT_DESIGN']}.jsonl"):
+    for r in cz.read_rows(work / f"L{chk['layer']}-{cv.kit_design(kit, chk['layer'])}.jsonl"):
         k = cz.row_key(r)
         if k in keys:
             theirs[k] = r
@@ -376,7 +402,7 @@ def cmd_accept(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     ver = json.loads((work / "verdict.json").read_text(encoding="utf-8")) if (work / "verdict.json").exists() else {}
     if chk["fails"] or not ver.get("accepted"):
         raise SystemExit("Only a run that passed its check and its spot-check is accepted (check.json, verdict.json).")
-    stem = f"L{chk['layer']}-{kit['KIT_DESIGN']}"
+    stem = f"L{chk['layer']}-{cv.kit_design(kit, chk['layer'])}"
     dest = Path(a.into) if a.into else cz.census_dir()
     target = dest / f"{stem}.jsonl"
     if target.exists() or cz.meta_path_of(target).exists():
@@ -412,6 +438,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     h = sub.add_parser("home-canaries")
     h.add_argument("--layers", default="", help="default: the kit's")
+    h.add_argument("--design", default="", help="for a layer the kit names no design for: an earlier kit's layer taken again "
+                                                "(with THEODOLITE_KIT_HOME_CANARIES set to a scratch folder), to show the code "
+                                                "still writes that kit's bits")
     h.add_argument("--baselines-from", default="", help="a whole run of the home card (default: layer 45's)")
     c = sub.add_parser("check")
     c.add_argument("bundle")

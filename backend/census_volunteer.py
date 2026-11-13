@@ -3,7 +3,9 @@ card's, and the one-line messages volunteers and the owner pass each other. Read
 scripts/volunteer/volunteer_tool.py, and at home by scripts/census_board.py and scripts/census_intake.py.
 
 - The kit: volunteers/kit.env, the settings every volunteer's run is taken with (scripts/volunteer/census.sh sources
-  the same file). A volunteer's layer is the home card's layer 45 run's command at another layer.
+  the same file). A volunteer's layer is the home card's layer 45 run's command at another layer, with the design
+  whose trial passed at that layer: kits 1 and 2 had one design (KIT_DESIGN), kit 3 names one a layer (KIT_DESIGNS,
+  `kit_design`).
 - A claim: a secret the volunteer keeps on their machine, and its code, the first 8 hex of its sha256, which they post.
   Whoever shows the secret later (in a submitted bundle's manifest, or a RELEASE line) is the claim's holder; no
   account and no name are needed.
@@ -78,10 +80,58 @@ def read_kit(path: Optional[Path] = None, dry: bool = False) -> Dict[str, Any]:
             kit["KIT_" + k[len("KIT_DRY_"):]] = kit[k]
     out: Dict[str, Any] = dict(kit)
     out["layers"] = [int(x) for x in kit.get("KIT_LAYERS", "").split()]
+    # the design each layer is taken with, where the kit names one a layer ("32:match_ceil 38:soft_ceil ...")
+    out["designs"] = {int(layer): design for layer, _, design in (p.partition(":") for p in kit.get("KIT_DESIGNS", "").split())
+                      if layer.isdigit() and design}
     for k in ("KIT", "KIT_CONTROLS", "KIT_SEED", "KIT_BATCH", "KIT_MAX_NEW", "KIT_MIN_VRAM_MIB", "KIT_MIN_DISK_GB"):
         if k in kit:
             out[k] = int(kit[k])
     out["dry"] = dry
+    return out
+
+
+def kit_design(kit: Dict[str, Any], layer: int, default: Optional[str] = None) -> str:
+    """The design the kit takes a layer with: KIT_DESIGNS' for that layer where the kit names one a layer, else
+    KIT_DESIGN, the one design of kits 1 and 2. A layer the kit names no design for is refused, unless `default` gives
+    one (the scripts that measured the intake's bars at layers of earlier kits, census_bars.py and census_ties.py)."""
+    design = (kit.get("designs") or {}).get(int(layer)) or kit.get("KIT_DESIGN") or default
+    if not design:
+        raise ValueError(f"The kit names no design for layer {layer} (volunteers/kit.env: KIT_DESIGNS, layer:design).")
+    return str(design)
+
+
+def kit_designs(kit: Dict[str, Any]) -> Dict[str, List[int]]:
+    """The kit's layers under each of its designs, in the order its layers first name them."""
+    out: Dict[str, List[int]] = {}
+    for layer in kit["layers"]:
+        out.setdefault(kit_design(kit, layer), []).append(int(layer))
+    return out
+
+
+def kit_problems(kit: Dict[str, Any]) -> List[str]:
+    """What is wrong with a kit's layers and designs, in words; empty when every layer has a design the census can
+    take there: a design it knows, with doses at that layer where its doses are set a layer at a time, and no design
+    named for a layer the kit does not take."""
+    from backend import census as cz
+
+    out: List[str] = []
+    if not kit["layers"]:
+        out.append("the kit names no layers (KIT_LAYERS)")
+    if len(set(kit["layers"])) != len(kit["layers"]):
+        out.append("a layer is named twice (KIT_LAYERS)")
+    for layer in kit["layers"]:
+        try:
+            design = kit_design(kit, layer)
+        except ValueError as exc:
+            out.append(str(exc))
+            continue
+        if design not in cz.design_names():
+            out.append(f"layer {layer}'s design {design!r} is not one the census takes ({', '.join(cz.design_names())})")
+        elif design in cz.LAYER_DOSES and int(layer) not in cz.LAYER_DOSES[design] and not kit.get("dry"):
+            out.append(f"layer {layer}'s design {design} has no doses at that layer")
+    extra = sorted(set(kit.get("designs") or {}) - set(kit["layers"]))
+    if extra:
+        out.append(f"a design is named for layers the kit does not take: {', '.join(map(str, extra))}")
     return out
 
 

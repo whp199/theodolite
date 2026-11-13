@@ -209,9 +209,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         for layer in layers:
             d = rows_dir / stamp / v["name"]
             d.mkdir(parents=True, exist_ok=True)
-            run = d / f"L{layer}-{kit['KIT_DESIGN']}.jsonl"
+            run = d / f"L{layer}-{cv.kit_design(kit, layer, cz.DEFAULT_DESIGN)}.jsonl"
             cz.take_census(rt, layer, neurons, run, p50=p50s[layer] * v["scale"], p50_source=source,
-                           design_name=kit["KIT_DESIGN"], controls=int(kit["KIT_CONTROLS"]), seed=int(kit["KIT_SEED"]),
+                           design_name=cv.kit_design(kit, layer, cz.DEFAULT_DESIGN), controls=int(kit["KIT_CONTROLS"]), seed=int(kit["KIT_SEED"]),
                            max_new=int(kit["KIT_MAX_NEW"]), top_k=5, batch=v["batch"], neurons_spec=str(kit["KIT_NEURONS"]),
                            p50_file=index.path("act_scale") if stats is not None else None, lens_id=lens_id, canary_only=True,
                            log=lambda s: None)
@@ -222,7 +222,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # the reference: the home canaries (the stand-in has none: its own control stands in for them)
     home: Dict[int, List[Dict[str, Any]]] = {}
     for layer in layers:
-        hp, _ = cv.home_canary(layer, kit["KIT_DESIGN"])
+        hp, _ = cv.home_canary(layer, cv.kit_design(kit, layer, cz.DEFAULT_DESIGN))
         home[layer] = list(cz.read_rows(hp)) if hp.exists() and not a.stand_in else written["control"][layer]
     per: Dict[str, Dict[int, Dict[str, Any]]] = {}
     for v in vs:
@@ -253,7 +253,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         lay, _, path = spec.partition("=")
         rows = [json.loads(x) for x in Path(path).read_text(encoding="utf-8").splitlines() if x.strip()]
         mine = {cz.row_key(r): r for r in rows}
-        hp, _ = cv.home_canary(int(lay), kit["KIT_DESIGN"])
+        hp, _ = cv.home_canary(int(lay), cv.kit_design(kit, int(lay), cz.DEFAULT_DESIGN))
         ref = list(cz.read_rows(hp))
         result["also"][f"L{lay} {Path(path).name}"] = {**summarize([lp_diffs(mine, [r for r in ref if cz.row_key(r) in mine])]),
                                                        "fingerprint": cv.rows_fingerprint(rows)["sha256"]}

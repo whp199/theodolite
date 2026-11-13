@@ -1,6 +1,13 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
-L0–37 not taken
-L38 not taken
+L0–30 not taken
+L31 not taken
+L32 OPEN
+L33 OPEN
+L34 OPEN
+L35 OPEN
+L36 OPEN
+L37 OPEN
+L38 OPEN
 L39 OPEN
 L40 done (home card)
 L41 done (ReimusArmpit d4bcee00)
@@ -14,9 +21,9 @@ L48 done (anon 5cd76843)
 L49 done (home card)
 L50 done (anon b153da82)
 L51 OPEN
-L52 not taken
+L52 OPEN
 L53–59 not taken
 
-2 open. To take one: https://github.com/whp199/theodolite/issues/1
+10 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

@@ -88,7 +88,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     base = int(kit["KIT_BATCH"])
     vs = variants(base, [b for b in BATCHES if b < base] if not a.stand_in else [b for b in (1, 2, 3) if b < base])
     layer = LAYER if not a.stand_in else int(kit["layers"][0])
-    design = kit["KIT_DESIGN"]
+    design = cv.kit_design(kit, layer, cz.DEFAULT_DESIGN)  # layer 45 is no layer of a later kit: break_rel, as it was measured
 
     import torch
 

@@ -2,7 +2,11 @@
 """A CPU-only check of the census volunteer kit (VOLUNTEERS.md) end to end on the tiny random Gemma 4 of
 scripts/atlas_stand_in.py, in a temporary folder: the volunteer's side (scripts/volunteer/census.sh --dry-run) and the
 owner's (scripts/census_board.py, scripts/census_intake.py --dry-run), against a "home card" that is this machine:
-1. the home card: a whole stand-in layer run, and the kit layers' canaries and unpushed answers (home-canaries);
+0. the kit's own file: every layer with a design the census can take there, the board's open layers among the kit's;
+   a kit of one design (kits 1 and 2) still read, a layer without a design refused, the writer's floor taking a
+   design whose doses are set a layer at a time;
+1. the home card: a whole stand-in layer run, and the kit layers' canaries, each with its layer's design, and the
+   unpushed answers (home-canaries);
 2. the volunteer: check, reserve (a layer outside the kit refused), setup (setup.sh --dry-run, ~/.bashrc untouched),
    canary (the home card's bits), run (detached, waited for), status (the PROGRESS line), pack (the bundle and the DONE
    line), the bundle holding no path of this machine;
@@ -86,20 +90,89 @@ def run_checks(tmp: Path) -> int:
            "HOME": str(fake_home), "CUDA_VISIBLE_DEVICES": "", "NO_COLOR": "1"}
     env.pop("THEODOLITE_POD_ROOT", None)
     kit = cv.read_kit(dry=True)
-    args = ["--design", kit["KIT_DESIGN"], "--neurons", kit["KIT_NEURONS"], "--random-controls", str(kit["KIT_CONTROLS"]), "--seed",
+    design = cv.kit_design(kit, LAYER)  # the design the stand-in's kit takes the checked layer with
+    args = ["--design", design, "--neurons", kit["KIT_NEURONS"], "--random-controls", str(kit["KIT_CONTROLS"]), "--seed",
             str(kit["KIT_SEED"]), "--batch", str(kit["KIT_BATCH"]), "--max-new", str(kit["KIT_MAX_NEW"]), "--unpacker", kit["KIT_UNPACKER"]]
+
+    # 0. the kit's own file
+    before = len(failures)
+    real = cv.read_kit()
+    by_design = cv.kit_designs(real)
+    check(cv.kit_problems(real) == [] and cv.kit_problems(kit) == [] and sorted(l_ for ls in by_design.values() for l_ in ls) == sorted(real["layers"])
+          and all(d_ in cz.design_names() for d_ in by_design),
+          f"the kit's file: every layer has a design the census takes there ({cv.kit_problems(real)}, {by_design})")
+    # a layer is opened on a passed trial; where its doses are counted calibrated too (the owner's word), they are at the
+    # kit's answer length. The layers counted so far, by the kit's own designs:
+    counted = [l_ for l_ in real["layers"] if cz.doses_calibrated(cv.kit_design(real, l_), l_, real["KIT_MAX_NEW"])]
+    check(real["KIT"] != 3 or (by_design == {"match_ceil": [32, 33, 34, 35, 36, 37], "soft_ceil": [38, 52, 53, 54, 55, 56, 57, 58, 59],
+                                             "break_rel": [39, 51]} and counted == [32, 33, 34, 35, 36, 37, 38, 39, 51, 52]),
+          f"kit 3: match_ceil at 32-37, soft_ceil at 38 and 52 to 59, break_rel at 39 and 51; doses counted calibrated at the ten "
+          f"whose trial passed and at none of 53-59 ({by_design}, {counted})")
+    repo_board = json.loads((ROOT_DIR / "volunteers" / "board.json").read_text())
+    opened = sorted(int(l_) for l_, st_ in repo_board["layers"].items() if st_.get("state") == "open")
+    check(repo_board.get("kit") == real["KIT"] and set(opened) <= set(real["layers"]),
+          f"the repository's board is the kit's, and every layer open on it is one the kit takes (kit {repo_board.get('kit')}, open {opened})")
+    check(cv.kit_design(kit, 2) != cv.kit_design(kit, 3) and kit["designs"] == {2: cv.kit_design(kit, 2), 3: cv.kit_design(kit, 3)},
+          f"the stand-in's kit has a design a layer, so a kit of more than one is run here ({kit['designs']})")
+    # a kit of one design, as kits 1 and 2 were (KIT_DESIGN, no KIT_DESIGNS), is read as before; a layer left without a
+    # design is refused, by the tool and by the script
+    lines = cv.KIT_FILE.read_text().splitlines()
+    one = tmp / "kit_one_design.env"
+    one.write_text("\n".join([ln for ln in lines if not ln.startswith(("KIT_DESIGNS=", "KIT_DRY_DESIGNS="))] + ["KIT_DESIGN=break_rel"]) + "\n")
+    gap = tmp / "kit_gap.env"
+    gap.write_text("\n".join(ln if not ln.startswith("KIT_DRY_DESIGNS=") else f'KIT_DRY_DESIGNS="{LAYER}:{design}"' for ln in lines) + "\n")
+    k_one, k_gap = cv.read_kit(one), cv.read_kit(gap, dry=True)
+    other_dry = [l_ for l_ in kit["layers"] if l_ != LAYER][0]
+    try:
+        cv.kit_design(k_gap, other_dry)
+        refused = ""
+    except ValueError as exc:
+        refused = str(exc)
+    check(all(cv.kit_design(k_one, l_) == "break_rel" for l_ in k_one["layers"]) and cv.kit_problems(k_one) == []
+          and "names no design for layer" in refused and any("names no design" in w_ for w_ in cv.kit_problems(k_gap))
+          and cv.kit_design(k_gap, other_dry, "break_rel") == "break_rel",
+          f"a kit of one design is read as kits 1 and 2 were; a layer without a design is refused ({refused})")
+    r = run(["bash", CENSUS_SH, "--dry-run", "--root", tmp / "volunteer-gap", "reserve", str(other_dry)], {**env, cv.KIT_FILE_ENV: str(gap)})
+    r1 = run(["bash", CENSUS_SH, "--dry-run", "--root", tmp / "volunteer-one", "reserve", str(other_dry)], {**env, cv.KIT_FILE_ENV: str(one)})
+    check(r.returncode != 0 and f"names no design for layer {other_dry}" in r.stderr and not list((tmp / "volunteer-gap" / "claims").glob("*.claim"))
+          and r1.returncode == 0 and last_line(r1.stdout, "CENSUS RESERVE"),
+          f"census.sh: a layer the kit names no design for is not claimed; a kit of one design still claims ({r.stderr[-200:]}{r1.stderr[-200:]})")
+    # the canary step's second half, the writer's floor, takes a design by its questions: one whose doses are set a layer
+    # at a time has them too (it was refused by name before kit 3), and a name the census does not know is refused
+    r = run([PY, "-I", "scripts/verify_atlas_writer.py", "--stand-in", "--layer", LAYER, "--design", "match_ceil", "--batches", kit["KIT_BATCH"],
+             "--max-new", kit["KIT_MAX_NEW"], "--seed", kit["KIT_SEED"], "--unpacker", kit["KIT_UNPACKER"], "--out", tmp / "floor_match.json"], env)
+    r2 = run([PY, "-I", "scripts/verify_atlas_writer.py", "--stand-in", "--layer", LAYER, "--design", "no_such_design", "--batches",
+              kit["KIT_BATCH"], "--out", tmp / "floor_none.json"], env)
+    check(r.returncode == 0 and (tmp / "floor_match.json").exists() and r2.returncode != 0 and "match_ceil" in r2.stderr
+          and not (tmp / "floor_none.json").exists(),
+          f"the writer's floor is measured for match_ceil's questions, and an unknown design is refused ({r.stderr[-300:]})")
+    section("the kit's file: a design a layer, the board's open layers, a kit of one design, the writer's floor", before)
 
     # 1. the home card
     before = len(failures)
     r = run([PY, "-I", "scripts/census_run.py", "--stand-in", "--layer", LAYER, *args, "--out-dir", tmp / "home-runs", "--no-rank"], env)
-    home_run = tmp / "home-runs" / f"L{LAYER}-{kit['KIT_DESIGN']}.jsonl"
+    home_run = tmp / "home-runs" / f"L{LAYER}-{design}.jsonl"
     check(r.returncode == 0 and home_run.exists(), f"the home card's stand-in run ({r.stderr[-300:]})")
     r = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "home-canaries", "--layers", ",".join(map(str, kit["layers"])),
              "--baselines-from", home_run], env)
     prints = json.loads((canaries / "fingerprints.json").read_text()) if (canaries / "fingerprints.json").exists() else {}
     base = json.loads((canaries / "baselines.json").read_text())["baselines"] if (canaries / "baselines.json").exists() else {}
-    check(r.returncode == 0 and len(prints) == len(kit["layers"]) and len(base) == 6,
-          f"home-canaries: a canary a kit layer and six unpushed answers ({r.stdout[-300:]}{r.stderr[-300:]})")
+    check(r.returncode == 0 and len(prints) == len(kit["layers"]) and len(base) == 6
+          and sorted(prints) == sorted(f"L{l_}-{cv.kit_design(kit, l_)}.canary.jsonl" for l_ in kit["layers"])
+          and "NOT the one in baselines.json" not in r.stdout,
+          f"home-canaries: a canary a kit layer, each with its layer's design, and six unpushed answers that every canary's "
+          f"own agrees with ({sorted(prints)}; {r.stdout[-300:]}{r.stderr[-300:]})")
+    # a layer the kit names no design for is not taken as a canary, unless its design is given: an earlier kit's layer
+    # taken again in a scratch folder, to show the code still writes that kit's bits
+    stray = [l_ for l_ in range(6) if l_ not in kit["layers"]][0]
+    again = {**env, "THEODOLITE_KIT_HOME_CANARIES": str(tmp / "canaries-again")}
+    r = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "home-canaries", "--layers", stray, "--baselines-from", home_run], again)
+    r2 = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "home-canaries", "--layers", stray, "--design", "break_rel",
+              "--baselines-from", home_run], again)
+    check(r.returncode != 0 and f"names no design for layer {stray}" in r.stdout + r.stderr
+          and r2.returncode == 0 and (tmp / "canaries-again" / f"L{stray}-break_rel.canary.jsonl").exists()
+          and not (canaries / f"L{stray}-break_rel.canary.jsonl").exists(),
+          f"home-canaries: a layer outside the kit is taken only with its design named, into the folder given ({r.stderr[-200:]}{r2.stderr[-200:]})")
     section("the home card: a stand-in run, the kit layers' canaries, the unpushed answers", before)
 
     # 2. the volunteer
@@ -128,14 +201,14 @@ def run_checks(tmp: Path) -> int:
     check(r.returncode == 0 and cc.exists() and json.loads(cc.read_text())["bits"] == "home", f"canary: the home card's bits ({r.stdout[-300:]}{r.stderr[-300:]})")
     r = run(v + ["run", str(LAYER), "--wait"], env)
     start = last_line(r.stdout, "CENSUS START")
-    run_p = vroot / "atlas_data" / "stand-in" / "census" / "runs" / f"L{LAYER}-{kit['KIT_DESIGN']}.jsonl"
+    run_p = vroot / "atlas_data" / "stand-in" / "census" / "runs" / f"L{LAYER}-{design}.jsonl"
     check(r.returncode == 0 and "bits=home" in start and run_p.exists(), f"run: detached, waited for, the START line ({r.stdout[-300:]}{r.stderr[-300:]})")
     r = run(v + ["status", str(LAYER)], env)
     progress = last_line(r.stdout, "CENSUS PROGRESS")
     check(r.returncode == 0 and "done=100%" in progress and "the run is whole" in r.stdout, f"status: whole, the PROGRESS line ({r.stdout[-300:]})")
     r = run(v + ["pack", str(LAYER)], env)
     done = last_line(r.stdout, "CENSUS DONE")
-    bundle = vroot / "outbox" / f"L{LAYER}-{kit['KIT_DESIGN']}-{code}.tar"
+    bundle = vroot / "outbox" / f"L{LAYER}-{design}-{code}.tar"
     check(r.returncode == 0 and bundle.exists() and f"claim={code}" in done, f"pack: the bundle and the DONE line ({r.stdout[-300:]}{r.stderr[-300:]})")
     if bundle.exists():
         with tarfile.open(bundle) as t:
@@ -227,6 +300,7 @@ def run_checks(tmp: Path) -> int:
     md = (tmp / "render_wide" / "BOARD.md").read_text() if (tmp / "render_wide" / "BOARD.md").exists() else ""
     check(r.returncode == 0 and 0 < len(txt) <= 2000 and "L0–38 trial first" in txt and "L51–56 trial first" in txt and "L58–59 trial first" in txt
           and "L57 not taken" in txt and "L39 reserved" in txt and "| 0–38 | 1–39 | trial first |" in md and "trial first* is not open yet" in md
+          and "*not taken* is not offered" in md
           and md.count("\n| ") < 24,
           f"sixty layers stay a board: the waiting ones drawn as runs, the post under 2,000 characters ({len(txt)} characters)")
     # the kit command: a board of the first kit brought to this one, its new layers waiting, its record kept
@@ -237,7 +311,8 @@ def run_checks(tmp: Path) -> int:
     r = run([PY, "-I", BOARD_PY, "--board", old, "kit"], benv)
     ob = json.loads(old.read_text())
     check(r.returncode == 0 and ob["kit"] == kit["KIT"] and ob["layers"]["99"] == {"state": "done", "by": "kept aaaaaaaa"}
-          and all(ob["layers"][str(l)].get("state") == "waiting" and "trial" in ob["layers"][str(l)].get("note", "") for l in kit["layers"])
+          and all(ob["layers"].get(str(l), {}).get("state") == "waiting" and "trial" in ob["layers"][str(l)].get("note", "")
+                  for l in real["layers"])  # (the command reads the kit's own file, not the stand-in's layers)
           and ob["claims"][0]["code"] == "aaaaaaaa"
           and ob["issue"] == 1 and ob["seen_comments"] == [5],
           f"the kit command: the board is this kit's, its layers added waiting, the first kit's record kept ({r.stdout[:200]})")
@@ -283,7 +358,7 @@ def run_checks(tmp: Path) -> int:
     board.write_text(json.dumps(bj, indent=1))
     into = tmp / "census-runs"
     r = run(i + ["accept", work, "--into", into], env)
-    stem = f"L{LAYER}-{kit['KIT_DESIGN']}"
+    stem = f"L{LAYER}-{design}"
     check(r.returncode == 0 and all((into / f"{stem}{s}").exists() for s in (".jsonl", ".meta.json", ".provenance.json", ".units.jsonl")),
           f"accept: the run, its meta, provenance and ranking ({r.stdout[-300:]}{r.stderr[-300:]})")
     prov = json.loads((into / f"{stem}.provenance.json").read_text()) if (into / f"{stem}.provenance.json").exists() else {}

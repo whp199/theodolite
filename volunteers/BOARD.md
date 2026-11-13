@@ -1,12 +1,19 @@
 # The census: which layer is whose
 
-Kit 2 (census-kit-2). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *trial first* is not open yet: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and opens here when its trial passes.
+Kit 3 (census-kit-3). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and no push strengths have passed a trial there.
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
-| 0–37 | 1–38 | not taken |  |  |  | below layer 38, whose trial failed: waits for push strengths scaled to the layer |
-| 38 | 39 | not taken |  |  |  | its trial failed, 12 November 2026: not taken with these doses |
-| 39 | 40 | OPEN |  |  |  | its trial passed, 12 November 2026 |
+| 0–30 | 1–31 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
+| 31 | 32 | not taken |  |  |  | its trial failed, 13 November 2026 (match_ceil): not taken |
+| 32 | 33 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 33 | 34 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 34 | 35 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 35 | 36 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 36 | 37 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 37 | 38 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 38 | 39 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
+| 39 | 40 | OPEN |  |  |  | break_rel; its trial passed, 12 November 2026 |
 | 40 | 41 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 30-31 Oct 2026, passed layer 45's gates |
 | 41 | 42 | done | ReimusArmpit d4bcee00 | NVIDIA GeForce RTX 5090 32 GB |  | 1 Nov 2026, the home card's bits, spot-checked bit for bit; passed layer 45's gates |
 | 42 | 43 | done | anon a56863f2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
@@ -18,9 +25,9 @@ Kit 2 (census-kit-2). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 48 | 49 | done | anon 5cd76843 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
-| 51 | 52 | OPEN |  |  |  | its trial passed, 12 November 2026 |
-| 52 | 53 | not taken |  |  |  | its trial failed, 12 November 2026: not taken with these doses |
-| 53–59 | 54–60 | not taken |  |  |  | above layer 52, whose trial failed: waits for push strengths scaled to the layer |
+| 51 | 52 | OPEN |  |  |  | break_rel; its trial passed, 12 November 2026 |
+| 52 | 53 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
+| 53–59 | 54–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
 Judged:
 
@@ -31,4 +38,4 @@ Judged:
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-12T20:34Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-13T15:45Z.

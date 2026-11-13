@@ -95,8 +95,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if a.design and a.questions:
         raise SystemExit("Give --design or --questions, not both.")
-    if a.design and a.design not in cz_q.DESIGNS:
-        raise SystemExit(f"The census's designs are {', '.join(cz_q.DESIGNS)}, not {a.design!r}.")
+    if a.design and a.design not in cz_q.design_names():  # one whose doses are set a layer at a time asks its questions too
+        raise SystemExit(f"The census's designs are {', '.join(cz_q.design_names())}, not {a.design!r}.")
     unknown = [q for q in a.questions.split(",") if q.strip() and q.strip() not in cz_q.ALL_PROMPTS]
     if unknown:
         raise SystemExit(f"No census question is called {', '.join(unknown)} (census.ALL_PROMPTS: {', '.join(cz_q.ALL_PROMPTS)}).")

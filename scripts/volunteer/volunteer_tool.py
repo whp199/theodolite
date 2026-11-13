@@ -68,7 +68,7 @@ def cmd_canary_check(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     about = cz.canary_about_path_of(canary)
     theirs_meta = json.loads(about.read_text(encoding="utf-8"))["meta"] if about.exists() else {}
     rows = list(cz.read_rows(canary))
-    home_rows, home_about = cv.home_canary(a.layer, kit["KIT_DESIGN"], home_dir())
+    home_rows, home_about = cv.home_canary(a.layer, cv.kit_design(kit, a.layer), home_dir())
     out: Dict[str, Any] = {"layer": a.layer, "kit": kit["KIT"], "fingerprint": cv.rows_fingerprint(rows),
                            "card": (theirs_meta.get("runtime") or {}).get("device"), "runtime": theirs_meta.get("runtime")}
     if not home_rows.exists():
@@ -182,7 +182,7 @@ def cmd_pack(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     meta = json.loads(meta_p.read_text(encoding="utf-8"))
     canary_dir = Path(a.canary_dir)
     canary = canary_dir / f"{run.stem}.canary.jsonl"
-    home_rows, home_about = cv.home_canary(layer, kit["KIT_DESIGN"], home_dir())
+    home_rows, home_about = cv.home_canary(layer, cv.kit_design(kit, layer), home_dir())
     ref_about = home_about if home_about.exists() else cz.canary_about_path_of(canary)
     if not ref_about.exists():
         raise SystemExit(f"Neither the home card's canary of layer {layer} nor yours is here: census.sh canary {layer} first.")

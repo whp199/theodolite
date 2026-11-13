@@ -286,9 +286,12 @@ def render_md(board: Dict[str, Any]) -> str:
              "Layers count from 0 (page = layer + 1)." if all_done(rows) else
              f"Kit {kit['KIT']} ({kit['KIT_TAG']}). How to take a layer: {guide}. Post `CENSUS ...` lines as comments here "
              "or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).")
-    if any(r["state"] in WAITS for r in rows):
+    if any(r["state"] == "waiting" for r in rows):
         intro += (" A layer marked *trial first* is not open yet: each layer outside 40–50 is trialled on the home card "
                   "(about 70 minutes) before it is offered, and opens here when its trial passes.")
+    if any(r["state"] == "stopped" for r in rows):
+        intro += (" A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card "
+                  "(about 70 minutes) before it is offered, and no push strengths have passed a trial there.")
     lines = ["# The census: which layer is whose", "", intro, "",
              "| Layer | Page | State | Who | Card | When | Note |", "|---:|---:|---|---|---|---|---|"]
     for r in grouped(rows):

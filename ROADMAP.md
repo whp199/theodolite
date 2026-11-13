@@ -1021,6 +1021,28 @@ layers, the determinism run and the sampled push on 29 October). In this section
     Layer 45’s, taken again there, is kit 1’s canary bit for bit, so the code still writes kit 1’s answers; and the
     eleven old canaries against their whole runs are the same at the six layers of the home card’s bits (40, 41, 43,
     45, 46, 49) and not at the five taken on RTX PRO 6000 cards, as their class says. Opened that day: 39 and 51.
+  - **Kit 3: a design for each layer** (prepared 13 November 2026 on the branch `kit-3`, not cut; `VOLUNTEERS.md`
+    there). Kits 1 and 2 took every layer with one design. Kit 3’s file names one a layer (`volunteers/kit.env`,
+    `KIT_DESIGNS`): `match_ceil` at 32–37, `soft_ceil` at 38 and 52, and `break_rel` still at 39 and 51, which
+    stay open through the change and are taken by the command kit 2 took them with. Layers 53–59 are named with
+    `soft_ceil` so that one whose trial passes later can be opened without a new kit; none has been trialled with
+    it, and all stay shut on the board. The script picks the layer’s design, so a volunteer chooses nothing. The
+    intake sets a bundle against the canary of its layer’s design, and the home canaries are taken a design at a
+    time (`census_intake.py home-canaries`). The six unpushed answers a volunteer’s are set against are one set
+    for the whole kit: on the home card they are the same bit for bit under all three designs (read from the
+    trials’ own files at layers 32, 34, 37, 38, 39 and 52, against layer 45’s). One fault was found in preparing
+    it: the canary step’s second half, the writer’s floor, refused `match_ceil` by name, so no volunteer could
+    have taken a canary at 32–37; mended. `check_volunteer_kit` now runs a kit of two designs end to end on the
+    stand-in, and checks that a kit of one design is still read as kits 1 and 2 were (61 checks, 53 before).
+    *Not done, and why it is not cut.* The home canaries of its seventeen layers are not taken (the card is
+    building the steer lens). They are taken at the kit’s commit, with layers 39 and 51 taken again to show the
+    code still writes kit 2’s bits there, and 45 for kit 1’s. The tag `census-kit-3` does not exist, and nothing
+    is published: the board’s issue and the thread are as they were. The kit lives on a branch because a
+    volunteer’s `reserve` reads the board from main: kit 3’s board there would turn kit 2’s volunteers away from
+    layers 39 and 51 before kit 3 could be checked out. Nothing of it was run on the 31B. *The owner’s, at the
+    cut:* the word to cut (merge, canaries, tag, push, board; the thread post is the owner’s to post); which of
+    the eight to open, since layer 36 passed by a thousandth on one gate and few neurons stand out singly at 35
+    and 36; and whether PR #2 (24 GB cards), which changes the kit’s file, goes into this kit.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at
