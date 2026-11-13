@@ -373,7 +373,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
   and 2.3 ceilings at every layer from 9 to 56, where as a share of the stream it changes elevenfold. So a count of
   ceilings is close to the right measure through the middle of the model, and not below layer 9 (1.8 to 6.9
   ceilings there, most of them 3 or more) or in the last three layers (0.5 to 1.0). **The build started at 01:31Z** on all sixty layers (10.1–10.8
-  hours), and the lens is then set against the census at layers 39–51 as it was at 45 above (`against_census.py`
+  hours; its first two layers took 22.5 minutes each). It was paused at 02:18Z with layers 0 and 1 built, on the
+  owner’s word, to let the census’s walk downward have the card first (step 3, below); it is queued behind the
+  walk and goes on from layer 2. The lens is then set against the census at layers 39–51 as it was at 45 above (`against_census.py`
   in that folder). Below 39 nothing can check it: those layers’ readings will be
   marked as resting on the dose rule alone. The pilot’s ladders are also each layer’s dose curve, which a census
   design scaled to the layer needs (the plan’s step 3, below, where it is set beside every dose a trial has read). On the home card, headless, time a
@@ -768,6 +770,14 @@ layers, the determinism run and the sampled push on 29 October). In this section
        edge or under it at most layers below 38: 0.27 nats at 37 and 36, 0.21 at 34, 0.24 at 31. So the gate to
        watch on the walk is again the lower dose alone. The span was drawn after its fourteen readings were known,
        and the figures between the pilot’s rungs are read off a line; a trial is what tests it.
+       **The walk downward, layers 37 to 30** (the owner’s word, 13 November: “Yes, walk first”; registered in
+       [`census_soft_walk/prereg/`](experiments/results/census_soft_walk/prereg/), hashed at 02:18Z before any
+       answer of these layers existed; started at 02:18Z). A `soft_ceil` trial at each layer in turn on the 1,022
+       neurons drawn for it on 12 November, read as it is written; the next layer down is taken only if this one
+       passed all three gates, and the walk stops at the first failure and at layer 30 at the latest (about 83
+       minutes a layer). Said beforehand: the whole reading and the covered neurons pass wherever it reaches; the
+       lower dose alone is the open gate and what it is expected to stop on, about even at 37 and 36 and more
+       likely to fail than pass at 34; more likely than not it stops before layer 30.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
