@@ -778,6 +778,28 @@ layers, the determinism run and the sampled push on 29 October). In this section
        minutes a layer). Said beforehand: the whole reading and the covered neurons pass wherever it reaches; the
        lower dose alone is the open gate and what it is expected to stop on, about even at 37 and 36 and more
        likely to fail than pass at 34; more likely than not it stops before layer 30.
+       **Layer 37, read at 03:47Z: it fails, and the walk stops there**
+       ([`census_soft_walk/`](experiments/results/census_soft_walk/)). The whole reading passes (lead 0.672; 0.695
+       beyond text survival; 0.637 and 0.616 across the question halves; 0.648 on the new questions). The lower dose
+       alone fails on one figure, the words picked on the second half of the questions and scored on the first:
+       0.542 against 0.57 (its other figures pass: 0.633, 0.630, 0.583, 0.616). The 832 of 1,022 neurons the
+       controls cover fail on the same figure by 0.002: 0.568 against 0.57 (0.633, 0.651, 0.602, 0.611). 28 neurons
+       beat every control, where layer 38 had 110. Said beforehand and met: the whole reading passes; the lower dose
+       alone is what stops the walk, about even at 37; its replication figures fall before its lead. Said beforehand
+       and missed: that the covered neurons pass wherever the walk reaches. By the registration no whole layer is
+       taken at 37 with ±1.6 and ±2.3 ceilings, and nothing is said of 36 and below, which were not trialled.
+       Reported: the ±2.3 answers alone pass every gate here (0.657, 0.667, 0.604 and 0.605, 0.619). **The pilot’s
+       forecast held on both new readings:** it put this layer’s lower dose at 0.27 nats, between the 0.18 that led
+       by 0.603 and the 0.35 that led by 0.654, and it leads by 0.633; it put the upper dose at 0.95 nats, inside
+       the span that reads, and it leads by 0.657. So `soft_ceil` is one layer wide below the band: 1.6 ceilings is
+       a little too soft at 37. By the pilot the two pushes that pass at layer 38 (0.35 and 1.34 nats) come to
+       1.73 and 2.53 ceilings at layer 37, and to between 1.6 and 1.9 and between 2.4 and 2.9 at layers 30–36. A
+       design that takes each layer’s two doses from the pilot’s curve is the next candidate; it is the owner’s
+       choice, is not built, and would be registered on neurons this walk did not ask.
+       **Layer 52 with `soft_ceil`** (the owner’s word, 13 November; registered in
+       [`census_soft_trials/prereg_L52/`](experiments/results/census_soft_trials/prereg_L52/), hashed at 02:50Z
+       while layer 37 was being written): a third draw of 1,022 neurons that neither earlier trial there asked,
+       1,024 fresh controls. It started at 03:48Z, behind the walk and ahead of the steer lens’s build.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -842,6 +864,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
       With both doses inside what reads (±1.6 and ±2.3 ceilings, `soft_ceil`) layer 38 passes its trial on new
       neurons (13 November, step 3). The walk downward goes on with that design, a trial before each layer;
       layer 38 stays *not taken* on kit 2’s board, since a new design is a new kit.
+      The walk downward with it stopped at its first layer: 37 fails on the lower dose alone and, by 0.002, on
+      the covered neurons (13 November, step 3). With these two doses the census reaches 38 and no further down.
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only

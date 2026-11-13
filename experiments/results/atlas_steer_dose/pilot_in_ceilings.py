@@ -13,7 +13,8 @@ nine doses, each a share of the stream's median length at that layer, and record
   (a straight line in log dose and log KL: an estimate, coarse where the curve is steep);
 - every dose a census trial has read alone, with the lead it gave and the movement the pilot puts on it.
 
-Nothing here gates anything. The last table was made after every one of its readings was known.
+Nothing here gates anything. The last table was made after its first fourteen readings were known; the rows said to
+be read after the span was drawn came later and are a test of it.
 
     .venv/bin/python -I experiments/results/atlas_steer_dose/pilot_in_ceilings.py
 """
@@ -43,6 +44,9 @@ READ_ALONE = (
     (52, "stream", 2.0, 0.797, "break_rel upper dose, looked at afterwards (by_dose.json)"),
     (52, "ceiling", 2.3, 0.790, "break_ceil lower dose, registered gate"),
     (52, "ceiling", 4.6, 0.485, "break_ceil upper dose, looked at afterwards (by_dose.json)"),
+    # read after the span below was drawn on the fourteen rows above: the walk downward (census_soft_walk)
+    (37, "ceiling", 1.6, 0.633, "soft_ceil lower dose, registered gate, read after the span was drawn (census_soft_walk)"),
+    (37, "ceiling", 2.3, 0.657, "soft_ceil upper dose, reported, read after the span was drawn (census_soft_walk)"),
 )
 CENSUS_CEILINGS = (1.6, 2.3, 4.6)   # soft_ceil's two doses and break_ceil's upper one
 CENSUS_STREAM = (1.0, 2.0)          # break_rel's

@@ -161,10 +161,49 @@ word-piece, not an answer. A trial is what tests it. If the walk fails where thi
 takes each layer's two doses from the pilot's curve (say 0.35 and 1.3 nats, what `soft_ceil` is at layer 38) is the
 next candidate; it is not built.
 
+## What the walk downward said: layer 37 fails
+
+Registered in [`../census_soft_walk/prereg/`](../census_soft_walk/prereg/) (hashed 13 November, 02:18Z) and read at
+03:47Z: 1,022 neurons never asked, 1,024 controls, 49,110 answers in 88 minutes. **It fails, and the walk stopped
+there.** Layers 36 and below were not trialled.
+
+| reading | lead (0.60) | beyond text survival (0.58) | across the halves (0.57, 0.57) | new questions (0.56) | |
+|---|---|---|---|---|---|
+| whole, all four doses | 0.672 | 0.695 | 0.637, 0.616 | 0.648 | pass |
+| the lower dose alone, ±1.6 | 0.633 | 0.630 | 0.583, **0.542** | 0.616 | fail |
+| the neurons the controls cover, 832 of 1,022 | 0.633 | 0.651 | 0.602, **0.568** | 0.611 | fail |
+| *reported:* the upper dose alone, ±2.3 | 0.657 | 0.667 | 0.604, 0.605 | 0.619 | gates nothing |
+
+- **What failed** is one figure in each of two gates: the words picked on the second half of the questions and
+  scored on the first. For the lower dose alone it is clear (0.542). For the covered neurons it is 0.002 under the
+  bar, and a failure all the same.
+- **Against what was said beforehand.** Met: the whole reading passes; the lower dose alone is what stops the
+  walk, about even at 37; its replication figures fall before its lead does. Missed: that the covered neurons pass
+  wherever the walk reaches.
+- **Reported.** 28 neurons beat every control (110 at layer 38). The text hardly breaks (0.018 of its distinct
+  4-grams lost at ±2.3 for neurons, 0.003 for controls). Cut to 32 word-pieces the whole reading passes too.
+- **The pilot's forecast held on both new readings.** It put the lower dose here at 0.27 nats, between the 0.18
+  that led by 0.603 and the 0.35 that led by 0.654: it leads by 0.633. It put the upper dose at 0.95 nats, inside
+  the span that reads: it leads by 0.657 and passes every gate alone. These two were read after the span was drawn.
+
+So with ±1.6 and ±2.3 ceilings the census reaches layer 38 and no further down: 1.6 ceilings is a little too soft
+at 37. By the pilot, the two pushes that pass at layer 38 (0.35 and 1.34 nats) come to these counts of ceilings:
+
+| layer | 38 | 37 | 36 | 35 | 34 | 33 | 32 | 31 | 30 |
+|---|---|---|---|---|---|---|---|---|---|
+| 0.35 nats | 1.59 | 1.73 | 1.73 | 1.64 | 1.93 | 1.71 | 1.56 | 1.90 | 1.76 |
+| 1.34 nats | 2.30 | 2.53 | 2.58 | 2.41 | 2.86 | 2.69 | 2.57 | 2.87 | 2.76 |
+
+A design that takes each layer's two doses from the pilot's curve this way is the next candidate. It is not built.
+At layer 38 it would be `soft_ceil` itself. Its doses sit close together and the curve is steep (0.35 nats is
+only 0.13 of a ceiling above the dose that failed here), so it would want its own trial at 37 on neurons this
+walk did not ask, and a lower target a little above 0.35 nats may be the safer one.
+
 ## Choices that are the owner's
 
 1. Whether layers that pass are offered to volunteers. A new design is a new kit: its tag and its canaries.
 2. Widening `DOSES_CALIBRATED` to a layer, on its passed trial.
 3. Whether the same design is trialled above the band, at layer 52. Its `break_ceil` trial failed on the lead
    beyond text survival with its ±2.3 answers alone passing ([`DESIGN.md`](DESIGN.md), the last section).
-4. Whether layer 38 is taken whole with this design (13 hours) before the walk goes further down.
+4. Whether layer 38 is taken whole with this design (13 hours).
+5. Whether a design with each layer's doses taken from the pilot's curve is built and trialled at layer 37.
