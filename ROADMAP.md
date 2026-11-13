@@ -851,6 +851,14 @@ layers, the determinism run and the sampled push on 29 October). In this section
        trial before each, and layer 37 may be offered to volunteers under a kit of its own. `DOSES_CALIBRATED` is
        not widened, and the walk does not go on at 36, without the owner’s word. Three layers outside 39–51 now
        pass a trial, under two designs: 37 with `match_ceil`, 38 and 52 with `soft_ceil`.
+       **The walk downward with `match_ceil`, layers 36 to 30** (the owner’s word, 13 November: “Walk first”;
+       registered in [`census_match_walk/prereg/`](experiments/results/census_match_walk/prereg/), hashed at 07:25Z
+       before any answer of these layers existed; the sha256 of its `SHA256SUMS` is `2d876b7c297a…`). A trial at
+       each layer in turn at that layer’s two doses, on the 1,022 neurons drawn for it on 12 November, none asked
+       before, against 1,024 controls; read as soon as it is written; the next layer down only on a pass; stopping
+       at the first failure and at layer 30, where the fine pilot’s table ends. Said beforehand: layer 36 about as
+       likely to pass as not; more likely than not the walk stops at layer 34 or above; all seven passing perhaps
+       one chance in twenty. The steer lens’s build is paused behind it again, with layers 0 to 4 built.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
