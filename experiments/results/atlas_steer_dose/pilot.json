@@ -2945,6 +2945,16 @@
    "from": "break_rel lower dose, registered gate"
   },
   {
+   "layer": 52,
+   "dose": 1.6,
+   "unit": "ceiling",
+   "in_ceilings": 1.6,
+   "of_the_stream": 1.509,
+   "kl": 0.581,
+   "lead": 0.633,
+   "from": "soft_ceil lower dose, registered gate, read after the span was drawn (census_soft_trials)"
+  },
+  {
    "layer": 45,
    "dose": 1.0,
    "unit": "stream",
@@ -3013,6 +3023,16 @@
    "kl": 2.393,
    "lead": 0.79,
    "from": "break_ceil lower dose, registered gate"
+  },
+  {
+   "layer": 52,
+   "dose": 2.3,
+   "unit": "ceiling",
+   "in_ceilings": 2.3,
+   "of_the_stream": 2.17,
+   "kl": 2.393,
+   "lead": 0.783,
+   "from": "soft_ceil upper dose, reported, a third draw of neurons, read after the span was drawn (census_soft_trials)"
   },
   {
    "layer": 38,

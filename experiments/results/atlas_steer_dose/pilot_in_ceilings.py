@@ -47,6 +47,8 @@ READ_ALONE = (
     # read after the span below was drawn on the fourteen rows above: the walk downward (census_soft_walk)
     (37, "ceiling", 1.6, 0.633, "soft_ceil lower dose, registered gate, read after the span was drawn (census_soft_walk)"),
     (37, "ceiling", 2.3, 0.657, "soft_ceil upper dose, reported, read after the span was drawn (census_soft_walk)"),
+    (52, "ceiling", 1.6, 0.633, "soft_ceil lower dose, registered gate, read after the span was drawn (census_soft_trials)"),
+    (52, "ceiling", 2.3, 0.783, "soft_ceil upper dose, reported, a third draw of neurons, read after the span was drawn (census_soft_trials)"),
 )
 CENSUS_CEILINGS = (1.6, 2.3, 4.6)   # soft_ceil's two doses and break_ceil's upper one
 CENSUS_STREAM = (1.0, 2.0)          # break_rel's

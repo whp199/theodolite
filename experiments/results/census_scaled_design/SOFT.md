@@ -199,11 +199,40 @@ At layer 38 it would be `soft_ceil` itself. Its doses sit close together and the
 only 0.13 of a ceiling above the dose that failed here), so it would want its own trial at 37 on neurons this
 walk did not ask, and a lower target a little above 0.35 nats may be the safer one.
 
+## What the trial at layer 52 said: it passes
+
+Registered in [`../census_soft_trials/prereg_L52/`](../census_soft_trials/prereg_L52/) (hashed at 02:50Z on 13
+November, before any answer of it existed): a third draw of 1,022 neurons that neither earlier trial at layer 52
+asked, 1,024 controls drawn afresh. Read at 05:14Z. 49,110 answers in 86 minutes.
+
+| reading | lead | beyond text survival | across the halves | new questions |
+|---|---|---|---|---|
+| whole | 0.804 | 0.693 | 0.680, 0.669 | 0.758 |
+| the ±1.6 answers alone | 0.633 | 0.657 | 0.604, 0.608 | 0.577 |
+| the 945 of 1,022 the controls cover | 0.797 | 0.684 | 0.670, 0.658 | 0.750 |
+| the ±2.3 answers alone (reported) | 0.783 | 0.682 | 0.642, 0.681 | 0.675 |
+| bars | 0.60 | 0.58 | 0.57, 0.57 | 0.56 |
+
+- **All three gates pass.** The lead beyond text survival, which failed here under `break_ceil` (0.553), is 0.693.
+  245 of the 1,022 neurons beat every control, where one would by chance.
+- **The lower dose passes thinly on the new questions** (0.577 against 0.56) and by 0.03 across the halves.
+- **Two things said beforehand missed.** The whole lead is 0.804 (0.72 to 0.80 was said). The lower dose's lead is
+  0.633 (0.66 to 0.76 was said).
+- **The second miss is a caution about nats.** By the steer lens's pilot 1.6 ceilings moves the next word-piece by
+  0.58 nats at this layer, well inside the span where every dose read before it led by 0.65 or more. Layer 51's
+  `break_rel` lower dose, at 0.53 nats, led by 0.723. So the same movement of the next word-piece gives leads 0.09
+  apart at neighbouring layers: it does not sort the leads from layer to layer as closely as the earlier readings
+  suggested. `match_ceil` ([`MATCH.md`](MATCH.md)) sets its doses by that movement, and was designed before this
+  was read.
+- **What it decides, by its registration:** layer 52 may be offered to volunteers under a kit of its own for this
+  design, with layer 38. `DOSES_CALIBRATED` is widened to it only on the owner's word. Layers 53 and above each
+  want a trial of their own.
+
 ## Choices that are the owner's
 
 1. Whether layers that pass are offered to volunteers. A new design is a new kit: its tag and its canaries.
 2. Widening `DOSES_CALIBRATED` to a layer, on its passed trial.
-3. Whether the same design is trialled above the band, at layer 52. Its `break_ceil` trial failed on the lead
-   beyond text survival with its ±2.3 answers alone passing ([`DESIGN.md`](DESIGN.md), the last section).
+3. Whether layer 52, which passes its trial, is offered to volunteers with this design, and whether layers 53 and
+   above are trialled.
 4. Whether layer 38 is taken whole with this design (13 hours).
 5. Whether a design with each layer's doses taken from the pilot's curve is built and trialled at layer 37.

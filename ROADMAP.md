@@ -800,6 +800,20 @@ layers, the determinism run and the sampled push on 29 October). In this section
        [`census_soft_trials/prereg_L52/`](experiments/results/census_soft_trials/prereg_L52/), hashed at 02:50Z
        while layer 37 was being written): a third draw of 1,022 neurons that neither earlier trial there asked,
        1,024 fresh controls. It started at 03:48Z, behind the walk and ahead of the steer lens’s build.
+       **Read at 05:14Z: it passes all three**
+       ([`census_soft_trials/`](experiments/results/census_soft_trials/), `summary.json`). Whole: 0.804, 0.693,
+       0.680 and 0.669, 0.758. The ±1.6 answers alone: 0.633, 0.657, 0.604 and 0.608, 0.577 (that last against a
+       bar of 0.56). The 945 of 1,022 neurons the controls cover: 0.797, 0.684, 0.670 and 0.658, 0.750. The ±2.3
+       answers alone, reported: 0.783, 0.682, 0.642 and 0.681, 0.675. 245 of the 1,022 beat every control (one by
+       chance). 86 minutes at 9.6 answers a second. The lead beyond text survival, which failed here under
+       `break_ceil` at 0.553, is 0.693 with the softer pair. Two of the four figures said beforehand missed: the
+       whole lead (0.804; 0.72 to 0.80 was said) and the lower dose’s lead (0.633; 0.66 to 0.76 was said). The
+       second one matters outside this layer. By the steer lens’s pilot 1.6 ceilings moves the next word-piece by
+       0.58 nats here, inside the span (0.35 to 2.4 nats) where every dose read before it led by 0.65 or more. So
+       how far a push moves the next word-piece sorts the leads less closely from layer to layer than those
+       readings suggested, and `match_ceil`, below, rests on it. By its registration layer 52 may be offered to
+       volunteers under a kit of its own for this design. `DOSES_CALIBRATED` is not widened to it, and layers 53
+       and above each want a trial of their own; each of those is the owner’s word.
        **The design with each layer’s own doses, `match_ceil`** (the owner’s word, 13 November: “Yes, design it”;
        [`MATCH.md`](experiments/results/census_scaled_design/MATCH.md)): `soft_ceil` with its two counts of ceilings
        set a layer at a time, at the pushes that move the next word-piece by 1.0 and by 1.4 nats there. 1.0 nats is
