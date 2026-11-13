@@ -28,6 +28,9 @@ ROOT = Path(__file__).resolve().parent.parent
 for p in (ROOT, ROOT / "scripts"):
     sys.path.insert(0, str(p))
 
+# the runtime first: importing it sets the allocator's expandable segments (engine_runtime's top), which torch reads at
+# its first allocation on the card, so a block held aside before it was imported left the run on the default allocator
+import backend.engine_runtime  # noqa: E402,F401
 import torch  # noqa: E402
 
 
