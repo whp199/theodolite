@@ -832,6 +832,12 @@ layers, the determinism run and the sampled push on 29 October). In this section
        is 0.25, so at that dose the two layers were pushed alike by this measure, and the pilot does not explain why
        one passed and the other failed. Near the doses a push 7% larger moves the next word-piece 1.3 to 1.5 times
        as far, and the two doses are 6% apart.
+       **Layer 37 with `match_ceil`** (registered in
+       [`census_match_trials/prereg/`](experiments/results/census_match_trials/prereg/), hashed at 05:28Z on 13
+       November before any answer of the design existed; the sha256 of its `SHA256SUMS` is `d4ebb22feb1a…`): ±2.41
+       and ±2.55 ceilings, on 1,022 neurons the walk did not ask against 1,024 controls drawn afresh, the same
+       reader and three gates. Said beforehand: about as likely to pass all three as not, the covered neurons the
+       least sure. It runs ahead of the steer lens’s build.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
