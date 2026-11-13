@@ -64,9 +64,13 @@ offered to volunteers only if it passes. On 12 November 2026 the first two read,
 board), passed and were opened, and the doses are counted calibrated at both since that day. Layers 39 and 53 (38 and
 52 on the board) failed, from opposite sides: at 39 the same push is three times the most a neuron there can write,
 and the text breaks; at 53 it is barely once, and half the answers hardly move. So with these doses the census is
-layers 40–52, and the other forty-seven wait for a design that counts its push in what a neuron can write (ROADMAP
-§vi), now being trialled. A layer that passes later waits for that count: until then the atlas marks its census “doses not
-calibrated at this layer” and inks it without gilt.
+layers 40–52. For the layers outside, two designs that count the push in what a neuron can write by itself were
+trialled on 13 November 2026 (ROADMAP §vi). One with two fixed counts passes at layers 39 and 53 (38 and 52 on the
+board) and fails at 38. One whose two counts are set a layer at a time, where the next word-piece moves by a fixed
+amount, passes at layers 33–38 (32–37 on the board) and fails at 32. The doses are counted calibrated at those eight
+layers, and a third kit that offers them to volunteers is being prepared; they are not open yet. The other
+thirty-nine layers (1–32 and 54–60) have no design that passed there. Where a census’s doses are not counted
+calibrated the atlas marks it “doses not calibrated at this layer” and inks it without gilt.
 
 <table>
   <tr>

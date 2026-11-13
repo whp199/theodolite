@@ -1185,7 +1185,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             calibration ladders and are calibrated at layers 40–52: at 41–51 by a trial fixed before it was taken, at
             layer 46 on 1,022 fresh neurons against 1,024 controls, and at 40 and 52 by a trial of each like it (12
             November 2026), both passing; not at 53–58, where its probe at layer 58 passed by 0.0008 and its lead could
-            not be told from how the text survives, nor below 40.
+            not be told from how the text survives, nor below 40. Outside 40–52 that push is too hard or too soft, and
+            two designs count theirs in what each neuron can write by itself: soft_ceil is calibrated at layers 39 and
+            53, match_ceil at layers 33–38, each layer by a trial of its own (13 November 2026); soft_ceil’s trial at
+            layer 38 and match_ceil’s at layer 32 failed, and neither was tried elsewhere.
             Where a census’s doses are not calibrated at its layer, a low rank can mean only that the dose was wrong for
             the layer. break_rel is the design a census takes unless another is named. At its ±2 doses neurons and
             controls alike break into loops on the same few words (in its trial most neurons it named listed same, own or
@@ -1201,7 +1204,11 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             −2, −1, +1 and +2 of the stream (chosen for layers 41–58 on the ladders of 28 October, 64 + 64 units at
             layers 21, 31, 41, 46, 51 and 58, on which text breaks first at ±0.5 at layer 21, ±1 at 31 and ±2 at 41 and
             46, and for the neurons at ±1 at 51 and at +2 and −1 at 58, the controls at ±2 at both; calibrated at layers
-            40–52: 41–51 by its trial of 29 October, 40 and 52 by their own of 12 November). Greedy answers. A
+            40–52: 41–51 by its trial of 29 October, 40 and 52 by their own of 12 November). soft_ceil and match_ceil:
+            break_rel’s six questions at two doses on each sign, each dose a multiple of the pushed neuron’s write
+            ceiling, the most it can write by itself (soft_ceil ±1.6 and ±2.3 at every layer; match_ceil two counts set
+            a layer at a time where the next word-piece moves by 1.0 and by 1.4 nats, between 2.2 and 2.8 at the
+            layers it is calibrated at), read as break_rel is. Greedy answers. A
             word (three letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5), for main_rel
             against the average unit over pushes of at most 1.6 of the stream with every word of the unpushed answers
             left out, for break_rel against the controls’ mean alone over every answer with the answer’s own question’s

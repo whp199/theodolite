@@ -931,7 +931,16 @@ layers, the determinism run and the sampled push on 29 October). In this section
        not stop at 34 or above; it stopped three layers further down. By the registration no whole layer is taken
        at 31 with this design and layer 30 is not asked. `match_ceil` passes at 32 to 37 and fails at 31. Eight
        layers outside 39–51 pass a trial: 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`;
-       `DOSES_CALIBRATED` is widened for none of them.
+       `DOSES_CALIBRATED` was widened for none of them that afternoon.
+       **The doses counted calibrated at the eight layers** (the owner’s word, 13 November: “Yes, prepare it”).
+       `census.DOSES_CALIBRATED` names three designs now: `break_rel` at 39–51 as before, `soft_ceil` at 38 and
+       52, `match_ceil` at 32–37, the two new ones for answers of 48 word-pieces alone, as their trials were
+       gated. A design’s layers are listed, not spanned: `soft_ceil` was never tried between 38 and 52, and is
+       not calibrated there. The card’s `doses_calibrated_layers` lists every layer; the page, the lexicon, the
+       scientist’s prompt and the depth report say where each design is calibrated. No whole layer has been taken
+       with either new design yet. Kit 3, which offers the eight layers to volunteers, is prepared on the branch
+       `kit-3` and is not cut: main keeps kit 2’s files while layers 39 and 51 are open under it, because a
+       volunteer’s `reserve` reads the board from main.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -1002,6 +1011,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
       neurons the same night (step 3). Layer 36 passes with its own doses the next morning, one gate by a
       thousandth, layer 35 with more room, layers 34 and 33 widely, layer 32 with less; layer 31 fails that
       afternoon and the walk stops there (step 3).
+      The doses are counted calibrated at the eight layers that passed since that evening (step 3), and kit 3 is
+      prepared on the branch `kit-3`, not cut.
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only

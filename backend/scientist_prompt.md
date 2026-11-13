@@ -109,7 +109,9 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   layers 41-58 and are calibrated at layers 40-52: at 41-51 by a trial fixed before it was taken, which tested layer 46
   alone of them, and at 40 and 52 by a trial of each, read by the same gates and two more (its rules licensed 41-58,
   but its one probe above 52, at layer 58, passed by 0.0008 and its lead could not be told from how the text survives;
-  `doses_from` says so). `break_rel` is the default design. Calibrated means that at
+  `doses_from` says so). `break_rel` is the default design. Outside 40-52 two designs count their pushes in what
+  each neuron can write by itself: `soft_ceil` is calibrated at layers 39 and 53 and `match_ceil` at layers 33-38, each
+  layer by a trial of its own read by those gates; neither is calibrated anywhere else. Calibrated means that at
   layer 46 the neurons' mass beat the controls' beyond how the text survives and held on questions held out, not that a
   neuron's census words are its meaning: there most neurons the census singled out listed same, own or thought, words
   that come with text breaking into loops and that controls write too, and below the controls' 95th percentile the

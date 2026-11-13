@@ -87,6 +87,17 @@ export async function* streamLines(r: Response, sse: boolean): AsyncGenerator<un
 export const pageLayer = (l: number) => l + 1;
 export const cite = (l: number, n: number) => `L${l + 1} N${n}`;
 export const citeHead = (l: number, h: number) => `L${l + 1} h${h}`;
+/** A list of layers (counted from 0) said as the pages count them, its unbroken runs joined: "40–52", "39 and 53". */
+export function layersSaid(layers: number[]): string {
+  const runs: [number, number][] = [];
+  for (const l of [...new Set(layers)].sort((a, b) => a - b).map(pageLayer)) {
+    const last = runs[runs.length - 1];
+    if (last && l === last[1] + 1) last[1] = l;
+    else runs.push([l, l]);
+  }
+  const said = runs.map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`));
+  return said.length < 2 ? (said[0] ?? "") : `${said.slice(0, -1).join(", ")} and ${said[said.length - 1]}`;
+}
 
 /* ------------------------------------------------------------------------------------------------------ replies */
 
@@ -414,12 +425,13 @@ export interface CensusCard {
    * whose unpushed words are left out */
   reading?: { max_rel: number; reference: "units" | "controls"; exclude: "all" | "own" };
   /** its design's doses, and whether they are calibrated on this model at the run's layer (census.doses_calibrated:
-   * break_rel's at layers 39–51 counted from 0, 40–52 on the pages); where they are not, the census and details tabs say
-   * so in red, and the left panel's census head says so. `doses_calibrated_layers`: the first and last layer, counted
-   * from 0, that the run's design is calibrated at; null for a design calibrated at none */
+   * break_rel's at layers 39–51 counted from 0, 40–52 on the pages; soft_ceil's at 38 and 52; match_ceil's at 32–37);
+   * where they are not, the census and details tabs say so in red, and the left panel's census head says so.
+   * `doses_calibrated_layers`: every layer, counted from 0, that the run's design is calibrated at (they need not lie
+   * side by side: `layersSaid`); null for a design calibrated at none */
   doses?: number[];
   doses_calibrated?: boolean;
-  doses_calibrated_layers?: [number, number] | null;
+  doses_calibrated_layers?: number[] | null;
   /** the second stage of a two-stage census: the screen whose strongest neurons it retests against fresh controls */
   stage?: { stage: number; screen: string; top: number; of: number; screen_seed: number | null; screen_controls: number | null } | null;
   /** with no push, after how many word-pieces an answer written in batches like this run's parts from the same answer

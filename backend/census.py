@@ -40,7 +40,8 @@ read by `dose_curves`: per dose, neurons against controls, the share of answers 
 where, the share cut off, distinct 4-grams, and the push over each neuron's ceiling, with a hedged verdict per sign.
 Every page and tool that shows a census says so, save for a design calibrated at the run's layer (`DOSES_CALIBRATED`,
 `doses_calibrated`: break_rel at layers 39-51, counted from 0: 40-50 by its trial of 29 October 2026, 39 and 51 by a
-trial of each on 12 November). With 256 controls and
+trial of each on 12 November; soft_ceil at layers 38 and 52 and match_ceil at layers 32-37, each layer by a trial of
+its own on 13 November). With 256 controls and
 21,504 neurons about 84 neurons land above every
 control by chance alone (N / (C + 1)), so a rank is a lead, not a finding: each unit carries an empirical p against the
 controls and a layer-wide false-discovery q (`compute_units`). A second stage retests a screen's strongest neurons
@@ -171,7 +172,8 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # and +-2.3 of each neuron's own write ceiling. At layer 38 the +-2.3 answers alone passed every gate (lead 0.682)
     # and the +-4.6 answers read at chance (0.506), as break_rel's 3.14 ceilings had there (0.496): the lead is gone
     # by about three ceilings, so the upper dose is now the one that read and the other lies half a doubling under
-    # it. Not calibrated anywhere until a trial of it passes
+    # it. Calibrated at layers 38 and 52 by a trial of each on 13 November 2026 (DOSES_CALIBRATED;
+    # experiments/results/census_soft_trials); its trial at layer 37 failed (experiments/results/census_soft_walk)
     "soft_ceil": [(p, s * d) for p in DESIGN_QUESTIONS["soft_ceil"] for d in SOFT_CEIL for s in (-1.0, 1.0)],
 }
 # the design a census takes when none is named, and the one a layer's run is read from first (layer_runs): break_rel,
@@ -232,28 +234,47 @@ DOSES_FROM = {
     "soft_ceil": "+-1.6 and +-2.3 times each neuron's own write ceiling: break_ceil with its upper dose brought under its "
                  "lower, for the layers where 4.6 ceilings is too hard a push. At layer 39 (as the pages count them) "
                  "break_ceil's trial read a lead in the +-2.3 answers alone (0.682) and none in the +-4.6 answers "
-                 "(0.506), so 2.3 is kept as the upper dose and the lower is half a doubling under it. Not calibrated "
-                 "at any layer until a trial of it passes there",
+                 "(0.506), so 2.3 is kept as the upper dose and the lower is half a doubling under it. Calibrated at "
+                 "layers 39 and 53 by a trial of each (13 November 2026, 1,022 fresh neurons against 1,024 controls, three "
+                 "gates fixed before any was read: the whole reading, the lower dose's answers alone, the neurons whose "
+                 "text survives as the controls' does), both passing all three; not at layer 38, where its trial failed "
+                 "on the lower dose alone, and tried at no other layer",
     "match_ceil": "two counts of each neuron's own write ceiling that differ by layer: at each layer, the pushes that move "
                   "the next word-piece by 1.0 and by 1.4 nats (the median over 128 of the layer's neurons), as the census's "
                   "fine dose pilot measured them there. soft_ceil's fixed counts passed at layer 39 (as the pages count "
                   "them) and failed at layer 38, where its lower dose moved the next word-piece too little to carry a lead "
-                  "alone; a push of about 1 nat is what break_rel's lower dose makes where it is calibrated. Not calibrated "
-                  "at any layer until a trial of it passes there",
+                  "alone; a push of about 1 nat is what break_rel's lower dose makes where it is calibrated. Calibrated at "
+                  "layers 33-38 by a trial of each (13 November 2026, 1,022 fresh neurons against 1,024 controls, three "
+                  "gates fixed before any was read: the whole reading, the lower dose's answers alone, the neurons whose "
+                  "text survives as the controls' does), all six passing all three, layer 37 by 0.001 on one gate; not "
+                  "at layer 32, where its trial failed (the lower dose's answers alone did not carry a neuron's words "
+                  "from one half of the questions to the other), and tried at no other layer",
 }
-# where a design's doses are calibrated on this model, its first and last layer (counted from 0, as the commands count
-# them): there the card says `doses_calibrated` and the page leaves out its red "not yet calibrated" line. break_rel's at
-# layers 39-51. 40-50 was the owner's choice of 29 October 2026 on its trial's verdict
-# (experiments/results/census_break_rel_trial): the rules fixed before the trial licensed 40-57, but at 57 its probe
-# passed by 0.0008 and its lead could not be told from how the text survives. 39 and 51 were counted in on 12 November
-# 2026, the owner's word, each on a trial of its own that passed three gates fixed before any was read
-# (experiments/results/census_neighbour_trials): the span grows a layer at a time, on a passed trial and the owner's
-# word, never on a pass alone. A design named here speaks on every card with DOSES_FROM's words, which say where it is
-# calibrated, not with the words its runs' metas recorded before that was recorded (atlas.census_card).
-DOSES_CALIBRATED: Dict[str, Tuple[int, int]] = {"break_rel": (39, 51)}
+# where a design's doses are calibrated on this model: its spans of layers, each a first and a last (counted from 0, as
+# the commands count them). There the card says `doses_calibrated` and the page leaves out its red "not yet calibrated"
+# line. A layer is counted in only so: a trial at that layer that passed, then the owner's word, never on a pass alone.
+# - break_rel at layers 39-51. 40-50 was the owner's choice of 29 October 2026 on its trial's verdict
+#   (experiments/results/census_break_rel_trial): the rules fixed before the trial licensed 40-57, but at 57 its probe
+#   passed by 0.0008 and its lead could not be told from how the text survives. 39 and 51 were counted in on 12 November
+#   2026, each on a trial of its own that passed three gates fixed before any was read
+#   (experiments/results/census_neighbour_trials). Its trials at 38 and 52 failed.
+# - soft_ceil at layers 38 and 52, and match_ceil at layers 32-37: counted in on 13 November 2026, the owner's word
+#   ("Yes, prepare it": kit 3), each layer on a trial of its own that passed the same three gates
+#   (experiments/results/census_soft_trials, census_match_trials, census_match_walk). soft_ceil's trial at 37 failed and
+#   so did match_ceil's at 31; neither design was tried anywhere else, so two layers side by side here are not a span
+#   that covers what lies between two of its entries.
+# A design named here speaks on every card with DOSES_FROM's words, which say where it is calibrated, not with the words
+# its runs' metas recorded before that was recorded (atlas.census_card).
+DOSES_CALIBRATED: Dict[str, Tuple[Tuple[int, int], ...]] = {
+    "break_rel": ((39, 51),),
+    "soft_ceil": ((38, 38), (52, 52)),
+    "match_ceil": ((32, 37),),
+}
 # the answer lengths a design's calibration was read at (break_rel's trial: 48 word-pieces, and 32 as those answers cut
-# short, both passing at layer 45): a run whose answers run longer is not calibrated, its doses read over more loops
-DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48)}
+# short, both passing at layer 45): a run whose answers run longer is not calibrated, its doses read over more loops.
+# The trials of soft_ceil and match_ceil were gated at 48 word-pieces alone (the cut to 32 was reported, on the whole
+# reading only, and it passed by 0.0003 at layer 36)
+DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48), "soft_ceil": (48,), "match_ceil": (48,)}
 # the settings a design's census takes unless others are given (census_run.py): break_rel's are the owner's of 29
 # October 2026 for a whole layer, its trial's length and batch (the step-0 rule) with 2,048 controls; other designs
 # keep the command's own (256 word-pieces, a batch of 32, 256 controls)
@@ -272,11 +293,49 @@ def run_defaults(design_name: Optional[str]) -> Dict[str, int]:
 def doses_calibrated(design_name: Optional[str], layer: Optional[int], max_new: Optional[int] = None) -> bool:
     """Whether a design's doses are calibrated on this model at a layer (DOSES_CALIBRATED; the layer counted from 0),
     for answers of `max_new` word-pieces at most where one is given (DOSES_CALIBRATED_MAX_NEW)."""
-    span = DOSES_CALIBRATED.get(str(design_name))
-    if span is None or layer is None or not span[0] <= int(layer) <= span[1]:
+    if layer is None or int(layer) not in calibrated_layers(design_name):
         return False
     lengths = DOSES_CALIBRATED_MAX_NEW.get(str(design_name))
     return max_new is None or lengths is None or int(max_new) in lengths
+
+
+def calibrated_layers(design_name: Optional[str]) -> List[int]:
+    """Every layer a design's doses are calibrated at on this model (DOSES_CALIBRATED's spans laid out, counted from 0);
+    empty for a design calibrated at none."""
+    return sorted({l for first, last in DOSES_CALIBRATED.get(str(design_name), ()) for l in range(int(first), int(last) + 1)})
+
+
+def layers_said(layers: Sequence[int], offset: int = 0) -> str:
+    """A list of layers in words, its unbroken runs joined: "39-51", "38 and 52", "32-37, 40 and 52". `offset` 1 counts
+    them as the pages do."""
+    runs: List[List[int]] = []
+    for l in sorted({int(x) + offset for x in layers}):
+        if runs and l == runs[-1][1] + 1:
+            runs[-1][1] = l
+        else:
+            runs.append([l, l])
+    said = [str(a) if a == b else f"{a}-{b}" for a, b in runs]
+    return said[0] if len(said) == 1 else ", ".join(said[:-1]) + " and " + said[-1] if said else ""
+
+
+def dose_note(design_name: Optional[str], layer: Optional[int], max_new: Optional[int] = None, dose_unit: str = "stream") -> str:
+    """What a depth reading says of a run's doses: DOSES_FROM's words where they are calibrated at its layer and length
+    (doses_calibrated); else that they are not, and, for a design calibrated at other layers, at which."""
+    if doses_calibrated(design_name, layer, max_new):
+        return DOSES_FROM[str(design_name)]
+    at = calibrated_layers(design_name)
+    if dose_unit != "ceiling":
+        said = "one nominal dose, a different push at each layer"
+    elif str(design_name) in LAYER_DOSES:
+        said = "a multiple of each neuron's own write ceiling, set a layer at a time"
+    else:
+        said = "one nominal dose, a multiple of each neuron's own write ceiling, the same share of each neuron's most at every layer"
+    if not at:
+        return said + "; doses not yet calibrated on this model"
+    if layer is not None and int(layer) in at:  # at its layer, but not for answers of this length
+        lengths = " or ".join(str(n) for n in DOSES_CALIBRATED_MAX_NEW.get(str(design_name), ()))
+        return said + f"; doses calibrated at this layer only for answers of {lengths} word-pieces"
+    return said + f"; doses not yet calibrated on this model at this layer (only at layers {layers_said(at)}, counted from 0)"
 
 
 def design_questions(design_name: Optional[str]) -> Dict[str, str]:
@@ -2588,13 +2647,7 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
         m = np.array([r["mass"] for r in neu], np.float64)
         entry: Dict[str, Any] = {"layer": int(l), "run": Path(path).name, "subsampled": sub, "n_neurons": len(m), "n_controls": len(null),
                                  "dose_unit": unit, "design": design_name, "reading": reading,
-                                 "dose_note": DOSES_FROM[design_name] if doses_calibrated(design_name, l, meta.get("max_new")) else
-                                 ("one nominal dose, a multiple of each neuron's own write ceiling, the same share of "
-                                  "each neuron's most at every layer; doses not yet calibrated on this model")
-                                 if unit == "ceiling" else
-                                 "one nominal dose, a different push at each layer; doses not yet calibrated on this model"
-                                 + (f" at this layer (only at layers {DOSES_CALIBRATED[design_name][0]}-"
-                                    f"{DOSES_CALIBRATED[design_name][1]}, counted from 0)" if design_name in DOSES_CALIBRATED else "")}
+                                 "dose_note": dose_note(design_name, l, meta.get("max_new"), unit)}
         if not len(null) or not len(m):
             entry["note"] = "a depth reading needs neurons and controls in the run"
             report.append(entry)

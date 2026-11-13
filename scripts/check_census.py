@@ -1392,22 +1392,46 @@ def run_checks(tmp: Path) -> int:
     # doses_calibrated follows census.DOSES_CALIBRATED at the run's layer: break_rel's at layers 39-51 (the owner's
     # choice on its trials' verdicts, 29 October and 12 November 2026), so not at the stand-in's layer 3; a design named there speaks with
     # DOSES_FROM's words, not the ones its meta recorded before its calibration was
-    check(cz.DOSES_CALIBRATED == {"break_rel": (39, 51)}
+    check(cz.DOSES_CALIBRATED == {"break_rel": ((39, 51),), "soft_ceil": ((38, 38), (52, 52)), "match_ceil": ((32, 37),)}
           and [cz.doses_calibrated("break_rel", l_) for l_ in (38, 39, 40, 45, 50, 51, 52, 57)] == [False, True, True, True, True, True, False, False]
           and not cz.doses_calibrated("main_rel", 45) and not cz.doses_calibrated(None, 45) and not cz.doses_calibrated("break_rel", None),
           f"census.doses_calibrated: break_rel's doses at layers 39-51 alone ({cz.DOSES_CALIBRATED})")
+    # the two ceiling designs, each at the layers whose trial passed and nowhere between or beside them (13 November
+    # 2026, the owner's word): soft_ceil at 38 and 52, not at 37 (its trial failed) nor at 39-51 (never tried there);
+    # match_ceil at 32-37, not at 31 (failed), 30 (not asked) or 38 (not tried); both for answers of 48 pieces alone
+    check([l_ for l_ in range(60) if cz.doses_calibrated("soft_ceil", l_)] == [38, 52]
+          and [l_ for l_ in range(60) if cz.doses_calibrated("match_ceil", l_)] == [32, 33, 34, 35, 36, 37]
+          and cz.calibrated_layers("soft_ceil") == [38, 52] and cz.calibrated_layers("break_rel") == list(range(39, 52))
+          and cz.calibrated_layers("main_rel") == [] and cz.calibrated_layers(None) == []
+          and cz.doses_calibrated("soft_ceil", 52, 48) and not cz.doses_calibrated("soft_ceil", 52, 32)
+          and cz.doses_calibrated("match_ceil", 34, 48) and not cz.doses_calibrated("match_ceil", 34, 32)
+          and not cz.doses_calibrated("break_ceil", 38) and set(cz.calibrated_layers("match_ceil")) <= set(cz.MATCH_CEIL),
+          f"census.doses_calibrated: soft_ceil's doses at layers 38 and 52 alone, match_ceil's at 32-37 alone, each at 48 "
+          f"word-pieces, break_ceil's nowhere ({cz.DOSES_CALIBRATED})")
+    check([cz.layers_said(x_) for x_ in ([39, 40, 41], [38, 52], [5], [], [32, 33, 34, 40, 52], [52, 38, 38])]
+          == ["39-41", "38 and 52", "5", "", "32-34, 40 and 52", "38 and 52"] and cz.layers_said([38, 52], 1) == "39 and 53"
+          and "only at layers 38 and 52, counted from 0" in cz.dose_note("soft_ceil", 37, 48, "ceiling")
+          and "write ceiling" in cz.dose_note("soft_ceil", 37, 48, "ceiling")
+          and "only at layers 32-37, counted from 0" in cz.dose_note("match_ceil", 31, 48, "ceiling")
+          and "set a layer at a time" in cz.dose_note("match_ceil", 31, 48, "ceiling")
+          and "only for answers of 48 word-pieces" in cz.dose_note("soft_ceil", 52, 32, "ceiling")
+          and cz.dose_note("soft_ceil", 52, 48, "ceiling") == cz.DOSES_FROM["soft_ceil"]
+          and cz.dose_note("break_ceil", 38, 48, "ceiling").endswith("doses not yet calibrated on this model")
+          and cz.dose_note("main_rel", 45).endswith("a different push at each layer; doses not yet calibrated on this model"),
+          "layers said in runs; the depth report's note says where a design is calibrated when it is not at the run's layer, "
+          "for a ceiling design too, and that a length is not the calibrated one")
     kept_calibrated = cz.DOSES_CALIBRATED
     try:
-        cz.DOSES_CALIBRATED = {"break_rel": (3, 3)}
+        cz.DOSES_CALIBRATED = {"break_rel": ((3, 3),)}
         stale = {**bmeta, "max_new": 48, "doses_from": "the words a run was taken with before its design's calibration was recorded"}
         bcard_on = atlas_routes.census_card({"path": brun, "meta": stale, "null": {}, "units": bunits})
         bcard_off = atlas_routes.census_card({"path": brun, "meta": {**stale, "layer": 4}, "null": {}, "units": bunits})
         main_on = atlas_routes.census_card({"path": brun, "meta": {**stale, "design_name": "main_rel"}, "null": {}})
     finally:
         cz.DOSES_CALIBRATED = kept_calibrated
-    check(bmeta.get("layer") == 3 and bcard["doses_calibrated"] is False and bcard["doses_calibrated_layers"] == [39, 51]
+    check(bmeta.get("layer") == 3 and bcard["doses_calibrated"] is False and bcard["doses_calibrated_layers"] == list(range(39, 52))
           and bcard["doses"] == [-2.0, -1.0, 1.0, 2.0] and bcard["reading"] == cz.reading_of("break_rel")
-          and bcard_on["doses_calibrated"] is True and bcard_on["doses_calibrated_layers"] == [3, 3]
+          and bcard_on["doses_calibrated"] is True and bcard_on["doses_calibrated_layers"] == [3]
           and bcard_on["doses_from"] == cz.DOSES_FROM["break_rel"] and bcard_off["doses_calibrated"] is False
           and main_on["doses_calibrated"] is False and main_on["doses_calibrated_layers"] is None
           and main_on["doses_from"] == stale["doses_from"],
@@ -1619,10 +1643,10 @@ def run_checks(tmp: Path) -> int:
           and cz.DESIGN_HALVES["soft_ceil"] == cz.DESIGN_HALVES["break_rel"] and cz.DESIGN_UNITS["soft_ceil"] == "ceiling"
           and cz.reading_of("soft_ceil") == cz.reading_of("break_ceil") and cz.run_defaults("soft_ceil") == cz.run_defaults("break_rel")
           and cz.COLLAPSE_RULE["soft_ceil"] == {"doses": (2.3,), "answers": 2, "per_1024": 10} and cz.DESIGN_PLAN["soft_ceil"] == "12 x batch"
-          and not any(cz.doses_calibrated("soft_ceil", l_) for l_ in (20, 38, 45)) and "write ceiling" in cz.DOSES_FROM["soft_ceil"]
+          and not any(cz.doses_calibrated("soft_ceil", l_) for l_ in (3, 20, 37, 45)) and "write ceiling" in cz.DOSES_FROM["soft_ceil"]
           and max(abs(d_) for _, d_ in sc_d) == min(abs(d_) for _, d_ in bc),
           "soft_ceil: break_rel's six questions and halves at -2.3, -1.6, +1.6, +2.3 of each neuron's write ceiling, its upper dose "
-          "break_ceil's lower; read, taken and marked as break_ceil is; calibrated nowhere")
+          "break_ceil's lower; read, taken and marked as break_ceil is; not calibrated at the stand-in's layer or at 37")
     srun = tmp / "runs" / "L3-soft_ceil.jsonl"
     cz.take_census(rt, 3, list(range(8)), srun, **{**kw, "design_name": "soft_ceil"})
     srows = list(cz.read_rows(srun))
@@ -1645,9 +1669,10 @@ def run_checks(tmp: Path) -> int:
     scard = atlas_routes.census_card({"path": srun, "meta": smeta, "null": {}, "units": sunits})
     check(len(sunits) == 8 + s_ctl and all(u_["reading"] == cz.reading_of("soft_ceil") and set(u_["dose"]) == {"-2.3", "-1.6", "+1.6", "+2.3"} for u_ in sunits)
           and scol.get("doses") == [2.3] and "±2.3 x the write ceiling" in scol.get("rule", "")
-          and scard["doses_calibrated"] is False and scard["dose_unit"] == "ceiling" and scard["doses_from"] == cz.DOSES_FROM["soft_ceil"],
+          and scard["doses_calibrated"] is False and scard["doses_calibrated_layers"] == [38, 52]
+          and scard["dose_unit"] == "ceiling" and scard["doses_from"] == cz.DOSES_FROM["soft_ceil"],
           f"a soft_ceil run is ranked on every answer, its collapse words read at +-2.3, and its card says its unit and that its doses "
-          f"are calibrated nowhere ({scol.get('doses')}, {scard.get('doses_calibrated')}, {sorted(sunits[0]['dose']) if sunits else None})")
+          f"are calibrated at layers 38 and 52, not at its own ({scol.get('doses')}, {scard.get('doses_calibrated')}, {sorted(sunits[0]['dose']) if sunits else None})")
     section("soft_ceil: the design, a stand-in run, its ranking and card", before)
 
     # ---------------------------------------------- 14d. match_ceil: two counts of ceilings that differ by layer, from a table
@@ -1657,11 +1682,11 @@ def run_checks(tmp: Path) -> int:
           and cz.DESIGN_UNITS["match_ceil"] == "ceiling" and cz.reading_of("match_ceil") == cz.reading_of("break_ceil")
           and cz.run_defaults("match_ceil") == cz.run_defaults("break_rel") and cz.DESIGN_PLAN["match_ceil"] == "12 x batch"
           and cz.COLLAPSE_RULE["match_ceil"] == {"doses": "upper", "answers": 2, "per_1024": 10} and cz.MATCH_NATS == (1.0, 1.4)
-          and not any(cz.doses_calibrated("match_ceil", l_) for l_ in (20, 37, 45)) and "nats" in cz.DOSES_FROM["match_ceil"]
+          and not any(cz.doses_calibrated("match_ceil", l_) for l_ in (3, 20, 31, 38, 45)) and "nats" in cz.DOSES_FROM["match_ceil"]
           and all(cz.design_at(d_, 3) is cz.DESIGNS[d_] and cz.design_at(d_) is cz.DESIGNS[d_] for d_ in cz.DESIGNS)
           and all(len(v_) == 2 and 0 < v_[0] < v_[1] < 3.2 for v_ in cz.MATCH_CEIL.values()),
-          "match_ceil: break_rel's six questions and halves in the ceiling unit, read, taken and marked as break_ceil is, calibrated "
-          "nowhere, not among the designs with one list; every other design's list is the same at every layer; each layer's "
+          "match_ceil: break_rel's six questions and halves in the ceiling unit, read, taken and marked as break_ceil is, not "
+          "calibrated outside 32-37, not among the designs with one list; every other design's list is the same at every layer; each layer's "
           "two doses in its table rise and stay under 3.2 ceilings")
     had3 = cz.MATCH_CEIL.pop(3, None)  # (the 31B's table may one day hold layer 3: the stand-in's layer 3 is given its own)
     mrun = tmp / "runs" / "L3-match_ceil.jsonl"
@@ -1704,9 +1729,10 @@ def run_checks(tmp: Path) -> int:
         mcard = atlas_routes.census_card({"path": mrun, "meta": mmeta, "null": {}, "units": munits})
         check(len(munits) == 8 + m_ctl and all(u_["reading"] == cz.reading_of("match_ceil") and set(u_["dose"]) == {"-2.3", "-1.9", "+1.9", "+2.3"} for u_ in munits)
               and mcol.get("doses") == [2.3] and "±2.3 x the write ceiling" in mcol.get("rule", "")
-              and mcard["doses_calibrated"] is False and mcard["dose_unit"] == "ceiling" and mcard["doses_from"] == cz.DOSES_FROM["match_ceil"],
+              and mcard["doses_calibrated"] is False and mcard["doses_calibrated_layers"] == [32, 33, 34, 35, 36, 37]
+              and mcard["dose_unit"] == "ceiling" and mcard["doses_from"] == cz.DOSES_FROM["match_ceil"],
               f"a match_ceil run is ranked on every answer, its collapse words read at the run's upper dose, and its card says its "
-              f"unit and that its doses are calibrated nowhere ({mcol.get('doses')}, {mcard.get('doses_calibrated')}, "
+              f"unit and that its doses are calibrated at layers 32-37, not at its own ({mcol.get('doses')}, {mcard.get('doses_calibrated')}, "
               f"{sorted(munits[0]['dose']) if munits else None})")
         cz.MATCH_CEIL[3] = (1.8, 2.3)  # the table changed under a run already begun: the run is not continued with other doses
         try:

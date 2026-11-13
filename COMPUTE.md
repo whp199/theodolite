@@ -157,8 +157,11 @@ the causal check would have to pass `verify_causal_check.py` against N1A and N1V
    `break_rel`’s doses, ±1 and ±2 of the stream, were chosen from them and are counted calibrated at layers 39–51
    (pages 40–52): 40–50 the owner’s choice of 29 October 2026 on its trial (`census.DOSES_CALIBRATED`;
    `experiments/results/census_break_rel_trial/`), 39 and 51 counted in on 12 November on a trial of each
-   (`experiments/results/census_neighbour_trials/`; a trial is about 80 minutes on the home card); the doses at every
-   other layer, and `main_rel`’s, are not yet calibrated (ROADMAP §vi).
+   (`experiments/results/census_neighbour_trials/`; a trial is about 80 minutes on the home card). Outside 39–51 two
+   designs count their doses in each neuron’s write ceiling: `soft_ceil` is counted calibrated at layers 38 and 52 and
+   `match_ceil` at layers 32–37, each layer on a trial of its own that passed (13 November 2026;
+   `experiments/results/census_scaled_design/`). The doses at every other layer, and `main_rel`’s, are not yet
+   calibrated (ROADMAP §vi).
 2. **A pilot on the card that will do the work**, one hour: the decode step and peak memory for each unpacker at several
    batches, the unpacker self-tests, the batch the card holds, the writer’s noise floor, one steer-lens layer timed, a
    canary batch against one written on the home card, the size of a run file once compressed (`scripts/pod/pilot.sh`).

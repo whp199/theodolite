@@ -50,7 +50,9 @@ those two ladders (28 October 2026, 64 neurons and 64 controls at each of layers
 text breaks first at ±2 at layers 40 and 45, at ±1 for the neurons at 50 and at +2 and -1 for them at 57 (the controls
 at ±2 at both), at ±0.5 at layer 20 and ±1 at 30, and calibrated at layers 39-51: 40-50 by its trial of 29 October
 2026, 39 and 51 by a trial of each on 12 November (census.DOSES_CALIBRATED; elsewhere the pages call them not
-calibrated at that layer). It asks six questions,
+calibrated at that layer). Outside 39-51 two designs count their doses in each neuron's write ceiling: soft_ceil
+(±1.6 and ±2.3, calibrated at layers 38 and 52) and match_ceil (two counts set a layer at a time, calibrated at layers
+32-37), each layer by a trial of its own on 13 November. break_rel asks six questions,
 who, orange, free and three asked by no other design (bicycle, walk, chair: census.DESIGN_QUESTIONS), read as two
 halves of three, 24 answers a unit, its batches planned 12 x batch. Each design is ranked its own way
 (census.reading_of): main_rel and the ladders as the reference (pushes of at most 1.6 of the stream, words against

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
-import { cite, citeHead, get, noteKey, type CensusCard, type CensusHit, type CensusSearchReply, type RunRow, type SearchRow } from "./api";
+import { cite, citeHead, get, layersSaid, noteKey, type CensusCard, type CensusHit, type CensusSearchReply, type RunRow, type SearchRow } from "./api";
 import { censusChance, Chips, ErrorLine, FaceLine, NameMark, ProposalLine } from "./parts";
 import {
   clearTrail,
@@ -531,7 +531,7 @@ const CensusRows: React.FC = () => {
   // it says so) and, where they are not, the layers its design is calibrated at
   const run = arch?.census[String(layer)] ?? "";
   const key = run ? `${layer}/${run}` : "";
-  const [card, setCard] = useState<{ key: string; calibrated: boolean; span: [number, number] | null } | null>(null);
+  const [card, setCard] = useState<{ key: string; calibrated: boolean; span: number[] | null } | null>(null);
   useEffect(() => {
     if (!key) return;
     let live = true;
@@ -546,8 +546,8 @@ const CensusRows: React.FC = () => {
   const span = card && card.key === key ? card.span : null;
   const doses = calibrated
     ? "doses calibrated on this model at this layer"
-    : span
-      ? `doses not calibrated at this layer (only at layers ${span[0] + 1}–${span[1] + 1})`
+    : span?.length
+      ? `doses not calibrated at this layer (only at layer${span.length > 1 ? "s" : ""} ${layersSaid(span)})`
       : "doses not yet calibrated on this model";
   if (!arch?.census[String(layer)]) {
     const refused = arch?.census_refused?.[String(layer)];

@@ -909,8 +909,8 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     those neurons alone, against fresh controls), how its ranking read its answers (`reading`, as its ranking file
     records it, census.write_units: the largest push counted, the mean a word is set against, whose unpushed words are
     left out), its doses and whether they are calibrated on this model at the run's layer (`doses_calibrated`,
-    census.doses_calibrated; `doses_calibrated_layers`, the first and last layer its design is calibrated at, None for
-    a design calibrated at none), and, where scripts/verify_atlas_writer.py has measured one for the
+    census.doses_calibrated; `doses_calibrated_layers`, every layer its design is calibrated at, counted from 0, None
+    for a design calibrated at none), and, where scripts/verify_atlas_writer.py has measured one for the
     run's model, the writer's floor (`writer_floor`, census.writer_floor: with no push, after how many word-pieces an
     answer written in batches like this run's parts from the same answer written alone; None where none is on disk);
     the words its pages leave out of a unit's census words (`collapse`: the rule, how many controls it needed, and the
@@ -918,7 +918,7 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     m = d["meta"]
     design = m.get("design_name")
     devices = {(c or {}).get("device") for c in (m.get("mixed_runtime") or [m.get("runtime")])}
-    span = cz.DOSES_CALIBRATED.get(str(design))
+    span = cz.calibrated_layers(design)
     # where its doses come from in the words its meta recorded, save for a design whose calibration was recorded since
     # (census.DOSES_CALIBRATED), which speaks with the words that say where it is calibrated
     doses_from = cz.DOSES_FROM.get(design) if span else (m.get("doses_from") or cz.DOSES_FROM.get(design))
@@ -938,7 +938,7 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
             "reading": reading,
             "doses": sorted({float(x[1]) for x in m.get("design") or []}),
             "doses_calibrated": cz.doses_calibrated(design, m.get("layer"), m.get("max_new")),
-            "doses_calibrated_layers": list(span) if span else None,
+            "doses_calibrated_layers": span or None,
             "collapse": d.get("collapse"), "lead_says": cz.lead_says(reading)}
 
 
