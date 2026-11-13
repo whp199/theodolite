@@ -2975,6 +2975,16 @@
    "from": "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"
   },
   {
+   "layer": 32,
+   "dose": 2.21,
+   "unit": "ceiling",
+   "in_ceilings": 2.21,
+   "of_the_stream": 0.439,
+   "kl": 0.916,
+   "lead": 0.671,
+   "from": "match_ceil lower dose, registered gate; 1.0 nats by the fine pilot (census_match_walk)"
+  },
+  {
    "layer": 45,
    "dose": 1.0,
    "unit": "stream",
@@ -3052,6 +3062,16 @@
    "of_the_stream": 0.626,
    "kl": 1.142,
    "lead": 0.601,
+   "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
+  },
+  {
+   "layer": 32,
+   "dose": 2.44,
+   "unit": "ceiling",
+   "in_ceilings": 2.44,
+   "of_the_stream": 0.485,
+   "kl": 1.179,
+   "lead": 0.69,
    "from": "match_ceil upper dose, reported; 1.4 nats by the fine pilot (census_match_walk)"
   },
   {

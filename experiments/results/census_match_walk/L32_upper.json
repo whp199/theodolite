@@ -1,0 +1,380 @@
+{
+ "run": "L32-match_ceil-trial.jsonl",
+ "layer": 32,
+ "design": "match_ceil",
+ "batch": 64,
+ "max_new": 48,
+ "seed": 7,
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "doses": [
+  -2.44,
+  2.44
+ ],
+ "read_gain": {
+  "neurons": 5.5373,
+  "controls": 5.5817,
+  "ratio": 1.008,
+  "read_by": "the next layer's input norm (the final norm after the last layer)"
+ },
+ "readings": {
+  "48": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.6902,
+     "p": 1.77e-50
+    },
+    "mass_u": {
+     "auc": 0.6806,
+     "p": 1.02e-45
+    },
+    "shift": {
+     "auc": 0.6989,
+     "p": 5.17e-55
+    },
+    "shift_up": {
+     "auc": 0.691,
+     "p": 6.82e-51
+    },
+    "shift_down": {
+     "auc": 0.5936,
+     "p": 1.17e-13
+    },
+    "mass_A": {
+     "auc": 0.6002,
+     "p": 2.09e-15
+    },
+    "mass_B": {
+     "auc": 0.6311,
+     "p": 5.04e-25
+    },
+    "rep_AB": {
+     "auc": 0.5917,
+     "p": 3.45e-13
+    },
+    "rep_BA": {
+     "auc": 0.6008,
+     "p": 1.49e-15
+    },
+    "rep": {
+     "auc": 0.6174,
+     "p": 1.89e-20
+    },
+    "xq": {
+     "auc": 0.6844,
+     "p": 1.35e-47
+    },
+    "cov_lnw": {
+     "auc": 0.6254,
+     "p": 4.43e-23
+    },
+    "cov_d4": {
+     "auc": 0.4903,
+     "p": 0.796
+    },
+    "cov_cut": {
+     "auc": 0.5251,
+     "p": 0.0147
+    },
+    "cov_lp": {
+     "auc": 0.4846,
+     "p": 0.887
+    },
+    "cov_dep": {
+     "auc": 0.4404,
+     "p": 1.0
+    },
+    "cov_lost": {
+     "auc": 0.6308,
+     "p": 6.1e-25
+    },
+    "mass_c_res": {
+     "auc": 0.6668,
+     "p": 2.52e-39
+    },
+    "shift_res": {
+     "auc": 0.684,
+     "p": 2.15e-47
+    },
+    "shift_up_res": {
+     "auc": 0.6775,
+     "p": 2.9e-44
+    },
+    "rep_res": {
+     "auc": 0.5974,
+     "p": 1.15e-14
+    },
+    "rho_AB_neurons": 0.27845362913250415,
+    "rho_AB_controls": 0.07473287721112912,
+    "counts": {
+     "neurons": 1022,
+     "controls": 1024,
+     "above_every_control": 13,
+     "by_chance": 1.0,
+     "q05": 122,
+     "named": 58,
+     "named_by_halves": 52,
+     "above_ctl_p95": 0.2652,
+     "pA05_and_pB05": 63,
+     "pA05_and_pB05_by_chance": 2.6
+    },
+    "null_split_auc": {
+     "mean": 0.5006,
+     "min": 0.4592,
+     "max": 0.5358,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.6146,
+    "-": 0.6098
+   },
+   "text": {
+    "-2.44 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.926
+    },
+    "-2.44 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.924
+    },
+    "+2.44 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.926
+    },
+    "+2.44 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.919
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 1022,
+    "controls": 1024,
+    "units_in_run": 2046,
+    "units_planned": 2046,
+    "answers": 49110,
+    "answers_planned": 49110
+   },
+   "gates": {
+    "G1 lead (mass, every answer)": {
+     "values": [
+      [
+       "mass_c",
+       0.6902,
+       0.6
+      ]
+     ],
+     "pass": true
+    },
+    "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+     "values": [
+      [
+       "mass_c_res",
+       0.6668,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+     "values": [
+      [
+       "rep_AB",
+       0.5917,
+       0.57
+      ],
+      [
+       "rep_BA",
+       0.6008,
+       0.57
+      ]
+     ],
+     "pass": true
+    },
+    "G4 the new questions alone carry a lead (mass on half B)": {
+     "values": [
+      [
+       "mass_B",
+       0.6311,
+       0.56
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.5006,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.008,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    },
+    "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+     "values": [
+      [
+       "max_abs_diff",
+       25.17296,
+       0.002
+      ]
+     ],
+     "pass": false
+    }
+   },
+   "pass": false,
+   "named": [
+    11284,
+    20254,
+    20035,
+    19998,
+    18864,
+    10951,
+    8402,
+    2427,
+    725,
+    13012,
+    5465,
+    4654,
+    13777,
+    21413,
+    21089,
+    20876,
+    20755,
+    20358,
+    20178,
+    20048,
+    18805,
+    18047,
+    17667,
+    17329,
+    16325,
+    15665,
+    14522,
+    14000,
+    13808,
+    13576,
+    11595,
+    11472,
+    11048,
+    10035,
+    8605,
+    6895,
+    6185,
+    5908,
+    4624,
+    4610,
+    4064,
+    3873,
+    3187,
+    1384,
+    192,
+    16385,
+    14685,
+    10231,
+    9221,
+    8990,
+    8858,
+    6393,
+    5259,
+    5039,
+    4909,
+    4891,
+    3241,
+    1354
+   ],
+   "named_by_halves": [
+    21234,
+    20882,
+    20877,
+    20035,
+    17114,
+    11976,
+    8701,
+    8086,
+    6961,
+    6198,
+    5994,
+    3288,
+    3218,
+    13572,
+    21413,
+    21089,
+    20915,
+    20876,
+    20755,
+    20358,
+    20048,
+    18751,
+    18591,
+    18047,
+    16160,
+    15665,
+    15332,
+    13536,
+    11472,
+    11048,
+    10035,
+    8053,
+    7817,
+    6895,
+    6713,
+    6185,
+    5908,
+    3393,
+    3187,
+    1384,
+    192,
+    16385,
+    10231,
+    8990,
+    8858,
+    6393,
+    5259,
+    5039,
+    4909,
+    4891,
+    3241,
+    1354
+   ]
+  }
+ },
+ "pass": false,
+ "throughput": {
+  "answers": 49110,
+  "seconds": 4378.0,
+  "answers_per_s": 11.22,
+  "sessions": 1
+ },
+ "writing": {
+  "answers_written": 49110,
+  "seconds": 4349.9,
+  "answers_per_s": 11.29,
+  "sessions": 1
+ }
+}

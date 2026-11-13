@@ -907,6 +907,16 @@ layers, the determinism run and the sampled push on 29 October). In this section
        0.758, 0.726: no fall towards the bar so far. By the registration layer 33 may be offered under a kit of
        its own, and the walk went on to layer 32 at 12:26Z. Seven layers outside 39–51 now pass a trial: 33 to
        37 with `match_ceil`, 38 and 52 with `soft_ceil`.
+       **Layer 32, read at 13:40Z: it passes all three, with less room than 33 or 34.** ±2.21 and ±2.44 ceilings,
+       one session, no fault. Whole: 0.699, 0.678, 0.615 and 0.631, 0.675. The ±2.21 answers alone: 0.671, 0.634,
+       0.589 and 0.602, 0.640. The 942 of 1,022 neurons the controls cover: 0.686, 0.663, 0.604 and 0.619, 0.660.
+       The ±2.44 answers alone, reported: 0.690, 0.667, 0.592 and 0.601, 0.631. The harder dose leads by more
+       here, the first layer of the walk where it does, and more of the lower dose’s lead goes with how the text
+       survives than at any layer of the walk before it. The whole lead is above the 0.61 to 0.68 said beforehand
+       for the third layer running. 32 neurons in 100 beat 95 in 100 of the controls; 54 of the 1,022 beat every
+       control. By the registration layer 32 may be offered under a kit of its own, and the walk went on to layer
+       31 at 13:40Z. Eight layers outside 39–51 now pass a trial: 32 to 37 with `match_ceil`, 38 and 52 with
+       `soft_ceil`.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -975,7 +985,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
       the covered neurons (13 November, step 3). With these two doses the census reaches 38 and no further down.
       With doses set for the layer (±2.41 and ±2.55 ceilings, `match_ceil`) layer 37 passes its trial on new
       neurons the same night (step 3). Layer 36 passes with its own doses the next morning, one gate by a
-      thousandth, layer 35 with more room, layers 34 and 33 widely; the walk is at layer 32 (step 3).
+      thousandth, layer 35 with more room, layers 34 and 33 widely, layer 32 with less; the walk is at layer
+      31 (step 3).
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only

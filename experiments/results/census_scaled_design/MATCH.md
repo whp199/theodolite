@@ -297,6 +297,43 @@ design, and the walk goes on to layer 33 (±2.31 and ±2.51 ceilings), which beg
 design, and the walk goes on to layer 32 (±2.21 and ±2.44 ceilings), which began to be written at 12:26Z.
 `DOSES_CALIBRATED` is not widened without the owner's word.
 
+### Layer 32: it passes, with less room than 33 or 34
+
+±2.21 and ±2.44 ceilings, 1,022 neurons none of which had been asked anything, 1,024 controls. Read at 13:40Z.
+49,110 answers in 73 minutes, in one session.
+
+| reading | lead | beyond text survival | across the halves | new questions |
+|---|---|---|---|---|
+| whole | 0.699 | 0.678 | 0.615, 0.631 | 0.675 |
+| the ±2.21 answers alone | 0.671 | 0.634 | 0.589, 0.602 | 0.640 |
+| the 942 of 1,022 the controls cover | 0.686 | 0.663 | 0.604, 0.619 | 0.660 |
+| the ±2.44 answers alone (reported) | 0.690 | 0.667 | 0.592, 0.601 | 0.631 |
+| bars | 0.60 | 0.58 | 0.57, 0.57 | 0.56 |
+
+- **All three gates pass.** The gated figure nearest its bar is the lower dose's across the halves, 0.589 against
+  0.57. The whole reading cut to 32 word-pieces passes too (0.677). The card did not fault: one session, nothing
+  in the run's log or the kernel's.
+- **What was said beforehand.** The whole lead was to lie between 0.61 and 0.68: it is 0.699, above that range
+  for the third layer running. It fell a little from layer 33's, as said. 92 neurons in 100 are covered, nearer
+  the seven to nine in ten said than at any layer before and still above it.
+- **The harder dose leads by more here, the first layer of the walk where it does.** 0.690 for the ±2.44 answers
+  alone against 0.671 for the ±2.21. The registration said the upper dose would lead by less at most layers
+  reached, which holds at four of five. The remark made at layer 34, that the harder dose leads by less at every
+  layer read, stops being true here. ±2.21 is the smallest lower dose of the walk in ceilings, and at this layer
+  the 1.0-nat target looks a little low rather than a little high.
+- **More of the lower dose's lead goes with how the text survives.** 0.671 falls to 0.634 beyond text survival,
+  the widest such gap of the walk, and still 0.054 over its bar. The text itself is hardly broken: the neurons'
+  answers lose under 0.005 of their distinct 4-grams. The controls' masses do not agree between the question
+  halves (0.03).
+- **Neurons standing out.** 32 in 100 beat 95 in 100 of the controls (37 at 33, 42 at 34). 54 of the 1,022 beat
+  every control, the most of the walk; that count is a rough one, as said at 33.
+- **Five layers: 0.627, 0.664, 0.758, 0.726, 0.699.** The whole lead is highest at 34 and has come down by about
+  0.03 a layer since. No guess is drawn from two steps here: the one drawn that way at layer 36 was wrong.
+
+**What it decides, by the registration:** layer 32 may be offered to volunteers under a kit of its own for this
+design, and the walk goes on to layer 31 (±2.58 and ±2.76 ceilings), which began to be written at 13:40Z.
+`DOSES_CALIBRATED` is not widened without the owner's word.
+
 ## What it may not do
 
 - **Layer 37 may fail whatever the dose.** It carried less between the question halves than layer 38 at every
@@ -313,12 +350,12 @@ The fine pilot: ten minutes for layers 30 to 38. A trial: 49,110 answers, 75 to 
 
 ## Choices that are the owner's
 
-1. Whether a layer that passes is offered to volunteers, and under which kit. Seven layers outside 39 to 51 now
-   pass a trial, under two designs: 33, 34, 35, 36 and 37 with `match_ceil`, 38 and 52 with `soft_ceil`. Layer
-   36's pass is the thinnest of the seven and layer 34's the widest below the band. At 35 and 36 few neurons
-   stand out singly, so a whole layer there tells less about each neuron.
+1. Whether a layer that passes is offered to volunteers, and under which kit. Eight layers outside 39 to 51 now
+   pass a trial, under two designs: 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`. Layer 36's pass is
+   the thinnest of the eight and layer 34's the widest below the band. At 35 and 36 few neurons stand out
+   singly, so a whole layer there tells less about each neuron.
 2. Widening `DOSES_CALIBRATED` to a layer, on its passed trial.
-3. The walk below 33 is under way by its registration, layer 32 next, and stops by itself at the first failure
+3. The walk below 32 is under way by its registration, layer 31 next, and stops by itself at the first failure
    and at layer 30. Going on below 30 wants the fine pilot taken there first.
 4. Whether one design is to cover every layer outside the band. `match_ceil` has no doses at 52 and above (the
    fine pilot was not taken there) and no trial at 38.
