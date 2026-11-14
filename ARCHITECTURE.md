@@ -816,8 +816,27 @@ pilot goes on). `atlas_build.py steer` takes those doses by default (`--steer-do
 alike), records each layer's dose and the rule in its file, refuses a layer already built at another dose, and merges
 a dose for each layer into `steer_lens.npz` (`dose` [L]). `AtlasIndex.steer_dose(layer)` says what a layer's dose is
 and where it comes from: the built lens's (`index`), the pilot's for a neuron read live (`pilot`), or the reference's
-0.8 at every layer (`reference`), which the details tab then says in red is not sized to the layer. Not yet run on the
-31B: the pilot and the build wait for the card.
+0.8 at every layer (`reference`), which the details tab then says in red is not sized to the layer. Run on the 31B on
+13 November 2026: the pilot in 38 minutes, the build in 10.5 hours (ROADMAP §vi).
+
+*Its own check* (13 November 2026). The lens lists the word-pieces whose odds rose most; nothing in it sets a neuron
+against other pushes, as the census's controls do. On the 31B it agrees with the census from layer 39 up and less and
+less below, and below layer 40 part of every reading is the layer's own (ROADMAP §vi). So the lens is checked, on the
+CPU, and a page says what was found. `scripts/atlas_steer_check.py` (`backend/steer_check.py`) writes
+`steer_check.json` beside the index. For each layer it holds how many of a neuron's twelve word-pieces the layer
+shares (those that `STEER_COMMON`, 2 in 100, of its neurons or more list on one sign), and, where the layer has a
+whole census or a trial whose doses are counted calibrated there, for how many of the neurons above 95 in 100
+controls a steer-lens word-piece is one of the neuron's five census words, begins one or is begun by one, beside the
+same count with the neurons shuffled. A layer `agrees` at `STEER_AGREES` (one half) or more, is `weak` under it, and
+is `unchecked` without a census, when it is given the nearest layer that has one. The file names the build of the
+lens it was measured on; one written for another build is not read. `AtlasIndex.steer_common(layer)` gives the shared
+word-pieces (from the index itself, no file needed), `steer_check(layer)` the layer's row, and `steer_weak(layer)`
+whether the lens is a weak guide there: checked and weak, or unchecked beside a weak layer. `/neuron/lens` and
+`/neuron/steer_lens` give all twelve word-pieces with `common` (each word's share of the layer, or null) and `check`.
+A face's words everywhere else (`Atlas.face`: the hover, links, lists) give the neuron's own steer words, the shared
+ones left out, and none at a weak layer, as before the lens was built; `/search` does not match a weak layer's steer
+words. `/web/summary` and a head's pooled words leave out the neurons at a weak layer (counted in `gated`) and the
+word-pieces a layer shares.
 
 | route | what it answers |
 |---|---|
@@ -829,7 +848,7 @@ and where it comes from: the built lens's (`index`), the pilot's for a neuron re
 | `GET /neuron?layer&n`, `GET /cone?layer&n&model` | all of the above for the scientist; its cone as a list of neurons with hop, z, face and words, from rest or in use (`model`) |
 | `GET /neuron/passages?layer&n&face&k&before&after` | one face's stored passages from `passages.d/` (no GPU): its k strongest (16) then those sampled, each with `act`, `rel` (over the face's extreme in the stats index; `rel_to` names its corpus, or says it is another), `regime` (pp, nn, pn, np from `g` and `u`), `window`, `at`, its display units `[text, is_peak]` over `span` (before 24 and after 6 word-pieces, at most 128 each, never across the window's start or end, an end mark, a start mark inside the window (another document's) or a turn mark: `cut` says why each side stops), `next`, and `ids` (the window up to the span's end, for `POST /reads`); `reads` and `follows`, the word-pieces at the peaks and just after, counted over the k with their lift over `unigram`, marked `words_note` "from K passages of a W-word-piece corpus; not validated as a label"; `ready: false` with the build that makes it; `stale` after a vault edit on the neuron or at an earlier layer |
 | `GET /hover?layer&n` | the tooltip, from the indexes alone (no GPU) |
-| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`), with each face's check: matches the label gate holds back go to `held` (`held_back` counts them), for the apparatus, never the main list or the map; `/run/view`'s word filter likewise matches only labels the gate shows, and the steer lens |
+| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`; not at a layer where the lens's own check counts it a weak guide), with each face's check: matches the label gate holds back go to `held` (`held_back` counts them), for the apparatus, never the main list or the map; `/run/view`'s word filter likewise matches only labels the gate shows, and the steer lens |
 | `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |
 | `GET /web/summary?layer&n&…&src&model` | the cone's words, followed from rest (or in use, `model=use`: not ready, with `missing` and `why`, without the passages index) and pooled: `down["+"]` / `down["-"]`, what the neurons it drives write when it fires on its + / − face; `up["+"]` / `up["-"]`, what the neurons that push it toward its + / − face write; weighted by the reaching link's strength (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out); not ready, with `missing`, without the wiring index or without any words to pool |
 | `GET /layout` | `cell` [L, N] int16 as base64 |

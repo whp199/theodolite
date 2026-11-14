@@ -1341,6 +1341,27 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check(all(x["head"].startswith("L") for r_ in nh.values() for x in r_), "neuron_heads")
     sl = await st.call("steer_lens", {"layer": 3, "n": 5}, api)
     check(sl["neuron"] == "L3 N5" and len(sl["up"]) == 12, "steer_lens, read live")
+    # the steer lens's own check, put in words for the scientist (the atlas's `common` and `check`; pages' count)
+    reading = {"up": ["Here", "ocean", "tide"], "down": ["The", "keel"], "kl_up": 0.3, "dose": 0.4,
+               "common": {"up": [0.3, None, None], "down": [0.25, None]},
+               "check": {"standing": "weak", "shared": 2.5, "of": 12, "matched": 0.171, "shuffled": 0.022, "neurons": 420,
+                         "census": {"kind": "trial", "design": "match_ceil"}}}
+    said_w = st.steer_said(reading)
+    check(said_w["shared_with_layer"] == {"up": ["Here"], "down": ["The"]} and "census trial" in said_w["check"]
+          and "17 in 100" in said_w["check"] and "2 in 100 with the neurons shuffled" in said_w["check"] and "a weak guide" in said_w["check"]
+          and "2.5 of a neuron's 12" in said_w["check"],
+          f"steer_said at a weak layer: the words the layer shares, and the check in a line ({said_w['check']})")
+    card_w = st.steer_card(reading)
+    check("common" not in card_w and isinstance(card_w["check"], str) and card_w["up"] == reading["up"] and st.steer_card(None) is None,
+          "steer_card: the reading as the atlas gave it, its check in words")
+    said_a = st.steer_check_said({"standing": "agrees", "matched": 0.861, "shuffled": 0.023, "census": {"kind": "whole"}})
+    said_u = st.steer_check_said({"standing": "unchecked", "nearest": {"layer": 32, "matched": 0.071, "standing": "weak"}})
+    said_n = st.steer_check_said({"standing": "unchecked", "nearest": {"layer": 52, "matched": 0.755, "standing": "agrees"}})
+    check("86 in 100" in said_a and "agrees with the census here" in said_a and "trial" not in said_a
+          and "(L33)" in said_u and "a weak guide" in said_u and "7 in 100" in said_u
+          and "(L53)" in said_n and "agreed with the census" in said_n
+          and "dose rule alone" in st.steer_check_said({"standing": "unchecked"}) and st.steer_said({"up": ["a"], "down": ["b"]}) == {},
+          "steer_check_said: a layer that agrees, an unchecked one by its nearest checked layer in the pages' count, one with none")
     try:
         await st.call("neuron", {"layer": 0, "n": 5}, api)
         check(False, "page layer 0 refused")

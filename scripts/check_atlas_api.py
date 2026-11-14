@@ -92,7 +92,7 @@ import backend.atlas_build as ab
 import backend.atlas_ops as ao
 from atlas_stand_in import CORPUS, bind_server, stand_in
 from backend import census as cz
-from backend.atlas_index import SITE_SCORE_RERUN, AtlasIndex, index_dir, scale_scores
+from backend.atlas_index import SITE_SCORE_RERUN, STEER_COMMON, AtlasIndex, index_dir, scale_scores
 from backend.causal_check import language_model
 from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import PatchOperationRecord
@@ -889,8 +889,10 @@ def main() -> int:
     hv = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()
     check(hv["ready"] and hv["faces"]["+"]["lens"] == [vocab[i] for i in idx.face_ids(2, 5, "+", "lens", 6)]
           and hv["faces"]["-"]["eye"] == [vocab[i] for i in idx.face_ids(2, 5, "-", "eye", 6)], "/hover: the index's words")
-    check(hv["faces"]["+"]["check"] == idx.face_check(2, 5, "+") and hv["faces"]["+"]["steer"] == [vocab[i] for i in idx.get("steer_lens")["up"][2, 5, :6]],
-          "/hover: each face's check and steer lens")
+    own_steer = lambda l, n, side, k=6: [vocab[i] for i in idx.get("steer_lens")[side][l, n] if int(i) not in idx.steer_common(l)[side]][:k]  # noqa: E731
+    check(hv["faces"]["+"]["check"] == idx.face_check(2, 5, "+") and hv["faces"]["+"]["steer"] == own_steer(2, 5, "up")
+          and hv["faces"]["-"]["steer"] == own_steer(2, 5, "down"),
+          "/hover: each face's check, and its steer lens without the word-pieces its layer shares")
     check(hv["links"] == idx.links(2, 5, 16) and "stale" not in hv["faces"]["+"], "/hover: its sixteen links each way")
     wr = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()
     check(wr["source"] == "index" and [(x["layer"], x["n"], x["sign"]) for x in wr["down"]] == [(x["layer"], x["n"], x["sign"]) for x in live["down"]],
@@ -972,7 +974,64 @@ def main() -> int:
     check(nl["steer"]["source"] == "index" and nl["steer"]["up"] == [vocab[i] for i in st["up"][2, 5]], "/neuron/lens: the steer lens from its index")
     check(nl["act_range"]["source"] == "check" and close(nl["act_range"]["act_max"], float(stats["pos"][2, 5])), "/neuron/lens: the range from the stats index")
     hw = c.get("/api/atlas/head", params={"layer": 3, "head": 1}).json()
-    check(hw["o_pooled"]["src"] == "steer" and all(x["words"]["steer"] for x in hw["o"]), "/head: its neurons' words, pooled from the steer lens")
+    check(hw["o_pooled"]["src"] == "steer" and all(isinstance(x["words"]["steer"], list) for x in hw["o"]) and any(x["words"]["steer"] for x in hw["o"]),
+          "/head: its neurons' words, pooled from the steer lens")
+    # the steer lens's own check (backend/steer_check.py): the word-pieces a layer shares are marked, a layer the check
+    # counts a weak guide gives no steer words to a face's line or to the word search, and the details keep all twelve
+    sc_up = idx.steer_common(2)["up"]
+    n_all = st["up"].shape[1]
+    counts = {int(t): int((st["up"][2] == t).sum()) for t in np.unique(st["up"][2])}
+    check(sc_up == {t: c_ / n_all for t, c_ in counts.items() if c_ >= max(2.0, STEER_COMMON * n_all)} and len(sc_up) > 0,
+          f"steer_common: the word-pieces {STEER_COMMON:g} of a layer's neurons list, and never one a single neuron lists ({len(sc_up)} at layer 2)")
+    check(nl["steer"]["common"]["up"] == [round(sc_up[int(i)], 3) if int(i) in sc_up else None for i in st["up"][2, 5]]
+          and len(nl["steer"]["common"]["down"]) == 12 and "check" not in nl["steer"],
+          "/neuron/lens: each steer-lens word with the share of its layer that lists it too; no check until one is written")
+    check_file = idx.root / "steer_check.json"
+    built_at = (st.get("meta") or {}).get("built_at")
+    rows_k = {"0": {"standing": "unchecked", "shared": 3.0, "of": 12, "nearest": {"layer": 2, "matched": 0.1, "standing": "weak"}},
+              "1": {"standing": "unchecked", "shared": 3.0, "of": 12, "nearest": {"layer": 2, "matched": 0.1, "standing": "weak"}},
+              "2": {"standing": "weak", "shared": 2.5, "of": 12, "matched": 0.1, "shuffled": 0.02, "neurons": 40,
+                    "census": {"kind": "trial", "design": "soft_ceil", "run": "x", "groups": {}}},
+              "3": {"standing": "agrees", "shared": 0.5, "of": 12, "matched": 0.9, "shuffled": 0.02, "neurons": 40,
+                    "census": {"kind": "whole", "design": "break_rel", "run": "y", "groups": {}}},
+              "4": {"standing": "unchecked", "shared": 0.1, "of": 12, "nearest": {"layer": 3, "matched": 0.9, "standing": "agrees"}}}
+    check_file.write_text(json.dumps({"version": 1, "lens": {"built_at": built_at}, "group": "above 95 in 100 controls", "agrees_at": 0.5,
+                                      "layers": rows_k}), encoding="utf-8")
+    check([idx.steer_weak(l) for l in range(5)] == [True, True, True, False, False] and idx.steer_weak(5) is False,
+          "steer_weak: a layer that shares a word with too few, or has no census and a weak neighbour; not a layer the check does not name")
+    nl2 = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()["steer"]
+    check(nl2["up"] == nl["steer"]["up"] and nl2["check"] == {"standing": "weak", "shared": 2.5, "of": 12, "matched": 0.1, "shuffled": 0.02,
+                                                             "neurons": 40, "group": "above 95 in 100 controls", "agrees_at": 0.5,
+                                                             "census": {"kind": "trial", "design": "soft_ceil"}},
+          f"/neuron/lens at a weak layer: all twelve words still, with what the check found ({nl2.get('check')})")
+    check(c.get("/api/atlas/neuron/lens", params={"layer": 0, "n": 5}).json()["steer"]["check"]["nearest"] == {"layer": 2, "matched": 0.1, "standing": "weak"},
+          "/neuron/lens at an unchecked layer: the nearest layer with a census")
+    hv_w = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["faces"]
+    hv_ok = c.get("/api/atlas/hover", params={"layer": 3, "n": 5}).json()["faces"]
+    check(hv_w["+"]["steer"] is None and hv_w["-"]["steer"] is None and hv_w["+"]["lens"] == hv["faces"]["+"]["lens"]
+          and hv_ok["+"]["steer"] == own_steer(3, 5, "up"),
+          "/hover at a weak layer: no steer words on a face's line, the lens's as before; at a layer that agrees, its own")
+    ws_w = idx.web_summary(4, 7, vocab)
+    up_w = idx.walk(4, 7, "up", None, 5, 2, 15.0, None)
+    hw_w = c.get("/api/atlas/head", params={"layer": 0, "head": 1}).json()
+    check(ws_w["src"] == "steer" and ws_w["gated"] == {"down": 0, "up": sum(l_ in (0, 1, 2) for l_, _ in up_w)} and ws_w["gated"]["up"] > 0
+          and hw_w["o_pooled"]["gated"] == sum(x["layer"] in (0, 1, 2) for x in hw_w["o"]) > 0,
+          f"a web's pooled words and a head's: the neurons at a weak layer left out and counted ({ws_w['gated']}, {hw_w['o_pooled']['gated']})")
+    tok_w = np.array([max(counts, key=counts.get)])  # the word-piece the most neurons of layer 2 list
+    steer_rows = lambda: [x for x in idx.search(tok_w, 10**9)[0] if x["src"] == "steer"]  # noqa: E731
+    rows_w = steer_rows()
+    check(not any(x["layer"] in (0, 1, 2) for x in rows_w), "search: a weak layer is not searched by its steer words")
+    check_file.write_text(json.dumps({"version": 1, "lens": {"built_at": "another build"}, "layers": rows_k}), encoding="utf-8")
+    check(idx.steer_check(2) is None and idx.steer_weak(2) is False
+          and c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["faces"]["+"]["steer"] == own_steer(2, 5, "up"),
+          "a check written for another build of the lens is not read")
+    check_file.unlink()
+    rows_b = steer_rows()
+    check(any(x["layer"] == 2 for x in rows_b) and [x for x in rows_b if x["layer"] > 2] == [x for x in rows_w if x["layer"] > 2],
+          "search: without a check, every layer's steer words are searched, the other layers' rows as they were")
+    ws_b = idx.web_summary(4, 7, vocab)
+    check(ws_b["gated"] == {"down": 0, "up": 0} and c.get("/api/atlas/head", params={"layer": 0, "head": 1}).json()["o_pooled"]["gated"] == 0,
+          "a web's pooled words and a head's: without a check no neuron is left out")
     r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 8})
     sp50 = [float(x) for x in stats["resid_q"][:, 1]]
     sscale = lambda l, n: max(abs(float(stats["pos"][l, n])), abs(float(stats["neg"][l, n])), 1e-6)  # noqa: E731
@@ -1412,6 +1471,65 @@ def main() -> int:
           and num["layers"][0]["by_chance"] == round(num["layers"][0]["controls"] * 2 / 4, 1)
           and num["chance"]["expected"] == num["layers"][0]["by_chance"] and num["chance"]["at_most"] is None,
           f"/census/search: a word only the controls bring finds no neuron, and says how many neurons that rate would give ({num['layers']})")
+    # the steer lens set beside the census (backend/steer_check.py), on a lens and a trial's ranking made by hand: three
+    # layers of eight neurons; layer 1 has a trial of a design counted calibrated there, layer 2 one that is not
+    from backend import steer_check as sk
+
+    sk_root, sk_trials, sk_none = (Path(tempfile.mkdtemp(prefix=f"steer-check-{x}-")) for x in ("index", "trials", "runs"))
+    sk_vocab = ["ocean", " Ocean!", "bread", "the", "Waves"] + [f"w{i}" for i in range(600)]  # a filler has too few letters to count
+    fill = iter(range(5, 605))
+    up_s = np.array([[[next(fill) for _ in range(12)] for _ in range(8)] for _ in range(3)], dtype=np.int32)
+    down_s = np.array([[[next(fill) for _ in range(12)] for _ in range(8)] for _ in range(3)], dtype=np.int32)
+    up_s[1, 0, 3] = 1    # neuron 0 lists " Ocean!": its census word "ocean", case and marks dropped
+    down_s[1, 2, 0] = 2  # neuron 2 lists "bread", which begins its census word "breadth"
+    up_s[1, 4, 0] = 4    # neuron 4 lists "Waves" and its census has "waves", but it does not stand out
+    up_s[2, :, 5] = 3    # every neuron of layer 2 lists "the" on the + push
+    np.savez(sk_root / "steer_lens.npz", up=up_s, down=down_s, up_kl=np.full((3, 8), 0.3, dtype=np.float32), down_kl=np.full((3, 8), 0.5, dtype=np.float32),
+             dose=np.array([0.2, 0.4, 0.8]), meta=np.array(json.dumps({"built_at": "then", "model": "m"})))
+    unit = lambda kind, n, pct, ws: {"kind": kind, "neuron": n, "null_pct": pct, "words": [[w_, 3, 1.0] for w_ in ws], "collapse": []}  # noqa: E731
+    units_s = [unit("neuron", 0, 1.0, ["ocean", "sea"]), unit("neuron", 1, 0.96, ["harbour"]), unit("neuron", 2, 0.95, ["breadth"]),
+               unit("neuron", 3, 1.0, ["anchor"]), unit("neuron", 4, 0.5, ["waves"]), unit("neuron", 5, 0.2, ["keel"]), unit("neuron", 6, 1.0, [])]
+    units_s += [unit("random", i, 0.5, ["x"]) for i in range(4)]
+    for name_, layer_, design_ in (("a/L1-soft_ceil-trial", 1, "soft_ceil"), ("b/L2-break_rel-trial", 2, "break_rel")):
+        (sk_trials / name_).parent.mkdir(parents=True, exist_ok=True)
+        (sk_trials / f"{name_}.units.jsonl").write_text("".join(json.dumps(u) + "\n" for u in units_s), encoding="utf-8")
+        (sk_trials / f"{name_}.meta.json").write_text(json.dumps({"layer": layer_, "design_name": design_, "model": "m", "max_new": 48}), encoding="utf-8")
+    counted = lambda design, layer, max_new=None: design == "soft_ceil"  # noqa: E731
+    sk_kw = {"runs_dir": sk_none, "trials_dir": sk_trials, "vocab": sk_vocab, "calibrated": counted}
+    d_s = sk.measure(sk_root, **sk_kw)
+    g_s = d_s["layers"]["1"]["census"]["groups"]
+    check(d_s["lens"]["built_at"] == "then" and d_s["group"] == "above 95 in 100 controls" and d_s["agrees_at"] == 0.5
+          and [d_s["layers"][str(l)]["dose"] for l in range(3)] == [0.2, 0.4, 0.8] and d_s["layers"]["0"]["kl_p50"] == 0.4,
+          "steer check: the lens it was measured on, each layer's dose and its median KL over both signs")
+    check(g_s["above 95 in 100 controls"] == {"neurons": 4, "matched": 0.5, "neurons_shuffled": g_s["above 95 in 100 controls"]["neurons_shuffled"]}
+          and g_s["above every control"]["neurons"] == 2 and g_s["above every control"]["matched"] == 0.5
+          and g_s["the rest"] == {"neurons": 2, "matched": 0.5, "neurons_shuffled": g_s["the rest"]["neurons_shuffled"]},
+          f"steer check: a word shared when a steer-lens word-piece is a census word, begins one or is begun by one; a neuron with no census word left out ({g_s})")
+    check(d_s["layers"]["1"]["standing"] == "agrees" and d_s["layers"]["1"]["matched"] == 0.5 and d_s["layers"]["1"]["neurons"] == 4
+          and d_s["layers"]["1"]["census"]["kind"] == "trial" and d_s["layers"]["1"]["census"]["design"] == "soft_ceil"
+          and d_s["layers"]["1"]["census"]["controls"] == 4,
+          "steer check: a layer whose trial's doses are counted calibrated is checked by it, and agrees at one half")
+    check(d_s["layers"]["2"]["standing"] == "unchecked" and "census" not in d_s["layers"]["2"]
+          and d_s["layers"]["2"]["nearest"] == d_s["layers"]["0"]["nearest"] == {"layer": 1, "matched": 0.5, "standing": "agrees"},
+          "steer check: a trial of a design not counted calibrated checks nothing; an unchecked layer is given the nearest checked one")
+    check(d_s["layers"]["2"]["shared"] == 0.5 and d_s["layers"]["1"]["shared"] == 0.0 and d_s["layers"]["2"]["of"] == 12,
+          "steer check: how many of a neuron's word-pieces the layer shares, the mean of the two signs")
+    up_s[1, 0, 3] = 599
+    np.savez(sk_root / "steer_lens.npz", up=up_s, down=down_s, up_kl=np.full((3, 8), 0.3, dtype=np.float32), down_kl=np.full((3, 8), 0.5, dtype=np.float32),
+             dose=np.array([0.2, 0.4, 0.8]), meta=np.array(json.dumps({"built_at": "then", "model": "m"})))
+    sk_path = sk.write(sk_root, **sk_kw)
+    d_w = json.loads(sk_path.read_text(encoding="utf-8"))
+    sk_idx = AtlasIndex(sk_root)
+    check(sk_path.name == "steer_check.json" and d_w["layers"]["1"]["standing"] == "weak" and d_w["layers"]["1"]["matched"] == 0.25
+          and d_w["layers"]["0"]["nearest"]["standing"] == "weak" and len(sk.said(d_w)) == 3
+          and [sk_idx.steer_weak(l) for l in range(3)] == [True, True, True] and sk_idx.steer_check(1)["standing"] == "weak",
+          "steer check: under one half the layer is weak, and so are the unchecked layers beside it; the index reads the file written")
+    try:
+        sk.measure(Path(tempfile.mkdtemp(prefix="steer-check-none-")), **sk_kw)
+        refused_s = ""
+    except ValueError as exc:
+        refused_s = str(exc)
+    check("is not built" in refused_s, "steer check: refused in plain words where no steer lens is built")
     section("the census routes", before)
 
     # ----------------------------------------------------------------------------------------------- 10. the GPU lock

@@ -338,7 +338,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
   each of six layers, below), two steer-lens layers timed into a scratch folder (45 and 5), the 16 + 8 determinism run
   of 29 October (868 answers), the `break_rel` trial taken and read that day (both below) and the whole `break_rel`
-  layers taken since 29 October, eleven by 11 November 2026 (40–50; layer 45 and the volunteers’ below). The pilot
+  layers taken since 29 October, eleven by 11 November 2026 (40–50; layer 45 and the volunteers’ below). The steer
+  lens is built since 13 November 2026, all sixty layers (below). The pilot
   measured the cost: every decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole
   `main_rel` layer is about 3.6 days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is
   the 4-bit unpacking, not the model (COMPUTE §i). The steer lens was estimated at 15 to 20 hours for all 60 layers on
@@ -376,10 +377,55 @@ layers, the determinism run and the sampled push on 29 October). In this section
   hours; its first two layers took 22.5 minutes each). It was paused at 02:18Z with layers 0 and 1 built, on the
   owner’s word, to let the census’s walk downward have the card first (step 3, below). It built layers 2 to 4
   between 06:45Z and 07:26Z, waited again behind the `match_ceil` walk, and went on from layer 5 at 14:56Z on 13
-  November when that walk had stopped; about ten hours of building are left.
-  The lens is then set against the census at layers 39–51 as it was at 45 above (`against_census.py`
-  in that folder). Below 39 nothing can check it: those layers’ readings will be
-  marked as resting on the dose rule alone. The pilot’s ladders are also each layer’s dose curve, which a census
+  November when that walk had stopped. **The lens is built** (13 November 2026, 23:43Z): all sixty layers, none
+  skipped, in 10.5 hours of building over three sittings (2,702 s, 3,395 s and 31,646 s, against the 10.1–10.8
+  estimated), and it is served. **It is sound from layer 39 up and a weak guide below, and the page now says which**
+  ([`read_lens.py`](experiments/results/atlas_steer_dose/read_lens.py) and `lens.json` there, read on the CPU;
+  `backend/steer_check.py`). Four readings:
+  - *Beside the whole censuses, layers 40–50* (`against_census.py`, the build’s last step). For 85% of the neurons
+    above every control at layer 40, 94–97% at 41–44 and 98–99.5% at 45–50, a steer-lens word-piece is one of the
+    neuron’s five census words or begins one (1.6–9.7% with the neurons shuffled). Layer 45, built again, gives the
+    98.3% of 1,580 it gave on 12 November.
+  - *Beside the trials that passed, where no whole census is taken.* This entry said nothing could check the lens
+    below 39; the trials taken since can, at 32–39, 51 and 52. Counted over the neurons above 95 in 100 controls,
+    which a trial fills with 214–447 (layer 45’s own trial reads as its whole layer does, 86.6% against 86.1%): 84%
+    at layer 51 and 75% at 52; 60–91% at the whole layers; 62% at 39; then 33% at 38, 20% at 37, 13–17% at 34–36 and
+    7–10% at 32–33 (1–6% shuffled). At layer 38 the count leans on the census’s design too (59% of the 106 that
+    stand out under `break_rel`, 33% of the 357 under `soft_ceil`); at 37 it does not (20% under both designs).
+    Over the few neurons above every control it is higher and noisier: 7 of 8 at layer 34, 5 of 54 at 32.
+  - *Whether a layer’s neurons read apart, all sixty layers.* Sizing the dose lessened what 0.8 did to layer 5 and
+    did not cure it: there the most listed word-piece is now on 34% of the neurons’ lists and the next two on
+    25–27%, where four were each on 40–49%. At layers 0–30, 4 to 7.5 of a neuron’s twelve word-pieces are listed by 2 in 100 of the
+    layer’s neurons or more whichever is pushed, and one piece by 19–49% of the layer (stray pieces at 0–7; from 8
+    up sentence openers: “Here”, “The”, “In”, “These”, “You”). It is 2 to 4 of twelve at 31–39, one at 40–41,
+    under one at 42–50 and none at 51–59.
+  - *Where the push landed.* The pilot’s 128 neurons a layer put the whole layer’s median KL within 0.8–1.08 of the
+    target at 43 layers and 0.7–0.8 at eight more; at 9–11, 29 and 59 it is about half the target (0.47–0.55), and
+    0.62–0.67 at 4, 6, 24 and 25. The sharing does not follow it: layers pushed on target (0, 2, 3, 21, 22, 26)
+    share as many word-pieces as the ones pushed short, or more.
+
+  What it means. The lens lists the word-pieces whose odds rose most, and nothing in it sets a neuron against other
+  pushes as the census’s controls do, so below layer 40 a share of every reading is what any push at that layer
+  does. It also reads the next word-piece where the census reads 48 word-pieces of answer, and a neuron in the
+  middle of the model need not show in the first as it does in the second: the fall in agreement is not all the
+  lens’s fault. It does not count against the trials at 32–38, which passed on their own words carrying between
+  question halves; but nothing outside the census seconds them. And the agreement was never a test of what a neuron
+  does unpushed: it is two readings of the same push.
+
+  What the page does with it (chosen in building it; the owner’s to change). `scripts/atlas_steer_check.py` writes
+  the check beside the index (`steer_check.json`; run it again when the lens is rebuilt, a census layer lands or a
+  trial’s doses are counted calibrated). The details show all twelve word-pieces, the ones the layer shares faint,
+  and say how the lens fared at that layer: in red where it shares a word with under half the neurons that stand
+  out (layers 32–38), or where the layer has no census and its nearest checked layer is such a one (0–31). At those
+  thirty-nine layers a neuron’s line of words and the word search leave the steer lens out, as they did before it
+  was built; at 39–59 a line gives the neuron’s own steer words, the shared ones dropped. The scientist is told the
+  same (`check`, `shared_with_layer`). A web’s pooled words and a head’s leave out the neurons at those layers, and
+  say how many (a first look at the page showed why: a layer-46 neuron’s web read “Some”, “Sometimes”, “Depending”,
+  “Perhaps”, “Meanwhile”, the openers its upstream layers share). The repair not yet tried is a
+  lens read against its layer: each word-piece ranked by its rise over the layer’s mean rise, or over control
+  pushes. That is a rebuild (10.5 hours); a trial’s 1,022 neurons at one layer would pilot it in minutes.
+
+  The pilot’s ladders are also each layer’s dose curve, which a census
   design scaled to the layer needs (the plan’s step 3, below, where it is set beside every dose a trial has read). On the home card, headless, time a
   pilot first; on a rented one, `scripts/pod/pilot.sh` is that pilot (it times the step and the memory for each unpacker
   at several batches, takes a `calib_rel` run, times one steer-lens layer, sets a canary batch against the home card’s

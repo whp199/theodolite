@@ -1270,6 +1270,16 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             push that large along the neuron’s direction does, not what the neuron does when it fires. Where it and the
             lens disagree, neither wins: test with a smaller push and with what the neuron reads.
           </Note>
+          <Note>
+            How far to trust it depends on the layer. The steer lens lists whatever rose most, and nothing in it sets
+            one neuron against another, so part of a reading can be what any push at that layer does. On this model it
+            agrees with the census from layer 40 up: for six to nine in ten of the neurons that stand out there, one of
+            its words is a census word. Below that it is a weak guide: a third at layer 39, one or two in ten at layers
+            33 to 38, and nothing checks it below 33, where about half of each reading is words that many of the
+            layer’s neurons share. (Nothing checks it from layer 54 up either; there each neuron’s words are its own,
+            and the nearest checked layer agrees.) The details show those shared words faint and say what was found at the neuron’s
+            layer; where the lens is a weak guide, a neuron’s line of words leaves it out.
+          </Note>
           <EntryApparatus title="the steer lens">
             ±d<sub>ℓ</sub> · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M> of its
             layer (d<sub>ℓ</sub> the layer’s dose: where a pilot has measured it, the push that moves the next word-piece as
@@ -1277,7 +1287,12 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             on this model swamps the early layers),
             at every position but the start mark, of two chat turns (“Who are you?”, “Write whatever you like.”) and two
             plain openings; the mean Δ log p of the next word-piece (fp32, softcapped at 30), its twelve largest rises
-            each way, and KL(pushed ‖ base). <M>steer_lens.npz</M>, or read live for one neuron.
+            each way, and KL(pushed ‖ base). <M>steer_lens.npz</M>, or read live for one neuron. Its check,{" "}
+            <M>steer_check.json</M> (<M>scripts/atlas_steer_check.py</M>, CPU): for each layer, how many of a neuron’s
+            twelve word-pieces 2 in 100 of the layer’s neurons or more also list, and, where the layer has a census or a
+            passed trial, for how many of the neurons above 95 in 100 controls a steer-lens word-piece is one of the
+            neuron’s five census words, begins one or is begun by one, beside the same with the neurons shuffled; a
+            layer agrees at one half.
           </EntryApparatus>
         </Entry>
 

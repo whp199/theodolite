@@ -11,7 +11,7 @@ import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
 import type { BookFace, BookReply } from "../NeuronFolio/saved";
-import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
+import { cite, get, noteKey, post, steerCheckSaid, type HeadInfo, type Link, type SteerLens } from "./api";
 import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, ProposalLine, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, setQuery, theMap, useAtlas } from "./state";
 
@@ -158,6 +158,17 @@ const Steer: React.FC = () => {
   const st = lens.steer;
   const dose = st ? st.dose : 0.8;
   const over = overCeiling(dose, lens.ceiling);
+  const checked = st && st.check ? steerCheckSaid(st.check) : null;
+  const shared = st && st.common ? [...st.common.up, ...st.common.down].filter((x) => x != null).length : 0;
+  const tok = (t: string, i: number, share: number | null | undefined) => (
+    <span
+      key={i}
+      className={share != null ? "atlas-tok shared" : "atlas-tok"}
+      title={share != null ? `listed by ${Math.max(1, Math.round(100 * share))} in 100 of this layer’s neurons, whichever is pushed` : undefined}
+    >
+      {wp(t)}
+    </span>
+  );
   const read = async () => {
     setBusy(true);
     setError(null);
@@ -178,23 +189,11 @@ const Steer: React.FC = () => {
         <div className="atlas-two">
           <div className="atlas-face-box up">
             <div className="atlas-lab">+ push · KL {st.kl_up}</div>
-            <div className="atlas-crumbs">
-              {st.up.map((t, i) => (
-                <span key={i} className="atlas-tok">
-                  {wp(t)}
-                </span>
-              ))}
-            </div>
+            <div className="atlas-crumbs">{st.up.map((t, i) => tok(t, i, st.common?.up[i]))}</div>
           </div>
           <div className="atlas-face-box down">
             <div className="atlas-lab">− push · KL {st.kl_down}</div>
-            <div className="atlas-crumbs">
-              {st.down.map((t, i) => (
-                <span key={i} className="atlas-tok">
-                  {wp(t)}
-                </span>
-              ))}
-            </div>
+            <div className="atlas-crumbs">{st.down.map((t, i) => tok(t, i, st.common?.down[i]))}</div>
           </div>
         </div>
       ) : (
@@ -208,6 +207,17 @@ const Steer: React.FC = () => {
         </p>
       )}
       <ErrorLine error={error} />
+      {shared ? (
+        <p className="atlas-small muted" style={{ margin: "4px 0 0" }}>
+          The {shared === 1 ? "faint word is" : `${shared} faint words are`} listed by many of this layer’s neurons whichever is pushed:{" "}
+          {shared === 1 ? "it says" : "they say"} more of the layer than of this neuron.
+        </p>
+      ) : null}
+      {checked ? (
+        <p className={checked.caution ? "atlas-small red" : "atlas-small muted"} style={{ margin: "4px 0 0" }}>
+          {checked.text}
+        </p>
+      ) : null}
       <Rubric style={{ fontSize: 15 }}>
         A measured effect, not a label: the neuron is pushed by {dose} of the stream's usual length at every word-piece of four short texts, and
         these are the word-pieces whose odds rose most next. It is not held back by the label gate.{" "}

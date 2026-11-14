@@ -1,0 +1,3731 @@
+{
+ "what": "The steer lens as built, every layer of it, read on the CPU (writes lens.json here; nothing is run on the model).",
+ "built_at": "2026-11-13T23:43:53Z",
+ "weights": "e0a93173c31ed2ec",
+ "dose_rule": "sized, layer by layer, to move the next word-piece as far as layer 46's ±0.8 does (a median 0.36 nats over 128 of the layer's neurons)",
+ "target_kl": 0.355112,
+ "layers": {
+  "0": {
+   "dose": 0.7554,
+   "dose_in_ceilings": 2.827,
+   "kl_p50": 0.381,
+   "kl_p10": 0.229,
+   "kl_p90": 5.126,
+   "kl_p50_over_target": 1.074,
+   "up": {
+    "most_listed_piece": 0.342,
+    "first_piece_among_ten_commonest": 0.387,
+    "distinct_pieces": 13335,
+    "commonest": [
+     [
+      "뉴",
+      0.342
+     ],
+     [
+      "bos",
+      0.258
+     ],
+     [
+      "Acid",
+      0.249
+     ],
+     [
+      "ताओं",
+      0.233
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3421,
+    "first_piece_among_ten_commonest": 0.3839,
+    "distinct_pieces": 13400,
+    "commonest": [
+     [
+      "뉴",
+      0.342
+     ],
+     [
+      "bos",
+      0.253
+     ],
+     [
+      "Acid",
+      0.243
+     ],
+     [
+      "ताओं",
+      0.227
+     ]
+    ]
+   }
+  },
+  "1": {
+   "dose": 0.8956,
+   "dose_in_ceilings": 1.746,
+   "kl_p50": 0.263,
+   "kl_p10": 0.195,
+   "kl_p90": 0.474,
+   "kl_p50_over_target": 0.74,
+   "up": {
+    "most_listed_piece": 0.3231,
+    "first_piece_among_ten_commonest": 0.3379,
+    "distinct_pieces": 15633,
+    "commonest": [
+     [
+      "ताओं",
+      0.323
+     ],
+     [
+      "umni",
+      0.247
+     ],
+     [
+      "Acid",
+      0.197
+     ],
+     [
+      "뉴",
+      0.174
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3239,
+    "first_piece_among_ten_commonest": 0.3341,
+    "distinct_pieces": 15461,
+    "commonest": [
+     [
+      "ताओं",
+      0.324
+     ],
+     [
+      "umni",
+      0.244
+     ],
+     [
+      "Acid",
+      0.194
+     ],
+     [
+      "bos",
+      0.179
+     ]
+    ]
+   }
+  },
+  "2": {
+   "dose": 0.2068,
+   "dose_in_ceilings": 3.851,
+   "kl_p50": 0.312,
+   "kl_p10": 0.235,
+   "kl_p90": 0.545,
+   "kl_p50_over_target": 0.878,
+   "up": {
+    "most_listed_piece": 0.4939,
+    "first_piece_among_ten_commonest": 0.4336,
+    "distinct_pieces": 6355,
+    "commonest": [
+     [
+      "ताओं",
+      0.494
+     ],
+     [
+      "italian",
+      0.312
+     ],
+     [
+      "umni",
+      0.269
+     ],
+     [
+      "पशु",
+      0.235
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.4835,
+    "first_piece_among_ten_commonest": 0.4309,
+    "distinct_pieces": 6308,
+    "commonest": [
+     [
+      "ताओं",
+      0.484
+     ],
+     [
+      "italian",
+      0.312
+     ],
+     [
+      "umni",
+      0.268
+     ],
+     [
+      "bos",
+      0.239
+     ]
+    ]
+   }
+  },
+  "3": {
+   "dose": 0.4213,
+   "dose_in_ceilings": 5.133,
+   "kl_p50": 0.285,
+   "kl_p10": 0.221,
+   "kl_p90": 0.737,
+   "kl_p50_over_target": 0.803,
+   "up": {
+    "most_listed_piece": 0.4656,
+    "first_piece_among_ten_commonest": 0.4229,
+    "distinct_pieces": 12930,
+    "commonest": [
+     [
+      "ताओं",
+      0.466
+     ],
+     [
+      "umni",
+      0.268
+     ],
+     [
+      "पशु",
+      0.255
+     ],
+     [
+      "悭",
+      0.251
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.4655,
+    "first_piece_among_ten_commonest": 0.4196,
+    "distinct_pieces": 12853,
+    "commonest": [
+     [
+      "ताओं",
+      0.466
+     ],
+     [
+      "umni",
+      0.258
+     ],
+     [
+      "पशु",
+      0.254
+     ],
+     [
+      "悭",
+      0.252
+     ]
+    ]
+   }
+  },
+  "4": {
+   "dose": 0.2401,
+   "dose_in_ceilings": 3.17,
+   "kl_p50": 0.222,
+   "kl_p10": 0.163,
+   "kl_p90": 0.442,
+   "kl_p50_over_target": 0.626,
+   "up": {
+    "most_listed_piece": 0.3193,
+    "first_piece_among_ten_commonest": 0.3057,
+    "distinct_pieces": 16751,
+    "commonest": [
+     [
+      "umni",
+      0.319
+     ],
+     [
+      "âh",
+      0.268
+     ],
+     [
+      "पशु",
+      0.247
+     ],
+     [
+      "ताओं",
+      0.243
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3144,
+    "first_piece_among_ten_commonest": 0.3063,
+    "distinct_pieces": 16386,
+    "commonest": [
+     [
+      "umni",
+      0.314
+     ],
+     [
+      "âh",
+      0.268
+     ],
+     [
+      "पशु",
+      0.251
+     ],
+     [
+      "ताओं",
+      0.235
+     ]
+    ]
+   }
+  },
+  "5": {
+   "dose": 0.4356,
+   "dose_in_ceilings": 6.863,
+   "kl_p50": 0.261,
+   "kl_p10": 0.165,
+   "kl_p90": 1.565,
+   "kl_p50_over_target": 0.734,
+   "up": {
+    "most_listed_piece": 0.3413,
+    "first_piece_among_ten_commonest": 0.3313,
+    "distinct_pieces": 16071,
+    "commonest": [
+     [
+      "ताओं",
+      0.341
+     ],
+     [
+      "italian",
+      0.266
+     ],
+     [
+      "oston",
+      0.252
+     ],
+     [
+      "뉴",
+      0.138
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3317,
+    "first_piece_among_ten_commonest": 0.325,
+    "distinct_pieces": 16007,
+    "commonest": [
+     [
+      "ताओं",
+      0.332
+     ],
+     [
+      "italian",
+      0.266
+     ],
+     [
+      "oston",
+      0.252
+     ],
+     [
+      "انہوں",
+      0.14
+     ]
+    ]
+   }
+  },
+  "6": {
+   "dose": 0.2387,
+   "dose_in_ceilings": 3.283,
+   "kl_p50": 0.235,
+   "kl_p10": 0.163,
+   "kl_p90": 0.462,
+   "kl_p50_over_target": 0.663,
+   "up": {
+    "most_listed_piece": 0.1859,
+    "first_piece_among_ten_commonest": 0.2592,
+    "distinct_pieces": 15235,
+    "commonest": [
+     [
+      "umni",
+      0.186
+     ],
+     [
+      "पशु",
+      0.182
+     ],
+     [
+      "ताओं",
+      0.18
+     ],
+     [
+      "TER",
+      0.151
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1791,
+    "first_piece_among_ten_commonest": 0.2513,
+    "distinct_pieces": 15377,
+    "commonest": [
+     [
+      "umni",
+      0.179
+     ],
+     [
+      "पशु",
+      0.177
+     ],
+     [
+      "ताओं",
+      0.173
+     ],
+     [
+      "TER",
+      0.151
+     ]
+    ]
+   }
+  },
+  "7": {
+   "dose": 0.4218,
+   "dose_in_ceilings": 4.167,
+   "kl_p50": 0.293,
+   "kl_p10": 0.197,
+   "kl_p90": 0.569,
+   "kl_p50_over_target": 0.824,
+   "up": {
+    "most_listed_piece": 0.2507,
+    "first_piece_among_ten_commonest": 0.3236,
+    "distinct_pieces": 13734,
+    "commonest": [
+     [
+      "bos",
+      0.251
+     ],
+     [
+      "ताओं",
+      0.195
+     ],
+     [
+      "oston",
+      0.188
+     ],
+     [
+      "italian",
+      0.177
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2583,
+    "first_piece_among_ten_commonest": 0.3214,
+    "distinct_pieces": 13652,
+    "commonest": [
+     [
+      "bos",
+      0.258
+     ],
+     [
+      "oston",
+      0.191
+     ],
+     [
+      "ताओं",
+      0.189
+     ],
+     [
+      "italian",
+      0.176
+     ]
+    ]
+   }
+  },
+  "8": {
+   "dose": 0.362,
+   "dose_in_ceilings": 2.986,
+   "kl_p50": 0.299,
+   "kl_p10": 0.163,
+   "kl_p90": 1.312,
+   "kl_p50_over_target": 0.843,
+   "up": {
+    "most_listed_piece": 0.2796,
+    "first_piece_among_ten_commonest": 0.3648,
+    "distinct_pieces": 14080,
+    "commonest": [
+     [
+      "Here",
+      0.28
+     ],
+     [
+      "뉴",
+      0.213
+     ],
+     [
+      "bos",
+      0.16
+     ],
+     [
+      "Acid",
+      0.155
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2842,
+    "first_piece_among_ten_commonest": 0.3674,
+    "distinct_pieces": 14254,
+    "commonest": [
+     [
+      "Here",
+      0.284
+     ],
+     [
+      "뉴",
+      0.208
+     ],
+     [
+      "bos",
+      0.164
+     ],
+     [
+      "Acid",
+      0.157
+     ]
+    ]
+   }
+  },
+  "9": {
+   "dose": 0.1471,
+   "dose_in_ceilings": 1.97,
+   "kl_p50": 0.177,
+   "kl_p10": 0.106,
+   "kl_p90": 0.546,
+   "kl_p50_over_target": 0.499,
+   "up": {
+    "most_listed_piece": 0.2497,
+    "first_piece_among_ten_commonest": 0.3829,
+    "distinct_pieces": 13152,
+    "commonest": [
+     [
+      "Here",
+      0.25
+     ],
+     [
+      "뉴",
+      0.224
+     ],
+     [
+      "sel",
+      0.206
+     ],
+     [
+      "sil",
+      0.198
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2365,
+    "first_piece_among_ten_commonest": 0.3785,
+    "distinct_pieces": 13384,
+    "commonest": [
+     [
+      "Here",
+      0.237
+     ],
+     [
+      "뉴",
+      0.222
+     ],
+     [
+      "sel",
+      0.215
+     ],
+     [
+      "sil",
+      0.201
+     ]
+    ]
+   }
+  },
+  "10": {
+   "dose": 0.1358,
+   "dose_in_ceilings": 1.654,
+   "kl_p50": 0.169,
+   "kl_p10": 0.114,
+   "kl_p90": 0.252,
+   "kl_p50_over_target": 0.475,
+   "up": {
+    "most_listed_piece": 0.245,
+    "first_piece_among_ten_commonest": 0.3768,
+    "distinct_pieces": 11863,
+    "commonest": [
+     [
+      "Acid",
+      0.245
+     ],
+     [
+      "In",
+      0.239
+     ],
+     [
+      "Numeric",
+      0.197
+     ],
+     [
+      "Creation",
+      0.195
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2436,
+    "first_piece_among_ten_commonest": 0.3835,
+    "distinct_pieces": 11835,
+    "commonest": [
+     [
+      "Acid",
+      0.244
+     ],
+     [
+      "In",
+      0.241
+     ],
+     [
+      "Creation",
+      0.201
+     ],
+     [
+      "Numeric",
+      0.192
+     ]
+    ]
+   }
+  },
+  "11": {
+   "dose": 0.1547,
+   "dose_in_ceilings": 2.099,
+   "kl_p50": 0.188,
+   "kl_p10": 0.122,
+   "kl_p90": 0.359,
+   "kl_p50_over_target": 0.529,
+   "up": {
+    "most_listed_piece": 0.1994,
+    "first_piece_among_ten_commonest": 0.2546,
+    "distinct_pieces": 17123,
+    "commonest": [
+     [
+      "뉴",
+      0.199
+     ],
+     [
+      "sil",
+      0.147
+     ],
+     [
+      "oston",
+      0.137
+     ],
+     [
+      "Here",
+      0.125
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2008,
+    "first_piece_among_ten_commonest": 0.2512,
+    "distinct_pieces": 17494,
+    "commonest": [
+     [
+      "뉴",
+      0.201
+     ],
+     [
+      "sil",
+      0.151
+     ],
+     [
+      "oston",
+      0.131
+     ],
+     [
+      "Here",
+      0.12
+     ]
+    ]
+   }
+  },
+  "12": {
+   "dose": 0.1611,
+   "dose_in_ceilings": 2.256,
+   "kl_p50": 0.26,
+   "kl_p10": 0.159,
+   "kl_p90": 0.644,
+   "kl_p50_over_target": 0.732,
+   "up": {
+    "most_listed_piece": 0.3382,
+    "first_piece_among_ten_commonest": 0.3299,
+    "distinct_pieces": 13158,
+    "commonest": [
+     [
+      "뉴",
+      0.338
+     ],
+     [
+      "Impossible",
+      0.199
+     ],
+     [
+      "创建",
+      0.193
+     ],
+     [
+      "bos",
+      0.182
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3388,
+    "first_piece_among_ten_commonest": 0.326,
+    "distinct_pieces": 13391,
+    "commonest": [
+     [
+      "뉴",
+      0.339
+     ],
+     [
+      "Impossible",
+      0.195
+     ],
+     [
+      "创建",
+      0.187
+     ],
+     [
+      "bos",
+      0.183
+     ]
+    ]
+   }
+  },
+  "13": {
+   "dose": 0.139,
+   "dose_in_ceilings": 2.319,
+   "kl_p50": 0.273,
+   "kl_p10": 0.14,
+   "kl_p90": 1.256,
+   "kl_p50_over_target": 0.769,
+   "up": {
+    "most_listed_piece": 0.1967,
+    "first_piece_among_ten_commonest": 0.2651,
+    "distinct_pieces": 18028,
+    "commonest": [
+     [
+      "Here",
+      0.197
+     ],
+     [
+      "sil",
+      0.173
+     ],
+     [
+      "Those",
+      0.145
+     ],
+     [
+      "sel",
+      0.134
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1878,
+    "first_piece_among_ten_commonest": 0.2536,
+    "distinct_pieces": 18313,
+    "commonest": [
+     [
+      "Here",
+      0.188
+     ],
+     [
+      "sil",
+      0.166
+     ],
+     [
+      "Those",
+      0.136
+     ],
+     [
+      "sel",
+      0.132
+     ]
+    ]
+   }
+  },
+  "14": {
+   "dose": 0.1269,
+   "dose_in_ceilings": 2.179,
+   "kl_p50": 0.262,
+   "kl_p10": 0.175,
+   "kl_p90": 0.503,
+   "kl_p50_over_target": 0.739,
+   "up": {
+    "most_listed_piece": 0.2081,
+    "first_piece_among_ten_commonest": 0.3168,
+    "distinct_pieces": 13942,
+    "commonest": [
+     [
+      "In",
+      0.208
+     ],
+     [
+      "Acid",
+      0.173
+     ],
+     [
+      "umni",
+      0.16
+     ],
+     [
+      "Here",
+      0.144
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2041,
+    "first_piece_among_ten_commonest": 0.3098,
+    "distinct_pieces": 13934,
+    "commonest": [
+     [
+      "In",
+      0.204
+     ],
+     [
+      "Acid",
+      0.169
+     ],
+     [
+      "umni",
+      0.16
+     ],
+     [
+      "Here",
+      0.138
+     ]
+    ]
+   }
+  },
+  "15": {
+   "dose": 0.1645,
+   "dose_in_ceilings": 1.871,
+   "kl_p50": 0.277,
+   "kl_p10": 0.153,
+   "kl_p90": 0.766,
+   "kl_p50_over_target": 0.78,
+   "up": {
+    "most_listed_piece": 0.1861,
+    "first_piece_among_ten_commonest": 0.2779,
+    "distinct_pieces": 16893,
+    "commonest": [
+     [
+      "Here",
+      0.186
+     ],
+     [
+      "뉴",
+      0.179
+     ],
+     [
+      "Impossible",
+      0.163
+     ],
+     [
+      "sil",
+      0.126
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1809,
+    "first_piece_among_ten_commonest": 0.2801,
+    "distinct_pieces": 17257,
+    "commonest": [
+     [
+      "Here",
+      0.181
+     ],
+     [
+      "뉴",
+      0.173
+     ],
+     [
+      "Impossible",
+      0.169
+     ],
+     [
+      "sil",
+      0.124
+     ]
+    ]
+   }
+  },
+  "16": {
+   "dose": 0.1214,
+   "dose_in_ceilings": 2.176,
+   "kl_p50": 0.318,
+   "kl_p10": 0.177,
+   "kl_p90": 1.434,
+   "kl_p50_over_target": 0.894,
+   "up": {
+    "most_listed_piece": 0.242,
+    "first_piece_among_ten_commonest": 0.3801,
+    "distinct_pieces": 13873,
+    "commonest": [
+     [
+      "Impossible",
+      0.242
+     ],
+     [
+      "Here",
+      0.229
+     ],
+     [
+      "In",
+      0.204
+     ],
+     [
+      "That",
+      0.177
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2443,
+    "first_piece_among_ten_commonest": 0.3751,
+    "distinct_pieces": 13895,
+    "commonest": [
+     [
+      "Impossible",
+      0.244
+     ],
+     [
+      "Here",
+      0.226
+     ],
+     [
+      "In",
+      0.206
+     ],
+     [
+      "That",
+      0.168
+     ]
+    ]
+   }
+  },
+  "17": {
+   "dose": 0.1124,
+   "dose_in_ceilings": 1.924,
+   "kl_p50": 0.332,
+   "kl_p10": 0.202,
+   "kl_p90": 1.23,
+   "kl_p50_over_target": 0.936,
+   "up": {
+    "most_listed_piece": 0.2265,
+    "first_piece_among_ten_commonest": 0.3857,
+    "distinct_pieces": 13248,
+    "commonest": [
+     [
+      "Impossible",
+      0.227
+     ],
+     [
+      "umni",
+      0.207
+     ],
+     [
+      "In",
+      0.201
+     ],
+     [
+      "Here",
+      0.171
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2347,
+    "first_piece_among_ten_commonest": 0.3759,
+    "distinct_pieces": 13498,
+    "commonest": [
+     [
+      "Impossible",
+      0.235
+     ],
+     [
+      "umni",
+      0.207
+     ],
+     [
+      "In",
+      0.194
+     ],
+     [
+      "Here",
+      0.161
+     ]
+    ]
+   }
+  },
+  "18": {
+   "dose": 0.1225,
+   "dose_in_ceilings": 1.868,
+   "kl_p50": 0.351,
+   "kl_p10": 0.198,
+   "kl_p90": 1.438,
+   "kl_p50_over_target": 0.989,
+   "up": {
+    "most_listed_piece": 0.2636,
+    "first_piece_among_ten_commonest": 0.4076,
+    "distinct_pieces": 14518,
+    "commonest": [
+     [
+      "In",
+      0.264
+     ],
+     [
+      "The",
+      0.262
+     ],
+     [
+      "There",
+      0.2
+     ],
+     [
+      "Here",
+      0.185
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2583,
+    "first_piece_among_ten_commonest": 0.396,
+    "distinct_pieces": 14945,
+    "commonest": [
+     [
+      "In",
+      0.258
+     ],
+     [
+      "The",
+      0.248
+     ],
+     [
+      "There",
+      0.19
+     ],
+     [
+      "cuales",
+      0.176
+     ]
+    ]
+   }
+  },
+  "19": {
+   "dose": 0.1257,
+   "dose_in_ceilings": 1.473,
+   "kl_p50": 0.35,
+   "kl_p10": 0.185,
+   "kl_p90": 1.516,
+   "kl_p50_over_target": 0.986,
+   "up": {
+    "most_listed_piece": 0.288,
+    "first_piece_among_ten_commonest": 0.4441,
+    "distinct_pieces": 15094,
+    "commonest": [
+     [
+      "The",
+      0.288
+     ],
+     [
+      "cuales",
+      0.26
+     ],
+     [
+      "There",
+      0.243
+     ],
+     [
+      "Here",
+      0.231
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.27,
+    "first_piece_among_ten_commonest": 0.4255,
+    "distinct_pieces": 15497,
+    "commonest": [
+     [
+      "The",
+      0.27
+     ],
+     [
+      "cuales",
+      0.266
+     ],
+     [
+      "There",
+      0.23
+     ],
+     [
+      "سلو",
+      0.219
+     ]
+    ]
+   }
+  },
+  "20": {
+   "dose": 0.1858,
+   "dose_in_ceilings": 2.006,
+   "kl_p50": 0.364,
+   "kl_p10": 0.191,
+   "kl_p90": 1.416,
+   "kl_p50_over_target": 1.025,
+   "up": {
+    "most_listed_piece": 0.2632,
+    "first_piece_among_ten_commonest": 0.4233,
+    "distinct_pieces": 14876,
+    "commonest": [
+     [
+      "The",
+      0.263
+     ],
+     [
+      "Those",
+      0.25
+     ],
+     [
+      "That",
+      0.216
+     ],
+     [
+      "Here",
+      0.201
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.256,
+    "first_piece_among_ten_commonest": 0.4228,
+    "distinct_pieces": 15041,
+    "commonest": [
+     [
+      "The",
+      0.256
+     ],
+     [
+      "Those",
+      0.235
+     ],
+     [
+      "That",
+      0.215
+     ],
+     [
+      "Here",
+      0.205
+     ]
+    ]
+   }
+  },
+  "21": {
+   "dose": 0.1791,
+   "dose_in_ceilings": 2.038,
+   "kl_p50": 0.352,
+   "kl_p10": 0.179,
+   "kl_p90": 1.437,
+   "kl_p50_over_target": 0.99,
+   "up": {
+    "most_listed_piece": 0.3924,
+    "first_piece_among_ten_commonest": 0.4907,
+    "distinct_pieces": 11848,
+    "commonest": [
+     [
+      "Here",
+      0.392
+     ],
+     [
+      "The",
+      0.388
+     ],
+     [
+      "In",
+      0.225
+     ],
+     [
+      "Those",
+      0.223
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3863,
+    "first_piece_among_ten_commonest": 0.4844,
+    "distinct_pieces": 11852,
+    "commonest": [
+     [
+      "Here",
+      0.386
+     ],
+     [
+      "The",
+      0.385
+     ],
+     [
+      "In",
+      0.223
+     ],
+     [
+      "Those",
+      0.209
+     ]
+    ]
+   }
+  },
+  "22": {
+   "dose": 0.2034,
+   "dose_in_ceilings": 1.755,
+   "kl_p50": 0.357,
+   "kl_p10": 0.246,
+   "kl_p90": 0.836,
+   "kl_p50_over_target": 1.006,
+   "up": {
+    "most_listed_piece": 0.4029,
+    "first_piece_among_ten_commonest": 0.481,
+    "distinct_pieces": 9326,
+    "commonest": [
+     [
+      "In",
+      0.403
+     ],
+     [
+      "Here",
+      0.353
+     ],
+     [
+      "Below",
+      0.228
+     ],
+     [
+      "The",
+      0.225
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3974,
+    "first_piece_among_ten_commonest": 0.4723,
+    "distinct_pieces": 9337,
+    "commonest": [
+     [
+      "In",
+      0.397
+     ],
+     [
+      "Here",
+      0.349
+     ],
+     [
+      "Below",
+      0.22
+     ],
+     [
+      "The",
+      0.216
+     ]
+    ]
+   }
+  },
+  "23": {
+   "dose": 0.2106,
+   "dose_in_ceilings": 1.374,
+   "kl_p50": 0.306,
+   "kl_p10": 0.192,
+   "kl_p90": 0.968,
+   "kl_p50_over_target": 0.862,
+   "up": {
+    "most_listed_piece": 0.2418,
+    "first_piece_among_ten_commonest": 0.3521,
+    "distinct_pieces": 12222,
+    "commonest": [
+     [
+      "In",
+      0.242
+     ],
+     [
+      "Here",
+      0.239
+     ],
+     [
+      "The",
+      0.231
+     ],
+     [
+      "ForRule",
+      0.182
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2444,
+    "first_piece_among_ten_commonest": 0.3517,
+    "distinct_pieces": 12163,
+    "commonest": [
+     [
+      "In",
+      0.244
+     ],
+     [
+      "Here",
+      0.243
+     ],
+     [
+      "The",
+      0.232
+     ],
+     [
+      "ForRule",
+      0.187
+     ]
+    ]
+   }
+  },
+  "24": {
+   "dose": 0.2301,
+   "dose_in_ceilings": 1.361,
+   "kl_p50": 0.219,
+   "kl_p10": 0.156,
+   "kl_p90": 0.403,
+   "kl_p50_over_target": 0.618,
+   "up": {
+    "most_listed_piece": 0.1993,
+    "first_piece_among_ten_commonest": 0.3159,
+    "distinct_pieces": 12008,
+    "commonest": [
+     [
+      "Acid",
+      0.199
+     ],
+     [
+      "crus",
+      0.194
+     ],
+     [
+      "Here",
+      0.176
+     ],
+     [
+      "ForRule",
+      0.168
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2077,
+    "first_piece_among_ten_commonest": 0.3171,
+    "distinct_pieces": 12083,
+    "commonest": [
+     [
+      "Acid",
+      0.208
+     ],
+     [
+      "crus",
+      0.195
+     ],
+     [
+      "Here",
+      0.177
+     ],
+     [
+      "ForRule",
+      0.174
+     ]
+    ]
+   }
+  },
+  "25": {
+   "dose": 0.2918,
+   "dose_in_ceilings": 1.566,
+   "kl_p50": 0.236,
+   "kl_p10": 0.17,
+   "kl_p90": 0.656,
+   "kl_p50_over_target": 0.665,
+   "up": {
+    "most_listed_piece": 0.2199,
+    "first_piece_among_ten_commonest": 0.2247,
+    "distinct_pieces": 11098,
+    "commonest": [
+     [
+      "ForRule",
+      0.22
+     ],
+     [
+      "Minerals",
+      0.146
+     ],
+     [
+      "Impossible",
+      0.124
+     ],
+     [
+      "getName",
+      0.124
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2247,
+    "first_piece_among_ten_commonest": 0.2298,
+    "distinct_pieces": 11007,
+    "commonest": [
+     [
+      "ForRule",
+      0.225
+     ],
+     [
+      "Minerals",
+      0.15
+     ],
+     [
+      "Impossible",
+      0.124
+     ],
+     [
+      "getName",
+      0.119
+     ]
+    ]
+   }
+  },
+  "26": {
+   "dose": 0.4027,
+   "dose_in_ceilings": 1.833,
+   "kl_p50": 0.363,
+   "kl_p10": 0.192,
+   "kl_p90": 3.652,
+   "kl_p50_over_target": 1.022,
+   "up": {
+    "most_listed_piece": 0.3406,
+    "first_piece_among_ten_commonest": 0.3414,
+    "distinct_pieces": 8681,
+    "commonest": [
+     [
+      "These",
+      0.341
+     ],
+     [
+      "The",
+      0.216
+     ],
+     [
+      "People",
+      0.203
+     ],
+     [
+      "Here",
+      0.187
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.3452,
+    "first_piece_among_ten_commonest": 0.3371,
+    "distinct_pieces": 8644,
+    "commonest": [
+     [
+      "These",
+      0.345
+     ],
+     [
+      "The",
+      0.213
+     ],
+     [
+      "People",
+      0.202
+     ],
+     [
+      "Here",
+      0.189
+     ]
+    ]
+   }
+  },
+  "27": {
+   "dose": 0.4284,
+   "dose_in_ceilings": 1.795,
+   "kl_p50": 0.356,
+   "kl_p10": 0.143,
+   "kl_p90": 2.403,
+   "kl_p50_over_target": 1.002,
+   "up": {
+    "most_listed_piece": 0.29,
+    "first_piece_among_ten_commonest": 0.3755,
+    "distinct_pieces": 10905,
+    "commonest": [
+     [
+      "These",
+      0.29
+     ],
+     [
+      "The",
+      0.285
+     ],
+     [
+      "Here",
+      0.236
+     ],
+     [
+      "Amid",
+      0.215
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2911,
+    "first_piece_among_ten_commonest": 0.3836,
+    "distinct_pieces": 10706,
+    "commonest": [
+     [
+      "These",
+      0.291
+     ],
+     [
+      "The",
+      0.278
+     ],
+     [
+      "Here",
+      0.237
+     ],
+     [
+      "Amid",
+      0.214
+     ]
+    ]
+   }
+  },
+  "28": {
+   "dose": 0.3876,
+   "dose_in_ceilings": 1.644,
+   "kl_p50": 0.374,
+   "kl_p10": 0.131,
+   "kl_p90": 1.748,
+   "kl_p50_over_target": 1.053,
+   "up": {
+    "most_listed_piece": 0.2871,
+    "first_piece_among_ten_commonest": 0.3802,
+    "distinct_pieces": 14179,
+    "commonest": [
+     [
+      "These",
+      0.287
+     ],
+     [
+      "The",
+      0.271
+     ],
+     [
+      "Amid",
+      0.221
+     ],
+     [
+      "You",
+      0.172
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2936,
+    "first_piece_among_ten_commonest": 0.3804,
+    "distinct_pieces": 14088,
+    "commonest": [
+     [
+      "These",
+      0.294
+     ],
+     [
+      "The",
+      0.279
+     ],
+     [
+      "Amid",
+      0.225
+     ],
+     [
+      "Here",
+      0.171
+     ]
+    ]
+   }
+  },
+  "29": {
+   "dose": 0.3235,
+   "dose_in_ceilings": 1.52,
+   "kl_p50": 0.195,
+   "kl_p10": 0.106,
+   "kl_p90": 1.305,
+   "kl_p50_over_target": 0.549,
+   "up": {
+    "most_listed_piece": 0.2068,
+    "first_piece_among_ten_commonest": 0.3082,
+    "distinct_pieces": 18358,
+    "commonest": [
+     [
+      "The",
+      0.207
+     ],
+     [
+      "You",
+      0.186
+     ],
+     [
+      "Amid",
+      0.169
+     ],
+     [
+      "Somewhere",
+      0.169
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1998,
+    "first_piece_among_ten_commonest": 0.3039,
+    "distinct_pieces": 18254,
+    "commonest": [
+     [
+      "The",
+      0.2
+     ],
+     [
+      "You",
+      0.179
+     ],
+     [
+      "Somewhere",
+      0.171
+     ],
+     [
+      "Amid",
+      0.164
+     ]
+    ]
+   }
+  },
+  "30": {
+   "dose": 0.3691,
+   "dose_in_ceilings": 1.776,
+   "kl_p50": 0.332,
+   "kl_p10": 0.14,
+   "kl_p90": 1.645,
+   "kl_p50_over_target": 0.935,
+   "up": {
+    "most_listed_piece": 0.2358,
+    "first_piece_among_ten_commonest": 0.3307,
+    "distinct_pieces": 16487,
+    "commonest": [
+     [
+      "The",
+      0.236
+     ],
+     [
+      "You",
+      0.191
+     ],
+     [
+      "Here",
+      0.179
+     ],
+     [
+      "These",
+      0.155
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2384,
+    "first_piece_among_ten_commonest": 0.3325,
+    "distinct_pieces": 16398,
+    "commonest": [
+     [
+      "The",
+      0.238
+     ],
+     [
+      "You",
+      0.186
+     ],
+     [
+      "Here",
+      0.185
+     ],
+     [
+      "These",
+      0.155
+     ]
+    ]
+   }
+  },
+  "31": {
+   "dose": 0.3872,
+   "dose_in_ceilings": 1.914,
+   "kl_p50": 0.385,
+   "kl_p10": 0.186,
+   "kl_p90": 1.593,
+   "kl_p50_over_target": 1.084,
+   "up": {
+    "most_listed_piece": 0.1532,
+    "first_piece_among_ten_commonest": 0.2353,
+    "distinct_pieces": 16711,
+    "commonest": [
+     [
+      "These",
+      0.153
+     ],
+     [
+      "You",
+      0.137
+     ],
+     [
+      "Here",
+      0.135
+     ],
+     [
+      "Depending",
+      0.116
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1536,
+    "first_piece_among_ten_commonest": 0.2446,
+    "distinct_pieces": 16774,
+    "commonest": [
+     [
+      "These",
+      0.154
+     ],
+     [
+      "Here",
+      0.144
+     ],
+     [
+      "You",
+      0.133
+     ],
+     [
+      "Depending",
+      0.115
+     ]
+    ]
+   }
+  },
+  "32": {
+   "dose": 0.3121,
+   "dose_in_ceilings": 1.57,
+   "kl_p50": 0.344,
+   "kl_p10": 0.158,
+   "kl_p90": 1.474,
+   "kl_p50_over_target": 0.97,
+   "up": {
+    "most_listed_piece": 0.1519,
+    "first_piece_among_ten_commonest": 0.2057,
+    "distinct_pieces": 20917,
+    "commonest": [
+     [
+      "Here",
+      0.152
+     ],
+     [
+      "The",
+      0.12
+     ],
+     [
+      "Depending",
+      0.119
+     ],
+     [
+      "These",
+      0.117
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1516,
+    "first_piece_among_ten_commonest": 0.2106,
+    "distinct_pieces": 20849,
+    "commonest": [
+     [
+      "Here",
+      0.152
+     ],
+     [
+      "The",
+      0.127
+     ],
+     [
+      "Depending",
+      0.123
+     ],
+     [
+      "These",
+      0.115
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "match_walk/L32-match_ceil-trial.jsonl",
+    "design": "match_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 54,
+      "matched": 0.0926,
+      "neurons_shuffled": 0.0259
+     },
+     "above 95 in 100 controls": {
+      "neurons": 324,
+      "matched": 0.071,
+      "neurons_shuffled": 0.029
+     },
+     "the rest": {
+      "neurons": 674,
+      "matched": 0.0356,
+      "neurons_shuffled": 0.0243
+     }
+    }
+   }
+  },
+  "33": {
+   "dose": 0.3509,
+   "dose_in_ceilings": 1.715,
+   "kl_p50": 0.385,
+   "kl_p10": 0.215,
+   "kl_p90": 1.307,
+   "kl_p50_over_target": 1.084,
+   "up": {
+    "most_listed_piece": 0.0976,
+    "first_piece_among_ten_commonest": 0.1666,
+    "distinct_pieces": 24148,
+    "commonest": [
+     [
+      "These",
+      0.098
+     ],
+     [
+      "ǒu",
+      0.097
+     ],
+     [
+      "Depending",
+      0.097
+     ],
+     [
+      "ringer",
+      0.095
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1074,
+    "first_piece_among_ten_commonest": 0.1704,
+    "distinct_pieces": 23902,
+    "commonest": [
+     [
+      "These",
+      0.107
+     ],
+     [
+      "Depending",
+      0.104
+     ],
+     [
+      "ringer",
+      0.092
+     ],
+     [
+      "ǒu",
+      0.089
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "match_walk/L33-match_ceil-trial.jsonl",
+    "design": "match_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 28,
+      "matched": 0.1429,
+      "neurons_shuffled": 0.0214
+     },
+     "above 95 in 100 controls": {
+      "neurons": 378,
+      "matched": 0.0952,
+      "neurons_shuffled": 0.018
+     },
+     "the rest": {
+      "neurons": 623,
+      "matched": 0.0321,
+      "neurons_shuffled": 0.0209
+     }
+    }
+   }
+  },
+  "34": {
+   "dose": 0.4243,
+   "dose_in_ceilings": 1.937,
+   "kl_p50": 0.346,
+   "kl_p10": 0.2,
+   "kl_p90": 1.193,
+   "kl_p50_over_target": 0.973,
+   "up": {
+    "most_listed_piece": 0.1267,
+    "first_piece_among_ten_commonest": 0.1987,
+    "distinct_pieces": 23174,
+    "commonest": [
+     [
+      "These",
+      0.127
+     ],
+     [
+      "ǒu",
+      0.125
+     ],
+     [
+      "Here",
+      0.104
+     ],
+     [
+      "You",
+      0.101
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1303,
+    "first_piece_among_ten_commonest": 0.2034,
+    "distinct_pieces": 22963,
+    "commonest": [
+     [
+      "These",
+      0.13
+     ],
+     [
+      "ǒu",
+      0.124
+     ],
+     [
+      "You",
+      0.106
+     ],
+     [
+      "Here",
+      0.105
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "match_walk/L34-match_ceil-trial.jsonl",
+    "design": "match_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 8,
+      "matched": 0.875,
+      "neurons_shuffled": 0.2
+     },
+     "above 95 in 100 controls": {
+      "neurons": 420,
+      "matched": 0.1714,
+      "neurons_shuffled": 0.0248
+     },
+     "the rest": {
+      "neurons": 567,
+      "matched": 0.0494,
+      "neurons_shuffled": 0.0198
+     }
+    }
+   }
+  },
+  "35": {
+   "dose": 0.4285,
+   "dose_in_ceilings": 1.644,
+   "kl_p50": 0.294,
+   "kl_p10": 0.18,
+   "kl_p90": 1.086,
+   "kl_p50_over_target": 0.829,
+   "up": {
+    "most_listed_piece": 0.1456,
+    "first_piece_among_ten_commonest": 0.2285,
+    "distinct_pieces": 22030,
+    "commonest": [
+     [
+      "These",
+      0.146
+     ],
+     [
+      "Here",
+      0.143
+     ],
+     [
+      "You",
+      0.122
+     ],
+     [
+      "People",
+      0.119
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1624,
+    "first_piece_among_ten_commonest": 0.2334,
+    "distinct_pieces": 21651,
+    "commonest": [
+     [
+      "These",
+      0.162
+     ],
+     [
+      "Here",
+      0.147
+     ],
+     [
+      "You",
+      0.127
+     ],
+     [
+      "People",
+      0.127
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "match_walk/L35-match_ceil-trial.jsonl",
+    "design": "match_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 3,
+      "matched": 0.6667,
+      "neurons_shuffled": 0.2667
+     },
+     "above 95 in 100 controls": {
+      "neurons": 236,
+      "matched": 0.1271,
+      "neurons_shuffled": 0.0203
+     },
+     "the rest": {
+      "neurons": 746,
+      "matched": 0.0429,
+      "neurons_shuffled": 0.0177
+     }
+    }
+   }
+  },
+  "36": {
+   "dose": 0.4429,
+   "dose_in_ceilings": 1.739,
+   "kl_p50": 0.317,
+   "kl_p10": 0.193,
+   "kl_p90": 1.239,
+   "kl_p50_over_target": 0.893,
+   "up": {
+    "most_listed_piece": 0.1866,
+    "first_piece_among_ten_commonest": 0.2282,
+    "distinct_pieces": 20809,
+    "commonest": [
+     [
+      "You",
+      0.187
+     ],
+     [
+      "People",
+      0.159
+     ],
+     [
+      "These",
+      0.149
+     ],
+     [
+      "ǒu",
+      0.117
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1873,
+    "first_piece_among_ten_commonest": 0.2235,
+    "distinct_pieces": 20602,
+    "commonest": [
+     [
+      "You",
+      0.187
+     ],
+     [
+      "People",
+      0.162
+     ],
+     [
+      "These",
+      0.155
+     ],
+     [
+      "Here",
+      0.115
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "match_walk/L36-match_ceil-trial.jsonl",
+    "design": "match_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 6,
+      "matched": 0.5,
+      "neurons_shuffled": 0.1
+     },
+     "above 95 in 100 controls": {
+      "neurons": 214,
+      "matched": 0.1402,
+      "neurons_shuffled": 0.0308
+     },
+     "the rest": {
+      "neurons": 784,
+      "matched": 0.0434,
+      "neurons_shuffled": 0.0184
+     }
+    }
+   }
+  },
+  "37": {
+   "dose": 0.4502,
+   "dose_in_ceilings": 1.739,
+   "kl_p50": 0.323,
+   "kl_p10": 0.197,
+   "kl_p90": 1.404,
+   "kl_p50_over_target": 0.909,
+   "up": {
+    "most_listed_piece": 0.2352,
+    "first_piece_among_ten_commonest": 0.2236,
+    "distinct_pieces": 22379,
+    "commonest": [
+     [
+      "You",
+      0.235
+     ],
+     [
+      "People",
+      0.141
+     ],
+     [
+      "These",
+      0.139
+     ],
+     [
+      "Here",
+      0.085
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2414,
+    "first_piece_among_ten_commonest": 0.2212,
+    "distinct_pieces": 22326,
+    "commonest": [
+     [
+      "You",
+      0.241
+     ],
+     [
+      "People",
+      0.143
+     ],
+     [
+      "These",
+      0.142
+     ],
+     [
+      "Here",
+      0.083
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "match/L37-match_ceil-trial.jsonl",
+    "design": "match_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 30,
+      "matched": 0.3333,
+      "neurons_shuffled": 0.0467
+     },
+     "above 95 in 100 controls": {
+      "neurons": 309,
+      "matched": 0.1974,
+      "neurons_shuffled": 0.035
+     },
+     "the rest": {
+      "neurons": 695,
+      "matched": 0.0345,
+      "neurons_shuffled": 0.0173
+     }
+    }
+   }
+  },
+  "38": {
+   "dose": 0.5094,
+   "dose_in_ceilings": 1.601,
+   "kl_p50": 0.27,
+   "kl_p10": 0.14,
+   "kl_p90": 1.607,
+   "kl_p50_over_target": 0.761,
+   "up": {
+    "most_listed_piece": 0.2201,
+    "first_piece_among_ten_commonest": 0.208,
+    "distinct_pieces": 27836,
+    "commonest": [
+     [
+      "You",
+      0.22
+     ],
+     [
+      "Here",
+      0.105
+     ],
+     [
+      "These",
+      0.085
+     ],
+     [
+      "Those",
+      0.079
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.2174,
+    "first_piece_among_ten_commonest": 0.2081,
+    "distinct_pieces": 28125,
+    "commonest": [
+     [
+      "You",
+      0.217
+     ],
+     [
+      "Here",
+      0.103
+     ],
+     [
+      "These",
+      0.086
+     ],
+     [
+      "Those",
+      0.077
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "soft/L38-soft_ceil-trial.jsonl",
+    "design": "soft_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 109,
+      "matched": 0.5046,
+      "neurons_shuffled": 0.0569
+     },
+     "above 95 in 100 controls": {
+      "neurons": 357,
+      "matched": 0.3277,
+      "neurons_shuffled": 0.0353
+     },
+     "the rest": {
+      "neurons": 663,
+      "matched": 0.0422,
+      "neurons_shuffled": 0.0196
+     }
+    }
+   }
+  },
+  "39": {
+   "dose": 0.7639,
+   "dose_in_ceilings": 1.636,
+   "kl_p50": 0.38,
+   "kl_p10": 0.17,
+   "kl_p90": 2.036,
+   "kl_p50_over_target": 1.07,
+   "up": {
+    "most_listed_piece": 0.1608,
+    "first_piece_among_ten_commonest": 0.1915,
+    "distinct_pieces": 27551,
+    "commonest": [
+     [
+      "You",
+      0.161
+     ],
+     [
+      "Here",
+      0.093
+     ],
+     [
+      "These",
+      0.091
+     ],
+     [
+      "People",
+      0.089
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.1594,
+    "first_piece_among_ten_commonest": 0.189,
+    "distinct_pieces": 27588,
+    "commonest": [
+     [
+      "You",
+      0.159
+     ],
+     [
+      "People",
+      0.091
+     ],
+     [
+      "Here",
+      0.09
+     ],
+     [
+      "These",
+      0.085
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "neighbours/L39-break_rel-trial.jsonl",
+    "design": "break_rel",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 28,
+      "matched": 0.7857,
+      "neurons_shuffled": 0.1071
+     },
+     "above 95 in 100 controls": {
+      "neurons": 289,
+      "matched": 0.6159,
+      "neurons_shuffled": 0.0526
+     },
+     "the rest": {
+      "neurons": 732,
+      "matched": 0.209,
+      "neurons_shuffled": 0.0658
+     }
+    }
+   }
+  },
+  "40": {
+   "dose": 0.8686,
+   "dose_in_ceilings": 1.537,
+   "kl_p50": 0.286,
+   "kl_p10": 0.157,
+   "kl_p90": 1.863,
+   "kl_p50_over_target": 0.806,
+   "up": {
+    "most_listed_piece": 0.0675,
+    "first_piece_among_ten_commonest": 0.119,
+    "distinct_pieces": 38537,
+    "commonest": [
+     [
+      "You",
+      0.067
+     ],
+     [
+      "People",
+      0.06
+     ],
+     [
+      "This",
+      0.053
+     ],
+     [
+      "These",
+      0.051
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0697,
+    "first_piece_among_ten_commonest": 0.1202,
+    "distinct_pieces": 38687,
+    "commonest": [
+     [
+      "You",
+      0.07
+     ],
+     [
+      "People",
+      0.063
+     ],
+     [
+      "This",
+      0.053
+     ],
+     [
+      "These",
+      0.051
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L40-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 1259,
+      "matched": 0.8531,
+      "neurons_shuffled": 0.0523
+     },
+     "above 95 in 100 controls": {
+      "neurons": 8874,
+      "matched": 0.6031,
+      "neurons_shuffled": 0.0422
+     },
+     "the rest": {
+      "neurons": 12524,
+      "matched": 0.1718,
+      "neurons_shuffled": 0.0439
+     }
+    }
+   }
+  },
+  "41": {
+   "dose": 0.7516,
+   "dose_in_ceilings": 1.621,
+   "kl_p50": 0.322,
+   "kl_p10": 0.199,
+   "kl_p90": 1.411,
+   "kl_p50_over_target": 0.907,
+   "up": {
+    "most_listed_piece": 0.0805,
+    "first_piece_among_ten_commonest": 0.117,
+    "distinct_pieces": 40455,
+    "commonest": [
+     [
+      "Along",
+      0.08
+     ],
+     [
+      "Where",
+      0.057
+     ],
+     [
+      "Some",
+      0.05
+     ],
+     [
+      "Avec",
+      0.047
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0735,
+    "first_piece_among_ten_commonest": 0.111,
+    "distinct_pieces": 39933,
+    "commonest": [
+     [
+      "Along",
+      0.073
+     ],
+     [
+      "Where",
+      0.062
+     ],
+     [
+      "Some",
+      0.052
+     ],
+     [
+      "Here",
+      0.048
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L41-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 95,
+      "matched": 0.9684,
+      "neurons_shuffled": 0.0863
+     },
+     "above 95 in 100 controls": {
+      "neurons": 6805,
+      "matched": 0.6986,
+      "neurons_shuffled": 0.0565
+     },
+     "the rest": {
+      "neurons": 14675,
+      "matched": 0.2018,
+      "neurons_shuffled": 0.0625
+     }
+    }
+   }
+  },
+  "42": {
+   "dose": 0.7616,
+   "dose_in_ceilings": 1.891,
+   "kl_p50": 0.323,
+   "kl_p10": 0.208,
+   "kl_p90": 1.511,
+   "kl_p50_over_target": 0.91,
+   "up": {
+    "most_listed_piece": 0.0548,
+    "first_piece_among_ten_commonest": 0.0997,
+    "distinct_pieces": 48289,
+    "commonest": [
+     [
+      "Along",
+      0.055
+     ],
+     [
+      "In",
+      0.046
+     ],
+     [
+      "Here",
+      0.042
+     ],
+     [
+      "Avec",
+      0.041
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0588,
+    "first_piece_among_ten_commonest": 0.0987,
+    "distinct_pieces": 48029,
+    "commonest": [
+     [
+      "Along",
+      0.059
+     ],
+     [
+      "In",
+      0.046
+     ],
+     [
+      "Here",
+      0.043
+     ],
+     [
+      "For",
+      0.04
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L42-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 2579,
+      "matched": 0.9376,
+      "neurons_shuffled": 0.0452
+     },
+     "above 95 in 100 controls": {
+      "neurons": 7472,
+      "matched": 0.775,
+      "neurons_shuffled": 0.0448
+     },
+     "the rest": {
+      "neurons": 14023,
+      "matched": 0.2004,
+      "neurons_shuffled": 0.0544
+     }
+    }
+   }
+  },
+  "43": {
+   "dose": 0.7836,
+   "dose_in_ceilings": 1.939,
+   "kl_p50": 0.355,
+   "kl_p10": 0.253,
+   "kl_p90": 1.124,
+   "kl_p50_over_target": 1.001,
+   "up": {
+    "most_listed_piece": 0.0536,
+    "first_piece_among_ten_commonest": 0.0751,
+    "distinct_pieces": 54552,
+    "commonest": [
+     [
+      "In",
+      0.054
+     ],
+     [
+      "Along",
+      0.041
+     ],
+     [
+      "Here",
+      0.038
+     ],
+     [
+      "Being",
+      0.035
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0489,
+    "first_piece_among_ten_commonest": 0.0779,
+    "distinct_pieces": 54875,
+    "commonest": [
+     [
+      "In",
+      0.049
+     ],
+     [
+      "Along",
+      0.042
+     ],
+     [
+      "Here",
+      0.039
+     ],
+     [
+      "Being",
+      0.037
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L43-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 2543,
+      "matched": 0.9674,
+      "neurons_shuffled": 0.0325
+     },
+     "above 95 in 100 controls": {
+      "neurons": 9421,
+      "matched": 0.8157,
+      "neurons_shuffled": 0.0324
+     },
+     "the rest": {
+      "neurons": 12077,
+      "matched": 0.1797,
+      "neurons_shuffled": 0.0468
+     }
+    }
+   }
+  },
+  "44": {
+   "dose": 0.7693,
+   "dose_in_ceilings": 1.931,
+   "kl_p50": 0.344,
+   "kl_p10": 0.241,
+   "kl_p90": 0.967,
+   "kl_p50_over_target": 0.97,
+   "up": {
+    "most_listed_piece": 0.046,
+    "first_piece_among_ten_commonest": 0.051,
+    "distinct_pieces": 62725,
+    "commonest": [
+     [
+      "In",
+      0.046
+     ],
+     [
+      "IN",
+      0.03
+     ],
+     [
+      "in",
+      0.025
+     ],
+     [
+      "Along",
+      0.023
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.044,
+    "first_piece_among_ten_commonest": 0.0472,
+    "distinct_pieces": 62785,
+    "commonest": [
+     [
+      "In",
+      0.044
+     ],
+     [
+      "IN",
+      0.027
+     ],
+     [
+      "in",
+      0.023
+     ],
+     [
+      "Being",
+      0.021
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L44-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 4793,
+      "matched": 0.9649,
+      "neurons_shuffled": 0.0234
+     },
+     "above 95 in 100 controls": {
+      "neurons": 10595,
+      "matched": 0.8765,
+      "neurons_shuffled": 0.0272
+     },
+     "the rest": {
+      "neurons": 10899,
+      "matched": 0.207,
+      "neurons_shuffled": 0.0391
+     }
+    }
+   }
+  },
+  "45": {
+   "dose": 0.8,
+   "dose_in_ceilings": 2.034,
+   "kl_p50": 0.362,
+   "kl_p10": 0.264,
+   "kl_p90": 0.762,
+   "kl_p50_over_target": 1.019,
+   "up": {
+    "most_listed_piece": 0.056,
+    "first_piece_among_ten_commonest": 0.0579,
+    "distinct_pieces": 61825,
+    "commonest": [
+     [
+      "In",
+      0.056
+     ],
+     [
+      "in",
+      0.054
+     ],
+     [
+      "IN",
+      0.053
+     ],
+     [
+      "crept",
+      0.016
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0562,
+    "first_piece_among_ten_commonest": 0.0564,
+    "distinct_pieces": 61881,
+    "commonest": [
+     [
+      "In",
+      0.056
+     ],
+     [
+      "in",
+      0.047
+     ],
+     [
+      "IN",
+      0.046
+     ],
+     [
+      "Some",
+      0.016
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L45-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 1580,
+      "matched": 0.9829,
+      "neurons_shuffled": 0.0209
+     },
+     "above 95 in 100 controls": {
+      "neurons": 8226,
+      "matched": 0.8611,
+      "neurons_shuffled": 0.0231
+     },
+     "the rest": {
+      "neurons": 13261,
+      "matched": 0.179,
+      "neurons_shuffled": 0.036
+     }
+    }
+   }
+  },
+  "46": {
+   "dose": 0.8122,
+   "dose_in_ceilings": 2.074,
+   "kl_p50": 0.362,
+   "kl_p10": 0.259,
+   "kl_p90": 0.759,
+   "kl_p50_over_target": 1.019,
+   "up": {
+    "most_listed_piece": 0.0575,
+    "first_piece_among_ten_commonest": 0.0565,
+    "distinct_pieces": 65925,
+    "commonest": [
+     [
+      "in",
+      0.057
+     ],
+     [
+      "In",
+      0.051
+     ],
+     [
+      "IN",
+      0.05
+     ],
+     [
+      "MY",
+      0.019
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0499,
+    "first_piece_among_ten_commonest": 0.0521,
+    "distinct_pieces": 66053,
+    "commonest": [
+     [
+      "in",
+      0.05
+     ],
+     [
+      "In",
+      0.047
+     ],
+     [
+      "IN",
+      0.045
+     ],
+     [
+      "MY",
+      0.018
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L46-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 2767,
+      "matched": 0.9812,
+      "neurons_shuffled": 0.0205
+     },
+     "above 95 in 100 controls": {
+      "neurons": 9270,
+      "matched": 0.8802,
+      "neurons_shuffled": 0.0194
+     },
+     "the rest": {
+      "neurons": 12198,
+      "matched": 0.1936,
+      "neurons_shuffled": 0.0332
+     }
+    }
+   }
+  },
+  "47": {
+   "dose": 0.809,
+   "dose_in_ceilings": 2.158,
+   "kl_p50": 0.373,
+   "kl_p10": 0.267,
+   "kl_p90": 0.791,
+   "kl_p50_over_target": 1.051,
+   "up": {
+    "most_listed_piece": 0.0541,
+    "first_piece_among_ten_commonest": 0.0498,
+    "distinct_pieces": 66351,
+    "commonest": [
+     [
+      "in",
+      0.054
+     ],
+     [
+      "IN",
+      0.051
+     ],
+     [
+      "In",
+      0.031
+     ],
+     [
+      "You",
+      0.02
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0513,
+    "first_piece_among_ten_commonest": 0.0492,
+    "distinct_pieces": 66918,
+    "commonest": [
+     [
+      "in",
+      0.051
+     ],
+     [
+      "IN",
+      0.048
+     ],
+     [
+      "In",
+      0.031
+     ],
+     [
+      "You",
+      0.021
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L47-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 2871,
+      "matched": 0.9826,
+      "neurons_shuffled": 0.0196
+     },
+     "above 95 in 100 controls": {
+      "neurons": 9097,
+      "matched": 0.8844,
+      "neurons_shuffled": 0.0212
+     },
+     "the rest": {
+      "neurons": 12362,
+      "matched": 0.2233,
+      "neurons_shuffled": 0.0331
+     }
+    }
+   }
+  },
+  "48": {
+   "dose": 0.6794,
+   "dose_in_ceilings": 1.873,
+   "kl_p50": 0.375,
+   "kl_p10": 0.281,
+   "kl_p90": 0.592,
+   "kl_p50_over_target": 1.057,
+   "up": {
+    "most_listed_piece": 0.0659,
+    "first_piece_among_ten_commonest": 0.0576,
+    "distinct_pieces": 69061,
+    "commonest": [
+     [
+      "IN",
+      0.066
+     ],
+     [
+      "in",
+      0.054
+     ],
+     [
+      "In",
+      0.03
+     ],
+     [
+      "non",
+      0.021
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.059,
+    "first_piece_among_ten_commonest": 0.0519,
+    "distinct_pieces": 69725,
+    "commonest": [
+     [
+      "IN",
+      0.059
+     ],
+     [
+      "in",
+      0.053
+     ],
+     [
+      "In",
+      0.029
+     ],
+     [
+      "non",
+      0.021
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L48-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 1248,
+      "matched": 0.9824,
+      "neurons_shuffled": 0.0136
+     },
+     "above 95 in 100 controls": {
+      "neurons": 8942,
+      "matched": 0.8749,
+      "neurons_shuffled": 0.0168
+     },
+     "the rest": {
+      "neurons": 12482,
+      "matched": 0.2802,
+      "neurons_shuffled": 0.0246
+     }
+    }
+   }
+  },
+  "49": {
+   "dose": 0.7463,
+   "dose_in_ceilings": 1.981,
+   "kl_p50": 0.348,
+   "kl_p10": 0.254,
+   "kl_p90": 0.615,
+   "kl_p50_over_target": 0.981,
+   "up": {
+    "most_listed_piece": 0.0378,
+    "first_piece_among_ten_commonest": 0.0334,
+    "distinct_pieces": 73004,
+    "commonest": [
+     [
+      "in",
+      0.038
+     ],
+     [
+      "Japan",
+      0.025
+     ],
+     [
+      "IN",
+      0.021
+     ],
+     [
+      "ins",
+      0.019
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0351,
+    "first_piece_among_ten_commonest": 0.0306,
+    "distinct_pieces": 73185,
+    "commonest": [
+     [
+      "in",
+      0.035
+     ],
+     [
+      "Japan",
+      0.024
+     ],
+     [
+      "IN",
+      0.02
+     ],
+     [
+      "pa",
+      0.018
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L49-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 1473,
+      "matched": 0.9939,
+      "neurons_shuffled": 0.0202
+     },
+     "above 95 in 100 controls": {
+      "neurons": 8779,
+      "matched": 0.9098,
+      "neurons_shuffled": 0.0176
+     },
+     "the rest": {
+      "neurons": 12628,
+      "matched": 0.3078,
+      "neurons_shuffled": 0.0289
+     }
+    }
+   }
+  },
+  "50": {
+   "dose": 0.7669,
+   "dose_in_ceilings": 1.782,
+   "kl_p50": 0.346,
+   "kl_p10": 0.255,
+   "kl_p90": 0.609,
+   "kl_p50_over_target": 0.975,
+   "up": {
+    "most_listed_piece": 0.0259,
+    "first_piece_among_ten_commonest": 0.0257,
+    "distinct_pieces": 73876,
+    "commonest": [
+     [
+      "ter",
+      0.026
+     ],
+     [
+      "imin",
+      0.02
+     ],
+     [
+      "non",
+      0.02
+     ],
+     [
+      "MIC",
+      0.016
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0242,
+    "first_piece_among_ten_commonest": 0.0247,
+    "distinct_pieces": 74391,
+    "commonest": [
+     [
+      "ter",
+      0.024
+     ],
+     [
+      "imin",
+      0.019
+     ],
+     [
+      "non",
+      0.018
+     ],
+     [
+      "Japan",
+      0.017
+     ]
+    ]
+   },
+   "census": {
+    "kind": "whole",
+    "run": "L50-break_rel.jsonl",
+    "neurons": 21504,
+    "groups": {
+     "above every control": {
+      "neurons": 584,
+      "matched": 0.9949,
+      "neurons_shuffled": 0.0168
+     },
+     "above 95 in 100 controls": {
+      "neurons": 8733,
+      "matched": 0.8896,
+      "neurons_shuffled": 0.013
+     },
+     "the rest": {
+      "neurons": 12695,
+      "matched": 0.2447,
+      "neurons_shuffled": 0.0207
+     }
+    }
+   }
+  },
+  "51": {
+   "dose": 0.9124,
+   "dose_in_ceilings": 1.607,
+   "kl_p50": 0.293,
+   "kl_p10": 0.197,
+   "kl_p90": 0.533,
+   "kl_p50_over_target": 0.826,
+   "up": {
+    "most_listed_piece": 0.0114,
+    "first_piece_among_ten_commonest": 0.0151,
+    "distinct_pieces": 87428,
+    "commonest": [
+     [
+      "жнее",
+      0.011
+     ],
+     [
+      "ter",
+      0.009
+     ],
+     [
+      "non",
+      0.009
+     ],
+     [
+      "MIC",
+      0.009
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0108,
+    "first_piece_among_ten_commonest": 0.0141,
+    "distinct_pieces": 87823,
+    "commonest": [
+     [
+      "ter",
+      0.011
+     ],
+     [
+      "жнее",
+      0.01
+     ],
+     [
+      "non",
+      0.009
+     ],
+     [
+      "セイ",
+      0.008
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "neighbours/L51-break_rel-trial.jsonl",
+    "design": "break_rel",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 236,
+      "matched": 0.9831,
+      "neurons_shuffled": 0.0127
+     },
+     "above 95 in 100 controls": {
+      "neurons": 447,
+      "matched": 0.8434,
+      "neurons_shuffled": 0.0188
+     },
+     "the rest": {
+      "neurons": 572,
+      "matched": 0.1783,
+      "neurons_shuffled": 0.0182
+     }
+    }
+   }
+  },
+  "52": {
+   "dose": 1.275,
+   "dose_in_ceilings": 1.351,
+   "kl_p50": 0.313,
+   "kl_p10": 0.229,
+   "kl_p90": 0.539,
+   "kl_p50_over_target": 0.882,
+   "up": {
+    "most_listed_piece": 0.0148,
+    "first_piece_among_ten_commonest": 0.0169,
+    "distinct_pieces": 85108,
+    "commonest": [
+     [
+      "жнее",
+      0.015
+     ],
+     [
+      "MY",
+      0.012
+     ],
+     [
+      "ter",
+      0.011
+     ],
+     [
+      "ies",
+      0.009
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0137,
+    "first_piece_among_ten_commonest": 0.0163,
+    "distinct_pieces": 85306,
+    "commonest": [
+     [
+      "жнее",
+      0.014
+     ],
+     [
+      "MY",
+      0.012
+     ],
+     [
+      "ter",
+      0.011
+     ],
+     [
+      "セイ",
+      0.009
+     ]
+    ]
+   },
+   "census": {
+    "kind": "trial",
+    "run": "soft/L52-soft_ceil-trial.jsonl",
+    "design": "soft_ceil",
+    "neurons": 1022,
+    "controls": 1024,
+    "groups": {
+     "above every control": {
+      "neurons": 245,
+      "matched": 0.9796,
+      "neurons_shuffled": 0.0155
+     },
+     "above 95 in 100 controls": {
+      "neurons": 436,
+      "matched": 0.7546,
+      "neurons_shuffled": 0.0115
+     },
+     "the rest": {
+      "neurons": 583,
+      "matched": 0.0875,
+      "neurons_shuffled": 0.0099
+     }
+    }
+   }
+  },
+  "53": {
+   "dose": 0.9694,
+   "dose_in_ceilings": 1.584,
+   "kl_p50": 0.278,
+   "kl_p10": 0.214,
+   "kl_p90": 0.395,
+   "kl_p50_over_target": 0.783,
+   "up": {
+    "most_listed_piece": 0.012,
+    "first_piece_among_ten_commonest": 0.0175,
+    "distinct_pieces": 83130,
+    "commonest": [
+     [
+      "CAD",
+      0.012
+     ],
+     [
+      "Cad",
+      0.011
+     ],
+     [
+      "MY",
+      0.011
+     ],
+     [
+      "жнее",
+      0.008
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0109,
+    "first_piece_among_ten_commonest": 0.0169,
+    "distinct_pieces": 83606,
+    "commonest": [
+     [
+      "MY",
+      0.011
+     ],
+     [
+      "CAD",
+      0.01
+     ],
+     [
+      "Cad",
+      0.01
+     ],
+     [
+      "Japan",
+      0.008
+     ]
+    ]
+   }
+  },
+  "54": {
+   "dose": 0.8876,
+   "dose_in_ceilings": 1.573,
+   "kl_p50": 0.31,
+   "kl_p10": 0.237,
+   "kl_p90": 0.527,
+   "kl_p50_over_target": 0.872,
+   "up": {
+    "most_listed_piece": 0.0076,
+    "first_piece_among_ten_commonest": 0.0134,
+    "distinct_pieces": 87258,
+    "commonest": [
+     [
+      "uff",
+      0.008
+     ],
+     [
+      "ter",
+      0.007
+     ],
+     [
+      "SI",
+      0.007
+     ],
+     [
+      "Bell",
+      0.006
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0064,
+    "first_piece_among_ten_commonest": 0.0128,
+    "distinct_pieces": 88164,
+    "commonest": [
+     [
+      "uff",
+      0.006
+     ],
+     [
+      "sile",
+      0.006
+     ],
+     [
+      "ter",
+      0.006
+     ],
+     [
+      "Bell",
+      0.006
+     ]
+    ]
+   }
+  },
+  "55": {
+   "dose": 0.7638,
+   "dose_in_ceilings": 1.309,
+   "kl_p50": 0.344,
+   "kl_p10": 0.244,
+   "kl_p90": 0.499,
+   "kl_p50_over_target": 0.967,
+   "up": {
+    "most_listed_piece": 0.0129,
+    "first_piece_among_ten_commonest": 0.016,
+    "distinct_pieces": 90756,
+    "commonest": [
+     [
+      "of",
+      0.013
+     ],
+     [
+      "ong",
+      0.008
+     ],
+     [
+      "ada",
+      0.007
+     ],
+     [
+      "Gi",
+      0.006
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0129,
+    "first_piece_among_ten_commonest": 0.017,
+    "distinct_pieces": 91814,
+    "commonest": [
+     [
+      "of",
+      0.013
+     ],
+     [
+      "Gi",
+      0.007
+     ],
+     [
+      "ada",
+      0.006
+     ],
+     [
+      "ong",
+      0.006
+     ]
+    ]
+   }
+  },
+  "56": {
+   "dose": 0.8803,
+   "dose_in_ceilings": 1.298,
+   "kl_p50": 0.326,
+   "kl_p10": 0.255,
+   "kl_p90": 0.575,
+   "kl_p50_over_target": 0.917,
+   "up": {
+    "most_listed_piece": 0.0202,
+    "first_piece_among_ten_commonest": 0.0152,
+    "distinct_pieces": 97095,
+    "commonest": [
+     [
+      "of",
+      0.02
+     ],
+     [
+      "in",
+      0.009
+     ],
+     [
+      "up",
+      0.008
+     ],
+     [
+      "ter",
+      0.008
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0199,
+    "first_piece_among_ten_commonest": 0.0142,
+    "distinct_pieces": 97933,
+    "commonest": [
+     [
+      "of",
+      0.02
+     ],
+     [
+      "in",
+      0.007
+     ],
+     [
+      "×",
+      0.007
+     ],
+     [
+      "ter",
+      0.007
+     ]
+    ]
+   }
+  },
+  "57": {
+   "dose": 0.8629,
+   "dose_in_ceilings": 1.042,
+   "kl_p50": 0.342,
+   "kl_p10": 0.263,
+   "kl_p90": 0.753,
+   "kl_p50_over_target": 0.964,
+   "up": {
+    "most_listed_piece": 0.0161,
+    "first_piece_among_ten_commonest": 0.0123,
+    "distinct_pieces": 106215,
+    "commonest": [
+     [
+      "of",
+      0.016
+     ],
+     [
+      "same",
+      0.01
+     ],
+     [
+      "in",
+      0.008
+     ],
+     [
+      "int",
+      0.006
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0162,
+    "first_piece_among_ten_commonest": 0.0119,
+    "distinct_pieces": 106163,
+    "commonest": [
+     [
+      "of",
+      0.016
+     ],
+     [
+      "same",
+      0.01
+     ],
+     [
+      "in",
+      0.006
+     ],
+     [
+      "5",
+      0.004
+     ]
+    ]
+   }
+  },
+  "58": {
+   "dose": 0.6774,
+   "dose_in_ceilings": 0.846,
+   "kl_p50": 0.318,
+   "kl_p10": 0.202,
+   "kl_p90": 2.908,
+   "kl_p50_over_target": 0.894,
+   "up": {
+    "most_listed_piece": 0.0153,
+    "first_piece_among_ten_commonest": 0.0127,
+    "distinct_pieces": 116294,
+    "commonest": [
+     [
+      "in",
+      0.015
+     ],
+     [
+      "g",
+      0.008
+     ],
+     [
+      "of",
+      0.007
+     ],
+     [
+      "or",
+      0.005
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0131,
+    "first_piece_among_ten_commonest": 0.0112,
+    "distinct_pieces": 116447,
+    "commonest": [
+     [
+      "in",
+      0.013
+     ],
+     [
+      "g",
+      0.007
+     ],
+     [
+      "of",
+      0.007
+     ],
+     [
+      "or",
+      0.005
+     ]
+    ]
+   }
+  },
+  "59": {
+   "dose": 0.2814,
+   "dose_in_ceilings": 0.466,
+   "kl_p50": 0.186,
+   "kl_p10": 0.072,
+   "kl_p90": 8.225,
+   "kl_p50_over_target": 0.523,
+   "up": {
+    "most_listed_piece": 0.016,
+    "first_piece_among_ten_commonest": 0.0244,
+    "distinct_pieces": 120526,
+    "commonest": [
+     [
+      "same",
+      0.016
+     ],
+     [
+      "single",
+      0.008
+     ],
+     [
+      "5",
+      0.008
+     ],
+     [
+      "9",
+      0.007
+     ]
+    ]
+   },
+   "down": {
+    "most_listed_piece": 0.0159,
+    "first_piece_among_ten_commonest": 0.0259,
+    "distinct_pieces": 120101,
+    "commonest": [
+     [
+      "same",
+      0.016
+     ],
+     [
+      "5",
+      0.008
+     ],
+     [
+      "single",
+      0.008
+     ],
+     [
+      "7",
+      0.007
+     ]
+    ]
+   }
+  }
+ }
+}
