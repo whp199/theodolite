@@ -206,7 +206,14 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
    - **A card class of its own**: the run must meet all of these:
      - at least 90% of answers start with the same word-piece as ours;
      - on the word-pieces both cards wrote alike, where ours was not sure of its choice, the log-probabilities differ
-       by a median of at most 0.028, and by at most 0.37 at the 99th percentile;
+       by no more than the bars measured for the layer's design (the board counts layers from 0):
+
+       | layers | design | median at most | 99th percentile at most |
+       |---|---|---|---|
+       | 32–37 | `match_ceil` | 0.012 | 0.25 |
+       | 38 and 52 | `soft_ceil` | 0.013 | 0.29 |
+       | 39–51 | `break_rel` | 0.028 | 0.37 |
+
      - each unpushed answer is ours, or parts from ours only at a word-piece we wrote with probability below 0.6 (a
        near-tie).
 
@@ -221,6 +228,22 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
 
    The volunteer's canary was not used to set them; it falls inside the range our own arithmetic gives
    ([`census_other_card_bars/`](experiments/results/census_other_card_bars/)).
+
+   **Amended 14 November 2026: bars for each design.** The bars above were measured at layers 40 to 50 under
+   `break_rel`. Kit 4 takes layers 32 to 38 and 52 with designs that push by counts of each neuron's own write
+   ceiling, and nothing had been measured for them. Before any spot chunk of a kit 4 run was drawn, and before any
+   answer of one was seen, we measured them on our own 5090 by the same rule, with what the result would decide
+   committed first ([`census_other_card_bars/kit4/prereg/RULES.md`](experiments/results/census_other_card_bars/kit4/prereg/RULES.md)):
+   - under `match_ceil` and `soft_ceil` our own arithmetic moves the median to 0.005 and 0.0065, less than half what
+     it does under `break_rel`, and the 99th percentile to 0.12 and 0.13, so their bars are tighter;
+   - a push 5% off moves the median to 0.028 and 0.026 there, and one 10% off the 99th percentile to 0.53 and 0.63;
+   - at layers 39 and 51 the bars of 31 October still sit between our arithmetic and those push errors, and stand.
+
+   If you began a `match_ceil` or `soft_ceil` layer when this guide still said 0.028 and 0.37 for every layer: the
+   tighter bars do apply to your run, and they were set without sight of it. On the five layers accepted from other
+   cards so far, the medians were 0.013 to 0.015 where our own arithmetic gave 0.013, so a run of the kit's code
+   should sit near our arithmetic under these designs too, well inside the new bars. A layer with no measured bars (53 to 59, which are shut) is
+   not judged until they are measured.
 
    **Amended 31 October 2026: the unpushed answers.** The first rule asked each to share at least 16 word-pieces with
    ours. That first volunteer's whole run kept three of the six word for word. The other three parted sooner, at

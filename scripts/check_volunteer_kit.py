@@ -508,6 +508,18 @@ def run_checks(tmp: Path) -> int:
           and cv.accept_bars("match_ceil", 34, table)["lp_median"] == 0.05 and cv.accept_bars("match_ceil", 33, table)["lp_median"] == 0.02
           and cv.accept_bars("match_ceil", 33, table)["lp_p99"] is None and cv.accept_bars("match_ceil", 33, table)["first_piece"] == 0.90,
           "the bars are those measured for a run's design at its layer (a layer's own entry first), and none where none were measured")
+    # the bars in the code are the measurement's table as it came, a kit's layers each with bars or shut
+    kit4 = ROOT_DIR / "experiments" / "results" / "census_other_card_bars" / "kit4" / "bars.json"
+    measured = json.loads(kit4.read_text())["table"]
+    in_code = [e for e in cv.OTHER_CLASS_BARS if e["measured"] != "2026-10-31"]
+    real_kit = cv.read_kit()
+    open_layers = [32, 33, 34, 35, 37, 38, 39, 51, 52]
+    check([(e["design"], list(e["layers"]), e["measured"], e["bars"]) for e in in_code]
+          == [(e["design"], list(e["layers"]), e["measured"], e["bars"]) for e in measured]
+          and all(cv.accept_bars(cv.kit_design(real_kit, l), l) is not None for l in open_layers)
+          and cv.accept_bars("soft_ceil", 53) is None and cv.accept_bars("break_rel", 45) == cv.ACCEPT_OTHER_CLASS
+          and cv.accept_bars("match_ceil", 34)["lp_median"] < cv.ACCEPT_OTHER_CLASS["lp_median"],
+          f"kit 4's bars in the code are its measurement's table, and every layer open on the board has bars ({[e['bars'] for e in in_code]})")
     far = {**ok_cmp, "lp_median": 0.03, "lp_p99": 0.9}
     check(not cv.judge(far, False)[0] and cv.judge(far, False, None, cv.accept_bars("match_ceil", 34, table))[1] != []
           and cv.judge({**far, "lp_p99": 0.1}, False, None, cv.accept_bars("match_ceil", 34, table))[0]

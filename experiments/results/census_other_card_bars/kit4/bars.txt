@@ -1,0 +1,73 @@
+census bars, measured 20261114T171642Z on NVIDIA GeForce RTX 5090, kit 4, layers 32 33 34 35 36 37 38 39 51 52
+
+match_ceil (the push in the ceiling unit), layers 32 33 34 35 36 37
+variant              answers  same  first prefix pieces  median     p99     max
+control                  384   384 1.0000 48.0000   8510  0.0000  0.0000  0.0000
+batch16                   96     0 1.0000 48.0000   1664  0.0044  0.1174  0.3461
+batch32                  192     0 1.0000 48.0000   3564  0.0050  0.1153  0.2151
+batch48                  288     0 1.0000 48.0000   5333  0.0049  0.1167  0.2700
+batch64-full-sums        384     0 1.0000 48.0000   7057  0.0050  0.1125  0.2763
+push+1%                  384     6 1.0000 48.0000   6750  0.0074  0.1458  0.3179
+push-1%                  384     6 1.0000 48.0000   6864  0.0073  0.1390  0.2732
+push+2%                  384     6 1.0000 34.0000   5843  0.0143  0.2014  0.5176
+push-2%                  384     6 1.0000 41.0000   6205  0.0134  0.1980  0.5952
+push+5%                  384     6 0.9922 21.0000   4069  0.0304  0.3639  0.8128
+push-5%                  384     6 0.9974 22.0000   4445  0.0278  0.3739  1.1693
+push+10%                 384     6 0.9766 13.0000   2461  0.0539  0.5874  1.1319
+push-10%                 384     6 0.9974 16.0000   2761  0.0430  0.5346  1.4859
+lp_median: floor 0.0050 (batch32); near misses 1% 0.0073, 2% 0.0134, 5% 0.0278 ok, 10% 0.0430 ok -> by the rule 0.012, built to catch a push 5% off
+lp_p99: floor 0.1174 (batch16); near misses 1% 0.1390, 2% 0.1980, 5% 0.3639, 10% 0.5346 ok -> by the rule 0.25, built to catch a push 10% off
+first piece: the arithmetic-only variants keep at least 1.0000; the near misses at most 1% 1.0000, 2% 1.0000, 5% 0.9974, 10% 0.9974 -> 0.9 (stands)
+  layer 32 alone: lp_median floor 0.0047, by the rule 0.011; lp_p99 floor 0.1264, by the rule None
+  layer 33 alone: lp_median floor 0.0061, by the rule 0.013; lp_p99 floor 0.1354, by the rule 0.27
+  layer 34 alone: lp_median floor 0.0064, by the rule 0.013; lp_p99 floor 0.1316, by the rule 0.27
+  layer 35 alone: lp_median floor 0.0064, by the rule 0.014; lp_p99 floor 0.1339, by the rule None
+  layer 36 alone: lp_median floor 0.0044, by the rule 0.011; lp_p99 floor 0.1230, by the rule 0.25
+  layer 37 alone: lp_median floor 0.0048, by the rule 0.012; lp_p99 floor 0.1167, by the rule 0.27
+
+soft_ceil (the push in the ceiling unit), layers 38 52
+variant              answers  same  first prefix pieces  median     p99     max
+control                  128   128 1.0000 48.0000   3307  0.0000  0.0000  0.0000
+batch16                   32     0 1.0000 48.0000    589  0.0060  0.1261  0.2327
+batch32                   64     0 1.0000 48.0000   1205  0.0059  0.1299  0.1668
+batch48                   96     0 0.9896 48.0000   2056  0.0065  0.1202  0.2065
+batch64-full-sums        128     0 0.9922 48.0000   2748  0.0060  0.1265  0.8317
+push+1%                  128     2 0.9922 48.0000   2646  0.0102  0.1549  0.2627
+push-1%                  128     2 0.9844 48.0000   2562  0.0092  0.1480  0.4696
+push+2%                  128     2 0.9922 48.0000   2325  0.0157  0.2337  0.6198
+push-2%                  128     2 0.9609 48.0000   2171  0.0159  0.2351  0.5455
+push+5%                  128     2 0.9453 36.0000   1617  0.0340  0.4615  1.0200
+push-5%                  128     2 0.9453 32.0000   1574  0.0263  0.4584  1.2273
+push+10%                 128     2 0.8203 19.0000    933  0.0481  0.6470  1.1000
+push-10%                 128     2 0.9375 22.0000   1331  0.0426  0.6271  1.1373
+lp_median: floor 0.0065 (batch48); near misses 1% 0.0092, 2% 0.0157, 5% 0.0263 ok, 10% 0.0426 ok -> by the rule 0.013, built to catch a push 5% off
+lp_p99: floor 0.1299 (batch32); near misses 1% 0.1480, 2% 0.2337, 5% 0.4584, 10% 0.6271 ok -> by the rule 0.29, built to catch a push 10% off
+first piece: the arithmetic-only variants keep at least 0.9896; the near misses at most 1% 0.9922, 2% 0.9922, 5% 0.9453, 10% 0.9375 -> 0.9 (stands)
+  layer 38 alone: lp_median floor 0.0052, by the rule 0.013; lp_p99 floor 0.1193, by the rule None
+  layer 52 alone: lp_median floor 0.0072, by the rule 0.015; lp_p99 floor 0.1461, by the rule 0.33
+
+break_rel (the push in the stream unit), layers 39 51
+variant              answers  same  first prefix pieces  median     p99     max
+control                  128   128 1.0000 48.0000   4203  0.0000  0.0000  0.0000
+batch16                   32     0 1.0000 48.0000    624  0.0086  0.1872  0.2896
+batch32                   64     0 0.9375 48.0000   1282  0.0115  0.1861  0.5423
+batch48                   96     0 0.9896 48.0000   2051  0.0143  0.2028  0.5703
+batch64-full-sums        128     0 0.9688 48.0000   2824  0.0129  0.1887  0.3778
+push+1%                  128     2 0.9453 48.0000   2465  0.0207  0.2510  0.5573
+push-1%                  128     2 0.9844 48.0000   2818  0.0210  0.2266  0.5949
+push+2%                  128     2 0.9297 30.0000   2069  0.0306  0.3909  0.6684
+push-2%                  128     2 0.9453 23.0000   1876  0.0308  0.3311  0.6357
+push+5%                  128     2 0.8984 14.0000   1456  0.0525  0.5799  1.3687
+push-5%                  128     2 0.8750 16.0000   1420  0.0538  0.5763  0.9049
+push+10%                 128     2 0.8047 8.0000    932  0.0730  0.8127  1.9529
+push-10%                 128     2 0.7812 5.0000    800  0.0432  0.8984  1.1377
+lp_median: floor 0.0143 (batch48); near misses 1% 0.0207, 2% 0.0306, 5% 0.0525, 10% 0.0432 -> by the rule None, dropped
+lp_p99: floor 0.2028 (batch48); near misses 1% 0.2266, 2% 0.3311, 5% 0.5763, 10% 0.8127 ok -> by the rule 0.41, built to catch a push 10% off
+first piece: the arithmetic-only variants keep at least 0.9375; the near misses at most 1% 0.9844, 2% 0.9453, 5% 0.8984, 10% 0.8047 -> 0.9 (stands)
+  layer 39 alone: lp_median floor 0.0156, by the rule None; lp_p99 floor 0.2421, by the rule None
+  layer 51 alone: lp_median floor 0.0139, by the rule 0.028; lp_p99 floor 0.2017, by the rule None
+
+what census_volunteer.OTHER_CLASS_BARS takes (a layer's own entry stands before its group's):
+  match_ceil at 32 33 34 35 36 37: first piece 0.9, lp_median 0.012, lp_p99 0.25 (the group's own bars by the rule)
+  soft_ceil at 38 52: first piece 0.9, lp_median 0.013, lp_p99 0.29 (the group's own bars by the rule)
+  break_rel at 39 51: first piece 0.9, lp_median 0.028, lp_p99 0.37 (the bars of 31 October stand: at these layers the floor is under each and the near miss each was built to catch is over it)

@@ -70,8 +70,19 @@ LP_SURE = -0.01
 # the layers it holds at (counted from 0), and the bars measured there, laid over ACCEPT_OTHER_CLASS's; a bar of None
 # was dropped (the statistic could not tell a push 10% off from arithmetic there) and `judge` does not ask it. The
 # first entry that names a design and layer is the one used, so a layer with bars of its own stands before its group.
+# Kit 4's (14 November 2026, experiments/results/census_other_card_bars/kit4/bars.json, its `table` copied as it came;
+# scripts/check_volunteer_kit.py holds the two to each other): under match_ceil and soft_ceil the home card's own
+# arithmetic moves a log-probability by less than half what it does under break_rel (median 0.005 and 0.0065 against
+# 0.013), so their bars are tighter; at layers 39 and 51 break_rel's first bars still part arithmetic from the near
+# miss each was built to catch, and stand.
 OTHER_CLASS_BARS: List[Dict[str, Any]] = [
     {"design": "break_rel", "layers": tuple(range(40, 51)), "measured": "2026-10-31", "bars": {}},
+    {"design": "match_ceil", "layers": (32, 33, 34, 35, 36, 37), "measured": "2026-11-14",
+     "bars": {"lp_median": 0.012, "lp_p99": 0.25, "first_piece": 0.9}},
+    {"design": "soft_ceil", "layers": (38, 52), "measured": "2026-11-14",
+     "bars": {"lp_median": 0.013, "lp_p99": 0.29, "first_piece": 0.9}},
+    {"design": "break_rel", "layers": (39, 51), "measured": "2026-11-14",
+     "bars": {"lp_median": 0.028, "lp_p99": 0.37, "first_piece": 0.9}},
 ]
 
 
