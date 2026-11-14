@@ -318,10 +318,19 @@ def check_bundle(a: argparse.Namespace, kit: Dict[str, Any]) -> Dict[str, Any]:
         out["writer_floor"] = {k: fl.get(k) for k in ("floor", "census_floor") if k in fl}
     else:
         notes.append("no writer's floor in the bundle")
+    # the bars a run of another card class is judged by: measured for its design at its layer, before any of its spot
+    # chunks is drawn, or it is not judged (census_volunteer.OTHER_CLASS_BARS)
+    bars = None if bits == "home" else cv.accept_bars(design, layer)
+    if bits != "home":
+        out["bars"] = bars
+    unmeasured = bits != "home" and bars is None and not a.dry_run
+    if unmeasured:
+        notes.append(f"no bars have been measured for {design} at layer {layer}: a card class of its own cannot be judged "
+                     "there yet, and no spot chunks are drawn until they are (scripts/census_bars.py, then check again)")
     # the spot chunks, drawn here, now
     C = cz.plan_batches(jobs, int(meta["batch"]), meta["plan"])[-1][0] + 1
     seed = int.from_bytes(os.urandom(8), "big")
-    chunks = sorted(random.Random(seed).sample(range(C), min(a.chunks, C)))
+    chunks = sorted(random.Random(seed).sample(range(C), 0 if unmeasured else min(a.chunks, C)))
     out["spot"] = {"chunks": chunks, "of": C, "seed": seed, "drawn_at": out["checked_at"]}
     out.update({"fails": fails, "notes": notes})
     return out
@@ -357,7 +366,10 @@ def cmd_check(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
         return 1
     whose = "the home card's bits" if out["bits"] == "home" else f"a card class of its own ({out['runtime'].get('device')})"
     print(f"layer {out['layer']} from {out['name']} ({out['claim']}): whole, the kit's settings, {whose}")
-    print(f"spot chunks {', '.join(map(str, out['spot']['chunks']))} of {out['spot']['of']}: census_intake.py spot {work} --run")
+    if out["spot"]["chunks"]:
+        print(f"spot chunks {', '.join(map(str, out['spot']['chunks']))} of {out['spot']['of']}: census_intake.py spot {work} --run")
+    else:
+        print(f"no spot chunks drawn (of {out['spot']['of']}): check again to draw them")
     set_board(a, out["claim"], "checking", f"on paper whole; {out['bits']} bits; spot-check next")
     print(f"-> {work / 'check.json'}")
     return 0
@@ -402,9 +414,15 @@ def cmd_judge(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
         if k in keys:
             theirs[k] = r
     cmp = cv.compare_rows(theirs, ours)
-    ok, why = cv.judge(cmp, chk["bits"] == "home", chk.get("baselines_shared") if chk["bits"] != "home" else None)
+    design = cv.kit_design(kit, chk["layer"])
+    # a stand-in's dry run is judged by the first bars, as it always was: no bars are measured on a stand-in
+    bars = None if chk["bits"] == "home" else (cv.accept_bars(design, chk["layer"]) or (cv.ACCEPT_OTHER_CLASS if kit.get("dry") else None))
+    if chk["bits"] != "home" and bars is None:
+        raise SystemExit(f"No bars have been measured for {design} at layer {chk['layer']}: a card class of its own is not "
+                         "judged there until they are (scripts/census_bars.py; census_volunteer.OTHER_CLASS_BARS).")
+    ok, why = cv.judge(cmp, chk["bits"] == "home", chk.get("baselines_shared") if chk["bits"] != "home" else None, bars)
     verdict = {"layer": chk["layer"], "claim": chk["claim"], "bits": chk["bits"], "card": (chk.get("runtime") or {}).get("device"),
-               "spot": cmp, "rules": "bit for bit" if chk["bits"] == "home" else cv.ACCEPT_OTHER_CLASS,
+               "spot": cmp, "rules": "bit for bit" if chk["bits"] == "home" else bars,
                "accepted": ok, "why_not": why, "judged_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     cz.write_json_atomic(work / "verdict.json", verdict)
     print(f"{cmp['present']} of {cmp['answers']} spot answers there, {cmp['identical']} identical, first piece {cmp['first_piece']}, "

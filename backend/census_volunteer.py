@@ -61,6 +61,28 @@ VERBS = ("RESERVE", "START", "PROGRESS", "DONE", "RELEASE")
 # A run of the home card's class must match every spot answer bit for bit.
 ACCEPT_OTHER_CLASS = {"first_piece": 0.90, "lp_median": 0.028, "lp_p99": 0.37, "baseline_tie": 0.6}
 LP_SURE = -0.01
+# Where bars have been measured. The log-probability bars above were measured on 31 October 2026 at layers 40-50 under
+# break_rel, kit 1's design and layers. A run taken with another design, or at a layer outside that span, pushes by
+# other lengths, and what the home card's own arithmetic does to its log-probabilities there was not measured: such a
+# run is judged by bars measured there (scripts/census_bars.py, by the rule registered before the measurement in
+# experiments/results/census_other_card_bars/kit4/prereg), and where none have been measured it is not judged at all
+# (`accept_bars` gives None; scripts/census_intake.py draws no spot chunks and refuses to judge). An entry is a design,
+# the layers it holds at (counted from 0), and the bars measured there, laid over ACCEPT_OTHER_CLASS's; a bar of None
+# was dropped (the statistic could not tell a push 10% off from arithmetic there) and `judge` does not ask it. The
+# first entry that names a design and layer is the one used, so a layer with bars of its own stands before its group.
+OTHER_CLASS_BARS: List[Dict[str, Any]] = [
+    {"design": "break_rel", "layers": tuple(range(40, 51)), "measured": "2026-10-31", "bars": {}},
+]
+
+
+def accept_bars(design: str, layer: int, table: Optional[Sequence[Dict[str, Any]]] = None) -> Optional[Dict[str, Any]]:
+    """The bars a run of another card class is held to at `layer` (counted from 0) under `design`: ACCEPT_OTHER_CLASS
+    with the bars measured there laid over it (OTHER_CLASS_BARS, or `table`); None where none have been measured, and
+    a run there is not judged until they are."""
+    for e in (OTHER_CLASS_BARS if table is None else table):
+        if e["design"] == design and int(layer) in {int(x) for x in e["layers"]}:
+            return {**ACCEPT_OTHER_CLASS, **e["bars"]}
+    return None
 
 
 def read_kit(path: Optional[Path] = None, dry: bool = False) -> Dict[str, Any]:
@@ -315,10 +337,11 @@ def baseline_part(home_ids: Sequence[int], home_lp: Sequence[float], ids: Sequen
     return [k, n, round(math.exp(home_lp[k]), 4) if k < n else None]
 
 
-def judge(cmp: Dict[str, Any], home_bits: bool, baselines_shared: Optional[Dict[str, Sequence[Any]]] = None) -> Tuple[bool, List[str]]:
-    """Whether a spot comparison (`compare_rows`) passes: bit for bit for the home card's class, ACCEPT_OTHER_CLASS for
-    another, with each unpushed answer's `baseline_part` in `baselines_shared`. Returns (passes, the reasons it does
-    not)."""
+def judge(cmp: Dict[str, Any], home_bits: bool, baselines_shared: Optional[Dict[str, Sequence[Any]]] = None,
+          bars: Optional[Dict[str, Any]] = None) -> Tuple[bool, List[str]]:
+    """Whether a spot comparison (`compare_rows`) passes: bit for bit for the home card's class; for another, `bars`
+    (`accept_bars` of the run's design and layer; ACCEPT_OTHER_CLASS where none are given), a bar of None not asked,
+    with each unpushed answer's `baseline_part` in `baselines_shared`. Returns (passes, the reasons it does not)."""
     why = []
     if cmp["present"] < cmp["answers"]:
         why.append(f"{cmp['answers'] - cmp['present']} of the {cmp['answers']} spot answers are not in the run")
@@ -327,13 +350,13 @@ def judge(cmp: Dict[str, Any], home_bits: bool, baselines_shared: Optional[Dict[
             why.append(f"its canary is the home card's bits, but {cmp['present'] - cmp['identical']} of {cmp['present']} spot "
                        "answers differ from the home card's")
         return not why, why
-    a = ACCEPT_OTHER_CLASS
-    if cmp["first_piece"] is None or cmp["first_piece"] < a["first_piece"]:
+    a = ACCEPT_OTHER_CLASS if bars is None else bars
+    if a["first_piece"] is not None and (cmp["first_piece"] is None or cmp["first_piece"] < a["first_piece"]):
         why.append(f"only {cmp['first_piece'] or 0:.3f} of its answers write the home card's first word-piece (at least "
                    f"{a['first_piece']})")
-    if cmp["lp_median"] is not None and cmp["lp_median"] > a["lp_median"]:
+    if a["lp_median"] is not None and cmp["lp_median"] is not None and cmp["lp_median"] > a["lp_median"]:
         why.append(f"its log-probabilities differ from the home card's by a median {cmp['lp_median']:.4f} (at most {a['lp_median']})")
-    if cmp["lp_p99"] is not None and cmp["lp_p99"] > a["lp_p99"]:
+    if a["lp_p99"] is not None and cmp["lp_p99"] is not None and cmp["lp_p99"] > a["lp_p99"]:
         why.append(f"its log-probabilities' 99th-percentile difference is {cmp['lp_p99']:.4f} (at most {a['lp_p99']})")
     for q, part in sorted((baselines_shared or {}).items()):
         k, n, p = (list(part) + [None])[:3]

@@ -36,11 +36,27 @@ The first-piece bar (0.90) and the unpushed answers' bar (16 word-pieces) are ke
 The results go to experiments/results/census_other_card_bars/ (bars.json, and bars.txt in words); the rows written, to
 <atlas folder>/census/bars/. Nothing here changes ACCEPT_OTHER_CLASS: that is done by hand, from bars.json, before any
 spot chunk of a run it judges is drawn. The :8765 server must be stopped (the model is loaded here).
+
+Since 14 November 2026 (kit 4: layers 32-39, 51 and 52, three designs). The measurement of 31 October was of break_rel
+at layers 40-50 and says nothing of a design that pushes by other lengths, so:
+  - the layers asked are sorted by the design the kit takes each with, and the rule is applied to each design's layers
+    pooled (and to each layer's own rows, for the one use the registration names);
+  - a near miss is the push itself made longer or shorter. Under break_rel that is p50, as before. Under a design whose
+    doses are multiples of each neuron's write ceiling (soft_ceil, match_ceil) p50 does not enter the push, so the
+    ceiling is scaled for that variant alone (`push_scaled`); the census's own code is not touched, and the control,
+    written with nothing scaled, must still be the home canaries' bits;
+  - the lowest share of first word-pieces the arithmetic-only variants keep is read against the first-piece bar;
+  - `table` in bars.json is what census_volunteer.OTHER_CLASS_BARS takes, by the rules fixed before the measurement
+    (experiments/results/census_other_card_bars/kit4/prereg/RULES.md), which this file's `decide` follows;
+  - a kit after the first writes into a folder of its own (kit4/), and the record of 31 October stays as it is.
+
+    .venv/bin/python -I scripts/census_bars.py --layers 32,33,34,35,36,37,38,39,51,52     # kit 4's (~30 min, GPU)
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import os
@@ -64,6 +80,12 @@ MIN_PIECES = 200  # a near miss's sign with fewer pooled pieces does not count
 FLOOR_MIN = 1e-4  # the rows keep log-probabilities to 4 decimals
 STATS = ("lp_median", "lp_p99")
 OUT = ROOT_DIR / "experiments" / "results" / "census_other_card_bars"
+# the bars of 31 October 2026 (bars.json beside this file's first results) and the push error each was built to catch:
+# what break_rel's layers outside 40-50 are checked against before those bars are used there
+FIRST_BARS = {"lp_median": {"bar": 0.028, "caught": 0.05}, "lp_p99": {"bar": 0.37, "caught": 0.10}}
+# the first-piece bar stands where the arithmetic-only variants keep at least FP_CLEAR of first word-pieces; where they
+# keep fewer, it is their lowest share less FP_UNDER
+FP_CLEAR, FP_UNDER = 0.93, 0.05
 
 
 def quantile(xs: List[float], q: float) -> Optional[float]:
@@ -113,12 +135,43 @@ def variants(base_batch: int, batches: Sequence[int]) -> List[Dict[str, Any]]:
     return out
 
 
-def derive(pooled: Dict[str, Dict[str, Any]], vs: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """The rule in the module's docstring, applied to each variant's pooled statistics."""
+@contextlib.contextmanager
+def push_scaled(by_ceiling: bool, scale: float):
+    """A near miss under a design that pushes by each neuron's write ceiling: while this is open, every write ceiling
+    the census reads is `scale` times itself, so every push is (dose x ceiling x scale), the push that much longer or
+    shorter, and nothing else of the run changes (its doses, its questions, its plan and its rows' keys are the
+    kit's). Under the stream unit, and at scale 1, nothing is touched: there the caller scales p50, as it always did."""
+    if not by_ceiling or scale == 1.0:
+        yield
+        return
+    from backend import atlas_ops as ao
+
+    kept = ao.Weights.write_ceiling
+
+    def scaled(self, layer, neurons):
+        return kept(self, layer, neurons) * float(scale)
+
+    ao.Weights.write_ceiling = scaled
+    try:
+        yield
+    finally:
+        ao.Weights.write_ceiling = kept
+
+
+def derive(pooled: Dict[str, Dict[str, Any]], vs: Sequence[Dict[str, Any]], floor_min_pieces: int = 0) -> Dict[str, Any]:
+    """The rule in the module's docstring, applied to each variant's pooled statistics. Every size of near miss is
+    read (`near_misses`), the bar taken from the smallest that qualifies. With `floor_min_pieces` (a single layer's
+    rows), an arithmetic-only variant with fewer pieces than that does not count toward the floor, and where none
+    counts there is no floor and no bar (`floor` None)."""
     out: Dict[str, Any] = {}
     for stat in STATS:
-        arith = [v["name"] for v in vs if v["group"] == "arithmetic"]
-        floor = max([FLOOR_MIN] + [float(pooled[n][stat] or 0.0) for n in arith])
+        arith = [v["name"] for v in vs if v["group"] == "arithmetic"
+                 and pooled[v["name"]]["lp_pieces"] >= floor_min_pieces and pooled[v["name"]][stat] is not None]
+        if not arith and floor_min_pieces:
+            out[stat] = {"floor": None, "floor_from": None, "near_misses": [], "miss_caught": None, "bar": None}
+            continue
+        every = [v["name"] for v in vs if v["group"] == "arithmetic"]
+        floor = max([FLOOR_MIN] + [float(pooled[n][stat] or 0.0) for n in (arith or every)])
         tried = []
         bar = chosen = None
         for s in SCALES:
@@ -127,13 +180,63 @@ def derive(pooled: Dict[str, Dict[str, Any]], vs: Sequence[Dict[str, Any]]) -> D
             m = min(vals) if len(vals) == len(signs) else None  # both signs must be readable
             ok = m is not None and m >= GAP * floor
             tried.append({"s": s, "M": m, "qualifies": ok})
-            if ok:
+            if ok and bar is None:
                 bar, chosen = math.sqrt(floor * m), s
-                break
-        out[stat] = {"floor": floor, "floor_from": max(arith, key=lambda n: float(pooled[n][stat] or 0.0)),
+        out[stat] = {"floor": floor, "floor_from": max(arith or every, key=lambda n: float(pooled[n][stat] or 0.0)),
                      "near_misses": tried, "miss_caught": chosen,
                      "bar": None if bar is None else float(f"{bar:.2g}")}
     return out
+
+
+def first_piece(pooled: Dict[str, Dict[str, Any]], vs: Sequence[Dict[str, Any]], kept: float) -> Dict[str, Any]:
+    """The first-piece bar for a design's layers: `kept` (the bar as it was) where the arithmetic-only variants keep at
+    least FP_CLEAR of first word-pieces, else their lowest share less FP_UNDER. The near misses' shares are given beside
+    it and do not enter."""
+    arith = [float(pooled[v["name"]]["first_piece"]) for v in vs if v["group"] == "arithmetic" and pooled[v["name"]]["first_piece"] is not None]
+    low = min(arith) if arith else None
+    miss = {f"{round(s * 100):g}%": max([float(pooled[v["name"]]["first_piece"]) for v in vs if v["group"] == "miss" and v["s"] == s
+                                          and pooled[v["name"]]["first_piece"] is not None] or [float("nan")]) for s in SCALES}
+    stands = low is not None and low >= FP_CLEAR
+    return {"lowest_arithmetic": low, "highest_near_miss": {k: (None if x != x else x) for k, x in miss.items()},
+            "stands": stands, "bar": kept if stands or low is None else float(f"{low - FP_UNDER:.2f}")}
+
+
+def decide(groups: Dict[str, Dict[str, Any]], day: str, kept_first: float) -> List[Dict[str, Any]]:
+    """What census_volunteer.OTHER_CLASS_BARS takes, by the rules fixed before the measurement (kit4/prereg/RULES.md):
+    R1 a ceiling design's bars are its group's by the rule; R2 break_rel's first bars stand at its layers here if, for
+    each statistic, the group's floor is under the bar and the near miss the bar was built to catch is over it, else
+    the group's own bars replace both; R3 a layer whose own floor is at or above the bar in use takes that statistic's
+    bar from its own rows; R4 the first-piece bar by `first_piece`. A layer's entry stands before its group's."""
+    table: List[Dict[str, Any]] = []
+    for design, g in groups.items():
+        if design == "break_rel":
+            holds = {}
+            for stat in STATS:
+                b = g["bars"][stat]
+                m = next((t["M"] for t in b["near_misses"] if t["s"] == FIRST_BARS[stat]["caught"]), None)
+                holds[stat] = m is not None and b["floor"] < FIRST_BARS[stat]["bar"] < m
+            stand = all(holds.values())
+            bars = {stat: (FIRST_BARS[stat]["bar"] if stand else g["bars"][stat]["bar"]) for stat in STATS}
+            how = ("the bars of 31 October stand: at these layers the floor is under each and the near miss each was built "
+                   "to catch is over it" if stand else
+                   "the bars of 31 October do not hold here (" + ", ".join(k for k, v in holds.items() if not v)
+                   + "): the group's own bars by the rule")
+            g["first_bars_hold"] = holds
+        else:
+            bars = {stat: g["bars"][stat]["bar"] for stat in STATS}
+            how = "the group's own bars by the rule"
+        bars["first_piece"] = g["first_piece"]["bar"]
+        for layer in g["layers"]:
+            own = {}
+            for stat in STATS:
+                lb = g["by_layer"][str(layer)]["bars"][stat]
+                if bars[stat] is not None and lb["floor"] is not None and lb["floor"] >= bars[stat]:
+                    own[stat] = lb["bar"]
+            if own:
+                table.append({"design": design, "layers": [layer], "measured": day, "bars": {**bars, **own},
+                              "how": f"layer {layer}'s own arithmetic reaches its group's bar ({', '.join(own)}): its own rows' bar by the rule"})
+        table.append({"design": design, "layers": list(g["layers"]), "measured": day, "bars": bars, "how": how})
+    return table
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -142,7 +245,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--also", action="append", default=[], help="LAYER=PATH: a canary set beside the variants, reported, "
                     "not used by the rule")
     ap.add_argument("--stand-in", action="store_true", help="the CPU stand-in at the kit's dry-run settings")
-    ap.add_argument("--out", default=str(OUT), help="where bars.json and bars.txt go")
+    ap.add_argument("--out", default="", help="where bars.json and bars.txt go (default: this kit's folder under "
+                    f"{OUT.relative_to(ROOT_DIR)})")
     a = ap.parse_args(argv)
 
     kit = cv.read_kit(dry=a.stand_in)
@@ -151,6 +255,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         os.environ["HF_HUB_OFFLINE"] = "1"
     layers = sorted({int(x) for x in a.layers.split(",") if x.strip()}) if a.layers else \
         sorted(set(kit["layers"]) | ({45} if not a.stand_in else set()))
+    design_of = {layer: cv.kit_design(kit, layer, cz.DEFAULT_DESIGN) for layer in layers}
+    by_ceiling = {layer: cz.DESIGN_UNITS.get(design_of[layer], "stream") == "ceiling" for layer in layers}
     base = int(kit["KIT_BATCH"])
     batches = [b for b in BATCHES if b < base] if not a.stand_in else [b for b in (1, 2, 3) if b < base]
     vs = variants(base, batches)
@@ -209,12 +315,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         for layer in layers:
             d = rows_dir / stamp / v["name"]
             d.mkdir(parents=True, exist_ok=True)
-            run = d / f"L{layer}-{cv.kit_design(kit, layer, cz.DEFAULT_DESIGN)}.jsonl"
-            cz.take_census(rt, layer, neurons, run, p50=p50s[layer] * v["scale"], p50_source=source,
-                           design_name=cv.kit_design(kit, layer, cz.DEFAULT_DESIGN), controls=int(kit["KIT_CONTROLS"]), seed=int(kit["KIT_SEED"]),
-                           max_new=int(kit["KIT_MAX_NEW"]), top_k=5, batch=v["batch"], neurons_spec=str(kit["KIT_NEURONS"]),
-                           p50_file=index.path("act_scale") if stats is not None else None, lens_id=lens_id, canary_only=True,
-                           log=lambda s: None)
+            run = d / f"L{layer}-{design_of[layer]}.jsonl"
+            # the push made longer or shorter: p50 under the stream unit, the ceiling under the ceiling unit
+            with push_scaled(by_ceiling[layer], v["scale"]):
+                cz.take_census(rt, layer, neurons, run, p50=p50s[layer] * (1.0 if by_ceiling[layer] else v["scale"]),
+                               p50_source=source, design_name=design_of[layer], controls=int(kit["KIT_CONTROLS"]),
+                               seed=int(kit["KIT_SEED"]), max_new=int(kit["KIT_MAX_NEW"]), top_k=5, batch=v["batch"],
+                               neurons_spec=str(kit["KIT_NEURONS"]),
+                               p50_file=index.path("act_scale") if stats is not None else None, lens_id=lens_id,
+                               canary_only=True, log=lambda s: None)
             written[v["name"]][layer] = list(cz.read_rows(cz.canary_path_of(run)))
             print(f"{v['name']:<20} L{layer}: {len(written[v['name']][layer])} answers ({time.time() - t0:.0f} s)", flush=True)
     torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = True
@@ -222,7 +331,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # the reference: the home canaries (the stand-in has none: its own control stands in for them)
     home: Dict[int, List[Dict[str, Any]]] = {}
     for layer in layers:
-        hp, _ = cv.home_canary(layer, cv.kit_design(kit, layer, cz.DEFAULT_DESIGN))
+        hp, _ = cv.home_canary(layer, design_of[layer])
         home[layer] = list(cz.read_rows(hp)) if hp.exists() and not a.stand_in else written["control"][layer]
     per: Dict[str, Dict[int, Dict[str, Any]]] = {}
     for v in vs:
@@ -234,18 +343,39 @@ def main(argv: Optional[List[str]] = None) -> int:
             if v["group"] == "control":  # the intake's own comparison must read the same pieces
                 c = cv.compare_rows(mine, ours)
                 assert c["lp_median"] == quantile(per[v["name"]][layer]["diffs"], 0.5)
-    pooled = {n: summarize(list(per[n].values())) for n in per}
-    control = pooled["control"]
+    control = summarize(list(per["control"].values()))
     moved = control["identical"] != control["answers"] or control["answers"] != sum(len(home[l]) for l in layers)
+    # every near miss must have moved something: a variant that writes the control's own rows scaled nothing
+    idle = [f"{v['name']} at layer {l}" for v in vs if v["group"] == "miss" for l in layers
+            if written[v["name"]][l] == written["control"][l]]
+
+    # a design's layers pooled, and each layer's own rows
+    kept_first = float(cv.ACCEPT_OTHER_CLASS["first_piece"])
+    groups: Dict[str, Dict[str, Any]] = {}
+    for layer in layers:
+        groups.setdefault(design_of[layer], {"layers": []})["layers"].append(layer)
+    for design, g in groups.items():
+        pooled = {n: summarize([per[n][l] for l in g["layers"]]) for n in per}
+        g["unit"] = "ceiling" if by_ceiling[g["layers"][0]] else "stream"
+        g["variants"] = [{**v, **pooled[v["name"]]} for v in vs]
+        g["bars"] = derive(pooled, vs)
+        g["first_piece"] = first_piece(pooled, vs, kept_first)
+        g["by_layer"] = {}
+        for l in g["layers"]:
+            one = {n: summarize([per[n][l]]) for n in per}
+            g["by_layer"][str(l)] = {"variants": {n: one[n] for n in one}, "bars": derive(one, vs, floor_min_pieces=MIN_PIECES)}
+    day = f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}"
+    ok = not moved and not idle
     result: Dict[str, Any] = {
         "taken_at": stamp, "layers": layers, "kit": kit["KIT"], "stand_in": a.stand_in,
         "rule": {"scales": SCALES, "batches": batches, "gap": GAP, "min_pieces": MIN_PIECES, "floor_min": FLOOR_MIN,
-                 "lp_sure": cv.LP_SURE, "kept": {k: cv.ACCEPT_OTHER_CLASS[k] for k in ("first_piece", "baseline_tie")}},
+                 "lp_sure": cv.LP_SURE, "first_bars": FIRST_BARS, "first_piece": {"clear": FP_CLEAR, "under": FP_UNDER},
+                 "kept": {k: cv.ACCEPT_OTHER_CLASS[k] for k in ("first_piece", "baseline_tie")}},
         "runtime": cz.runtime_record(next(lm.parameters()).device, act_scale=index.path("act_scale") if stats is not None else None),
-        "variants": [{**v, **pooled[v["name"]], "by_layer": {str(l): {k: x for k, x in summarize([per[v["name"]][l]]).items()}
-                                                             for l in layers}} for v in vs],
         "control_identical": not moved,
-        "bars": None if moved else derive(pooled, vs),
+        "near_misses_that_moved_nothing": idle,
+        "groups": groups if ok else {d: {k: g[k] for k in ("layers", "unit", "variants")} for d, g in groups.items()},
+        "table": decide(groups, day, kept_first) if ok else None,
         "also": {},
         "old_bars": {k: cv.ACCEPT_OTHER_CLASS[k] for k in STATS},
     }
@@ -258,30 +388,51 @@ def main(argv: Optional[List[str]] = None) -> int:
         result["also"][f"L{lay} {Path(path).name}"] = {**summarize([lp_diffs(mine, [r for r in ref if cz.row_key(r) in mine])]),
                                                        "fingerprint": cv.rows_fingerprint(rows)["sha256"]}
 
-    out = Path(a.out) if not a.stand_in else Path(a.out) / "stand-in"
+    out = Path(a.out) if a.out else (OUT if int(kit["KIT"]) == 1 else OUT / f"kit{kit['KIT']}")
+    if a.stand_in:
+        out = out / "stand-in"
     out.mkdir(parents=True, exist_ok=True)
     (out / "bars.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     f = lambda x: "-" if x is None else (f"{x:.4f}" if isinstance(x, float) else str(x))
-    lines = [f"census bars, measured {stamp} on {result['runtime'].get('device')}, layers {layers[0]}-{layers[-1]}"
-             + (" (stand-in)" if a.stand_in else ""), ""]
-    lines.append(f"{'variant':<20} {'answers':>7} {'same':>5} {'first':>6} {'prefix':>6} {'pieces':>6} {'median':>7} {'p99':>7} {'max':>7}")
-    for v in result["variants"] + [{"name": k, **x} for k, x in result["also"].items()]:
-        lines.append(f"{v['name'][:20]:<20} {v['answers']:>7} {v['identical']:>5} {f(v['first_piece']):>6} {f(v['prefix_median']):>6} "
-                     f"{v['lp_pieces']:>6} {f(v['lp_median']):>7} {f(v['lp_p99']):>7} {f(v['lp_max']):>7}")
-    lines.append("")
+    lines = [f"census bars, measured {stamp} on {result['runtime'].get('device')}, kit {kit['KIT']}, layers "
+             + " ".join(map(str, layers)) + (" (stand-in)" if a.stand_in else ""), ""]
+    for design, g in groups.items():
+        lines.append(f"{design} (the push in the {g['unit']} unit), layers {' '.join(map(str, g['layers']))}")
+        lines.append(f"{'variant':<20} {'answers':>7} {'same':>5} {'first':>6} {'prefix':>6} {'pieces':>6} {'median':>7} {'p99':>7} {'max':>7}")
+        for v in g["variants"]:
+            lines.append(f"{v['name'][:20]:<20} {v['answers']:>7} {v['identical']:>5} {f(v['first_piece']):>6} {f(v['prefix_median']):>6} "
+                         f"{v['lp_pieces']:>6} {f(v['lp_median']):>7} {f(v['lp_p99']):>7} {f(v['lp_max']):>7}")
+        if ok:
+            for stat, b in g["bars"].items():
+                lines.append(f"{stat}: floor {f(b['floor'])} ({b['floor_from']}); near misses "
+                             + ", ".join(f"{round(t['s'] * 100):g}% {f(t['M'])}{' ok' if t['qualifies'] else ''}" for t in b["near_misses"])
+                             + f" -> by the rule {b['bar']}"
+                             + (f", built to catch a push {round(b['miss_caught'] * 100):g}% off" if b["miss_caught"] else ", dropped"))
+            fp = g["first_piece"]
+            lines.append(f"first piece: the arithmetic-only variants keep at least {f(fp['lowest_arithmetic'])}; the near misses at most "
+                         + ", ".join(f"{k} {f(x)}" for k, x in fp["highest_near_miss"].items()) + f" -> {fp['bar']}"
+                         + (" (stands)" if fp["stands"] else " (moved)"))
+            for l in g["layers"]:
+                lb = g["by_layer"][str(l)]["bars"]
+                lines.append(f"  layer {l} alone: " + "; ".join(f"{stat} floor {f(lb[stat]['floor'])}, by the rule {lb[stat]['bar']}" for stat in STATS))
+        lines.append("")
+    for k, x in result["also"].items():
+        lines.append(f"{k[:20]:<20} {x['answers']:>7} {x['identical']:>5} {f(x['first_piece']):>6} {f(x['prefix_median']):>6} "
+                     f"{x['lp_pieces']:>6} {f(x['lp_median']):>7} {f(x['lp_p99']):>7} {f(x['lp_max']):>7}")
     if moved:
         lines.append(f"the control is not the home canaries' bits ({control['identical']} of {control['answers']} the same): "
                      "no bars are derived")
+    elif idle:
+        lines.append("a near miss wrote the control's own rows, so its push was not moved (" + ", ".join(idle) + "): no bars are derived")
     else:
-        for stat, b in result["bars"].items():
-            lines.append(f"{stat}: floor {f(b['floor'])} ({b['floor_from']}); near misses "
-                         + ", ".join(f"{round(t['s'] * 100):g}% {f(t['M'])}{' ok' if t['qualifies'] else ''}" for t in b["near_misses"])
-                         + f" -> bar {b['bar']} (was {result['old_bars'][stat]})"
-                         + (f", built to catch a push {round(b['miss_caught'] * 100):g}% off" if b["miss_caught"] else ", dropped"))
+        lines.append("what census_volunteer.OTHER_CLASS_BARS takes (a layer's own entry stands before its group's):")
+        for e in result["table"]:
+            lines.append(f"  {e['design']} at {' '.join(map(str, e['layers']))}: first piece {e['bars']['first_piece']}, "
+                         f"lp_median {e['bars']['lp_median']}, lp_p99 {e['bars']['lp_p99']} ({e['how']})")
     (out / "bars.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     print(f"-> {out / 'bars.json'}, {out / 'bars.txt'}; the rows in {rows_dir / stamp}")
-    return 0
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

@@ -500,6 +500,69 @@ def run_checks(tmp: Path) -> int:
           and not cv.judge(ok_cmp, False, {"orange": cv.baseline_part(hid, sure, [5, 9, 9])})[0]
           and cv.judge(ok_cmp, False, {"orange": cv.baseline_part(hid, sure, hid)})[0],
           "an unpushed answer parting at a near-tie is taken, at a sure piece refused, the same answer taken")
+    # the bars are a design's and a layer's: where none were measured a run is not judged; a dropped bar is not asked
+    table = [{"design": "match_ceil", "layers": [34], "bars": {"lp_median": 0.05}},
+             {"design": "match_ceil", "layers": [32, 33, 34], "bars": {"lp_median": 0.02, "lp_p99": None}}]
+    first = cv.accept_bars("break_rel", 45)
+    check(first == cv.ACCEPT_OTHER_CLASS and cv.accept_bars("break_rel", 45, table) is None and cv.accept_bars("match_ceil", 31, table) is None
+          and cv.accept_bars("match_ceil", 34, table)["lp_median"] == 0.05 and cv.accept_bars("match_ceil", 33, table)["lp_median"] == 0.02
+          and cv.accept_bars("match_ceil", 33, table)["lp_p99"] is None and cv.accept_bars("match_ceil", 33, table)["first_piece"] == 0.90,
+          "the bars are those measured for a run's design at its layer (a layer's own entry first), and none where none were measured")
+    far = {**ok_cmp, "lp_median": 0.03, "lp_p99": 0.9}
+    check(not cv.judge(far, False)[0] and cv.judge(far, False, None, cv.accept_bars("match_ceil", 34, table))[1] != []
+          and cv.judge({**far, "lp_p99": 0.1}, False, None, cv.accept_bars("match_ceil", 34, table))[0]
+          and not cv.judge(far, False, None, cv.accept_bars("match_ceil", 33, table))[0]
+          and cv.judge({**far, "lp_median": 0.01}, False, None, cv.accept_bars("match_ceil", 33, table))[0],
+          "a run is judged by the bars it is given, and a bar that was dropped is not asked")
+    if str(ROOT_DIR / "scripts") not in sys.path:
+        sys.path.insert(0, str(ROOT_DIR / "scripts"))
+    import census_bars as cb
+    from backend import atlas_ops as ao_
+
+    vs_ = cb.variants(64, [16, 32, 48])
+    st = lambda med, p99, fp=0.99, pieces=5000: {"lp_median": med, "lp_p99": p99, "first_piece": fp, "lp_pieces": pieces}  # noqa: E731
+    oct31 = {"control": st(0.0, 0.0, 1.0), "batch16": st(0.0121, 0.1484), "batch32": st(0.0130, 0.1611), "batch48": st(0.0127, 0.1642),
+             "batch64-full-sums": st(0.0129, 0.1688, 0.983), "push+1%": st(0.0191, 0.1778), "push-1%": st(0.0192, 0.1794),
+             "push+2%": st(0.0311, 0.2704), "push-2%": st(0.0297, 0.2751), "push+5%": st(0.0637, 0.5238, 0.915),
+             "push-5%": st(0.0593, 0.5342, 0.908), "push+10%": st(0.1150, 0.8102, 0.852), "push-10%": st(0.0980, 0.8107, 0.825)}
+    d = cb.derive(oct31, vs_)
+    fp_ = cb.first_piece(oct31, vs_, 0.90)
+    check(d["lp_median"]["bar"] == 0.028 and d["lp_median"]["miss_caught"] == 0.05 and d["lp_p99"]["bar"] == 0.37
+          and d["lp_p99"]["miss_caught"] == 0.10 and len(d["lp_median"]["near_misses"]) == 4 and fp_["bar"] == 0.90 and fp_["stands"]
+          and fp_["lowest_arithmetic"] == 0.983,
+          f"the bars' rule gives the bars of 31 October from that day's figures ({d['lp_median']['bar']}, {d['lp_p99']['bar']}, {fp_['bar']})")
+    low = {**oct31, "batch32": st(0.0130, 0.1611, 0.91)}
+    thin = {n: {**x, "lp_pieces": 150} for n, x in oct31.items()}
+    check(cb.first_piece(low, vs_, 0.90)["bar"] == 0.86 and not cb.first_piece(low, vs_, 0.90)["stands"]
+          and cb.derive(thin, vs_, floor_min_pieces=200)["lp_median"]["floor"] is None and cb.derive(thin, vs_)["lp_median"]["bar"] is None,
+          "the first-piece bar moves under arithmetic that keeps fewer first pieces; a layer too thin to read has no floor of its own")
+
+    def grp(pooled: Dict[str, Any], layers: List[int], one: Dict[int, Dict[str, Any]]) -> Dict[str, Any]:
+        return {"layers": layers, "bars": cb.derive(pooled, vs_), "first_piece": cb.first_piece(pooled, vs_, 0.90),
+                "by_layer": {str(l): {"bars": cb.derive(one[l], vs_, floor_min_pieces=200)} for l in layers}}
+
+    loud = {**oct31, "batch32": st(0.0130, 0.40)}  # one layer whose own arithmetic reaches the group's p99 bar
+    worse = {**oct31, "batch32": st(0.0300, 0.1611)}  # arithmetic alone over the first median bar
+    tbl = cb.decide({"break_rel": grp(oct31, [39, 51], {39: oct31, 51: oct31}),
+                     "match_ceil": grp(oct31, [33, 34], {33: oct31, 34: loud})}, "2026-11-14", 0.90)
+    tbl2 = cb.decide({"break_rel": grp(worse, [39, 51], {39: worse, 51: worse})}, "2026-11-14", 0.90)
+    check([(e["design"], e["layers"]) for e in tbl] == [("break_rel", [39, 51]), ("match_ceil", [34]), ("match_ceil", [33, 34])]
+          and tbl[0]["bars"] == {"lp_median": 0.028, "lp_p99": 0.37, "first_piece": 0.90} and "stand" in tbl[0]["how"]
+          and tbl[1]["bars"]["lp_p99"] != tbl[2]["bars"]["lp_p99"] and tbl[1]["bars"]["lp_median"] == tbl[2]["bars"]["lp_median"] == 0.028
+          and cv.accept_bars("match_ceil", 34, tbl)["lp_p99"] == tbl[1]["bars"]["lp_p99"]
+          and cv.accept_bars("match_ceil", 33, tbl)["lp_p99"] == 0.37
+          and "do not hold" in tbl2[0]["how"] and tbl2[0]["bars"]["lp_median"] == cb.derive(worse, vs_)["lp_median"]["bar"] != 0.028,
+          "the bars' table: break_rel's first bars stand where they still part arithmetic from the near miss and give way where "
+          f"they do not, and a layer whose own arithmetic reaches its group's bar takes its own ({[(e['layers'], e['bars']) for e in tbl]})")
+    kept_ceiling = ao_.Weights.write_ceiling
+    with cb.push_scaled(True, 1.05):
+        inside = ao_.Weights.write_ceiling is not kept_ceiling
+    with cb.push_scaled(False, 1.05):
+        stream_untouched = ao_.Weights.write_ceiling is kept_ceiling
+    with cb.push_scaled(True, 1.0):
+        one_untouched = ao_.Weights.write_ceiling is kept_ceiling
+    check(inside and stream_untouched and one_untouched and ao_.Weights.write_ceiling is kept_ceiling,
+          "a near miss scales the write ceiling only under the ceiling unit, only off 1, and puts it back")
     # a bundle whose secret does not give its claim
     bad = tmp / "badsecret"
     bad.mkdir()
