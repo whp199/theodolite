@@ -25,7 +25,7 @@ Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 48 | 49 | done | anon 5cd76843 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
-| 51 | 52 | OPEN |  |  |  | break_rel; its trial passed, 12 November 2026 |
+| 51 | 52 | reserved | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB | start by 2026-11-15T17:09Z |  |
 | 52 | 53 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
 | 53–59 | 54–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
@@ -38,4 +38,4 @@ Judged:
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T01:01Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T05:09Z.

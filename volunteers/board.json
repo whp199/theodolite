@@ -60,7 +60,10 @@
   6773958548,
   6788168275,
   6801631208,
-  6831369005
+  6831369005,
+  6869497798,
+  6869505545,
+  6870968251
  ],
  "claims": [
   {
@@ -567,6 +570,24 @@
    "size": "458MB",
    "link": "https://github.com/Asynonymous/census-L50/releases/download/L50-break_rel-b153da82/L50-break_rel-b153da82.tar",
    "note": "10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates"
+  },
+  {
+   "code": "6d708804",
+   "layer": 51,
+   "name": "eigentactics",
+   "card": "NVIDIA GeForce RTX 3090 24 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-14T05:09Z",
+   "state": "reserved",
+   "events": [
+    {
+     "at": "2026-11-14T05:09Z",
+     "via": "github",
+     "what": "claim=6d708804 card=NVIDIA GeForce RTX 3090 24 GB name=eigentactics kit=4",
+     "verb": "RESERVE"
+    }
+   ]
   }
  ],
  "layers": {
@@ -833,5 +854,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-14T01:01Z"
+ "updated_at": "2026-11-14T05:09Z"
 }
