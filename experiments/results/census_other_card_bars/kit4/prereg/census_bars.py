@@ -276,8 +276,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         rt, _vault = stand_in()
     else:
         free, total = torch.cuda.mem_get_info()
-        if free < 26 * 2**30:
-            raise SystemExit(f"Only {free / 2**30:.1f} GB of the card is free: stop the :8765 server and any census first.")
+        # what the kit itself asks free for a layer at its batch (KIT_MIN_FREE_VRAM_MIB; 26 GiB before 14 November 2026,
+        # which a desktop holding 5 GB of the home card left short by a hair, twice, with nothing of ours on the card)
+        need = int(kit.get("KIT_MIN_FREE_VRAM_MIB") or 26 * 1024) * 2**20
+        if free < need:
+            raise SystemExit(f"Only {free / 2**30:.1f} GB of the card is free (the kit asks {need / 2**30:.1f}): stop the :8765 "
+                             "server and any census first.")
         from backend.runtime_factory import make_runtime
 
         rt = make_runtime(load_jlens=False).load()

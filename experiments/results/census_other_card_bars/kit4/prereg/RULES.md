@@ -3,6 +3,14 @@
 Fixed on 14 November 2026 (the owner's word: "Bars first"), before any measurement here was taken and before any
 spot chunk of any kit 4 bundle was drawn (SHA256SUMS beside this file; `prereg_at`; `repo_commit`).
 
+**Amended on 14 November 2026, 17:16Z, before anything was measured** (the first hashes are in commit 84a7b3a). The
+script refused to start, twice (17:14Z and 17:15Z), and wrote nothing: it asked 26 GiB of the card free, a guard
+against a server or a census left running, and the desktop (the compositor, a browser, Steam) held 5.1 GB, which left
+26.0. It now asks what kit 4 itself asks of a card before a layer at batch 64 (`KIT_MIN_FREE_VRAM_MIB`, 23,900 MiB,
+measured on this card on 14 November for the 24 GB cards). Those lines of `census_bars.py` are the only change; the
+variants, the rule and what the measurement decides are as first fixed, and no answer of any variant had been
+written.
+
 **Why.** A volunteer's run from a card that does not write the home card's bits is taken if, on a few chunks written
 again at home, its answers stay within set distances of the home card's (`census_volunteer.ACCEPT_OTHER_CLASS`). The
 two log-probability distances were measured on the home card on 31 October 2026, at layers 40 to 50, under
