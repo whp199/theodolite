@@ -63,7 +63,11 @@
   6831369005,
   6869497798,
   6869505545,
-  6870968251
+  6870968251,
+  6872261621,
+  6872297234,
+  6872381688,
+  6873601845
  ],
  "claims": [
   {
@@ -579,15 +583,65 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-14T05:09Z",
-   "state": "reserved",
+   "state": "running",
    "events": [
     {
      "at": "2026-11-14T05:09Z",
      "via": "github",
      "what": "claim=6d708804 card=NVIDIA GeForce RTX 3090 24 GB name=eigentactics kit=4",
      "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-14T13:50Z",
+     "via": "github",
+     "what": "claim=6d708804 bits=own card=NVIDIA GeForce RTX 3090 24 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-14T13:50Z",
+     "via": "github",
+     "what": "claim=6d708804 done=4% eta=2026-11-15T20:30Z",
+     "verb": "PROGRESS"
     }
-   ]
+   ],
+   "started_at": "2026-11-14T13:50Z",
+   "bits": "own",
+   "done": "4%",
+   "eta": "2026-11-15T20:30Z"
+  },
+  {
+   "code": "eaef4eff",
+   "layer": 34,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-14T13:50Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-14T13:50Z",
+     "via": "github",
+     "what": "claim=eaef4eff card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=4",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-14T13:50Z",
+     "via": "github",
+     "what": "claim=eaef4eff bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-14T13:50Z",
+     "via": "github",
+     "what": "claim=eaef4eff done=14% eta=2026-11-14T18:08Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-14T13:50Z",
+   "bits": "own",
+   "done": "14%",
+   "eta": "2026-11-14T18:08Z"
   }
  ],
  "layers": {
@@ -854,5 +908,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-14T05:09Z"
+ "updated_at": "2026-11-14T13:50Z"
 }

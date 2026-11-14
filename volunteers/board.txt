@@ -3,7 +3,7 @@ L0–30 not taken
 L31 not taken
 L32 OPEN
 L33 OPEN
-L34 OPEN
+L34 running anon eaef4eff NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 14%, ends ~2026-11-14T18:08Z
 L35 OPEN
 L36 closed
 L37 OPEN
@@ -20,10 +20,10 @@ L47 done (ReimusArmpit 2f018a18)
 L48 done (anon 5cd76843)
 L49 done (home card)
 L50 done (anon b153da82)
-L51 reserved eigentactics 6d708804 NVIDIA GeForce RTX 3090 24 GB start by 2026-11-15T17:09Z
+L51 running eigentactics 6d708804 NVIDIA GeForce RTX 3090 24 GB 4%, ends ~2026-11-15T20:30Z
 L52 OPEN
 L53–59 not taken
 
-8 open. To take one: https://github.com/whp199/theodolite/issues/1
+7 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

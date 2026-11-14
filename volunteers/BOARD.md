@@ -8,7 +8,7 @@ Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 31 | 32 | not taken |  |  |  | its trial failed, 13 November 2026 (match_ceil): not taken |
 | 32 | 33 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 33 | 34 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
-| 34 | 35 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 34 | 35 | running | anon eaef4eff | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 14%, ends ~2026-11-14T18:08Z |  |
 | 35 | 36 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 36 | 37 | closed |  |  |  | match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: the home card is taking it |
 | 37 | 38 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
@@ -25,7 +25,7 @@ Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 48 | 49 | done | anon 5cd76843 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
-| 51 | 52 | reserved | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB | start by 2026-11-15T17:09Z |  |
+| 51 | 52 | running | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB | 4%, ends ~2026-11-15T20:30Z |  |
 | 52 | 53 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
 | 53–59 | 54–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
@@ -38,4 +38,4 @@ Judged:
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T05:09Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T13:50Z.
