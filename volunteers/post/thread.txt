@@ -1,9 +1,9 @@
 >mapping what every MLP neuron of Gemma-4-31B writes
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
->11 layers done (40-50), 6 of them by volunteers. thanks to everyone who ran one
->kit 3: a layer outside those gets a 70-min trial on our card first, with push strengths sized for it
+>11 layers done (40-50), 6 by volunteers. thanks to all who ran one
+>new: 24 GB cards can take a layer (3090, 4090), thanks to a contributor's PR
+>a layer outside 40-50 gets a 70-min trial on our card first
 >ten passed, nine are open now: 32-35, 37-39, 51, 52
->nothing passes at 0-31 or 53-59 yet
 
 what you get when the atlas is published:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side
@@ -12,11 +12,11 @@ what you get when the atlas is published:
 - your name on the first public neuron map of a 31B, and you name your layer's strongest neurons
 - ready now: any neuron as a llama.cpp control vector for your own frontend (keep the scale near 1)
 
-needs: one NVIDIA card 24GB+ (5090, 4090, 3090, PRO 6000, A6000, A100, H100...), CUDA 13 driver, Linux, ~60 GB disk. a 24 GB card must be headless (no desktop on it)
-time: ~13 h a layer on a 5090 + ~1 h setup. stop and resume any time
+needs: one NVIDIA card 24GB+ (3090, 4090, 5090, A6000, PRO 6000...), CUDA 13 driver, Linux, ~60 GB disk. a 24 GB card must be headless: nothing else on it
+time: ~13 h a layer on a 5090, ~43 h on a 3090, + ~1 h setup. stop and resume any time
 
-git clone https://github.com/whp199/theodolite && cd theodolite && git checkout census-kit-3
-(ran kit 1 or 2? in your checkout: git fetch --tags && git checkout census-kit-3, downloads are reused)
+git clone https://github.com/whp199/theodolite && cd theodolite && git checkout census-kit-4
+(ran an earlier kit? git fetch --tags && git checkout census-kit-4, downloads are reused)
 scripts/volunteer/census.sh check
 scripts/volunteer/census.sh reserve 34   <- an OPEN layer; post the RESERVE line it prints
 scripts/volunteer/census.sh setup

@@ -1092,6 +1092,20 @@ layers, the determinism run and the sampled push on 29 October). In this section
     has been taken with `match_ceil` or `soft_ceil`, on any card; the reader for a whole layer taken with them is
     not written (the trials’ is `ceil_read.py`); and whether the intake carries a volunteer card’s own writer
     floor through to the page is not checked.
+  - **Kit 4: kit 3 opened to 24 GB cards** (cut 14 November 2026, tag `census-kit-4`; the owner’s word that day:
+    “Definitely need to incorporate the 24gb PR if it will work”). The pull request (whp199/theodolite#2, by
+    bethanylong and her agent) makes two changes. `census.sh check` asks for 23,900 MiB free as well as a card of
+    24,000 MiB. And the loader puts the vision tower on the CPU, where it is dropped, so it no longer sets the load’s
+    peak on the card. It works here. On the home card with all but 23,900 MiB held aside, the six worst batches a
+    layer can write (every row to 48 word-pieces) were written with 217 MiB to spare; with all but 23,600 they ran
+    out of memory at the second; with as much free as a headless RTX 3090 has (24,124 MiB) the least to spare was
+    721 MiB (`scripts/measure_batches.py --hold-mib`, 14 November; the author measured 768 MiB to spare on a 3090
+    itself). The answers are the same: all seventeen of kit 3’s home canaries, taken again with the new loader, are
+    the ones kept, and layer 45’s is kit 1’s. It is a new kit because the kit’s file changed. Its layers, designs,
+    board and canaries are kit 3’s, which was live for about an hour and had no claim. A 24 GB layer is a card class
+    of its own, read against its own controls and spot-checked as the RTX PRO 6000 layers were; a 3090 takes about
+    43 hours a layer, by the author’s sixteenth of layer 45. *Not shown yet:* a whole layer from a 24 GB card
+    through the intake, and a 4090.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at

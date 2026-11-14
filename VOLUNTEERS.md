@@ -14,7 +14,7 @@ opened on the board; one whose trial fails is not taken. The first push strength
 further out. At 38 the same push is three times the most a neuron can write, and the text breaks; at 52 it is barely
 once, and the gentler half of the answers hardly moves.
 
-**Kit 3 gives each layer the push strengths whose trial passed there.** Two newer designs count the push in what each
+**Since kit 3 each layer is taken with the push strengths whose trial passed there.** Two newer designs count the push in what each
 neuron can write by itself, its *write ceiling*:
 
 | Layers | Push strengths | Its trial |
@@ -29,6 +29,10 @@ layer 34 passed by the most, and layer 36 by a thousandth on one of its three ch
 and is not on offer. Layer 31 failed its trial, and no push
 strengths have passed a trial at layers 0 to 30 or 53 to 59, so those are not taken yet. **The board says which layers
 are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
+
+**Kit 4, the kit to use now, is kit 3 opened to 24 GB cards** (14 November 2026, from a contributor's pull request).
+The layers, the push strengths and the answers are the same. The loader keeps a part of the model the census never
+reads off the card, and `census.sh check` asks how much of the card is free.
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 
@@ -59,8 +63,10 @@ chats, you try for yourself.
 - **One NVIDIA card with at least 24 GB**, for example an RTX 5090, RTX 4090 or 3090, RTX PRO 6000, A6000, 6000 Ada,
   L40S, A100, H100 or H200. The 4-bit model rests at about 18 GiB on the card and a batch of answers takes up to about
   4.2 GiB more; it is not split across cards. **A 24 GB card must be headless**: no desktop or other process on it,
-  since the longest batches leave only about 300 MiB of a 3090's free memory (`census.sh check` asks for 23,900 MiB
-  free). A 3090 has been measured; a 4090 has not yet been tried.
+  since the longest batches leave under a GiB of its free memory: about 800 MiB on a headless RTX 3090, and about
+  200 MiB on our own 5090 held down to the 23,900 MiB free that `census.sh check` asks for. A run that runs out of
+  memory stops and is continued by the same command; it never changes its batch. A 3090 has been measured; a 4090
+  has not yet been tried.
 - **A driver for CUDA 13**: `nvidia-smi` shows `CUDA Version: 13.0` or later (driver 580 or newer).
 - **Linux**, about **60 GB** free disk, 32 GB of memory, and `git`, `curl`, `zstd`, `tar` and `flock` (util-linux),
   and a C compiler (`gcc`), which Triton may need for its kernels.
@@ -80,7 +86,7 @@ below.
 ```bash
 mkdir -p ~/theodolite-census && cd ~/theodolite-census
 git clone https://github.com/whp199/theodolite.git && cd theodolite
-git checkout census-kit-3
+git checkout census-kit-4
 scripts/volunteer/census.sh check                      # can this machine take a layer?
 ```
 
@@ -157,13 +163,13 @@ for someone else.
 
 ```bash
 cd ~/theodolite-census/theodolite          # logos-theodolite, in a checkout cloned before the repository was renamed
-git fetch --tags && git checkout census-kit-3
+git fetch --tags && git checkout census-kit-4
 scripts/volunteer/census.sh check
 ```
 
-Kit 3 pins the same Python packages, the same checkpoint and the same stats index as kits 1 and 2, so `setup` finds
+Kit 4 pins the same Python packages, the same checkpoint and the same stats index as kits 1 to 3, so `setup` finds
 them and has little left to do. Run it once anyway, then go on from step 1 with a new `reserve`: a claim made with an
-earlier kit does not carry over, and the board refuses a line made with one. Layers 39 and 51 are taken with kit 3
+earlier kit does not carry over, and the board refuses a line made with one. Layers 39 and 51 are taken with kit 4
 now, by the same command kit 2 took them with.
 
 ## The rules
@@ -264,8 +270,8 @@ drawn on the map without gilt.
 - **`reserve` says the layer is not open**: the board shows it waiting for its trial, not taken, or held by someone
   else. Pick a layer shown OPEN.
 - **`reserve` says the board is another kit's**: your checkout is at an older tag. `git fetch --tags && git checkout
-  census-kit-3`, then reserve again.
-- **The canary refuses "other settings"**: the checkout isn't at `census-kit-3`, or the stats index isn't the kit's.
+  census-kit-4`, then reserve again.
+- **The canary refuses "other settings"**: the checkout isn't at `census-kit-4`, or the stats index isn't the kit's.
 - **The run stopped**: run the same `census.sh run` again. The log is `~/theodolite-census/logs/L<layer>-<design>.log`
   (`L34-match_ceil.log`).
 - **Out of memory**: close everything else on the card. The batch is fixed at 64, so a card that can't hold it
@@ -292,9 +298,9 @@ llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-
   those are the scales the census read there. For several neurons: `--set 45:13641,44:801:-0.5 -o mix.gguf`.
 - **What it reads**: two tensors of the layer and the 31 MB stats index, on the CPU, in seconds. Nothing is downloaded.
   - With the kit set up, run `. ~/theodolite-census/env.sh` first: it finds the checkpoint and the stats index you
-    already have. Kit 2's and kit 3's checkouts hold the script; run it there with the kit's Python
+    already have. Checkouts of kit 2 and later hold the script; run it there with the kit's Python
     (`~/theodolite-census/theodolite/.venv/bin/python`). It writes one new file and changes none, so the checkout
-    stays as `census.sh` needs it. (Kit 1's tag is older than the script: check out `census-kit-3`.)
+    stays as `census.sh` needs it. (Kit 1's tag is older than the script: check out `census-kit-4`.)
   - Without the kit: add `--gguf` with your own GGUF of Gemma-4-31B-it and `--stats` with the kit's stats index
     (`https://github.com/whp199/theodolite/releases/download/census-kit-1/act_scale.npz`, sha256
     `23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa`). It needs Python 3.12 with numpy, torch (the

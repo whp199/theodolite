@@ -1,5 +1,5 @@
 {
- "kit": 3,
+ "kit": 4,
  "repo": "whp199/theodolite",
  "issue": 1,
  "seen_comments": [
@@ -782,7 +782,7 @@
   },
   "36": {
    "state": "closed",
-   "note": "match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: held for the home card"
+   "note": "match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: the home card is taking it"
   },
   "37": {
    "state": "open",
@@ -833,5 +833,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-14T00:38Z"
+ "updated_at": "2026-11-14T01:01Z"
 }

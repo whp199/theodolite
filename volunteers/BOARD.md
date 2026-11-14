@@ -1,6 +1,6 @@
 # The census: which layer is whose
 
-Kit 3 (census-kit-3). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and no push strengths have passed a trial there.
+Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and no push strengths have passed a trial there.
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
@@ -10,7 +10,7 @@ Kit 3 (census-kit-3). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 33 | 34 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 34 | 35 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 35 | 36 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
-| 36 | 37 | closed |  |  |  | match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: held for the home card |
+| 36 | 37 | closed |  |  |  | match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: the home card is taking it |
 | 37 | 38 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 38 | 39 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
 | 39 | 40 | OPEN |  |  |  | break_rel; its trial passed, 12 November 2026 |
@@ -38,4 +38,4 @@ Judged:
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T00:38Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T01:01Z.
