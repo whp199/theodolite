@@ -984,9 +984,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
        gated. A design’s layers are listed, not spanned: `soft_ceil` was never tried between 38 and 52, and is
        not calibrated there. The card’s `doses_calibrated_layers` lists every layer; the page, the lexicon, the
        scientist’s prompt and the depth report say where each design is calibrated. No whole layer has been taken
-       with either new design yet. Kit 3, which offers the eight layers to volunteers, is prepared on the branch
-       `kit-3` and is not cut: main keeps kit 2’s files while layers 39 and 51 are open under it, because a
-       volunteer’s `reserve` reads the board from main.
+       with either new design yet. Kit 3 offers seven of the eight to volunteers since 14 November 2026; layer 36
+       is held for the home card (below).
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -1057,8 +1056,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
       neurons the same night (step 3). Layer 36 passes with its own doses the next morning, one gate by a
       thousandth, layer 35 with more room, layers 34 and 33 widely, layer 32 with less; layer 31 fails that
       afternoon and the walk stops there (step 3).
-      The doses are counted calibrated at the eight layers that passed since that evening (step 3), and kit 3 is
-      prepared on the branch `kit-3`, not cut.
+      The doses are counted calibrated at the eight layers that passed since that evening (step 3), and kit 3
+      was cut on 14 November 2026 (below).
   - **Kit 2: the other forty-nine, opened a layer at a time** (cut 12 November 2026, tag `census-kit-2`;
     `VOLUNTEERS.md`). The same command as kit 1 at every layer left; what changed is the layers, the tag and the
     addresses, nothing that writes an answer. The board gained two states, *trial first* and *not taken*, and only
@@ -1067,8 +1066,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
     Layer 45’s, taken again there, is kit 1’s canary bit for bit, so the code still writes kit 1’s answers; and the
     eleven old canaries against their whole runs are the same at the six layers of the home card’s bits (40, 41, 43,
     45, 46, 49) and not at the five taken on RTX PRO 6000 cards, as their class says. Opened that day: 39 and 51.
-  - **Kit 3: a design for each layer** (prepared 13 November 2026 on the branch `kit-3`, not cut; `VOLUNTEERS.md`
-    there). Kits 1 and 2 took every layer with one design. Kit 3’s file names one a layer (`volunteers/kit.env`,
+  - **Kit 3: a design for each layer** (cut 14 November 2026, tag `census-kit-3`; `VOLUNTEERS.md`). Kits 1 and 2 took every layer with one design. Kit 3’s file names one a layer (`volunteers/kit.env`,
     `KIT_DESIGNS`): `match_ceil` at 32–37, `soft_ceil` at 38 and 52, and `break_rel` still at 39 and 51, which
     stay open through the change and are taken by the command kit 2 took them with. Layers 53–59 are named with
     `soft_ceil` so that one whose trial passes later can be opened without a new kit; none has been trialled with
@@ -1080,15 +1078,20 @@ layers, the determinism run and the sampled push on 29 October). In this section
     it: the canary step’s second half, the writer’s floor, refused `match_ceil` by name, so no volunteer could
     have taken a canary at 32–37; mended. `check_volunteer_kit` now runs a kit of two designs end to end on the
     stand-in, and checks that a kit of one design is still read as kits 1 and 2 were (61 checks, 53 before).
-    *Not done, and why it is not cut.* The home canaries of its seventeen layers are not taken (the card is
-    building the steer lens). They are taken at the kit’s commit, with layers 39 and 51 taken again to show the
-    code still writes kit 2’s bits there, and 45 for kit 1’s. The tag `census-kit-3` does not exist, and nothing
-    is published: the board’s issue and the thread are as they were. The kit lives on a branch because a
-    volunteer’s `reserve` reads the board from main: kit 3’s board there would turn kit 2’s volunteers away from
-    layers 39 and 51 before kit 3 could be checked out. Nothing of it was run on the 31B. *The owner’s, at the
-    cut:* the word to cut (merge, canaries, tag, push, board; the thread post is the owner’s to post); which of
-    the eight to open, since layer 36 passed by a thousandth on one gate and few neurons stand out singly at 35
-    and 36; and whether PR #2 (24 GB cards), which changes the kit’s file, goes into this kit.
+    *The cut* (14 November 2026; the owner’s word, “Yes, cut it”, with layer 36 held for the home card, since it
+    passed one gate by a thousandth). It was prepared on a branch, because a volunteer’s `reserve` reads the board
+    from main and kit 3’s board there would have turned kit 2’s volunteers away from layers 39 and 51; no one had
+    claimed either when the kit was cut. The home canaries were taken on the home card at the kit’s merged commit,
+    00:27Z to 00:37Z: fifteen new ones (`match_ceil` at 32–37, `soft_ceil` at 38 and 52–59), each written twice
+    and the same both times; layers 39 and 51 taken again and the same as kit 2’s; layer 45 taken again and the
+    same as kit 1’s. A second fault was found in the taking: the command stopped at layers 39 and 51, whose
+    canaries kit 2 left in the folder and the writer will not write over. It now takes a kept canary again beside
+    the one kept and compares them, and fails if they differ (`check_volunteer_kit`, 63 checks). Nine layers are
+    open on the board: 32–35, 37–39, 51 and 52. Layer 36 is closed, held for the home card;
+    `census_board.py layer 36 open` offers it. PR #2 (24 GB cards) is not in this kit. *Not done:* no whole layer
+    has been taken with `match_ceil` or `soft_ceil`, on any card; the reader for a whole layer taken with them is
+    not written (the trials’ is `ceil_read.py`); and whether the intake carries a volunteer card’s own writer
+    floor through to the page is not checked.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at

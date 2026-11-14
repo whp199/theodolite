@@ -25,7 +25,8 @@ neuron can write by itself, its *write ceiling*:
 
 The script picks the right one for the layer you take; there is nothing to choose. The trials did not pass equally:
 layer 34 passed by the most, and layer 36 by a thousandth on one of its three checks
-(`experiments/results/census_scaled_design/MATCH.md` has every figure). Layer 31 failed its trial, and no push
+(`experiments/results/census_scaled_design/MATCH.md` has every figure). So layer 36 is held for our own card for now
+and is not on offer. Layer 31 failed its trial, and no push
 strengths have passed a trial at layers 0 to 30 or 53 to 59, so those are not taken yet. **The board says which layers
 are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
 
@@ -231,8 +232,8 @@ with each other, the card is named.
 **A layer outside 40 to 50** is read, once it is accepted, by the same three checks its trial was read by: the whole
 reading against layer 45's gates, the gentler push's answers alone, and the neurons whose text survives as the random
 directions' does (the rules are in `experiments/results/census_neighbour_trials/prereg/`, `census_soft_trials/prereg/`
-and `census_match_walk/prereg/`). The push strengths are counted calibrated at each of the ten layers this kit opens
-with. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
+and `census_match_walk/prereg/`). The push strengths are counted calibrated at each of the ten layers whose trial passed. The
+kit opens with nine of them; layer 36 is held for our own card. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
 drawn on the map without gilt.
 
 ## What you send, and what runs on your machine

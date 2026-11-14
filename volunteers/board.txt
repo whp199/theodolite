@@ -5,7 +5,7 @@ L32 OPEN
 L33 OPEN
 L34 OPEN
 L35 OPEN
-L36 OPEN
+L36 closed
 L37 OPEN
 L38 OPEN
 L39 OPEN
@@ -24,6 +24,6 @@ L51 OPEN
 L52 OPEN
 L53–59 not taken
 
-10 open. To take one: https://github.com/whp199/theodolite/issues/1
+9 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

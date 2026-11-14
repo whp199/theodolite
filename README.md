@@ -69,7 +69,8 @@ trialled on 13 November 2026 (ROADMAP §vi). One with two fixed counts passes at
 board) and fails at 38. One whose two counts are set a layer at a time, where the next word-piece moves by a fixed
 amount, passes at layers 33–38 (32–37 on the board) and fails at 32. The doses are counted calibrated at those eight
 layers, and a third kit offers them to volunteers beside layers 40 and 52, each with the design that passed there
-([VOLUNTEERS.md](VOLUNTEERS.md)). The other thirty-nine layers (1–32 and 54–60) have no design that passed there. Where a census’s doses are not counted
+([VOLUNTEERS.md](VOLUNTEERS.md)); layer 37 (36 on the board), which passed one check by a thousandth, is held for the
+home card. The other thirty-nine layers (1–32 and 54–60) have no design that passed there. Where a census’s doses are not counted
 calibrated the atlas marks it “doses not calibrated at this layer” and inks it without gilt.
 
 <table>

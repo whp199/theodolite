@@ -781,8 +781,8 @@
    "note": "match_ceil; its trial passed, 13 November 2026"
   },
   "36": {
-   "state": "open",
-   "note": "match_ceil; its trial passed, 13 November 2026"
+   "state": "closed",
+   "note": "match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: held for the home card"
   },
   "37": {
    "state": "open",
@@ -833,5 +833,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-13T15:45Z"
+ "updated_at": "2026-11-14T00:38Z"
 }

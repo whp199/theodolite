@@ -2,7 +2,7 @@
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
 >11 layers done (40-50), 6 of them by volunteers. thanks to everyone who ran one
 >kit 3: a layer outside those gets a 70-min trial on our card first, with push strengths sized for it
->ten passed and are open now: 32-39, 51, 52
+>ten passed, nine are open now: 32-35, 37-39, 51, 52
 >nothing passes at 0-31 or 53-59 yet
 
 what you get when the atlas is published:

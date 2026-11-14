@@ -107,29 +107,57 @@
   "answers": 64,
   "sha256": "611421adb9a58a9ae416c643ef2ef83d69f4d8ea4877a849f7f8353536742375"
  },
+ "L32-match_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "bb098940c8794c836dfa409d3d7abca54f31b27702b7c5970aed67856311f21a"
+ },
  "L33-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "60b41b86664fe744f953fceac4654d34e90ce313c2ab61168783daa90ff651a2"
+ },
+ "L33-match_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "e4a7d5101ce2fbb278b8ce663600f5ad1d3c656a168e6bc71a02addea3c7ddaf"
  },
  "L34-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "997e32de4f161bf64987a5292f416c860d14cbbe4fbe126d10d4c3143a4be54a"
  },
+ "L34-match_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "28037915e81e1cc671e169d8cb8c4ca5930fbb4c218d3eaccd5f4b7297098dc4"
+ },
  "L35-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "842e951b36af892c42e5d1e5335c7bacf339b62eaf4f4bcfb59d0b0c25cb84dc"
+ },
+ "L35-match_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "bc9fa332ef39aaf57b8a3e5f992d67d102e7d1f30b644c6b4750f2383b0adfb6"
  },
  "L36-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "1ac76a9df751c9bb6c9d93881dcff47337449aff9d2ed53d8d9079d276a9ef14"
  },
+ "L36-match_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "193823917cb31576b1d04021a1a94d10f7f2b5a64770f91d166fd2d22f1fe61b"
+ },
  "L37-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "5ddec63895a9940482d51d0a972344bc139c9329d9aa79235de778550bdccf19"
  },
+ "L37-match_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "dc14436d3e859bd229d4f227e95f697e403c06f927f56c2ff351c559ae610315"
+ },
  "L38-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "378b4f464837d7ef331d17060dac680095dab9de16b32c4201886954f177e023"
+ },
+ "L38-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "f3d6e9efc13758897649c45159d2addbba44f57c4f8df67acf548122b6cfdb41"
  },
  "L39-break_rel.canary.jsonl": {
   "answers": 64,
@@ -195,33 +223,65 @@
   "answers": 64,
   "sha256": "514be770e88f8389bc3d0a4e27b8689ae694a258579322637ad1ec70d35840b6"
  },
+ "L52-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "29dd7bd44903a948c04b8ccb389ebc40851791a0109ef2df1839102fd6a4edca"
+ },
  "L53-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "af923b840a1f4c1f9ce1db5d51461d2853da0e9ec44e9c6a0678024677fbf7db"
+ },
+ "L53-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "f0b91edb5d3547405fe9295bba037e60649ea1521aed9d611b66216ca9185393"
  },
  "L54-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "76d748a9eca9f91bc0adbd76c03abbf56e3e6396a7e01fbdf6c78338b8982563"
  },
+ "L54-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "b6fa65bc1eba92c36653fb32ca3a63457a3ae252393ec4482066f4231f3ca102"
+ },
  "L55-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "9d4d036f5ee3ba2335834863e66a87f1d51fa9b6000f7257411f0ea509ec36f1"
+ },
+ "L55-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "a071b3b667f1e5af9302461e59bd1ed36cf8dc6bd54aaf7c8b7ded385062185b"
  },
  "L56-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "7cc7b2363d09b8a201e9ae502ea80112b64c732de4d882ae71e27b2a86b1631f"
  },
+ "L56-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "bd6ef5d3f69370fec2302fe0c71739fa51fd1b80e66e1a35ef17db8f883f2541"
+ },
  "L57-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "116d436a209d460e7895a43ac60af4636f3cb7b3c23d9d0b3e3cda741e01a5a3"
+ },
+ "L57-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "ce7fb33ea5aafba5f3a6aea9c908a7a7a23cc1618aa021f701ac2dae41678965"
  },
  "L58-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "6e631922fa527183b2403484912f1f1a9fd16616b21fc2892e111a6e5a92d8b0"
  },
+ "L58-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "73f2da94d8ea377e770489764084df782f3586285eefb191de16a1183c415c16"
+ },
  "L59-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "e75fdf92209139f0f1d0dbb7a45fc5e839b957e2d0101d97e7163180c1e10508"
+ },
+ "L59-soft_ceil.canary.jsonl": {
+  "answers": 64,
+  "sha256": "b5828e2df724024227d15da4034991b35f8a2acd0cee4ab59262141f020eb054"
  },
  "L6-break_rel.canary.jsonl": {
   "answers": 64,

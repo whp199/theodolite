@@ -10,7 +10,7 @@ Kit 3 (census-kit-3). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 33 | 34 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 34 | 35 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 35 | 36 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
-| 36 | 37 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 36 | 37 | closed |  |  |  | match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: held for the home card |
 | 37 | 38 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 38 | 39 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
 | 39 | 40 | OPEN |  |  |  | break_rel; its trial passed, 12 November 2026 |
@@ -38,4 +38,4 @@ Judged:
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-13T15:45Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T00:38Z.
