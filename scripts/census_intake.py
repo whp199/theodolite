@@ -41,6 +41,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -85,7 +86,10 @@ def run(cmd: List[str], **kw: Any) -> subprocess.CompletedProcess:
 
 def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     """Each kit layer's canary on this card, taken with the design the kit names for that layer, and the six unpushed
-    answers a volunteer's are set against."""
+    answers a volunteer's are set against. A canary already in the folder is never written over (the writer refuses
+    one taken by other code): a layer carried over from an earlier kit, or taken by this command before, is taken
+    again into a scratch folder and set against the one kept, every field of every answer. If any differs the command
+    says which and fails: the code no longer writes the bits that kit's volunteers were checked against."""
     wrong = cv.kit_problems(kit)
     if wrong:
         raise SystemExit("The kit's layers and designs do not hold together: " + "; ".join(wrong))
@@ -99,13 +103,30 @@ def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     by_design: Dict[str, List[int]] = {}
     for layer in asked:
         by_design.setdefault(cv.kit_design(kit, layer, a.design or None), []).append(layer)
-    taken: List[Path] = []
+    taken: List[Path] = []   # written now
+    kept: List[Path] = []    # already in the folder: taken again beside it and compared
+    differ: List[str] = []
     for design, layers in by_design.items():
-        got = run([PY, "-I", "scripts/census_run.py", *stand, "--layers", ",".join(map(str, layers)), *kit_args(kit, design),
-                   "--canary-only", "--out-dir", str(out), "--run", "L{layer}-" + design], cwd=ROOT_DIR)
-        if got.returncode != 0:
-            return got.returncode
-        taken += [out / f"L{layer}-{design}.canary.jsonl" for layer in layers]
+        there = [layer for layer in layers if (out / f"L{layer}-{design}.canary.jsonl").exists()]
+        fresh = [layer for layer in layers if layer not in there]
+        beside = Path(tempfile.mkdtemp(prefix="home-canaries-again-")) if there else None
+        for where, ls in ((out, fresh), (beside, there)):
+            if not ls:
+                continue
+            got = run([PY, "-I", "scripts/census_run.py", *stand, "--layers", ",".join(map(str, ls)), *kit_args(kit, design),
+                       "--canary-only", "--out-dir", str(where), "--run", "L{layer}-" + design], cwd=ROOT_DIR)
+            if got.returncode != 0:
+                return got.returncode
+        taken += [out / f"L{layer}-{design}.canary.jsonl" for layer in fresh]
+        for layer in there:
+            name = f"L{layer}-{design}.canary.jsonl"
+            same = list(cz.read_rows(out / name)) == list(cz.read_rows(beside / name))
+            print(f"{name}: already here, so taken again beside it: {'the same as' if same else 'NOT the same as'} the one kept")
+            if not same:
+                differ.append(name)
+            kept.append(out / name)
+        if beside is not None:
+            shutil.rmtree(beside, ignore_errors=True)
     # the six unpushed answers: no push, so they are the same at every layer and under every design that asks the kit's
     # six questions (the home card's layer 45 break_rel run holds them; each canary's own unpushed row is set against them)
     src = Path(a.baselines_from) if a.baselines_from else cz.census_dir() / "L45-break_rel.jsonl"
@@ -118,7 +139,7 @@ def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     cz.write_json_atomic(out / "baselines.json", {"what": "the six unpushed answers of the kit's questions on the home card (they "
                                                           "are the same at every layer and under every design of the kit)",
                                                   "from": src.name, "baselines": base})
-    for p in taken:
+    for p in taken + kept:
         for r in cz.read_rows(p):
             b = base.get(r["prompt"]) if r["kind"] == "baseline" else None
             if b is not None and (b["token_ids"], b["logprob"]) != (r["token_ids"], r["logprob"]):
@@ -127,8 +148,8 @@ def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     for p in sorted(out.glob("L*-*.canary.jsonl")):  # every canary in the folder, earlier kits' among them
         prints[p.name] = cv.rows_fingerprint(list(cz.read_rows(p)))
     cz.write_json_atomic(out / "fingerprints.json", prints)
-    # a fresh canary of a layer the home card has taken whole must be that run's first batch
-    for p in taken:
+    # a canary of a layer the home card has taken whole must be that run's first batch
+    for p in taken + kept:
         whole = cz.census_dir() / p.name.replace(".canary.jsonl", ".jsonl")
         if whole.exists() and not a.dry_run:
             rows = list(cz.read_rows(p))
@@ -136,8 +157,12 @@ def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
 
             first = list(itertools.islice(cz.read_rows(whole), len(rows)))
             print(f"{p.name}: {'the same as' if first == rows else 'NOT the same as'} {whole.name}'s first batch")
-    print(f"-> {out}: {len(taken)} canaries taken (" + ", ".join(f"{d} at {' '.join(map(str, ls))}" for d, ls in by_design.items())
+    print(f"-> {out}: {len(taken)} canaries taken, {len(kept)} already here and taken again beside it ("
+          + ", ".join(f"{d} at {' '.join(map(str, ls))}" for d, ls in by_design.items())
           + f"), {len(prints)} in the folder, baselines from {src.name}")
+    if differ:
+        print("NOT the bits kept: " + ", ".join(differ) + ". Nothing was written over. Find what changed the writer before any kit is cut.")
+        return 1
     return 0
 
 

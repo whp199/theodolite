@@ -162,6 +162,29 @@ def run_checks(tmp: Path) -> int:
           and "NOT the one in baselines.json" not in r.stdout,
           f"home-canaries: a canary a kit layer, each with its layer's design, and six unpushed answers that every canary's "
           f"own agrees with ({sorted(prints)}; {r.stdout[-300:]}{r.stderr[-300:]})")
+    # a canary already in the folder is never written over: it is taken again beside the one kept and compared, as a
+    # layer carried over from an earlier kit must be; a kept canary the code no longer writes fails the command
+    kept_bytes = {p.name: p.read_bytes() for p in canaries.glob("L*.canary.json*")}
+    r = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "home-canaries", "--layers", ",".join(map(str, kit["layers"])),
+             "--baselines-from", home_run], env)
+    check(r.returncode == 0 and r.stdout.count("taken again beside it: the same as the one kept") == len(kit["layers"])
+          and "0 canaries taken" in r.stdout and {p.name: p.read_bytes() for p in canaries.glob("L*.canary.json*")} == kept_bytes
+          and json.loads((canaries / "fingerprints.json").read_text()) == prints,
+          f"home-canaries a second time: each canary kept, taken again beside it and the same; nothing written over ({r.stdout[-300:]}{r.stderr[-300:]})")
+    spoiled = tmp / "canaries-spoiled"
+    shutil.copytree(canaries, spoiled)
+    first_layer = kit["layers"][0]
+    sp = spoiled / f"L{first_layer}-{cv.kit_design(kit, first_layer)}.canary.jsonl"
+    sp_rows = [json.loads(x) for x in sp.read_text().splitlines() if x.strip()]
+    sp_rows[-1]["token_ids"] = list(sp_rows[-1]["token_ids"][:-1]) + [int(sp_rows[-1]["token_ids"][-1]) ^ 1]
+    sp.write_text("".join(json.dumps(x) + "\n" for x in sp_rows))
+    sp_bytes = sp.read_bytes()
+    r = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "home-canaries", "--layers", ",".join(map(str, kit["layers"])),
+             "--baselines-from", home_run], {**env, "THEODOLITE_KIT_HOME_CANARIES": str(spoiled)})
+    check(r.returncode != 0 and f"{sp.name}: already here, so taken again beside it: NOT the same as the one kept" in r.stdout
+          and f"NOT the bits kept: {sp.name}" in r.stdout and sp.read_bytes() == sp_bytes
+          and r.stdout.count("the same as the one kept") == len(kit["layers"]),
+          f"home-canaries on a kept canary the code no longer writes: said, failed, and not written over ({r.stdout[-300:]}{r.stderr[-200:]})")
     # a layer the kit names no design for is not taken as a canary, unless its design is given: an earlier kit's layer
     # taken again in a scratch folder, to show the code still writes that kit's bits
     stray = [l_ for l_ in range(6) if l_ not in kit["layers"]][0]
