@@ -1163,6 +1163,15 @@ def main() -> int:
           and pt.written_result([{"rel": 0.7}], [])["apart"] is None and pt.render([["a ", False], ["b", True], [" c", False]]) == "a [[b]] c",
           f"pattern tests: a written test's figures, and a snippet with its marked unit ({wr_})")
     stored = lambda l_, n_, f_: [x for kind_ in ("top", "sample") for x in idx.passages(l_, n_, f_, 64)[kind_]]  # noqa: E731
+
+    def one_a_window(t_: Any) -> List[Dict[str, Any]]:  # an event stored twice, or beside another in its window, is one passage
+        seen_, out_ = set(), []
+        for x_ in stored(*t_):
+            if x_["window"] not in seen_:
+                seen_.add(x_["window"])
+                out_.append(x_)
+        return out_
+
     pa_ = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "+"}).json()
     pf_ = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "+", "fold": "fit"}).json()
     held_25 = sum(passage_kept_back(x["window"]) for x in stored(2, 5, "+"))
@@ -1190,6 +1199,22 @@ def main() -> int:
           and all(isinstance(x["at"], str) and x["text"] for x in wt["texts"]["fire"]) and wt["extreme"] == round(float(stats["pos"][2, 5]), 4)
           and wt["kept"]["by"] == "reader" and wt["kept"]["kind"] == "written" and wt["said"].startswith("written: "),
           f"/neuron/written_test: each text's peak over the face's extreme, the figures from them, kept by the reader ({wt['said']})")
+    own_want = []
+    for x_ in [x for x in one_a_window((2, 5, "+")) if not passage_kept_back(x["window"])][: pt.OWN_PASSAGES]:
+        ids_, at_ = idx.window_ids(x_["window"]), x_["at"]
+        cut_ = ids_[: at_ + 1] if at_ - pt.BEFORE <= 1 else [ids_[0]] + ids_[at_ - pt.BEFORE: at_ + 1]
+        v_ = ao.read_neurons(lm, cut_, [(2, 5)])[(2, 5)]
+        own_want.append({"in_window": round(float(x_["act"]) / float(stats["pos"][2, 5]), 3), "alone": round(float(v_[-1]) / float(stats["pos"][2, 5]), 3)})
+    check(wt["own"] == pt.own_result(own_want) and 0 < wt["own"]["of"] <= pt.OWN_PASSAGES and wt["own"]["before"] == pt.BEFORE
+          and wt["kept"]["own"] == wt["own"],
+          f"/neuron/written_test: the face's own strongest passages read alone beside its texts, and kept with the test ({wt['own']['hold']} of {wt['own']['of']} hold)")
+    own_far = pt.own_result([{"in_window": 1.0, "alone": 0.04}, {"in_window": 0.8, "alone": 0.5}, {"in_window": 0.6, "alone": 0.1}])
+    own_near = pt.own_result([{"in_window": 1.0, "alone": 0.6}, {"in_window": 0.8, "alone": 0.4}, {"in_window": 0.6, "alone": 0.1}])
+    base_w = pt.written_result([{"rel": 0.1}], [{"rel": 0.0}])
+    check(own_far["hold"] == 1 and own_far["holds"] is False and own_near["hold"] == 2 and own_near["holds"] is True and pt.own_result([])["holds"] is False
+          and "lies further back than a short text reaches" in pt.said({**base_w, "own": own_far})
+          and "further back" not in pt.said({**base_w, "own": own_near}) and "further back" not in pt.said(base_w),
+          "pattern tests: a face whose own passages do not fire alone is said to need more text; one whose passages do is not")
     wn = c.post("/api/atlas/neuron/written_test", json={"layer": 2, "n": 5, "face": "-", "pattern": "p", "fire": fire_t[:1], "keep": False, "by": "scientist"}).json()
     kt = c.get("/api/atlas/neuron/tests", params={"layer": 2, "n": 5}).json()
     check(wn["texts"]["fire"][0]["rel"] == rel_of(fire_t[0], "-") and "kept" not in wn and wn["quiet"] == 0 and wn["apart"] is None
@@ -1212,7 +1237,7 @@ def main() -> int:
         return pt.render([[t_, (x_["at"] - s_) in ix_] for t_, ix_ in ao.token_units(tok, ids_[s_:e_])])
 
     faces_ = [(l_, n_, f_) for l_ in range(L) for n_ in range(0, N, 7) for f_ in ("+", "-")]
-    held_of = lambda t_: [x for x in stored(*t_) if passage_kept_back(x["window"])]  # noqa: E731
+    held_of = lambda t_: [x for x in one_a_window(t_) if passage_kept_back(x["window"])]  # noqa: E731
     poor = next((t_ for t_ in faces_ if len(held_of(t_)) < pt.MIN_PAIRS), None)
     # on the stand-in most neurons fire nearly everywhere, so most faces have no quiet passage to pair with: the first
     # face the test can be made for is used, and one it cannot be made for is checked to be refused in plain words
@@ -1237,7 +1262,7 @@ def main() -> int:
     truth_b = ["a" if p_["a"] in fire_snips else "b" for p_ in bs_j.get("pairs", [])]
     check(bs.status_code == 200 and len(bs_j["pairs"]) == 4 and all((p_["a"] in fire_snips) != (p_["b"] in fire_snips) for p_ in bs_j["pairs"])
           and all(p_[k_].count("[[") == 1 and p_[k_].count("]]") == 1 for p_ in bs_j["pairs"] for k_ in "ab")
-          and bs_j["kept_back"] == len(held_of(rich)) and bs_j["stored"] == len(stored(*rich)) and "truth" not in bs_j and "by_pair" not in bs_j
+          and bs_j["kept_back"] == len(held_of(rich)) and bs_j["stored"] == len(one_a_window(rich)) and "truth" not in bs_j and "by_pair" not in bs_j
           and bs_j["prompt"].count("Pair ") == 4 and "a pattern for a stranger" in bs_j["prompt"] and "[[like this]]" in bs_j["system"],
           f"/neuron/blind_test/start: four pairs, in each one kept-back passage of the face and one other, a word-piece marked in both, nothing saying which ({bs.text[:200]})")
     bs2 = c.post("/api/atlas/neuron/blind_test/start", json=body_b).json()
@@ -1254,6 +1279,7 @@ def main() -> int:
     check(ba["right"] == 3 and ba["pairs"] == 4 and ba["unanswered"] == 1 and ba["p"] == round(pt.binom_tail(3, 4), 4) == 0.3125 and ba["by_chance"] == 2.0
           and ba["judge"] == "the check" and [x["truth"] for x in ba["by_pair"]] == truth_b and [x["picked"] for x in ba["by_pair"]] == truth_b[:3] + [None]
           and all(quiet_ok) and all(x["fires"]["rel"] > pt.QUIET_BELOW for x in ba["by_pair"])
+          and len({x["fires"]["window"] for x in ba["by_pair"]}) == len(ba["by_pair"])
           and ba["kept"]["kind"] == "blind" and ba["kept"]["pattern"] == "a pattern for a stranger" and ba["kept"]["by"] == "reader",
           f"/neuron/blind_test/answer: three of four right with one unanswered, each pair's truth, every quiet passage read under the bar ({ba.get('said')})")
     check(c.post("/api/atlas/neuron/blind_test/answer", json={"test": bs_j["test"], "picks": truth_b}).status_code == 404

@@ -1,0 +1,551 @@
+{
+ "what": "The written test's own check: each face's three strongest passages that are not kept back, cut as the tests cut\n    them (BEFORE word-pieces before the peak, AFTER after) and read alone as plain text, beside what the index holds\n    for them, read in their windows. A face that does not fire on its own passage read alone needs more than the\n    snippet shows: more text before it, or its place in the window.",
+ "faces": {
+  "L2-n16560p": [
+   {
+    "in_window": 1.0,
+    "alone": 0.595,
+    "pieces_before": 60,
+    "at_in_window": 489,
+    "peak_on": " a",
+    "stored_on": " a"
+   },
+   {
+    "in_window": 0.976,
+    "alone": 0.524,
+    "pieces_before": 8,
+    "at_in_window": 321,
+    "peak_on": " a",
+    "stored_on": " a"
+   },
+   {
+    "in_window": 0.953,
+    "alone": 0.659,
+    "pieces_before": 60,
+    "at_in_window": 404,
+    "peak_on": " a",
+    "stored_on": " a"
+   }
+  ],
+  "L2-n18138m": [
+   {
+    "in_window": 1.0,
+    "alone": 0.993,
+    "pieces_before": 46,
+    "at_in_window": 47,
+    "peak_on": " such",
+    "stored_on": " such"
+   },
+   {
+    "in_window": 0.723,
+    "alone": 0.691,
+    "pieces_before": 60,
+    "at_in_window": 354,
+    "peak_on": " such",
+    "stored_on": " such"
+   },
+   {
+    "in_window": 0.712,
+    "alone": 0.637,
+    "pieces_before": 60,
+    "at_in_window": 149,
+    "peak_on": ",",
+    "stored_on": ","
+   }
+  ],
+  "L2-n2099p": [
+   {
+    "in_window": 1.0,
+    "alone": 0.909,
+    "pieces_before": 60,
+    "at_in_window": 180,
+    "peak_on": " be",
+    "stored_on": " be"
+   },
+   {
+    "in_window": 0.994,
+    "alone": 0.676,
+    "pieces_before": 60,
+    "at_in_window": 428,
+    "peak_on": " a",
+    "stored_on": " a"
+   },
+   {
+    "in_window": 0.939,
+    "alone": 0.927,
+    "pieces_before": 60,
+    "at_in_window": 148,
+    "peak_on": " be",
+    "stored_on": " be"
+   }
+  ],
+  "L14-n11687m": [
+   {
+    "in_window": 1.0,
+    "alone": 1.08,
+    "pieces_before": 60,
+    "at_in_window": 437,
+    "peak_on": "hal",
+    "stored_on": "hal"
+   },
+   {
+    "in_window": 0.868,
+    "alone": 0.902,
+    "pieces_before": 60,
+    "at_in_window": 383,
+    "peak_on": "imos",
+    "stored_on": "imos"
+   },
+   {
+    "in_window": 0.799,
+    "alone": 0.741,
+    "pieces_before": 60,
+    "at_in_window": 384,
+    "peak_on": "gate",
+    "stored_on": " Cemetery"
+   }
+  ],
+  "L14-n16551m": [
+   {
+    "in_window": 1.0,
+    "alone": 1.022,
+    "pieces_before": 60,
+    "at_in_window": 66,
+    "peak_on": " by",
+    "stored_on": " by"
+   },
+   {
+    "in_window": 0.86,
+    "alone": 0.855,
+    "pieces_before": 60,
+    "at_in_window": 137,
+    "peak_on": "red",
+    "stored_on": "red"
+   },
+   {
+    "in_window": 0.855,
+    "alone": 0.894,
+    "pieces_before": 60,
+    "at_in_window": 203,
+    "peak_on": "raid",
+    "stored_on": "raid"
+   }
+  ],
+  "L14-n19793p": [
+   {
+    "in_window": 1.0,
+    "alone": 0.812,
+    "pieces_before": 60,
+    "at_in_window": 167,
+    "peak_on": " Hosting",
+    "stored_on": " Hosting"
+   },
+   {
+    "in_window": 0.728,
+    "alone": 0.906,
+    "pieces_before": 60,
+    "at_in_window": 443,
+    "peak_on": " Tours",
+    "stored_on": " Tours"
+   },
+   {
+    "in_window": 0.666,
+    "alone": 0.491,
+    "pieces_before": 60,
+    "at_in_window": 409,
+    "peak_on": " for",
+    "stored_on": " for"
+   }
+  ],
+  "L26-n14541m": [
+   {
+    "in_window": 1.0,
+    "alone": 0.206,
+    "pieces_before": 60,
+    "at_in_window": 476,
+    "peak_on": " see",
+    "stored_on": "6"
+   },
+   {
+    "in_window": 0.994,
+    "alone": 0.274,
+    "pieces_before": 60,
+    "at_in_window": 501,
+    "peak_on": " ",
+    "stored_on": " Volunte"
+   },
+   {
+    "in_window": 0.789,
+    "alone": 0.169,
+    "pieces_before": 60,
+    "at_in_window": 505,
+    "peak_on": " the",
+    "stored_on": " the"
+   }
+  ],
+  "L26-n4644m": [
+   {
+    "in_window": 1.0,
+    "alone": 0.993,
+    "pieces_before": 34,
+    "at_in_window": 35,
+    "peak_on": " can",
+    "stored_on": " can"
+   },
+   {
+    "in_window": 0.793,
+    "alone": 0.718,
+    "pieces_before": 60,
+    "at_in_window": 179,
+    "peak_on": " data",
+    "stored_on": " data"
+   },
+   {
+    "in_window": 0.686,
+    "alone": 0.384,
+    "pieces_before": 60,
+    "at_in_window": 502,
+    "peak_on": " our",
+    "stored_on": " our"
+   }
+  ],
+  "L26-n4837p": [
+   {
+    "in_window": 0.853,
+    "alone": 0.036,
+    "pieces_before": 60,
+    "at_in_window": 326,
+    "peak_on": ",",
+    "stored_on": " usually"
+   },
+   {
+    "in_window": 0.656,
+    "alone": 0.16,
+    "pieces_before": 60,
+    "at_in_window": 394,
+    "peak_on": "that",
+    "stored_on": "that"
+   },
+   {
+    "in_window": 0.629,
+    "alone": 0.293,
+    "pieces_before": 60,
+    "at_in_window": 393,
+    "peak_on": " second",
+    "stored_on": " second"
+   }
+  ],
+  "L31-n13214p": [
+   {
+    "in_window": 0.531,
+    "alone": 0.363,
+    "pieces_before": 60,
+    "at_in_window": 463,
+    "peak_on": " ships",
+    "stored_on": " ships"
+   },
+   {
+    "in_window": 0.466,
+    "alone": 0.466,
+    "pieces_before": 43,
+    "at_in_window": 44,
+    "peak_on": " to",
+    "stored_on": " to"
+   },
+   {
+    "in_window": 0.414,
+    "alone": 0.264,
+    "pieces_before": 60,
+    "at_in_window": 300,
+    "peak_on": " Treasure",
+    "stored_on": " tot"
+   }
+  ],
+  "L31-n20806p": [
+   {
+    "in_window": 1.0,
+    "alone": 1.009,
+    "pieces_before": 29,
+    "at_in_window": 30,
+    "peak_on": " produces",
+    "stored_on": " produces"
+   },
+   {
+    "in_window": 0.912,
+    "alone": 0.888,
+    "pieces_before": 1,
+    "at_in_window": 2,
+    "peak_on": " purchasing",
+    "stored_on": " purchasing"
+   },
+   {
+    "in_window": 0.805,
+    "alone": 0.781,
+    "pieces_before": 0,
+    "at_in_window": 1,
+    "peak_on": " finally",
+    "stored_on": " finally"
+   }
+  ],
+  "L31-n7731p": [
+   {
+    "in_window": 0.801,
+    "alone": 0.578,
+    "pieces_before": 60,
+    "at_in_window": 84,
+    "peak_on": ":",
+    "stored_on": ":"
+   },
+   {
+    "in_window": 0.798,
+    "alone": 0.468,
+    "pieces_before": 60,
+    "at_in_window": 489,
+    "peak_on": ":",
+    "stored_on": ":"
+   },
+   {
+    "in_window": 0.734,
+    "alone": 0.07,
+    "pieces_before": 60,
+    "at_in_window": 249,
+    "peak_on": " of",
+    "stored_on": ","
+   }
+  ],
+  "L36-n12896p": [
+   {
+    "in_window": 1.0,
+    "alone": 0.044,
+    "pieces_before": 60,
+    "at_in_window": 280,
+    "peak_on": " of",
+    "stored_on": "In"
+   },
+   {
+    "in_window": 0.635,
+    "alone": 0.124,
+    "pieces_before": 60,
+    "at_in_window": 396,
+    "peak_on": "!",
+    "stored_on": "!"
+   },
+   {
+    "in_window": 0.497,
+    "alone": 0.035,
+    "pieces_before": 60,
+    "at_in_window": 466,
+    "peak_on": ",",
+    "stored_on": " is"
+   }
+  ],
+  "L36-n13610p": [
+   {
+    "in_window": 0.619,
+    "alone": 0.386,
+    "pieces_before": 60,
+    "at_in_window": 377,
+    "peak_on": " “",
+    "stored_on": " not"
+   },
+   {
+    "in_window": 0.462,
+    "alone": 0.446,
+    "pieces_before": 20,
+    "at_in_window": 21,
+    "peak_on": " my",
+    "stored_on": " my"
+   },
+   {
+    "in_window": 0.451,
+    "alone": 0.487,
+    "pieces_before": 60,
+    "at_in_window": 389,
+    "peak_on": " shines",
+    "stored_on": " shines"
+   }
+  ],
+  "L36-n15041m": [
+   {
+    "in_window": 1.0,
+    "alone": 0.292,
+    "pieces_before": 60,
+    "at_in_window": 242,
+    "peak_on": " the",
+    "stored_on": " the"
+   },
+   {
+    "in_window": 0.944,
+    "alone": 0.75,
+    "pieces_before": 60,
+    "at_in_window": 467,
+    "peak_on": " charcoal",
+    "stored_on": " and"
+   },
+   {
+    "in_window": 0.82,
+    "alone": 0.658,
+    "pieces_before": 60,
+    "at_in_window": 441,
+    "peak_on": " hand",
+    "stored_on": " hand"
+   }
+  ],
+  "L45-n16700m": [
+   {
+    "in_window": 0.945,
+    "alone": 0.744,
+    "pieces_before": 60,
+    "at_in_window": 462,
+    "peak_on": " to",
+    "stored_on": " to"
+   },
+   {
+    "in_window": 0.791,
+    "alone": 0.11,
+    "pieces_before": 47,
+    "at_in_window": 135,
+    "peak_on": " to",
+    "stored_on": " to"
+   },
+   {
+    "in_window": 0.752,
+    "alone": 0.04,
+    "pieces_before": 60,
+    "at_in_window": 433,
+    "peak_on": " ability",
+    "stored_on": " to"
+   }
+  ],
+  "L45-n4812p": [
+   {
+    "in_window": 1.0,
+    "alone": 0.995,
+    "pieces_before": 31,
+    "at_in_window": 32,
+    "peak_on": "2",
+    "stored_on": "2"
+   },
+   {
+    "in_window": 0.763,
+    "alone": 0.697,
+    "pieces_before": 60,
+    "at_in_window": 131,
+    "peak_on": " points",
+    "stored_on": " points"
+   },
+   {
+    "in_window": 0.687,
+    "alone": 0.678,
+    "pieces_before": 26,
+    "at_in_window": 492,
+    "peak_on": " points",
+    "stored_on": "0"
+   }
+  ],
+  "L45-n8497p": [
+   {
+    "in_window": 0.822,
+    "alone": 0.374,
+    "pieces_before": 60,
+    "at_in_window": 257,
+    "peak_on": " collision",
+    "stored_on": " collision"
+   },
+   {
+    "in_window": 0.741,
+    "alone": 0.724,
+    "pieces_before": 58,
+    "at_in_window": 59,
+    "peak_on": "#",
+    "stored_on": "#"
+   },
+   {
+    "in_window": 0.671,
+    "alone": 0.65,
+    "pieces_before": 2,
+    "at_in_window": 3,
+    "peak_on": " input",
+    "stored_on": " input"
+   }
+  ],
+  "L56-n12115m": [
+   {
+    "in_window": 0.941,
+    "alone": 1.288,
+    "pieces_before": 60,
+    "at_in_window": 188,
+    "peak_on": "ob",
+    "stored_on": "ob"
+   },
+   {
+    "in_window": 0.778,
+    "alone": 0.765,
+    "pieces_before": 40,
+    "at_in_window": 41,
+    "peak_on": "尨",
+    "stored_on": "尨"
+   },
+   {
+    "in_window": 0.765,
+    "alone": 0.458,
+    "pieces_before": 30,
+    "at_in_window": 433,
+    "peak_on": " Hib",
+    "stored_on": " Hib"
+   }
+  ],
+  "L56-n19940m": [
+   {
+    "in_window": 1.0,
+    "alone": 0.039,
+    "pieces_before": 60,
+    "at_in_window": 130,
+    "peak_on": " by",
+    "stored_on": ")||"
+   },
+   {
+    "in_window": 0.576,
+    "alone": 0.125,
+    "pieces_before": 60,
+    "at_in_window": 91,
+    "peak_on": "5",
+    "stored_on": "5"
+   },
+   {
+    "in_window": 0.542,
+    "alone": 0.152,
+    "pieces_before": 60,
+    "at_in_window": 153,
+    "peak_on": " members",
+    "stored_on": " members"
+   }
+  ],
+  "L56-n3342p": [
+   {
+    "in_window": 0.795,
+    "alone": 0.085,
+    "pieces_before": 60,
+    "at_in_window": 213,
+    "peak_on": " the",
+    "stored_on": " is"
+   },
+   {
+    "in_window": 0.614,
+    "alone": 0.006,
+    "pieces_before": 60,
+    "at_in_window": 109,
+    "peak_on": " and",
+    "stored_on": " the"
+   },
+   {
+    "in_window": 0.609,
+    "alone": 0.093,
+    "pieces_before": 60,
+    "at_in_window": 315,
+    "peak_on": " to",
+    "stored_on": " and"
+   }
+  ]
+ }
+}

@@ -312,6 +312,9 @@ export interface PatternTest {
   quiet_fired?: number;
   apart?: number | null;
   texts?: Record<"fire" | "quiet", { text: string; rel: number; at: string }[]>;
+  /** written: the face's own strongest passages read with only `before` word-pieces before the peak; `holds` false
+   *  means most no longer fire, so no short text can fire the face */
+  own?: { passages: { in_window: number; alone: number }[]; hold: number; of: number; before: number; holds: boolean };
   /** blind: pairs shown, pairs picked rightly, how many are right by chance, the chance of doing as well by guessing */
   pairs?: number;
   right?: number;
@@ -336,8 +339,11 @@ export function patternTestSaid(t: PatternTest): { text: string; against: boolea
     const stirred = t.quiet_fired ?? 0;
     const strongest = t.strongest != null ? `, the strongest at ${t.strongest.toFixed(2)} of its strongest in the corpus` : "";
     const misses = quiet ? ` ${stirred} of ${quiet} near misses did.` : " No near miss was tried.";
+    const own = t.own && t.own.of > 0 && !t.own.holds
+      ? ` Its own strongest passages do not fire it either when read alone (${t.own.hold} of ${t.own.of} do, with ${t.own.before} word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what.`
+      : "";
     return {
-      text: `Written to the pattern: ${fired} of ${fire} texts meant to fire it did${strongest}.${misses}`,
+      text: `Written to the pattern: ${fired} of ${fire} texts meant to fire it did${strongest}.${misses}${own}`,
       against: fired < fire || stirred > 0,
     };
   }

@@ -379,7 +379,10 @@ TOOLS: List[Dict[str, Any]] = [
      "and the unit it fell on; fired, how many of the texts meant to fire reached half the extreme; beat_corpus, how many "
      "reached 1; quiet_fired, how many near misses reached half; apart, the share of (firing text, near miss) pairs in which "
      "the firing text reads higher. A pattern whose own texts do not fire its neuron, or whose near misses do, is not yet "
-     "right: reword it and test again. It tests when the face fires, not what its firing does. The result is kept on the "
+     "right: reword it and test again. own: the face's three strongest passages read with only sixty word-pieces before the "
+     "peak (alone) beside what they read in their windows (in_window); where own.holds is false they no longer fire, so no "
+     "short text can fire this face and your texts' silence is not the pattern's fault: find what the earlier text has to "
+     "be, and write a longer one. It tests when the face fires, not what its firing does. The result is kept on the "
      "face with the pattern, for the person to see.",
      "inputSchema": {"type": "object", "properties": {
          **LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"}, "pattern": {"type": "string"},
@@ -746,6 +749,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         return {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "said": r["said"],
                 **{k: r[k] for k in ("fire", "fired", "beat_corpus", "strongest", "quiet", "quiet_fired", "quiet_strongest", "apart",
                                      "fires_at", "rel_to")},
+                **({"own": r["own"]} if r.get("own") else {}),
                 "texts": r["texts"], "kept": "on the face, with the pattern"}
     if name == "blind_test":
         _need(a, "layer", "n", "pattern")

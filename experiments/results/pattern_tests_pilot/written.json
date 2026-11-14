@@ -1,0 +1,1285 @@
+{
+ "tests": {
+  "L2-n16560p": {
+   "layer": 2,
+   "n": 16560,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 1,
+   "beat_corpus": 0,
+   "strongest": 0.645,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.265,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "The word 'a' right after 'plays', 'play' or 'played', in the stock phrase 'plays a (crucial/vital/significant) role' or 'plays a part', where the subject is some factor or thing whose importance is being stated.",
+   "texts": {
+    "fire": [
+     {
+      "text": "Regular sleep plays a crucial role in keeping the immune system strong.",
+      "rel": 0.645,
+      "act": 34.0,
+      "at": " a"
+     },
+     {
+      "text": "For many small towns, the local library plays a vital part in community life.",
+      "rel": 0.427,
+      "act": 22.5,
+      "at": " a"
+     },
+     {
+      "text": "Trade has always played a significant role in the growth of port cities.",
+      "rel": 0.302,
+      "act": 15.9375,
+      "at": " a"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Regular sleep has a crucial role in keeping the immune system strong.",
+      "rel": 0.001,
+      "act": 0.0359,
+      "at": " role"
+     },
+     {
+      "text": "The band plays the same three songs at every Friday concert.",
+      "rel": 0.145,
+      "act": 7.6562,
+      "at": " same"
+     },
+     {
+      "text": "Every afternoon the children play a game of tag in the yard.",
+      "rel": 0.265,
+      "act": 14.0,
+      "at": " a"
+     }
+    ]
+   },
+   "extreme": 52.75,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.645 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L2-n18138m": {
+   "layer": 2,
+   "n": 18138,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 1,
+   "beat_corpus": 0,
+   "strongest": 0.928,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.013,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "The comma that closes a long introductory phrase at the start of a sentence, just before the main clause's subject ('Under the terms of the constitution[,] the president', 'With the retirement of these plants[,] the grid'); also the word 'such' right after a lead-in like that ('For large savannah species,[ such] as', 'For the study of history in this sense,[ such] events').",
+   "texts": {
+    "fire": [
+     {
+      "text": "Under the terms of the new agreement between the two universities, students can take courses on either campus.",
+      "rel": 0.349,
+      "act": -12.125,
+      "at": ","
+     },
+     {
+      "text": "With the closure of the last three coal mines in the valley, the town lost most of its jobs.",
+      "rel": 0.234,
+      "act": -8.125,
+      "at": ","
+     },
+     {
+      "text": "In the complicated world of international shipping insurance, such a claim can take years to settle.",
+      "rel": 0.928,
+      "act": -32.25,
+      "at": " such"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Students can take courses on either campus under the terms of the new agreement between the two universities.",
+      "rel": 0.012,
+      "act": -0.4336,
+      "at": "."
+     },
+     {
+      "text": "The town lost most of its jobs when the last three coal mines in the valley closed.",
+      "rel": 0.011,
+      "act": -0.3809,
+      "at": "."
+     },
+     {
+      "text": "Apples, pears, plums and cherries all grow well in this valley.",
+      "rel": 0.013,
+      "act": -0.4551,
+      "at": "."
+     }
+    ]
+   },
+   "extreme": -34.75,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.928 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L2-n2099p": {
+   "layer": 2,
+   "n": 2099,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 3,
+   "beat_corpus": 0,
+   "strongest": 0.873,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.054,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "The word right after 'way to', 'way for' or 'way towards' ('find a way to[ be] together', 'on the way to[ a] carbon-free future', 'a way[ for] them to', 'pave the way[ for]'); strongest on 'be' or 'a' following 'way to'. Weaker after 'in order to'.",
+   "texts": {
+    "fire": [
+     {
+      "text": "After months apart, the two friends finally found a way to be in the same city again.",
+      "rel": 0.812,
+      "act": 33.5,
+      "at": " be"
+     },
+     {
+      "text": "The new treaty opened the way to a lasting peace between the two countries.",
+      "rel": 0.873,
+      "act": 36.0,
+      "at": " a"
+     },
+     {
+      "text": "Letters became a way for the sisters to stay close.",
+      "rel": 0.524,
+      "act": 21.625,
+      "at": " for"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "After months apart, the two friends finally wanted to be in the same city again.",
+      "rel": 0.054,
+      "act": 2.2344,
+      "at": " be"
+     },
+     {
+      "text": "The new treaty led to a lasting peace between the two countries.",
+      "rel": 0.003,
+      "act": 0.1377,
+      "at": " the"
+     },
+     {
+      "text": "She walked home in the rain and went straight to bed.",
+      "rel": 0.032,
+      "act": 1.3125,
+      "at": " bed"
+     }
+    ]
+   },
+   "extreme": 41.25,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 3 of 3 texts meant to fire it did (the strongest 0.873 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L14-n11687m": {
+   "layer": 14,
+   "n": 11687,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 3,
+   "beat_corpus": 1,
+   "strongest": 1.092,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.191,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "On the later word-pieces of the proper name of a specific site being named in travel or history text, above all a monastery, abbey, cemetery or graveyard ('Jerón[imos] Monastery', 'the Arch Abbey of Pannon[hal]ma', 'Highgate[ Cemetery]'); weaker on a named neighbourhood ('Lawrence[ville] neighborhood') and on talk of graves and burial.",
+   "texts": {
+    "fire": [
+     {
+      "text": "In Lisbon we spent a morning at the Jerónimos Monastery before walking to the Belem Tower.",
+      "rel": 0.833,
+      "act": -36.25,
+      "at": "imos"
+     },
+     {
+      "text": "Karl Marx is buried in Highgate Cemetery in north London.",
+      "rel": 0.908,
+      "act": -39.5,
+      "at": "gate"
+     },
+     {
+      "text": "The Benedictine abbey of Pannonhalma was founded in 996 and still houses a school.",
+      "rel": 1.092,
+      "act": -47.5,
+      "at": "hal"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "In Lisbon we spent a morning at a large old monastery before walking down to the river.",
+      "rel": 0.191,
+      "act": -8.3125,
+      "at": " monastery"
+     },
+     {
+      "text": "Karl Marx is buried in a cemetery in north London.",
+      "rel": 0.002,
+      "act": -0.0708,
+      "at": " is"
+     },
+     {
+      "text": "The Benedictine order founded many schools in the tenth century.",
+      "rel": 0.138,
+      "act": -6.0,
+      "at": " the"
+     }
+    ]
+   },
+   "extreme": -43.5,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 3 of 3 texts meant to fire it did (the strongest 1.092 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L14-n16551m": {
+   "layer": 14,
+   "n": 16551,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 2,
+   "beat_corpus": 0,
+   "strongest": 0.704,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.021,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "On the word-piece that completes an adjective built with a negating prefix un- or in-, after the prefix part ('undeter[red]', 'unaf[raid]', 'unskill[ful]', 'indefin[able]', 'unkn[otted]', 'in[offensive]', 'uns[weet]ened'), or on the word right after such an adjective ('unrivalled[ by]').",
+   "texts": {
+    "fire": [
+     {
+      "text": "She walked into the room unafraid and undeterred by the shouting.",
+      "rel": 0.679,
+      "act": -30.375,
+      "at": "raid"
+     },
+     {
+      "text": "The critics called the film harmless and inoffensive, an unremarkable comedy.",
+      "rel": 0.704,
+      "act": -31.5,
+      "at": "offensive"
+     },
+     {
+      "text": "He kept climbing, undaunted, though the path was unmarked and unlit.",
+      "rel": 0.363,
+      "act": -16.25,
+      "at": "unted"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "She walked into the room afraid and deterred by the shouting.",
+      "rel": 0.002,
+      "act": -0.0845,
+      "at": " the"
+     },
+     {
+      "text": "The critics called the film harmful and offensive, a remarkable comedy.",
+      "rel": 0.021,
+      "act": -0.957,
+      "at": " harmful"
+     },
+     {
+      "text": "He kept climbing, daunted, though the path was marked and lit.",
+      "rel": -0.0,
+      "act": 0.0035,
+      "at": "He"
+     }
+    ]
+   },
+   "extreme": -44.75,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 2 of 3 texts meant to fire it did (the strongest 0.704 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L14-n19793p": {
+   "layer": 14,
+   "n": 19793,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 2,
+   "beat_corpus": 1,
+   "strongest": 1.025,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.017,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "At the end of the name of a small company, service or organisation as it is introduced, usually in promotional text: on the last word of the name ('NTC[ Hosting]', 'Blue Coach[ Tours]', 'Elite Performance[ Therapy]') or on the word-piece right after the name ('RD Management[,]', 'WildWeb[,]', 'BuyEssaySafe[.]com', 'MGEDT[ for]').",
+   "texts": {
+    "fire": [
+     {
+      "text": "Here at Summit Ridge Plumbing, we pride ourselves on fast and friendly service.",
+      "rel": 0.728,
+      "act": 14.5625,
+      "at": " Plumbing"
+     },
+     {
+      "text": "Recently, the developer team at BrightPath Hosting has released a new control panel.",
+      "rel": 1.025,
+      "act": 20.5,
+      "at": " Hosting"
+     },
+     {
+      "text": "Maria Lopez is the head of marketing at GreenLeaf Media, where she manages campaigns for clients.",
+      "rel": 0.327,
+      "act": 6.5312,
+      "at": ","
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Here at home, we pride ourselves on fast and friendly service.",
+      "rel": 0.002,
+      "act": 0.0452,
+      "at": " ourselves"
+     },
+     {
+      "text": "Recently, the developer team has released a new control panel.",
+      "rel": 0.017,
+      "act": 0.3496,
+      "at": " team"
+     },
+     {
+      "text": "Maria Lopez is the head of marketing, and she manages campaigns for clients.",
+      "rel": 0.013,
+      "act": 0.2637,
+      "at": "Maria"
+     }
+    ]
+   },
+   "extreme": 20.0,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 2 of 3 texts meant to fire it did (the strongest 1.025 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L26-n14541m": {
+   "layer": 26,
+   "n": 14541,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.26,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.165,
+   "apart": 0.667,
+   "fires_at": 0.5,
+   "pattern": "In the middle of a stock phrase, or of a term the text has just used and is using again: a word-piece that carries on a formula ('in order[ to] reduce', 'without[ the] prior written consent', 'Don[']t forget', the hyphen in a phone number, 'Welcome back to the [6]0's') or picks a just-mentioned term back up at the start of a sentence ('This[ hyper]bole' after an earlier 'This hyperbole', '[ Volunte]ering is also' under a 'Volunteer work' heading).",
+   "texts": {
+    "fire": [
+     {
+      "text": "5. Volunteer work: Helping at a shelter as a family builds strong bonds. Volunteering is also a great way to teach children kindness.",
+      "rel": 0.118,
+      "act": -0.083,
+      "at": " a"
+     },
+     {
+      "text": "All rights reserved. No part of this publication may be reproduced without the prior written consent of the publisher.",
+      "rel": 0.26,
+      "act": -0.1826,
+      "at": " the"
+     },
+     {
+      "text": "\"The rain fell like a thousand drums.\" This hyperbole stresses how loud the storm was. \"He ran faster than the wind.\" This hyperbole shows the character's speed.",
+      "rel": 0.132,
+      "act": -0.0928,
+      "at": " character"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Helping at a shelter as a family builds strong bonds and teaches children kindness.",
+      "rel": 0.129,
+      "act": -0.0908,
+      "at": " teaches"
+     },
+     {
+      "text": "The publisher printed two thousand copies of the book in the spring.",
+      "rel": 0.165,
+      "act": -0.1162,
+      "at": " book"
+     },
+     {
+      "text": "The storm was very loud, and the character ran home quickly.",
+      "rel": 0.096,
+      "act": -0.0674,
+      "at": " loud"
+     }
+    ]
+   },
+   "extreme": -0.7031,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.26 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L26-n4644m": {
+   "layer": 26,
+   "n": 4644,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 1,
+   "beat_corpus": 0,
+   "strongest": 0.757,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.061,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "On or right after a first-person pronoun that stands for the writer's own group, for people in general, or for a user asking for help: 'us', 'our', 'me', or the word that follows 'we', 'our' or 'my' ('we[ can] learn', 'keeping our[ data] safe', 'improve[ our] health care system', 'more and more of[ us]', 'recommendations for[ me]', 'my[ understanding]').",
+   "texts": {
+    "fire": [
+     {
+      "text": "By practising a few minutes each day, we can learn to calm our minds and sleep better.",
+      "rel": 0.757,
+      "act": -3.3125,
+      "at": " can"
+     },
+     {
+      "text": "More and more of us are choosing to cycle to work, and it is changing our cities.",
+      "rel": 0.409,
+      "act": -1.7891,
+      "at": " us"
+     },
+     {
+      "text": "Can you suggest some exercises to help me improve my understanding of fractions?",
+      "rel": 0.167,
+      "act": -0.7305,
+      "at": " me"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "By practising a few minutes each day, people can learn to calm their minds and sleep better.",
+      "rel": 0.044,
+      "act": -0.1943,
+      "at": " each"
+     },
+     {
+      "text": "More and more commuters are choosing to cycle to work, and it is changing their cities.",
+      "rel": 0.061,
+      "act": -0.2676,
+      "at": " commuters"
+     },
+     {
+      "text": "The teacher suggested some exercises to help the students improve their understanding of fractions.",
+      "rel": 0.048,
+      "act": -0.21,
+      "at": " exercises"
+     }
+    ]
+   },
+   "extreme": -4.375,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.757 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L26-n4837p": {
+   "layer": 26,
+   "n": 4837,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.13,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.086,
+   "apart": 0.667,
+   "fires_at": 0.5,
+   "pattern": "At the opening of a sentence or paragraph that takes an account one step further: on the first word-piece after a line break when it carries on from what came before ('[Secondly],', '[it] was during this time', '[that] astronauts'), or on an ordering or frequency word right after the subject ('The[ second] story of origin', 'FPB[ usually] becomes noticeable'). Strongest on second-in-a-series markers.",
+   "texts": {
+    "fire": [
+     {
+      "text": "Firstly, regular exercise strengthens the heart and lungs.\n\nSecondly, exercise has a strong effect on mood and sleep.",
+      "rel": 0.04,
+      "act": 0.1021,
+      "at": " regular"
+     },
+     {
+      "text": "The first story of how the festival began dates from the ninth century. The second story of origin came almost four hundred years later.",
+      "rel": 0.13,
+      "act": 0.3301,
+      "at": " of"
+     },
+     {
+      "text": "I worked as a farmer and then as a clerk, but I was never content.\n\nit was during this time that I began to write.",
+      "rel": 0.029,
+      "act": 0.0728,
+      "at": "it"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Regular exercise strengthens the heart and lungs and has a strong effect on mood and sleep.",
+      "rel": 0.033,
+      "act": 0.084,
+      "at": " a"
+     },
+     {
+      "text": "The festival began in the ninth century and is still held every spring.",
+      "rel": 0.086,
+      "act": 0.2178,
+      "at": "The"
+     },
+     {
+      "text": "I worked as a farmer and I was content.",
+      "rel": 0.023,
+      "act": 0.0574,
+      "at": " was"
+     }
+    ]
+   },
+   "extreme": 2.5469,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.13 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L31-n13214p": {
+   "layer": 31,
+   "n": 13214,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.348,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.012,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "In stories and accounts of ancient or legendary peoples at war or on voyages (Mycenaeans and Troy, Vikings, a starship crew): on the word right after the people's name, or at the moment the action starts ('a fleet of Mycenaean[ ships] sailed', 'A Viking[ tot] is abducted', 'the Argoons decided[ to] take measures', 'caught off guard by a sudden storm[.]'). Weaker in other text about Greece.",
+   "texts": {
+    "fire": [
+     {
+      "text": "One bright morning the city was thrown into chaos as a fleet of Mycenaean ships sailed up the river toward the walls of Troy.",
+      "rel": 0.151,
+      "act": 1.5391,
+      "at": " up"
+     },
+     {
+      "text": "A Viking boy is carried off by raiders in this tale of adventure on the northern seas.",
+      "rel": 0.139,
+      "act": 1.4141,
+      "at": " seas"
+     },
+     {
+      "text": "As the Greek armies pressed closer to the walls of Troy, the defenders decided to burn the bridges.",
+      "rel": 0.348,
+      "act": 3.5469,
+      "at": " the"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "One bright morning the town was busy as a line of delivery trucks drove up the road toward the market.",
+      "rel": 0.008,
+      "act": 0.0791,
+      "at": " a"
+     },
+     {
+      "text": "A boy is taken to school by his parents in this tale of everyday life.",
+      "rel": 0.005,
+      "act": 0.0554,
+      "at": " of"
+     },
+     {
+      "text": "As the deadline pressed closer, the team decided to work over the weekend.",
+      "rel": 0.012,
+      "act": 0.1226,
+      "at": " over"
+     }
+    ]
+   },
+   "extreme": 10.1875,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.348 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L31-n20806p": {
+   "layer": 31,
+   "n": 20806,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 2,
+   "beat_corpus": 0,
+   "strongest": 0.888,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.405,
+   "apart": 0.889,
+   "fires_at": 0.5,
+   "pattern": "On a verb or adverb that comes straight after its subject or auxiliary ('the action[ produces]', 'are[ purchasing]', 'they're[ definitely] open', 'he'[s] been'), when it is among the first few words the model has read: the passage has little or nothing before it. Later in a long text the same words do not fire it.",
+   "texts": {
+    "fire": [
+     {
+      "text": " are purchasing. Online shops should show several pictures of each item.",
+      "rel": 0.888,
+      "act": 2.9844,
+      "at": " purchasing"
+     },
+     {
+      "text": " finally was used in Tibet and Mongolia for the same purpose.",
+      "rel": 0.781,
+      "act": 2.625,
+      "at": " finally"
+     },
+     {
+      "text": "They're definitely open to some kind of increase, he said.",
+      "rel": 0.333,
+      "act": 1.1172,
+      "at": " definitely"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "The committee met for three hours on Tuesday afternoon to discuss the budget for the coming year, and after a long debate about salaries and rents the chairman told reporters that the members had listened carefully to the union and that they're definitely open to some kind of increase.",
+      "rel": 0.405,
+      "act": 1.3594,
+      "at": "re"
+     },
+     {
+      "text": "Online shops should show several pictures of each item, list the full price including delivery, describe the returns policy in plain words, and give a telephone number, so that customers know exactly what they are purchasing.",
+      "rel": 0.047,
+      "act": 0.1562,
+      "at": " know"
+     },
+     {
+      "text": "The printing technique was invented in China, spread slowly along the trade routes over several centuries, was adapted by monks for sacred texts, and finally was used in Tibet and Mongolia for the same purpose.",
+      "rel": 0.078,
+      "act": 0.2617,
+      "at": "."
+     }
+    ]
+   },
+   "extreme": 3.3594,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 2 of 3 texts meant to fire it did (the strongest 0.888 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L31-n7731p": {
+   "layer": 31,
+   "n": 7731,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.319,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.022,
+   "apart": 0.944,
+   "fires_at": 0.5,
+   "pattern": "On a separator between two parts of a structured item, mostly inside code or config: the colon after a key ('passport[:] passport', 'myFunction[:]'), the comma between loop variables ('for root, dirs[,] files in'), the '=' of an assignment ('int year[ =] Integer.parseInt'); also the point inside a decimal or a citation's number ('−0[.]71'). Weaker on a joining comma or 'and' in plain prose.",
+   "texts": {
+    "fire": [
+     {
+      "text": "module.exports = {\n    server: server,\n    passport: passport\n};",
+      "rel": 0.319,
+      "act": 1.4062,
+      "at": ":"
+     },
+     {
+      "text": "for root, dirs, files in os.walk(path):\n    print(root)",
+      "rel": 0.112,
+      "act": 0.4941,
+      "at": " files"
+     },
+     {
+      "text": "int month = Integer.parseInt(date.substring(0, 2));\nint day = Integer.parseInt(date.substring(3, 5));\nint year = Integer.parseInt(date.substring(6, 10));",
+      "rel": 0.022,
+      "act": 0.0967,
+      "at": "."
+     }
+    ],
+    "quiet": [
+     {
+      "text": "The server exports its passport settings so that other modules can use them.",
+      "rel": 0.022,
+      "act": 0.0977,
+      "at": "."
+     },
+     {
+      "text": "The script walks through every folder and prints the name of each one.",
+      "rel": 0.016,
+      "act": 0.0718,
+      "at": "The"
+     },
+     {
+      "text": "The program reads the month, the day and the year from the date the user typed.",
+      "rel": 0.017,
+      "act": 0.0752,
+      "at": "The"
+     }
+    ]
+   },
+   "extreme": 4.4062,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.319 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L36-n12896p": {
+   "layer": 36,
+   "n": 12896,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.034,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.017,
+   "apart": 0.833,
+   "fires_at": 0.5,
+   "pattern": "At the start of a closing or summing-up sentence: on the first word of a final paragraph ('[In] conclusion', '[To] conclude', '[The] overall impact', '[We] really hope'), where a text turns from its body to its wrap-up or verdict. Weaker on the '!' that ends a final sales line and on 'is' in a summary judgement ('The DCD771C2[ is] a versatile cordless drill', 'However, it[ is] only available').",
+   "texts": {
+    "fire": [
+     {
+      "text": "Solar panels cut bills, last for decades and need little upkeep. They also raise the value of a home.\n\nIn conclusion, solar power is a sound investment for most households.",
+      "rel": 0.016,
+      "act": 0.0236,
+      "at": " a"
+     },
+     {
+      "text": "Reply quickly to complaints, thank customers for their feedback, and track what you change as a result.\n\nTo conclude, the tips above can help any small business keep its customers.",
+      "rel": 0.02,
+      "act": 0.0287,
+      "at": " the"
+     },
+     {
+      "text": "The poems move from grief to anger and back again, and the imagery of water runs through all of them.\n\nThe overall effect of the collection is one of quiet strength.",
+      "rel": 0.034,
+      "act": 0.0496,
+      "at": "."
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Solar panels cut bills, last for decades and need little upkeep. They also raise the value of a home.",
+      "rel": 0.016,
+      "act": 0.0236,
+      "at": " a"
+     },
+     {
+      "text": "Reply quickly to complaints, thank customers for their feedback, and track what you change as a result.",
+      "rel": 0.015,
+      "act": 0.0223,
+      "at": " change"
+     },
+     {
+      "text": "In the garden, the roses bloomed early this year.",
+      "rel": 0.017,
+      "act": 0.0242,
+      "at": ","
+     }
+    ]
+   },
+   "extreme": 1.4453,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.034 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L36-n13610p": {
+   "layer": 36,
+   "n": 13610,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 1,
+   "beat_corpus": 0,
+   "strongest": 0.695,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.053,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "In Bible stories and commentary on scripture (Samuel, the Gospel of John, Torah readings), and in similar talk of sin, guilt and blame: on a small word in the middle of a declaration about who is rejected, who has sinned or who is at fault ('They are[ not] rejecting you, they reject me', 'I and[ my] father's house have sinned', 'the light who[ shines] in the darkness', '[ The] Friar is also guilty').",
+   "texts": {
+    "fire": [
+     {
+      "text": "The Lord answered Samuel, \"Listen to the people. They are not rejecting you, they have rejected me as their king.\"",
+      "rel": 0.457,
+      "act": 0.7969,
+      "at": " \""
+     },
+     {
+      "text": "Nehemiah prayed, \"I confess the sins of the people of Israel. Both I and my father's house have sinned against you.\"",
+      "rel": 0.055,
+      "act": 0.0957,
+      "at": "."
+     },
+     {
+      "text": "In John's gospel Jesus is the light who shines in the darkness, and the darkness has not overcome it.",
+      "rel": 0.695,
+      "act": 1.2109,
+      "at": " shines"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "The manager answered the clerk, \"Listen to the customers. They are not buying shoes, they are buying comfort.\"",
+      "rel": 0.05,
+      "act": 0.0879,
+      "at": " \""
+     },
+     {
+      "text": "The gardener said that both he and his neighbour had planted tomatoes that spring.",
+      "rel": 0.053,
+      "act": 0.0928,
+      "at": " had"
+     },
+     {
+      "text": "In the harbour the lighthouse is the lamp that shines over the water every night.",
+      "rel": 0.021,
+      "act": 0.0369,
+      "at": " harbour"
+     }
+    ]
+   },
+   "extreme": 1.7422,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.695 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L36-n15041m": {
+   "layer": 36,
+   "n": 15041,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 2,
+   "beat_corpus": 0,
+   "strongest": 0.609,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.053,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "In practical how-to text about arranging or placing physical things (a two-zone grill, an exercise position, sealing a window, garnishing a dish): on a small linking word inside a phrase that says where something goes or which part is meant ('the hot coals on one side[ and] cooler coals on the other', 'around the entire perimeter[ of] the window', 'lifting your free[ hand] towards the ceiling', 'add a[ few] whole herb leaves on top'). Also on the turn mark where an assistant starts a list of tips.",
+   "texts": {
+    "fire": [
+     {
+      "text": "Arrange the charcoal in a two-zone fire, with the hot coals on one side and cooler coals on the other.",
+      "rel": 0.5,
+      "act": -0.5547,
+      "at": "-"
+     },
+     {
+      "text": "Apply the sealant around the entire perimeter of the window frame, then smooth it with a wet finger.",
+      "rel": 0.224,
+      "act": -0.248,
+      "at": " of"
+     },
+     {
+      "text": "Hold the plank, then rotate your body to one side, lifting your free hand towards the ceiling.",
+      "rel": 0.609,
+      "act": -0.6758,
+      "at": " hand"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "The meeting covered the budget on one day and the hiring plan on the next.",
+      "rel": 0.053,
+      "act": -0.0583,
+      "at": "The"
+     },
+     {
+      "text": "The senator spoke about the entire history of the tax bill, then took questions.",
+      "rel": 0.053,
+      "act": -0.0583,
+      "at": "The"
+     },
+     {
+      "text": "She was pleased with the news and raised the matter with her manager.",
+      "rel": 0.036,
+      "act": -0.0398,
+      "at": " her"
+     }
+    ]
+   },
+   "extreme": -1.1094,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 2 of 3 texts meant to fire it did (the strongest 0.609 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L45-n16700m": {
+   "layer": 45,
+   "n": 16700,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.058,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.007,
+   "apart": 0.889,
+   "fires_at": 0.5,
+   "pattern": "On the word just before a base-form verb that says what something is for or what someone is trying to do: mostly the 'to' of an infinitive after a noun or verb of purpose, method, challenge or attempt ('one of the major challenges … is[ to] understand', 'It is often used[ to] hang', 'how[ to] use', 'attempts[ to] write', 'an effective method[ to] screen', 'whether[ to] attempt'); also the object in 'help[ them] build'.",
+   "texts": {
+    "fire": [
+     {
+      "text": "One of the main challenges in city planning is to understand how people actually move around.",
+      "rel": 0.009,
+      "act": -0.1377,
+      "at": " understand"
+     },
+     {
+      "text": "A torque wrench is often used to tighten the bolts on a wheel.",
+      "rel": 0.006,
+      "act": -0.0933,
+      "at": " tighten"
+     },
+     {
+      "text": "In this course you will learn how to read a safety data sheet.",
+      "rel": 0.058,
+      "act": -0.9141,
+      "at": " to"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "One of the main challenges in city planning is the lack of good data.",
+      "rel": 0.007,
+      "act": -0.1108,
+      "at": " data"
+     },
+     {
+      "text": "She drove from Leeds to Manchester on Friday.",
+      "rel": 0.004,
+      "act": -0.0593,
+      "at": " drove"
+     },
+     {
+      "text": "A torque wrench is a common tool in any garage.",
+      "rel": 0.004,
+      "act": -0.0649,
+      "at": " wrench"
+     }
+    ]
+   },
+   "extreme": -15.875,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.058 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L45-n4812p": {
+   "layer": 45,
+   "n": 4812,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 3,
+   "beat_corpus": 0,
+   "strongest": 0.9,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.023,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "On a number that counts points, or on the word 'points' right after it: basketball and other sports scores, and stock-index levels ('averaged 5.0[ points]', 'scored 1[0] points', 'down by 1[2] points at halftime', 'to 1,35[2] points'). Weaker in other talk of awarding points.",
+   "texts": {
+    "fire": [
+     {
+      "text": "He scored 24 points and grabbed 11 rebounds in the win over Chicago.",
+      "rel": 0.758,
+      "act": 20.0,
+      "at": " points"
+     },
+     {
+      "text": "The index fell 0.8 percent to 7,412 points on Tuesday.",
+      "rel": 0.9,
+      "act": 23.75,
+      "at": " points"
+     },
+     {
+      "text": "She averaged 18.3 points per game in her final college season.",
+      "rel": 0.519,
+      "act": 13.6875,
+      "at": " points"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "He bought 24 apples and 11 oranges at the market in Chicago.",
+      "rel": 0.018,
+      "act": 0.4629,
+      "at": "He"
+     },
+     {
+      "text": "The temperature fell 8 degrees to 12 Celsius on Tuesday.",
+      "rel": 0.023,
+      "act": 0.5977,
+      "at": "8"
+     },
+     {
+      "text": "She made several good arguments during the debate about school funding.",
+      "rel": 0.002,
+      "act": 0.0586,
+      "at": " debate"
+     }
+    ]
+   },
+   "extreme": 26.375,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 3 of 3 texts meant to fire it did (the strongest 0.9 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L45-n8497p": {
+   "layer": 45,
+   "n": 8497,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.486,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.088,
+   "apart": 0.667,
+   "fires_at": 0.5,
+   "pattern": "In explanations of code, on a word that names a program's input or output: 'the[ input] list', 'standard input ([cin])', the '#' and 'Output' of a '# Output: (5, 3)' comment after a print call. Also on a technical term in the middle of a physics method's name ('the[ collision] probability technique').",
+   "texts": {
+    "fire": [
+     {
+      "text": "numbers = [4, 9, 2]\nprint(max(numbers))  # Output: 9",
+      "rel": 0.486,
+      "act": 2.1719,
+      "at": " Output"
+     },
+     {
+      "text": "The function loops over each element in the input list and returns the largest one.",
+      "rel": 0.012,
+      "act": 0.0525,
+      "at": " in"
+     },
+     {
+      "text": "The program reads the array size and its elements from standard input (cin) and then prints the sum.",
+      "rel": 0.465,
+      "act": 2.0781,
+      "at": "cin"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "numbers = [4, 9, 2]\nlargest = max(numbers)",
+      "rel": 0.088,
+      "act": 0.3926,
+      "at": "4"
+     },
+     {
+      "text": "The chef looks over each item on the shopping list and picks the freshest one.",
+      "rel": 0.031,
+      "act": 0.1396,
+      "at": " shopping"
+     },
+     {
+      "text": "The orchestra reads the score and then plays the opening bars.",
+      "rel": 0.021,
+      "act": 0.0942,
+      "at": " reads"
+     }
+    ]
+   },
+   "extreme": 4.4688,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.486 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L56-n12115m": {
+   "layer": 56,
+   "n": 12115,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 1,
+   "beat_corpus": 0,
+   "strongest": 0.562,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.019,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "On a word-piece ending in the letter b (or a bare 'B' or 'b') in the middle of an uncommon or foreign word that is not yet finished and goes on with a vowel: '[ Hib]iscus', '[ Turb]ines', '[ antib]ilious', '[ Keb]aya', 'Cla[ib]orne', 'B[ilib]ili', 'fluor[ob]orate', '[ B]inge'. It fires at the b, before the rest of the word is spelled out.",
+   "texts": {
+    "fire": [
+     {
+      "text": "The Hibiscus Festival is held every August in Suva.",
+      "rel": 0.412,
+      "act": -1.9688,
+      "at": " Hib"
+     },
+     {
+      "text": "Claiborne County lies in the hills of eastern Tennessee.",
+      "rel": 0.062,
+      "act": -0.2969,
+      "at": "ib"
+     },
+     {
+      "text": "The village is known for its Bilibili rafts and for the kebaya worn at weddings.",
+      "rel": 0.562,
+      "act": -2.6875,
+      "at": " keb"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "The Orchid Festival is held every August in Suva.",
+      "rel": 0.019,
+      "act": -0.0928,
+      "at": " Orchid"
+     },
+     {
+      "text": "Jefferson County lies in the hills of eastern Tennessee.",
+      "rel": 0.006,
+      "act": -0.0309,
+      "at": " hills"
+     },
+     {
+      "text": "The village is known for its long rafts and for the dresses worn at weddings.",
+      "rel": 0.011,
+      "act": -0.051,
+      "at": "The"
+     }
+    ]
+   },
+   "extreme": -4.7812,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.562 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L56-n19940m": {
+   "layer": 56,
+   "n": 19940,
+   "face": "-",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.384,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.027,
+   "apart": 1.0,
+   "fires_at": 0.5,
+   "pattern": "In passages dense with measurements and counts (tables of dimensions, areas in sq mi and km2, worked physics sums, counts of members): on the token just before or inside a quantity that is being filled in: the table bars before a value ('(at center[)||]60 ft.'), a digit inside a figure ('(2,[5]85 km2)'), '=' before a result ('vf[ =] 12.0 m/s'), 'to' between two numbers ('a 500[ to] 1,000-mile'), or the unit noun right after a count ('24[ members]').",
+   "texts": {
+    "fire": [
+     {
+      "text": "|Chimney height||27 ft.|\n|Bay windows||8 ft by 8 ft|\n|Total height of facade (at center)||60 ft.|",
+      "rel": 0.057,
+      "act": -0.2363,
+      "at": " ft"
+     },
+     {
+      "text": "|Named for||Champaign County, Ohio|\n|• Total||998 sq mi (2,585 km2)|\n|• Land||996 sq mi (2,580 km2)|",
+      "rel": 0.384,
+      "act": -1.5859,
+      "at": "5"
+     },
+     {
+      "text": "vf = vi + at\n= 56.3 m/s + (-9.81 m/s2)(4.52 s)\nvf = 12.0 m/s",
+      "rel": 0.189,
+      "act": -0.7812,
+      "at": ")"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "The house has a tall chimney, wide bay windows and a handsome brick facade.",
+      "rel": 0.027,
+      "act": -0.1123,
+      "at": " handsome"
+     },
+     {
+      "text": "The county was named for a county in Ohio and is mostly farmland.",
+      "rel": 0.02,
+      "act": -0.082,
+      "at": " county"
+     },
+     {
+      "text": "The ball slows down as it rises because gravity pulls it back toward the ground.",
+      "rel": 0.013,
+      "act": -0.0547,
+      "at": "The"
+     }
+    ]
+   },
+   "extreme": -4.125,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.384 of its extreme in the corpus); 0 of 3 near misses did"
+  },
+  "L56-n3342p": {
+   "layer": 56,
+   "n": 3342,
+   "face": "+",
+   "kind": "written",
+   "fire": 3,
+   "fired": 0,
+   "beat_corpus": 0,
+   "strongest": 0.395,
+   "quiet": 3,
+   "quiet_fired": 0,
+   "quiet_strongest": 0.491,
+   "apart": 0.667,
+   "fires_at": 0.5,
+   "pattern": "In text about surveillance, machine vision and the control of people (Trevor Paglen's art, video surveillance, infiltrating and controlling a populace, officials with 'the mind sets of the robots they build'): on a small word or comma beside the word 'surveillance' or beside a control/infiltrate verb ('object tracking,[ video] surveillance', 'potions or surveillance[,]', 'help control[ and] infiltrate the local populace'), and on function words elsewhere in such passages.",
+   "texts": {
+    "fire": [
+     {
+      "text": "Object detection is used in many fields, including object tracking, video surveillance and crowd counting.",
+      "rel": 0.361,
+      "act": 9.9375,
+      "at": " video"
+     },
+     {
+      "text": "Retired soldiers were given jobs in the region to help control and infiltrate the local population.",
+      "rel": 0.057,
+      "act": 1.5703,
+      "at": " and"
+     },
+     {
+      "text": "The artist photographs secret military bases and spy satellites, exploring how surveillance, and the machines that carry it out, shape what is possible to see.",
+      "rel": 0.395,
+      "act": 10.875,
+      "at": " surveillance"
+     }
+    ],
+    "quiet": [
+     {
+      "text": "Object detection is used in many fields, including fruit sorting, video editing and wildlife counting.",
+      "rel": 0.491,
+      "act": 13.5,
+      "at": " video"
+     },
+     {
+      "text": "Retired teachers were given jobs in the region to help train and support the local schools.",
+      "rel": 0.004,
+      "act": 0.105,
+      "at": "Retired"
+     },
+     {
+      "text": "The artist photographs old barns and country churches, exploring how weather, and the seasons that bring it, shape what is possible to grow.",
+      "rel": 0.003,
+      "act": 0.0962,
+      "at": " weather"
+     }
+    ]
+   },
+   "extreme": 27.5,
+   "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.395 of its extreme in the corpus); 0 of 3 near misses did"
+  }
+ }
+}

@@ -1307,19 +1307,28 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             Both test when a face fires, in ordinary text, which a neuron does at every layer; the census and the steer
             lens test what a push does, and no push has yet been found that reads the early layers. Neither test shows
             that the pattern is the face’s only job: a second job the pattern leaves out is never looked for. And
-            neither says what the firing does further on.
+            neither says what the firing does further on. Some neurons fire only far into their own document: about
+            one in six, tried on this model, stays silent on its own strongest passage when only the sixty
+            word-pieces before it are read. No short text fires such a neuron, so the written test reads the
+            neuron’s own passages alone as well and says when that is the case. A blind test can still be passed
+            there, which is why passing it does not show the pattern is enough to fire the neuron.
           </Note>
           <EntryApparatus title="a pattern put to the test">
             Written (<M>POST /neuron/written_test</M>): each text read once; its peak on the face over the face’s
             extreme in the stats index. A text fires at 0.5 of the extreme, the band the passages index draws its
-            random events from, and beats the corpus at 1. Blind (<M>POST /neuron/blind_test/start</M>, then{" "}
+            random events from, and beats the corpus at 1. Its own check (<M>own</M>): the face’s three strongest
+            passages not kept back, each read with only 60 word-pieces before its peak; one holds when it still reads
+            half of what it read in its window, and the face holds alone when most do. Blind (<M>POST /neuron/blind_test/start</M>, then{" "}
             <M>/answer</M> or <M>/judge</M>): the face’s stored events in odd-numbered windows are kept back from the
             scientist; each is paired with a passage from another kept-back window where the face stays under 0.25 of
-            its extreme, read live; both cut to 60 word-pieces before one marked word-piece and 8 after. The reader is
+            its extreme, read live; one passage a window; both cut to 60 word-pieces before one marked word-piece and 8 after. The reader is
             an endpoint’s model in a fresh conversation, given the pattern and the pairs alone; chance is one half,
             and the result gives the chance of doing as well by guessing. After Goodfire’s <i>Neurons as an
-            Interpretable Basis</i> (2026), which tested descriptions by detection and by input synthesis. Results
-            are kept with the pattern they tested (<M>field_tests.json</M>).
+            Interpretable Basis</i> (2026), which tested descriptions by detection and by input synthesis. Tried on
+            the 31B on 14 November 2026 (<M>experiments/results/pattern_tests_pilot</M>): a blind test could be begun
+            for 175 of 176 faces drawn at random; over 21 faces a reader picked 177 of 196 pairs with the face’s own
+            pattern and 86 of 196 with another face’s. Results are kept with the pattern they tested
+            (<M>field_tests.json</M>).
           </EntryApparatus>
         </Entry>
 

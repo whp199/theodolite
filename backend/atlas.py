@@ -1664,8 +1664,25 @@ def _written_test(a: Atlas, req: WrittenTestRequest, face: str) -> Dict[str, Any
                 "at": units[unit_of[i]][0]}
 
     fire, quiet = [read(t) for t in req.fire], [read(t) for t in req.quiet]
-    return {**pt.written_result(fire, quiet), "pattern": req.pattern, "texts": {"fire": fire, "quiet": quiet},
-            "extreme": round(ext, 4), "rel_to": f"the face's extreme over {sc['source']['corpus']}"}
+    out = {**pt.written_result(fire, quiet), "pattern": req.pattern, "texts": {"fire": fire, "quiet": quiet},
+           "extreme": round(ext, 4), "rel_to": f"the face's extreme over {sc['source']['corpus']}"}
+    # the test's own check: the face's strongest passages (not kept back), read with only what a short text could hold
+    # before the peak. Where they no longer fire, a written text's silence is no fault of the pattern.
+    got = a.index.passages(layer, n, face, 64)
+    if got is not None:
+        rows, seen = [], set()
+        for x in list(got["top"]) + list(got["sample"]):
+            w = int(x["window"])
+            if w in seen or passage_kept_back(w) or len(rows) >= pt.OWN_PASSAGES:
+                continue
+            seen.add(w)
+            ids, at = a.index.window_ids(w) or [], int(x["at"])
+            cut = ids[: at + 1] if at - pt.BEFORE <= 1 else [ids[0]] + ids[at - pt.BEFORE: at + 1]
+            v = ao.read_neurons(a.lm, cut, [(layer, n)])[(layer, n)]
+            rows.append({"in_window": round(float(x["act"]) / ext, 3), "alone": round(float(v[-1]) / ext, 3)})
+        if rows:
+            out["own"] = pt.own_result(rows)
+    return out
 
 
 @router.post("/neuron/written_test")
@@ -1675,7 +1692,10 @@ async def neuron_written_test(req: WrittenTestRequest) -> Dict[str, Any]:
     the face's extreme (`rel`; 1 = as strong as anything in the corpus its range was read over) with the unit it fell
     on. `fired`: how many of the texts meant to fire reached `fires_at` of the extreme; `beat_corpus`: how many reached
     1; `quiet_fired`: how many near misses reached `fires_at`; `apart`: the share of (firing text, near miss) pairs in
-    which the firing text reads higher. Kept on the face (`keep`, GET /neuron/tests) with the pattern it tested."""
+    which the firing text reads higher. `own` (with the passages index): the face's three strongest passages that are
+    not kept back, each read with only 60 word-pieces before its peak (`alone`) beside what it read in its window
+    (`in_window`); `holds` false means most no longer fire, so no short text can fire this face and the texts' silence
+    is no fault of the pattern. Kept on the face (`keep`, GET /neuron/tests) with the pattern it tested."""
     a = atlas()
     _check_neuron(a, req.layer, req.n)
     face, by = _face_arg(req.face), _test_by(req.by)
@@ -1694,11 +1714,17 @@ def _blind_start(a: Atlas, req: BlindStartRequest, face: str) -> Dict[str, Any]:
         raise ValueError(PASSAGES_UNBUILT if not why else f"the passages index is not read: {why}")
     P = a.index.get("passages")
     windows = int(P["meta"].get("windows") or 0)
-    events = list(got["top"]) + list(got["sample"])
+    # one event a window, the strongest first: an event drawn at random above half the extreme is often one of the
+    # strongest over again, or sits a word-piece from one, and the same snippet twice is one pair, not two
+    events, seen = [], set()
+    for x in list(got["top"]) + list(got["sample"]):
+        if int(x["window"]) not in seen:
+            seen.add(int(x["window"]))
+            events.append(x)
     held = [x for x in events if passage_kept_back(x["window"])]
     if len(held) < pt.MIN_PAIRS:
-        raise ValueError(f"Only {len(held)} of this face's {len(events)} stored passages are kept back for tests; a blind test needs "
-                         f"at least {pt.MIN_PAIRS}. A passages index built with more events a face would give more.")
+        raise ValueError(f"Only {len(held)} of the {len(events)} windows this face has a stored passage in are kept back for tests; a "
+                         f"blind test needs at least {pt.MIN_PAIRS}. A passages index built with more events a face would give more.")
     stats = a.index.get("act_scale")
     ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
     if abs(ext) < 1e-6:

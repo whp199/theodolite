@@ -252,7 +252,12 @@ name from passages, and whenever the person asks how sure a name is.
   their words or topic but lack what the pattern says matters. Good near misses are the test: "Krakow, Poland" beside
   "Vilna, Poland" for a neuron about places in their former borders. Read `fired`, `quiet_fired` and `apart`. If your
   own texts do not reach half the face's extreme, or a near miss does, the pattern is wrong or too loose: reword it
-  from what did fire and test again. Reaching 1 means you fired it harder than anything in the corpus.
+  from what did fire and test again. Reaching 1 means you fired it harder than anything in the corpus. The result's
+  `own` reads the face's three strongest passages with only sixty word-pieces before the peak. Where `own.holds` is
+  false they no longer fire: what fires this face lies further back than a short text reaches (on the 31B about one
+  face in six, and one in four from layer 26 up), and your texts' silence is not the pattern's fault. Then read a
+  passage with more before it (`passages` with a larger `before`, `activations` on its ids cut shorter and longer) to
+  find what the earlier text has to be, say that in the pattern, and write a longer text.
 - **`blind_test`**: about half of each face's stored passages are kept back from `passages`. The test pairs each with
   a passage where the face is quiet, and a reader given only your pattern picks. Half right is chance; `p` is the
   chance of doing as well by guessing. Write the pattern for a stranger: it sees one marked word-piece and the sixty
@@ -260,7 +265,9 @@ name from passages, and whenever the person asks how sure a name is.
   (`blind_test_answer`), and that is a weaker test, said as such in the result.
 
 What they do not show: that the pattern is the face's only job (a second job the pattern leaves out is never looked
-for; the kept-back passages that the reader got wrong are where to look), or what the firing does downstream. Say
+for; the kept-back passages that the reader got wrong are where to look), or what the firing does downstream. A blind
+test passed is not a written test passed: the quiet passages come from anywhere in the corpus, so a pattern that names
+the word-piece and its phrase is picked rightly even where that phrase alone would not fire the face. Say
 which test a name rests on, with its figures, in the note you propose. Results are kept on the face with the pattern
 they tested (`neuron` lists them as `tests`); a pattern reworded since is untested.
 

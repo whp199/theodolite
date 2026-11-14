@@ -26,6 +26,18 @@ written from the description fires the neuron harder than anything in a ten-bill
 What neither test shows: that the pattern is the face's only job (each takes the pattern's word for what to look
 for; a second job the pattern leaves out is not looked for), or what the neuron's firing does downstream. They test
 when it fires, not what it writes.
+
+Tried on the 31B on 14 November 2026 (experiments/results/pattern_tests_pilot): a blind test could be begun for 175
+of 176 faces drawn at random at eleven layers, a median of 9 pairs each. Over 21 faces whose patterns were written
+from the passages not kept back, a reader picked 177 of 196 pairs rightly with the face's own pattern and 86 of 196
+with another face's, so the pairs give nothing away without the pattern. The written test found what the blind one
+cannot: 6 of the 21 faces do not fire on their own strongest passages when only the 60 word-pieces before the peak
+are read, and none of the 18 texts written for those six fired, though a reader picked 49 of their 54 pairs. What
+fires such a face lies further back than a short text or a snippet reaches (of the 176 faces, 30 need more than 60
+word-pieces and 8 more than 256; all 8 are at layer 26 or later). So the written test reads the face's own passages
+alone as well (`own_result`), and says so when a text's silence is the face's need of more text and not the
+pattern's fault. A blind test passed against passages drawn anywhere in the corpus does not show that the pattern is
+enough to fire the face.
 """
 from __future__ import annotations
 
@@ -39,6 +51,8 @@ BEFORE, AFTER = 60, 8  # a snippet: the word-pieces shown before the marked one,
 MIN_PAIRS, MAX_PAIRS = 4, 12
 MAX_TEXTS = 12
 CONTROL_TRIES = 8    # passages tried for one quiet control before the test is refused
+OWN_PASSAGES = 3     # the face's own strongest passages (not kept back) that a written test reads alone beside its texts
+HOLDS = 0.5          # a passage holds alone when, with BEFORE word-pieces before its peak, it reads this share of what it read in its window
 
 
 def binom_tail(right: int, n: int) -> float:
@@ -62,6 +76,15 @@ def written_result(fire: Sequence[Dict[str, Any]], quiet: Sequence[Dict[str, Any
     return {"kind": "written", "fire": len(f), "fired": sum(x >= FIRES_AT for x in f), "beat_corpus": sum(x >= 1.0 for x in f),
             "strongest": round(max(f), 3) if f else None, "quiet": len(q), "quiet_fired": sum(x >= FIRES_AT for x in q),
             "quiet_strongest": round(max(q), 3) if q else None, "apart": apart, "fires_at": FIRES_AT}
+
+
+def own_result(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """The written test's own check, from the face's strongest passages read alone ({"in_window": the peak as the index
+    holds it, read with all its window had before it; "alone": the same peak with only BEFORE word-pieces before it;
+    both as shares of the face's extreme}): how many still read HOLDS of what they did (`hold`, of `of`), and whether
+    most do (`holds`). Where they do not, no short text can fire the face, whatever the pattern."""
+    hold = sum(float(r["alone"]) >= HOLDS * float(r["in_window"]) for r in rows)
+    return {"passages": [dict(r) for r in rows], "hold": hold, "of": len(rows), "before": BEFORE, "holds": hold * 2 > len(rows)}
 
 
 def render(units: Sequence[Sequence[Any]]) -> str:
@@ -112,6 +135,11 @@ def said(test: Dict[str, Any]) -> str:
             s += f" (the strongest {test['strongest']:g} of its extreme in the corpus)"
         if test.get("quiet"):
             s += f"; {test['quiet_fired']} of {test['quiet']} near misses did"
+        own = test.get("own")
+        if own and own.get("of") and not own.get("holds"):
+            s += (f". Its own strongest passages do not fire it either when read alone ({own['hold']} of {own['of']} do, with "
+                  f"{own['before']} word-pieces before the peak): what fires it lies further back than a short text reaches, "
+                  "and the pattern does not say what")
         return s
     if test.get("kind") == "blind":
         return (f"blind: {test['right']} of {test['pairs']} pairs picked rightly by {test.get('judge') or 'a reader'} "

@@ -70,3 +70,7 @@ experiments/results/E6_tool_audit_06_steering.log
 
 # the atlas's indexes and census runs (scripts/atlas_build.py, scripts/census_run.py): regenerable, hundreds of MB
 atlas_data/
+# the pattern tests' pilot: the corpus passages its patterns were written from and the readers' sheets (text of the
+# corpus; written again by `pilot.py fit` and `pilot.py start`, which draw by seed)
+experiments/results/pattern_tests_pilot/fit/
+experiments/results/pattern_tests_pilot/readers/sheet*[ab].txt

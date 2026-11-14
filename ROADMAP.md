@@ -1121,8 +1121,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
     with kit 4’s code and settings, about 13 to 17 hours. For its first twelve minutes a second process held the
     card down to 23,900 MiB free, the kit’s floor: a real run inside what a 24 GB card has. The board shows the
     layer closed, the home card taking it.
-- **A pattern put to the test, without a push** (built 14 November 2026; CPU checks on the stand-in only, since the
-  card was taking layer 36; the owner’s word that day, “Start on the first two ideas from the article”). The census
+- **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
+  same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
+  now”). The census
   and the steer lens say what a push along a neuron’s write direction does. No push strength has passed a trial
   below layer 32, and the steer lens is a weak guide below 39, so thirty-two layers have no reading that has been
   checked. Goodfire’s *Neurons as an Interpretable Basis* (10 November 2026; REFERENCES [54]) reads neurons from
@@ -1139,21 +1140,68 @@ layers, the determinism run and the sampled push on 29 October). In this section
 
   The scientist has both as tools (`test_by_writing`, `blind_test`) and is told to run them before it proposes a
   name from passages. Results are kept by face with the pattern they tested, and the details tab lists them, in red
-  where a test went against the pattern. *Checked:* `check_atlas_api` 441 (424 before), `check_scientist` 235 (226),
-  with a stubbed reader; `check_interface_defaults` 291, `check_local_only` 1213, `check_atlas_index` 178; the page
-  type-checks and builds. *Not done, and not shown:*
-  - Neither test has run on the 31B. On the stand-in most neurons fire nearly everywhere, so most faces there have
-    no quiet passage to pair with and the blind test refuses them in plain words; whether the 31B’s neurons are
-    sparse enough for it at every layer is the first thing to see.
-  - A face has 16 strongest passages and 6 drawn at random stored, so about 11 are kept back and a blind test has
-    at most that many pairs: 9 of 11 right is 1 chance in 30 by guessing, 10 of 11 is 1 in 170. A passages index
-    built with more events a face (20 minutes on the card) would sharpen it, and would give the scientist back what
-    the keeping-back took.
-  - The quiet passage is drawn from anywhere in the corpus. Goodfire’s harder control, a passage on the same
-    subject, is not built; a pattern that only names a topic will pass more easily than it should.
+  where a test went against the pattern.
+
+  *Tried on the 31B* (14 November, 03:04Z to 03:38Z, with layer 36’s census stopped between batches and resumed
+  after; `experiments/results/pattern_tests_pilot`, `pilot.py` and `read.py` there). Everything went through the
+  server’s own routes, as the scientist’s tools do.
+  - **The blind test can be made nearly everywhere.** Of 176 faces drawn at random, sixteen at each of layers 2, 8,
+    14, 20, 26, 31, 36, 40, 45, 50 and 56, a test could be begun for 175. The other had three kept-back windows
+    where four are needed. No face was refused for firing too widely, which is what the stand-in’s neurons do. A
+    test has a median of 9 pairs (5 to 12): 8 of 9 right is 1 chance in 51 by guessing, 9 of 9 is 1 in 512.
+  - **A pattern written from half a face’s passages picks out the other half.** For 21 of those faces, three at
+    each of layers 2, 14, 26, 31, 36, 45 and 56 (the first three in the draw; none was chosen for being readable),
+    a pattern was written from the passages not kept back. Each test was then read twice, by two readers in fresh
+    conversations who saw only patterns and pairs: once with the face’s own pattern and once with another face’s,
+    neither reader told which. With its own pattern: 177 of 196 pairs right (90 in 100), and 15 of the 21 faces
+    better than 1 chance in 20 each. With another face’s pattern: 86 of 196 (44 in 100), and no face better than 1
+    in 20. So the pairs give nothing away by themselves; the pattern does the work. Goodfire report 86 to 95 in 100
+    on their model.
+  - **A text written to the pattern fires the neuron about a third of the time, and a near miss never did.** Three
+    texts and three near misses a face: 22 of 63 texts reached half the face’s extreme, 2 beat the strongest thing
+    in the corpus, and 0 of 63 near misses fired. Twelve of the 21 faces had at least one text that fired.
+  - **The two tests disagree on six faces, and the written one is right.** Six of the 21 do not fire on their own
+    strongest passages when only the 60 word-pieces before the peak are read (the same passages read in their
+    windows are what the index holds). None of the 18 texts written for those six fired; a reader still picked 49
+    of their 54 pairs. Their patterns name the word and its phrase, which is enough to tell the passage from a
+    random one, and not enough to fire the neuron. Read with more before the peak, they come back: one needs 128
+    word-pieces, two need 256 and three need more than 256. Putting 256 or 420 word-pieces of an unrelated
+    document in front does not stand in for their own (16 of their 18 passages stay silent behind it). One at
+    layer 36 fires on “In conclusion” only when the essay it
+    concludes is there to read. Over all 176 faces, 30 need more than 60 word-pieces (two at layer 8, the rest at
+    layer 26 and later, where it is one face in four) and 8 need more than 256.
+  - *What was changed on the strength of it.* A face’s stored passages often hold the same event twice, once among
+    the strongest and once among those drawn at random, so a blind test would have counted one pair as two: it now
+    takes one event a window (the figures above are after that fix; before it the same survey showed 11 pairs
+    where there are 9). And a written test now reads the face’s own three strongest passages alone beside its
+    texts (`own`), and says, on the page and to the scientist, when they no longer fire: then no short text can
+    fire the face, and the pattern has yet to say what the earlier text must be.
+  - *What the pilot does not show.* The patterns were written by the session that built the tests, from the fit
+    passages alone, not by the scientist through its tools. The readers were Claude Fable 5.2 conversations run by
+    hand, because no endpoint is configured on this machine; the product’s own path, an endpoint’s model, has run
+    only against a stub. It is 21 faces and one reading of each. The stored passages are a face’s strongest
+    events and a few above half its extreme, so both tests speak for where a neuron fires hard and say nothing of
+    its many weaker firings. With another face’s pattern the readers were a
+    little under a half (86 of 196; guessing does as badly 1 time in 20), as a reader steered by a wrong
+    description would be.
+
+  *Checked:* `check_atlas_api` 443 (424 before the tests were built), `check_scientist` 236 (226),
+  `check_interface_defaults` 291, `check_local_only` 1213, `check_atlas_index` 178; the page type-checks and builds.
+  *Not done:*
+  - **A written test for a face that needs its own document.** The honest test there holds the earlier text fixed
+    (the face’s own passage up to some word-pieces before the peak) and swaps the ending: one written to the
+    pattern, one a near miss. Not built; today the test only says that short texts cannot judge such a face.
+  - **A harder quiet passage.** The quiet passage is drawn from anywhere in the corpus, and the six faces above
+    show what that lets through: a pattern can pass the blind test without being enough to fire the neuron.
+    Goodfire’s control, a passage on the same subject (or one that has the pattern’s phrase and leaves the neuron
+    quiet), is not built.
+  - More pairs. A passages index built with more events a face (20 minutes on the card) would give a test more
+    than 9 pairs, and give the scientist back what the keeping-back took.
   - A person cannot yet run either test from the page; the scientist can, and so can a script.
   - A second job the pattern leaves out is never looked for. Clustering a face’s firings by what drives them (their
-    “modes”) is not built.
+    “modes”) is not built. One face in the pilot shows the gap: its three texts all fired, two of them harder than
+    0.9 of its extreme, and a reader picked only 6 of its 10 pairs, so the pattern is true and is not all the
+    neuron does.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at

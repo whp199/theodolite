@@ -833,7 +833,23 @@ says which of each pair fires. The reader is an endpoint's model in a fresh conv
 no tools, no history); where there is no endpoint the scientist answers the pairs itself and the result says so, a
 weaker test. Results are kept by face in `field_tests.json` beside the notes, each with the pattern it tested, so a
 pattern reworded since is seen to be untested. Neither test shows that the pattern is the face's only job, nor what
-its firing does. Checked on the CPU stand-in only; not yet run on the 31B.
+its firing does. A face's stored events can hold the same event twice (one drawn at random above half the extreme is
+often one of the strongest again), so a blind test takes one event a window.
+
+*Tried on the 31B* (14 November 2026, with layer 36's census paused for 34 minutes;
+`experiments/results/pattern_tests_pilot`, ROADMAP §vi). A blind test could be begun for 175 of 176 faces drawn at
+random at eleven layers (the other had three kept-back windows), a median of 9 pairs. Over 21 faces whose patterns were
+written from the passages not kept back, readers in fresh conversations picked 177 of 196 pairs with the face's own
+pattern and 86 of 196 with another face's: the pairs give nothing away without the pattern. Of the 63 texts written to
+fire, 22 did, and none of the 63 near misses. The two tests disagree where it matters: 6 of the 21 faces do not fire
+on their own strongest passages when only the 60 word-pieces before the peak are read, none of the 18 texts written
+for them fired, and yet 49 of their 54 pairs were picked rightly. What fires such a face lies further back in its own
+document than a short text or a snippet reaches; unrelated text put in front does not stand in for it (16 of their
+18 passages stay silent behind it). Of the 176
+faces, 30 need more than 60 word-pieces and 8 more than 256, all 8 at layer 26 or later. So a written test now reads
+the face's own three strongest passages alone beside its texts (`own`, `pattern_tests.own_result`) and says when a
+text's silence is the face's need of more text. And a blind test passed against passages drawn anywhere in the corpus
+is not evidence that the pattern is enough to fire the face.
 
 *Its own check* (13 November 2026). The lens lists the word-pieces whose odds rose most; nothing in it sets a neuron
 against other pushes, as the census's controls do. On the 31B it agrees with the census from layer 39 up and less and

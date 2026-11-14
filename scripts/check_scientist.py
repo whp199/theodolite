@@ -1488,6 +1488,9 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check(tw["neuron"] == "L3 N5" and tw["face"] == "+" and tw["fire"] == 2 and tw["quiet"] == 1 and len(tw["texts"]["fire"]) == 2
           and tw["said"].startswith("written: ") and 0 <= tw["fired"] <= 2 and kept_w[0]["by"] == "scientist" and kept_w[0]["pattern"] == "fires on sea words",
           f"test_by_writing: each text read on the API's layer 2, the figures, kept on the face as the scientist's ({tw['said']})")
+    check(tw["own"] == kept_w[0]["own"] and 0 < tw["own"]["of"] <= 3 and tw["own"]["before"] == 60 and isinstance(tw["own"]["holds"], bool)
+          and all(set(x) == {"in_window", "alone"} for x in tw["own"]["passages"]),
+          f"test_by_writing: the face's own passages read alone come back with the texts ({tw['own']['hold']} of {tw['own']['of']} hold)")
     from backend import pattern_tests as pt
 
     judged: List[Dict[str, Any]] = []
