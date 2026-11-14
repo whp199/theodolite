@@ -662,7 +662,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
     begins whether the volunteer's card writes the home card's bits or is a class of its own.
   - **The intake** (`scripts/census_intake.py`) checks a bundle's claim, settings and every answer. It then writes 5
     chunks, drawn after the bundle arrives, again on the home card: they must match bit for bit when the canary did,
-    and must otherwise meet rules fixed before any run was seen (`census_volunteer.ACCEPT_OTHER_CLASS`).
+    and must otherwise meet rules fixed before any run was seen (`census_volunteer.ACCEPT_OTHER_CLASS`; since 14
+    November 2026 its two log-probability bars are a design’s at its layers, `OTHER_CLASS_BARS`, below under kit 4).
   - **Another card class.** A layer from another card class is recorded so in its provenance file, and is read as its
     own instrument.
 
@@ -1089,8 +1090,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
     the one kept and compares them, and fails if they differ (`check_volunteer_kit`, 63 checks). Nine layers are
     open on the board: 32–35, 37–39, 51 and 52. Layer 36 is closed, held for the home card;
     `census_board.py layer 36 open` offers it. PR #2 (24 GB cards) is not in this kit. *Not done:* no whole layer
-    has been taken with `match_ceil` or `soft_ceil` to its end, on any card (the home card began layer 36 on 14
-    November, below); and whether the intake carries a volunteer card’s own writer floor through to the page is
+    had been taken with `match_ceil` or `soft_ceil` to its end, on any card, when this kit was cut (the home card
+    has since taken layer 36, below); and whether the intake carries a volunteer card’s own writer floor through to the page is
     not checked.
     *The reader for a whole layer taken with them* (written 14 November 2026):
     `experiments/results/census_scaled_design/read_whole.sh <layer>` reads a whole `match_ceil` or `soft_ceil`
@@ -1100,7 +1101,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
     trials themselves at layers 36, 37, 38 and 52 it gives the verdicts recorded at the time, figure for figure,
     the upper dose’s among them; it refuses a `break_rel` run (whose reader is
     `census_neighbour_trials/read_whole.sh`), a run of another layer than the one named, and a layer with no trial
-    it knows of unless that trial’s folder is given. It has not yet read a whole layer; layer 36 will be the first.
+    it knows of unless that trial’s folder is given. Layer 36 was the first whole layer it read (below).
   - **Kit 4: kit 3 opened to 24 GB cards** (cut 14 November 2026, tag `census-kit-4`; the owner’s word that day:
     “Definitely need to incorporate the 24gb PR if it will work”). The pull request (whp199/theodolite#2, by
     bethanylong and her agent) makes two changes. `census.sh check` asks for 23,900 MiB free as well as a card of
@@ -1121,6 +1122,93 @@ layers, the determinism run and the sampled push on 29 October). In this section
     with kit 4’s code and settings, about 13 to 17 hours. For its first twelve minutes a second process held the
     card down to 23,900 MiB free, the kit’s floor: a real run inside what a 24 GB card has. The board shows the
     layer closed, the home card taking it.
+    *Layer 36 read whole (14 November, 17:33Z): the whole reading passes, and the lower dose alone fails one gate
+    by 0.006, so by its trial’s standard the layer fails.* The run ended at 17:14Z with all 565,254 answers, 15.5
+    hours of writing in two sessions (it was stopped for 34 minutes for the pattern tests), from kit 4’s commit,
+    its first batch the home canary bit for bit. Read by its trial’s reader and gates
+    ([`census_L36_whole/`](experiments/results/census_L36_whole/)); the figures are the lead, the lead beyond how
+    the text survives, the two directions across the question halves, and the new questions alone, against 0.60,
+    0.58, 0.57 and 0.57, 0.56:
+
+    | | whole layer, 21,504 neurons | the trial, 1,022 neurons |
+    |---|---|---|
+    | every answer | 0.632, 0.650, 0.589 and 0.597, 0.617: passes | 0.627, 0.636, 0.608 and 0.606, 0.612 |
+    | the ±2.27 answers alone | 0.616, 0.630, 0.577 and **0.564**, 0.611: fails | 0.615, 0.622, 0.586 and 0.571, 0.600 |
+    | the neurons the controls cover | 97 in 100; 0.629, 0.650, 0.584 and 0.592, 0.614: passes | 96 in 100; 0.622, 0.632, 0.600 and 0.600, 0.609 |
+    | the ±2.46 answers alone (reported) | 0.610, 0.632, 0.577 and 0.577, 0.600 | 0.601, 0.619, 0.574 and 0.584, 0.595 |
+
+    - **What fails is one number.** The lower dose’s words, picked on the second half of the questions and scored
+      on the first, lead by 0.564 where 0.57 is asked. The trial had it at 0.5709 and its write-up said another
+      draw of neurons could fail as easily as pass; the whole layer is that other draw. Each dose alone sits at
+      the bar on this check (0.564 to 0.577) and the two together clear it (0.589, 0.597). The doses are 8% apart,
+      so the two are close to one dose read twice.
+    - **How sure the 0.564 is, is not worked out.** It is 0.006 under the bar with 2,048 controls behind it. I
+      have not computed its error; my guess is that 0.006 is about what the controls alone leave open, so “at the
+      bar” is the honest reading, not “clearly under”.
+    - **Per neuron it tells little, as the trial said it would.** 18 neurons beat every one of the 2,048 controls
+      where chance gives 10.5, and none passes q ≤ 0.05. 23 in 100 beat 95 in 100 of the controls, and 1,877 are
+      under p 0.05 on both halves of the questions where chance gives 54: the layer as a whole carries a lead,
+      and few single neurons can be told from a control.
+    - **Cut to 32 word-pieces the whole reading still passes** (0.619, 0.625, 0.584 and 0.587, 0.598), and by the
+      rule the shorter is the one kept.
+    - **The steer lens against it is weak, as at every layer below 39** (`scripts/atlas_steer_check.py`, run again
+      with the whole layer in): of the 4,751 neurons above 95 in 100 controls, a steer-lens word-piece is one of
+      the census’s words for 0.185, and for 0.034 with the neurons shuffled. Its neighbours’ trials read 0.127
+      (35) and 0.197 (37).
+    - **What this does not decide.** `match_ceil` is counted as calibrated at layers 32 to 37 on the trials
+      (`DOSES_CALIBRATED`, the owner’s word of 13 November). Whether layer 36 stays counted, and what the board
+      and the page say of it, is the owner’s choice; nothing was changed. Holding it back from volunteers was
+      right. For the layers volunteers have, the trials’ lower dose carried across the halves by 0.589 and 0.602
+      (32), 0.601 and 0.617 (33), 0.640 and 0.650 (34), 0.582 and 0.595 (35), 0.599 and 0.600 (37). Layer 36’s
+      whole reading came out 0.009 and 0.007 under its trial on this check; one layer is not a rule, but if the
+      others fall as far, 35 is the one that would come close.
+
+    *The bars for another card class, measured for each of this kit’s designs* (14 November 2026; the owner’s
+    word, “Bars first”; [`census_other_card_bars/kit4/`](experiments/results/census_other_card_bars/kit4/)). A run
+    from a card that does not write the home card’s bits is taken if a few of its chunks, written again at home,
+    stay within set distances of the home card’s. The two log-probability distances had been measured once, on 31
+    October, at layers 40 to 50 under `break_rel`. Kit 4 takes its layers with three designs, two of which push by
+    other lengths, and nothing had been measured for them; layer 34’s bundle, from a 96 GB card, was hours away.
+    - **The measurement** (20 minutes on the home card, 17:16Z to 17:37Z, after layer 36): each of layers 32 to 39,
+      51 and 52, with the kit’s design, its first 64 answers written thirteen ways: as the kit writes them, with
+      only the arithmetic changed (three batch sizes, full-precision sums), and with the push 1, 2, 5 and 10%
+      longer and shorter. The control was the home canaries bit for bit at all ten layers.
+    - **The rule and what it would decide were fixed first** (`prereg/RULES.md`, hashed and committed at 16:50Z): the
+      rule of 31 October unchanged, applied to each design’s layers together.
+
+      | design, layers | arithmetic alone moves the median, the 99th percentile | a push 5% off, 10% off | the bars |
+      |---|---|---|---|
+      | `match_ceil`, 32–37 | 0.0050, 0.117 | 0.028, 0.53 | **0.012, 0.25** |
+      | `soft_ceil`, 38 and 52 | 0.0065, 0.130 | 0.026, 0.63 | **0.013, 0.29** |
+      | `break_rel`, 39 and 51 | 0.0143, 0.203 | 0.053, 0.81 | 0.028, 0.37 (those of 31 October, which stand) |
+      | `break_rel`, 40–50 (31 October) | 0.0130, 0.169 | 0.059, 0.81 | 0.028, 0.37 |
+
+    - **Under the two ceiling designs the home card’s own arithmetic moves a log-probability by less than half
+      what it does under `break_rel`**, so their bars are tighter. The old bars would have been too loose there: a
+      push 5% off moves the median to 0.028, which is the old bar itself, and one 2% off to 0.013, well inside it.
+    - **At 39 and 51 the old bars stand, by the check fixed beforehand**: arithmetic alone stays under each and the
+      push error each was built to catch stays over it. By the rule alone the median there would have had no bar
+      (a push 5% off is 3.7 times the floor, and 4 is asked).
+    - **The first word-piece bar stays 0.90**, and under `match_ceil` it catches little: a push 10% off still writes
+      the same first word-piece in 98 answers of 100 or more. There the log-probability bars are the check that bites. At
+      39 and 51, arithmetic alone parted 4 first word-pieces of 64 at one batch size (0.9375, where 0.93 was the
+      mark for keeping the bar); on 31 October the least kept was 0.983.
+    - **No layer needed bars of its own**: each layer’s own arithmetic is under its group’s bars.
+    - **A fault found first, and a guard added.** The script made a push “a little off” by scaling the stream’s
+      median length, which a ceiling design’s push does not use: every such run would have written the unchanged
+      answers and both bars would have come out dropped, for the wrong reason. It now scales the write ceiling for
+      those runs, and stops if any of them writes the control’s rows. And the intake now draws no spot chunks,
+      and will not judge, a run of another card class at a design and layer no bars were measured for
+      (`census_volunteer.accept_bars`): layers 53 to 59 are in that state.
+    - **Two false starts.** The script refused twice at 17:14Z, writing nothing: it asked 26 GiB of the card free
+      and the desktop held 5.1 GB. It now asks the kit’s own 23,900 MiB, and the registration is amended, dated,
+      saying so.
+    - **What this leaves open.** The variants are the home card’s own arithmetic; that another card class stays
+      inside them rests on the five `break_rel` layers accepted so far (medians 0.013 to 0.015 against a floor of
+      0.013), not on anything measured under a ceiling design. A run with one dose right and the other wrong is
+      not modelled. And the bars at 32 to 37 were tightened after layer 34’s volunteer had begun under a guide
+      that said 0.028 and 0.37; none of their answers had been seen, and the guide now says which bars hold
+      where. `check_volunteer_kit` 74 checks then, 75 with the table held to the code.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
