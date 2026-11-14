@@ -324,6 +324,15 @@ export interface PatternTest {
   by_chance?: number;
   p?: number;
   judge?: string;
+  /** blind: where the quiet passages came from; with "near", the pairs whose quiet passage is a near miss (the same
+   *  word-piece in the same phrase, the face quiet), and how often the face fired at the other such places tried */
+  control?: "near" | "anywhere";
+  before?: number;
+  near_pairs?: { pairs: number; right: number; p: number };
+  by_match?: Record<string, { pairs: number; right: number }>;
+  places?: Record<string, { found: number; tried: number; fired: number; quiet: number }>;
+  /** blind: the pairs whose firing passage reaches `fires_at` of the face's extreme */
+  strong_pairs?: { pairs: number; right: number; fires_at: number };
 }
 export interface TestsReply {
   layer: number;
@@ -359,9 +368,28 @@ export function patternTestSaid(t: PatternTest): { text: string; against: boolea
   }
   const p = t.p ?? 1;
   const odds = p < 0.5 ? `; guessing does as well 1 time in ${Math.max(2, Math.round(1 / p)).toLocaleString()}` : "; no better than guessing";
+  let near = "";
+  if (t.control === "near" && t.near_pairs) {
+    near = t.near_pairs.pairs
+      ? ` ${t.near_pairs.pairs} of the quiet passages are near misses, the same word-piece where the neuron stays quiet, and ${t.near_pairs.right} of those pairs were picked rightly.`
+      : " The corpus had no near miss to set against any of them, so every quiet passage is from anywhere.";
+    const said: Record<string, string> = {
+      phrase: "the same word-piece between the same two neighbours",
+      before: "the same word-piece after the same one",
+      after: "the same word-piece before the same one",
+      word: "the same word-piece",
+    };
+    const lv = ["phrase", "before", "after", "word"].find((k) => (t.places?.[k]?.tried ?? 0) > 0);
+    if (lv && t.places) near += ` Elsewhere in the corpus it fired at ${t.places[lv].fired} of ${t.places[lv].tried} places tried that have ${said[lv]}.`;
+  } else if (t.control === "anywhere") {
+    near = " Every quiet passage is from anywhere in the corpus, the easier test.";
+  }
+  if (t.strong_pairs && t.strong_pairs.pairs < (t.pairs ?? 0)) {
+    near += ` In ${t.strong_pairs.pairs} of the pairs the firing passage reaches ${t.strong_pairs.fires_at} of the neuron’s extreme, and ${t.strong_pairs.right} of those were picked rightly.`;
+  }
   return {
-    text: `Read blind: ${t.right ?? 0} of ${t.pairs ?? 0} pairs picked rightly by ${t.judge ?? "a reader"} (${t.by_chance ?? 0} by chance${odds}).`,
-    against: p >= 0.05,
+    text: `Read blind: ${t.right ?? 0} of ${t.pairs ?? 0} pairs picked rightly by ${t.judge ?? "a reader"} (${t.by_chance ?? 0} by chance${odds}).${near}`,
+    against: p >= 0.05 || (t.control === "near" && !!t.near_pairs && t.near_pairs.pairs >= 4 && t.near_pairs.p >= 0.05),
   };
 }
 

@@ -1202,18 +1202,44 @@ layers, the determinism run and the sampled push on 29 October). In this section
   (`experiments/results/pattern_tests_pilot/behind.json`: 11 passages, 30 endings to fire, 27 near misses) and
   run when layer 36 frees the card.
 
+  *And a harder quiet passage for the blind test* (the owner’s word, 14 November: “build the harder quiet passage
+  for the blind test”). Against a passage drawn from anywhere, a pattern that names the word and its phrase is
+  picked rightly whether or not the phrase is what fires the neuron; the six faces above passed that way. The quiet
+  passage is now a **near miss** where the corpus has one: another place with the same marked word-piece between
+  the same two neighbours, where the neuron stays quiet. Failing that, the same word-piece after the same one,
+  then before the same one, then alone (six places tried of each), and only then a passage from anywhere. The
+  phrase is then in both snippets, and only what the pattern says of the rest of the text tells them apart. The
+  result gives the score over the pairs with a near miss, and by how near. With it:
+  - **The places tried are a reading of their own.** Each is counted with whether the neuron fired there, so a test
+    says how often the neuron fires where the same phrase stands elsewhere in the corpus. That is whether the
+    phrase is enough, and it needs no reader and no written text.
+  - **Both snippets of a pair show the same number of word-pieces**, so a short one gives nothing away. A reader
+    can be shown up to 256 word-pieces before the marked one, for a neuron that needs more of its text.
+  - **Weak firings are told apart from strong ones.** A stored passage that itself reads under the quiet bar is no
+    longer used as a firing one, and the result gives the score over the pairs whose firing passage reaches half
+    the neuron’s extreme. Looking back at the pilot with that: 50 of its 196 firing passages read under a half,
+    and readers picked 136 of the 146 that reached it and 41 of the 50 that did not. *A correction:* this roadmap
+    said of one pilot face (layer 14, neuron 11687) that its pattern “is true and is not all the neuron does”,
+    because its three texts fired and a reader picked only 6 of its 10 pairs. All ten of those held-back passages
+    were weak firings, under half its extreme, while the pattern was written from its strongest. The pattern was
+    never tested on a strong held-back firing; what it shows is that the neuron’s weak firings are another matter.
+
+  *Checked on the stand-in only:* `check_atlas_api` 454, `check_scientist` 240, `check_interface_defaults` 291,
+  `check_local_only` 1226; the page type-checks and builds. *Not run on the 31B:* the 21 pilot faces are to be read
+  again against near misses, with the same patterns and the same two readers a test
+  (`pilot.py start_near`, `answer_near`), when layer 36 frees the card. What to look for: whether the six faces that
+  need their own document, whose patterns name only the phrase, fall toward a half.
+
   *Not done:*
-  - **A harder quiet passage.** The quiet passage is drawn from anywhere in the corpus, and the six faces above
-    show what that lets through: a pattern can pass the blind test without being enough to fire the neuron.
-    Goodfire’s control, a passage on the same subject (or one that has the pattern’s phrase and leaves the neuron
-    quiet), is not built.
+  - **A passage on the same subject.** A near miss matches the word and its neighbours, not the topic. For a neuron
+    that follows a subject and not a phrase, the near miss is often just the same common word elsewhere, which is
+    little harder than a passage from anywhere. Goodfire’s control, a passage on the same subject where the neuron
+    is quiet, is not built.
   - More pairs. A passages index built with more events a face (20 minutes on the card) would give a test more
     than 9 pairs, and give the scientist back what the keeping-back took.
   - A person cannot yet run either test from the page; the scientist can, and so can a script.
   - A second job the pattern leaves out is never looked for. Clustering a face’s firings by what drives them (their
-    “modes”) is not built. One face in the pilot shows the gap: its three texts all fired, two of them harder than
-    0.9 of its extreme, and a reader picked only 6 of its 10 pairs, so the pattern is true and is not all the
-    neuron does.
+    “modes”) is not built.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at

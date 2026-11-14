@@ -269,12 +269,24 @@ name from passages, and whenever the person asks how sure a name is.
   a passage where the face is quiet, and a reader given only your pattern picks. Half right is chance; `p` is the
   chance of doing as well by guessing. Write the pattern for a stranger: it sees one marked word-piece and the sixty
   before it, nothing of the neuron. Where no endpoint can read blind you answer the pairs yourself
-  (`blind_test_answer`), and that is a weaker test, said as such in the result.
+  (`blind_test_answer`), and that is a weaker test, said as such in the result. The quiet passage is a near miss
+  where the corpus has one: another place with the same word-piece in the same phrase where the face stays quiet.
+  Then the phrase is in both snippets, and a pattern that only names the phrase cannot tell them apart; `near_pairs`
+  is the score that counts, and `by_match` says how near each kind was. Read `places` whatever the score: it counts
+  the other places tried that have the same phrase, and at how many the face fired. If your pattern says "fires on
+  X" and the face fired at 1 of 9 other X's, the pattern is missing what matters, and the quiet ones the reader saw
+  are where to look for it. If it fired at all of them there was no near miss to find, the quiet passages fell back
+  to `anywhere`, and the phrase is likely the whole of it. For a face whose `own.holds` is false give `before` 128
+  or 256, so the reader sees as much of the text as the face needs. `strong_pairs` is the score over the pairs
+  whose firing passage reaches half the face's extreme: a face's stored passages are its strongest, the weakest of
+  them can be a third of its extreme, and a pattern written from the strongest may be right there and miss the
+  weak ones. Say which it is.
 
 What they do not show: that the pattern is the face's only job (a second job the pattern leaves out is never looked
 for; the kept-back passages that the reader got wrong are where to look), or what the firing does downstream. A blind
-test passed is not a written test passed: the quiet passages come from anywhere in the corpus, so a pattern that names
-the word-piece and its phrase is picked rightly even where that phrase alone would not fire the face. Say
+test passed against passages from anywhere (`by_match.anywhere`, or `quiet`: anywhere) is not a written test passed:
+a pattern that names the word-piece and its phrase is picked rightly there even where that phrase alone would not
+fire the face. Say
 which test a name rests on, with its figures, in the note you propose. Results are kept on the face with the pattern
 they tested (`neuron` lists them as `tests`); a pattern reworded since is untested.
 

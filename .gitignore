@@ -74,3 +74,4 @@ atlas_data/
 # corpus; written again by `pilot.py fit` and `pilot.py start`, which draw by seed)
 experiments/results/pattern_tests_pilot/fit/
 experiments/results/pattern_tests_pilot/readers/sheet*[ab].txt
+experiments/results/pattern_tests_pilot/readers_near/sheet*[ab].txt

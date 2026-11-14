@@ -133,6 +133,17 @@ def steer_said(st: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return out
 
 
+def blind_card(neuron: str, r: Dict[str, Any]) -> Dict[str, Any]:
+    """A blind test's result as a tool gives it back: the figures, how near a miss each pair's quiet passage was, and
+    what the other places tried say of the phrase by itself."""
+    return {"neuron": neuron, "face": r["face"], "said": r["said"],
+            **{k: r[k] for k in ("pairs", "right", "unanswered", "by_chance", "p", "judge", "control", "before", "near_pairs", "by_match",
+                                 "places", "strong_pairs") if k in r},
+            "by_pair": [{"truth": x["truth"], "picked": x["picked"], "fires_rel": x["fires"]["rel"], "quiet_rel": x["quiet"]["rel"],
+                         "quiet_is": x["quiet"].get("match")} for x in r["by_pair"]],
+            "kept": "on the face, with the pattern"}
+
+
 def steer_card(st: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """A steer-lens reading as the scientist is given it: the atlas's, its check put in words (`steer_said`)."""
     if st is None:
@@ -401,7 +412,14 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "blind_test", "description": "Put a face's pattern to a blind test. Each of the face's kept-back passages (the half "
      "`passages` never shows you) is paired with a passage where the face stays quiet, both cut alike with one word-piece "
      "marked. A reader given your pattern and nothing else says which of each pair fires the neuron. You get right of "
-     "pairs, and p, the chance of doing as well by guessing (by chance half are right). The reader is an endpoint's model "
+     "pairs, and p, the chance of doing as well by guessing (by chance half are right). The quiet passage is a near miss "
+     "where the corpus has one (`quiet`: near, the default): another place with the same marked word-piece in the same "
+     "phrase where the face stays quiet, so the phrase is in both snippets and only what your pattern says of the rest of "
+     "the text tells them apart. near_pairs gives right of pairs over those; by_match by how near (phrase, before, after, "
+     "word, anywhere). places says, with no reader, how often the face fired at the other places tried that have the same "
+     "phrase: if it fires at few of them, the phrase is not what fires it, whatever the reader scored. `quiet`: anywhere "
+     "draws every quiet passage from anywhere in the corpus, the easier test. `before`: word-pieces shown before the "
+     "marked one (60; up to 256 for a face that needs more of its text). The reader is an endpoint's model "
      "in a fresh conversation: your own endpoint if you run on one, or the one named in `profile`. Where there is none you "
      "are given the pairs to answer yourself with blind_test_answer, and the result says the reader was you, who wrote "
      "the pattern and have seen the face's other passages: a weaker test. Write the pattern for a reader who knows nothing "
@@ -410,6 +428,8 @@ TOOLS: List[Dict[str, Any]] = [
      "inputSchema": {"type": "object", "properties": {
          **LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"}, "pattern": {"type": "string"},
          "pairs": {"type": "integer", "default": 10, "minimum": 4, "maximum": 12},
+         "quiet": {"type": "string", "enum": ["near", "anywhere"], "default": "near"},
+         "before": {"type": "integer", "default": 60, "minimum": 16, "maximum": 256},
          "profile": {"type": "string", "description": "an endpoint's name, to be the blind reader"}},
          "required": ["layer", "n", "pattern"]}},
     {"name": "blind_test_answer", "description": "Answer a blind test that blind_test gave you the pairs of: `picks`, \"a\" or \"b\" "
@@ -771,12 +791,9 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
     if name == "blind_test":
         _need(a, "layer", "n", "pattern")
         start = await api.post("/api/atlas/neuron/blind_test/start", {
-            "layer": a["layer"], "n": a["n"], "face": a.get("face", "+"), "pattern": a["pattern"], "pairs": int(a.get("pairs", 10))})
-        slim = lambda r: {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "said": r["said"],  # noqa: E731
-                          **{k: r[k] for k in ("pairs", "right", "unanswered", "by_chance", "p", "judge")},
-                          "by_pair": [{"truth": x["truth"], "picked": x["picked"], "fires_rel": x["fires"]["rel"],
-                                       "quiet_rel": x["quiet"]["rel"]} for x in r["by_pair"]],
-                          "kept": "on the face, with the pattern"}
+            "layer": a["layer"], "n": a["n"], "face": a.get("face", "+"), "pattern": a["pattern"], "pairs": int(a.get("pairs", 10)),
+            "quiet": a.get("quiet", "near"), "before": int(a.get("before", 60))})
+        slim = lambda r: blind_card(cite(a["layer"], a["n"]), r)  # noqa: E731
         if a.get("profile"):
             return slim(await api.post("/api/atlas/neuron/blind_test/judge", {"test": start["test"], "profile": a["profile"], "by": "scientist"}))
         try:  # an endpoint chat's own model, in a fresh conversation
@@ -793,11 +810,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         r = await api.post("/api/atlas/neuron/blind_test/answer", {
             "test": a["test"], "picks": a["picks"], "by": "scientist",
             "judge": "the scientist itself, which wrote the pattern and has seen the face's other passages"})
-        return {"neuron": cite(r["layer"], r["n"]), "face": r["face"], "said": r["said"],
-                **{k: r[k] for k in ("pairs", "right", "unanswered", "by_chance", "p", "judge")},
-                "by_pair": [{"truth": x["truth"], "picked": x["picked"], "fires_rel": x["fires"]["rel"], "quiet_rel": x["quiet"]["rel"]}
-                            for x in r["by_pair"]],
-                "kept": "on the face, with the pattern"}
+        return blind_card(cite(r["layer"], r["n"]), r)
     if name == "causal_check":
         _need(a, "layer", "n", "prompt")
         body = {"layer": a["layer"], "neuron_idx": a["n"], "polarity": -1.0 if a.get("face") == "-" else 1.0, "contexts": "given",

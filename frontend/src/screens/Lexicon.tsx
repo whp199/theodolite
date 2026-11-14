@@ -1301,7 +1301,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             A pattern is a sentence or two saying when one face of a neuron fires. Two tests ask whether it is right
             without pushing anything. In the first, text is written to the pattern: some meant to make the face fire,
             and near misses meant not to. In the second, a reader who is given the pattern and nothing else is shown
-            pairs of passages, one where the face fires and one where it stays quiet, and says which is which.
+            pairs of passages, one where the face fires and one where it stays quiet, and says which is which. The
+            quiet passage is a near miss where the corpus has one: the same word in the same phrase, somewhere the
+            neuron stays quiet.
           </Body>
           <Note>
             Both test when a face fires, in ordinary text, which a neuron does at every layer; the census and the steer
@@ -1325,8 +1327,12 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             to the last 8 word-pieces, peak included, and each text is read as its ending; near misses are required,
             and the passage’s own ending is read beside them. Blind (<M>POST /neuron/blind_test/start</M>, then{" "}
             <M>/answer</M> or <M>/judge</M>): the face’s stored events in odd-numbered windows are kept back from the
-            scientist; each is paired with a passage from another kept-back window where the face stays under 0.25 of
-            its extreme, read live; one passage a window; both cut to 60 word-pieces before one marked word-piece and 8 after. The reader is
+            scientist; each is paired with a passage where the face stays under 0.25 of its extreme, read live: a
+            near miss where the corpus has one (the same word-piece between the same two neighbours; else after the
+            same one; else before the same one; else the word-piece alone; six places tried of each), else a passage
+            from anywhere (<M>quiet</M>); one passage a window; both cut to the same number of word-pieces, 60 before
+            one marked word-piece unless said (<M>before</M>) and 8 after. Each place tried is counted with whether the
+            face fired there (<M>places</M>): how often it fires where the same phrase stands elsewhere. The reader is
             an endpoint’s model in a fresh conversation, given the pattern and the pairs alone; chance is one half,
             and the result gives the chance of doing as well by guessing. After Goodfire’s <i>Neurons as an
             Interpretable Basis</i> (2026), which tested descriptions by detection and by input synthesis. Tried on

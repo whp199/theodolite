@@ -1548,6 +1548,16 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
           and "the scientist itself" in ban["judge"] and "seen the face's other passages" in ban["judge"] and ban["said"].startswith("blind: ")
           and ban["p"] == round(pt.binom_tail(ban["right"], 4), 4),
           f"blind_test_answer: scored, and the reader said to be the scientist itself ({ban['said']})")
+    levels_ = {"phrase", "before", "after", "word", "anywhere"}
+    check(ban["control"] == "near" and ban["before"] == 60 and set(ban["by_match"]) <= levels_ and sum(v["pairs"] for v in ban["by_match"].values()) == 4
+          and ban["near_pairs"]["pairs"] == sum(x["quiet_is"] != "anywhere" for x in ban["by_pair"]) and all(x["quiet_is"] in levels_ for x in ban["by_pair"])
+          and set(ban["places"]) == {"phrase", "before", "after", "word"},
+          f"blind_test_answer: against near misses by default, with how near each quiet passage is and the places tried ({ban['by_match']})")
+    bta = await st.call("blind_test", {"layer": 3, "n": n_b, "face": face_b, "pattern": "a pattern for a stranger", "pairs": 4, "quiet": "anywhere",
+                                       "before": 16}, api)
+    bana = await st.call("blind_test_answer", {"test": bta["test"], "picks": ["a", "a", "a", "a"]}, api)
+    check(bana["control"] == "anywhere" and bana["before"] == 16 and set(bana["by_match"]) == {"anywhere"} and "places" not in bana
+          and bana["near_pairs"]["pairs"] == 0, "blind_test with quiet=anywhere and before=16: passed through, every quiet passage from anywhere")
     os.environ.update({"THEODOLITE_OPENAI_BASE_URL": f"{reader.url}/v1", "THEODOLITE_OPENAI_MODEL": "reader-model",
                        "THEODOLITE_OPENAI_API_KEY": "sk-test-key"})
     try:
@@ -1570,7 +1580,7 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
         for k_ in ("THEODOLITE_OPENAI_BASE_URL", "THEODOLITE_OPENAI_MODEL", "THEODOLITE_OPENAI_API_KEY"):
             os.environ.pop(k_, None)
     card = await st.call("neuron", {"layer": 3, "n": n_b}, api)
-    check([t["said"][:7] for t in card["tests"][face_b]] == ["blind: ", "blind: "] and card["tests"][face_b][0]["pattern"] == "a pattern for a stranger"
+    check([t["said"][:7] for t in card["tests"][face_b]] == ["blind: "] * 3 and card["tests"][face_b][0]["pattern"] == "a pattern for a stranger"
           and "tests" in (await st.call("neuron", {"layer": 3, "n": 5}, api)),
           "neuron: the tests kept on its faces, each with its pattern and how it came out")
     check(pg["reads"] == [f"{t['tok']} ({t['n']}, lift {t['lift']})" for t in raw["reads"]] and "not validated as a label" in pg["note"]

@@ -27,6 +27,8 @@ are not kept in the repository; `fit` and `start` write them again, drawing by s
     context_survey  `context` over all 176 faces of the survey's draw. Writes context_survey.json.
     behind   The written test behind a face's own passage, for the six faces that do not fire on a short text: the
              endings in behind.json (written from cuts.py's print). Writes behind_results.json.
+    start_near, answer_near  `start` and `answer` with each quiet passage a near miss where the corpus has one (the
+             harder test, built after the pilot): readers_near/, started_near.json, blind_near.json.
     answer   Reads the readers' answers (readers/<sheet>.answers.txt), answers each test once with its own pattern's
              picks (kept on the face), takes the truth from the reply, and scores the other pattern's picks against it.
              Writes blind.json.
@@ -124,14 +126,17 @@ def patterns():
     return json.loads((HERE / "patterns.json").read_text())["faces"]
 
 
-def start():
+def start(near=False):
+    """`near`: the quiet passage of each pair a near miss where the corpus has one (the harder test, built after the
+    pilot; files named *_near), and the server's default; else from anywhere, as the pilot was read."""
     faces = patterns()
     rng = random.Random(SEED + 1)
     order = list(faces)
     rng.shuffle(order)
     sheets = [order[i::SHEETS] for i in range(SHEETS)]
-    started = {"judge": JUDGE, "tests": {}}
-    (HERE / "readers").mkdir(exist_ok=True)
+    started = {"judge": JUDGE, "quiet": "near" if near else "anywhere", "tests": {}}
+    readers = HERE / ("readers_near" if near else "readers")
+    readers.mkdir(exist_ok=True)
     for s, sheet in enumerate(sheets):
         # the other pattern a test is read with: the next face's of its sheet
         other = {k: sheet[(i + 1) % len(sheet)] for i, k in enumerate(sheet)}
@@ -139,7 +144,7 @@ def start():
         for i, k in enumerate(sheet):
             f = faces[k]
             got = call("/neuron/blind_test/start", {"layer": f["layer"], "n": f["n"], "face": f["face"], "pattern": f["pattern"],
-                                                    "pairs": pt.MAX_PAIRS, "seed": SEED + 2})
+                                                    "pairs": pt.MAX_PAIRS, "seed": SEED + 2, "quiet": "near" if near else "anywhere"})
             if "refused" in got:
                 started["tests"][k] = {"refused": got["refused"]}
                 print(k, "refused:", got["refused"], flush=True)
@@ -156,8 +161,8 @@ def start():
                 "Answer every pair of every test, one line a pair, as `T2 3: b` (the test's label, the pair's number, a colon, a or b).",
                 "Use only the description given with a test. Give no other text.", ""]
         for reader in "ab":
-            (HERE / "readers" / f"sheet{s}{reader}.txt").write_text("\n".join(head + texts[reader]) + "\n")
-    (HERE / "started.json").write_text(json.dumps(started, indent=1, ensure_ascii=False) + "\n")
+            (readers / f"sheet{s}{reader}.txt").write_text("\n".join(head + texts[reader]) + "\n")
+    (HERE / ("started_near.json" if near else "started.json")).write_text(json.dumps(started, indent=1, ensure_ascii=False) + "\n")
 
 
 def written():
@@ -313,10 +318,10 @@ def read_answers(path):
     return got
 
 
-def answer():
-    started = json.loads((HERE / "started.json").read_text())
-    out = {"judge": started["judge"], "tests": {}}
-    answers = {p.name[: -len(".answers.txt")]: read_answers(p) for p in (HERE / "readers").glob("*.answers.txt")}
+def answer(near=False):
+    started = json.loads((HERE / ("started_near.json" if near else "started.json")).read_text())
+    out = {"judge": started["judge"], "quiet": started.get("quiet", "anywhere"), "tests": {}}
+    answers = {p.name[: -len(".answers.txt")]: read_answers(p) for p in (HERE / ("readers_near" if near else "readers")).glob("*.answers.txt")}
     for k, t in started["tests"].items():
         if "refused" in t:
             out["tests"][k] = t
@@ -332,12 +337,19 @@ def answer():
             print(k, "refused:", res["refused"], flush=True)
             continue
         truth = [p["truth"] for p in res["by_pair"]]
-        out["tests"][k] = {"own_pattern": {x: res[x] for x in ("pairs", "right", "unanswered", "p")},
+        match = [p["quiet"].get("match", "anywhere") for p in res["by_pair"]]
+        fires = [p["fires"]["rel"] for p in res["by_pair"]]
+        out["tests"][k] = {"own_pattern": {x: res[x] for x in ("pairs", "right", "unanswered", "p", "near_pairs", "by_match", "strong_pairs") if x in res},
+                           "places": res.get("places"),
+                           "other_pattern_by": {x: v for x, v in pt.blind_result(other, truth, match, fires).items() if x in ("near_pairs", "by_match", "strong_pairs")},
                            "other_pattern": {x: v for x, v in pt.blind_result(other, truth).items() if x in ("pairs", "right", "unanswered", "p")},
                            "other_pattern_of": t["other_pattern_of"], "by_pair": res["by_pair"], "picks_own": own, "picks_other": other}
         print(k, "own:", res["right"], "of", res["pairs"], "| other pattern:", out["tests"][k]["other_pattern"]["right"], flush=True)
-    (HERE / "blind.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")
+    (HERE / ("blind_near.json" if near else "blind.json")).write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":
-    {"survey": survey, "fit": fit, "start": start, "written": written, "alone": alone, "context": context, "padded": padded, "context_survey": context_survey, "behind": behind, "answer": answer}[sys.argv[1]]()
+    cmds = {"survey": survey, "fit": fit, "start": start, "written": written, "alone": alone, "context": context, "padded": padded,
+            "context_survey": context_survey, "behind": behind, "answer": answer,
+            "start_near": lambda: start(near=True), "answer_near": lambda: answer(near=True)}
+    cmds[sys.argv[1]]()

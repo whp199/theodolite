@@ -1309,7 +1309,10 @@ def main() -> int:
         return pt.render([[t_, (x_["at"] - s_) in ix_] for t_, ix_ in ao.token_units(tok, ids_[s_:e_])])
 
     faces_ = [(l_, n_, f_) for l_ in range(L) for n_ in range(0, N, 7) for f_ in ("+", "-")]
-    held_of = lambda t_: [x for x in one_a_window(t_) if passage_kept_back(x["window"])]  # noqa: E731
+    ext_of = lambda t_: float(stats["pos" if t_[2] == "+" else "neg"][t_[0], t_[1]])  # noqa: E731
+    # kept back, and itself over the bar a quiet passage must stay under (a face that never fired has none)
+    held_of = lambda t_: [x for x in one_a_window(t_) if passage_kept_back(x["window"])  # noqa: E731
+                          and abs(ext_of(t_)) > 1e-6 and x["act"] / ext_of(t_) > pt.QUIET_BELOW]
     poor = next((t_ for t_ in faces_ if len(held_of(t_)) < pt.MIN_PAIRS), None)
     # on the stand-in most neurons fire nearly everywhere, so most faces have no quiet passage to pair with: the first
     # face the test can be made for is used, and one it cannot be made for is checked to be refused in plain words
@@ -1340,14 +1343,18 @@ def main() -> int:
     bs2 = c.post("/api/atlas/neuron/blind_test/start", json=body_b).json()
     check(bs2["pairs"] == bs_j["pairs"] and bs2["test"] != bs_j["test"], "/neuron/blind_test/start: the same seed draws the same pairs, as a test of its own")
     ba = c.post("/api/atlas/neuron/blind_test/answer", json={"test": bs_j["test"], "picks": truth_b[:3] + [None], "judge": "the check"}).json()
-    quiet_ok = []
-    for x in ba["by_pair"]:
-        ids_ = idx.window_ids(x["quiet"]["window"])
-        s_, e_, _, _ = atlas_routes.cut_passage(ids_, x["quiet"]["at"], pt.BEFORE, pt.AFTER, marks_)
-        s_, e_ = atlas_routes.whole_characters(tok, ids_, s_, e_, marks_)
-        v_ = np.array(ao.read_neurons(lm, ids_[:e_], [(rich[0], rich[1])])[(rich[0], rich[1])], np.float32)
-        ext_ = float(stats["pos" if rich[2] == "+" else "neg"][rich[0], rich[1]])
-        quiet_ok.append(round(float((v_[s_:e_] / ext_).max()), 3) == x["quiet"]["rel"] < pt.QUIET_BELOW)
+    def quiet_read(face_: Any, x_: Dict[str, Any]) -> bool:
+        """A pair's quiet passage, read again from where the reply says it sits: under the bar, as the reply says, and
+        showing as many word-pieces before and after its marked one as the firing passage does (give or take a
+        character's pieces)."""
+        ids_ = idx.window_ids(x_["quiet"]["window"])
+        (s_, e_), (fs_, fe_) = x_["quiet"]["span"], x_["fires"]["span"]
+        v_ = np.array(ao.read_neurons(lm, ids_[:e_], [(face_[0], face_[1])])[(face_[0], face_[1])], np.float32)
+        ext_ = float(stats["pos" if face_[2] == "+" else "neg"][face_[0], face_[1]])
+        alike_ = abs((x_["quiet"]["at"] - s_) - (x_["fires"]["at"] - fs_)) <= 3 and abs((e_ - x_["quiet"]["at"]) - (fe_ - x_["fires"]["at"])) <= 3
+        return bool(round(float((v_[s_:e_] / ext_).max()), 3) == x_["quiet"]["rel"] < pt.QUIET_BELOW and alike_)
+
+    quiet_ok = [quiet_read(rich, x) for x in ba["by_pair"]]
     check(ba["right"] == 3 and ba["pairs"] == 4 and ba["unanswered"] == 1 and ba["p"] == round(pt.binom_tail(3, 4), 4) == 0.3125 and ba["by_chance"] == 2.0
           and ba["judge"] == "the check" and [x["truth"] for x in ba["by_pair"]] == truth_b and [x["picked"] for x in ba["by_pair"]] == truth_b[:3] + [None]
           and all(quiet_ok) and all(x["fires"]["rel"] > pt.QUIET_BELOW for x in ba["by_pair"])
@@ -1362,6 +1369,69 @@ def main() -> int:
     check(ba2["right"] == 4 and ba2["p"] == 0.0625 and "kept" not in ba2 and [t_["kind"] for t_ in kt2] == ["blind"] and kt2[0]["right"] == 3
           and kt2[0]["said"].startswith("blind: 3 of 4 pairs picked rightly by the check"),
           "/neuron/blind_test/answer: every pair right; not kept when asked not to; the kept one read back with its line")
+    # the quiet passage: a near miss where the corpus has one, else from anywhere
+    toy = np.array([[9, 5, 7, 5, 8, -1], [5, 7, 5, 7, 5, 9], [1, 2, 3, 4, 6, 6]])
+    rows_ = lambda a_: [tuple(int(v_) for v_ in r_) for r_ in a_]  # noqa: E731
+    check(rows_(pt.near_places(toy.copy(), 7, 5, 5, "phrase")) == [(0, 2), (1, 1), (1, 3)]
+          and rows_(pt.near_places(toy.copy(), 5, 7, 8, "before")) == [(0, 3), (1, 2), (1, 4)]
+          and rows_(pt.near_places(toy.copy(), 5, 7, 9, "after")) == [(1, 4)]
+          and rows_(pt.near_places(toy.copy(), 6, None, None, "word")) == [(2, 4), (2, 5)]
+          and pt.near_places(toy.copy(), 5, None, 7, "phrase") is None and pt.near_places(toy.copy(), 5, 7, None, "after") is None
+          and rows_(pt.near_places(toy.copy(), 5, None, 7, "after")) == [(0, 1), (1, 0), (1, 2)],
+          "pattern tests: where a toy corpus has a word-piece between the same neighbours, after the same one, before the same one, and at all")
+    br_ = pt.blind_result(["a", "b", "a", None, "b"], ["a", "a", "a", "b", "b"], ["phrase", "phrase", "word", "anywhere", "anywhere"])
+    check(br_["right"] == 3 and br_["by_match"] == {"phrase": {"pairs": 2, "right": 1}, "word": {"pairs": 1, "right": 1}, "anywhere": {"pairs": 2, "right": 1}}
+          and br_["near_pairs"] == {"pairs": 3, "right": 2, "p": round(pt.binom_tail(2, 3), 4)} and "by_match" not in pt.blind_result(["a"], ["a"])
+          and "3 of the quiet passages are near misses" in pt.said({**br_, "control": "near", "judge": "x", "places": {"phrase": {"found": 9, "tried": 7, "fired": 5, "quiet": 2}}})
+          and "it fired at 5 of 7 places tried that have the same word-piece between the same two neighbours"
+          in pt.said({**br_, "control": "near", "judge": "x", "places": {"phrase": {"found": 9, "tried": 7, "fired": 5, "quiet": 2}}})
+          and "near miss" not in pt.said({**br_, "control": "anywhere", "judge": "x"}),
+          "pattern tests: a blind test's figures by how near each quiet passage is, and its line")
+    bs_ = pt.blind_result(["a", "b", "a", None, "b"], ["a", "a", "a", "b", "b"], fires=[0.9, 0.3, 0.5, 0.6, 0.4])
+    check(bs_["strong_pairs"] == {"pairs": 3, "right": 2, "fires_at": 0.5} and "by_match" not in bs_
+          and "in 3 of the pairs the firing passage reaches 0.5 of the face's extreme, and 2 of those were picked rightly" in pt.said({**bs_, "judge": "x"})
+          and "firing passage reaches" not in pt.said({**pt.blind_result(["a"], ["a"], fires=[0.7]), "judge": "x"}),
+          "pattern tests: a blind test's figures over the pairs whose firing passage reaches half the face's extreme")
+    far_b = c.post("/api/atlas/neuron/blind_test/start", json={**body_b, "quiet": "anywhere", "before": 16})
+    far_a = c.post("/api/atlas/neuron/blind_test/answer", json={"test": far_b.json()["test"], "picks": [], "keep": False}).json()
+    check(far_b.json()["quiet"] == "anywhere" and far_b.json()["before"] == 16 and far_a["control"] == "anywhere" and "places" not in far_a
+          and all(x["quiet"]["match"] == "anywhere" for x in far_a["by_pair"]) and set(far_a["by_match"]) == {"anywhere"}
+          and far_a["near_pairs"]["pairs"] == 0 and all(x["fires"]["at"] - x["fires"]["span"][0] <= 16 + 3 for x in far_a["by_pair"])
+          and all(quiet_read(rich, x) for x in far_a["by_pair"])
+          and c.post("/api/atlas/neuron/blind_test/start", json={**body_b, "before": 300}).status_code == 422
+          and c.post("/api/atlas/neuron/blind_test/start", json={**body_b, "quiet": "same subject"}).status_code == 422,
+          "/neuron/blind_test/start with quiet=anywhere and before=16: every quiet passage from anywhere, sixteen word-pieces shown before, both of a pair cut alike")
+    near_face, near_ans = None, None
+    for t_ in faces_:  # a face of the stand-in the corpus has a near miss for
+        if len(held_of(t_)) < pt.MIN_PAIRS or abs(float(stats["pos" if t_[2] == "+" else "neg"][t_[0], t_[1]])) <= 1e-6:
+            continue
+        r_ = c.post("/api/atlas/neuron/blind_test/start", json={"layer": t_[0], "n": t_[1], "face": t_[2], "pattern": "p", "pairs": 6, "seed": 5})
+        if r_.status_code != 200:
+            continue
+        ans_ = c.post("/api/atlas/neuron/blind_test/answer", json={"test": r_.json()["test"], "picks": [], "keep": False}).json()
+        if ans_["near_pairs"]["pairs"]:
+            near_face, near_ans = t_, ans_
+            break
+    check(near_face is not None, "a face of the stand-in whose blind test finds a near miss in the corpus")
+    if near_ans is not None:
+        own_w = {x["window"] for x in one_a_window(near_face)}
+        fits = []
+        for x in near_ans["by_pair"]:
+            m_ = x["quiet"]["match"]
+            if m_ == "anywhere":
+                continue
+            f_ids, q_ids, fa_, qa_ = idx.window_ids(x["fires"]["window"]), idx.window_ids(x["quiet"]["window"]), x["fires"]["at"], x["quiet"]["at"]
+            same_before = fa_ >= 1 and qa_ >= 1 and f_ids[fa_ - 1] == q_ids[qa_ - 1]
+            same_after = fa_ + 1 < len(f_ids) and qa_ + 1 < len(q_ids) and f_ids[fa_ + 1] == q_ids[qa_ + 1]
+            fits.append(f_ids[fa_] == q_ids[qa_] and x["quiet"]["window"] not in own_w and quiet_read(near_face, x)
+                        and {"phrase": same_before and same_after, "before": same_before and not same_after,
+                             "after": same_after and not same_before, "word": not same_before and not same_after}[m_])
+        pl_ = near_ans["places"]
+        check(fits and all(fits) and near_ans["control"] == "near" and len(fits) == near_ans["near_pairs"]["pairs"] == sum(v_["quiet"] for v_ in pl_.values())
+              and all(v_["fired"] <= v_["tried"] <= v_["found"] and v_["quiet"] <= v_["tried"] for v_ in pl_.values())
+              and sum(v_["pairs"] for v_ in near_ans["by_match"].values()) == near_ans["pairs"],
+              f"/neuron/blind_test/start with near misses: each has the firing passage's word-piece, with the neighbours its level says and no others, "
+              f"outside the face's own windows, the face quiet there; the places tried are counted ({near_ans['by_match']}; {pl_})")
     if poor is not None:
         r_ = c.post("/api/atlas/neuron/blind_test/start", json={"layer": poor[0], "n": poor[1], "face": poor[2], "pattern": "p"})
         check(r_.status_code == 400 and "are kept back for tests; a blind test needs at least 4" in r_.json()["detail"],

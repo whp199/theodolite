@@ -33,7 +33,7 @@ import re
 import secrets
 import threading
 from collections import OrderedDict
-from typing import Annotated, Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import anyio
 import numpy as np
@@ -566,6 +566,10 @@ class BlindStartRequest(BaseModel):
     pattern: str = Field(..., min_length=1, max_length=fn.MAX_PATTERN)
     pairs: int = Field(10, ge=pt.MIN_PAIRS, le=pt.MAX_PAIRS)
     seed: Optional[StrictInt] = None
+    # the quiet passage of each pair: "near", a near miss where the corpus has one (the same word-piece in the same
+    # phrase, the face quiet), else one from anywhere; "anywhere", always one from anywhere
+    quiet: Literal["near", "anywhere"] = "near"
+    before: int = Field(pt.BEFORE, ge=16, le=pt.MAX_BEFORE)  # word-pieces shown before the marked one
 
 
 class BlindAnswerRequest(BaseModel):
@@ -1814,77 +1818,135 @@ def _blind_start(a: Atlas, req: BlindStartRequest, face: str) -> Dict[str, Any]:
     events = _own_events(a, layer, n, face)  # one event a window: the same snippet twice is one pair, not two
     P = a.index.get("passages")
     windows = int(P["meta"].get("windows") or 0)
-    held = [x for x in events if passage_kept_back(x["window"])]
-    if len(held) < pt.MIN_PAIRS:
-        raise ValueError(f"Only {len(held)} of the {len(events)} windows this face has a stored passage in are kept back for tests; a "
-                         f"blind test needs at least {pt.MIN_PAIRS}. A passages index built with more events a face would give more.")
     stats = a.index.get("act_scale")
     ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
     if abs(ext) < 1e-6:
         ext = float(max(events, key=lambda x: abs(x["act"]))["act"])
+    # a stored passage that itself reads under the bar a quiet one must stay under is no firing passage to set beside one
+    held = [x for x in events if passage_kept_back(x["window"]) and float(x["act"]) / ext > pt.QUIET_BELOW]
+    if len(held) < pt.MIN_PAIRS:
+        raise ValueError(f"Only {len(held)} of the {len(events)} windows this face has a stored passage in are kept back for tests; a "
+                         f"blind test needs at least {pt.MIN_PAIRS}. A passages index built with more events a face would give more.")
     tok = a.rt.tokenizer
     marks = passage_marks(tok)
     rng = random.Random(req.seed if req.seed is not None else secrets.randbits(48))
     own = {int(x["window"]) for x in events}
+    W = np.asarray(P["windows"])  # one window a row, negative where a window is shorter
 
-    def snippet(ids: Sequence[int], at: int) -> Tuple[int, int, str]:
-        s, e, _, _ = cut_passage(ids, at, pt.BEFORE, pt.AFTER, marks)
-        s, e = whole_characters(tok, ids, s, e, marks)
-        return s, e, pt.render([[text, (at - s) in idx] for text, idx in ao.token_units(tok, ids[s:e])])
+    def cut(ids: Sequence[int], at: int, before: int, after: int) -> Tuple[int, int]:
+        s, e, _, _ = cut_passage(ids, at, before, after, marks)
+        return whole_characters(tok, ids, s, e, marks)
 
-    # a control comes from a kept-back window the face has no stored event in; in an index too small to have one, from
-    # any window it has none in, else from any (the reading below is what makes it a control)
+    def shown(ids: Sequence[int], s: int, e: int, at: int) -> str:
+        return pt.render([[text, (at - s) in idx] for text, idx in ao.token_units(tok, ids[s:e])])
+
+    def read_place(w: int, at: int, before: int, after: int) -> Optional[Dict[str, Any]]:
+        """A place of the corpus read as a quiet passage would be: cut to as many word-pieces before and after as the
+        firing passage it is to stand beside shows (None where a boundary cuts it shorter, so a short snippet gives
+        nothing away), then read live. `rel`: the face's strongest reading in what is shown; `rel_at`: at the place."""
+        ids = a.index.window_ids(w) or []
+        if not 0 <= at < len(ids) or int(ids[at]) in marks:
+            return None
+        s, e = cut(ids, at, before, after)
+        if at - s < before - 2 or e - at - 1 < after - 2:
+            return None
+        v = np.array(ao.read_neurons(a.lm, ids[:e], [(layer, n)])[(layer, n)], np.float32) / ext
+        return {"window": int(w), "at": int(at), "span": [int(s), int(e)], "rel": round(float(v[s:e].max()), 3),
+                "rel_at": round(float(v[at]), 3), "text": shown(ids, s, e, at)}
+
+    # a passage from anywhere comes from a kept-back window the face has no stored event in; in an index too small to
+    # have one, from any window it has none in, else from any (the reading is what makes it quiet)
     pool = ([w for w in range(windows) if passage_kept_back(w) and w not in own] or [w for w in range(windows) if w not in own]
             or list(range(windows)))
     if not pool:
         raise ValueError("The passages index holds no windows to draw a quiet passage from.")
 
-    def quiet_control() -> Dict[str, Any]:
+    def anywhere(before: int, after: int) -> Dict[str, Any]:
         tries = guard = 0
         while tries < pt.CONTROL_TRIES and guard < 400:
             guard += 1
             w = rng.choice(pool)
-            ids = a.index.window_ids(w) or []
-            if len(ids) < 16:
+            size = int((W[w] >= 0).sum())
+            lo = max(8, before + 1)
+            if size < 16 or lo >= size:
                 continue
-            at = rng.randrange(8, len(ids))
-            if int(ids[at]) in marks:
+            got = read_place(w, rng.randrange(lo, size), before, after)
+            if got is None:
                 continue
             tries += 1
-            s, e, text = snippet(ids, at)
-            v = np.array(ao.read_neurons(a.lm, ids[:e], [(layer, n)])[(layer, n)], np.float32)
-            rel = float((v[s:e] / ext).max())
-            if rel < pt.QUIET_BELOW:
-                return {"window": int(w), "at": int(at), "rel": round(rel, 3), "text": text}
+            if got["rel"] < pt.QUIET_BELOW:
+                return {**got, "match": pt.ANYWHERE}
         raise ValueError(f"No passage where this face stays under {pt.QUIET_BELOW:g} of its extreme was found in {pt.CONTROL_TRIES} tries: "
                          "it fires too widely for this test as it stands.")
 
+    places = {lv: {"found": 0, "tried": 0, "fired": 0, "quiet": 0} for lv in pt.NEAR_LEVELS}
+
+    def near_miss(ids: Sequence[int], at: int, before: int, after: int) -> Optional[Dict[str, Any]]:
+        """Another place with the firing passage's marked word-piece, as near a miss as the corpus has, where the face
+        stays quiet: the nearest level first, NEAR_TRIES places of each, outside the windows its stored events are in.
+        Every place tried is counted in `places`, with whether the face fired there."""
+        prev = int(ids[at - 1]) if at >= 1 else None
+        nxt = int(ids[at + 1]) if at + 1 < len(ids) else None
+        done: set = set()
+        for lv in pt.NEAR_LEVELS:
+            got = pt.near_places(W, int(ids[at]), prev, nxt, lv)
+            if got is None:
+                continue
+            cand = [(int(w), int(q)) for w, q in got if int(w) not in own and int(q) >= max(8, before + 1) and (int(w), int(q)) not in done]
+            done.update(cand)
+            places[lv]["found"] += len(cand)
+            rng.shuffle(cand)
+            tried = 0
+            for w, q in cand:
+                if tried >= pt.NEAR_TRIES:
+                    break
+                r = read_place(w, q, before, after)
+                if r is None:
+                    continue
+                tried += 1
+                places[lv]["tried"] += 1
+                places[lv]["fired"] += int(r["rel_at"] >= pt.FIRES_AT)
+                if r["rel"] < pt.QUIET_BELOW:
+                    places[lv]["quiet"] += 1
+                    return {**r, "match": lv}
+        return None
+
     pairs, truth, detail = [], [], []
     for x in rng.sample(held, min(int(req.pairs), len(held))):
-        _, _, text = snippet(a.index.window_ids(x["window"]) or [], int(x["at"]))
-        ctl = quiet_control()
+        ids, at = a.index.window_ids(x["window"]) or [], int(x["at"])
+        s, e = cut(ids, at, int(req.before), pt.AFTER)
+        text = shown(ids, s, e, at)
+        ctl = (near_miss(ids, at, at - s, e - at - 1) if req.quiet == "near" else None) or anywhere(at - s, e - at - 1)
         first = rng.random() < 0.5
         pairs.append({"a": text if first else ctl["text"], "b": ctl["text"] if first else text})
         truth.append("a" if first else "b")
-        detail.append({"fires": {"window": int(x["window"]), "at": int(x["at"]), "rel": round(float(x["act"]) / ext, 3)},
-                       "quiet": {k: ctl[k] for k in ("window", "at", "rel")}})
+        detail.append({"fires": {"window": int(x["window"]), "at": at, "rel": round(float(x["act"]) / ext, 3), "span": [int(s), int(e)]},
+                       "quiet": {k: ctl[k] for k in ("window", "at", "rel", "match", "span")}})
     tid = secrets.token_hex(6)
-    a.cache["tests"].put(tid, {"layer": layer, "n": n, "face": face, "pattern": req.pattern, "truth": truth, "detail": detail, "pairs": pairs})
+    a.cache["tests"].put(tid, {"layer": layer, "n": n, "face": face, "pattern": req.pattern, "truth": truth, "detail": detail, "pairs": pairs,
+                               "control": req.quiet, "before": int(req.before), "places": places if req.quiet == "near" else None})
     return {"test": tid, "layer": layer, "n": n, "face": face, "pattern": req.pattern, "pairs": pairs, "kept_back": len(held),
-            "stored": len(events), "system": pt.JUDGE_SYSTEM, "prompt": pt.judge_prompt(req.pattern, pairs),
+            "stored": len(events), "quiet": req.quiet, "before": int(req.before),
+            "system": pt.JUDGE_SYSTEM, "prompt": pt.judge_prompt(req.pattern, pairs),
             "note": ("In each pair one snippet is a kept-back passage where the face fires on the marked word-piece; the other is a passage "
-                     f"from elsewhere in the corpus where it stays under {pt.QUIET_BELOW:g} of its extreme, read just now. Answer with "
-                     "POST /neuron/blind_test/answer (picks: a or b for each pair), or have an endpoint read it blind with "
-                     "POST /neuron/blind_test/judge. A test is answered once.")}
+                     f"where it stays under {pt.QUIET_BELOW:g} of its extreme, read just now"
+                     + (": a near miss where the corpus has one (the same word-piece in the same phrase), else one from anywhere"
+                        if req.quiet == "near" else ", from anywhere in the corpus")
+                     + ". Both show the same number of word-pieces. Answer with POST /neuron/blind_test/answer (picks: a or b for each "
+                       "pair), or have an endpoint read it blind with POST /neuron/blind_test/judge. A test is answered once.")}
 
 
 @router.post("/neuron/blind_test/start")
 async def neuron_blind_test_start(req: BlindStartRequest) -> Dict[str, Any]:
     """Begin a blind test of a face's pattern (backend/pattern_tests.py; needs the passages index; GPU, to read each
     control): up to `pairs` of the face's kept-back passages (those in odd-numbered windows, which the scientist's
-    `passages` never shows), each paired with a passage from another kept-back window where the face stays quiet, both
-    cut alike with one word-piece marked [[so]]. Returns the pairs without saying which is which, and the `prompt` a
-    reader given the pattern alone would be shown. The answer is kept in memory under `test` until it is answered."""
+    `passages` never shows), each paired with a passage where the face stays quiet, both cut alike (`before`
+    word-pieces before one marked [[so]], 60 unless said, and the same number in both). `quiet` "near", the default:
+    the quiet passage is a near miss where the corpus has one, another place with the same marked word-piece between
+    the same two neighbours, else after the same one, else before the same one, else the word-piece alone, where the
+    face stays quiet; only where there is none, a passage from anywhere. "anywhere": always from anywhere, the easier
+    test. Returns the pairs without saying which is which, and the `prompt` a reader given the pattern alone would be
+    shown. The answer is kept in memory under `test` until it is answered."""
     a = atlas()
     _check_neuron(a, req.layer, req.n)
     face = _face_arg(req.face)
@@ -1897,7 +1959,10 @@ async def _blind_finish(a: Atlas, tid: str, picks: Sequence[Optional[str]], judg
         raise HTTPException(status_code=404, detail="There is no such test waiting: a test is answered once, and one left "
                                                     "unanswered is forgotten when the server restarts or many are begun after it.")
     a.cache["tests"].pop(tid, None)
-    res = {**pt.blind_result(picks, state["truth"]), "pattern": state["pattern"], "judge": judge}
+    res = {**pt.blind_result(picks, state["truth"], [d["quiet"]["match"] for d in state["detail"]], [d["fires"]["rel"] for d in state["detail"]]),
+           "pattern": state["pattern"],
+           "judge": judge, "control": state["control"], "before": state["before"],
+           **({"places": state["places"]} if state.get("places") else {})}
     got = list(picks)[: len(state["truth"])] + [None] * max(0, len(state["truth"]) - len(picks))
     out = {"layer": state["layer"], "n": state["n"], "face": state["face"], **res, "said": pt.said(res),
            "by_pair": [{"truth": t, "picked": p, **d} for t, p, d in zip(state["truth"], got, state["detail"])]}
@@ -1910,7 +1975,10 @@ async def _blind_finish(a: Atlas, tid: str, picks: Sequence[Optional[str]], judg
 async def neuron_blind_test_answer(req: BlindAnswerRequest) -> Dict[str, Any]:
     """Answer a blind test: `picks`, "a" or "b" for each pair in order (anything else counts as wrong), and `judge`,
     who answered, in words. Returns how many were right, of how many, the chance of doing as well by guessing (`p`),
-    and each pair's truth with where the firing passage sits. Kept on the face (`keep`) with the pattern it tested.
+    and each pair's truth with where the firing passage sits and how near a miss its quiet passage is (`match`). With
+    near misses: `near_pairs`, the same over the pairs whose quiet passage is one; `by_match`, by level; and `places`,
+    for each level how many places of the corpus were tried and at how many the face fired, which says without any
+    reader whether the phrase by itself is enough. Kept on the face (`keep`) with the pattern it tested.
     Whoever answers after seeing the face's other passages is not a blind reader: say so in `judge`."""
     return await _blind_finish(atlas(), req.test, req.picks, req.judge or "an unnamed reader", _test_by(req.by), req.keep)
 

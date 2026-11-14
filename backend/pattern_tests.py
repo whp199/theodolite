@@ -30,6 +30,17 @@ written from the description fires the neuron harder than anything in a ten-bill
    pattern alone, and none of the neuron's passages, says which of each pair fires it. Chance is one half; `p` is the
    chance of doing as well by guessing.
 
+   The quiet passage is a near miss where the corpus has one (`near_places`): another place with the same marked
+   word-piece between the same two neighbours where the face stays quiet; failing that, with the same word-piece
+   before it, or after it, or the word-piece alone; and only then a passage from anywhere. Against a passage from
+   anywhere a pattern that names the word and its phrase is picked rightly whether or not that phrase is what fires
+   the face (the pilot's six faces, below). Against a near miss the phrase is in both snippets, and only what the
+   pattern says of the rest of the text tells them apart. Each place tried is also a reading of its own: how often
+   the face fires where the same phrase stands elsewhere (`places`) says, with no reader at all, whether the phrase is
+   enough. The places are drawn outside the windows the face's stored events are in, which are where it fires
+   hardest, so for a phrase the corpus has only a few times the count runs low. Both snippets of a pair show the same
+   number of word-pieces, so a short one gives nothing away.
+
 What neither test shows: that the pattern is the face's only job (each takes the pattern's word for what to look
 for; a second job the pattern leaves out is not looked for), or what the neuron's firing does downstream. They test
 when it fires, not what it writes.
@@ -52,12 +63,22 @@ import math
 import re
 from typing import Any, Dict, List, Optional, Sequence
 
+import numpy as np
+
 FIRES_AT = 0.5       # a text fires a face when its peak reaches this share of the face's extreme
 QUIET_BELOW = 0.25   # a control passage is quiet when the face stays under this share of its extreme in what is shown
 BEFORE, AFTER = 60, 8  # a snippet: the word-pieces shown before the marked one, and after it
 MIN_PAIRS, MAX_PAIRS = 4, 12
 MAX_TEXTS = 12
 CONTROL_TRIES = 8    # passages tried for one quiet control before the test is refused
+MAX_BEFORE = 256     # the most word-pieces a blind test may show before the marked one (BEFORE unless asked)
+# how near a miss a quiet passage is, nearest first: the marked word-piece between the same two neighbours; with the
+# same one before it; with the same one after it; the word-piece alone. Each level leaves out the places of those before it.
+NEAR_LEVELS = ("phrase", "before", "after", "word")
+ANYWHERE = "anywhere"  # no near miss: a passage drawn from anywhere in the corpus
+NEAR_TRIES = 6       # places tried at one level for one pair before the next level is tried
+NEAR_SAID = {"phrase": "the same word-piece between the same two neighbours", "before": "the same word-piece after the same one",
+             "after": "the same word-piece before the same one", "word": "the same word-piece"}
 DROP, MAX_DROP = 8, 64  # behind its own passage: the word-pieces up to and including the peak that an ending replaces
 OWN_PASSAGES = 3     # the face's own strongest passages (not kept back) that a written test reads alone beside its texts
 HOLDS = 0.5          # a passage holds alone when, with BEFORE word-pieces before its peak, it reads this share of what it read in its window
@@ -126,13 +147,62 @@ def parse_picks(text: str, n: int) -> List[Optional[str]]:
     return picks
 
 
-def blind_result(picks: Sequence[Optional[str]], truth: Sequence[str]) -> Dict[str, Any]:
-    """The blind test's figures: how many pairs were picked rightly, of how many, and the chance of that by guessing."""
+def near_places(windows: np.ndarray, tok: int, prev: Optional[int], nxt: Optional[int], level: str) -> Optional[np.ndarray]:
+    """Where the corpus has the word-piece `tok` as a near miss of one level: rows of (window, position) in `windows`
+    (one window a row, padded with negatives), in reading order. "phrase": between `prev` and `nxt`; "before": after
+    `prev`; "after": before `nxt`; "word": anywhere. None where the level needs a neighbour the place does not have.
+    The levels nest (a "phrase" place is also a "before", an "after" and a "word" place); the caller leaves out what a
+    nearer level already gave."""
+    if level not in NEAR_LEVELS:
+        raise ValueError(f"A near miss is one of {', '.join(NEAR_LEVELS)}.")
+    if (level in ("phrase", "before") and prev is None) or (level in ("phrase", "after") and nxt is None):
+        return None
+    m = windows == int(tok)
+    if level in ("phrase", "before"):
+        m[:, 1:] &= windows[:, :-1] == int(prev)
+        m[:, 0] = False
+    if level in ("phrase", "after"):
+        m[:, :-1] &= windows[:, 1:] == int(nxt)
+        m[:, -1] = False
+    return np.argwhere(m)
+
+
+def blind_result(picks: Sequence[Optional[str]], truth: Sequence[str], match: Optional[Sequence[str]] = None,
+                 fires: Optional[Sequence[float]] = None) -> Dict[str, Any]:
+    """The blind test's figures: how many pairs were picked rightly, of how many, and the chance of that by guessing.
+    With `match`, how near a miss each pair's quiet passage is (a NEAR_LEVELS level, or ANYWHERE): the same by level
+    (`by_match`), and over the pairs whose quiet passage is a near miss of any level (`near_pairs`). With `fires`, each
+    pair's firing passage as a share of the face's extreme: the same over the pairs where it reaches FIRES_AT
+    (`strong_pairs`). A face's stored passages are its strongest, and the weakest of those can be a third of its
+    extreme: a pattern can be right of where the face fires hard and miss those."""
     n = len(truth)
     got = [(str(p).strip().lower() if p is not None else None) for p in list(picks)[:n]] + [None] * max(0, n - len(picks))
     right = sum(1 for p, t in zip(got, truth) if p == t)
-    return {"kind": "blind", "pairs": n, "right": right, "unanswered": sum(p not in ("a", "b") for p in got),
-            "by_chance": n / 2, "p": round(binom_tail(right, n), 4)}
+    out = {"kind": "blind", "pairs": n, "right": right, "unanswered": sum(p not in ("a", "b") for p in got),
+           "by_chance": n / 2, "p": round(binom_tail(right, n), 4)}
+    if match is not None:
+        by: Dict[str, Dict[str, int]] = {}
+        for p, t, m in zip(got, truth, match):
+            row = by.setdefault(str(m), {"pairs": 0, "right": 0})
+            row["pairs"] += 1
+            row["right"] += int(p == t)
+        out["by_match"] = {lv: by[lv] for lv in (*NEAR_LEVELS, ANYWHERE) if lv in by}
+        near = [(p, t) for p, t, m in zip(got, truth, match) if m != ANYWHERE]
+        nr = sum(1 for p, t in near if p == t)
+        out["near_pairs"] = {"pairs": len(near), "right": nr, "p": round(binom_tail(nr, len(near)), 4)}
+    if fires is not None:
+        strong = [(p, t) for p, t, f in zip(got, truth, fires) if float(f) >= FIRES_AT]
+        out["strong_pairs"] = {"pairs": len(strong), "right": sum(1 for p, t in strong if p == t), "fires_at": FIRES_AT}
+    return out
+
+
+def places_said(places: Optional[Dict[str, Dict[str, int]]]) -> Optional[str]:
+    """What the places tried say of the phrase by itself, at the nearest level any were tried at."""
+    for lv in NEAR_LEVELS:
+        row = (places or {}).get(lv) or {}
+        if row.get("tried"):
+            return f"elsewhere in the corpus it fired at {row['fired']} of {row['tried']} places tried that have {NEAR_SAID[lv]}"
+    return None
 
 
 def said(test: Dict[str, Any]) -> str:
@@ -157,6 +227,19 @@ def said(test: Dict[str, Any]) -> str:
                   "and the pattern does not say what. It can be tested behind one of its own passages")
         return s
     if test.get("kind") == "blind":
-        return (f"blind: {test['right']} of {test['pairs']} pairs picked rightly by {test.get('judge') or 'a reader'} "
-                f"({test['by_chance']:g} by chance; {test['p']:g} the chance of doing as well by guessing)")
+        s = (f"blind: {test['right']} of {test['pairs']} pairs picked rightly by {test.get('judge') or 'a reader'} "
+             f"({test['by_chance']:g} by chance; {test['p']:g} the chance of doing as well by guessing)")
+        near = test.get("near_pairs")
+        if test.get("control") == "near" and near is not None:
+            s += (f"; {near['pairs']} of the quiet passages are near misses, the same word-piece where the face stays quiet, and "
+                  f"{near['right']} of those pairs were picked rightly" if near["pairs"] else
+                  "; the corpus had no near miss to set against any of them, so every quiet passage is from anywhere")
+            more = places_said(test.get("places"))
+            if more:
+                s += "; " + more
+        strong = test.get("strong_pairs")
+        if strong is not None and strong["pairs"] < test["pairs"]:
+            s += (f"; in {strong['pairs']} of the pairs the firing passage reaches {strong['fires_at']:g} of the face's extreme, and "
+                  f"{strong['right']} of those were picked rightly")
+        return s
     return str(test.get("kind"))
