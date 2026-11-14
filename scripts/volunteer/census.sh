@@ -148,7 +148,14 @@ cmd_check() {
         if [ -n "$mem" ] && [ "$mem" -ge "$KIT_MIN_VRAM_MIB" ]; then
             ok "card $i: $name, $mem MiB"
         else
-            no "card $i: ${name:-?}, ${mem:-?} MiB: the kit needs one card of at least $KIT_MIN_VRAM_MIB MiB (the model is about 22 GB, a batch of 64 about 5 GB more; it is not split across cards)"
+            no "card $i: ${name:-?}, ${mem:-?} MiB: the kit needs one card of at least $KIT_MIN_VRAM_MIB MiB (the model rests at about 18 GiB and a batch of 64 takes up to about 4 GiB more; it is not split across cards)"
+        fi
+        local free
+        free=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits -i "$i" 2>/dev/null | head -1 | tr -d ' ')
+        if [ -n "$free" ] && [ "$free" -ge "$KIT_MIN_FREE_VRAM_MIB" ]; then
+            ok "card $i: $free MiB free"
+        else
+            no "card $i: ${free:-?} MiB free: a run needs about $KIT_MIN_FREE_VRAM_MIB MiB free on its card. On a 24 GB card that means nothing else on it: no desktop (a card driving a display holds hundreds of MiB), no other process"
         fi
         if [ -n "$cuda" ] && [ "$(printf '%s\n%s\n' "$KIT_MIN_CUDA" "$cuda" | sort -V | head -1)" = "$KIT_MIN_CUDA" ]; then
             ok "the driver runs CUDA $cuda"

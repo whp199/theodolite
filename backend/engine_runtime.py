@@ -55,7 +55,7 @@ from interp_engine.steer import generate_stream as ie_generate_stream
 from interp_engine.steer import steer as ie_steer
 from interp_engine.steer import steering_spec_to_eager_specs
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, OrthogonalDecompSpec, SteeringSpec
-from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
+from transformers import AutoConfig, AutoTokenizer, Gemma4ForConditionalGeneration
 
 from backend.label_gate import label_check, label_top_ids, writes_nothing
 from backend.theodolite_math import (
@@ -375,6 +375,36 @@ def _make_w4a16_linear_forward(module: nn.Module) -> Callable[[torch.Tensor], to
         return F.linear(x.to(dtype=w.dtype), w, bias)
 
     return types.MethodType(_w4a16_forward, module)
+
+
+def text_only_device_map(device: Any, audio: bool = False) -> Any:
+    """The device map a load is made with: every weight on `device`, but on a CUDA card the vision tower and its
+    embedding load on the CPU, and the audio tower and its embedding too when the checkpoint has them (`audio`: its
+    config's audio_config is set; the pinned checkpoint's is null, and a map naming a module the model lacks is not
+    risked). patch_compressed_tensors_for_low_vram drops them right after the load, so they are
+    never read. On the card they took about 1.07 GiB at the load's peak, which is the most a run ever holds (the
+    checkpoint's own lm_head is on the card then too, until it is tied to embed_tokens): on a 24 GB card, the
+    difference between a load with under 256 MiB to spare and one with over a GiB. The text model's weights, and so
+    every answer, are the same."""
+    dev = str(device)
+    if not dev.startswith("cuda"):
+        return dev
+    dm = {"model.language_model": dev, "lm_head": dev, "model.vision_tower": "cpu", "model.embed_vision": "cpu"}
+    if audio:
+        dm.update({"model.audio_tower": "cpu", "model.embed_audio": "cpu"})
+    return dm
+
+
+def settle_text_only_device_map(hf_model: nn.Module, device: Any) -> None:
+    """Called after a load by text_only_device_map and before patch_compressed_tensors_for_low_vram (which drops the
+    vision tower, leaving every weight on `device`, as a one-device load leaves it): the hooks accelerate set on each
+    module to move inputs between the map's devices are taken off and the map is recorded as one device's. Before the
+    patch, not after: taking a hook off puts back the forward the module had when it was hooked, which would undo the
+    patch's own."""
+    from accelerate.hooks import remove_hook_from_module
+
+    remove_hook_from_module(hf_model, recurse=True)
+    hf_model.hf_device_map = {"": str(device)}
 
 
 def patch_compressed_tensors_for_low_vram(hf_model: nn.Module) -> int:
@@ -777,11 +807,16 @@ class TheodoliteRuntime:
         logger.info("Loading Gemma-4-31B W4A16 model from %s on %s...", self.model_id, self.device)
 
         try:
+            config = AutoConfig.from_pretrained(self.model_id, trust_remote_code=False, local_files_only=True)
+        except Exception:
+            config = AutoConfig.from_pretrained(self.model_id, trust_remote_code=False)
+        device_map = text_only_device_map(self.device, audio=getattr(config, "audio_config", None) is not None)
+        try:
             tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=False, local_files_only=True)
             hf_model, loading_info = Gemma4ForConditionalGeneration.from_pretrained(
                 self.model_id,
                 dtype="auto",
-                device_map=str(self.device),
+                device_map=device_map,
                 trust_remote_code=False,
                 output_loading_info=True,
                 local_files_only=True,
@@ -791,13 +826,20 @@ class TheodoliteRuntime:
             hf_model, loading_info = Gemma4ForConditionalGeneration.from_pretrained(
                 self.model_id,
                 dtype="auto",
-                device_map=str(self.device),
+                device_map=device_map,
                 trust_remote_code=False,
                 output_loading_info=True,
             )
         setattr(hf_model, "ie_missing_keys", frozenset(loading_info.get("missing_keys", ()) or ()))
 
+        split_map = isinstance(device_map, dict)
+        if split_map:
+            settle_text_only_device_map(hf_model, self.device)
         n_patched = patch_compressed_tensors_for_low_vram(hf_model)
+        if split_map:
+            # the cache the load left free, handed back: the unpacker's self-test and the first batch are otherwise
+            # refused on a 24 GB card for want of a block that is free but cut up
+            torch.cuda.empty_cache()
         logger.info("Patched %d W4A16 compressed-tensors linear modules for on-the-fly GPU execution.", n_patched)
 
         self.eager_model = EagerModel(

@@ -83,7 +83,8 @@ def read_kit(path: Optional[Path] = None, dry: bool = False) -> Dict[str, Any]:
     # the design each layer is taken with, where the kit names one a layer ("32:match_ceil 38:soft_ceil ...")
     out["designs"] = {int(layer): design for layer, _, design in (p.partition(":") for p in kit.get("KIT_DESIGNS", "").split())
                       if layer.isdigit() and design}
-    for k in ("KIT", "KIT_CONTROLS", "KIT_SEED", "KIT_BATCH", "KIT_MAX_NEW", "KIT_MIN_VRAM_MIB", "KIT_MIN_DISK_GB"):
+    for k in ("KIT", "KIT_CONTROLS", "KIT_SEED", "KIT_BATCH", "KIT_MAX_NEW", "KIT_MIN_VRAM_MIB", "KIT_MIN_FREE_VRAM_MIB",
+              "KIT_MIN_DISK_GB"):
         if k in kit:
             out[k] = int(kit[k])
     out["dry"] = dry

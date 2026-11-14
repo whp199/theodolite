@@ -56,15 +56,17 @@ chats, you try for yourself.
 
 ## What you need
 
-- **One NVIDIA card with at least 32 GB**, for example an RTX 5090, RTX PRO 6000, A6000, 6000 Ada, L40S, A100, H100 or
-  H200. The 4-bit model is about 22 GB and a batch of answers about 5 GB more, and it is not split across cards, so a
-  24 GB card (3090, 4090) cannot take part.
+- **One NVIDIA card with at least 24 GB**, for example an RTX 5090, RTX 4090 or 3090, RTX PRO 6000, A6000, 6000 Ada,
+  L40S, A100, H100 or H200. The 4-bit model rests at about 18 GiB on the card and a batch of answers takes up to about
+  4.2 GiB more; it is not split across cards. **A 24 GB card must be headless**: no desktop or other process on it,
+  since the longest batches leave only about 300 MiB of a 3090's free memory (`census.sh check` asks for 23,900 MiB
+  free). A 3090 has been measured; a 4090 has not yet been tried.
 - **A driver for CUDA 13**: `nvidia-smi` shows `CUDA Version: 13.0` or later (driver 580 or newer).
 - **Linux**, about **60 GB** free disk, 32 GB of memory, and `git`, `curl`, `zstd`, `tar` and `flock` (util-linux),
   and a C compiler (`gcc`), which Triton may need for its kernels.
 - **Time**: about 13 hours for a layer on a 5090, plus about an hour of setup, mostly downloading about 35 GB. Other
-  cards will differ (an Ampere card perhaps two to three times slower; that is a guess, not a measurement), and the
-  status line tells you yours. The run can be stopped and continued at any point.
+  cards will differ (an RTX 3090 held at its 83 °C limit wrote a sixteenth of layer 45 at 3.7 answers a second: about
+  43 hours for a layer), and the status line tells you yours. The run can be stopped and continued at any point.
 - **A quiet machine**: the card at full load, and nothing else heavy on it or on the CPU. Our own run was once stopped
   by NVIDIA's watchdog in the middle of a big kernel build.
 
