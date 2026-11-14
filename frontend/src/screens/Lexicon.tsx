@@ -1296,6 +1296,33 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </EntryApparatus>
         </Entry>
 
+        <Entry id="pattern-test" head="a pattern put to the test" tech="detection · input synthesis · held-out passages">
+          <Body>
+            A pattern is a sentence or two saying when one face of a neuron fires. Two tests ask whether it is right
+            without pushing anything. In the first, text is written to the pattern: some meant to make the face fire,
+            and near misses meant not to. In the second, a reader who is given the pattern and nothing else is shown
+            pairs of passages, one where the face fires and one where it stays quiet, and says which is which.
+          </Body>
+          <Note>
+            Both test when a face fires, in ordinary text, which a neuron does at every layer; the census and the steer
+            lens test what a push does, and no push has yet been found that reads the early layers. Neither test shows
+            that the pattern is the face’s only job: a second job the pattern leaves out is never looked for. And
+            neither says what the firing does further on.
+          </Note>
+          <EntryApparatus title="a pattern put to the test">
+            Written (<M>POST /neuron/written_test</M>): each text read once; its peak on the face over the face’s
+            extreme in the stats index. A text fires at 0.5 of the extreme, the band the passages index draws its
+            random events from, and beats the corpus at 1. Blind (<M>POST /neuron/blind_test/start</M>, then{" "}
+            <M>/answer</M> or <M>/judge</M>): the face’s stored events in odd-numbered windows are kept back from the
+            scientist; each is paired with a passage from another kept-back window where the face stays under 0.25 of
+            its extreme, read live; both cut to 60 word-pieces before one marked word-piece and 8 after. The reader is
+            an endpoint’s model in a fresh conversation, given the pattern and the pairs alone; chance is one half,
+            and the result gives the chance of doing as well by guessing. After Goodfire’s <i>Neurons as an
+            Interpretable Basis</i> (2026), which tested descriptions by detection and by input synthesis. Results
+            are kept with the pattern they tested (<M>field_tests.json</M>).
+          </EntryApparatus>
+        </Entry>
+
         <Entry id="push" head="a push" tech="steering · three voices · one neuron’s write direction">
           <Body>
             Ask the model something and it answers three times at once: with the open neuron pushed up, left alone, and

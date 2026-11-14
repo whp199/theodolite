@@ -11,7 +11,7 @@ import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
 import type { BookFace, BookReply } from "../NeuronFolio/saved";
-import { cite, get, noteKey, post, steerCheckSaid, type HeadInfo, type Link, type SteerLens } from "./api";
+import { cite, get, noteKey, patternTestSaid, post, steerCheckSaid, type HeadInfo, type Link, type PatternTest, type SteerLens, type TestsReply } from "./api";
 import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, ProposalLine, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, setQuery, theMap, useAtlas } from "./state";
 
@@ -612,6 +612,75 @@ const FieldBook: React.FC = () => {
   );
 };
 
+/** The open neuron's patterns put to the test: by text written to them, or by a blind reader picking the face's
+ * kept-back passages. Each is shown with the pattern it tested; neither pushes the neuron. */
+const PatternTests: React.FC = () => {
+  const f = useAtlas((s) => s.focus);
+  const key = f && f.kind === "neuron" ? noteKey(f.layer, f.n) : "";
+  const [got, setGot] = useState<{ key: string; r: TestsReply | null; error: string | null } | null>(null);
+  useEffect(() => {
+    if (!f || f.kind !== "neuron") return;
+    let live = true;
+    get<TestsReply>("/api/atlas/neuron/tests", { layer: f.layer, n: f.n })
+      .then((r) => live && setGot({ key, r, error: r.warning ?? null }))
+      .catch((e) => live && setGot({ key, r: null, error: (e as Error).message }));
+    return () => {
+      live = false;
+    };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!f || f.kind !== "neuron") return null;
+  const mine = got && got.key === key ? got : null;
+  const one = (t: PatternTest, i: number) => {
+    const said = patternTestSaid(t);
+    return (
+      <div key={i} style={{ margin: "4px 0 6px" }}>
+        <p className="atlas-small" style={{ margin: 0, fontStyle: "italic" }}>{t.pattern}</p>
+        <p className={said.against ? "atlas-small red" : "atlas-small"} style={{ margin: "1px 0 0" }}>
+          {said.text}
+        </p>
+        <IfApparatus>
+          <p className="muted atlas-small" style={{ margin: 0 }}>
+            {t.by === "scientist" ? "run by the scientist" : "run by a reader"} · {t.at}
+            {t.kind === "written" && t.texts
+              ? " · " +
+                [...t.texts.fire.map((x) => `fire ${x.rel.toFixed(2)} at ${wp(x.at)}`), ...t.texts.quiet.map((x) => `near miss ${x.rel.toFixed(2)}`)].join(", ")
+              : ""}
+          </p>
+        </IfApparatus>
+      </div>
+    );
+  };
+  const face = (sg: "+" | "-", ts: PatternTest[]) =>
+    ts.length ? (
+      <div className={`atlas-face-box ${sg === "+" ? "up" : "down"}`} key={sg}>
+        <div className="atlas-lab">{sg === "+" ? "+ face" : "− face"}</div>
+        {ts.map(one)}
+      </div>
+    ) : null;
+  const faces = mine?.r ? [face("+", mine.r.tests["+"]), face("-", mine.r.tests["-"])].filter(Boolean) : [];
+  return (
+    <section className="atlas-sec">
+      <div className="kicker">its pattern put to the test · no push, only where it fires</div>
+      <ErrorLine error={mine?.error} />
+      {!mine ? (
+        <p className="muted atlas-small">reading its tests…</p>
+      ) : faces.length ? (
+        <div className="atlas-two">{faces}</div>
+      ) : mine.r ? (
+        <p className="muted atlas-small" style={{ margin: 0 }}>
+          No pattern of this neuron has been put to the test yet. The scientist can: by writing text that should make it fire, and by a
+          blind reader picking the passages it fires in.
+        </p>
+      ) : null}
+      <Rubric style={{ fontSize: 14, margin: "4px 0 0" }}>
+        A test asks whether a pattern predicts where the neuron fires in ordinary text. It does not show that the pattern is the face’s
+        only job, nor what its firing does. <a href={href.lexicon("pattern-test")}>How a pattern is tested.</a>
+      </Rubric>
+      <IfApparatus>{mine?.r ? <p className="muted atlas-small mono-wrap">{mine.r.file}</p> : null}</IfApparatus>
+    </section>
+  );
+};
+
 export const DetailsTab: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   if (!f || f.kind !== "neuron") return null;
@@ -625,6 +694,7 @@ export const DetailsTab: React.FC = () => {
       <Heads />
       <NoteField />
       <FieldBook />
+      <PatternTests />
     </div>
   );
 };

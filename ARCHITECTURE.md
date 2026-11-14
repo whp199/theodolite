@@ -27,6 +27,7 @@ theodolite2/
 │   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser, .patch edits & their voice
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
+│   ├── pattern_tests.py             # a face's pattern put to the test: text written to it, a blind reader's pairs (§4.7)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
 │   ├── sampler_request.py           # how an answer is written, as a request asks: the sweep's and the atlas's sampler
 │   ├── local_only.py                # who may ask: every route and the socket answer only this machine's pages (§4)
@@ -819,6 +820,21 @@ and where it comes from: the built lens's (`index`), the pilot's for a neuron re
 0.8 at every layer (`reference`), which the details tab then says in red is not sized to the layer. Run on the 31B on
 13 November 2026: the pilot in 38 minutes, the build in 10.5 hours (ROADMAP §vi).
 
+*A pattern put to the test* (14 November 2026; `backend/pattern_tests.py`, after [54]). A pattern is a sentence or two
+saying when one face fires: the field book's `pattern`, or a scientist's. The census and the steer lens say what a push
+does, and neither reads the early layers (no push strength has passed a trial below layer 32; the steer lens is a weak
+guide below 39). These two tests push nothing, so they work at every layer. *Written*: texts written to fire the face,
+and near misses written not to, are each read once; a text fires at half the face's extreme in the stats index, the
+band the passages index draws its random events from, and beats the corpus at 1. *Blind*: a face's stored events in
+odd-numbered windows are kept back from the scientist (`atlas_index.passage_kept_back`; its `passages` tool asks for
+`fold=fit`), so a pattern written from the others has not seen them. Each is paired with a passage from another
+kept-back window where the face stays under a quarter of its extreme, read live, and a reader given the pattern alone
+says which of each pair fires. The reader is an endpoint's model in a fresh conversation (`scientist_chat.ask_once`:
+no tools, no history); where there is no endpoint the scientist answers the pairs itself and the result says so, a
+weaker test. Results are kept by face in `field_tests.json` beside the notes, each with the pattern it tested, so a
+pattern reworded since is seen to be untested. Neither test shows that the pattern is the face's only job, nor what
+its firing does. Checked on the CPU stand-in only; not yet run on the 31B.
+
 *Its own check* (13 November 2026). The lens lists the word-pieces whose odds rose most; nothing in it sets a neuron
 against other pushes, as the census's controls do. On the 31B it agrees with the census from layer 39 up and less and
 less below, and below layer 40 part of every reading is the layer's own (ROADMAP §vi). So the lens is checked, on the
@@ -846,7 +862,10 @@ word-pieces a layer shares.
 | `GET /neuron/wiring?layer&n&k=24&model=rest` | its strongest links each way, `down` (readers) and `up` (writers), each with `face`, that face's words and check, its census words and name; from the index, else live (`source`); `model=use` adds each link's `use_sign` {+, −} and `use` {ready, why, operating_points, stale, note} (above) |
 | `GET /neuron/heads?layer&n` | the heads it meets by role (q, k, v: later heads reading its write; o: heads whose write it reads), z per head; `z_by_layer` |
 | `GET /neuron?layer&n`, `GET /cone?layer&n&model` | all of the above for the scientist; its cone as a list of neurons with hop, z, face and words, from rest or in use (`model`) |
-| `GET /neuron/passages?layer&n&face&k&before&after` | one face's stored passages from `passages.d/` (no GPU): its k strongest (16) then those sampled, each with `act`, `rel` (over the face's extreme in the stats index; `rel_to` names its corpus, or says it is another), `regime` (pp, nn, pn, np from `g` and `u`), `window`, `at`, its display units `[text, is_peak]` over `span` (before 24 and after 6 word-pieces, at most 128 each, never across the window's start or end, an end mark, a start mark inside the window (another document's) or a turn mark: `cut` says why each side stops), `next`, and `ids` (the window up to the span's end, for `POST /reads`); `reads` and `follows`, the word-pieces at the peaks and just after, counted over the k with their lift over `unigram`, marked `words_note` "from K passages of a W-word-piece corpus; not validated as a label"; `ready: false` with the build that makes it; `stale` after a vault edit on the neuron or at an earlier layer |
+| `GET /neuron/passages?layer&n&face&k&before&after&fold` | one face's stored passages from `passages.d/` (no GPU): its k strongest (16) then those sampled, each with `act`, `rel` (over the face's extreme in the stats index; `rel_to` names its corpus, or says it is another), `regime` (pp, nn, pn, np from `g` and `u`), `window`, `at`, its display units `[text, is_peak]` over `span` (before 24 and after 6 word-pieces, at most 128 each, never across the window's start or end, an end mark, a start mark inside the window (another document's) or a turn mark: `cut` says why each side stops), `next`, and `ids` (the window up to the span's end, for `POST /reads`); `reads` and `follows`, the word-pieces at the peaks and just after, counted over the k with their lift over `unigram`, marked `words_note` "from K passages of a W-word-piece corpus; not validated as a label"; `ready: false` with the build that makes it; `stale` after a vault edit on the neuron or at an earlier layer; `fold=fit` leaves out the passages kept back for a blind test of the face's pattern (those in odd-numbered windows; `kept_back` counts them, and each passage says whether it is one), as the scientist is given them |
+| `POST /neuron/written_test` | a face's pattern tested by writing (GPU): `{layer, n, face, pattern, fire, quiet}`, texts written to fire the face and near misses written not to, each read once; each text's peak as a share of the face's extreme (`rel`), `fired` (those meant to fire that reached 0.5), `beat_corpus` (reached 1), `quiet_fired`, `apart`; kept on the face with the pattern (`keep`) |
+| `POST /neuron/blind_test/start`, `/answer`, `/judge` | a blind test of a face's pattern (passages index; GPU for the controls): `start` pairs up to 12 of the face's kept-back passages with passages where it stays under 0.25 of its extreme, read live, both cut to 60 word-pieces before a marked one and 8 after, and returns the pairs without saying which fires; `answer` takes `picks` (a or b a pair) and says how many were right, of how many, and the chance of guessing as well (`p`); `judge` has one of the scientist's endpoints answer in a fresh conversation, given the pattern and the pairs alone. A test is answered once |
+| `GET /neuron/tests?layer&n` | the tests kept for a neuron's faces, the latest first (six a face), each with the pattern it tested |
 | `GET /hover?layer&n` | the tooltip, from the indexes alone (no GPU) |
 | `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`; not at a layer where the lens's own check counts it a weak guide), with each face's check: matches the label gate holds back go to `held` (`held_back` counts them), for the apparatus, never the main list or the map; `/run/view`'s word filter likewise matches only labels the gate shows, and the steer lens |
 | `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |

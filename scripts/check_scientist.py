@@ -1469,11 +1469,83 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     ab.build_passages(a_.rt, out, ab.windows(a_.rt, CORPUS, 24, 300), "check", k=6, sample=2, extremes=(stats["pos"], stats["neg"]),
                       extremes_source="the stats index", log=quiet)
     pg = await st.call("passages", {"layer": 3, "n": 5, "face": "-", "k": 4}, api)
-    raw = hc.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "-", "k": 4}).json()
+    raw = hc.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "-", "k": 4, "fold": "fit"}).json()
+    raw_all = hc.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "-", "k": 64}).json()
     check(pg["neuron"] == "L3 N5" and pg["face"] == "-" and [x["text"] for x in pg["passages"]]
           == ["".join(f"[[{t}]]" if pk else t for t, pk in x["units"]) for x in raw["passages"]]
-          and sum(1 for x in pg["passages"] if x["kind"] == "top") == 4 and all(x["text"].count("[[") == 1 for x in pg["passages"]),
+          and sum(1 for x in pg["passages"] if x["kind"] == "top") == min(4, sum(1 for x in raw_all["passages"] if x["kind"] == "top" and not x["kept_back"]))
+          and all(x["text"].count("[[") == 1 for x in pg["passages"]),
           "passages: page layer 3 is the API's 2, one face's passages with the peak marked")
+    held_n = sum(1 for x in raw_all["passages"] if x["kept_back"])
+    check(len(pg["passages"]) <= len(raw_all["passages"]) - held_n and f"{held_n} of this face's stored passages" in pg["kept_back"]
+          and "not shown here" in pg["kept_back"] and not any(x["kept_back"] for x in raw["passages"]),
+          f"passages: those kept back for a blind test are not shown to the scientist, and it is told how many ({pg['kept_back']})")
+    # a face's pattern put to the test: by writing, and blind (with no endpoint the pairs are the scientist's to answer;
+    # with one named, that model reads them in a fresh conversation, given the pattern alone)
+    tw = await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "pattern": "fires on sea words",
+                                           "fire": ["Alice called Bob about the tide.", "The ocean rose."], "quiet": ["Bob."]}, api)
+    kept_w = hc.get("/api/atlas/neuron/tests", params={"layer": 2, "n": 5}).json()["tests"]["+"]
+    check(tw["neuron"] == "L3 N5" and tw["face"] == "+" and tw["fire"] == 2 and tw["quiet"] == 1 and len(tw["texts"]["fire"]) == 2
+          and tw["said"].startswith("written: ") and 0 <= tw["fired"] <= 2 and kept_w[0]["by"] == "scientist" and kept_w[0]["pattern"] == "fires on sea words",
+          f"test_by_writing: each text read on the API's layer 2, the figures, kept on the face as the scientist's ({tw['said']})")
+    from backend import pattern_tests as pt
+
+    judged: List[Dict[str, Any]] = []
+    judge_app = FastAPI()
+
+    @judge_app.post("/v1/chat/completions")
+    async def judge_complete(request: Request) -> Any:
+        body = await request.json()
+        judged.append(body)
+        n_pairs = body["messages"][-1]["content"].count("\nPair ")
+        return {"choices": [{"message": {"role": "assistant", "content": "\n".join(f"{i + 1}: a" for i in range(n_pairs))}, "finish_reason": "stop"}]}
+
+    reader = Served(judge_app)
+    found = None
+    for n_try in range(0, 128, 3):  # the stand-in's neurons fire nearly everywhere: the first face a test can be made for
+        for face_try in ("+", "-"):
+            try:
+                bt = await st.call("blind_test", {"layer": 3, "n": n_try, "face": face_try, "pattern": "a pattern for a stranger", "pairs": 4}, api)
+            except st.ToolError:
+                continue
+            found = (n_try, face_try, bt)
+            break
+        if found:
+            break
+    check(found is not None, "a face of the stand-in a blind test can be made for")
+    n_b, face_b, bt = found
+    check(bt["neuron"] == f"L3 N{n_b}" and len(bt["pairs"]) == 4 and set(bt["pairs"][0]) == {"a", "b"} and "blind_test_answer" in bt["note"]
+          and "test" in bt and "truth" not in json.dumps(bt), f"blind_test with no endpoint: the pairs handed to the scientist, nothing saying which fires ({bt['note'][:80]})")
+    ban = await st.call("blind_test_answer", {"test": bt["test"], "picks": ["a", "a", "a", "a"]}, api)
+    check(ban["neuron"] == f"L3 N{n_b}" and ban["pairs"] == 4 and ban["right"] == sum(x["truth"] == "a" for x in ban["by_pair"])
+          and "the scientist itself" in ban["judge"] and "seen the face's other passages" in ban["judge"] and ban["said"].startswith("blind: ")
+          and ban["p"] == round(pt.binom_tail(ban["right"], 4), 4),
+          f"blind_test_answer: scored, and the reader said to be the scientist itself ({ban['said']})")
+    os.environ.update({"THEODOLITE_OPENAI_BASE_URL": f"{reader.url}/v1", "THEODOLITE_OPENAI_MODEL": "reader-model",
+                       "THEODOLITE_OPENAI_API_KEY": "sk-test-key"})
+    try:
+        bj = await st.call("blind_test", {"layer": 3, "n": n_b, "face": face_b, "pattern": "a pattern for a stranger", "pairs": 4, "profile": "custom"}, api)
+        sent = judged[-1]
+        check(bj["pairs"] == 4 and bj["right"] == sum(x["truth"] == "a" for x in bj["by_pair"]) and all(x["picked"] == "a" for x in bj["by_pair"])
+              and bj["judge"] == "custom (reader-model), given the pattern alone" and "test" not in bj,
+              f"blind_test with an endpoint named: its model reads the pairs and the score comes back ({bj['said']})")
+        check(sent["model"] == "reader-model" and sent["stream"] is False and "tools" not in sent and len(sent["messages"]) == 2
+              and sent["messages"][0] == {"role": "system", "content": pt.JUDGE_SYSTEM} and "a pattern for a stranger" in sent["messages"][1]["content"]
+              and sent["messages"][1]["content"].count("[[") == 8,
+              "the blind reader is asked in a fresh conversation: the pattern and the pairs, no tools, no history")
+        try:
+            await st.call("blind_test", {"layer": 3, "n": n_b, "face": face_b, "pattern": "p", "profile": "nope"}, api)
+            said_no = ""
+        except st.ToolError as exc:
+            said_no = str(exc)
+        check("Name the endpoint that is to read blind" in said_no, f"blind_test: an endpoint not configured refused in plain words ({said_no[:100]})")
+    finally:
+        for k_ in ("THEODOLITE_OPENAI_BASE_URL", "THEODOLITE_OPENAI_MODEL", "THEODOLITE_OPENAI_API_KEY"):
+            os.environ.pop(k_, None)
+    card = await st.call("neuron", {"layer": 3, "n": n_b}, api)
+    check([t["said"][:7] for t in card["tests"][face_b]] == ["blind: ", "blind: "] and card["tests"][face_b][0]["pattern"] == "a pattern for a stranger"
+          and "tests" in (await st.call("neuron", {"layer": 3, "n": 5}, api)),
+          "neuron: the tests kept on its faces, each with its pattern and how it came out")
     check(pg["reads"] == [f"{t['tok']} ({t['n']}, lift {t['lift']})" for t in raw["reads"]] and "not validated as a label" in pg["note"]
           and (await st.call("passages", {"layer": 3, "n": 5}, api))["face"] == "+", "passages: reads with their lift, the note, the + face by default")
     cn = await st.call("cone", {"layer": 3, "n": 5}, api)

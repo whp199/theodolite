@@ -76,7 +76,14 @@ const PassageRow: React.FC<{ p: Passage; layer: number; n: number }> = ({ p, lay
       </div>
       <div className="muted atlas-small">
         {p.act.toFixed(3)}
-        {p.rel != null ? ` · ${Math.round(p.rel * 100)}% of its extreme` : ""} · {REGIME[p.regime]} ·{" "}
+        {p.rel != null ? ` · ${Math.round(p.rel * 100)}% of its extreme` : ""} · {REGIME[p.regime]}
+        {p.kept_back ? (
+          <span title="The scientist is not shown this passage: it is kept back so that a pattern it writes can be put to a blind test.">
+            {" "}
+            · kept back for the blind test
+          </span>
+        ) : null}{" "}
+        ·{" "}
         <button type="button" className="btn-link" disabled={busy} onClick={() => void again()}>
           {busy ? "reading…" : "read again"}
         </button>

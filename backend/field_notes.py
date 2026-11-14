@@ -36,6 +36,16 @@ person keeps them, in a third file, `$THEODOLITE_FIELD_PROPOSALS`, else `field_p
      "neurons": {"<layer>:<neuron>": {"name"?, "note"?, "chat", "at"}},
      "heads":   {"<layer>:<head>":   {"name"?, "note"?, "chat", "at"}}}
 
+A pattern put to the test (backend/pattern_tests.py: text written from it, or a blind reader picking the face's
+kept-back passages) leaves its result in a fourth file, `$THEODOLITE_FIELD_TESTS`, else `field_tests.json` beside the
+notes, the latest first and at most six a face:
+
+    {"version": 1,
+     "neurons": {"<layer>:<neuron>": {"+": [{"kind", "pattern", "by", "at", ...the test's figures}], "-": [...]}}}
+
+A test carries the pattern it tested, word for word, so a pattern reworded since is seen to be untested. A test is a
+measurement, not a note: whoever ran it, it is kept as it came out (`GET /api/atlas/neuron/tests`).
+
 (an empty name or note proposes clearing it; `chat` is the chat that proposed it). Nothing reads a proposal as a name:
 the atlas's lists, search, tooltips and map, and later chats, read only the notes above. Keeping one writes it to the
 notes as the scientist's (`name_by`, `note_by` "scientist") and removes it; discarding removes it (`GET` and `POST
@@ -68,6 +78,9 @@ logger = logging.getLogger("theodolite.field_notes")
 FIELD_NOTES_ENV = "THEODOLITE_FIELD_NOTES"
 FIELD_BOOK_ENV = "THEODOLITE_FIELD_BOOK"
 FIELD_PROPOSALS_ENV = "THEODOLITE_FIELD_PROPOSALS"
+FIELD_TESTS_ENV = "THEODOLITE_FIELD_TESTS"
+TESTS_KEPT = 6  # a face's latest tests kept
+TEST_KINDS = ("written", "blind")
 FILE_VERSION = 1
 MAX_NAME = 120
 MAX_NOTE = 4000
@@ -113,6 +126,14 @@ def field_proposals_path() -> Path:
     return field_notes_path().with_name("field_proposals.json")
 
 
+def field_tests_path() -> Path:
+    """Where the results of patterns put to the test are kept: `$THEODOLITE_FIELD_TESTS`, else beside the notes."""
+    env = os.environ.get(FIELD_TESTS_ENV)
+    if env:
+        return Path(env).expanduser()
+    return field_notes_path().with_name("field_tests.json")
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -143,7 +164,8 @@ def _valid_entry(e: Any) -> bool:
 
 # what each file is called in its warning, and what starts empty when it is moved aside
 _WHAT = {"notes": ("field notes", "the notes start"), "book": ("field book", "the field book starts"),
-         "proposals": ("scientist's proposals", "the proposals start")}
+         "proposals": ("scientist's proposals", "the proposals start"),
+         "tests": ("pattern tests'", "the tests start")}
 
 
 def _move_aside(path: Path, why: str, which: str = "notes") -> None:
@@ -402,6 +424,64 @@ async def write_face(layer: int, n: int, change: Dict[str, Any], path: Optional[
             entries.pop(key, None)
         _write_atomic(path, data)
         return entry
+
+
+# ------------------------------------------------------------------------------- a pattern put to the test, kept
+
+
+def _valid_test(t: Any) -> bool:
+    return (isinstance(t, dict) and t.get("kind") in TEST_KINDS and isinstance(t.get("pattern"), str)
+            and t.get("by") in WRITERS and isinstance(t.get("at"), str))
+
+
+def read_tests(path: Optional[Path] = None) -> Dict[str, Any]:
+    """The kept tests as stored ({"version", "neurons": {key: {face: [test, ...]}}}); empty when there is no file yet.
+    An unreadable file is moved aside, as the notes are."""
+    path = path or field_tests_path()
+    empty = {"version": FILE_VERSION, "neurons": {}}
+    data = _read_json(path, "tests", "pattern tests")
+    if data is None:
+        return empty
+    entries = data.get("neurons", {})
+    ok = isinstance(entries, dict) and all(
+        _valid_key(k) and isinstance(e, dict) and set(e) <= set(FACES)
+        and all(isinstance(ts, list) and all(_valid_test(t) for t in ts) for ts in e.values()) for k, e in entries.items())
+    if not ok:
+        _move_aside(path, "a malformed entry in its neurons", "tests")
+        return empty
+    return {"version": FILE_VERSION, "neurons": entries}
+
+
+async def add_test(layer: int, n: int, face: str, test: Dict[str, Any], by: str = "reader",
+                   path: Optional[Path] = None) -> Dict[str, Any]:
+    """Keep a test's result on one face (`test`: its kind, the pattern it tested and its figures), the latest first,
+    TESTS_KEPT at most. Returns the test as kept, with who ran it and when."""
+    if face not in FACES:
+        raise ValueError('A face is "+" or "-".')
+    if by not in WRITERS:
+        raise ValueError(f'by must be one of {", ".join(WRITERS)}.')
+    if test.get("kind") not in TEST_KINDS or not isinstance(test.get("pattern"), str):
+        raise ValueError("A test names its kind (written or blind) and the pattern it tested.")
+    path = path or field_tests_path()
+    key = note_key(layer, n)
+    kept = {**test, "by": by, "at": _utc_now()}
+    async with _LOCK:
+        data = read_tests(path)
+        entries: Dict[str, Any] = data["neurons"]
+        if key not in entries and len(entries) >= MAX_ENTRIES:
+            raise ValueError(f"The tests' file is full ({MAX_ENTRIES} neurons).")
+        faces = dict(entries.get(key) or {})
+        faces[face] = [kept, *(faces.get(face) or [])][:TESTS_KEPT]
+        entries[key] = {s: faces[s] for s in FACES if s in faces}
+        _write_atomic(path, data)
+    return kept
+
+
+async def tests_of(layer: int, n: int, path: Optional[Path] = None) -> Dict[str, Any]:
+    """One neuron's kept tests, by face ({"+": [...], "-": [...]}, each latest first; a face never tested is [])."""
+    async with _LOCK:
+        got = read_tests(path or field_tests_path())["neurons"].get(note_key(layer, n)) or {}
+    return {s: list(got.get(s) or []) for s in FACES}
 
 
 async def all_book(path: Optional[Path] = None) -> Dict[str, Any]:

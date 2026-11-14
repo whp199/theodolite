@@ -28,10 +28,12 @@ import base64
 import ipaddress
 import json
 import logging
+import random
 import re
+import secrets
 import threading
 from collections import OrderedDict
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import anyio
 import numpy as np
@@ -43,8 +45,10 @@ from pydantic import BaseModel, Field, StrictInt
 from backend import atlas_ops as ao
 from backend import census as cz
 from backend import field_notes as fn
+from backend import pattern_tests as pt
 from backend import sampler_request as sr
-from backend.atlas_index import FILES, LENS_K, LINK_MODELS, SITE_SCORE_RERUN, AtlasIndex, match_ids, scale_scores
+from backend.atlas_index import (FILES, LENS_K, LINK_MODELS, SITE_SCORE_RERUN, AtlasIndex, match_ids, passage_kept_back,
+                                 scale_scores)
 from backend.causal_check import language_model
 from backend.label_gate import LABEL_GATE_CARD
 from backend.saved_prompts import LOCAL_HOSTS, _hostname
@@ -202,7 +206,7 @@ class Atlas:
         self._vocab: Optional[List[str]] = None
         self._vocab_lock = threading.Lock()
         self._scales: Dict[Tuple[int, ...], Dict[str, Any]] = {}
-        self.cache: Dict[str, LRU] = {k: LRU() for k in ("wiring", "roles", "head", "steer")}
+        self.cache: Dict[str, LRU] = {k: LRU() for k in ("wiring", "roles", "head", "steer", "tests")}
         self.run: Dict[str, Any] = {}
         self.caps: LRU = LRU(2)  # head captures: each can take gigabytes on the 31B
         self._profiles: Optional[Dict[str, Any]] = None
@@ -534,6 +538,47 @@ class FieldBookRequest(BaseModel):
     pattern: Optional[Any] = None
     checked: Optional[Any] = None
     by: Optional[str] = None
+
+
+TestText = Annotated[str, Field(min_length=1, max_length=4000)]
+
+
+class WrittenTestRequest(BaseModel):
+    layer: StrictInt
+    n: StrictInt
+    face: str = "+"
+    pattern: str = Field(..., min_length=1, max_length=fn.MAX_PATTERN)
+    fire: List[TestText] = Field(..., min_length=1, max_length=pt.MAX_TEXTS)       # texts written to fire the face
+    quiet: List[TestText] = Field(default_factory=list, max_length=pt.MAX_TEXTS)   # near misses written not to
+    chat: bool = False
+    by: Optional[str] = None
+    keep: bool = True
+
+
+class BlindStartRequest(BaseModel):
+    layer: StrictInt
+    n: StrictInt
+    face: str = "+"
+    pattern: str = Field(..., min_length=1, max_length=fn.MAX_PATTERN)
+    pairs: int = Field(10, ge=pt.MIN_PAIRS, le=pt.MAX_PAIRS)
+    seed: Optional[StrictInt] = None
+
+
+class BlindAnswerRequest(BaseModel):
+    test: str = Field(..., min_length=1, max_length=64)
+    picks: List[Optional[str]] = Field(..., max_length=pt.MAX_PAIRS)
+    judge: Optional[str] = Field(None, max_length=160)   # who answered, in words
+    by: Optional[str] = None
+    keep: bool = True
+
+
+class BlindJudgeRequest(BaseModel):
+    test: str = Field(..., min_length=1, max_length=64)
+    profile: Optional[str] = Field(None, max_length=60)  # an endpoint of the scientist's (GET /api/scientist/...)
+    chat: Optional[str] = Field(None, max_length=200)    # else the endpoint of this chat
+    model: Optional[str] = Field(None, max_length=200)
+    by: Optional[str] = None
+    keep: bool = True
 
 
 class ProposalRequest(BaseModel):
@@ -1478,9 +1523,10 @@ def whole_characters(tok: Any, ids: Sequence[int], s: int, e: int, marks: Dict[i
     return s, e
 
 
-def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, after: int) -> Dict[str, Any]:
+def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, after: int, fold: str = "all") -> Dict[str, Any]:
     head: Dict[str, Any] = {"layer": layer, "n": n, "face": face}
-    got = a.index.passages(layer, n, face, k)
+    # the k strongest of those shown: with the kept-back ones left out, the k strongest of the rest
+    got = a.index.passages(layer, n, face, k if fold == "all" else 64)
     if got is None:
         why = a.index.refused("passages")
         return {**head, "ready": False, "note": PASSAGES_UNBUILT if not why else f"the passages index is not read: {why}"}
@@ -1503,8 +1549,14 @@ def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, afte
                                              else "its strongest passage here (the stats index never saw this face fire)")
     word = lambda t: vocab[int(t)] if 0 <= int(t) < len(vocab) else ""  # noqa: E731
     out, reads, follows = [], {}, {}
+    held = shown_top = 0
     for kind, slots in (("top", got["top"]), ("sample", sorted(got["sample"], key=lambda x: -abs(x["act"])))):
         for x in slots:
+            kept = passage_kept_back(x["window"])
+            held += kept
+            if fold == "fit" and (kept or (kind == "top" and shown_top >= k)):
+                continue  # kept back for a test of the pattern: not shown to whoever writes it (nor more than k of the rest)
+            shown_top += kind == "top"
             ids = a.index.window_ids(x["window"]) or []
             at = x["at"]
             s, e, why_b, why_a = cut_passage(ids, at, before, after, marks)
@@ -1518,7 +1570,7 @@ def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, afte
             out.append({"kind": kind, "act": round(x["act"], 4), "rel": round(x["act"] / ext, 3) if ext else None,
                         "regime": regime(x["g"], x["u"]), "g": round(x["g"], 4), "u": round(x["u"], 4), "window": x["window"], "at": at,
                         "units": units, "span": [s, e], "next": word(nxt) if nxt is not None else None, "cut": [why_b, why_a],
-                        "ids": ids[:e]})
+                        "ids": ids[:e], "kept_back": bool(kept)})
 
     def lifted(counts: Dict[int, int]) -> List[Dict[str, Any]]:
         used = sum(counts.values())
@@ -1527,8 +1579,10 @@ def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, afte
                 for t, c in counts.items()]
         return sorted(rows, key=lambda r: (-r["n"], -(r["lift"] or 0)))[:8]
 
-    k_used = len(got["top"])
-    res = {**head, "ready": True, "source": "index", "corpus": meta.get("corpus"), "tokens": tokens, "windows": meta.get("windows"),
+    k_used = shown_top
+    res = {**head, "ready": True, "source": "index", "fold": fold, "kept_back": held,
+           "kept_back_note": (f"{held} of this face's stored passages (those in odd-numbered windows) are kept back for a blind test "
+                              "of its pattern" + (": not shown here" if fold == "fit" else ", marked")), "corpus": meta.get("corpus"), "tokens": tokens, "windows": meta.get("windows"),
            "built_at": meta.get("built_at"), "k": k_used, "K": meta.get("K"), "per_window": meta.get("per_window"),
            "sampled": meta.get("sample") or 0, "sample_threshold": meta.get("sample_threshold"),
            "extreme": round(ext, 4) if ext else None, "rel_to": rel_to, "passages": out,
@@ -1548,7 +1602,8 @@ def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, afte
 
 
 @router.get("/neuron/passages")
-async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, before: int = 24, after: int = 6) -> Dict[str, Any]:
+async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, before: int = 24, after: int = 6,
+                          fold: str = "all") -> Dict[str, Any]:
     """One face's stored passages (the passages index, built by scripts/atlas_build.py passages; no GPU): its k strongest
     events, at most one a window, then those drawn at random above half its extreme, each with its activation, its
     share of the face's extreme (`rel`), GeGLU's regime there (from the gate and up values, `g`, `u`), its window and
@@ -1559,7 +1614,9 @@ async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, befo
     peaks and just after them, counted over the k with their lift over the corpus's base rate, which are leads
     (`words_note`), not labels the gate has checked. `rel_to`: what `rel` is a share of (the stats index's extreme,
     naming its corpus, or saying it is another corpus's). `ready: false`, saying which build makes it, without the
-    index; `stale` when a vault edit in force could have changed them."""
+    index; `stale` when a vault edit in force could have changed them. `fold` "fit" leaves out the passages kept back
+    for a blind test of the face's pattern (`kept_back`: how many; each passage says whether it is one), as the
+    scientist's tool is given them; "all", the default, shows a person every one."""
     a = atlas()
     _check_neuron(a, layer, n)
     face = {"+": "+", " ": "+", "pos": "+", "-": "-", "neg": "-"}.get(face, face)  # a bare "+" in a URL arrives as a space
@@ -1567,8 +1624,207 @@ async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, befo
         raise HTTPException(status_code=400, detail=f'A face is "+" or "-" (in a URL "+" is written %2B), not {face!r}.')
     if int(k) < 1 or int(before) < 0 or int(after) < 0:
         raise HTTPException(status_code=400, detail="k counts passages (at least 1); before and after count word-pieces (0 or more).")
+    if fold not in ("all", "fit"):
+        raise HTTPException(status_code=400, detail='fold is "all" (every stored passage) or "fit" (those not kept back for a test).')
     # at most 128 word-pieces each side: a span is split into display units a prefix at a time (`token_units`)
-    return await asyncio.to_thread(_passages, a, layer, n, face, min(int(k), 64), min(int(before), 128), min(int(after), 128))
+    return await asyncio.to_thread(_passages, a, layer, n, face, min(int(k), 64), min(int(before), 128), min(int(after), 128), fold)
+
+# ------------------------------------------------------------------------------------ a face's pattern put to the test
+
+
+def _face_arg(face: Any) -> str:
+    face = {"+": "+", " ": "+", "pos": "+", "-": "-", "neg": "-"}.get(face, face)
+    if face not in ("+", "-"):
+        raise HTTPException(status_code=400, detail=f'A face is "+" or "-", not {face!r}.')
+    return face
+
+
+def _test_by(by: Optional[str]) -> str:
+    by = "reader" if by is None else str(by)
+    if by not in fn.WRITERS:
+        raise HTTPException(status_code=400, detail=f'by must be one of {", ".join(fn.WRITERS)}.')
+    return by
+
+
+def _written_test(a: Atlas, req: WrittenTestRequest, face: str) -> Dict[str, Any]:
+    layer, n = int(req.layer), int(req.n)
+    sc = a.scales()
+    ext = float(sc["pos" if face == "+" else "neg"][layer, n])
+    if abs(ext) < 1e-6:
+        raise ValueError("This face never fired over the corpus its range was read on, so there is nothing to measure a text against.")
+
+    def read(text: str) -> Dict[str, Any]:
+        ids = a.ids_of(text, req.chat)
+        units = a.units(ids)
+        unit_of = {i: k for k, (_, idx) in enumerate(units) for i in idx}
+        v = np.array(ao.read_neurons(a.lm, ids, [(layer, n)])[(layer, n)], np.float32)
+        lo = 1 if len(ids) > 1 else 0  # the start mark left out
+        i = lo + int((v[lo:] / ext).argmax())
+        return {"text": text if len(text) <= 400 else text[:400] + "…", "rel": round(float(v[i] / ext), 3), "act": round(float(v[i]), 4),
+                "at": units[unit_of[i]][0]}
+
+    fire, quiet = [read(t) for t in req.fire], [read(t) for t in req.quiet]
+    return {**pt.written_result(fire, quiet), "pattern": req.pattern, "texts": {"fire": fire, "quiet": quiet},
+            "extreme": round(ext, 4), "rel_to": f"the face's extreme over {sc['source']['corpus']}"}
+
+
+@router.post("/neuron/written_test")
+async def neuron_written_test(req: WrittenTestRequest) -> Dict[str, Any]:
+    """A face's pattern tested by writing (backend/pattern_tests.py; GPU): `fire`, texts written to make the face fire,
+    and `quiet`, near misses written not to, are each read once. Each text's peak on the face is given as a share of
+    the face's extreme (`rel`; 1 = as strong as anything in the corpus its range was read over) with the unit it fell
+    on. `fired`: how many of the texts meant to fire reached `fires_at` of the extreme; `beat_corpus`: how many reached
+    1; `quiet_fired`: how many near misses reached `fires_at`; `apart`: the share of (firing text, near miss) pairs in
+    which the firing text reads higher. Kept on the face (`keep`, GET /neuron/tests) with the pattern it tested."""
+    a = atlas()
+    _check_neuron(a, req.layer, req.n)
+    face, by = _face_arg(req.face), _test_by(req.by)
+    res = await on_gpu(_written_test, a, req, face)
+    out = {"layer": req.layer, "n": req.n, "face": face, **res, "said": pt.said(res)}
+    if req.keep:
+        out["kept"] = await fn.add_test(int(req.layer), int(req.n), face, res, by)
+    return out
+
+
+def _blind_start(a: Atlas, req: BlindStartRequest, face: str) -> Dict[str, Any]:
+    layer, n = int(req.layer), int(req.n)
+    got = a.index.passages(layer, n, face, 64)
+    if got is None:
+        why = a.index.refused("passages")
+        raise ValueError(PASSAGES_UNBUILT if not why else f"the passages index is not read: {why}")
+    P = a.index.get("passages")
+    windows = int(P["meta"].get("windows") or 0)
+    events = list(got["top"]) + list(got["sample"])
+    held = [x for x in events if passage_kept_back(x["window"])]
+    if len(held) < pt.MIN_PAIRS:
+        raise ValueError(f"Only {len(held)} of this face's {len(events)} stored passages are kept back for tests; a blind test needs "
+                         f"at least {pt.MIN_PAIRS}. A passages index built with more events a face would give more.")
+    stats = a.index.get("act_scale")
+    ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
+    if abs(ext) < 1e-6:
+        ext = float(max(events, key=lambda x: abs(x["act"]))["act"])
+    tok = a.rt.tokenizer
+    marks = passage_marks(tok)
+    rng = random.Random(req.seed if req.seed is not None else secrets.randbits(48))
+    own = {int(x["window"]) for x in events}
+
+    def snippet(ids: Sequence[int], at: int) -> Tuple[int, int, str]:
+        s, e, _, _ = cut_passage(ids, at, pt.BEFORE, pt.AFTER, marks)
+        s, e = whole_characters(tok, ids, s, e, marks)
+        return s, e, pt.render([[text, (at - s) in idx] for text, idx in ao.token_units(tok, ids[s:e])])
+
+    # a control comes from a kept-back window the face has no stored event in; in an index too small to have one, from
+    # any window it has none in, else from any (the reading below is what makes it a control)
+    pool = ([w for w in range(windows) if passage_kept_back(w) and w not in own] or [w for w in range(windows) if w not in own]
+            or list(range(windows)))
+    if not pool:
+        raise ValueError("The passages index holds no windows to draw a quiet passage from.")
+
+    def quiet_control() -> Dict[str, Any]:
+        tries = guard = 0
+        while tries < pt.CONTROL_TRIES and guard < 400:
+            guard += 1
+            w = rng.choice(pool)
+            ids = a.index.window_ids(w) or []
+            if len(ids) < 16:
+                continue
+            at = rng.randrange(8, len(ids))
+            if int(ids[at]) in marks:
+                continue
+            tries += 1
+            s, e, text = snippet(ids, at)
+            v = np.array(ao.read_neurons(a.lm, ids[:e], [(layer, n)])[(layer, n)], np.float32)
+            rel = float((v[s:e] / ext).max())
+            if rel < pt.QUIET_BELOW:
+                return {"window": int(w), "at": int(at), "rel": round(rel, 3), "text": text}
+        raise ValueError(f"No passage where this face stays under {pt.QUIET_BELOW:g} of its extreme was found in {pt.CONTROL_TRIES} tries: "
+                         "it fires too widely for this test as it stands.")
+
+    pairs, truth, detail = [], [], []
+    for x in rng.sample(held, min(int(req.pairs), len(held))):
+        _, _, text = snippet(a.index.window_ids(x["window"]) or [], int(x["at"]))
+        ctl = quiet_control()
+        first = rng.random() < 0.5
+        pairs.append({"a": text if first else ctl["text"], "b": ctl["text"] if first else text})
+        truth.append("a" if first else "b")
+        detail.append({"fires": {"window": int(x["window"]), "at": int(x["at"]), "rel": round(float(x["act"]) / ext, 3)},
+                       "quiet": {k: ctl[k] for k in ("window", "at", "rel")}})
+    tid = secrets.token_hex(6)
+    a.cache["tests"].put(tid, {"layer": layer, "n": n, "face": face, "pattern": req.pattern, "truth": truth, "detail": detail, "pairs": pairs})
+    return {"test": tid, "layer": layer, "n": n, "face": face, "pattern": req.pattern, "pairs": pairs, "kept_back": len(held),
+            "stored": len(events), "system": pt.JUDGE_SYSTEM, "prompt": pt.judge_prompt(req.pattern, pairs),
+            "note": ("In each pair one snippet is a kept-back passage where the face fires on the marked word-piece; the other is a passage "
+                     f"from elsewhere in the corpus where it stays under {pt.QUIET_BELOW:g} of its extreme, read just now. Answer with "
+                     "POST /neuron/blind_test/answer (picks: a or b for each pair), or have an endpoint read it blind with "
+                     "POST /neuron/blind_test/judge. A test is answered once.")}
+
+
+@router.post("/neuron/blind_test/start")
+async def neuron_blind_test_start(req: BlindStartRequest) -> Dict[str, Any]:
+    """Begin a blind test of a face's pattern (backend/pattern_tests.py; needs the passages index; GPU, to read each
+    control): up to `pairs` of the face's kept-back passages (those in odd-numbered windows, which the scientist's
+    `passages` never shows), each paired with a passage from another kept-back window where the face stays quiet, both
+    cut alike with one word-piece marked [[so]]. Returns the pairs without saying which is which, and the `prompt` a
+    reader given the pattern alone would be shown. The answer is kept in memory under `test` until it is answered."""
+    a = atlas()
+    _check_neuron(a, req.layer, req.n)
+    face = _face_arg(req.face)
+    return await on_gpu(_blind_start, a, req, face)
+
+
+async def _blind_finish(a: Atlas, tid: str, picks: Sequence[Optional[str]], judge: str, by: str, keep: bool) -> Dict[str, Any]:
+    state = a.cache["tests"].get(tid)
+    if state is None:
+        raise HTTPException(status_code=404, detail="There is no such test waiting: a test is answered once, and one left "
+                                                    "unanswered is forgotten when the server restarts or many are begun after it.")
+    a.cache["tests"].pop(tid, None)
+    res = {**pt.blind_result(picks, state["truth"]), "pattern": state["pattern"], "judge": judge}
+    got = list(picks)[: len(state["truth"])] + [None] * max(0, len(state["truth"]) - len(picks))
+    out = {"layer": state["layer"], "n": state["n"], "face": state["face"], **res, "said": pt.said(res),
+           "by_pair": [{"truth": t, "picked": p, **d} for t, p, d in zip(state["truth"], got, state["detail"])]}
+    if keep:
+        out["kept"] = await fn.add_test(state["layer"], state["n"], state["face"], res, by)
+    return out
+
+
+@router.post("/neuron/blind_test/answer")
+async def neuron_blind_test_answer(req: BlindAnswerRequest) -> Dict[str, Any]:
+    """Answer a blind test: `picks`, "a" or "b" for each pair in order (anything else counts as wrong), and `judge`,
+    who answered, in words. Returns how many were right, of how many, the chance of doing as well by guessing (`p`),
+    and each pair's truth with where the firing passage sits. Kept on the face (`keep`) with the pattern it tested.
+    Whoever answers after seeing the face's other passages is not a blind reader: say so in `judge`."""
+    return await _blind_finish(atlas(), req.test, req.picks, req.judge or "an unnamed reader", _test_by(req.by), req.keep)
+
+
+@router.post("/neuron/blind_test/judge")
+async def neuron_blind_test_judge(req: BlindJudgeRequest) -> Dict[str, Any]:
+    """Have one of the scientist's endpoints answer a blind test in a fresh conversation, given the pattern and the
+    pairs alone (`profile`, else the endpoint of `chat`; `model`, else that endpoint's). It has seen none of the
+    neuron's passages. The reply is read a line a pair; a pair it does not answer counts as wrong."""
+    a = atlas()
+    state = a.cache["tests"].get(req.test)
+    if state is None:
+        raise HTTPException(status_code=404, detail="There is no such test waiting.")
+    from backend import scientist_chat as sc_chat  # the endpoints are the scientist's; the atlas does not need them otherwise
+
+    try:
+        name, model, text = await sc_chat.ask_once(req.profile, req.chat, req.model, pt.JUDGE_SYSTEM,
+                                                   pt.judge_prompt(state["pattern"], state["pairs"]))
+    except sc_chat.EndpointError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    picks = pt.parse_picks(text, len(state["truth"]))
+    out = await _blind_finish(a, req.test, picks, f"{name} ({model}), given the pattern alone", _test_by(req.by), req.keep)
+    return {**out, "reply": text[:2000]}
+
+
+@router.get("/neuron/tests")
+async def neuron_tests(layer: int, n: int) -> Dict[str, Any]:
+    """The tests kept for a neuron's faces (backend/field_notes.py `add_test`), the latest first, each with the pattern
+    it tested and a line saying how it came out (`said`)."""
+    _check_neuron(atlas(), layer, n)
+    got = await fn.tests_of(layer, n)
+    return {"layer": layer, "n": n, "tests": {s: [{**t, "said": pt.said(t)} for t in ts] for s, ts in got.items()},
+            "file": str(fn.field_tests_path()), "warning": fn.take_warning("tests")}
 
 
 @router.get("/hover")

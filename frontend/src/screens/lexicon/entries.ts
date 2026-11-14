@@ -43,6 +43,7 @@ export const INDEX: IndexItem[] = [
   { label: "names and notes", id: "names", section: "iii" },
   { label: "neuron and its two faces", id: "neuron", section: "ii" },
   { label: "nudge", id: "nudge", section: "iv" },
+  { label: "pattern put to the test, a", id: "pattern-test", section: "iii" },
   { label: "pole", see: "neuron", id: "neuron", section: "ii" },
   { label: "push, a", id: "push", section: "iii" },
   { label: "quiet carry channel", id: "quiet", section: "v" },

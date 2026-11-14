@@ -194,7 +194,9 @@ TOOLS: List[Dict[str, Any]] = [
      "extreme (rel) and GeGLU's regime there (pp: gate and up both positive; nn: both negative, the double negative; pn, np: "
      "the negative side's two); then a few events drawn at random above half its extreme; and the word-pieces at the peaks "
      "(reads) and just after them (follows), each with its count and its lift over the corpus's base rate. Leads from k "
-     "passages, not labels the gate has checked. Read both faces' passages before you name a face. Needs the passages index.",
+     "passages, not labels the gate has checked. Read both faces' passages before you name a face. About half of a face's "
+     "stored passages (those in odd-numbered windows) are kept back from you, for blind_test: `kept_back` says how many. "
+     "Needs the passages index.",
      "inputSchema": {"type": "object", "properties": {**LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"},
                                                        "k": {"type": "integer", "default": 16}}, "required": ["layer", "n"]}},
     {"name": "rollouts", "description": "The census of a neuron: what the model wrote when it was pushed, per question and dose, beside the "
@@ -370,6 +372,39 @@ TOOLS: List[Dict[str, Any]] = [
      "agrees with the census near layer 46 and swamps the early layers (nearly every neuron then reads alike), so do not "
      "name an early-layer neuron from it.",
      "inputSchema": {"type": "object", "properties": LN, "required": ["layer", "n"]}},
+    {"name": "test_by_writing", "description": "Live: put a face's pattern (a sentence or two saying when it fires) to the test by "
+     "writing. `fire`: three or more short texts you write to make the face fire. `quiet`: as many near misses, which share "
+     "the firing texts' words or topic but lack what your pattern says matters. Each is read once. You get each text's peak "
+     "on the face as a share of the face's extreme (rel; 1 = as strong as anything in the corpus its range was read over) "
+     "and the unit it fell on; fired, how many of the texts meant to fire reached half the extreme; beat_corpus, how many "
+     "reached 1; quiet_fired, how many near misses reached half; apart, the share of (firing text, near miss) pairs in which "
+     "the firing text reads higher. A pattern whose own texts do not fire its neuron, or whose near misses do, is not yet "
+     "right: reword it and test again. It tests when the face fires, not what its firing does. The result is kept on the "
+     "face with the pattern, for the person to see.",
+     "inputSchema": {"type": "object", "properties": {
+         **LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"}, "pattern": {"type": "string"},
+         "fire": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 12},
+         "quiet": {"type": "array", "items": {"type": "string"}, "maxItems": 12},
+         "chat": {"type": "boolean", "default": False}}, "required": ["layer", "n", "pattern", "fire"]}},
+    {"name": "blind_test", "description": "Put a face's pattern to a blind test. Each of the face's kept-back passages (the half "
+     "`passages` never shows you) is paired with a passage where the face stays quiet, both cut alike with one word-piece "
+     "marked. A reader given your pattern and nothing else says which of each pair fires the neuron. You get right of "
+     "pairs, and p, the chance of doing as well by guessing (by chance half are right). The reader is an endpoint's model "
+     "in a fresh conversation: your own endpoint if you run on one, or the one named in `profile`. Where there is none you "
+     "are given the pairs to answer yourself with blind_test_answer, and the result says the reader was you, who wrote "
+     "the pattern and have seen the face's other passages: a weaker test. Write the pattern for a reader who knows nothing "
+     "of the neuron: what the marked word-piece is, and what must be true of the text before it. Kept on the face. Needs "
+     "the passages index.",
+     "inputSchema": {"type": "object", "properties": {
+         **LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"}, "pattern": {"type": "string"},
+         "pairs": {"type": "integer", "default": 10, "minimum": 4, "maximum": 12},
+         "profile": {"type": "string", "description": "an endpoint's name, to be the blind reader"}},
+         "required": ["layer", "n", "pattern"]}},
+    {"name": "blind_test_answer", "description": "Answer a blind test that blind_test gave you the pairs of: `picks`, \"a\" or \"b\" "
+     "for each pair in order. Answer from the pattern alone, as a stranger to the neuron would.",
+     "inputSchema": {"type": "object", "properties": {"test": {"type": "string"},
+                                                       "picks": {"type": "array", "items": {"type": "string", "enum": ["a", "b"]}}},
+                     "required": ["test", "picks"]}},
     {"name": "causal_check", "description": "Live: the instrument's own causal test of a face's label (the study's N1A protocol): the "
      "neuron's activation written k times its scale on the face's side at the last word-piece of a prompt, and how the model's own "
      "odds of the label's words move against other words'. Slower than logprobs; the record the instrument keeps.",
@@ -503,7 +538,10 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         for s in ("+", "-"):
             f = r["faces"][s]
             faces[s] = {"lens": f["lens"], "eye": f["eye"], "label": label(f["check"]), "shared_top10": (f["check"] or {}).get("shared_top10")}
+        kept = (await api.get("/api/atlas/neuron/tests", layer=a["layer"], n=a["n"])).get("tests") or {}
+        tests = {s: [{"pattern": t["pattern"], "said": t["said"], "at": t["at"]} for t in ts] for s, ts in kept.items() if ts}
         return {
+            **({"tests": tests} if tests else {}),
             "neuron": cite(a["layer"], a["n"]), "name": r.get("name") or None, "note": entry.get("note") or None,
             "name_by": entry.get("name_by") if r.get("name") else None, "note_by": entry.get("note_by") if entry.get("note") else None,
             **({"awaiting_the_person": [p for p in ("name", "note") if p in waiting]} if waiting else {}),
@@ -515,7 +553,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         }
     if name == "passages":
         _need(a, "layer", "n")
-        r = await api.get("/api/atlas/neuron/passages", layer=a["layer"], n=a["n"], face=a.get("face", "+"), k=a.get("k", 16))
+        r = await api.get("/api/atlas/neuron/passages", layer=a["layer"], n=a["n"], face=a.get("face", "+"), k=a.get("k", 16), fold="fit")
         if not r.get("ready"):
             return {"neuron": cite(a["layer"], a["n"]), "face": r.get("face"), "ready": False, "note": r.get("note")}
         marked = lambda units: "".join(f"[[{t}]]" if peak else t for t, peak in units)  # noqa: E731
@@ -524,7 +562,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
                 "rel_to": r.get("rel_to"), **({"stale": r["stale"]} if r.get("stale") else {}),
                 "passages": [{"kind": x["kind"], "act": x["act"], "rel": x["rel"], "regime": x["regime"], "text": marked(x["units"]),
                               "cut": x["cut"]} for x in r["passages"]],
-                "reads": words(r["reads"]), "follows": words(r["follows"]), "note": r["words_note"]}
+                "reads": words(r["reads"]), "follows": words(r["follows"]), "note": r["words_note"],
+                "kept_back": r.get("kept_back_note")}
     if name == "rollouts":
         _need(a, "layer", "n")
         u = await api.get("/api/atlas/census/unit", layer=a["layer"], n=a["n"])
@@ -699,6 +738,45 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         r = await api.post(f"/api/atlas/neuron/steer_lens?layer={int(a['layer'])}&n={int(a['n'])}", {})
         return {"neuron": cite(a["layer"], a["n"]), **{k: r[k] for k in ("up", "down", "kl_up", "kl_down", "dose")},
                 **{k: r[k] for k in ("dose_from", "dose_rule", "dose_note") if r.get(k) is not None}, **steer_said(r)}
+    if name == "test_by_writing":
+        _need(a, "layer", "n", "pattern", "fire")
+        r = await api.post("/api/atlas/neuron/written_test", {
+            "layer": a["layer"], "n": a["n"], "face": a.get("face", "+"), "pattern": a["pattern"], "fire": a["fire"],
+            "quiet": a.get("quiet") or [], "chat": bool(a.get("chat", False)), "by": "scientist"})
+        return {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "said": r["said"],
+                **{k: r[k] for k in ("fire", "fired", "beat_corpus", "strongest", "quiet", "quiet_fired", "quiet_strongest", "apart",
+                                     "fires_at", "rel_to")},
+                "texts": r["texts"], "kept": "on the face, with the pattern"}
+    if name == "blind_test":
+        _need(a, "layer", "n", "pattern")
+        start = await api.post("/api/atlas/neuron/blind_test/start", {
+            "layer": a["layer"], "n": a["n"], "face": a.get("face", "+"), "pattern": a["pattern"], "pairs": int(a.get("pairs", 10))})
+        slim = lambda r: {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "said": r["said"],  # noqa: E731
+                          **{k: r[k] for k in ("pairs", "right", "unanswered", "by_chance", "p", "judge")},
+                          "by_pair": [{"truth": x["truth"], "picked": x["picked"], "fires_rel": x["fires"]["rel"],
+                                       "quiet_rel": x["quiet"]["rel"]} for x in r["by_pair"]],
+                          "kept": "on the face, with the pattern"}
+        if a.get("profile"):
+            return slim(await api.post("/api/atlas/neuron/blind_test/judge", {"test": start["test"], "profile": a["profile"], "by": "scientist"}))
+        try:  # an endpoint chat's own model, in a fresh conversation
+            return slim(await api.post("/api/atlas/neuron/blind_test/judge", {"test": start["test"], "chat": chat, "by": "scientist"}))
+        except ToolError as exc:
+            if "Name the endpoint" not in str(exc):
+                raise
+        return {"neuron": cite(a["layer"], a["n"]), "face": start["face"], "test": start["test"], "pairs": start["pairs"],
+                "kept_back": start["kept_back"],
+                "note": "No endpoint is here to read blind, so the pairs are yours: answer with blind_test_answer (test, picks), "
+                        "from the pattern alone. The result will say the reader was you, who have seen this face's other passages."}
+    if name == "blind_test_answer":
+        _need(a, "test", "picks")
+        r = await api.post("/api/atlas/neuron/blind_test/answer", {
+            "test": a["test"], "picks": a["picks"], "by": "scientist",
+            "judge": "the scientist itself, which wrote the pattern and has seen the face's other passages"})
+        return {"neuron": cite(r["layer"], r["n"]), "face": r["face"], "said": r["said"],
+                **{k: r[k] for k in ("pairs", "right", "unanswered", "by_chance", "p", "judge")},
+                "by_pair": [{"truth": x["truth"], "picked": x["picked"], "fires_rel": x["fires"]["rel"], "quiet_rel": x["quiet"]["rel"]}
+                            for x in r["by_pair"]],
+                "kept": "on the face, with the pattern"}
     if name == "causal_check":
         _need(a, "layer", "n", "prompt")
         body = {"layer": a["layer"], "neuron_idx": a["n"], "polarity": -1.0 if a.get("face") == "-" else 1.0, "contexts": "given",

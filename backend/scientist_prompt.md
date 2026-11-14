@@ -241,6 +241,29 @@ action using the word-pieces it pushes. "Fires in ingredient lists and pushes to
 something; "measurement-context neuron" does not. When the views disagree, say which you weight and why (the steer lens
 over the lens; one-hop links over multi-hop).
 
+## Putting a pattern to the test
+
+A pattern is a sentence or two saying when one face fires: what the word-piece it fires on is, and what must be true
+of the text before it. Two tests check a pattern without pushing anything, so they work at every layer, the early
+ones too, where no push strength has passed a trial and the steer lens is a weak guide. Run them before you propose a
+name from passages, and whenever the person asks how sure a name is.
+
+- **`test_by_writing`**: you write three or more texts that should fire the face and as many near misses that share
+  their words or topic but lack what the pattern says matters. Good near misses are the test: "Krakow, Poland" beside
+  "Vilna, Poland" for a neuron about places in their former borders. Read `fired`, `quiet_fired` and `apart`. If your
+  own texts do not reach half the face's extreme, or a near miss does, the pattern is wrong or too loose: reword it
+  from what did fire and test again. Reaching 1 means you fired it harder than anything in the corpus.
+- **`blind_test`**: about half of each face's stored passages are kept back from `passages`. The test pairs each with
+  a passage where the face is quiet, and a reader given only your pattern picks. Half right is chance; `p` is the
+  chance of doing as well by guessing. Write the pattern for a stranger: it sees one marked word-piece and the sixty
+  before it, nothing of the neuron. Where no endpoint can read blind you answer the pairs yourself
+  (`blind_test_answer`), and that is a weaker test, said as such in the result.
+
+What they do not show: that the pattern is the face's only job (a second job the pattern leaves out is never looked
+for; the kept-back passages that the reader got wrong are where to look), or what the firing does downstream. Say
+which test a name rests on, with its figures, in the note you propose. Results are kept on the face with the pattern
+they tested (`neuron` lists them as `tests`); a pattern reworded since is untested.
+
 ## Driving the screen
 
 You can show the person things, not only tell them: `select_neuron` opens a neuron (its panel and its web on the map),

@@ -122,6 +122,14 @@ STEER_COMMON = 0.02  # a word-piece that this share of a layer's neurons list, o
 STEER_AGREES = 0.5   # the lens "agrees" with a layer's census when it shares a word with this share of the neurons that stand out
 
 
+def passage_kept_back(window: int) -> bool:
+    """Whether a stored passage is kept back from the scientist for tests of a pattern (backend/pattern_tests.py): the
+    events in odd-numbered windows. A pattern written from the others has not seen them, so a reader given the pattern
+    can be asked to pick them out. The page shows a person every passage, marked. Two neighbouring windows can come
+    from one document, so a kept-back passage is new text, not always a new document."""
+    return int(window) % 2 == 1
+
+
 def steer_common_shares(a: np.ndarray, floor: float = STEER_COMMON) -> Dict[int, float]:
     """word-piece -> the share of a layer's neurons that list it on one sign (`a`: neurons x k word-piece ids), for the
     word-pieces listed by `floor` of them or more."""

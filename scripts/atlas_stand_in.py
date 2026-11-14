@@ -161,6 +161,7 @@ def use_stand_in_atlas() -> Path:
     os.environ[FIELD_NOTES_ENV] = str(root / "field_notes.json")
     os.environ[FIELD_BOOK_ENV] = str(root / "field_book.json")
     os.environ[FIELD_PROPOSALS_ENV] = str(root / "field_proposals.json")
+    os.environ["THEODOLITE_FIELD_TESTS"] = str(root / "field_tests.json")  # patterns put to the test (field_notes.FIELD_TESTS_ENV)
     return root
 
 

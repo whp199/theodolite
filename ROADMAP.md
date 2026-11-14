@@ -1121,6 +1121,39 @@ layers, the determinism run and the sampled push on 29 October). In this section
     with kit 4’s code and settings, about 13 to 17 hours. For its first twelve minutes a second process held the
     card down to 23,900 MiB free, the kit’s floor: a real run inside what a 24 GB card has. The board shows the
     layer closed, the home card taking it.
+- **A pattern put to the test, without a push** (built 14 November 2026; CPU checks on the stand-in only, since the
+  card was taking layer 36; the owner’s word that day, “Start on the first two ideas from the article”). The census
+  and the steer lens say what a push along a neuron’s write direction does. No push strength has passed a trial
+  below layer 32, and the steer lens is a weak guide below 39, so thirty-two layers have no reading that has been
+  checked. Goodfire’s *Neurons as an Interpretable Basis* (10 November 2026; REFERENCES [54]) reads neurons from
+  where they fire by themselves and tests a written description by whether it predicts the neuron; its early-layer
+  neurons read crisply that way. Two of its tests are built here on what the atlas already keeps
+  (`backend/pattern_tests.py`, ARCHITECTURE §4.7):
+  - *Written.* Texts written to fire a face, and near misses written not to, are each read once. The test says how
+    many of the texts meant to fire reached half the face’s extreme, how many beat the strongest thing in the
+    corpus, and how many near misses fired.
+  - *Blind.* About half of each face’s stored passages (those in odd-numbered windows) are now kept back from the
+    scientist. Each is paired with a passage where the face stays quiet, read live, and a reader given the pattern
+    and nothing else says which of each pair fires. The reader is an endpoint’s model in a fresh conversation. With
+    no endpoint the scientist answers the pairs itself, and the result says so.
+
+  The scientist has both as tools (`test_by_writing`, `blind_test`) and is told to run them before it proposes a
+  name from passages. Results are kept by face with the pattern they tested, and the details tab lists them, in red
+  where a test went against the pattern. *Checked:* `check_atlas_api` 441 (424 before), `check_scientist` 235 (226),
+  with a stubbed reader; `check_interface_defaults` 291, `check_local_only` 1213, `check_atlas_index` 178; the page
+  type-checks and builds. *Not done, and not shown:*
+  - Neither test has run on the 31B. On the stand-in most neurons fire nearly everywhere, so most faces there have
+    no quiet passage to pair with and the blind test refuses them in plain words; whether the 31B’s neurons are
+    sparse enough for it at every layer is the first thing to see.
+  - A face has 16 strongest passages and 6 drawn at random stored, so about 11 are kept back and a blind test has
+    at most that many pairs: 9 of 11 right is 1 chance in 30 by guessing, 10 of 11 is 1 in 170. A passages index
+    built with more events a face (20 minutes on the card) would sharpen it, and would give the scientist back what
+    the keeping-back took.
+  - The quiet passage is drawn from anywhere in the corpus. Goodfire’s harder control, a passage on the same
+    subject, is not built; a pattern that only names a topic will pass more easily than it should.
+  - A person cannot yet run either test from the page; the scientist can, and so can a script.
+  - A second job the pattern leaves out is never looked for. Clustering a face’s firings by what drives them (their
+    “modes”) is not built.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at

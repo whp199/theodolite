@@ -294,6 +294,61 @@ export interface SteerLens {
   common?: { up: (number | null)[]; down: (number | null)[] };
   check?: SteerCheck;
 }
+/** A face's pattern put to the test (backend/pattern_tests.py), as it was kept: by writing texts meant to fire it and
+ * near misses, or by a blind reader picking its kept-back passages. It carries the pattern it tested, word for word. */
+export interface PatternTest {
+  kind: "written" | "blind";
+  pattern: string;
+  by: "reader" | "scientist";
+  at: string;
+  said: string;
+  /** written: texts meant to fire the face, how many reached half its extreme, how many beat the corpus's strongest */
+  fire?: number;
+  fired?: number;
+  beat_corpus?: number;
+  /** the strongest text's peak, as a share of the face's extreme in the corpus */
+  strongest?: number | null;
+  quiet?: number;
+  quiet_fired?: number;
+  apart?: number | null;
+  texts?: Record<"fire" | "quiet", { text: string; rel: number; at: string }[]>;
+  /** blind: pairs shown, pairs picked rightly, how many are right by chance, the chance of doing as well by guessing */
+  pairs?: number;
+  right?: number;
+  by_chance?: number;
+  p?: number;
+  judge?: string;
+}
+export interface TestsReply {
+  layer: number;
+  n: number;
+  tests: Record<"+" | "-", PatternTest[]>;
+  file: string;
+  warning?: string | null;
+}
+
+/** A kept test in a sentence for a page, and whether it went against the pattern (shown in red). */
+export function patternTestSaid(t: PatternTest): { text: string; against: boolean } {
+  if (t.kind === "written") {
+    const fire = t.fire ?? 0;
+    const fired = t.fired ?? 0;
+    const quiet = t.quiet ?? 0;
+    const stirred = t.quiet_fired ?? 0;
+    const strongest = t.strongest != null ? `, the strongest at ${t.strongest.toFixed(2)} of its strongest in the corpus` : "";
+    const misses = quiet ? ` ${stirred} of ${quiet} near misses did.` : " No near miss was tried.";
+    return {
+      text: `Written to the pattern: ${fired} of ${fire} texts meant to fire it did${strongest}.${misses}`,
+      against: fired < fire || stirred > 0,
+    };
+  }
+  const p = t.p ?? 1;
+  const odds = p < 0.5 ? `; guessing does as well 1 time in ${Math.max(2, Math.round(1 / p)).toLocaleString()}` : "; no better than guessing";
+  return {
+    text: `Read blind: ${t.right ?? 0} of ${t.pairs ?? 0} pairs picked rightly by ${t.judge ?? "a reader"} (${t.by_chance ?? 0} by chance${odds}).`,
+    against: p >= 0.05,
+  };
+}
+
 export interface LensFace {
   lens: string[];
   eye: string[];
@@ -655,6 +710,8 @@ export interface Passage {
   next: string | null;
   cut: [string | null, string | null];
   ids: number[];
+  /** kept back from the scientist, for a blind test of the face's pattern (the passages in odd-numbered windows) */
+  kept_back?: boolean;
 }
 export interface PassageWord {
   tok: string;

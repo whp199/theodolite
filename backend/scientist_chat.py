@@ -901,6 +901,42 @@ class EndpointError(Exception):
     pass
 
 
+async def ask_once(profile: Optional[str], chat: Optional[str], model: Optional[str], system: str, user: str) -> Tuple[str, str, str]:
+    """One question to an endpoint in a fresh conversation, no tools and no history: (the endpoint's name, the model,
+    its reply's text). `profile` names the endpoint, else it is the one `chat` uses; `model`, else the chat's, else
+    the endpoint's own. For a reader that must see nothing but what it is given (atlas.py's blind test)."""
+    import httpx
+
+    meta = _meta().get(chat or "", {}) if chat else {}
+    name = profile or meta.get("profile")
+    known = profiles()
+    if not name or name not in known:
+        raise EndpointError("Name the endpoint that is to read blind (profile): one of " + ", ".join(sorted(known)) + ".")
+    p = known[name]
+    model = model or meta.get("model") or p.get("model")
+    if not model:
+        raise EndpointError(f"Pick a model for the endpoint {name!r}.")
+    try:
+        headers = _endpoint_headers(p)
+    except st.ToolError as exc:
+        raise EndpointError(str(exc)) from None
+    url = p["base_url"].rstrip("/") + "/chat/completions"
+    body = {"model": model, **(p.get("params") or {}), "stream": False,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=15.0, read=600.0, write=60.0, pool=15.0)) as client:
+            r = await client.post(url, json=body, headers=headers)
+    except httpx.HTTPError as exc:
+        raise EndpointError(f"{urlparse(url).hostname} could not be reached: {exc}") from None
+    if r.status_code >= 400:
+        raise EndpointError(f"{urlparse(url).hostname} answered {r.status_code}: {r.text[:800]}")
+    try:
+        msg = r.json()["choices"][0]["message"]
+    except (ValueError, KeyError, IndexError, TypeError):
+        raise EndpointError(f"{urlparse(url).hostname} answered with no message: {r.text[:400]}") from None
+    return name, str(model), str(msg.get("content") or "")
+
+
 def _messages_path(cid: str) -> Path:
     return logs_dir() / f"{cid}.messages.json"
 
