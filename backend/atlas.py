@@ -551,6 +551,10 @@ class WrittenTestRequest(BaseModel):
     fire: List[TestText] = Field(..., min_length=1, max_length=pt.MAX_TEXTS)       # texts written to fire the face
     quiet: List[TestText] = Field(default_factory=list, max_length=pt.MAX_TEXTS)   # near misses written not to
     chat: bool = False
+    # behind its own passage: the window of one of the face's stored passages (not kept back) whose earlier text is
+    # held, and how many word-pieces up to and including its peak each text replaces (GET /neuron/written_test/lead)
+    behind: Optional[StrictInt] = None
+    drop: int = Field(pt.DROP, ge=1, le=pt.MAX_DROP)
     by: Optional[str] = None
     keep: bool = True
 
@@ -1646,12 +1650,86 @@ def _test_by(by: Optional[str]) -> str:
     return by
 
 
+def _own_events(a: Atlas, layer: int, n: int, face: str) -> List[Dict[str, Any]]:
+    """A face's stored events, one a window, the strongest first: an event drawn at random above half the extreme is
+    often one of the strongest over again, or sits a word-piece from one, and the same snippet twice is one passage."""
+    got = a.index.passages(layer, n, face, 64)
+    if got is None:
+        why = a.index.refused("passages")
+        raise ValueError(PASSAGES_UNBUILT if not why else f"the passages index is not read: {why}")
+    events, seen = [], set()
+    for x in list(got["top"]) + list(got["sample"]):
+        if int(x["window"]) not in seen:
+            seen.add(int(x["window"]))
+            events.append(x)
+    return events
+
+
+def _lead(a: Atlas, layer: int, n: int, face: str, window: int, drop: int) -> Dict[str, Any]:
+    """One of a face's stored passages cut for a test behind it: `kept`, the window's word-pieces up to `drop` before
+    and including the peak, and `dropped`, those `drop`, which a written ending replaces. No GPU."""
+    events = [x for x in _own_events(a, layer, n, face) if not passage_kept_back(x["window"])]
+    x = next((e for e in events if int(e["window"]) == int(window)), None)
+    if x is None:
+        if passage_kept_back(window):
+            raise ValueError(f"Window {window} is kept back for the blind test: a text is written behind a passage its writer may read.")
+        raise ValueError(f"This face has no stored passage in window {window}. Its passages that are not kept back are in windows "
+                         f"{', '.join(str(int(e['window'])) for e in events) or '(none)'} (GET /neuron/passages, fold=fit).")
+    ids, at = a.index.window_ids(x["window"]) or [], int(x["at"])
+    if at + 1 - drop < 2:
+        raise ValueError(f"The passage peaks {at} word-pieces into its window: dropping {drop} leaves nothing before the ending. "
+                         "Drop fewer, or choose a passage further into its window.")
+    tok = a.rt.tokenizer
+    kept, dropped = ids[: at + 1 - drop], ids[at + 1 - drop: at + 1]
+    tail = kept[-80:]
+    units = ao.token_units(tok, dropped)
+    return {"window": int(x["window"]), "at": at, "drop": int(drop), "kept": kept, "dropped": dropped, "act": float(x["act"]),
+            "kept_tail": "".join(t for t, _ in ao.token_units(tok, tail)),
+            "dropped_text": pt.render([[t, (len(dropped) - 1) in idx] for t, idx in units])}
+
+
+def _written_behind(a: Atlas, req: WrittenTestRequest, face: str, ext: float, rel_to: str) -> Dict[str, Any]:
+    layer, n = int(req.layer), int(req.n)
+    if req.chat:
+        raise ValueError("Behind a passage a text is read as that passage's ending, as plain text: leave `chat` off.")
+    if not req.quiet:
+        raise ValueError("Behind a passage the near misses are the test: with the earlier text held, a near miss that fires "
+                         "says the earlier text does the firing. Give at least one (`quiet`).")
+    lead = _lead(a, layer, n, face, int(req.behind), int(req.drop))
+    tok = a.rt.tokenizer
+    kept = lead["kept"]
+
+    def read(end_ids: Sequence[int], text: str) -> Dict[str, Any]:
+        if not end_ids:
+            raise ValueError("An ending needs at least one word-piece.")
+        if len(kept) + len(end_ids) > MAX_TEXT_POSITIONS:
+            raise ValueError(f"The passage and this ending are {len(kept) + len(end_ids)} word-pieces; a reading takes at most {MAX_TEXT_POSITIONS:,}.")
+        v = np.array(ao.read_neurons(a.lm, list(kept) + [int(t) for t in end_ids], [(layer, n)])[(layer, n)], np.float32)[len(kept):]
+        i = int((v / ext).argmax())
+        units = ao.token_units(tok, end_ids)
+        return {"text": text if len(text) <= 400 else text[:400] + "…", "rel": round(float(v[i] / ext), 3), "act": round(float(v[i]), 4),
+                "at": next(t for t, idx in units if i in idx)}
+
+    own = read(lead["dropped"], lead["dropped_text"])
+    if own["rel"] < pt.FIRES_AT:
+        raise ValueError(f"This passage reads {own['rel']:g} of the face's extreme where it peaks, under the {pt.FIRES_AT:g} a text "
+                         "fires at: choose a stronger one of its passages.")
+    fire = [read(tok.encode(t, add_special_tokens=False), t) for t in req.fire]
+    quiet = [read(tok.encode(t, add_special_tokens=False), t) for t in req.quiet]
+    return {**pt.written_result(fire, quiet), "pattern": req.pattern, "texts": {"fire": fire, "quiet": quiet},
+            "extreme": round(ext, 4), "rel_to": rel_to,
+            "behind": {"window": lead["window"], "at": lead["at"], "drop": lead["drop"], "kept": len(kept),
+                       "kept_tail": lead["kept_tail"][-400:], "own_ending": {"text": lead["dropped_text"], "rel": own["rel"]}}}
+
+
 def _written_test(a: Atlas, req: WrittenTestRequest, face: str) -> Dict[str, Any]:
     layer, n = int(req.layer), int(req.n)
     sc = a.scales()
     ext = float(sc["pos" if face == "+" else "neg"][layer, n])
     if abs(ext) < 1e-6:
         raise ValueError("This face never fired over the corpus its range was read on, so there is nothing to measure a text against.")
+    if req.behind is not None:
+        return _written_behind(a, req, face, ext, f"the face's extreme over {sc['source']['corpus']}")
 
     def read(text: str) -> Dict[str, Any]:
         ids = a.ids_of(text, req.chat)
@@ -1668,18 +1746,13 @@ def _written_test(a: Atlas, req: WrittenTestRequest, face: str) -> Dict[str, Any
            "extreme": round(ext, 4), "rel_to": f"the face's extreme over {sc['source']['corpus']}"}
     # the test's own check: the face's strongest passages (not kept back), read with only what a short text could hold
     # before the peak. Where they no longer fire, a written text's silence is no fault of the pattern.
-    got = a.index.passages(layer, n, face, 64)
-    if got is not None:
-        rows, seen = [], set()
-        for x in list(got["top"]) + list(got["sample"]):
-            w = int(x["window"])
-            if w in seen or passage_kept_back(w) or len(rows) >= pt.OWN_PASSAGES:
-                continue
-            seen.add(w)
-            ids, at = a.index.window_ids(w) or [], int(x["at"])
+    if a.index.passages(layer, n, face, 1) is not None:
+        rows = []
+        for x in [e for e in _own_events(a, layer, n, face) if not passage_kept_back(e["window"])][: pt.OWN_PASSAGES]:
+            ids, at = a.index.window_ids(x["window"]) or [], int(x["at"])
             cut = ids[: at + 1] if at - pt.BEFORE <= 1 else [ids[0]] + ids[at - pt.BEFORE: at + 1]
             v = ao.read_neurons(a.lm, cut, [(layer, n)])[(layer, n)]
-            rows.append({"in_window": round(float(x["act"]) / ext, 3), "alone": round(float(v[-1]) / ext, 3)})
+            rows.append({"in_window": round(float(x["act"]) / ext, 3), "alone": round(float(v[-1]) / ext, 3), "window": int(x["window"])})
         if rows:
             out["own"] = pt.own_result(rows)
     return out
@@ -1695,7 +1768,13 @@ async def neuron_written_test(req: WrittenTestRequest) -> Dict[str, Any]:
     which the firing text reads higher. `own` (with the passages index): the face's three strongest passages that are
     not kept back, each read with only 60 word-pieces before its peak (`alone`) beside what it read in its window
     (`in_window`); `holds` false means most no longer fire, so no short text can fire this face and the texts' silence
-    is no fault of the pattern. Kept on the face (`keep`, GET /neuron/tests) with the pattern it tested."""
+    is no fault of the pattern. Such a face is tested behind one of its own passages: `behind`, the window of one of
+    its stored passages that is not kept back (each of `own`'s names its `window`), holds that passage's text up to
+    `drop` word-pieces before and including its peak, and each text is read as its ending in place of the passage's
+    own (GET /neuron/written_test/lead shows where the cut falls). Near misses are required there. `behind` in the
+    reply: the cut, the last of the kept text, and the passage's own ending read the same way (`own_ending`); each
+    ending's peak is taken over its own word-pieces. Kept on the face (`keep`, GET /neuron/tests) with the pattern
+    it tested."""
     a = atlas()
     _check_neuron(a, req.layer, req.n)
     face, by = _face_arg(req.face), _test_by(req.by)
@@ -1706,21 +1785,35 @@ async def neuron_written_test(req: WrittenTestRequest) -> Dict[str, Any]:
     return out
 
 
+@router.get("/neuron/written_test/lead")
+async def neuron_written_test_lead(layer: int, n: int, window: int, face: str = "+", drop: int = pt.DROP) -> Dict[str, Any]:
+    """Where a test behind one of a face's passages cuts it (no GPU): `kept_tail`, the last of the text that is held
+    (up to 80 word-pieces), and `dropped`, the `drop` word-pieces up to and including the peak, marked [[so]], which
+    each written ending replaces. An ending is joined on as written, so it begins as `dropped` does (with its space
+    or line break, or without). `window`: one of the face's stored passages that is not kept back."""
+    a = atlas()
+    _check_neuron(a, layer, n)
+    face = _face_arg(face)
+    if not 1 <= int(drop) <= pt.MAX_DROP:
+        raise HTTPException(status_code=400, detail=f"drop counts word-pieces, 1 to {pt.MAX_DROP}.")
+    try:
+        lead = await asyncio.to_thread(_lead, a, int(layer), int(n), face, int(window), int(drop))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    stats = a.index.get("act_scale")
+    ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
+    return {"layer": layer, "n": n, "face": face, "window": lead["window"], "at": lead["at"], "drop": lead["drop"], "kept": len(lead["kept"]),
+            "kept_tail": lead["kept_tail"], "dropped": lead["dropped_text"], "in_window": round(lead["act"] / ext, 3) if ext else None,
+            "note": ("Write endings that carry on from `kept_tail` in place of `dropped`: some to the pattern, and near misses that "
+                     "share its words and lack what the pattern says matters. POST /neuron/written_test with `behind` (this window) "
+                     "and `drop`.")}
+
+
 def _blind_start(a: Atlas, req: BlindStartRequest, face: str) -> Dict[str, Any]:
     layer, n = int(req.layer), int(req.n)
-    got = a.index.passages(layer, n, face, 64)
-    if got is None:
-        why = a.index.refused("passages")
-        raise ValueError(PASSAGES_UNBUILT if not why else f"the passages index is not read: {why}")
+    events = _own_events(a, layer, n, face)  # one event a window: the same snippet twice is one pair, not two
     P = a.index.get("passages")
     windows = int(P["meta"].get("windows") or 0)
-    # one event a window, the strongest first: an event drawn at random above half the extreme is often one of the
-    # strongest over again, or sits a word-piece from one, and the same snippet twice is one pair, not two
-    events, seen = [], set()
-    for x in list(got["top"]) + list(got["sample"]):
-        if int(x["window"]) not in seen:
-            seen.add(int(x["window"]))
-            events.append(x)
     held = [x for x in events if passage_kept_back(x["window"])]
     if len(held) < pt.MIN_PAIRS:
         raise ValueError(f"Only {len(held)} of the {len(events)} windows this face has a stored passage in are kept back for tests; a "

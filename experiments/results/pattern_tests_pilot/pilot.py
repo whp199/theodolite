@@ -25,6 +25,8 @@ are not kept in the repository; `fit` and `start` write them again, drawing by s
     padded   The same passages' 60 word-pieces read behind 256 and 420 word-pieces of an unrelated document. Writes
              padded.json.
     context_survey  `context` over all 176 faces of the survey's draw. Writes context_survey.json.
+    behind   The written test behind a face's own passage, for the six faces that do not fire on a short text: the
+             endings in behind.json (written from cuts.py's print). Writes behind_results.json.
     answer   Reads the readers' answers (readers/<sheet>.answers.txt), answers each test once with its own pattern's
              picks (kept on the face), takes the truth from the reply, and scores the other pattern's picks against it.
              Writes blind.json.
@@ -282,6 +284,25 @@ def context_survey():
     (HERE / "context_survey.json").write_text(json.dumps({"what": context_survey.__doc__, "faces": out}, indent=1, ensure_ascii=False) + "\n")
 
 
+def behind():
+    """The written test behind a face's own passage (built after the pilot, for the six faces that do not fire on a short
+    text): each set of endings in behind.json read in place of the passage's own. Writes behind_results.json."""
+    faces = patterns()
+    out = {}
+    for k, sets in json.loads((HERE / "behind.json").read_text())["faces"].items():
+        f = faces[k]
+        out[k] = []
+        for b in sets:
+            got = call("/neuron/written_test", {"layer": f["layer"], "n": f["n"], "face": f["face"], "pattern": f["pattern"], "fire": b["fire"],
+                                                "quiet": b["quiet"], "behind": b["window"], "drop": b["drop"], "by": "scientist", "keep": True})
+            got.pop("kept", None)
+            out[k].append(got)
+            print(k, got.get("said") or got.get("refused"), flush=True)
+            if "texts" in got:
+                print("   ", [(x["text"][:30], x["rel"]) for x in got["texts"]["fire"]], "|", [(x["text"][:30], x["rel"]) for x in got["texts"]["quiet"]], flush=True)
+    (HERE / "behind_results.json").write_text(json.dumps({"tests": out}, indent=1, ensure_ascii=False) + "\n")
+
+
 def read_answers(path):
     """{label: [pick, ...]} from a reader's lines, `T2 3: b`."""
     import re
@@ -319,4 +340,4 @@ def answer():
 
 
 if __name__ == "__main__":
-    {"survey": survey, "fit": fit, "start": start, "written": written, "alone": alone, "context": context, "padded": padded, "context_survey": context_survey, "answer": answer}[sys.argv[1]]()
+    {"survey": survey, "fit": fit, "start": start, "written": written, "alone": alone, "context": context, "padded": padded, "context_survey": context_survey, "behind": behind, "answer": answer}[sys.argv[1]]()

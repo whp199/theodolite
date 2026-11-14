@@ -382,13 +382,22 @@ TOOLS: List[Dict[str, Any]] = [
      "right: reword it and test again. own: the face's three strongest passages read with only sixty word-pieces before the "
      "peak (alone) beside what they read in their windows (in_window); where own.holds is false they no longer fire, so no "
      "short text can fire this face and your texts' silence is not the pattern's fault: find what the earlier text has to "
-     "be, and write a longer one. It tests when the face fires, not what its firing does. The result is kept on the "
+     "be, and write a longer one, or test it behind one of its own passages. `behind`: the window of one of the face's "
+     "passages (as `passages` lists them). That passage's text is held up to `drop` word-pieces before and including its "
+     "peak, and each of your texts is read as its ending in place of the passage's own. Call it first with `behind` and "
+     "no `fire` to see where the cut falls (kept_tail, the last of the held text; dropped, what your endings replace, the "
+     "peak marked): an ending is joined on as written, so begin it as `dropped` begins. Then give endings written to the "
+     "pattern (`fire`) and near-miss endings (`quiet`, required here): with the earlier text held, a near miss that fires "
+     "says the earlier text does the firing, not what your pattern names. behind.own_ending is the passage's own ending "
+     "read the same way. It tests when the face fires, not what its firing does. The result is kept on the "
      "face with the pattern, for the person to see.",
      "inputSchema": {"type": "object", "properties": {
          **LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"}, "pattern": {"type": "string"},
          "fire": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 12},
          "quiet": {"type": "array", "items": {"type": "string"}, "maxItems": 12},
-         "chat": {"type": "boolean", "default": False}}, "required": ["layer", "n", "pattern", "fire"]}},
+         "behind": {"type": "integer", "description": "the window of one of the face's passages, to test behind it"},
+         "drop": {"type": "integer", "minimum": 1, "maximum": 64, "default": 8},
+         "chat": {"type": "boolean", "default": False}}, "required": ["layer", "n"]}},
     {"name": "blind_test", "description": "Put a face's pattern to a blind test. Each of the face's kept-back passages (the half "
      "`passages` never shows you) is paired with a passage where the face stays quiet, both cut alike with one word-piece "
      "marked. A reader given your pattern and nothing else says which of each pair fires the neuron. You get right of "
@@ -564,7 +573,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         return {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "corpus": r["corpus"], "word_pieces": r["tokens"],
                 "rel_to": r.get("rel_to"), **({"stale": r["stale"]} if r.get("stale") else {}),
                 "passages": [{"kind": x["kind"], "act": x["act"], "rel": x["rel"], "regime": x["regime"], "text": marked(x["units"]),
-                              "cut": x["cut"]} for x in r["passages"]],
+                              "cut": x["cut"], "window": x["window"]} for x in r["passages"]],
                 "reads": words(r["reads"]), "follows": words(r["follows"]), "note": r["words_note"],
                 "kept_back": r.get("kept_back_note")}
     if name == "rollouts":
@@ -742,14 +751,22 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         return {"neuron": cite(a["layer"], a["n"]), **{k: r[k] for k in ("up", "down", "kl_up", "kl_down", "dose")},
                 **{k: r[k] for k in ("dose_from", "dose_rule", "dose_note") if r.get(k) is not None}, **steer_said(r)}
     if name == "test_by_writing":
-        _need(a, "layer", "n", "pattern", "fire")
+        _need(a, "layer", "n")
+        behind = {"behind": int(a["behind"]), "drop": int(a.get("drop", 8))} if a.get("behind") is not None else {}
+        if behind and not a.get("fire"):  # where the passage is cut, before anything is written to it
+            r = await api.get("/api/atlas/neuron/written_test/lead", layer=a["layer"], n=a["n"], face=a.get("face", "+"),
+                              window=behind["behind"], drop=behind["drop"])
+            return {"neuron": cite(a["layer"], a["n"]), "face": r["face"],
+                    **{k: r[k] for k in ("window", "drop", "kept_tail", "dropped", "in_window")},
+                    "next": "call again with pattern, fire (endings to the pattern) and quiet (near-miss endings), the same behind and drop"}
+        _need(a, "pattern", "fire")
         r = await api.post("/api/atlas/neuron/written_test", {
             "layer": a["layer"], "n": a["n"], "face": a.get("face", "+"), "pattern": a["pattern"], "fire": a["fire"],
-            "quiet": a.get("quiet") or [], "chat": bool(a.get("chat", False)), "by": "scientist"})
+            "quiet": a.get("quiet") or [], "chat": bool(a.get("chat", False)), "by": "scientist", **behind})
         return {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "said": r["said"],
                 **{k: r[k] for k in ("fire", "fired", "beat_corpus", "strongest", "quiet", "quiet_fired", "quiet_strongest", "apart",
                                      "fires_at", "rel_to")},
-                **({"own": r["own"]} if r.get("own") else {}),
+                **({"own": r["own"]} if r.get("own") else {}), **({"behind": r["behind"]} if r.get("behind") else {}),
                 "texts": r["texts"], "kept": "on the face, with the pattern"}
     if name == "blind_test":
         _need(a, "layer", "n", "pattern")

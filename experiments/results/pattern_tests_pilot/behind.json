@@ -1,0 +1,51 @@
+{
+ "what": "endings written for the six pilot faces that do not fire on a short text, each to be read behind one of the face's own passages (its window; `drop` word-pieces up to and including the peak replaced): `fire`, endings written to the face's pattern in patterns.json; `quiet`, near-miss endings that keep the passage's words and leave out what the pattern says matters",
+ "written_by": "Claude Fable 5.2, on 14 November 2026, from cuts.py's print of where each passage is cut, before any of them was read on the model",
+ "faces": {
+  "L26-n14541m": [
+   {"window": 3120, "drop": 8,
+    "fire": [" work together towards a common goal. Volunteering is also a great way", " give their time to it side by side. Volunteer work also teaches"],
+    "quiet": [" work together towards a common goal. Cooking is also a great way", " work together towards a common goal. Another idea is"]},
+   {"window": 2038, "drop": 8,
+    "fire": [" women, their families, communities and the economy", " women, their households, their villages and the wider economy"],
+    "quiet": [" women, who then spend more time online", " women. The report was published"]}
+  ],
+  "L26-n4837p": [
+   {"window": 590, "drop": 4,
+    "fire": ["\nFPB usually becomes noticeable", "\nFPB typically begins to show", "\nFPB often starts"],
+    "quiet": ["\nFPB is a hereditary condition", "\nFPB (female pattern baldness)"]},
+   {"window": 3788, "drop": 4,
+    "fire": [".\nThe second story of origin", ".\nSecondly, the phrase", ".\nThe next account"],
+    "quiet": [".\nThe story of origin", ".\nThe phrase"]}
+  ],
+  "L36-n12896p": [
+   {"window": 3826, "drop": 2,
+    "fire": ["\n\nIn conclusion, metaphor", "\n\nTo conclude, the poem", "\n\nOverall, the language", "\n\nUltimately, these images"],
+    "quiet": ["\n\nSimilarly, in the next stanza", "\n\nAnother example appears", "\n\nThe third poem"]}
+  ],
+  "L45-n16700m": [
+   {"window": 3396, "drop": 4,
+    "fire": [" is often used to hang", " is a common way to hold", " can also serve to support"],
+    "quiet": [" is often used in plumbing", " is often used for hanging", " is often sold by the metre"]},
+   {"window": 1834, "drop": 4,
+    "fire": [" urban data is to understand", " such data is how to combine"],
+    "quiet": [" urban data is the lack of", " urban data is that the"]}
+  ],
+  "L56-n19940m": [
+   {"window": 1818, "drop": 8,
+    "fire": ["Total height of facade (at center)||60 ft.", "Width of front door||4 ft.", "Depth of porch||12 ft."],
+    "quiet": ["Total height of facade (at center) varies", "Notes on the facade", "Source: the builder's drawings"]},
+   {"window": 208, "drop": 4,
+    "fire": [" 24 members", " 31 members", " 19 known comets"],
+    "quiet": [" many members", " several more", " a few others"]}
+  ],
+  "L56-n3342p": [
+   {"window": 2698, "drop": 4,
+    "fire": [" to help control and infiltrate", " to help watch and control", " to help monitor and spy on"],
+    "quiet": [" to help build and repair", " to help teach and train", " and good pay"]},
+   {"window": 2026, "drop": 8,
+    "fire": [". By pushing the boundaries of what is possible", ". By exposing what is hidden from view"],
+    "quiet": [". He lives and works in Berlin", ". His prints sell well"]}
+  ]
+ }
+}

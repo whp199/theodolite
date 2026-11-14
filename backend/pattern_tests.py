@@ -15,6 +15,13 @@ written from the description fires the neuron harder than anything in a ten-bill
    at 1. The test says how many of the texts meant to fire did, how many near misses did, and how far apart the two
    sets lie.
 
+   Behind its own passage. Some faces fire only far into their own document, and no short text fires them (below).
+   For those the earlier text is held and the ending swapped: one of the face's stored passages (not kept back) is
+   kept up to DROP word-pieces before its peak, and each written text is read as its ending in place of the passage's
+   own. Endings written to the pattern should fire; near-miss endings, which are required here, should not: with the
+   earlier text held, a near miss that fires says the earlier text does the firing and not what the pattern names.
+   The passage's own ending is read the same way beside them. Each ending's peak is taken over its own word-pieces.
+
 2. Blind (`judge_prompt`, `parse_picks`, `blind_result`). The passages index keeps each face's strongest events and a
    few drawn at random above half its extreme. Those in odd-numbered windows are kept back from the scientist
    (`atlas_index.passage_kept_back`), so a pattern written from the others has not seen them. Each kept-back event is
@@ -51,6 +58,7 @@ BEFORE, AFTER = 60, 8  # a snippet: the word-pieces shown before the marked one,
 MIN_PAIRS, MAX_PAIRS = 4, 12
 MAX_TEXTS = 12
 CONTROL_TRIES = 8    # passages tried for one quiet control before the test is refused
+DROP, MAX_DROP = 8, 64  # behind its own passage: the word-pieces up to and including the peak that an ending replaces
 OWN_PASSAGES = 3     # the face's own strongest passages (not kept back) that a written test reads alone beside its texts
 HOLDS = 0.5          # a passage holds alone when, with BEFORE word-pieces before its peak, it reads this share of what it read in its window
 
@@ -129,6 +137,13 @@ def blind_result(picks: Sequence[Optional[str]], truth: Sequence[str]) -> Dict[s
 
 def said(test: Dict[str, Any]) -> str:
     """A kept test in a line."""
+    if test.get("kind") == "written" and test.get("behind"):
+        b = test["behind"]
+        s = (f"written behind its own passage in window {b['window']} (the last {b['drop']} word-pieces swapped; its own ending reads "
+             f"{b['own_ending']['rel']:g} of the face's extreme): {test['fired']} of {test['fire']} endings meant to fire it did")
+        if test.get("strongest") is not None:
+            s += f" (the strongest {test['strongest']:g})"
+        return s + f"; {test['quiet_fired']} of {test['quiet']} near-miss endings did"
     if test.get("kind") == "written":
         s = f"written: {test['fired']} of {test['fire']} texts meant to fire it did"
         if test.get("strongest") is not None:
@@ -139,7 +154,7 @@ def said(test: Dict[str, Any]) -> str:
         if own and own.get("of") and not own.get("holds"):
             s += (f". Its own strongest passages do not fire it either when read alone ({own['hold']} of {own['of']} do, with "
                   f"{own['before']} word-pieces before the peak): what fires it lies further back than a short text reaches, "
-                  "and the pattern does not say what")
+                  "and the pattern does not say what. It can be tested behind one of its own passages")
         return s
     if test.get("kind") == "blind":
         return (f"blind: {test['right']} of {test['pairs']} pairs picked rightly by {test.get('judge') or 'a reader'} "

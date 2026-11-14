@@ -1489,8 +1489,32 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
           and tw["said"].startswith("written: ") and 0 <= tw["fired"] <= 2 and kept_w[0]["by"] == "scientist" and kept_w[0]["pattern"] == "fires on sea words",
           f"test_by_writing: each text read on the API's layer 2, the figures, kept on the face as the scientist's ({tw['said']})")
     check(tw["own"] == kept_w[0]["own"] and 0 < tw["own"]["of"] <= 3 and tw["own"]["before"] == 60 and isinstance(tw["own"]["holds"], bool)
-          and all(set(x) == {"in_window", "alone"} for x in tw["own"]["passages"]),
+          and all(set(x) == {"in_window", "alone", "window"} for x in tw["own"]["passages"]),
           f"test_by_writing: the face's own passages read alone come back with the texts ({tw['own']['hold']} of {tw['own']['of']} hold)")
+    # behind one of its own passages: first where it is cut, then endings in place of its own
+    pv = tb = None
+    for own_p in tw["own"]["passages"]:
+        if own_p["in_window"] < 0.5:
+            continue
+        try:
+            pv = await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "behind": own_p["window"], "drop": 3}, api)
+            tb = await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "pattern": "fires on sea words", "behind": own_p["window"],
+                                                   "drop": 3, "fire": [" the sea rose"], "quiet": [" one two three"]}, api)
+            break
+        except st.ToolError:
+            pv = tb = None
+    pgw = await st.call("passages", {"layer": 3, "n": 5}, api)
+    check(pv is not None and tb is not None and pv["drop"] == 3 and pv["dropped"].count("[[") == 1 and pv["kept_tail"] and "next" in pv
+          and "said" not in pv and tb["behind"]["window"] == pv["window"] and tb["behind"]["own_ending"]["text"] == pv["dropped"]
+          and tb["said"].startswith("written behind its own passage in window ") and tb["fire"] == 1 and tb["quiet"] == 1 and "own" not in tb
+          and pv["window"] in {x["window"] for x in pgw["passages"]},
+          f"test_by_writing behind a passage: first where it is cut, then endings read in its place; `passages` names each one's window ({tb and tb['said']})")
+    try:
+        await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "pattern": "p", "behind": pv["window"], "drop": 3, "fire": [" a"]}, api)
+        no_miss = "answered"
+    except st.ToolError as exc:
+        no_miss = str(exc)
+    check("near misses are the test" in no_miss, f"test_by_writing behind a passage with no near miss: refused in plain words ({no_miss[:120]})")
     from backend import pattern_tests as pt
 
     judged: List[Dict[str, Any]] = []

@@ -255,9 +255,16 @@ name from passages, and whenever the person asks how sure a name is.
   from what did fire and test again. Reaching 1 means you fired it harder than anything in the corpus. The result's
   `own` reads the face's three strongest passages with only sixty word-pieces before the peak. Where `own.holds` is
   false they no longer fire: what fires this face lies further back than a short text reaches (on the 31B about one
-  face in six, and one in four from layer 26 up), and your texts' silence is not the pattern's fault. Then read a
-  passage with more before it (`passages` with a larger `before`, `activations` on its ids cut shorter and longer) to
-  find what the earlier text has to be, say that in the pattern, and write a longer text.
+  face in six, and one in four from layer 26 up), and your texts' silence is not the pattern's fault. Then test it
+  behind one of its own passages: `test_by_writing` with `behind` (a passage's `window`, from `passages` or from
+  `own`) and no texts shows where that passage is cut, its text held up to the last few word-pieces (`drop`, 8
+  unless you say) and the peak among those dropped. Write endings to go in their place: some to the pattern, and
+  near misses that share its words and lack what the pattern says matters. An ending is joined on as written, so
+  begin it as the dropped text begins, with its space or line break. Near misses are the whole test here: the held
+  text is the neuron's own strongest, and if a near miss fires too, the earlier text is doing the firing and your
+  pattern has not found what matters. A pattern that passes behind a passage and fails alone is true of the ending
+  only; say in it what the earlier text has to be (read a passage with `activations` on its ids cut shorter and
+  longer to find how far back it reaches), or say plainly that you do not yet know.
 - **`blind_test`**: about half of each face's stored passages are kept back from `passages`. The test pairs each with
   a passage where the face is quiet, and a reader given only your pattern picks. Half right is chance; `p` is the
   chance of doing as well by guessing. Write the pattern for a stranger: it sees one marked word-piece and the sixty

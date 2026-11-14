@@ -1187,10 +1187,22 @@ layers, the determinism run and the sampled push on 29 October). In this section
 
   *Checked:* `check_atlas_api` 443 (424 before the tests were built), `check_scientist` 236 (226),
   `check_interface_defaults` 291, `check_local_only` 1213, `check_atlas_index` 178; the page type-checks and builds.
+  *Built since, on the owner’s word (“Yes, build it”, 14 November):* **a written test behind a face’s own
+  passage**, for the faces a short text cannot fire. One of the face’s stored passages is held up to its last few
+  word-pieces (8 unless said, the peak among them) and each written text is read as its ending, in place of the
+  passage’s own. Some endings are written to the pattern and should fire; near-miss endings share their words,
+  leave out what the pattern says matters, and should not. Near misses are required: the held text is the
+  neuron’s own strongest, so an ending that fires shows little unless a near miss stays quiet. The passage’s own
+  ending is read beside them. The scientist’s `test_by_writing` takes `behind` (a passage’s window) and first shows
+  where the passage is cut; a plain written test that finds a face needing more text points to it. What it shows
+  is narrower than the plain test: with this earlier text given, what the pattern names in the ending is what
+  fires the neuron. What the earlier text has to be is still not tested. *Checked on the stand-in only:*
+  `check_atlas_api` 448, `check_scientist` 238, `check_interface_defaults` 291, `check_local_only` 1226 (a route
+  more); the page type-checks and builds. Endings for the pilot’s six faces are written
+  (`experiments/results/pattern_tests_pilot/behind.json`: 11 passages, 30 endings to fire, 27 near misses) and
+  run when layer 36 frees the card.
+
   *Not done:*
-  - **A written test for a face that needs its own document.** The honest test there holds the earlier text fixed
-    (the face’s own passage up to some word-pieces before the peak) and swaps the ending: one written to the
-    pattern, one a near miss. Not built; today the test only says that short texts cannot judge such a face.
   - **A harder quiet passage.** The quiet passage is drawn from anywhere in the corpus, and the six faces above
     show what that lets through: a pattern can pass the blind test without being enough to fire the neuron.
     Goodfire’s control, a passage on the same subject (or one that has the pattern’s phrase and leaves the neuron

@@ -314,7 +314,10 @@ export interface PatternTest {
   texts?: Record<"fire" | "quiet", { text: string; rel: number; at: string }[]>;
   /** written: the face's own strongest passages read with only `before` word-pieces before the peak; `holds` false
    *  means most no longer fire, so no short text can fire the face */
-  own?: { passages: { in_window: number; alone: number }[]; hold: number; of: number; before: number; holds: boolean };
+  own?: { passages: { in_window: number; alone: number; window?: number }[]; hold: number; of: number; before: number; holds: boolean };
+  /** written behind one of the face's own passages: its text held up to `drop` word-pieces before and including the
+   *  peak, each text read as its ending; `own_ending` is the passage's own, read the same way */
+  behind?: { window: number; at: number; drop: number; kept: number; kept_tail?: string; own_ending: { text: string; rel: number } };
   /** blind: pairs shown, pairs picked rightly, how many are right by chance, the chance of doing as well by guessing */
   pairs?: number;
   right?: number;
@@ -339,8 +342,15 @@ export function patternTestSaid(t: PatternTest): { text: string; against: boolea
     const stirred = t.quiet_fired ?? 0;
     const strongest = t.strongest != null ? `, the strongest at ${t.strongest.toFixed(2)} of its strongest in the corpus` : "";
     const misses = quiet ? ` ${stirred} of ${quiet} near misses did.` : " No near miss was tried.";
+    if (t.behind) {
+      const top = t.strongest != null ? `, the strongest at ${t.strongest.toFixed(2)} of its strongest in the corpus` : "";
+      return {
+        text: `Written behind one of its own passages, the last ${t.behind.drop} word-pieces swapped (its own ending reads ${t.behind.own_ending.rel.toFixed(2)}): ${fired} of ${fire} endings meant to fire it did${top}. ${stirred} of ${quiet} near-miss endings did.`,
+        against: fired < fire || stirred > 0,
+      };
+    }
     const own = t.own && t.own.of > 0 && !t.own.holds
-      ? ` Its own strongest passages do not fire it either when read alone (${t.own.hold} of ${t.own.of} do, with ${t.own.before} word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what.`
+      ? ` Its own strongest passages do not fire it either when read alone (${t.own.hold} of ${t.own.of} do, with ${t.own.before} word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages.`
       : "";
     return {
       text: `Written to the pattern: ${fired} of ${fire} texts meant to fire it did${strongest}.${misses}${own}`,

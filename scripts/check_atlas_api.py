@@ -1204,7 +1204,8 @@ def main() -> int:
         ids_, at_ = idx.window_ids(x_["window"]), x_["at"]
         cut_ = ids_[: at_ + 1] if at_ - pt.BEFORE <= 1 else [ids_[0]] + ids_[at_ - pt.BEFORE: at_ + 1]
         v_ = ao.read_neurons(lm, cut_, [(2, 5)])[(2, 5)]
-        own_want.append({"in_window": round(float(x_["act"]) / float(stats["pos"][2, 5]), 3), "alone": round(float(v_[-1]) / float(stats["pos"][2, 5]), 3)})
+        own_want.append({"in_window": round(float(x_["act"]) / float(stats["pos"][2, 5]), 3), "alone": round(float(v_[-1]) / float(stats["pos"][2, 5]), 3),
+                         "window": x_["window"]})
     check(wt["own"] == pt.own_result(own_want) and 0 < wt["own"]["of"] <= pt.OWN_PASSAGES and wt["own"]["before"] == pt.BEFORE
           and wt["kept"]["own"] == wt["own"],
           f"/neuron/written_test: the face's own strongest passages read alone beside its texts, and kept with the test ({wt['own']['hold']} of {wt['own']['of']} hold)")
@@ -1215,11 +1216,82 @@ def main() -> int:
           and "lies further back than a short text reaches" in pt.said({**base_w, "own": own_far})
           and "further back" not in pt.said({**base_w, "own": own_near}) and "further back" not in pt.said(base_w),
           "pattern tests: a face whose own passages do not fire alone is said to need more text; one whose passages do is not")
+    # behind its own passage: the earlier text held, the ending swapped
+    ext_25 = float(stats["pos"][2, 5])
+    fit_25 = [x for x in one_a_window((2, 5, "+")) if not passage_kept_back(x["window"])]
+    drop_ = 3
+    ev_ = next(x for x in fit_25 if x["at"] + 1 - drop_ >= 2 and x["act"] / ext_25 >= pt.FIRES_AT)
+    w_ids = idx.window_ids(ev_["window"])
+    kept_ = w_ids[: ev_["at"] + 1 - drop_]
+    ld = c.get("/api/atlas/neuron/written_test/lead", params={"layer": 2, "n": 5, "face": "+", "window": ev_["window"], "drop": drop_}).json()
+    check(ld["kept"] == len(kept_) and ld["at"] == ev_["at"] and ld["drop"] == drop_ and ld["window"] == ev_["window"]
+          and tok.decode(kept_).endswith(ld["kept_tail"]) and ld["dropped"].count("[[") == 1 and ld["dropped"].rstrip().endswith("]]")
+          and ld["dropped"].replace("[[", "").replace("]]", "") == tok.decode(w_ids[ev_["at"] + 1 - drop_: ev_["at"] + 1])
+          and ld["in_window"] == round(ev_["act"] / ext_25, 3),
+          f"/neuron/written_test/lead: where a passage is cut, the last of what is held and what an ending replaces, its peak marked ({ld.get('dropped')!r})")
+
+    def behind_rel(text_: str) -> float:
+        end_ = tok.encode(text_, add_special_tokens=False)
+        v_ = np.array(ao.read_neurons(lm, list(kept_) + end_, [(2, 5)])[(2, 5)], np.float32)[len(kept_):]
+        return round(float((v_ / ext_25).max()), 3)
+
+    ends_f, ends_q = [" the sea rose", " Bob called"], [" one two three", " a"]
+    body_h = {"layer": 2, "n": 5, "face": "+", "pattern": "fires on sea words", "fire": ends_f, "quiet": ends_q, "behind": ev_["window"], "drop": drop_}
+    wb = c.post("/api/atlas/neuron/written_test", json=body_h).json()
+    want_bf, want_bq = [behind_rel(t_) for t_ in ends_f], [behind_rel(t_) for t_ in ends_q]
+    want_b = pt.written_result([{"rel": x} for x in want_bf], [{"rel": x} for x in want_bq])
+    check([x["rel"] for x in wb["texts"]["fire"]] == want_bf and [x["rel"] for x in wb["texts"]["quiet"]] == want_bq
+          and all(wb[k_] == want_b[k_] for k_ in want_b) and "own" not in wb
+          and wb["behind"]["window"] == ev_["window"] and wb["behind"]["drop"] == drop_ and wb["behind"]["kept"] == len(kept_)
+          and abs(wb["behind"]["own_ending"]["rel"] - ev_["act"] / ext_25) < 2e-3 and wb["behind"]["own_ending"]["text"] == ld["dropped"]
+          and wb["kept"]["behind"] == wb["behind"] and wb["said"].startswith("written behind its own passage in window ")
+          and all(isinstance(x["at"], str) and x["at"] for x in wb["texts"]["fire"] + wb["texts"]["quiet"]),
+          f"/neuron/written_test behind a passage: each ending read in place of the passage's own, its peak over its own word-pieces; "
+          f"the passage's own ending reads what the index holds ({wb.get('said')})")
+    held_w = next(x["window"] for x in one_a_window((2, 5, "+")) if passage_kept_back(x["window"]))
+    other_w = next(w_ for w_ in range(0, 400, 2) if w_ not in {x["window"] for x in one_a_window((2, 5, "+"))})
+    refusals = {
+        "no near miss": ({**body_h, "quiet": []}, "near misses are the test"),
+        "as a chat turn": ({**body_h, "chat": True}, "leave `chat` off"),
+        "a kept-back window": ({**body_h, "behind": held_w}, "kept back for the blind test"),
+        "a window the face has no passage in": ({**body_h, "behind": other_w}, "has no stored passage in window"),
+        "more dropped than the passage has before its peak": ({**body_h, "drop": 64, "behind": min(fit_25, key=lambda x: x["at"])["window"]},
+                                                              "leaves nothing before the ending"),
+    }
+    got_r = {k_: c.post("/api/atlas/neuron/written_test", json=b_) for k_, (b_, _) in refusals.items()}
+    skip_ = {"more dropped than the passage has before its peak"} if min(x["at"] for x in fit_25) + 1 - 64 >= 2 else set()
+    check(all(got_r[k_].status_code == 400 and want_ in got_r[k_].json()["detail"] for k_, (_, want_) in refusals.items() if k_ not in skip_)
+          and c.post("/api/atlas/neuron/written_test", json={**body_h, "drop": 0}).status_code == 422
+          and c.get("/api/atlas/neuron/written_test/lead", params={"layer": 2, "n": 5, "window": ev_["window"], "drop": 65}).status_code == 400
+          and c.get("/api/atlas/neuron/written_test/lead", params={"layer": 2, "n": 5, "window": held_w}).status_code == 400,
+          "/neuron/written_test behind a passage: refused in plain words without a near miss, as a chat turn, behind a kept-back "
+          "window or one the face has no passage in, and when the drop leaves nothing before the ending "
+          f"({ {k_: r_.status_code for k_, r_ in got_r.items()} })")
+    weak_ = None  # a passage that itself reads under the bar a text fires at, on whichever face of the stand-in has one
+    for l_, n_, f_ in ((l_, n_, f_) for l_ in range(L) for n_ in range(0, N, 5) for f_ in ("+", "-")):
+        e_ = float(stats["pos" if f_ == "+" else "neg"][l_, n_])
+        if abs(e_) <= 1e-6:
+            continue
+        x_ = next((x for x in one_a_window((l_, n_, f_)) if not passage_kept_back(x["window"]) and x["at"] + 1 - drop_ >= 2
+                   and x["act"] / e_ < pt.FIRES_AT - 0.02), None)
+        if x_ is not None:
+            weak_ = (l_, n_, f_, x_["window"])
+            break
+    if weak_ is not None:
+        r_weak = c.post("/api/atlas/neuron/written_test", json={**body_h, "layer": weak_[0], "n": weak_[1], "face": weak_[2], "behind": weak_[3], "keep": False})
+        check(r_weak.status_code == 400 and "choose a stronger one" in r_weak.json()["detail"],
+              f"/neuron/written_test behind a passage that itself reads under the bar a text fires at: refused ({r_weak.text[:120]})")
+    said_b = pt.said({**want_b, "behind": {"window": 7, "drop": 3, "own_ending": {"rel": 0.9}}})
+    check(said_b.startswith("written behind its own passage in window 7 (the last 3 word-pieces swapped; its own ending reads 0.9")
+          and f"{want_b['quiet_fired']} of 2 near-miss endings did" in said_b
+          and "It can be tested behind one of its own passages" in pt.said({**base_w, "own": own_far}),
+          "pattern tests: a test behind a passage in a line; a face that needs more text is pointed to it")
     wn = c.post("/api/atlas/neuron/written_test", json={"layer": 2, "n": 5, "face": "-", "pattern": "p", "fire": fire_t[:1], "keep": False, "by": "scientist"}).json()
     kt = c.get("/api/atlas/neuron/tests", params={"layer": 2, "n": 5}).json()
     check(wn["texts"]["fire"][0]["rel"] == rel_of(fire_t[0], "-") and "kept" not in wn and wn["quiet"] == 0 and wn["apart"] is None
-          and [t_["kind"] for t_ in kt["tests"]["+"]] == ["written"] and kt["tests"]["-"] == [] and kt["tests"]["+"][0]["pattern"] == "fires on sea words"
-          and kt["tests"]["+"][0]["said"] == wt["said"] and kt["file"].endswith("field_tests.json") and str(TMP) in kt["file"],
+          and [t_["kind"] for t_ in kt["tests"]["+"]] == ["written", "written"] and kt["tests"]["-"] == [] and kt["tests"]["+"][0]["pattern"] == "fires on sea words"
+          and kt["tests"]["+"][0]["said"] == wb["said"] and kt["tests"]["+"][1]["said"] == wt["said"]
+          and kt["file"].endswith("field_tests.json") and str(TMP) in kt["file"],
           "/neuron/written_test on the - face, not kept when asked not to; /neuron/tests: what was kept, with its pattern, in the check's own file")
     check(c.post("/api/atlas/neuron/written_test", json={"layer": 2, "n": 5, "face": "x", "pattern": "p", "fire": ["a"]}).status_code == 400
           and c.post("/api/atlas/neuron/written_test", json={"layer": 2, "n": 5, "pattern": "p", "fire": ["a"], "by": "someone"}).status_code == 400

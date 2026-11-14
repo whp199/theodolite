@@ -1310,7 +1310,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             neither says what the firing does further on. Some neurons fire only far into their own document: about
             one in six, tried on this model, stays silent on its own strongest passage when only the sixty
             word-pieces before it are read. No short text fires such a neuron, so the written test reads the
-            neuron’s own passages alone as well and says when that is the case. A blind test can still be passed
+            neuron’s own passages alone as well and says when that is the case. Such a neuron is tested behind
+            one of its own passages: the earlier text is kept and only the ending is written, once to the pattern
+            and once as a near miss. A blind test can still be passed
             there, which is why passing it does not show the pattern is enough to fire the neuron.
           </Note>
           <EntryApparatus title="a pattern put to the test">
@@ -1318,7 +1320,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             extreme in the stats index. A text fires at 0.5 of the extreme, the band the passages index draws its
             random events from, and beats the corpus at 1. Its own check (<M>own</M>): the face’s three strongest
             passages not kept back, each read with only 60 word-pieces before its peak; one holds when it still reads
-            half of what it read in its window, and the face holds alone when most do. Blind (<M>POST /neuron/blind_test/start</M>, then{" "}
+            half of what it read in its window, and the face holds alone when most do. Behind its own passage
+            (<M>behind</M>, <M>drop</M>; <M>GET /neuron/written_test/lead</M>): one of the face’s passages is held up
+            to the last 8 word-pieces, peak included, and each text is read as its ending; near misses are required,
+            and the passage’s own ending is read beside them. Blind (<M>POST /neuron/blind_test/start</M>, then{" "}
             <M>/answer</M> or <M>/judge</M>): the face’s stored events in odd-numbered windows are kept back from the
             scientist; each is paired with a passage from another kept-back window where the face stays under 0.25 of
             its extreme, read live; one passage a window; both cut to 60 word-pieces before one marked word-piece and 8 after. The reader is
