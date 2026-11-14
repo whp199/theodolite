@@ -301,6 +301,8 @@ def behind():
             got = call("/neuron/written_test", {"layer": f["layer"], "n": f["n"], "face": f["face"], "pattern": f["pattern"], "fire": b["fire"],
                                                 "quiet": b["quiet"], "behind": b["window"], "drop": b["drop"], "by": "scientist", "keep": True})
             got.pop("kept", None)
+            if "behind" in got:  # the passage's own earlier text is the corpus's: not kept in the repository
+                got["behind"].pop("kept_tail", None)
             out[k].append(got)
             print(k, got.get("said") or got.get("refused"), flush=True)
             if "texts" in got:

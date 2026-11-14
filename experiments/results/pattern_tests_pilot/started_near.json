@@ -1,0 +1,174 @@
+{
+ "judge": "a fresh Claude Fable 5.2 conversation given the pattern alone (by hand; no endpoint is configured)",
+ "quiet": "near",
+ "tests": {
+  "L2-n2099p": {
+   "test": "9b74e0f5c00f",
+   "pairs": 8,
+   "sheet": 0,
+   "label": "T1",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L56-n12115m"
+  },
+  "L56-n12115m": {
+   "test": "893f4b60bb9b",
+   "pairs": 7,
+   "sheet": 0,
+   "label": "T2",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L26-n4837p"
+  },
+  "L26-n4837p": {
+   "test": "dfb0968f3a44",
+   "pairs": 12,
+   "sheet": 0,
+   "label": "T3",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L14-n11687m"
+  },
+  "L14-n11687m": {
+   "test": "8a8c4100a26f",
+   "pairs": 10,
+   "sheet": 0,
+   "label": "T4",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L36-n12896p"
+  },
+  "L36-n12896p": {
+   "test": "c6afa74eb00b",
+   "pairs": 8,
+   "sheet": 0,
+   "label": "T5",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L45-n8497p"
+  },
+  "L45-n8497p": {
+   "test": "a954841928a1",
+   "pairs": 11,
+   "sheet": 0,
+   "label": "T6",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L45-n16700m"
+  },
+  "L45-n16700m": {
+   "test": "91422c25d315",
+   "pairs": 7,
+   "sheet": 0,
+   "label": "T7",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L2-n2099p"
+  },
+  "L56-n3342p": {
+   "test": "3932aa92f284",
+   "pairs": 10,
+   "sheet": 1,
+   "label": "T1",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L26-n14541m"
+  },
+  "L26-n14541m": {
+   "test": "215ca913c381",
+   "pairs": 11,
+   "sheet": 1,
+   "label": "T2",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L56-n19940m"
+  },
+  "L56-n19940m": {
+   "test": "1b151c1a822d",
+   "pairs": 6,
+   "sheet": 1,
+   "label": "T3",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L31-n20806p"
+  },
+  "L31-n20806p": {
+   "test": "d4e2386ed82f",
+   "pairs": 12,
+   "sheet": 1,
+   "label": "T4",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L36-n15041m"
+  },
+  "L36-n15041m": {
+   "test": "6aa0e14a1692",
+   "pairs": 12,
+   "sheet": 1,
+   "label": "T5",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L31-n7731p"
+  },
+  "L31-n7731p": {
+   "test": "0692699acd96",
+   "pairs": 8,
+   "sheet": 1,
+   "label": "T6",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L2-n16560p"
+  },
+  "L2-n16560p": {
+   "test": "f2687a52fc57",
+   "pairs": 12,
+   "sheet": 1,
+   "label": "T7",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L56-n3342p"
+  },
+  "L36-n13610p": {
+   "test": "6172fdf95230",
+   "pairs": 9,
+   "sheet": 2,
+   "label": "T1",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L14-n16551m"
+  },
+  "L14-n16551m": {
+   "test": "6c3722531ebe",
+   "pairs": 7,
+   "sheet": 2,
+   "label": "T2",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L2-n18138m"
+  },
+  "L2-n18138m": {
+   "test": "30ae79e93c6a",
+   "pairs": 10,
+   "sheet": 2,
+   "label": "T3",
+   "own_pattern_reader": "b",
+   "other_pattern_of": "L26-n4644m"
+  },
+  "L26-n4644m": {
+   "test": "321b1edfbe4a",
+   "pairs": 9,
+   "sheet": 2,
+   "label": "T4",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L45-n4812p"
+  },
+  "L45-n4812p": {
+   "test": "a09cf600464d",
+   "pairs": 8,
+   "sheet": 2,
+   "label": "T5",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L14-n19793p"
+  },
+  "L14-n19793p": {
+   "test": "32ab689b25ab",
+   "pairs": 9,
+   "sheet": 2,
+   "label": "T6",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L31-n13214p"
+  },
+  "L31-n13214p": {
+   "test": "ac910b6c2722",
+   "pairs": 10,
+   "sheet": 2,
+   "label": "T7",
+   "own_pattern_reader": "a",
+   "other_pattern_of": "L36-n13610p"
+  }
+ }
+}

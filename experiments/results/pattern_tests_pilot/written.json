@@ -59,6 +59,29 @@
    },
    "extreme": 52.75,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.595,
+      "window": 3362
+     },
+     {
+      "in_window": 0.976,
+      "alone": 0.488,
+      "window": 2616
+     },
+     {
+      "in_window": 0.953,
+      "alone": 0.659,
+      "window": 896
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.645 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L2-n18138m": {
@@ -120,6 +143,29 @@
    },
    "extreme": -34.75,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.993,
+      "window": 1974
+     },
+     {
+      "in_window": 0.723,
+      "alone": 0.691,
+      "window": 3532
+     },
+     {
+      "in_window": 0.712,
+      "alone": 0.64,
+      "window": 3542
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.928 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L2-n2099p": {
@@ -181,6 +227,29 @@
    },
    "extreme": 41.25,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.909,
+      "window": 172
+     },
+     {
+      "in_window": 0.994,
+      "alone": 0.676,
+      "window": 3098
+     },
+     {
+      "in_window": 0.939,
+      "alone": 0.927,
+      "window": 174
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 3 of 3 texts meant to fire it did (the strongest 0.873 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L14-n11687m": {
@@ -242,6 +311,29 @@
    },
    "extreme": -43.5,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 1.08,
+      "window": 226
+     },
+     {
+      "in_window": 0.868,
+      "alone": 0.902,
+      "window": 1312
+     },
+     {
+      "in_window": 0.799,
+      "alone": 0.727,
+      "window": 1546
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 3 of 3 texts meant to fire it did (the strongest 1.092 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L14-n16551m": {
@@ -303,6 +395,29 @@
    },
    "extreme": -44.75,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 1.022,
+      "window": 2802
+     },
+     {
+      "in_window": 0.86,
+      "alone": 0.855,
+      "window": 3218
+     },
+     {
+      "in_window": 0.855,
+      "alone": 0.899,
+      "window": 2724
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 2 of 3 texts meant to fire it did (the strongest 0.704 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L14-n19793p": {
@@ -364,6 +479,29 @@
    },
    "extreme": 20.0,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.819,
+      "window": 246
+     },
+     {
+      "in_window": 0.728,
+      "alone": 0.912,
+      "window": 3106
+     },
+     {
+      "in_window": 0.666,
+      "alone": 0.491,
+      "window": 3212
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 2 of 3 texts meant to fire it did (the strongest 1.025 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L26-n14541m": {
@@ -425,7 +563,30 @@
    },
    "extreme": -0.7031,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
-   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.26 of its extreme in the corpus); 0 of 3 near misses did"
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": -0.057,
+      "window": 284
+     },
+     {
+      "in_window": 0.994,
+      "alone": 0.049,
+      "window": 3120
+     },
+     {
+      "in_window": 0.789,
+      "alone": 0.056,
+      "window": 2038
+     }
+    ],
+    "hold": 0,
+    "of": 3,
+    "before": 60,
+    "holds": false
+   },
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.26 of its extreme in the corpus); 0 of 3 near misses did. Its own strongest passages do not fire it either when read alone (0 of 3 do, with 60 word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages"
   },
   "L26-n4644m": {
    "layer": 26,
@@ -486,6 +647,29 @@
    },
    "extreme": -4.375,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.993,
+      "window": 3712
+     },
+     {
+      "in_window": 0.793,
+      "alone": 0.736,
+      "window": 1466
+     },
+     {
+      "in_window": 0.686,
+      "alone": 0.382,
+      "window": 2544
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.757 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L26-n4837p": {
@@ -547,7 +731,30 @@
    },
    "extreme": 2.5469,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
-   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.13 of its extreme in the corpus); 0 of 3 near misses did"
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.853,
+      "alone": -0.176,
+      "window": 590
+     },
+     {
+      "in_window": 0.656,
+      "alone": 0.16,
+      "window": 1792
+     },
+     {
+      "in_window": 0.629,
+      "alone": 0.291,
+      "window": 3788
+     }
+    ],
+    "hold": 0,
+    "of": 3,
+    "before": 60,
+    "holds": false
+   },
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.13 of its extreme in the corpus); 0 of 3 near misses did. Its own strongest passages do not fire it either when read alone (0 of 3 do, with 60 word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages"
   },
   "L31-n13214p": {
    "layer": 31,
@@ -608,6 +815,29 @@
    },
    "extreme": 10.1875,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.531,
+      "alone": 0.367,
+      "window": 526
+     },
+     {
+      "in_window": 0.466,
+      "alone": 0.466,
+      "window": 530
+     },
+     {
+      "in_window": 0.414,
+      "alone": 0.087,
+      "window": 1686
+     }
+    ],
+    "hold": 2,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.348 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L31-n20806p": {
@@ -669,6 +899,29 @@
    },
    "extreme": 3.3594,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 1.009,
+      "window": 272
+     },
+     {
+      "in_window": 0.912,
+      "alone": 0.874,
+      "window": 76
+     },
+     {
+      "in_window": 0.805,
+      "alone": 0.777,
+      "window": 344
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 2 of 3 texts meant to fire it did (the strongest 0.888 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L31-n7731p": {
@@ -730,6 +983,29 @@
    },
    "extreme": 4.4062,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.801,
+      "alone": 0.564,
+      "window": 2050
+     },
+     {
+      "in_window": 0.798,
+      "alone": 0.489,
+      "window": 2046
+     },
+     {
+      "in_window": 0.734,
+      "alone": -0.033,
+      "window": 2980
+     }
+    ],
+    "hold": 2,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.319 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L36-n12896p": {
@@ -791,7 +1067,30 @@
    },
    "extreme": 1.4453,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
-   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.034 of its extreme in the corpus); 0 of 3 near misses did"
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.002,
+      "window": 3826
+     },
+     {
+      "in_window": 0.635,
+      "alone": 0.127,
+      "window": 2894
+     },
+     {
+      "in_window": 0.497,
+      "alone": -0.034,
+      "window": 3654
+     }
+    ],
+    "hold": 0,
+    "of": 3,
+    "before": 60,
+    "holds": false
+   },
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.034 of its extreme in the corpus); 0 of 3 near misses did. Its own strongest passages do not fire it either when read alone (0 of 3 do, with 60 word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages"
   },
   "L36-n13610p": {
    "layer": 36,
@@ -852,6 +1151,29 @@
    },
    "extreme": 1.7422,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.619,
+      "alone": 0.224,
+      "window": 2428
+     },
+     {
+      "in_window": 0.462,
+      "alone": 0.446,
+      "window": 2488
+     },
+     {
+      "in_window": 0.451,
+      "alone": 0.491,
+      "window": 3564
+     }
+    ],
+    "hold": 2,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.695 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L36-n15041m": {
@@ -913,6 +1235,29 @@
    },
    "extreme": -1.1094,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.287,
+      "window": 2928
+     },
+     {
+      "in_window": 0.944,
+      "alone": 0.746,
+      "window": 2454
+     },
+     {
+      "in_window": 0.82,
+      "alone": 0.651,
+      "window": 3074
+     }
+    ],
+    "hold": 2,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 2 of 3 texts meant to fire it did (the strongest 0.609 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L45-n16700m": {
@@ -974,7 +1319,30 @@
    },
    "extreme": -15.875,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
-   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.058 of its extreme in the corpus); 0 of 3 near misses did"
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.945,
+      "alone": 0.748,
+      "window": 190
+     },
+     {
+      "in_window": 0.791,
+      "alone": 0.169,
+      "window": 1834
+     },
+     {
+      "in_window": 0.752,
+      "alone": -0.004,
+      "window": 3396
+     }
+    ],
+    "hold": 1,
+    "of": 3,
+    "before": 60,
+    "holds": false
+   },
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.058 of its extreme in the corpus); 0 of 3 near misses did. Its own strongest passages do not fire it either when read alone (1 of 3 do, with 60 word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages"
   },
   "L45-n4812p": {
    "layer": 45,
@@ -1035,6 +1403,29 @@
    },
    "extreme": 26.375,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": 0.995,
+      "window": 2836
+     },
+     {
+      "in_window": 0.763,
+      "alone": 0.697,
+      "window": 1664
+     },
+     {
+      "in_window": 0.687,
+      "alone": 0.528,
+      "window": 2766
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 3 of 3 texts meant to fire it did (the strongest 0.9 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L45-n8497p": {
@@ -1096,6 +1487,29 @@
    },
    "extreme": 4.4688,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.822,
+      "alone": 0.39,
+      "window": 2060
+     },
+     {
+      "in_window": 0.741,
+      "alone": 0.738,
+      "window": 3214
+     },
+     {
+      "in_window": 0.671,
+      "alone": 0.636,
+      "window": 846
+     }
+    ],
+    "hold": 2,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.486 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L56-n12115m": {
@@ -1157,6 +1571,29 @@
    },
    "extreme": -4.7812,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.941,
+      "alone": 1.268,
+      "window": 2896
+     },
+     {
+      "in_window": 0.778,
+      "alone": 0.765,
+      "window": 1600
+     },
+     {
+      "in_window": 0.765,
+      "alone": 0.595,
+      "window": 3188
+     }
+    ],
+    "hold": 3,
+    "of": 3,
+    "before": 60,
+    "holds": true
+   },
    "said": "written: 1 of 3 texts meant to fire it did (the strongest 0.562 of its extreme in the corpus); 0 of 3 near misses did"
   },
   "L56-n19940m": {
@@ -1218,7 +1655,30 @@
    },
    "extreme": -4.125,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
-   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.384 of its extreme in the corpus); 0 of 3 near misses did"
+   "own": {
+    "passages": [
+     {
+      "in_window": 1.0,
+      "alone": -0.025,
+      "window": 1818
+     },
+     {
+      "in_window": 0.576,
+      "alone": 0.133,
+      "window": 3440
+     },
+     {
+      "in_window": 0.542,
+      "alone": 0.111,
+      "window": 208
+     }
+    ],
+    "hold": 0,
+    "of": 3,
+    "before": 60,
+    "holds": false
+   },
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.384 of its extreme in the corpus); 0 of 3 near misses did. Its own strongest passages do not fire it either when read alone (0 of 3 do, with 60 word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages"
   },
   "L56-n3342p": {
    "layer": 56,
@@ -1279,7 +1739,30 @@
    },
    "extreme": 27.5,
    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
-   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.395 of its extreme in the corpus); 0 of 3 near misses did"
+   "own": {
+    "passages": [
+     {
+      "in_window": 0.795,
+      "alone": 0.07,
+      "window": 2026
+     },
+     {
+      "in_window": 0.614,
+      "alone": 0.001,
+      "window": 1796
+     },
+     {
+      "in_window": 0.609,
+      "alone": 0.047,
+      "window": 2698
+     }
+    ],
+    "hold": 0,
+    "of": 3,
+    "before": 60,
+    "holds": false
+   },
+   "said": "written: 0 of 3 texts meant to fire it did (the strongest 0.395 of its extreme in the corpus); 0 of 3 near misses did. Its own strongest passages do not fire it either when read alone (0 of 3 do, with 60 word-pieces before the peak): what fires it lies further back than a short text reaches, and the pattern does not say what. It can be tested behind one of its own passages"
   }
  }
 }

@@ -1,0 +1,6967 @@
+{
+ "judge": "a fresh Claude Fable 5.2 conversation given the pattern alone (by hand; no endpoint is configured)",
+ "quiet": "near",
+ "tests": {
+  "L2-n2099p": {
+   "own_pattern": {
+    "pairs": 8,
+    "right": 8,
+    "unanswered": 0,
+    "p": 0.0039,
+    "near_pairs": {
+     "pairs": 8,
+     "right": 8,
+     "p": 0.0039
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 2
+     },
+     "before": {
+      "pairs": 4,
+      "right": 4
+     },
+     "after": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "strong_pairs": {
+     "pairs": 8,
+     "right": 8,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 8,
+     "tried": 7,
+     "fired": 2,
+     "quiet": 2
+    },
+    "before": {
+     "found": 3526,
+     "tried": 18,
+     "fired": 3,
+     "quiet": 4
+    },
+    "after": {
+     "found": 1800,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 1
+     },
+     "before": {
+      "pairs": 4,
+      "right": 2
+     },
+     "after": {
+      "pairs": 2,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 8,
+     "right": 4,
+     "p": 0.6367
+    },
+    "strong_pairs": {
+     "pairs": 8,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 8,
+    "right": 4,
+    "unanswered": 0,
+    "p": 0.6367
+   },
+   "other_pattern_of": "L56-n12115m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3793,
+      "at": 51,
+      "rel": 0.673,
+      "span": [
+       1,
+       60
+      ]
+     },
+     "quiet": {
+      "window": 3774,
+      "at": 237,
+      "rel": 0.007,
+      "match": "phrase",
+      "span": [
+       187,
+       246
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 535,
+      "at": 481,
+      "rel": 0.764,
+      "span": [
+       421,
+       490
+      ]
+     },
+     "quiet": {
+      "window": 417,
+      "at": 66,
+      "rel": 0.007,
+      "match": "phrase",
+      "span": [
+       6,
+       75
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1483,
+      "at": 468,
+      "rel": 0.579,
+      "span": [
+       408,
+       477
+      ]
+     },
+     "quiet": {
+      "window": 777,
+      "at": 307,
+      "rel": 0.006,
+      "match": "after",
+      "span": [
+       247,
+       316
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1823,
+      "at": 132,
+      "rel": 0.552,
+      "span": [
+       72,
+       141
+      ]
+     },
+     "quiet": {
+      "window": 71,
+      "at": 197,
+      "rel": 0.003,
+      "match": "before",
+      "span": [
+       137,
+       206
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2479,
+      "at": 227,
+      "rel": 0.691,
+      "span": [
+       167,
+       236
+      ]
+     },
+     "quiet": {
+      "window": 3726,
+      "at": 167,
+      "rel": 0.01,
+      "match": "before",
+      "span": [
+       107,
+       176
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 61,
+      "at": 223,
+      "rel": 0.585,
+      "span": [
+       163,
+       232
+      ]
+     },
+     "quiet": {
+      "window": 1259,
+      "at": 424,
+      "rel": 0.001,
+      "match": "after",
+      "span": [
+       364,
+       433
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 563,
+      "at": 276,
+      "rel": 0.573,
+      "span": [
+       216,
+       285
+      ]
+     },
+     "quiet": {
+      "window": 577,
+      "at": 153,
+      "rel": 0.058,
+      "match": "before",
+      "span": [
+       93,
+       162
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 173,
+      "at": 408,
+      "rel": 0.767,
+      "span": [
+       348,
+       417
+      ]
+     },
+     "quiet": {
+      "window": 15,
+      "at": 389,
+      "rel": 0.007,
+      "match": "before",
+      "span": [
+       329,
+       398
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a"
+   ]
+  },
+  "L56-n12115m": {
+   "own_pattern": {
+    "pairs": 7,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.0625,
+    "near_pairs": {
+     "pairs": 5,
+     "right": 4,
+     "p": 0.1875
+    },
+    "by_match": {
+     "before": {
+      "pairs": 2,
+      "right": 2
+     },
+     "word": {
+      "pairs": 3,
+      "right": 2
+     },
+     "anywhere": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "strong_pairs": {
+     "pairs": 7,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "before": {
+     "found": 43,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "after": {
+     "found": 2,
+     "tried": 2,
+     "fired": 1,
+     "quiet": 0
+    },
+    "word": {
+     "found": 113,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 3
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "before": {
+      "pairs": 2,
+      "right": 2
+     },
+     "word": {
+      "pairs": 3,
+      "right": 2
+     },
+     "anywhere": {
+      "pairs": 2,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 5,
+     "right": 4,
+     "p": 0.1875
+    },
+    "strong_pairs": {
+     "pairs": 7,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 7,
+    "right": 4,
+    "unanswered": 0,
+    "p": 0.5
+   },
+   "other_pattern_of": "L26-n4837p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2755,
+      "at": 412,
+      "rel": 0.869,
+      "span": [
+       352,
+       421
+      ]
+     },
+     "quiet": {
+      "window": 664,
+      "at": 128,
+      "rel": 0.059,
+      "match": "word",
+      "span": [
+       68,
+       137
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1599,
+      "at": 107,
+      "rel": 0.572,
+      "span": [
+       47,
+       116
+      ]
+     },
+     "quiet": {
+      "window": 746,
+      "at": 105,
+      "rel": 0.101,
+      "match": "before",
+      "span": [
+       45,
+       114
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2757,
+      "at": 216,
+      "rel": 0.716,
+      "span": [
+       156,
+       225
+      ]
+     },
+     "quiet": {
+      "window": 567,
+      "at": 188,
+      "rel": 0.042,
+      "match": "anywhere",
+      "span": [
+       128,
+       197
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2351,
+      "at": 124,
+      "rel": 0.716,
+      "span": [
+       64,
+       133
+      ]
+     },
+     "quiet": {
+      "window": 120,
+      "at": 415,
+      "rel": 0.045,
+      "match": "word",
+      "span": [
+       355,
+       424
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1555,
+      "at": 505,
+      "rel": 0.706,
+      "span": [
+       473,
+       512
+      ]
+     },
+     "quiet": {
+      "window": 829,
+      "at": 284,
+      "rel": 0.016,
+      "match": "anywhere",
+      "span": [
+       252,
+       291
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3609,
+      "at": 190,
+      "rel": 0.627,
+      "span": [
+       130,
+       199
+      ]
+     },
+     "quiet": {
+      "window": 2725,
+      "at": 289,
+      "rel": 0.05,
+      "match": "before",
+      "span": [
+       229,
+       298
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 3817,
+      "at": 240,
+      "rel": 1.0,
+      "span": [
+       180,
+       249
+      ]
+     },
+     "quiet": {
+      "window": 1793,
+      "at": 437,
+      "rel": 0.141,
+      "match": "word",
+      "span": [
+       377,
+       446
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "a",
+    "b",
+    "b",
+    "b",
+    "a",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b"
+   ]
+  },
+  "L26-n4837p": {
+   "own_pattern": {
+    "pairs": 12,
+    "right": 11,
+    "unanswered": 0,
+    "p": 0.0032,
+    "near_pairs": {
+     "pairs": 12,
+     "right": 11,
+     "p": 0.0032
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 2
+     },
+     "before": {
+      "pairs": 5,
+      "right": 5
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 3,
+      "right": 3
+     }
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 11,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 86,
+     "tried": 5,
+     "fired": 0,
+     "quiet": 3
+    },
+    "before": {
+     "found": 534,
+     "tried": 5,
+     "fired": 0,
+     "quiet": 5
+    },
+    "after": {
+     "found": 19,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "word": {
+     "found": 8145,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 0
+     },
+     "before": {
+      "pairs": 5,
+      "right": 3
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 3,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 12,
+     "right": 5,
+     "p": 0.8062
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 5,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 12,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.8062
+   },
+   "other_pattern_of": "L14-n11687m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1485,
+      "at": 77,
+      "rel": 0.782,
+      "span": [
+       17,
+       86
+      ]
+     },
+     "quiet": {
+      "window": 1177,
+      "at": 378,
+      "rel": 0.025,
+      "match": "word",
+      "span": [
+       318,
+       387
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 201,
+      "at": 78,
+      "rel": 0.528,
+      "span": [
+       18,
+       87
+      ]
+     },
+     "quiet": {
+      "window": 2782,
+      "at": 326,
+      "rel": 0.039,
+      "match": "word",
+      "span": [
+       266,
+       335
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 865,
+      "at": 287,
+      "rel": 0.589,
+      "span": [
+       227,
+       296
+      ]
+     },
+     "quiet": {
+      "window": 275,
+      "at": 146,
+      "rel": 0.137,
+      "match": "phrase",
+      "span": [
+       86,
+       155
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 671,
+      "at": 85,
+      "rel": 0.656,
+      "span": [
+       25,
+       94
+      ]
+     },
+     "quiet": {
+      "window": 1054,
+      "at": 312,
+      "rel": 0.022,
+      "match": "phrase",
+      "span": [
+       252,
+       321
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1353,
+      "at": 216,
+      "rel": 0.69,
+      "span": [
+       156,
+       225
+      ]
+     },
+     "quiet": {
+      "window": 746,
+      "at": 405,
+      "rel": 0.074,
+      "match": "before",
+      "span": [
+       345,
+       414
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1843,
+      "at": 281,
+      "rel": 0.653,
+      "span": [
+       221,
+       290
+      ]
+     },
+     "quiet": {
+      "window": 2262,
+      "at": 399,
+      "rel": 0.047,
+      "match": "after",
+      "span": [
+       339,
+       408
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3547,
+      "at": 204,
+      "rel": 0.592,
+      "span": [
+       144,
+       213
+      ]
+     },
+     "quiet": {
+      "window": 2449,
+      "at": 374,
+      "rel": 0.096,
+      "match": "before",
+      "span": [
+       314,
+       383
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1981,
+      "at": 298,
+      "rel": 0.709,
+      "span": [
+       238,
+       307
+      ]
+     },
+     "quiet": {
+      "window": 1386,
+      "at": 197,
+      "rel": 0.242,
+      "match": "before",
+      "span": [
+       137,
+       206
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 2367,
+      "at": 339,
+      "rel": 1.0,
+      "span": [
+       279,
+       348
+      ]
+     },
+     "quiet": {
+      "window": 2371,
+      "at": 124,
+      "rel": 0.179,
+      "match": "phrase",
+      "span": [
+       64,
+       133
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 739,
+      "at": 380,
+      "rel": 0.586,
+      "span": [
+       320,
+       389
+      ]
+     },
+     "quiet": {
+      "window": 3698,
+      "at": 477,
+      "rel": 0.099,
+      "match": "before",
+      "span": [
+       417,
+       486
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 653,
+      "at": 70,
+      "rel": 0.933,
+      "span": [
+       10,
+       79
+      ]
+     },
+     "quiet": {
+      "window": 1209,
+      "at": 243,
+      "rel": 0.126,
+      "match": "word",
+      "span": [
+       183,
+       252
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2523,
+      "at": 132,
+      "rel": 0.853,
+      "span": [
+       72,
+       141
+      ]
+     },
+     "quiet": {
+      "window": 1387,
+      "at": 97,
+      "rel": 0.118,
+      "match": "before",
+      "span": [
+       37,
+       106
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "b",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b"
+   ]
+  },
+  "L14-n11687m": {
+   "own_pattern": {
+    "pairs": 10,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.377,
+    "near_pairs": {
+     "pairs": 10,
+     "right": 6,
+     "p": 0.377
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 3
+     },
+     "before": {
+      "pairs": 6,
+      "right": 3
+     }
+    },
+    "strong_pairs": {
+     "pairs": 0,
+     "right": 0,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 18,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "before": {
+     "found": 922,
+     "tried": 6,
+     "fired": 0,
+     "quiet": 6
+    },
+    "after": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 2
+     },
+     "before": {
+      "pairs": 6,
+      "right": 4
+     }
+    },
+    "near_pairs": {
+     "pairs": 10,
+     "right": 6,
+     "p": 0.377
+    },
+    "strong_pairs": {
+     "pairs": 0,
+     "right": 0,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 10,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.377
+   },
+   "other_pattern_of": "L36-n12896p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 2209,
+      "at": 223,
+      "rel": 0.348,
+      "span": [
+       163,
+       232
+      ]
+     },
+     "quiet": {
+      "window": 54,
+      "at": 411,
+      "rel": 0.154,
+      "match": "before",
+      "span": [
+       351,
+       420
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1945,
+      "at": 235,
+      "rel": 0.282,
+      "span": [
+       175,
+       244
+      ]
+     },
+     "quiet": {
+      "window": 1360,
+      "at": 280,
+      "rel": 0.041,
+      "match": "phrase",
+      "span": [
+       220,
+       289
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1429,
+      "at": 143,
+      "rel": 0.302,
+      "span": [
+       83,
+       152
+      ]
+     },
+     "quiet": {
+      "window": 2245,
+      "at": 329,
+      "rel": 0.008,
+      "match": "phrase",
+      "span": [
+       269,
+       338
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1643,
+      "at": 415,
+      "rel": 0.297,
+      "span": [
+       355,
+       424
+      ]
+     },
+     "quiet": {
+      "window": 2863,
+      "at": 282,
+      "rel": 0.012,
+      "match": "before",
+      "span": [
+       222,
+       291
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3425,
+      "at": 160,
+      "rel": 0.352,
+      "span": [
+       100,
+       169
+      ]
+     },
+     "quiet": {
+      "window": 3624,
+      "at": 253,
+      "rel": 0.012,
+      "match": "before",
+      "span": [
+       193,
+       262
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1317,
+      "at": 135,
+      "rel": 0.342,
+      "span": [
+       75,
+       144
+      ]
+     },
+     "quiet": {
+      "window": 3506,
+      "at": 260,
+      "rel": 0.014,
+      "match": "phrase",
+      "span": [
+       200,
+       269
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3585,
+      "at": 421,
+      "rel": 0.313,
+      "span": [
+       361,
+       430
+      ]
+     },
+     "quiet": {
+      "window": 16,
+      "at": 203,
+      "rel": 0.016,
+      "match": "before",
+      "span": [
+       143,
+       212
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 2879,
+      "at": 179,
+      "rel": 0.29,
+      "span": [
+       119,
+       188
+      ]
+     },
+     "quiet": {
+      "window": 161,
+      "at": 459,
+      "rel": 0.009,
+      "match": "before",
+      "span": [
+       399,
+       468
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 227,
+      "at": 251,
+      "rel": 0.425,
+      "span": [
+       191,
+       260
+      ]
+     },
+     "quiet": {
+      "window": 2362,
+      "at": 221,
+      "rel": 0.005,
+      "match": "phrase",
+      "span": [
+       161,
+       230
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 3453,
+      "at": 444,
+      "rel": 0.359,
+      "span": [
+       384,
+       453
+      ]
+     },
+     "quiet": {
+      "window": 2258,
+      "at": 186,
+      "rel": 0.007,
+      "match": "before",
+      "span": [
+       126,
+       195
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a"
+   ],
+   "picks_other": [
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a",
+    "b",
+    "b"
+   ]
+  },
+  "L36-n12896p": {
+   "own_pattern": {
+    "pairs": 8,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.3633,
+    "near_pairs": {
+     "pairs": 8,
+     "right": 5,
+     "p": 0.3633
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 7,
+      "right": 5
+     },
+     "after": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "strong_pairs": {
+     "pairs": 2,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 358,
+     "tried": 7,
+     "fired": 0,
+     "quiet": 7
+    },
+    "before": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "after": {
+     "found": 2497,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 7,
+      "right": 4
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 8,
+     "right": 5,
+     "p": 0.3633
+    },
+    "strong_pairs": {
+     "pairs": 2,
+     "right": 2,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 8,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.3633
+   },
+   "other_pattern_of": "L45-n8497p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1169,
+      "at": 393,
+      "rel": 0.397,
+      "span": [
+       333,
+       402
+      ]
+     },
+     "quiet": {
+      "window": 1168,
+      "at": 237,
+      "rel": 0.036,
+      "match": "phrase",
+      "span": [
+       177,
+       246
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 357,
+      "at": 172,
+      "rel": 0.527,
+      "span": [
+       112,
+       181
+      ]
+     },
+     "quiet": {
+      "window": 555,
+      "at": 306,
+      "rel": 0.032,
+      "match": "after",
+      "span": [
+       246,
+       315
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 2953,
+      "at": 219,
+      "rel": 0.37,
+      "span": [
+       159,
+       228
+      ]
+     },
+     "quiet": {
+      "window": 2627,
+      "at": 455,
+      "rel": 0.04,
+      "match": "phrase",
+      "span": [
+       395,
+       464
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 421,
+      "at": 441,
+      "rel": 0.357,
+      "span": [
+       381,
+       450
+      ]
+     },
+     "quiet": {
+      "window": 662,
+      "at": 159,
+      "rel": 0.04,
+      "match": "phrase",
+      "span": [
+       99,
+       168
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3585,
+      "at": 33,
+      "rel": 0.47,
+      "span": [
+       1,
+       42
+      ]
+     },
+     "quiet": {
+      "window": 1194,
+      "at": 90,
+      "rel": 0.044,
+      "match": "phrase",
+      "span": [
+       58,
+       99
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 2407,
+      "at": 272,
+      "rel": 0.392,
+      "span": [
+       212,
+       281
+      ]
+     },
+     "quiet": {
+      "window": 2896,
+      "at": 357,
+      "rel": 0.033,
+      "match": "phrase",
+      "span": [
+       297,
+       366
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3139,
+      "at": 310,
+      "rel": 0.37,
+      "span": [
+       250,
+       319
+      ]
+     },
+     "quiet": {
+      "window": 3021,
+      "at": 399,
+      "rel": 0.036,
+      "match": "phrase",
+      "span": [
+       339,
+       408
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1885,
+      "at": 243,
+      "rel": 0.559,
+      "span": [
+       183,
+       252
+      ]
+     },
+     "quiet": {
+      "window": 17,
+      "at": 96,
+      "rel": 0.042,
+      "match": "phrase",
+      "span": [
+       36,
+       105
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "b",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "a",
+    "b",
+    "a",
+    "b",
+    "b",
+    "b",
+    "b"
+   ]
+  },
+  "L45-n8497p": {
+   "own_pattern": {
+    "pairs": 11,
+    "right": 8,
+    "unanswered": 0,
+    "p": 0.1133,
+    "near_pairs": {
+     "pairs": 11,
+     "right": 8,
+     "p": 0.1133
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 1
+     },
+     "before": {
+      "pairs": 3,
+      "right": 3
+     },
+     "after": {
+      "pairs": 2,
+      "right": 2
+     },
+     "word": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "strong_pairs": {
+     "pairs": 5,
+     "right": 5,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 2753,
+     "tried": 6,
+     "fired": 0,
+     "quiet": 4
+    },
+    "before": {
+     "found": 156,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "after": {
+     "found": 93,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "word": {
+     "found": 9,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 3
+     },
+     "before": {
+      "pairs": 3,
+      "right": 2
+     },
+     "after": {
+      "pairs": 2,
+      "right": 1
+     },
+     "word": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "near_pairs": {
+     "pairs": 11,
+     "right": 8,
+     "p": 0.1133
+    },
+    "strong_pairs": {
+     "pairs": 5,
+     "right": 3,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 11,
+    "right": 8,
+    "unanswered": 0,
+    "p": 0.1133
+   },
+   "other_pattern_of": "L45-n16700m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3213,
+      "at": 154,
+      "rel": 0.654,
+      "span": [
+       94,
+       163
+      ]
+     },
+     "quiet": {
+      "window": 122,
+      "at": 429,
+      "rel": 0.196,
+      "match": "phrase",
+      "span": [
+       369,
+       438
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 153,
+      "at": 19,
+      "rel": 0.336,
+      "span": [
+       1,
+       28
+      ]
+     },
+     "quiet": {
+      "window": 154,
+      "at": 303,
+      "rel": 0.06,
+      "match": "phrase",
+      "span": [
+       285,
+       312
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 3141,
+      "at": 53,
+      "rel": 0.427,
+      "span": [
+       53,
+       62
+      ]
+     },
+     "quiet": {
+      "window": 2074,
+      "at": 155,
+      "rel": 0.017,
+      "match": "phrase",
+      "span": [
+       155,
+       164
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 2507,
+      "at": 7,
+      "rel": 0.446,
+      "span": [
+       1,
+       16
+      ]
+     },
+     "quiet": {
+      "window": 2506,
+      "at": 504,
+      "rel": 0.103,
+      "match": "phrase",
+      "span": [
+       498,
+       512
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3759,
+      "at": 58,
+      "rel": 0.531,
+      "span": [
+       1,
+       67
+      ]
+     },
+     "quiet": {
+      "window": 1114,
+      "at": 405,
+      "rel": 0.042,
+      "match": "after",
+      "span": [
+       348,
+       414
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3855,
+      "at": 15,
+      "rel": 0.404,
+      "span": [
+       1,
+       24
+      ]
+     },
+     "quiet": {
+      "window": 62,
+      "at": 239,
+      "rel": 0.052,
+      "match": "after",
+      "span": [
+       225,
+       248
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 63,
+      "at": 21,
+      "rel": 0.675,
+      "span": [
+       1,
+       30
+      ]
+     },
+     "quiet": {
+      "window": 1015,
+      "at": 354,
+      "rel": 0.063,
+      "match": "before",
+      "span": [
+       334,
+       363
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1793,
+      "at": 172,
+      "rel": 1.0,
+      "span": [
+       112,
+       181
+      ]
+     },
+     "quiet": {
+      "window": 3482,
+      "at": 391,
+      "rel": 0.031,
+      "match": "before",
+      "span": [
+       331,
+       400
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3023,
+      "at": 5,
+      "rel": 0.369,
+      "span": [
+       1,
+       14
+      ]
+     },
+     "quiet": {
+      "window": 2641,
+      "at": 34,
+      "rel": 0.042,
+      "match": "word",
+      "span": [
+       30,
+       43
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1041,
+      "at": 53,
+      "rel": 0.343,
+      "span": [
+       1,
+       62
+      ]
+     },
+     "quiet": {
+      "window": 2116,
+      "at": 392,
+      "rel": 0.045,
+      "match": "before",
+      "span": [
+       340,
+       401
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3139,
+      "at": 405,
+      "rel": 0.909,
+      "span": [
+       345,
+       414
+      ]
+     },
+     "quiet": {
+      "window": 3428,
+      "at": 222,
+      "rel": 0.055,
+      "match": "word",
+      "span": [
+       162,
+       231
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a"
+   ]
+  },
+  "L45-n16700m": {
+   "own_pattern": {
+    "pairs": 7,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.0625,
+    "near_pairs": {
+     "pairs": 7,
+     "right": 6,
+     "p": 0.0625
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 1,
+      "right": 1
+     },
+     "before": {
+      "pairs": 6,
+      "right": 5
+     }
+    },
+    "strong_pairs": {
+     "pairs": 7,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 84,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "before": {
+     "found": 206,
+     "tried": 6,
+     "fired": 0,
+     "quiet": 6
+    },
+    "after": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 1,
+      "right": 1
+     },
+     "before": {
+      "pairs": 6,
+      "right": 4
+     }
+    },
+    "near_pairs": {
+     "pairs": 7,
+     "right": 5,
+     "p": 0.2266
+    },
+    "strong_pairs": {
+     "pairs": 7,
+     "right": 5,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 7,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.2266
+   },
+   "other_pattern_of": "L2-n2099p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1649,
+      "at": 349,
+      "rel": 0.709,
+      "span": [
+       289,
+       358
+      ]
+     },
+     "quiet": {
+      "window": 2320,
+      "at": 371,
+      "rel": 0.018,
+      "match": "before",
+      "span": [
+       311,
+       380
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 907,
+      "at": 168,
+      "rel": 0.579,
+      "span": [
+       108,
+       177
+      ]
+     },
+     "quiet": {
+      "window": 1907,
+      "at": 301,
+      "rel": 0.063,
+      "match": "before",
+      "span": [
+       241,
+       310
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 569,
+      "at": 98,
+      "rel": 0.642,
+      "span": [
+       38,
+       107
+      ]
+     },
+     "quiet": {
+      "window": 2390,
+      "at": 242,
+      "rel": 0.036,
+      "match": "before",
+      "span": [
+       182,
+       251
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2447,
+      "at": 163,
+      "rel": 0.709,
+      "span": [
+       148,
+       172
+      ]
+     },
+     "quiet": {
+      "window": 2446,
+      "at": 299,
+      "rel": 0.011,
+      "match": "before",
+      "span": [
+       284,
+       308
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2797,
+      "at": 405,
+      "rel": 0.634,
+      "span": [
+       403,
+       414
+      ]
+     },
+     "quiet": {
+      "window": 2627,
+      "at": 80,
+      "rel": 0.007,
+      "match": "before",
+      "span": [
+       78,
+       89
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3879,
+      "at": 75,
+      "rel": 0.547,
+      "span": [
+       15,
+       84
+      ]
+     },
+     "quiet": {
+      "window": 3013,
+      "at": 256,
+      "rel": 0.011,
+      "match": "before",
+      "span": [
+       196,
+       265
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 445,
+      "at": 75,
+      "rel": 1.0,
+      "span": [
+       15,
+       84
+      ]
+     },
+     "quiet": {
+      "window": 699,
+      "at": 193,
+      "rel": 0.015,
+      "match": "phrase",
+      "span": [
+       133,
+       202
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a",
+    "b"
+   ]
+  },
+  "L56-n3342p": {
+   "own_pattern": {
+    "pairs": 10,
+    "right": 8,
+    "unanswered": 0,
+    "p": 0.0547,
+    "near_pairs": {
+     "pairs": 10,
+     "right": 8,
+     "p": 0.0547
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 3
+     },
+     "before": {
+      "pairs": 2,
+      "right": 2
+     },
+     "after": {
+      "pairs": 2,
+      "right": 1
+     },
+     "word": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "strong_pairs": {
+     "pairs": 5,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 89,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "before": {
+     "found": 6,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "after": {
+     "found": 7,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 2
+    },
+    "word": {
+     "found": 16,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 2
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 2
+     },
+     "before": {
+      "pairs": 2,
+      "right": 1
+     },
+     "after": {
+      "pairs": 2,
+      "right": 2
+     },
+     "word": {
+      "pairs": 2,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 10,
+     "right": 5,
+     "p": 0.623
+    },
+    "strong_pairs": {
+     "pairs": 5,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 10,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.623
+   },
+   "other_pattern_of": "L26-n14541m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 2417,
+      "at": 314,
+      "rel": 0.641,
+      "span": [
+       254,
+       323
+      ]
+     },
+     "quiet": {
+      "window": 3424,
+      "at": 184,
+      "rel": 0.006,
+      "match": "phrase",
+      "span": [
+       124,
+       193
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 825,
+      "at": 321,
+      "rel": 0.384,
+      "span": [
+       261,
+       330
+      ]
+     },
+     "quiet": {
+      "window": 775,
+      "at": 244,
+      "rel": 0.009,
+      "match": "phrase",
+      "span": [
+       184,
+       253
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1797,
+      "at": 76,
+      "rel": 0.486,
+      "span": [
+       16,
+       85
+      ]
+     },
+     "quiet": {
+      "window": 2424,
+      "at": 61,
+      "rel": 0.09,
+      "match": "word",
+      "span": [
+       1,
+       70
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2027,
+      "at": 219,
+      "rel": 0.443,
+      "span": [
+       159,
+       228
+      ]
+     },
+     "quiet": {
+      "window": 2424,
+      "at": 61,
+      "rel": 0.09,
+      "match": "word",
+      "span": [
+       1,
+       70
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3337,
+      "at": 199,
+      "rel": 0.668,
+      "span": [
+       139,
+       208
+      ]
+     },
+     "quiet": {
+      "window": 2749,
+      "at": 150,
+      "rel": 0.004,
+      "match": "phrase",
+      "span": [
+       90,
+       159
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 483,
+      "at": 226,
+      "rel": 0.559,
+      "span": [
+       166,
+       235
+      ]
+     },
+     "quiet": {
+      "window": 2412,
+      "at": 490,
+      "rel": 0.024,
+      "match": "phrase",
+      "span": [
+       430,
+       499
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 687,
+      "at": 93,
+      "rel": 0.486,
+      "span": [
+       33,
+       102
+      ]
+     },
+     "quiet": {
+      "window": 1114,
+      "at": 353,
+      "rel": 0.21,
+      "match": "after",
+      "span": [
+       293,
+       362
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1665,
+      "at": 470,
+      "rel": 0.393,
+      "span": [
+       410,
+       479
+      ]
+     },
+     "quiet": {
+      "window": 3648,
+      "at": 148,
+      "rel": 0.026,
+      "match": "before",
+      "span": [
+       88,
+       157
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2025,
+      "at": 75,
+      "rel": 1.0,
+      "span": [
+       15,
+       84
+      ]
+     },
+     "quiet": {
+      "window": 280,
+      "at": 402,
+      "rel": 0.008,
+      "match": "before",
+      "span": [
+       342,
+       411
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1651,
+      "at": 216,
+      "rel": 0.768,
+      "span": [
+       156,
+       225
+      ]
+     },
+     "quiet": {
+      "window": 290,
+      "at": 420,
+      "rel": 0.007,
+      "match": "after",
+      "span": [
+       360,
+       429
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "b"
+   ],
+   "picks_other": [
+    "b",
+    "b",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "b",
+    "b",
+    "b"
+   ]
+  },
+  "L26-n14541m": {
+   "own_pattern": {
+    "pairs": 11,
+    "right": 10,
+    "unanswered": 0,
+    "p": 0.0059,
+    "near_pairs": {
+     "pairs": 11,
+     "right": 10,
+     "p": 0.0059
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 10,
+      "right": 9
+     },
+     "before": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "strong_pairs": {
+     "pairs": 11,
+     "right": 10,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 269,
+     "tried": 11,
+     "fired": 0,
+     "quiet": 10
+    },
+    "before": {
+     "found": 325,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "after": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 10,
+      "right": 5
+     },
+     "before": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 11,
+     "right": 6,
+     "p": 0.5
+    },
+    "strong_pairs": {
+     "pairs": 11,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 11,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.5
+   },
+   "other_pattern_of": "L56-n19940m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3229,
+      "at": 380,
+      "rel": 0.697,
+      "span": [
+       320,
+       389
+      ]
+     },
+     "quiet": {
+      "window": 272,
+      "at": 172,
+      "rel": 0.122,
+      "match": "phrase",
+      "span": [
+       112,
+       181
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2415,
+      "at": 464,
+      "rel": 0.558,
+      "span": [
+       404,
+       473
+      ]
+     },
+     "quiet": {
+      "window": 1042,
+      "at": 176,
+      "rel": 0.171,
+      "match": "phrase",
+      "span": [
+       116,
+       185
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3311,
+      "at": 504,
+      "rel": 0.658,
+      "span": [
+       444,
+       512
+      ]
+     },
+     "quiet": {
+      "window": 3312,
+      "at": 120,
+      "rel": 0.206,
+      "match": "phrase",
+      "span": [
+       60,
+       128
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1543,
+      "at": 154,
+      "rel": 0.664,
+      "span": [
+       94,
+       163
+      ]
+     },
+     "quiet": {
+      "window": 1882,
+      "at": 394,
+      "rel": 0.144,
+      "match": "phrase",
+      "span": [
+       334,
+       403
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1733,
+      "at": 181,
+      "rel": 0.669,
+      "span": [
+       121,
+       190
+      ]
+     },
+     "quiet": {
+      "window": 1001,
+      "at": 203,
+      "rel": 0.161,
+      "match": "before",
+      "span": [
+       143,
+       212
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3347,
+      "at": 159,
+      "rel": 0.656,
+      "span": [
+       99,
+       168
+      ]
+     },
+     "quiet": {
+      "window": 3348,
+      "at": 89,
+      "rel": 0.179,
+      "match": "phrase",
+      "span": [
+       29,
+       98
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2097,
+      "at": 429,
+      "rel": 0.733,
+      "span": [
+       369,
+       438
+      ]
+     },
+     "quiet": {
+      "window": 1538,
+      "at": 321,
+      "rel": 0.125,
+      "match": "phrase",
+      "span": [
+       261,
+       330
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1633,
+      "at": 403,
+      "rel": 0.822,
+      "span": [
+       343,
+       412
+      ]
+     },
+     "quiet": {
+      "window": 1627,
+      "at": 403,
+      "rel": 0.127,
+      "match": "phrase",
+      "span": [
+       343,
+       412
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2437,
+      "at": 347,
+      "rel": 0.567,
+      "span": [
+       287,
+       356
+      ]
+     },
+     "quiet": {
+      "window": 2438,
+      "at": 324,
+      "rel": 0.153,
+      "match": "phrase",
+      "span": [
+       264,
+       333
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 889,
+      "at": 297,
+      "rel": 0.517,
+      "span": [
+       237,
+       306
+      ]
+     },
+     "quiet": {
+      "window": 887,
+      "at": 153,
+      "rel": 0.194,
+      "match": "phrase",
+      "span": [
+       93,
+       162
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 243,
+      "at": 177,
+      "rel": 0.767,
+      "span": [
+       117,
+       186
+      ]
+     },
+     "quiet": {
+      "window": 244,
+      "at": 203,
+      "rel": 0.24,
+      "match": "phrase",
+      "span": [
+       143,
+       212
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b"
+   ],
+   "picks_other": [
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b",
+    "a"
+   ]
+  },
+  "L56-n19940m": {
+   "own_pattern": {
+    "pairs": 6,
+    "right": 4,
+    "unanswered": 0,
+    "p": 0.3438,
+    "near_pairs": {
+     "pairs": 6,
+     "right": 4,
+     "p": 0.3438
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 2
+     },
+     "before": {
+      "pairs": 3,
+      "right": 2
+     }
+    },
+    "strong_pairs": {
+     "pairs": 3,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 380,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "before": {
+     "found": 11576,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "after": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 2
+     },
+     "before": {
+      "pairs": 3,
+      "right": 3
+     }
+    },
+    "near_pairs": {
+     "pairs": 6,
+     "right": 5,
+     "p": 0.1094
+    },
+    "strong_pairs": {
+     "pairs": 3,
+     "right": 2,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 6,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.1094
+   },
+   "other_pattern_of": "L31-n20806p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1171,
+      "at": 239,
+      "rel": 0.663,
+      "span": [
+       179,
+       248
+      ]
+     },
+     "quiet": {
+      "window": 1691,
+      "at": 229,
+      "rel": 0.055,
+      "match": "before",
+      "span": [
+       169,
+       238
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2605,
+      "at": 390,
+      "rel": 0.422,
+      "span": [
+       330,
+       399
+      ]
+     },
+     "quiet": {
+      "window": 2393,
+      "at": 288,
+      "rel": 0.036,
+      "match": "phrase",
+      "span": [
+       228,
+       297
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2963,
+      "at": 130,
+      "rel": 0.473,
+      "span": [
+       70,
+       139
+      ]
+     },
+     "quiet": {
+      "window": 1598,
+      "at": 301,
+      "rel": 0.055,
+      "match": "before",
+      "span": [
+       241,
+       310
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1649,
+      "at": 509,
+      "rel": 0.453,
+      "span": [
+       449,
+       512
+      ]
+     },
+     "quiet": {
+      "window": 436,
+      "at": 226,
+      "rel": 0.043,
+      "match": "before",
+      "span": [
+       166,
+       229
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2505,
+      "at": 26,
+      "rel": 0.561,
+      "span": [
+       1,
+       35
+      ]
+     },
+     "quiet": {
+      "window": 1989,
+      "at": 48,
+      "rel": 0.044,
+      "match": "phrase",
+      "span": [
+       23,
+       57
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1041,
+      "at": 188,
+      "rel": 0.992,
+      "span": [
+       128,
+       194
+      ]
+     },
+     "quiet": {
+      "window": 584,
+      "at": 148,
+      "rel": 0.117,
+      "match": "phrase",
+      "span": [
+       88,
+       154
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a"
+   ]
+  },
+  "L31-n20806p": {
+   "own_pattern": {
+    "pairs": 12,
+    "right": 7,
+    "unanswered": 0,
+    "p": 0.3872,
+    "near_pairs": {
+     "pairs": 11,
+     "right": 6,
+     "p": 0.5
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 3
+     },
+     "before": {
+      "pairs": 4,
+      "right": 1
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 2,
+      "right": 1
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 7,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 7,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "before": {
+     "found": 14,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "after": {
+     "found": 2,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "word": {
+     "found": 164,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 2
+     },
+     "before": {
+      "pairs": 4,
+      "right": 1
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 2,
+      "right": 0
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 11,
+     "right": 4,
+     "p": 0.8867
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 12,
+    "right": 4,
+    "unanswered": 0,
+    "p": 0.927
+   },
+   "other_pattern_of": "L36-n15041m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3913,
+      "at": 5,
+      "rel": 0.856,
+      "span": [
+       1,
+       14
+      ]
+     },
+     "quiet": {
+      "window": 3258,
+      "at": 492,
+      "rel": 0.026,
+      "match": "word",
+      "span": [
+       488,
+       501
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1863,
+      "at": 4,
+      "rel": 0.512,
+      "span": [
+       1,
+       13
+      ]
+     },
+     "quiet": {
+      "window": 1605,
+      "at": 207,
+      "rel": 0.031,
+      "match": "anywhere",
+      "span": [
+       204,
+       216
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 3735,
+      "at": 3,
+      "rel": 0.726,
+      "span": [
+       1,
+       12
+      ]
+     },
+     "quiet": {
+      "window": 450,
+      "at": 261,
+      "rel": 0.025,
+      "match": "before",
+      "span": [
+       259,
+       270
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3305,
+      "at": 54,
+      "rel": 0.791,
+      "span": [
+       1,
+       63
+      ]
+     },
+     "quiet": {
+      "window": 3436,
+      "at": 250,
+      "rel": 0.038,
+      "match": "after",
+      "span": [
+       197,
+       259
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2519,
+      "at": 478,
+      "rel": 0.819,
+      "span": [
+       418,
+       487
+      ]
+     },
+     "quiet": {
+      "window": 2515,
+      "at": 263,
+      "rel": 0.043,
+      "match": "phrase",
+      "span": [
+       203,
+       272
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 1491,
+      "at": 3,
+      "rel": 0.763,
+      "span": [
+       1,
+       12
+      ]
+     },
+     "quiet": {
+      "window": 3751,
+      "at": 265,
+      "rel": 0.031,
+      "match": "phrase",
+      "span": [
+       263,
+       274
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 3093,
+      "at": 8,
+      "rel": 0.547,
+      "span": [
+       1,
+       17
+      ]
+     },
+     "quiet": {
+      "window": 2113,
+      "at": 410,
+      "rel": 0.022,
+      "match": "word",
+      "span": [
+       403,
+       419
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 915,
+      "at": 2,
+      "rel": 0.912,
+      "span": [
+       1,
+       11
+      ]
+     },
+     "quiet": {
+      "window": 1811,
+      "at": 177,
+      "rel": 0.034,
+      "match": "before",
+      "span": [
+       176,
+       186
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1823,
+      "at": 2,
+      "rel": 0.823,
+      "span": [
+       1,
+       11
+      ]
+     },
+     "quiet": {
+      "window": 3684,
+      "at": 306,
+      "rel": 0.017,
+      "match": "before",
+      "span": [
+       305,
+       315
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2521,
+      "at": 260,
+      "rel": 0.912,
+      "span": [
+       200,
+       269
+      ]
+     },
+     "quiet": {
+      "window": 2781,
+      "at": 353,
+      "rel": 0.038,
+      "match": "phrase",
+      "span": [
+       293,
+       362
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3879,
+      "at": 3,
+      "rel": 0.772,
+      "span": [
+       1,
+       12
+      ]
+     },
+     "quiet": {
+      "window": 2842,
+      "at": 241,
+      "rel": 0.036,
+      "match": "phrase",
+      "span": [
+       239,
+       250
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 369,
+      "at": 5,
+      "rel": 0.888,
+      "span": [
+       1,
+       14
+      ]
+     },
+     "quiet": {
+      "window": 3035,
+      "at": 311,
+      "rel": 0.017,
+      "match": "before",
+      "span": [
+       307,
+       320
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b",
+    "b"
+   ]
+  },
+  "L36-n15041m": {
+   "own_pattern": {
+    "pairs": 12,
+    "right": 9,
+    "unanswered": 0,
+    "p": 0.073,
+    "near_pairs": {
+     "pairs": 12,
+     "right": 9,
+     "p": 0.073
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 5,
+      "right": 4
+     },
+     "before": {
+      "pairs": 2,
+      "right": 0
+     },
+     "after": {
+      "pairs": 3,
+      "right": 3
+     },
+     "word": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 9,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 623,
+     "tried": 6,
+     "fired": 0,
+     "quiet": 5
+    },
+    "before": {
+     "found": 21,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "after": {
+     "found": 1930,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "word": {
+     "found": 113,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 5,
+      "right": 3
+     },
+     "before": {
+      "pairs": 2,
+      "right": 2
+     },
+     "after": {
+      "pairs": 3,
+      "right": 3
+     },
+     "word": {
+      "pairs": 2,
+      "right": 2
+     }
+    },
+    "near_pairs": {
+     "pairs": 12,
+     "right": 10,
+     "p": 0.0193
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 10,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 12,
+    "right": 10,
+    "unanswered": 0,
+    "p": 0.0193
+   },
+   "other_pattern_of": "L31-n7731p",
+   "by_pair": [
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2645,
+      "at": 397,
+      "rel": 0.82,
+      "span": [
+       337,
+       406
+      ]
+     },
+     "quiet": {
+      "window": 643,
+      "at": 190,
+      "rel": 0.164,
+      "match": "after",
+      "span": [
+       130,
+       199
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1929,
+      "at": 376,
+      "rel": 0.528,
+      "span": [
+       316,
+       385
+      ]
+     },
+     "quiet": {
+      "window": 3171,
+      "at": 391,
+      "rel": 0.147,
+      "match": "before",
+      "span": [
+       331,
+       400
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 517,
+      "at": 360,
+      "rel": 0.665,
+      "span": [
+       359,
+       369
+      ]
+     },
+     "quiet": {
+      "window": 2221,
+      "at": 294,
+      "rel": 0.012,
+      "match": "phrase",
+      "span": [
+       293,
+       303
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1985,
+      "at": 471,
+      "rel": 0.764,
+      "span": [
+       411,
+       480
+      ]
+     },
+     "quiet": {
+      "window": 266,
+      "at": 90,
+      "rel": 0.09,
+      "match": "phrase",
+      "span": [
+       30,
+       99
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2295,
+      "at": 479,
+      "rel": 0.771,
+      "span": [
+       419,
+       488
+      ]
+     },
+     "quiet": {
+      "window": 1304,
+      "at": 502,
+      "rel": 0.061,
+      "match": "after",
+      "span": [
+       442,
+       511
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1539,
+      "at": 284,
+      "rel": 0.736,
+      "span": [
+       224,
+       293
+      ]
+     },
+     "quiet": {
+      "window": 3156,
+      "at": 367,
+      "rel": 0.113,
+      "match": "phrase",
+      "span": [
+       307,
+       376
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 79,
+      "at": 348,
+      "rel": 0.799,
+      "span": [
+       323,
+       357
+      ]
+     },
+     "quiet": {
+      "window": 3573,
+      "at": 125,
+      "rel": 0.225,
+      "match": "before",
+      "span": [
+       100,
+       134
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3413,
+      "at": 439,
+      "rel": 0.972,
+      "span": [
+       379,
+       448
+      ]
+     },
+     "quiet": {
+      "window": 2866,
+      "at": 484,
+      "rel": 0.038,
+      "match": "word",
+      "span": [
+       424,
+       493
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3103,
+      "at": 53,
+      "rel": 0.644,
+      "span": [
+       1,
+       62
+      ]
+     },
+     "quiet": {
+      "window": 592,
+      "at": 57,
+      "rel": 0.068,
+      "match": "after",
+      "span": [
+       5,
+       66
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1023,
+      "at": 417,
+      "rel": 0.901,
+      "span": [
+       357,
+       426
+      ]
+     },
+     "quiet": {
+      "window": 1021,
+      "at": 89,
+      "rel": 0.139,
+      "match": "phrase",
+      "span": [
+       29,
+       98
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1703,
+      "at": 330,
+      "rel": 0.852,
+      "span": [
+       270,
+       339
+      ]
+     },
+     "quiet": {
+      "window": 256,
+      "at": 394,
+      "rel": 0.205,
+      "match": "phrase",
+      "span": [
+       334,
+       403
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3075,
+      "at": 54,
+      "rel": 0.739,
+      "span": [
+       1,
+       63
+      ]
+     },
+     "quiet": {
+      "window": 2427,
+      "at": 348,
+      "rel": 0.092,
+      "match": "word",
+      "span": [
+       295,
+       357
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "a",
+    "a",
+    "a",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "b",
+    "b",
+    "b"
+   ]
+  },
+  "L31-n7731p": {
+   "own_pattern": {
+    "pairs": 8,
+    "right": 8,
+    "unanswered": 0,
+    "p": 0.0039,
+    "near_pairs": {
+     "pairs": 7,
+     "right": 7,
+     "p": 0.0078
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 2
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 4,
+      "right": 4
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "strong_pairs": {
+     "pairs": 6,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 41,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 2
+    },
+    "before": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "after": {
+     "found": 7,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 1
+    },
+    "word": {
+     "found": 137115,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 0
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 4,
+      "right": 0
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 7,
+     "right": 1,
+     "p": 0.9922
+    },
+    "strong_pairs": {
+     "pairs": 6,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 8,
+    "right": 1,
+    "unanswered": 0,
+    "p": 0.9961
+   },
+   "other_pattern_of": "L2-n16560p",
+   "by_pair": [
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1303,
+      "at": 42,
+      "rel": 0.649,
+      "span": [
+       1,
+       51
+      ]
+     },
+     "quiet": {
+      "window": 1301,
+      "at": 244,
+      "rel": 0.065,
+      "match": "phrase",
+      "span": [
+       203,
+       253
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3311,
+      "at": 158,
+      "rel": 0.681,
+      "span": [
+       98,
+       167
+      ]
+     },
+     "quiet": {
+      "window": 3303,
+      "at": 125,
+      "rel": 0.177,
+      "match": "word",
+      "span": [
+       65,
+       134
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2049,
+      "at": 98,
+      "rel": 0.504,
+      "span": [
+       38,
+       107
+      ]
+     },
+     "quiet": {
+      "window": 2464,
+      "at": 116,
+      "rel": 0.097,
+      "match": "after",
+      "span": [
+       56,
+       125
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3625,
+      "at": 260,
+      "rel": 0.479,
+      "span": [
+       200,
+       269
+      ]
+     },
+     "quiet": {
+      "window": 495,
+      "at": 156,
+      "rel": 0.049,
+      "match": "anywhere",
+      "span": [
+       96,
+       165
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 211,
+      "at": 372,
+      "rel": 0.674,
+      "span": [
+       312,
+       381
+      ]
+     },
+     "quiet": {
+      "window": 2774,
+      "at": 95,
+      "rel": 0.109,
+      "match": "word",
+      "span": [
+       35,
+       104
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1007,
+      "at": 320,
+      "rel": 0.525,
+      "span": [
+       260,
+       329
+      ]
+     },
+     "quiet": {
+      "window": 259,
+      "at": 151,
+      "rel": 0.031,
+      "match": "word",
+      "span": [
+       91,
+       160
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 209,
+      "at": 303,
+      "rel": 0.493,
+      "span": [
+       243,
+       312
+      ]
+     },
+     "quiet": {
+      "window": 3103,
+      "at": 482,
+      "rel": 0.048,
+      "match": "word",
+      "span": [
+       422,
+       491
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2043,
+      "at": 342,
+      "rel": 1.0,
+      "span": [
+       282,
+       351
+      ]
+     },
+     "quiet": {
+      "window": 2044,
+      "at": 475,
+      "rel": 0.239,
+      "match": "phrase",
+      "span": [
+       415,
+       484
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "b",
+    "a",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b"
+   ]
+  },
+  "L2-n16560p": {
+   "own_pattern": {
+    "pairs": 12,
+    "right": 12,
+    "unanswered": 0,
+    "p": 0.0002,
+    "near_pairs": {
+     "pairs": 12,
+     "right": 12,
+     "p": 0.0002
+    },
+    "by_match": {
+     "after": {
+      "pairs": 12,
+      "right": 12
+     }
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 12,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 74,
+     "tried": 45,
+     "fired": 44,
+     "quiet": 0
+    },
+    "before": {
+     "found": 557,
+     "tried": 72,
+     "fired": 65,
+     "quiet": 0
+    },
+    "after": {
+     "found": 907,
+     "tried": 15,
+     "fired": 2,
+     "quiet": 12
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "after": {
+      "pairs": 12,
+      "right": 3
+     }
+    },
+    "near_pairs": {
+     "pairs": 12,
+     "right": 3,
+     "p": 0.9807
+    },
+    "strong_pairs": {
+     "pairs": 12,
+     "right": 3,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 12,
+    "right": 3,
+    "unanswered": 0,
+    "p": 0.9807
+   },
+   "other_pattern_of": "L56-n3342p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1469,
+      "at": 492,
+      "rel": 0.905,
+      "span": [
+       432,
+       501
+      ]
+     },
+     "quiet": {
+      "window": 507,
+      "at": 169,
+      "rel": 0.032,
+      "match": "after",
+      "span": [
+       109,
+       178
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3419,
+      "at": 338,
+      "rel": 0.825,
+      "span": [
+       278,
+       347
+      ]
+     },
+     "quiet": {
+      "window": 1537,
+      "at": 427,
+      "rel": 0.004,
+      "match": "after",
+      "span": [
+       367,
+       436
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 25,
+      "at": 472,
+      "rel": 0.863,
+      "span": [
+       465,
+       481
+      ]
+     },
+     "quiet": {
+      "window": 3286,
+      "at": 307,
+      "rel": 0.038,
+      "match": "after",
+      "span": [
+       300,
+       316
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3075,
+      "at": 396,
+      "rel": 0.867,
+      "span": [
+       336,
+       405
+      ]
+     },
+     "quiet": {
+      "window": 1372,
+      "at": 479,
+      "rel": 0.003,
+      "match": "after",
+      "span": [
+       419,
+       488
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1453,
+      "at": 506,
+      "rel": 0.834,
+      "span": [
+       446,
+       512
+      ]
+     },
+     "quiet": {
+      "window": 1610,
+      "at": 471,
+      "rel": 0.003,
+      "match": "after",
+      "span": [
+       411,
+       477
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 703,
+      "at": 451,
+      "rel": 0.867,
+      "span": [
+       391,
+       460
+      ]
+     },
+     "quiet": {
+      "window": 683,
+      "at": 111,
+      "rel": 0.002,
+      "match": "after",
+      "span": [
+       51,
+       120
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1073,
+      "at": 353,
+      "rel": 0.991,
+      "span": [
+       293,
+       362
+      ]
+     },
+     "quiet": {
+      "window": 3129,
+      "at": 455,
+      "rel": 0.001,
+      "match": "after",
+      "span": [
+       395,
+       464
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 791,
+      "at": 290,
+      "rel": 0.839,
+      "span": [
+       230,
+       299
+      ]
+     },
+     "quiet": {
+      "window": 3436,
+      "at": 277,
+      "rel": 0.003,
+      "match": "after",
+      "span": [
+       217,
+       286
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1605,
+      "at": 234,
+      "rel": 0.967,
+      "span": [
+       174,
+       243
+      ]
+     },
+     "quiet": {
+      "window": 2098,
+      "at": 242,
+      "rel": 0.002,
+      "match": "after",
+      "span": [
+       182,
+       251
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2839,
+      "at": 177,
+      "rel": 0.915,
+      "span": [
+       117,
+       186
+      ]
+     },
+     "quiet": {
+      "window": 397,
+      "at": 441,
+      "rel": 0.032,
+      "match": "after",
+      "span": [
+       381,
+       450
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1529,
+      "at": 205,
+      "rel": 0.844,
+      "span": [
+       145,
+       214
+      ]
+     },
+     "quiet": {
+      "window": 3048,
+      "at": 108,
+      "rel": 0.002,
+      "match": "after",
+      "span": [
+       48,
+       117
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3451,
+      "at": 102,
+      "rel": 0.706,
+      "span": [
+       65,
+       111
+      ]
+     },
+     "quiet": {
+      "window": 1158,
+      "at": 139,
+      "rel": 0.003,
+      "match": "after",
+      "span": [
+       102,
+       148
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b",
+    "b",
+    "a",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b",
+    "a",
+    "a",
+    "b",
+    "b",
+    "b",
+    "a"
+   ]
+  },
+  "L36-n13610p": {
+   "own_pattern": {
+    "pairs": 9,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.2539,
+    "near_pairs": {
+     "pairs": 8,
+     "right": 6,
+     "p": 0.1445
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 1
+     },
+     "before": {
+      "pairs": 4,
+      "right": 3
+     },
+     "after": {
+      "pairs": 2,
+      "right": 2
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "strong_pairs": {
+     "pairs": 1,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 2965,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "before": {
+     "found": 1891,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "after": {
+     "found": 7,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "word": {
+     "found": 880,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 1
+     },
+     "before": {
+      "pairs": 4,
+      "right": 3
+     },
+     "after": {
+      "pairs": 2,
+      "right": 2
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 8,
+     "right": 6,
+     "p": 0.1445
+    },
+    "strong_pairs": {
+     "pairs": 1,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 9,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.2539
+   },
+   "other_pattern_of": "L14-n16551m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1369,
+      "at": 207,
+      "rel": 0.448,
+      "span": [
+       147,
+       216
+      ]
+     },
+     "quiet": {
+      "window": 1686,
+      "at": 114,
+      "rel": 0.04,
+      "match": "before",
+      "span": [
+       54,
+       123
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2489,
+      "at": 480,
+      "rel": 0.336,
+      "span": [
+       420,
+       489
+      ]
+     },
+     "quiet": {
+      "window": 3532,
+      "at": 444,
+      "rel": 0.064,
+      "match": "before",
+      "span": [
+       384,
+       453
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 3785,
+      "at": 186,
+      "rel": 0.397,
+      "span": [
+       155,
+       195
+      ]
+     },
+     "quiet": {
+      "window": 3037,
+      "at": 439,
+      "rel": 0.015,
+      "match": "phrase",
+      "span": [
+       408,
+       448
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 1193,
+      "at": 331,
+      "rel": 0.372,
+      "span": [
+       331,
+       340
+      ]
+     },
+     "quiet": {
+      "window": 1633,
+      "at": 227,
+      "rel": 0.01,
+      "match": "anywhere",
+      "span": [
+       227,
+       236
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2487,
+      "at": 492,
+      "rel": 0.471,
+      "span": [
+       432,
+       501
+      ]
+     },
+     "quiet": {
+      "window": 2246,
+      "at": 219,
+      "rel": 0.03,
+      "match": "after",
+      "span": [
+       159,
+       228
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 1353,
+      "at": 89,
+      "rel": 0.444,
+      "span": [
+       29,
+       98
+      ]
+     },
+     "quiet": {
+      "window": 1311,
+      "at": 249,
+      "rel": 0.051,
+      "match": "before",
+      "span": [
+       189,
+       258
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 715,
+      "at": 50,
+      "rel": 0.383,
+      "span": [
+       1,
+       59
+      ]
+     },
+     "quiet": {
+      "window": 416,
+      "at": 161,
+      "rel": 0.037,
+      "match": "before",
+      "span": [
+       112,
+       170
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2497,
+      "at": 113,
+      "rel": 1.0,
+      "span": [
+       53,
+       122
+      ]
+     },
+     "quiet": {
+      "window": 2011,
+      "at": 218,
+      "rel": 0.028,
+      "match": "after",
+      "span": [
+       158,
+       227
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3085,
+      "at": 426,
+      "rel": 0.484,
+      "span": [
+       366,
+       435
+      ]
+     },
+     "quiet": {
+      "window": 2890,
+      "at": 403,
+      "rel": 0.038,
+      "match": "phrase",
+      "span": [
+       343,
+       412
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b"
+   ],
+   "picks_other": [
+    "b",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "b"
+   ]
+  },
+  "L14-n16551m": {
+   "own_pattern": {
+    "pairs": 7,
+    "right": 7,
+    "unanswered": 0,
+    "p": 0.0078,
+    "near_pairs": {
+     "pairs": 7,
+     "right": 7,
+     "p": 0.0078
+    },
+    "by_match": {
+     "after": {
+      "pairs": 2,
+      "right": 2
+     },
+     "word": {
+      "pairs": 5,
+      "right": 5
+     }
+    },
+    "strong_pairs": {
+     "pairs": 7,
+     "right": 7,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 2,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 0
+    },
+    "before": {
+     "found": 1,
+     "tried": 1,
+     "fired": 1,
+     "quiet": 0
+    },
+    "after": {
+     "found": 2,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "word": {
+     "found": 37375,
+     "tried": 5,
+     "fired": 0,
+     "quiet": 5
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "after": {
+      "pairs": 2,
+      "right": 1
+     },
+     "word": {
+      "pairs": 5,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 7,
+     "right": 1,
+     "p": 0.9922
+    },
+    "strong_pairs": {
+     "pairs": 7,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 7,
+    "right": 1,
+    "unanswered": 0,
+    "p": 0.9922
+   },
+   "other_pattern_of": "L2-n18138m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 591,
+      "at": 79,
+      "rel": 0.883,
+      "span": [
+       19,
+       88
+      ]
+     },
+     "quiet": {
+      "window": 1453,
+      "at": 492,
+      "rel": -0.0,
+      "match": "word",
+      "span": [
+       432,
+       501
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 501,
+      "at": 270,
+      "rel": 0.601,
+      "span": [
+       210,
+       279
+      ]
+     },
+     "quiet": {
+      "window": 3419,
+      "at": 274,
+      "rel": 0.0,
+      "match": "word",
+      "span": [
+       214,
+       283
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1323,
+      "at": 151,
+      "rel": 0.737,
+      "span": [
+       91,
+       160
+      ]
+     },
+     "quiet": {
+      "window": 2350,
+      "at": 303,
+      "rel": 0.071,
+      "match": "word",
+      "span": [
+       243,
+       312
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 499,
+      "at": 8,
+      "rel": 0.788,
+      "span": [
+       1,
+       17
+      ]
+     },
+     "quiet": {
+      "window": 3175,
+      "at": 149,
+      "rel": 0.0,
+      "match": "word",
+      "span": [
+       142,
+       158
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 343,
+      "at": 57,
+      "rel": 0.721,
+      "span": [
+       1,
+       66
+      ]
+     },
+     "quiet": {
+      "window": 1961,
+      "at": 501,
+      "rel": 0.049,
+      "match": "after",
+      "span": [
+       445,
+       510
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1573,
+      "at": 490,
+      "rel": 0.715,
+      "span": [
+       430,
+       499
+      ]
+     },
+     "quiet": {
+      "window": 443,
+      "at": 223,
+      "rel": 0.002,
+      "match": "after",
+      "span": [
+       163,
+       232
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2761,
+      "at": 8,
+      "rel": 0.922,
+      "span": [
+       1,
+       17
+      ]
+     },
+     "quiet": {
+      "window": 176,
+      "at": 120,
+      "rel": -0.0,
+      "match": "word",
+      "span": [
+       113,
+       129
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "a",
+    "b",
+    "b",
+    "b",
+    "b",
+    "a"
+   ]
+  },
+  "L2-n18138m": {
+   "own_pattern": {
+    "pairs": 10,
+    "right": 9,
+    "unanswered": 0,
+    "p": 0.0107,
+    "near_pairs": {
+     "pairs": 10,
+     "right": 9,
+     "p": 0.0107
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 2
+     },
+     "before": {
+      "pairs": 7,
+      "right": 7
+     }
+    },
+    "strong_pairs": {
+     "pairs": 10,
+     "right": 9,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 1632,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "before": {
+     "found": 1767,
+     "tried": 9,
+     "fired": 0,
+     "quiet": 7
+    },
+    "after": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 2
+     },
+     "before": {
+      "pairs": 7,
+      "right": 4
+     }
+    },
+    "near_pairs": {
+     "pairs": 10,
+     "right": 6,
+     "p": 0.377
+    },
+    "strong_pairs": {
+     "pairs": 10,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 10,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.377
+   },
+   "other_pattern_of": "L26-n4644m",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 17,
+      "at": 427,
+      "rel": 0.719,
+      "span": [
+       367,
+       436
+      ]
+     },
+     "quiet": {
+      "window": 941,
+      "at": 223,
+      "rel": 0.015,
+      "match": "before",
+      "span": [
+       163,
+       232
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2625,
+      "at": 193,
+      "rel": 0.554,
+      "span": [
+       133,
+       202
+      ]
+     },
+     "quiet": {
+      "window": 1145,
+      "at": 466,
+      "rel": 0.058,
+      "match": "before",
+      "span": [
+       406,
+       475
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2661,
+      "at": 49,
+      "rel": 0.694,
+      "span": [
+       1,
+       58
+      ]
+     },
+     "quiet": {
+      "window": 2214,
+      "at": 78,
+      "rel": 0.01,
+      "match": "before",
+      "span": [
+       30,
+       87
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 897,
+      "at": 356,
+      "rel": 0.683,
+      "span": [
+       296,
+       365
+      ]
+     },
+     "quiet": {
+      "window": 2422,
+      "at": 199,
+      "rel": 0.014,
+      "match": "before",
+      "span": [
+       139,
+       208
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1095,
+      "at": 395,
+      "rel": 0.734,
+      "span": [
+       335,
+       404
+      ]
+     },
+     "quiet": {
+      "window": 45,
+      "at": 381,
+      "rel": 0.161,
+      "match": "phrase",
+      "span": [
+       321,
+       390
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 839,
+      "at": 396,
+      "rel": 0.709,
+      "span": [
+       336,
+       405
+      ]
+     },
+     "quiet": {
+      "window": 2126,
+      "at": 253,
+      "rel": 0.139,
+      "match": "phrase",
+      "span": [
+       193,
+       262
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3419,
+      "at": 82,
+      "rel": 0.701,
+      "span": [
+       22,
+       91
+      ]
+     },
+     "quiet": {
+      "window": 3655,
+      "at": 80,
+      "rel": 0.047,
+      "match": "phrase",
+      "span": [
+       20,
+       89
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1137,
+      "at": 339,
+      "rel": 0.673,
+      "span": [
+       279,
+       348
+      ]
+     },
+     "quiet": {
+      "window": 1343,
+      "at": 213,
+      "rel": 0.016,
+      "match": "before",
+      "span": [
+       153,
+       222
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2051,
+      "at": 443,
+      "rel": 0.853,
+      "span": [
+       383,
+       452
+      ]
+     },
+     "quiet": {
+      "window": 2611,
+      "at": 185,
+      "rel": 0.009,
+      "match": "before",
+      "span": [
+       125,
+       194
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1031,
+      "at": 470,
+      "rel": 0.734,
+      "span": [
+       410,
+       479
+      ]
+     },
+     "quiet": {
+      "window": 2758,
+      "at": 305,
+      "rel": 0.234,
+      "match": "before",
+      "span": [
+       245,
+       314
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a"
+   ],
+   "picks_other": [
+    "a",
+    "b",
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a"
+   ]
+  },
+  "L26-n4644m": {
+   "own_pattern": {
+    "pairs": 9,
+    "right": 4,
+    "unanswered": 0,
+    "p": 0.7461,
+    "near_pairs": {
+     "pairs": 9,
+     "right": 4,
+     "p": 0.7461
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 1
+     },
+     "before": {
+      "pairs": 4,
+      "right": 3
+     },
+     "after": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "strong_pairs": {
+     "pairs": 9,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 39,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "before": {
+     "found": 294,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 4
+    },
+    "after": {
+     "found": 23,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 4,
+      "right": 2
+     },
+     "before": {
+      "pairs": 4,
+      "right": 3
+     },
+     "after": {
+      "pairs": 1,
+      "right": 0
+     }
+    },
+    "near_pairs": {
+     "pairs": 9,
+     "right": 5,
+     "p": 0.5
+    },
+    "strong_pairs": {
+     "pairs": 9,
+     "right": 5,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 9,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.5
+   },
+   "other_pattern_of": "L45-n4812p",
+   "by_pair": [
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2479,
+      "at": 218,
+      "rel": 0.736,
+      "span": [
+       158,
+       227
+      ]
+     },
+     "quiet": {
+      "window": 940,
+      "at": 393,
+      "rel": 0.048,
+      "match": "phrase",
+      "span": [
+       335,
+       402
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 2587,
+      "at": 72,
+      "rel": 0.536,
+      "span": [
+       12,
+       81
+      ]
+     },
+     "quiet": {
+      "window": 2717,
+      "at": 61,
+      "rel": 0.039,
+      "match": "before",
+      "span": [
+       1,
+       70
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1421,
+      "at": 13,
+      "rel": 0.625,
+      "span": [
+       1,
+       22
+      ]
+     },
+     "quiet": {
+      "window": 1443,
+      "at": 470,
+      "rel": 0.016,
+      "match": "before",
+      "span": [
+       458,
+       479
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 3387,
+      "at": 491,
+      "rel": 0.525,
+      "span": [
+       431,
+       500
+      ]
+     },
+     "quiet": {
+      "window": 650,
+      "at": 361,
+      "rel": 0.094,
+      "match": "phrase",
+      "span": [
+       301,
+       370
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3879,
+      "at": 376,
+      "rel": 0.739,
+      "span": [
+       316,
+       385
+      ]
+     },
+     "quiet": {
+      "window": 602,
+      "at": 278,
+      "rel": 0.046,
+      "match": "before",
+      "span": [
+       218,
+       287
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 3711,
+      "at": 64,
+      "rel": 0.7,
+      "span": [
+       4,
+       73
+      ]
+     },
+     "quiet": {
+      "window": 3909,
+      "at": 140,
+      "rel": 0.217,
+      "match": "phrase",
+      "span": [
+       80,
+       149
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3705,
+      "at": 100,
+      "rel": 0.621,
+      "span": [
+       40,
+       109
+      ]
+     },
+     "quiet": {
+      "window": 2865,
+      "at": 377,
+      "rel": 0.014,
+      "match": "before",
+      "span": [
+       317,
+       386
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 247,
+      "at": 178,
+      "rel": 0.971,
+      "span": [
+       118,
+       187
+      ]
+     },
+     "quiet": {
+      "window": 1461,
+      "at": 180,
+      "rel": 0.016,
+      "match": "phrase",
+      "span": [
+       120,
+       189
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 2781,
+      "at": 422,
+      "rel": 0.829,
+      "span": [
+       362,
+       431
+      ]
+     },
+     "quiet": {
+      "window": 2294,
+      "at": 120,
+      "rel": 0.044,
+      "match": "after",
+      "span": [
+       60,
+       129
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "b",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a",
+    "a",
+    "a"
+   ],
+   "picks_other": [
+    "a",
+    "b",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a"
+   ]
+  },
+  "L45-n4812p": {
+   "own_pattern": {
+    "pairs": 8,
+    "right": 8,
+    "unanswered": 0,
+    "p": 0.0039,
+    "near_pairs": {
+     "pairs": 8,
+     "right": 8,
+     "p": 0.0039
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 2
+     },
+     "before": {
+      "pairs": 3,
+      "right": 3
+     },
+     "after": {
+      "pairs": 3,
+      "right": 3
+     }
+    },
+    "strong_pairs": {
+     "pairs": 6,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 2,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    },
+    "before": {
+     "found": 175,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "after": {
+     "found": 32,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "word": {
+     "found": 0,
+     "tried": 0,
+     "fired": 0,
+     "quiet": 0
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 2,
+      "right": 2
+     },
+     "before": {
+      "pairs": 3,
+      "right": 2
+     },
+     "after": {
+      "pairs": 3,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 8,
+     "right": 5,
+     "p": 0.3633
+    },
+    "strong_pairs": {
+     "pairs": 6,
+     "right": 4,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 8,
+    "right": 5,
+    "unanswered": 0,
+    "p": 0.3633
+   },
+   "other_pattern_of": "L14-n19793p",
+   "by_pair": [
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 1665,
+      "at": 85,
+      "rel": 0.659,
+      "span": [
+       25,
+       94
+      ]
+     },
+     "quiet": {
+      "window": 57,
+      "at": 313,
+      "rel": 0.002,
+      "match": "after",
+      "span": [
+       253,
+       322
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 425,
+      "at": 405,
+      "rel": 0.787,
+      "span": [
+       376,
+       414
+      ]
+     },
+     "quiet": {
+      "window": 8,
+      "at": 173,
+      "rel": 0.095,
+      "match": "phrase",
+      "span": [
+       144,
+       182
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 2765,
+      "at": 275,
+      "rel": 0.602,
+      "span": [
+       215,
+       284
+      ]
+     },
+     "quiet": {
+      "window": 3143,
+      "at": 226,
+      "rel": 0.204,
+      "match": "before",
+      "span": [
+       166,
+       235
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 7,
+      "at": 25,
+      "rel": 0.419,
+      "span": [
+       1,
+       34
+      ]
+     },
+     "quiet": {
+      "window": 2925,
+      "at": 220,
+      "rel": 0.002,
+      "match": "after",
+      "span": [
+       196,
+       229
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 427,
+      "at": 83,
+      "rel": 0.777,
+      "span": [
+       23,
+       92
+      ]
+     },
+     "quiet": {
+      "window": 8,
+      "at": 173,
+      "rel": 0.095,
+      "match": "phrase",
+      "span": [
+       113,
+       182
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3571,
+      "at": 398,
+      "rel": 0.616,
+      "span": [
+       338,
+       407
+      ]
+     },
+     "quiet": {
+      "window": 1055,
+      "at": 405,
+      "rel": 0.002,
+      "match": "before",
+      "span": [
+       345,
+       414
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 439,
+      "at": 340,
+      "rel": 0.467,
+      "span": [
+       280,
+       349
+      ]
+     },
+     "quiet": {
+      "window": 3137,
+      "at": 95,
+      "rel": 0.004,
+      "match": "after",
+      "span": [
+       35,
+       104
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2835,
+      "at": 432,
+      "rel": 0.957,
+      "span": [
+       372,
+       441
+      ]
+     },
+     "quiet": {
+      "window": 1247,
+      "at": 155,
+      "rel": 0.006,
+      "match": "before",
+      "span": [
+       95,
+       164
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "b",
+    "b",
+    "a",
+    "b",
+    "a",
+    "b",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "b",
+    "b",
+    "a",
+    "a"
+   ]
+  },
+  "L14-n19793p": {
+   "own_pattern": {
+    "pairs": 9,
+    "right": 9,
+    "unanswered": 0,
+    "p": 0.002,
+    "near_pairs": {
+     "pairs": 8,
+     "right": 8,
+     "p": 0.0039
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 1,
+      "right": 1
+     },
+     "before": {
+      "pairs": 1,
+      "right": 1
+     },
+     "after": {
+      "pairs": 3,
+      "right": 3
+     },
+     "word": {
+      "pairs": 3,
+      "right": 3
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "strong_pairs": {
+     "pairs": 9,
+     "right": 9,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 2,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "before": {
+     "found": 9,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "after": {
+     "found": 88,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "word": {
+     "found": 26,
+     "tried": 4,
+     "fired": 0,
+     "quiet": 3
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 1,
+      "right": 1
+     },
+     "before": {
+      "pairs": 1,
+      "right": 1
+     },
+     "after": {
+      "pairs": 3,
+      "right": 1
+     },
+     "word": {
+      "pairs": 3,
+      "right": 2
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 8,
+     "right": 5,
+     "p": 0.3633
+    },
+    "strong_pairs": {
+     "pairs": 9,
+     "right": 6,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 9,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.2539
+   },
+   "other_pattern_of": "L31-n13214p",
+   "by_pair": [
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3339,
+      "at": 389,
+      "rel": 0.697,
+      "span": [
+       329,
+       398
+      ]
+     },
+     "quiet": {
+      "window": 118,
+      "at": 187,
+      "rel": 0.004,
+      "match": "after",
+      "span": [
+       127,
+       196
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3483,
+      "at": 233,
+      "rel": 0.584,
+      "span": [
+       173,
+       242
+      ]
+     },
+     "quiet": {
+      "window": 2756,
+      "at": 334,
+      "rel": 0.223,
+      "match": "after",
+      "span": [
+       274,
+       343
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 3179,
+      "at": 483,
+      "rel": 0.672,
+      "span": [
+       449,
+       492
+      ]
+     },
+     "quiet": {
+      "window": 2624,
+      "at": 71,
+      "rel": 0.007,
+      "match": "word",
+      "span": [
+       37,
+       80
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 549,
+      "at": 93,
+      "rel": 0.616,
+      "span": [
+       33,
+       102
+      ]
+     },
+     "quiet": {
+      "window": 548,
+      "at": 468,
+      "rel": 0.231,
+      "match": "phrase",
+      "span": [
+       408,
+       477
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1667,
+      "at": 316,
+      "rel": 0.738,
+      "span": [
+       256,
+       325
+      ]
+     },
+     "quiet": {
+      "window": 102,
+      "at": 211,
+      "rel": 0.015,
+      "match": "word",
+      "span": [
+       151,
+       220
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2895,
+      "at": 346,
+      "rel": 0.672,
+      "span": [
+       286,
+       355
+      ]
+     },
+     "quiet": {
+      "window": 353,
+      "at": 290,
+      "rel": 0.013,
+      "match": "before",
+      "span": [
+       230,
+       299
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1273,
+      "at": 459,
+      "rel": 0.669,
+      "span": [
+       399,
+       468
+      ]
+     },
+     "quiet": {
+      "window": 2434,
+      "at": 206,
+      "rel": 0.006,
+      "match": "word",
+      "span": [
+       146,
+       215
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 509,
+      "at": 72,
+      "rel": 0.881,
+      "span": [
+       56,
+       81
+      ]
+     },
+     "quiet": {
+      "window": 2121,
+      "at": 373,
+      "rel": 0.004,
+      "match": "anywhere",
+      "span": [
+       357,
+       382
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 1427,
+      "at": 485,
+      "rel": 0.769,
+      "span": [
+       425,
+       494
+      ]
+     },
+     "quiet": {
+      "window": 2721,
+      "at": 68,
+      "rel": 0.017,
+      "match": "after",
+      "span": [
+       8,
+       77
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "a",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "b",
+    "b",
+    "b"
+   ],
+   "picks_other": [
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a"
+   ]
+  },
+  "L31-n13214p": {
+   "own_pattern": {
+    "pairs": 10,
+    "right": 7,
+    "unanswered": 0,
+    "p": 0.1719,
+    "near_pairs": {
+     "pairs": 9,
+     "right": 6,
+     "p": 0.2539
+    },
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 1
+     },
+     "before": {
+      "pairs": 3,
+      "right": 3
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 2,
+      "right": 1
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "strong_pairs": {
+     "pairs": 2,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "places": {
+    "phrase": {
+     "found": 5,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "before": {
+     "found": 35,
+     "tried": 3,
+     "fired": 0,
+     "quiet": 3
+    },
+    "after": {
+     "found": 84,
+     "tried": 1,
+     "fired": 0,
+     "quiet": 1
+    },
+    "word": {
+     "found": 32,
+     "tried": 2,
+     "fired": 0,
+     "quiet": 2
+    }
+   },
+   "other_pattern_by": {
+    "by_match": {
+     "phrase": {
+      "pairs": 3,
+      "right": 1
+     },
+     "before": {
+      "pairs": 3,
+      "right": 2
+     },
+     "after": {
+      "pairs": 1,
+      "right": 1
+     },
+     "word": {
+      "pairs": 2,
+      "right": 1
+     },
+     "anywhere": {
+      "pairs": 1,
+      "right": 1
+     }
+    },
+    "near_pairs": {
+     "pairs": 9,
+     "right": 5,
+     "p": 0.5
+    },
+    "strong_pairs": {
+     "pairs": 2,
+     "right": 1,
+     "fires_at": 0.5
+    }
+   },
+   "other_pattern": {
+    "pairs": 10,
+    "right": 6,
+    "unanswered": 0,
+    "p": 0.377
+   },
+   "other_pattern_of": "L36-n13610p",
+   "by_pair": [
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 3595,
+      "at": 14,
+      "rel": 0.475,
+      "span": [
+       1,
+       23
+      ]
+     },
+     "quiet": {
+      "window": 3308,
+      "at": 447,
+      "rel": 0.013,
+      "match": "word",
+      "span": [
+       434,
+       456
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "b",
+     "fires": {
+      "window": 253,
+      "at": 363,
+      "rel": 0.331,
+      "span": [
+       303,
+       372
+      ]
+     },
+     "quiet": {
+      "window": 254,
+      "at": 424,
+      "rel": 0.073,
+      "match": "phrase",
+      "span": [
+       364,
+       433
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2239,
+      "at": 131,
+      "rel": 0.357,
+      "span": [
+       95,
+       140
+      ]
+     },
+     "quiet": {
+      "window": 37,
+      "at": 78,
+      "rel": 0.024,
+      "match": "before",
+      "span": [
+       42,
+       87
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 2081,
+      "at": 423,
+      "rel": 0.342,
+      "span": [
+       363,
+       432
+      ]
+     },
+     "quiet": {
+      "window": 1883,
+      "at": 390,
+      "rel": 0.019,
+      "match": "anywhere",
+      "span": [
+       330,
+       399
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 527,
+      "at": 332,
+      "rel": 0.494,
+      "span": [
+       272,
+       341
+      ]
+     },
+     "quiet": {
+      "window": 3344,
+      "at": 341,
+      "rel": 0.051,
+      "match": "before",
+      "span": [
+       281,
+       350
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 529,
+      "at": 159,
+      "rel": 0.466,
+      "span": [
+       99,
+       168
+      ]
+     },
+     "quiet": {
+      "window": 2252,
+      "at": 147,
+      "rel": 0.02,
+      "match": "before",
+      "span": [
+       87,
+       156
+      ]
+     }
+    },
+    {
+     "truth": "a",
+     "picked": "a",
+     "fires": {
+      "window": 801,
+      "at": 134,
+      "rel": 0.399,
+      "span": [
+       74,
+       143
+      ]
+     },
+     "quiet": {
+      "window": 645,
+      "at": 397,
+      "rel": 0.021,
+      "match": "phrase",
+      "span": [
+       337,
+       406
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 3671,
+      "at": 391,
+      "rel": 0.337,
+      "span": [
+       331,
+       400
+      ]
+     },
+     "quiet": {
+      "window": 3668,
+      "at": 371,
+      "rel": 0.212,
+      "match": "phrase",
+      "span": [
+       311,
+       380
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "b",
+     "fires": {
+      "window": 27,
+      "at": 327,
+      "rel": 1.0,
+      "span": [
+       267,
+       336
+      ]
+     },
+     "quiet": {
+      "window": 865,
+      "at": 278,
+      "rel": 0.017,
+      "match": "after",
+      "span": [
+       218,
+       287
+      ]
+     }
+    },
+    {
+     "truth": "b",
+     "picked": "a",
+     "fires": {
+      "window": 2173,
+      "at": 476,
+      "rel": 0.632,
+      "span": [
+       416,
+       485
+      ]
+     },
+     "quiet": {
+      "window": 3406,
+      "at": 129,
+      "rel": 0.011,
+      "match": "word",
+      "span": [
+       69,
+       138
+      ]
+     }
+    }
+   ],
+   "picks_own": [
+    "b",
+    "b",
+    "a",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a"
+   ],
+   "picks_other": [
+    "b",
+    "b",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a",
+    "a",
+    "b",
+    "a"
+   ]
+  }
+ }
+}

@@ -1286,9 +1286,30 @@ layers, the determinism run and the sampled push on 29 October). In this section
   is narrower than the plain test: with this earlier text given, what the pattern names in the ending is what
   fires the neuron. What the earlier text has to be is still not tested. *Checked on the stand-in only:*
   `check_atlas_api` 448, `check_scientist` 238, `check_interface_defaults` 291, `check_local_only` 1226 (a route
-  more); the page type-checks and builds. Endings for the pilot’s six faces are written
-  (`experiments/results/pattern_tests_pilot/behind.json`: 11 passages, 30 endings to fire, 27 near misses) and
-  run when layer 36 frees the card.
+  more); the page type-checks and builds.
+
+  *Run on the 31B* (14 November, 17:43Z, once layer 36 had left the card; `pilot.py behind`,
+  `behind_results.json`), for the pilot’s six faces that no short text fires. The endings were written beforehand
+  from where each passage is cut (`behind.json`), the first of each passage’s being its own words.
+  - **Behind their own passage the six can be fired by new words: 6 of 17 new endings did, where none of their 18
+    short texts had.** 2 of 24 near-miss endings fired too, where none of the pilot’s 63 short near misses had. Ten
+    passages were read; the eleventh was refused, as it should be, because it reads under half the neuron’s extreme
+    where it peaks. Every other passage’s own words fired behind its own earlier text (0.62 to 1.08 of the extreme).
+  - **It sorts the six patterns, which the blind test could not** (readers had picked 49 of their 54 pairs):
+
+    | face | new endings that fired | near misses that fired | what it shows |
+    |---|---|---|---|
+    | layer 26, neuron 4837, + | 4 of 4 | 1 of 4 | the pattern holds: a frequency or ordering word after the subject (“typically”, “often”, “Secondly”, “next”). The near miss that fired, “FPB is a hereditary”, fired on “is” at 0.51, so the word right after the subject carries some of it by itself |
+    | layer 56, neuron 3342, + | 1 of 3 | 0 of 5 | partly: “and” between verbs of watching and controlling reads 0.52 and 0.36, between “build and repair” or “teach and train” under 0.08 |
+    | layer 26, neuron 14541, − | 1 of 2 | 0 of 4 | not shown: the one that fired did so on “their”, not where the pattern said |
+    | layer 45, neuron 16700, − | 0 of 3 | 0 of 5 | not shown, though it leans the pattern’s way: the “to” of purpose reads 0.46 and 0.33 against 0.04 for the near misses, and “how to” reads nothing |
+    | layer 56, neuron 19940, − | 0 of 2 | 0 of 3 | not shown: other table rows of measurements read 0.03 and 0.02 where its own row reads 1.08 |
+    | layer 36, neuron 12896, + | 0 of 3 | 1 of 3 | **wrong**: “To conclude”, “Overall” and “Ultimately” read 0.10 to 0.17, and “The third poem”, which concludes nothing, reads 0.98 on “The”. Here the neuron fires on “In” or “The” opening the paragraph, not on a conclusion |
+
+  - **What it does not show.** One writer (me), who wrote the patterns too, and two to four new endings a passage:
+    a pattern “not shown” may be right and badly served. An ending counts as fired wherever in it the neuron peaks,
+    which is why the table says where. The earlier text is the neuron’s own strongest, so nothing here says what
+    that text has to be.
 
   *And a harder quiet passage for the blind test* (the owner’s word, 14 November: “build the harder quiet passage
   for the blind test”). Against a passage drawn from anywhere, a pattern that names the word and its phrase is
@@ -1313,10 +1334,50 @@ layers, the determinism run and the sampled push on 29 October). In this section
     never tested on a strong held-back firing; what it shows is that the neuron’s weak firings are another matter.
 
   *Checked on the stand-in only:* `check_atlas_api` 454, `check_scientist` 240, `check_interface_defaults` 291,
-  `check_local_only` 1226; the page type-checks and builds. *Not run on the 31B:* the 21 pilot faces are to be read
-  again against near misses, with the same patterns and the same two readers a test
-  (`pilot.py start_near`, `answer_near`), when layer 36 frees the card. What to look for: whether the six faces that
-  need their own document, whose patterns name only the phrase, fall toward a half.
+  `check_local_only` 1226; the page type-checks and builds.
+
+  *Run on the 31B* (14 November, 17:44Z to 17:58Z; `pilot.py start_near`, `answer_near`, `blind_near.json`): the
+  pilot’s 21 faces again, the same patterns, the same 196 held-back passages, two fresh readers a test as before
+  (one with the face’s own pattern, one with another face’s), each quiet passage now a near miss. A near miss was
+  found for 189 of the 196 pairs.
+  - **Readers picked 158 of 196, where they had picked 177 against a passage from anywhere.** With another
+    face’s pattern they picked 106 (86 in the pilot), which is chance (guessing does as well 1 time in 7). 9 of
+    the 21 faces are beyond chance one by one, where 15 were.
+  - **The nearer the miss, the harder the pair**, as it was built to be:
+
+    | the quiet passage has | pairs | picked with the own pattern | with another face’s |
+    |---|---|---|---|
+    | the same word between the same two neighbours | 64 | 45 (70 in 100) | 34 |
+    | the same word after the same one | 60 | 48 (80) | 40 |
+    | the same word before the same one | 37 | 34 (92) | 20 |
+    | the same word alone | 28 | 25 (89) | 10 |
+    | a passage from anywhere | 7 | 6 | 2 |
+
+  - **What was said beforehand to look for did not happen.** The six faces that need their own document, whose
+    patterns I thought named only the phrase, were to fall toward a half. They fell from 49 of 54 to 44, and the
+    other fifteen from 128 of 142 to 114: about ten in a hundred each. The written test behind their own passage,
+    above, is what told those six apart, not this.
+  - **Two patterns the pilot passed whole are at chance against near misses**: layer 26’s neuron 4644 (9 of 9,
+    now 4 of 9) and layer 31’s neuron 20806 (12 of 12, now 7 of 12). My reading: each names its phrase and not what
+    else has to be there.
+  - **The reading that needs no reader is the plainest.** For the 18 faces above layer 2, the neuron was read at
+    68 other places in the corpus with the same word between the same two neighbours: it fired at none, and was
+    quiet at 59. With only the word before the same, it fired at 1 of 50; with only the word after, at 1 of 28;
+    the word alone, at 0 of 31. So above layer 2 the phrase a neuron fires on is not enough to fire it: the same
+    words elsewhere leave it quiet. At layer 2 it can be: neuron 16560 fired at 44 of 45 such places and at 65 of
+    72 with only the word before the same, a neuron of the word itself, and its test had to fall back to places
+    where only the word after is the same.
+  - **Strong firings are still read better than weak**: 123 of the 146 pairs whose firing passage reaches half the
+    neuron’s extreme, 35 of the 50 that do not.
+  - **One figure I cannot explain.** With another face’s pattern, readers picked 40 of the 60 pairs whose quiet
+    passage has the same word after the same one. Alone that is 1 chance in 150; it is one of five rows looked
+    at, it is spread over 17 faces and no one face makes it, and the other four rows are near or under a half. It may
+    be chance. If it is not, something in those pairs gives the firing snippet away without the pattern, and the
+    48 of 60 beside it would be worth less than it looks.
+  - **What it does not show.** The same limits as the pilot: patterns written by one writer, 21 faces, one reading
+    each, readers that are fresh Claude conversations and not an endpoint. A place counts as “fired” at half the
+    neuron’s extreme and “quiet” under a quarter, and the search for a near miss stops at the first quiet place, so
+    the counts of places are a rough reading, not a rate. Places inside the face’s own stored windows are left out.
 
   *Not done:*
   - **A passage on the same subject.** A near miss matches the word and its neighbours, not the topic. For a neuron

@@ -1,0 +1,676 @@
+{
+ "tests": {
+  "L26-n14541m": [
+   {
+    "layer": 26,
+    "n": 14541,
+    "face": "-",
+    "kind": "written",
+    "fire": 2,
+    "fired": 2,
+    "beat_corpus": 0,
+    "strongest": 0.994,
+    "quiet": 2,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.03,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "In the middle of a stock phrase, or of a term the text has just used and is using again: a word-piece that carries on a formula ('in order[ to] reduce', 'without[ the] prior written consent', 'Don[']t forget', the hyphen in a phone number, 'Welcome back to the [6]0's') or picks a just-mentioned term back up at the start of a sentence ('This[ hyper]bole' after an earlier 'This hyperbole', '[ Volunte]ering is also' under a 'Volunteer work' heading).",
+    "texts": {
+     "fire": [
+      {
+       "text": " work together towards a common goal. Volunteering is also a great way",
+       "rel": 0.994,
+       "act": -0.6992,
+       "at": " Volunte"
+      },
+      {
+       "text": " give their time to it side by side. Volunteer work also teaches",
+       "rel": 0.906,
+       "act": -0.6367,
+       "at": " their"
+      }
+     ],
+     "quiet": [
+      {
+       "text": " work together towards a common goal. Cooking is also a great way",
+       "rel": 0.03,
+       "act": -0.0209,
+       "at": " a"
+      },
+      {
+       "text": " work together towards a common goal. Another idea is",
+       "rel": -0.007,
+       "act": 0.0049,
+       "at": " is"
+      }
+     ]
+    },
+    "extreme": -0.7031,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 3120,
+     "at": 501,
+     "drop": 8,
+     "kept": 494,
+     "own_ending": {
+      "text": " work together towards a common goal.[[ Volunte]]",
+      "rel": 0.994
+     }
+    },
+    "said": "written behind its own passage in window 3120 (the last 8 word-pieces swapped; its own ending reads 0.994 of the face's extreme): 2 of 2 endings meant to fire it did (the strongest 0.994); 0 of 2 near-miss endings did"
+   },
+   {
+    "layer": 26,
+    "n": 14541,
+    "face": "-",
+    "kind": "written",
+    "fire": 2,
+    "fired": 1,
+    "beat_corpus": 0,
+    "strongest": 0.789,
+    "quiet": 2,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.029,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "In the middle of a stock phrase, or of a term the text has just used and is using again: a word-piece that carries on a formula ('in order[ to] reduce', 'without[ the] prior written consent', 'Don[']t forget', the hyphen in a phone number, 'Welcome back to the [6]0's') or picks a just-mentioned term back up at the start of a sentence ('This[ hyper]bole' after an earlier 'This hyperbole', '[ Volunte]ering is also' under a 'Volunteer work' heading).",
+    "texts": {
+     "fire": [
+      {
+       "text": " women, their families, communities and the economy",
+       "rel": 0.789,
+       "act": -0.5547,
+       "at": " the"
+      },
+      {
+       "text": " women, their households, their villages and the wider economy",
+       "rel": 0.04,
+       "act": -0.0281,
+       "at": " economy"
+      }
+     ],
+     "quiet": [
+      {
+       "text": " women, who then spend more time online",
+       "rel": -0.011,
+       "act": 0.0074,
+       "at": ","
+      },
+      {
+       "text": " women. The report was published",
+       "rel": 0.029,
+       "act": -0.0206,
+       "at": " report"
+      }
+     ]
+    },
+    "extreme": -0.7031,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 2038,
+     "at": 505,
+     "drop": 8,
+     "kept": 498,
+     "own_ending": {
+      "text": " women, their families, communities and[[ the]]",
+      "rel": 0.789
+     }
+    },
+    "said": "written behind its own passage in window 2038 (the last 8 word-pieces swapped; its own ending reads 0.789 of the face's extreme): 1 of 2 endings meant to fire it did (the strongest 0.789); 0 of 2 near-miss endings did"
+   }
+  ],
+  "L26-n4837p": [
+   {
+    "layer": 26,
+    "n": 4837,
+    "face": "+",
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.828,
+    "quiet": 2,
+    "quiet_fired": 1,
+    "quiet_strongest": 0.512,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "At the opening of a sentence or paragraph that takes an account one step further: on the first word-piece after a line break when it carries on from what came before ('[Secondly],', '[it] was during this time', '[that] astronauts'), or on an ordering or frequency word right after the subject ('The[ second] story of origin', 'FPB[ usually] becomes noticeable'). Strongest on second-in-a-series markers.",
+    "texts": {
+     "fire": [
+      {
+       "text": "\nFPB usually becomes noticeable",
+       "rel": 0.828,
+       "act": 2.1094,
+       "at": " usually"
+      },
+      {
+       "text": "\nFPB typically begins to show",
+       "rel": 0.555,
+       "act": 1.4141,
+       "at": " typically"
+      },
+      {
+       "text": "\nFPB often starts",
+       "rel": 0.65,
+       "act": 1.6562,
+       "at": " often"
+      }
+     ],
+     "quiet": [
+      {
+       "text": "\nFPB is a hereditary condition",
+       "rel": 0.512,
+       "act": 1.3047,
+       "at": " is"
+      },
+      {
+       "text": "\nFPB (female pattern baldness)",
+       "rel": 0.359,
+       "act": 0.9141,
+       "at": "FP"
+      }
+     ]
+    },
+    "extreme": 2.5469,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 590,
+     "at": 326,
+     "drop": 4,
+     "kept": 323,
+     "own_ending": {
+      "text": "\nFPB[[ usually]]",
+      "rel": 0.828
+     }
+    },
+    "said": "written behind its own passage in window 590 (the last 4 word-pieces swapped; its own ending reads 0.828 of the face's extreme): 3 of 3 endings meant to fire it did (the strongest 0.828); 1 of 2 near-miss endings did"
+   },
+   {
+    "layer": 26,
+    "n": 4837,
+    "face": "+",
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.632,
+    "quiet": 2,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.062,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "At the opening of a sentence or paragraph that takes an account one step further: on the first word-piece after a line break when it carries on from what came before ('[Secondly],', '[it] was during this time', '[that] astronauts'), or on an ordering or frequency word right after the subject ('The[ second] story of origin', 'FPB[ usually] becomes noticeable'). Strongest on second-in-a-series markers.",
+    "texts": {
+     "fire": [
+      {
+       "text": ".\nThe second story of origin",
+       "rel": 0.632,
+       "act": 1.6094,
+       "at": " second"
+      },
+      {
+       "text": ".\nSecondly, the phrase",
+       "rel": 0.515,
+       "act": 1.3125,
+       "at": "Secondly"
+      },
+      {
+       "text": ".\nThe next account",
+       "rel": 0.617,
+       "act": 1.5703,
+       "at": " next"
+      }
+     ],
+     "quiet": [
+      {
+       "text": ".\nThe story of origin",
+       "rel": 0.062,
+       "act": 0.1572,
+       "at": "The"
+      },
+      {
+       "text": ".\nThe phrase",
+       "rel": 0.062,
+       "act": 0.1572,
+       "at": "The"
+      }
+     ]
+    },
+    "extreme": 2.5469,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 3788,
+     "at": 393,
+     "drop": 4,
+     "kept": 390,
+     "own_ending": {
+      "text": ".\nThe[[ second]]",
+      "rel": 0.632
+     }
+    },
+    "said": "written behind its own passage in window 3788 (the last 4 word-pieces swapped; its own ending reads 0.632 of the face's extreme): 3 of 3 endings meant to fire it did (the strongest 0.632); 0 of 2 near-miss endings did"
+   }
+  ],
+  "L36-n12896p": [
+   {
+    "layer": 36,
+    "n": 12896,
+    "face": "+",
+    "kind": "written",
+    "fire": 4,
+    "fired": 1,
+    "beat_corpus": 0,
+    "strongest": 0.984,
+    "quiet": 3,
+    "quiet_fired": 1,
+    "quiet_strongest": 0.978,
+    "apart": 0.75,
+    "fires_at": 0.5,
+    "pattern": "At the start of a closing or summing-up sentence: on the first word of a final paragraph ('[In] conclusion', '[To] conclude', '[The] overall impact', '[We] really hope'), where a text turns from its body to its wrap-up or verdict. Weaker on the '!' that ends a final sales line and on 'is' in a summary judgement ('The DCD771C2[ is] a versatile cordless drill', 'However, it[ is] only available').",
+    "texts": {
+     "fire": [
+      {
+       "text": "\n\nIn conclusion, metaphor",
+       "rel": 0.984,
+       "act": 1.4219,
+       "at": "In"
+      },
+      {
+       "text": "\n\nTo conclude, the poem",
+       "rel": 0.098,
+       "act": 0.1416,
+       "at": ","
+      },
+      {
+       "text": "\n\nOverall, the language",
+       "rel": 0.147,
+       "act": 0.2119,
+       "at": "Overall"
+      },
+      {
+       "text": "\n\nUltimately, these images",
+       "rel": 0.173,
+       "act": 0.25,
+       "at": "Ultimately"
+      }
+     ],
+     "quiet": [
+      {
+       "text": "\n\nSimilarly, in the next stanza",
+       "rel": 0.044,
+       "act": 0.064,
+       "at": "\n\n"
+      },
+      {
+       "text": "\n\nAnother example appears",
+       "rel": 0.044,
+       "act": 0.064,
+       "at": "\n\n"
+      },
+      {
+       "text": "\n\nThe third poem",
+       "rel": 0.978,
+       "act": 1.4141,
+       "at": "The"
+      }
+     ]
+    },
+    "extreme": 1.4453,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 3826,
+     "at": 280,
+     "drop": 2,
+     "kept": 279,
+     "own_ending": {
+      "text": "\n\n[[In]]",
+      "rel": 0.984
+     }
+    },
+    "said": "written behind its own passage in window 3826 (the last 2 word-pieces swapped; its own ending reads 0.984 of the face's extreme): 1 of 4 endings meant to fire it did (the strongest 0.984); 1 of 3 near-miss endings did"
+   }
+  ],
+  "L45-n16700m": [
+   {
+    "layer": 45,
+    "n": 16700,
+    "face": "-",
+    "kind": "written",
+    "fire": 3,
+    "fired": 1,
+    "beat_corpus": 0,
+    "strongest": 0.709,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.041,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "On the word just before a base-form verb that says what something is for or what someone is trying to do: mostly the 'to' of an infinitive after a noun or verb of purpose, method, challenge or attempt ('one of the major challenges … is[ to] understand', 'It is often used[ to] hang', 'how[ to] use', 'attempts[ to] write', 'an effective method[ to] screen', 'whether[ to] attempt'); also the object in 'help[ them] build'.",
+    "texts": {
+     "fire": [
+      {
+       "text": " is often used to hang",
+       "rel": 0.709,
+       "act": -11.25,
+       "at": " to"
+      },
+      {
+       "text": " is a common way to hold",
+       "rel": 0.463,
+       "act": -7.3438,
+       "at": " to"
+      },
+      {
+       "text": " can also serve to support",
+       "rel": 0.329,
+       "act": -5.2188,
+       "at": " to"
+      }
+     ],
+     "quiet": [
+      {
+       "text": " is often used in plumbing",
+       "rel": 0.041,
+       "act": -0.6523,
+       "at": " often"
+      },
+      {
+       "text": " is often used for hanging",
+       "rel": 0.041,
+       "act": -0.6523,
+       "at": " often"
+      },
+      {
+       "text": " is often sold by the metre",
+       "rel": 0.041,
+       "act": -0.6523,
+       "at": " often"
+      }
+     ]
+    },
+    "extreme": -15.875,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 3396,
+     "at": 433,
+     "drop": 4,
+     "kept": 430,
+     "own_ending": {
+      "text": " is often used[[ to]]",
+      "rel": 0.709
+     }
+    },
+    "said": "written behind its own passage in window 3396 (the last 4 word-pieces swapped; its own ending reads 0.709 of the face's extreme): 1 of 3 endings meant to fire it did (the strongest 0.709); 0 of 3 near-miss endings did"
+   },
+   {
+    "layer": 45,
+    "n": 16700,
+    "face": "-",
+    "kind": "written",
+    "fire": 2,
+    "fired": 1,
+    "beat_corpus": 0,
+    "strongest": 0.815,
+    "quiet": 2,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.003,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "On the word just before a base-form verb that says what something is for or what someone is trying to do: mostly the 'to' of an infinitive after a noun or verb of purpose, method, challenge or attempt ('one of the major challenges … is[ to] understand', 'It is often used[ to] hang', 'how[ to] use', 'attempts[ to] write', 'an effective method[ to] screen', 'whether[ to] attempt'); also the object in 'help[ them] build'.",
+    "texts": {
+     "fire": [
+      {
+       "text": " urban data is to understand",
+       "rel": 0.815,
+       "act": -12.9375,
+       "at": " to"
+      },
+      {
+       "text": " such data is how to combine",
+       "rel": 0.005,
+       "act": -0.0786,
+       "at": " combine"
+      }
+     ],
+     "quiet": [
+      {
+       "text": " urban data is the lack of",
+       "rel": 0.003,
+       "act": -0.053,
+       "at": " lack"
+      },
+      {
+       "text": " urban data is that the",
+       "rel": -0.0,
+       "act": 0.007,
+       "at": " is"
+      }
+     ]
+    },
+    "extreme": -15.875,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 1834,
+     "at": 135,
+     "drop": 4,
+     "kept": 132,
+     "own_ending": {
+      "text": " urban data is[[ to]]",
+      "rel": 0.815
+     }
+    },
+    "said": "written behind its own passage in window 1834 (the last 4 word-pieces swapped; its own ending reads 0.815 of the face's extreme): 1 of 2 endings meant to fire it did (the strongest 0.815); 0 of 2 near-miss endings did"
+   }
+  ],
+  "L56-n19940m": [
+   {
+    "layer": 56,
+    "n": 19940,
+    "face": "-",
+    "kind": "written",
+    "fire": 3,
+    "fired": 1,
+    "beat_corpus": 1,
+    "strongest": 1.076,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.055,
+    "apart": 0.444,
+    "fires_at": 0.5,
+    "pattern": "In passages dense with measurements and counts (tables of dimensions, areas in sq mi and km2, worked physics sums, counts of members): on the token just before or inside a quantity that is being filled in: the table bars before a value ('(at center[)||]60 ft.'), a digit inside a figure ('(2,[5]85 km2)'), '=' before a result ('vf[ =] 12.0 m/s'), 'to' between two numbers ('a 500[ to] 1,000-mile'), or the unit noun right after a count ('24[ members]').",
+    "texts": {
+     "fire": [
+      {
+       "text": "Total height of facade (at center)||60 ft.",
+       "rel": 1.076,
+       "act": -4.4375,
+       "at": ")||"
+      },
+      {
+       "text": "Width of front door||4 ft.",
+       "rel": 0.033,
+       "act": -0.1348,
+       "at": "."
+      },
+      {
+       "text": "Depth of porch||12 ft.",
+       "rel": 0.018,
+       "act": -0.0732,
+       "at": " porch"
+      }
+     ],
+     "quiet": [
+      {
+       "text": "Total height of facade (at center) varies",
+       "rel": 0.023,
+       "act": -0.0938,
+       "at": " facade"
+      },
+      {
+       "text": "Notes on the facade",
+       "rel": 0.035,
+       "act": -0.1455,
+       "at": " facade"
+      },
+      {
+       "text": "Source: the builder's drawings",
+       "rel": 0.055,
+       "act": -0.2256,
+       "at": "s"
+      }
+     ]
+    },
+    "extreme": -4.125,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 1818,
+     "at": 130,
+     "drop": 8,
+     "kept": 123,
+     "own_ending": {
+      "text": "Total height of facade (at center[[)||]]",
+      "rel": 1.076
+     }
+    },
+    "said": "written behind its own passage in window 1818 (the last 8 word-pieces swapped; its own ending reads 1.076 of the face's extreme): 1 of 3 endings meant to fire it did (the strongest 1.076); 0 of 3 near-miss endings did"
+   },
+   {
+    "refused": "This passage reads 0.371 of the face's extreme where it peaks, under the 0.5 a text fires at: choose a stronger one of its passages.",
+    "status": 400
+   }
+  ],
+  "L56-n3342p": [
+   {
+    "layer": 56,
+    "n": 3342,
+    "face": "+",
+    "kind": "written",
+    "fire": 3,
+    "fired": 2,
+    "beat_corpus": 0,
+    "strongest": 0.618,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.079,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "In text about surveillance, machine vision and the control of people (Trevor Paglen's art, video surveillance, infiltrating and controlling a populace, officials with 'the mind sets of the robots they build'): on a small word or comma beside the word 'surveillance' or beside a control/infiltrate verb ('object tracking,[ video] surveillance', 'potions or surveillance[,]', 'help control[ and] infiltrate the local populace'), and on function words elsewhere in such passages.",
+    "texts": {
+     "fire": [
+      {
+       "text": " to help control and infiltrate",
+       "rel": 0.618,
+       "act": 17.0,
+       "at": " and"
+      },
+      {
+       "text": " to help watch and control",
+       "rel": 0.516,
+       "act": 14.1875,
+       "at": " and"
+      },
+      {
+       "text": " to help monitor and spy on",
+       "rel": 0.359,
+       "act": 9.875,
+       "at": " and"
+      }
+     ],
+     "quiet": [
+      {
+       "text": " to help build and repair",
+       "rel": 0.079,
+       "act": 2.1719,
+       "at": " to"
+      },
+      {
+       "text": " to help teach and train",
+       "rel": 0.079,
+       "act": 2.1719,
+       "at": " to"
+      },
+      {
+       "text": " and good pay",
+       "rel": 0.001,
+       "act": 0.033,
+       "at": " pay"
+      }
+     ]
+    },
+    "extreme": 27.5,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 2698,
+     "at": 315,
+     "drop": 4,
+     "kept": 312,
+     "own_ending": {
+      "text": " to help control[[ and]]",
+      "rel": 0.618
+     }
+    },
+    "said": "written behind its own passage in window 2698 (the last 4 word-pieces swapped; its own ending reads 0.618 of the face's extreme): 2 of 3 endings meant to fire it did (the strongest 0.618); 0 of 3 near-miss endings did"
+   },
+   {
+    "layer": 56,
+    "n": 3342,
+    "face": "+",
+    "kind": "written",
+    "fire": 2,
+    "fired": 1,
+    "beat_corpus": 0,
+    "strongest": 0.773,
+    "quiet": 2,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.023,
+    "apart": 1.0,
+    "fires_at": 0.5,
+    "pattern": "In text about surveillance, machine vision and the control of people (Trevor Paglen's art, video surveillance, infiltrating and controlling a populace, officials with 'the mind sets of the robots they build'): on a small word or comma beside the word 'surveillance' or beside a control/infiltrate verb ('object tracking,[ video] surveillance', 'potions or surveillance[,]', 'help control[ and] infiltrate the local populace'), and on function words elsewhere in such passages.",
+    "texts": {
+     "fire": [
+      {
+       "text": ". By pushing the boundaries of what is possible",
+       "rel": 0.773,
+       "act": 21.25,
+       "at": " is"
+      },
+      {
+       "text": ". By exposing what is hidden from view",
+       "rel": 0.148,
+       "act": 4.0625,
+       "at": " is"
+      }
+     ],
+     "quiet": [
+      {
+       "text": ". He lives and works in Berlin",
+       "rel": 0.023,
+       "act": 0.6328,
+       "at": " and"
+      },
+      {
+       "text": ". His prints sell well",
+       "rel": 0.001,
+       "act": 0.0292,
+       "at": "."
+      }
+     ]
+    },
+    "extreme": 27.5,
+    "rel_to": "the face's extreme over HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft",
+    "behind": {
+     "window": 2026,
+     "at": 213,
+     "drop": 8,
+     "kept": 206,
+     "own_ending": {
+      "text": ". By pushing the boundaries of what[[ is]]",
+      "rel": 0.773
+     }
+    },
+    "said": "written behind its own passage in window 2026 (the last 8 word-pieces swapped; its own ending reads 0.773 of the face's extreme): 1 of 2 endings meant to fire it did (the strongest 0.773); 0 of 2 near-miss endings did"
+   }
+  ]
+ }
+}
