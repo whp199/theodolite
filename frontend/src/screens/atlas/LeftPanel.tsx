@@ -221,20 +221,31 @@ const NeuronWeb: React.FC = () => {
   if (!f || f.kind !== "neuron") return null;
   const mine = (x: { layer: number; n: number } | null) => !!x && x.layer === f.layer && x.n === f.n;
   const search = (t: string) => setQuery(t.trim() || t, "lens");
+  // "its words" gives the steer lens's word-pieces that are the neuron's own: those its layer shares are left out, and at
+  // a layer where the lens's check counts it a weak guide none are shown (the details show all twelve, and what was found)
+  const sc = lens?.steer?.check;
+  const steerWeak = !!sc && (sc.standing === "weak" || (sc.standing === "unchecked" && sc.nearest?.standing === "weak"));
+  const steerOwn = (side: "up" | "down") => {
+    const st = lens?.steer;
+    if (!st || steerWeak) return null;
+    const common = st.common?.[side];
+    return common ? st[side].filter((_, i) => common[i] == null) : st[side];
+  };
   return (
     <div className="atlas-net">
       {mine(lens) && lens ? (
         <div className="atlas-wsum">
           <div className="kicker">its words</div>
           <div>
-            <FaceLine layer={f.layer} face="+" w={{ ...lens.faces["+"], steer: lens.steer?.up ?? null }} k={10} />
+            <FaceLine layer={f.layer} face="+" w={{ ...lens.faces["+"], steer: steerOwn("up") }} k={10} />
           </div>
           <div>
-            <FaceLine layer={f.layer} face="-" w={{ ...lens.faces["-"], steer: lens.steer?.down ?? null }} k={10} />
+            <FaceLine layer={f.layer} face="-" w={{ ...lens.faces["-"], steer: steerOwn("down") }} k={10} />
           </div>
           {lens.steer ? (
-            <div className="muted atlas-small">
+            <div className={steerWeak ? "red atlas-small" : "muted atlas-small"}>
               <a href={href.lexicon("steer-lens")}>steer lens</a> ({lens.steer.source}) · KL {lens.steer.kl_up} / {lens.steer.kl_down}
+              {steerWeak ? " · a weak guide at this layer, so its words are left to the details" : ""}
             </div>
           ) : (
             <div className="muted atlas-small">no steer lens read for it yet (details)</div>
@@ -268,7 +279,8 @@ const NeuronWeb: React.FC = () => {
           })}
           {w.gated && (w.gated.down || w.gated.up) ? (
             <div className="muted atlas-small">
-              {w.gated.up + w.gated.down} faces left out: the label gate holds their words back
+              {w.gated.up + w.gated.down} faces left out:{" "}
+              {w.src === "steer" ? "the steer lens is a weak guide at their layers" : "the label gate holds their words back"}
             </div>
           ) : null}
           <Rubric style={{ fontSize: 14, margin: "4px 0 0" }}>

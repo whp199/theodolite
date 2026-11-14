@@ -63,6 +63,12 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   many times over the push is). So the steer
   lens says what a push that large along the neuron's direction does, not what the neuron does when it fires. Weigh
   it beside the lens and the neuron's firing, and confirm with a push near its own ceiling.
+  How far to trust it depends on the layer, and the reading says so. `check` is how the steer lens fared beside the
+  census at the neuron's layer; `shared_with_layer` names the words of the reading that many of the layer's neurons
+  list whichever is pushed, which are the layer's, not the neuron's. On this model the lens agrees with the census
+  from layer 40 up and is a weak guide below it (checked at 33 to 39, unchecked below 33). Where `check` says weak,
+  take the neuron's effect from its census words, `steer` and `logprobs`, and name nothing from the steer lens alone;
+  a face's `steer` words in lists are then left out, and elsewhere they are the neuron's own, the shared ones dropped.
 - **Lens-derived directions break the model.** About 180 dimensions of Gemma 4's stream are read, through its norms,
   with up to 1700 times the gain of the others; a push along a direction built from a lens tends to wreck the text.
   The atlas pushes a neuron along its own write direction instead.

@@ -1723,6 +1723,12 @@ pre.raw {
   padding: 0 4px;
   white-space: pre;
 }
+/* a steer-lens word-piece that many of the layer's neurons list whichever is pushed: the layer's, shown faint */
+.atlas-tok.shared {
+  color: var(--muted);
+  border-style: dashed;
+  opacity: 0.7;
+}
 .atlas-tok-btn {
   background: transparent;
   color: var(--ink);

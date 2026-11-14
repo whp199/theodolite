@@ -245,7 +245,10 @@ class Atlas:
 
     def face(self, layer: int, n: int, sign: str, k: int = 6, edited: Optional[set] = None) -> Dict[str, Any]:
         """A face's words from the indexes: through the lens, by the naked eye (each with the label gate's check of the
-        two), and the steer lens's rises when it is built (a measured effect, which the gate does not cover)."""
+        two), and the steer lens's rises when it is built (a measured effect, which the gate does not cover). The steer
+        lens's words are the neuron's own: those its layer shares (`AtlasIndex.steer_common`) are left out, and at a
+        layer where the lens's check counts it a weak guide (`AtlasIndex.steer_weak`) none are given, as before the lens
+        was built; GET /neuron/lens gives all twelve with what the check found."""
         out: Dict[str, Any] = {"lens": None, "eye": None, "check": None, "steer": None}
         is_edited = (layer, n) in (edited if edited is not None else self.edited())
         lens_ids = self.index.face_ids(layer, n, sign, "lens", k)
@@ -254,8 +257,10 @@ class Atlas:
             out["eye"] = self.words(self.index.face_ids(layer, n, sign, "eye", k) or [], k)
             out["check"] = self.index.face_check(layer, n, sign, edited=is_edited)
         st = self.index.get("steer_lens")
-        if st is not None:
-            out["steer"] = self.words(st["up" if sign == "+" else "down"][layer, n, :k], k)
+        if st is not None and not self.index.steer_weak(layer):
+            side = "up" if sign == "+" else "down"
+            shared = (self.index.steer_common(layer) or {}).get(side) or {}
+            out["steer"] = self.words([t for t in st[side][layer, n] if int(t) not in shared][:k], k)
         if is_edited and (lens_ids is not None or st is not None):
             out["stale"] = "read before the vault edit in force on this neuron; GET /neuron/lens reads it as it now is"
         return out
@@ -1207,7 +1212,8 @@ def _lens_reply(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
         sd = a.index.steer_dose(layer)
         out["steer"] = {"source": "index", "up": a.words(st["up"][layer, n], 12), "down": a.words(st["down"][layer, n], 12),
                         "kl_up": round(float(st["up_kl"][layer, n]), 3), "kl_down": round(float(st["down_kl"][layer, n]), 3),
-                        "dose": sd["dose"], "dose_rule": sd["rule"], "dose_from": sd["from"]}
+                        "dose": sd["dose"], "dose_rule": sd["rule"], "dose_from": sd["from"],
+                        **steer_marks(a, layer, st["up"][layer, n], st["down"][layer, n])}
     else:
         out["steer"] = a.cache["steer"].get((a.edit_key(), layer, n))
         if st is not None and out["steer"] is None:
@@ -1217,6 +1223,27 @@ def _lens_reply(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
 
 
 STALE_WEB = "the wiring index was read before the vault edit in force on this neuron: its links and web are as they were"
+STEER_CHECK_KEYS = ("standing", "shared", "of", "matched", "shuffled", "neurons", "nearest", "group", "agrees_at")
+
+
+def steer_marks(a: Atlas, layer: int, up_ids: Any, down_ids: Any) -> Dict[str, Any]:
+    """What the steer lens's own check says of a reading at this layer (backend/steer_check.py), when the lens is built:
+    `common`, for each word-piece of each sign, the share of the layer's neurons that list it too where that is
+    STEER_COMMON or more (else None: the word is this neuron's); and `check`, how the lens fared beside the layer's
+    census (`standing`: "agrees", "weak" or "unchecked", with the nearest checked layer for an unchecked one) and how
+    many of a neuron's word-pieces the layer shares on average. Nothing when the lens is not built; no `check` until
+    scripts/atlas_steer_check.py has been run on this build of it."""
+    common = a.index.steer_common(layer)
+    if common is None:
+        return {}
+    out: Dict[str, Any] = {"common": {sign: [round(common[sign][int(t)], 3) if int(t) in common[sign] else None for t in list(ids)[:12]]
+                                      for sign, ids in (("up", up_ids), ("down", down_ids))}}
+    check = a.index.steer_check(layer)
+    if check is not None:
+        census = check.get("census") or {}
+        out["check"] = {**{k: check[k] for k in STEER_CHECK_KEYS if check.get(k) is not None},
+                        **({"census": {k: census[k] for k in ("kind", "design") if census.get(k)}} if census else {})}
+    return out
 
 
 def ceiling(a: Atlas, layer: int, n: int, sc: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -1248,7 +1275,8 @@ def _steer_lens_live(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
     r = ao.steer_lens(a.lm, a.W_U, ctx, a.w, layer, n, sc["p50"][layer], dose=sd["dose"], k=12, bos_id=a.rt.tokenizer.bos_token_id)
     out = {"source": "live", "up": a.words(r["up"], 12), "down": a.words(r["down"], 12), "kl_up": r["kl_up"],
            "kl_down": r["kl_down"], "dose": r["dose"], "dose_rule": sd["rule"], "dose_from": sd["from"],
-           **({"dose_note": sd["note"]} if sd.get("note") else {}), "scale_source": sc["source"]}
+           **({"dose_note": sd["note"]} if sd.get("note") else {}), "scale_source": sc["source"],
+           **(steer_marks(a, layer, r["up"], r["down"]) if sd["from"] == "index" else {})}
     a.cache["steer"].put((a.edit_key(), layer, n), out)
     return out
 
@@ -2297,7 +2325,9 @@ async def head_pattern(req: HeadTextRequest) -> Dict[str, Any]:
 
 def _pool_head(a: Atlas, nodes: List[Dict[str, Any]], edited: set, top: int = 24) -> Dict[str, Any]:
     """A head's linked neurons' words pooled as the web summary pools a cone (weighted by z, ranked by lift over each
-    layer's base rate): the steer lens's when built, else the lens's, and then only faces the gate lets through."""
+    layer's base rate): the steer lens's when built, else the lens's, and then only faces the gate lets through. From
+    the steer lens, a neuron at a layer where the lens's own check counts it a weak guide is left out and counted in
+    `gated`, and the word-pieces its layer shares are not pooled (as `AtlasIndex.web_summary` pools a cone)."""
     vocab = a.vocab()
     st = a.index.get("steer_lens")
     lens = a.index.get("lens")
@@ -2310,11 +2340,14 @@ def _pool_head(a: Atlas, nodes: List[Dict[str, Any]], edited: set, top: int = 24
     zmax = max([c["z"] for c in nodes] + [1e-8])
     gated = used = 0
     for c in nodes:
-        if src == "lens" and not a.index.label_passes(c["layer"], c["n"], "+"):
+        if (src == "lens" and not a.index.label_passes(c["layer"], c["n"], "+")) or (src == "steer" and a.index.steer_weak(c["layer"])):
             gated += 1
             continue
         used += 1
+        own = ((a.index.steer_common(c["layer"]) or {}).get("up") or {}) if src == "steer" else {}
         for t in pos[c["layer"], c["n"], :8]:
+            if int(t) in own:
+                continue
             s = vocab[int(t)]
             key = s.strip().lower()
             if not key or "�" in key:

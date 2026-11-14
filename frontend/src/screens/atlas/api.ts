@@ -235,6 +235,47 @@ export interface ActRange {
   source: string;
   regimes?: Record<"pp" | "nn" | "pn" | "np", number>;
 }
+/** What the steer lens's own check found at a layer (backend/steer_check.py): how the lens fares beside the layer's
+ * census, and how many of a neuron's word-pieces the layer shares. Layers count from 0 here, as the API does. */
+export interface SteerCheck {
+  standing: "agrees" | "weak" | "unchecked";
+  /** of a neuron's `of` word-pieces at this layer, how many are listed by 2 in 100 of its neurons or more, on average */
+  shared?: number;
+  of?: number;
+  /** the share of the neurons that stand above 95 in 100 controls with a steer-lens word among their census words */
+  matched?: number;
+  /** the same with the neurons shuffled among themselves */
+  shuffled?: number;
+  neurons?: number;
+  /** for a layer with no census: the nearest layer that has one, and how the lens fared there */
+  nearest?: { layer: number; matched: number; standing: "agrees" | "weak" };
+  census?: { kind?: "whole" | "trial"; design?: string };
+}
+
+/** The check in a sentence for a page, and whether it is a caution (red): the lens is a weak guide at this layer. */
+export function steerCheckSaid(c: SteerCheck): { text: string; caution: boolean } {
+  const pct = (x: number | undefined) => `${Math.round(100 * (x ?? 0))} in 100`;
+  if (c.standing === "unchecked") {
+    const near = c.nearest;
+    if (!near) return { text: "No census checks the steer lens here: these words rest on its dose rule alone.", caution: false };
+    const weak = near.standing === "weak";
+    return {
+      text:
+        `No census is taken at this layer, so nothing checks the steer lens here. At the nearest layer with one (layer ${near.layer + 1}) ` +
+        `it shared a word with ${weak ? "only " : ""}${pct(near.matched)} of the neurons that stand out` +
+        (weak ? ": read these words as a weak guide to this neuron." : "."),
+      caution: weak,
+    };
+  }
+  const beside = `Set beside this layer’s census${c.census?.kind === "trial" ? " trial" : ""}, the steer lens shares a word with `;
+  const tail = ` of the neurons that stand out there (${pct(c.shuffled)} with the neurons shuffled)`;
+  if (c.standing === "agrees") return { text: `${beside}${pct(c.matched)}${tail}.`, caution: false };
+  return {
+    text: `${beside}only ${pct(c.matched)}${tail}. At this layer it is a weak guide to a neuron: weigh its census words above these.`,
+    caution: true,
+  };
+}
+
 export interface SteerLens {
   source: "index" | "live";
   up: string[];
@@ -248,6 +289,10 @@ export interface SteerLens {
   dose_rule?: string;
   dose_from?: "index" | "pilot" | "reference";
   dose_note?: string;
+  /** for each word of each sign, the share of the layer's neurons that list it too where that is 2 in 100 or more (the
+   * word is then the layer's as much as this neuron's), else null; given when the steer-lens index is built */
+  common?: { up: (number | null)[]; down: (number | null)[] };
+  check?: SteerCheck;
 }
 export interface LensFace {
   lens: string[];

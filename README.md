@@ -620,6 +620,7 @@ process at a time):
 .venv/bin/python scripts/atlas_build.py stats --hf <dataset> --tokens 2000000   # optional: ranges over a corpus of your choosing
 .venv/bin/python scripts/atlas_build.py steer_dose                   # the steer lens's dose for each layer, measured first (half an hour)
 .venv/bin/python scripts/atlas_build.py steer --layers 40-59         # the steer lens, a range of layers at a time (hours)
+.venv/bin/python -I scripts/atlas_steer_check.py                     # the built steer lens set beside the census (CPU, seconds): which layers it can be trusted at
 .venv/bin/python scripts/atlas_build.py passages --hf <dataset> --tokens 2000000   # each face's strongest passages (the corpus stats read)
 .venv/bin/python scripts/atlas_build.py wiring        # once, if built before 28 October 2026: each link's g and u, for the sign in use (minutes)
 .venv/bin/python scripts/atlas_build.py wiring_check --layers 20,40,53 --writers random:512   # the links measured under pushes

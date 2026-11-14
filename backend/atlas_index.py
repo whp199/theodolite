@@ -113,6 +113,22 @@ def atlas_dir() -> Path:
 
 STEER_DOSE_FILE = "steer_dose.json"
 STEER_DOSE_REFERENCE = 0.8  # the reference's dose, the one every layer was pushed at before layers had their own
+# The steer lens's own check (backend/steer_check.py writes it beside the index, on the CPU). Built on the 31B on 13
+# November 2026, the lens agrees with the census from layer 39 up and less and less below it, and below layer 40 part
+# of every reading is the layer's: word-pieces that many of its neurons list whichever is pushed
+# (experiments/results/atlas_steer_dose/read_lens.py). So a page marks the shared words and says how the layer fared.
+STEER_CHECK_FILE = "steer_check.json"
+STEER_COMMON = 0.02  # a word-piece that this share of a layer's neurons list, on one sign, is the layer's as much as a neuron's
+STEER_AGREES = 0.5   # the lens "agrees" with a layer's census when it shares a word with this share of the neurons that stand out
+
+
+def steer_common_shares(a: np.ndarray, floor: float = STEER_COMMON) -> Dict[int, float]:
+    """word-piece -> the share of a layer's neurons that list it on one sign (`a`: neurons x k word-piece ids), for the
+    word-pieces listed by `floor` of them or more."""
+    a = np.asarray(a)
+    t, c = np.unique(a.reshape(-1), return_counts=True)
+    keep = c >= max(2.0, floor * len(a))  # never a word-piece only one neuron lists, however few the neurons
+    return {int(x): float(n) / len(a) for x, n in zip(t[keep], c[keep])}
 
 
 def steer_dose_rule(doses: Optional[Dict[str, Any]]) -> str:
@@ -207,6 +223,8 @@ class AtlasIndex:
         self._lock = threading.Lock()
         self._cache: Dict[str, Tuple[float, Optional[Dict[str, Any]], Optional[str]]] = {}
         self._base: Dict[str, Tuple[Tuple[float, int], np.ndarray]] = {}
+        self._common: Dict[int, Tuple[Tuple[float, int], Dict[str, Dict[int, float]]]] = {}
+        self._check: Optional[Tuple[float, Optional[Dict[str, Any]]]] = None
         self._ops: Tuple[Optional[float], Dict[Tuple[int, int], Dict[str, Optional[Tuple[float, float]]]]] = (None, {})
 
     def path(self, name: str) -> Path:
@@ -237,6 +255,68 @@ class AtlasIndex:
                         **({"note": row["note"]} if row.get("note") else {})}
         return {"dose": STEER_DOSE_REFERENCE, "from": "reference",
                 "rule": "one dose for every layer, the reference's: not sized to this layer"}
+
+    def steer_common(self, layer: int) -> Optional[Dict[str, Dict[int, float]]]:
+        """The word-pieces a layer's steer-lens readings share: for each sign ("up", "down"), word-piece -> the share
+        of the layer's neurons that list it, for those at or over STEER_COMMON. None when the lens is not built."""
+        st = self.get("steer_lens")
+        if st is None:
+            return None
+        try:
+            key = (self.path("steer_lens").stat().st_mtime, int(layer))
+        except FileNotFoundError:
+            return None
+        with self._lock:
+            hit = self._common.get(int(layer))
+            if hit and hit[0] == key:
+                return hit[1]
+        out = {sign: steer_common_shares(st[sign][int(layer)]) for sign in ("up", "down")}
+        with self._lock:
+            self._common[int(layer)] = (key, out)
+        return out
+
+    def steer_check(self, layer: int) -> Optional[Dict[str, Any]]:
+        """What the steer lens's check found at a layer (`steer_check.json`, backend/steer_check.py): how many of a
+        neuron's word-pieces the layer shares, and how the lens fared beside the layer's census (`standing`: "agrees",
+        "weak" or "unchecked", with the nearest checked layer for an unchecked one). None when no check was written, or
+        when it was written for another build of the lens than the one read here."""
+        st = self.get("steer_lens")
+        p = self.root / STEER_CHECK_FILE
+        if st is None:
+            return None
+        try:
+            mt = p.stat().st_mtime
+        except FileNotFoundError:
+            return None
+        with self._lock:
+            kept = self._check if self._check and self._check[0] == mt else None
+        if kept is None:
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                d = None
+            kept = (mt, d if isinstance(d, dict) else None)
+            with self._lock:
+                self._check = kept
+        d = kept[1]
+        meta = st.get("meta") or {}
+        if d is None or (d.get("lens") or {}).get("built_at") != meta.get("built_at"):
+            return None
+        row = (d.get("layers") or {}).get(str(int(layer)))
+        return {**row, "group": d.get("group"), "agrees_at": d.get("agrees_at")} if row else None
+
+    def steer_weak(self, layer: int) -> bool:
+        """Whether the steer lens's check counts it a weak guide at a layer: beside the layer's census it shares a word
+        with fewer than STEER_AGREES of the neurons that stand out, or the layer has no census and the nearest layer
+        that has one is such a layer. Where it is, a face's line and the word search leave the steer lens's words out
+        (as before the lens was built) and the neuron's own details show them with what the check found. False when no
+        check has been written for this build of the lens: nothing is then known against it."""
+        c = self.steer_check(layer)
+        if not c:
+            return False
+        if c.get("standing") == "weak":
+            return True
+        return c.get("standing") == "unchecked" and (c.get("nearest") or {}).get("standing") == "weak"
 
     def get(self, name: str) -> Optional[Dict[str, Any]]:
         p = self.path(name)
@@ -379,8 +459,11 @@ class AtlasIndex:
             sources += [("+", "lens", lens["lens_pos"]), ("-", "lens", lens["lens_neg"]),
                         ("+", "eye", lens["eye_pos"]), ("-", "eye", lens["eye_neg"])]
         steer = self.get("steer_lens")
+        weak = None
         if steer is not None:
             sources += [("+", "steer", steer["up"]), ("-", "steer", steer["down"])]
+            # a layer where the lens's check counts it a weak guide is not searched by its words (`steer_weak`)
+            weak = np.array([self.steer_weak(l) for l in range(steer["up"].shape[0])], dtype=bool)
         if not sources or not len(match):
             return [], 0
         found = []
@@ -388,6 +471,8 @@ class AtlasIndex:
             hit = np.isin(arr, match)  # [L, N, K]
             if src != "steer" and unread is not None and unread.any():
                 hit[unread] = False
+            if src == "steer" and weak is not None and weak.any():
+                hit[weak] = False
             count = hit.sum(-1)
             best = np.where(hit, np.arange(arr.shape[-1]), 99).min(-1)
             for l, n in zip(*np.nonzero(count)):
@@ -662,7 +747,9 @@ class AtlasIndex:
 
         The words pooled are the steer lens's when it is built (`src` "steer": a measured effect on the next word-piece,
         which the label gate does not cover), else the J++ lens's, and then only faces the label gate lets through:
-        `gated` counts the faces left out for it (a web that runs through early layers can leave out most of them). The
+        `gated` counts the faces left out for it (a web that runs through early layers can leave out most of them).
+        From the steer lens, a neuron at a layer where the lens's own check counts it a weak guide (`steer_weak`) is
+        left out too and counted in `gated`, and the word-pieces a layer shares (`steer_common`) are not pooled. The
         gate was validated for single neurons' labels, not for words pooled over many: a pool is a lead. Not ready
         (`missing`) without the wiring index, or without both the steer-lens and the lens index."""
         if self.get("wiring") is None:
@@ -694,18 +781,30 @@ class AtlasIndex:
             walks[("up", "+")] = {t: r for t, r in up.items() if r["drives"] == "+"}
             walks[("up", "-")] = {t: r for t, r in up.items() if r["drives"] == "-"}
         gated = {"down": 0, "up": 0}
+        weak = {l: src == "steer" and self.steer_weak(l) for l in range(L)}
+        shared: Dict[Tuple[int, str], Dict[int, float]] = {}
+
+        def shared_at(l: int, face: str) -> Dict[int, float]:
+            if src != "steer":
+                return {}
+            if (l, face) not in shared:
+                shared[(l, face)] = (self.steer_common(l) or {}).get("up" if face == "+" else "down") or {}
+            return shared[(l, face)]
 
         def pool(nodes: Dict[Tuple[int, int], Dict[str, Any]], side: str) -> List[Dict[str, Any]]:
             acc: Dict[str, Dict[str, Any]] = {}
             used = 0
             for (l, m), r in nodes.items():
                 face, hop = r["face"], r["hop"]
-                if src == "lens" and not self.label_passes(l, m, face):
+                if (src == "lens" and not self.label_passes(l, m, face)) or weak[l]:
                     gated[side] += 1
                     continue
                 used += 1
                 w = r["w"] * 0.8 ** (abs(hop) - 1)
+                own = shared_at(l, face)
                 for t in (pos if face == "+" else neg)[l, m, :8]:
+                    if int(t) in own:
+                        continue  # a word-piece its layer shares says nothing of this neuron
                     s = vocab[int(t)] if int(t) < len(vocab) else ""
                     key = s.strip().lower()
                     if not key or "�" in key:
