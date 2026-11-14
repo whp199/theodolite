@@ -1089,9 +1089,18 @@ layers, the determinism run and the sampled push on 29 October). In this section
     the one kept and compares them, and fails if they differ (`check_volunteer_kit`, 63 checks). Nine layers are
     open on the board: 32–35, 37–39, 51 and 52. Layer 36 is closed, held for the home card;
     `census_board.py layer 36 open` offers it. PR #2 (24 GB cards) is not in this kit. *Not done:* no whole layer
-    has been taken with `match_ceil` or `soft_ceil`, on any card; the reader for a whole layer taken with them is
-    not written (the trials’ is `ceil_read.py`); and whether the intake carries a volunteer card’s own writer
-    floor through to the page is not checked.
+    has been taken with `match_ceil` or `soft_ceil` to its end, on any card (the home card began layer 36 on 14
+    November, below); and whether the intake carries a volunteer card’s own writer floor through to the page is
+    not checked.
+    *The reader for a whole layer taken with them* (written 14 November 2026):
+    `experiments/results/census_scaled_design/read_whole.sh <layer>` reads a whole `match_ceil` or `soft_ceil`
+    layer with the reader and gates that layer’s own trial was read by, then the upper dose’s answers alone,
+    gating nothing, into `census_L<NN>_whole/` beside the other layers’. The registered reader’s three files are
+    the same bytes in every trial’s folder, and the folder’s hashes are checked before anything is read. Run on the
+    trials themselves at layers 36, 37, 38 and 52 it gives the verdicts recorded at the time, figure for figure,
+    the upper dose’s among them; it refuses a `break_rel` run (whose reader is
+    `census_neighbour_trials/read_whole.sh`), a run of another layer than the one named, and a layer with no trial
+    it knows of unless that trial’s folder is given. It has not yet read a whole layer; layer 36 will be the first.
   - **Kit 4: kit 3 opened to 24 GB cards** (cut 14 November 2026, tag `census-kit-4`; the owner’s word that day:
     “Definitely need to incorporate the 24gb PR if it will work”). The pull request (whp199/theodolite#2, by
     bethanylong and her agent) makes two changes. `census.sh check` asks for 23,900 MiB free as well as a card of
@@ -1106,6 +1115,12 @@ layers, the determinism run and the sampled push on 29 October). In this section
     of its own, read against its own controls and spot-checked as the RTX PRO 6000 layers were; a 3090 takes about
     43 hours a layer, by the author’s sixteenth of layer 45. *Not shown yet:* a whole layer from a 24 GB card
     through the intake, and a 4090.
+    *Layer 36 on the home card* (the owner’s word, 14 November: “we can offer layer 36 using your best judgement”;
+    the judgement was that the home card take it, since the card was free, the layer passed one gate by a
+    thousandth and a whole `match_ceil` layer is what the new reader most needs). It began at 01:07Z on 14 November
+    with kit 4’s code and settings, about 13 to 17 hours. For its first twelve minutes a second process held the
+    card down to 23,900 MiB free, the kit’s floor: a real run inside what a 24 GB card has. The board shows the
+    layer closed, the home card taking it.
 - **A census read by seeking, and every census at once** (built 12 November 2026; CPU checks on the stand-in, then
   driven on the eleven layers through the page). The server used to read a layer’s whole run, 2.7 GB, to show its list
   or one neuron’s answers, and kept two layers: 21 and 30 seconds to open a layer (timed on layers 43 and 46), again at
