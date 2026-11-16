@@ -174,9 +174,10 @@ def s_lowrank_which(layer: int, which: str) -> str:
 S_NO_COLUMN = "A term that names no neuron changes nothing."
 S_NOT_FINITE = f"An edit holds a number that is not finite ({W})."
 S_LOWRANK_FOLD = "A low-rank term has no folded form yet, so this edit cannot be read folded."
-# 4.7 step 3's sentence as the spec's "Found in the build" amends it: only a factor of 0 was read on the card
-S_EXACT = ("a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card it was read "
-           "beside the folded form for a silencing only (14 November 2026)")
+# 4.7 step 3's sentence as the spec's "Found in the build" amends it, corrected from the card check of 16 November 2026
+# (verify_1a.json, sections 5 and 5a: a silencing and a scale by 2 read as their folded forms by bits, 48 of 48)
+S_EXACT = ("a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card a silencing "
+           "and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 (16 November 2026)")
 S_FLOOR = ("The floor is the largest of {n0} null rows, not a bound: on 14 November 2026 a single neuron silenced at "
            "random read above its forward's floor in 26 of 72 readings, up to 2.25 times it.")
 S_NOTHING = ("This edit scales every column it names by exactly 1 and adds nothing: at any dose its row is the base row "
@@ -218,11 +219,12 @@ def s_null_two(e: float, s: float) -> str:
 
 
 # the item gate as a caution (the spec's open point 4, set from the card check of 16 November 2026: the base's
-# log-probability did not separate the items whose two row counts disagreed); the words are the spec's section 12's
+# log-probability did not separate the items whose two row counts disagreed); the words are the spec's section 12's, as
+# its later paragraph corrects them: the 3 and the 48 are counted on the EDIT's arms (in sections 9 and 9a alike)
 S_GATE_SAY = ("The bar is a caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and the "
-              "base's log-probability did not separate the 3 whose two row counts disagreed (-3.09, -4.13 and -9.64 nats "
-              "a piece) from the 48 that agreed (the lowest -12.13). The item is read, and its two row counts carry the "
-              "weight.")
+              "base's log-probability did not separate the 3 on which the edit's two row counts disagreed (-3.09, -4.13 "
+              "and -9.64 nats a piece) from the 48 on which they agreed (the lowest -12.13). The item is read, and its two "
+              "row counts carry the weight.")
 
 
 def s_caution(small: float, large: float, rows_small: int, rows_large: int, bar: float) -> str:
@@ -233,9 +235,14 @@ def s_caution(small: float, large: float, rows_small: int, rows_large: int, bar:
 
 
 def s_one_row(m: int, layer: int) -> str:
-    return ("A one-row capture replayed at many rows has been shown only at layer 44 (page layer 45), on raw text with "
-            f"no start mark, on 14 November 2026; it is taken from layer {m} (page layer {m + 1}) up. This edit starts at "
-            f"layer {layer} (page layer {layer + 1}).")
+    # corrected from the card check of 16 November 2026 (verify_1a.json, section 6b: on two chat-formatted items at
+    # layers 40 and 44 the one-row capture stood off the same-shape reading by 10.2 to 35.3 times the floor in 7 of 8;
+    # the eighth, own 4 at layer 44 and 32 rows, sat at 0.14 of it, so "shown to agree", not "agreed", only on raw text)
+    return ("A one-row capture replayed at many rows has been shown to agree with the same-shape reading only at layer "
+            "44 (page layer 45), on raw text with no start mark, on 14 November 2026; on two chat-formatted items on "
+            "16 November 2026 it stood off that reading at layers 40 and 44 by 10 to 35 times the floor in 7 of 8 "
+            f"readings. It is taken from layer {m} (page layer {m + 1}) up, as a cheaper reading that is not the "
+            f"same-shape one. This edit starts at layer {layer} (page layer {layer + 1}).")
 
 
 # ------------------------------------------------------------------------------------------------- the check's own
@@ -1785,25 +1792,36 @@ def check_readouts(Fb: Box, hF: Any, Pb: Box, hP: Any) -> None:
                           and rk["controls_over_floor"] == sum(1 for c in theirs if c > floor), f"9: the rank by {m} at the main dose, against the control edits and the floor ({rk})")
                     check(lv.rank_among(mine, theirs) == {"at_least": at_least, "non_finite": 0, "of": 4, "rank": at_least + 1}, "9: rank_among gives the same count")
             with part(f"9: stability, {res['name']}, {entry['item']['name']}"):
+                # since 16 November 2026 the rule is read on the edit's arms alone and the control edits' ratios are kept
+                # beside them, not judged (the spec's open point 5, its second clause; the card check showed control arms
+                # at the floor tripping it)
                 st = entry["stability"]
                 ok, disagree = set(st) == {"ratio_bar", "base_rows_same_bits", "metrics", "disagree"} and st["ratio_bar"] == 3.0 and set(st["metrics"]) == set(metrics), []
                 for m in metrics:
                     floor = max(entry["classes"][c]["floor"][m]["mean_abs"] for c in ("small", "large"))
-                    arms = {a["key"]: a for a in entry["classes"]["small"]["arms"] if a["what"] != "null"}
+                    arms = {a["key"]: a for a in entry["classes"]["small"]["arms"] if a["what"] == "edit"}
+                    ctls = {a["key"]: a for a in entry["classes"]["small"]["arms"] if a["what"] == "control"}
                     big = {a["key"]: a for a in entry["classes"]["large"]["arms"] if a["what"] != "null"}
-                    ok = ok and set(st["metrics"][m]["arms"]) == set(arms) == set(big)
-                    for key in arms:
-                        a, b = arms[key]["metrics"][m]["mean"], big[key]["metrics"][m]["mean"]
+                    ok = ok and set(st["metrics"][m]) == {"arms", "disagree", "controls"} and set(st["metrics"][m]["arms"]) == set(arms) \
+                        and set(st["metrics"][m]["controls"]) == set(ctls) and len(ctls) == 3 and set(arms) | set(ctls) == set(big)
+                    for key in list(arms) + list(ctls):
+                        a, b = (arms.get(key) or ctls[key])["metrics"][m]["mean"], big[key]["metrics"][m]["mean"]
                         agrees, ratio = own_agree(a, b, floor, m != "kl")
-                        got = st["metrics"][m]["arms"].get(key, {})
                         there = lv.agree(a, b, floor, m != "kl")
+                        if key in ctls:  # its two means and the rule's ratio, and no word on whether it agrees
+                            got = st["metrics"][m]["controls"].get(key, {})
+                            ok = ok and set(got) == {"small", "large", "ratio"} and got["small"] == a and got["large"] == b \
+                                and close(got["ratio"], ratio if math.isfinite(ratio) else None, 1e-9) and close(there[1], ratio, 1e-9)
+                            continue
+                        got = st["metrics"][m]["arms"].get(key, {})
                         ok = ok and set(got) == {"small", "large", "ratio", "agree"} and got["small"] == a and got["large"] == b and got["agree"] == agrees \
                             and close(got["ratio"], ratio if math.isfinite(ratio) else None, 1e-9) and there[0] == agrees and close(there[1], ratio, 1e-9)
                         if not agrees:
                             disagree.append([m, key])
                     ok = ok and sorted(st["metrics"][m]["disagree"]) == sorted(k for mm, k in disagree if mm == m)
                 check(ok and sorted(map(list, st["disagree"])) == sorted(disagree) and (entry["status"] == "unstable") == bool(disagree),
-                      f"9: every edit and control arm's two row counts are set side by side by the spec's rule, on {', '.join(metrics)} ({len(disagree)} disagree)")
+                      f"9: every arm of the edit is judged by the spec's rule, and every control edit's ratio is kept beside them by the same rule and not judged, "
+                      f"on {', '.join(metrics)} ({len(disagree)} disagree)")
     for box, h in ((Fb, hF), (Pb, hP)):
         with part(f"9 ({box.label}): a strong edit under a sharp unembedding, main dose 0.5"):
             # The reading above cannot tell a wrong read-out from a right one: its edit reads 1e-4 nats and its null rows
@@ -1986,7 +2004,14 @@ def paired_shape(r: Dict[str, Any], box: Box, what: str, n_items: int) -> None:
         st = e["stability"]
         on = [m for m in ("kl", "own", "odds") if (plan["readouts"][m] if m != "odds" else plan["readouts"]["odds"] is not None)]
         check(set(st) == {"ratio_bar", "base_rows_same_bits", "metrics", "disagree"} and set(st["metrics"]) == set(on) and isinstance(st["base_rows_same_bits"], bool)
-              and all(set(v) == {"arms", "disagree"} for v in st["metrics"].values()), f"{what}, {name}: stability holds every read-out that is on ({', '.join(on)})")
+              and all(set(v) == {"arms", "disagree", "controls"} for v in st["metrics"].values()), f"{what}, {name}: stability holds every read-out that is on ({', '.join(on)})")
+        # the rule on the edit's arms alone (16 November 2026, the spec's open point 5): the edit's arms in "arms", judged;
+        # every control edit in "controls", its two means and ratio and no verdict; only an arm of the edit in "disagree"
+        doses = {f"edit:{float(d)!r}" for d in plan["doses"]}
+        check(all(set(v["arms"]) == doses and set(v["controls"]) == {f"control:{i}" for i in range(C)}
+                  and all(set(a) == {"small", "large", "ratio"} for a in v["controls"].values()) and set(v["disagree"]) <= doses for v in st["metrics"].values())
+              and all(str(k).startswith("edit:") for _m, k in st["disagree"]) and (e["status"] == "unstable") == bool(st["disagree"]),
+              f"{what}, {name}: stability judges the edit's arms alone and keeps each control edit's ratio beside them, unjudged ({e['status']})")
 
 
 def summary_shape(r: Dict[str, Any], what: str) -> None:
@@ -2073,6 +2098,20 @@ def lines_say(r: Dict[str, Any], what: str) -> None:
           f"{what}: the lines say once that the floor is no bound, name each item by its id's first 12 too, and say on the first line how many items were kept")
     if plan["controls"]["count"]:
         check("unmatched control edits read as much" in text, f"{what}: a rank line carries the word unmatched")
+        # the spec's open point 5, its second clause (16 November 2026): the control edits' ratios printed, not judged
+        on = [m for m in ("kl", "own", "odds") if plan["readouts"][m]]
+        want = sum(len(on) for e in r["items"] if e.get("stability"))
+        n = text.count("the control edits' ratios on ")
+        firsts = [" ".join(x.split()) for x in lv.lines(r) if "the control edits' ratios on " in x]
+        # two decimals each (three figures under a thousandth: a pair under the floor reads its larger over the floor),
+        # in the order of the control edits
+        words = {"kl": "KL", "own": "the text's own log-probability", "odds": "log-odds of the named pieces"}
+        shown = [(m, ", ".join("not finite" if c["ratio"] is None else f"{c['ratio']:.3g}" if 0 < c["ratio"] < 1e-3 else f"{c['ratio']:.2f}"
+                               for _k, c in sorted(e["stability"]["metrics"][m]["controls"].items(), key=lambda kc: int(kc[0].split(":")[1]))))
+                 for e in r["items"] if e.get("stability") for m in on]
+        check(n == want and all("printed and not judged (the rule reads the edit's arms alone), from control edit 0: " in x for x in firsts)
+              and all(any(f"ratios on {words[m]} " in x and f"from control edit 0: {s};" in x for x in firsts) for m, s in shown),
+              f"{what}: every item's lines print the control edits' ratios on each read-out, from control edit 0, as not judged ({n} of {want})")
 
 
 class Planted:
@@ -2340,6 +2379,32 @@ def check_end_to_end(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
                   and by["orange"]["classes"]["small"]["arms"][4]["key"] == "edit:1.0" and close(s["classes"]["small"]["arms"]["edit:1.0"]["kl"]["mean_over_items"], kept_mean, 1e-12),
                   f"10: and leaves it out of the summary, which holds the other item alone ({s['items']})")
             summary_shape(r, "10: one item unstable")
+            # the spec's open point 5, its second clause (16 November 2026): a control edit's row that moves with the row
+            # count is printed beside the edit's arms and not judged; the item reads as the edit's arms do
+            ctl_row = lv.layout([1.0], 5, list(lv.NULL_E), 16)[0].index("control:2")
+            planted.set("move", row=ctl_row, rows=16, pieces=lens["fox"])
+            r = lv.read(h2, {**base_reading, "name": "planted: a control edit's row moved, the large batch alone"}, items)
+            printed(r)
+            fired = planted.fired
+            planted.set(None)
+            by = {e["item"]["name"]: e for e in r["items"]}
+            st = by["fox"]["stability"] or {}
+            c2 = ((st.get("metrics") or {}).get("kl", {}).get("controls") or {}).get("control:2") or {}
+            fl = max(by["fox"]["classes"][c]["floor"]["kl"]["mean_abs"] for c in ("small", "large"))
+            check(fired >= 1 and c2.get("ratio") is not None and c2["ratio"] > 3.0 and own_agree(c2["small"], c2["large"], fl, False)[0] is False,
+                  f"10: (the check's own need: the moved control edit's two readings disagree by the spec's rule as it stood before: {c2}, floor {fl:.2e})")
+            check(r["status"] == "ok" and by["fox"]["status"] == "ok" and by["fox"]["why"] is None and st.get("disagree") == [] and "agree" not in c2
+                  and "control:2" not in st["metrics"]["kl"]["arms"] and by["orange"]["status"] == "ok" and r["summary"]["items"]["kept"] == 2 and r["summary"]["items"]["unstable"] == 0,
+                  f"10: a hook that moves a control edit's row in the batch of 16 rows alone leaves the item ok and in the summary: the rule reads the edit's arms alone "
+                  f"({r['status']}; {[(n, e['status']) for n, e in by.items()]}; {st.get('disagree')})")
+            said = [" ".join(x.split()) for x in lv.lines(r)]
+            at = next((i for i, x in enumerate(said) if x.startswith("item fox")), None)
+            ctl_line = next((x for x in said[at:] if x.startswith("the control edits' ratios on KL")), "") if at is not None else ""
+            check(at is not None and f"{c2.get('ratio') or 0:.2f}" in ctl_line and ctl_line.endswith("; 1 not finite or over the bar (control edit 2)")
+                  and any(x.startswith("8 and 16 rows agree on KL for the edit's arms") for x in said[at:]),
+                  f"10: and fox's lines say its edit's arms agree on KL and print control edit 2's ratio, the one over the bar, not judged ({ctl_line!r})")
+            summary_shape(r, "10: a control edit's row moved")
+            paired_shape(r, Pb, "10: a control edit's row moved", 2)
         finally:
             planted.set(None)
             hook.remove()

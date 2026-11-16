@@ -15,7 +15,9 @@ How a paired reading is laid out (`layout`). Every forward of a class has the sa
 row, untouched; the last row is its twin, untouched; rows 1 to n0 are null rows, each scaling the feed-forward output
 of the edit's lowest layer by 1 + e; the rest are arms: the edit at each dose (all in forward 0), then control edits.
 Every forward carries its own base row and an arm is read against the base row of the forward it sat in. Each item is
-read twice, at `rows.small` rows and at `rows.large`, and an item whose two readings disagree is "unstable" (`agree`).
+read twice, at `rows.small` rows and at `rows.large`, and an item on which an arm of the edit disagrees with itself
+between the two is "unstable" (`agree`). The control edits' arms are set side by side the same way and their ratios
+printed beside the edit's, not judged (since 16 November 2026: the spec's open point 5, below).
 
 What voids a reading (the mechanism is then not sound, and what was read so far is written with status "void"): a
 base row that is not finite; an untouched row that is not the base row by bits; an arm at dose 0 that is not the base
@@ -86,14 +88,23 @@ section 12). One card run each, so all of them stay provisional:
   that the figure does not separate, the gate stays as a printed caution and the two row counts carry the weight").
   With the gate set aside the card read 51 items: in the four readings of its section 9 (no control edits) 3 read
   "unstable" (-3.09, -4.13 and -9.64 nats a piece) and 48 did not (the lowest -12.13), so the figure does not
-  separate; with 19 control edits 3 more read "unstable" from control arms alone, all under the bar (-8.61, -8.82 and
-  -10.08), which leaves that so. An item under the bar is read in both classes like any
+  separate; with 19 control edits 3 more read "unstable" from control arms alone under the rule as it then stood, all
+  under the bar (-8.61, -8.82 and -10.08), which leaves that so. An item under the bar is read in both classes like any
   other; its `gate.passed` is false and `gate.caution` says, in `GATE_SAY`'s words, why it was read anyway.
 - `STABLE_RATIO` stays 3.0 (open point 5: "ship as written"). On items over the bar the largest ratio that agreed was
   2.44 (a read-out that agreed in a reading whose other read-out did not; among readings that agreed on both
-  read-outs, 2.07), and 3 readings disagreed (up to 20.7). The point's other clause, for control arms at the
-  floor tripping the rule, is the coordinating session's to read: 6 of 969 control arms disagreed, every one on an
-  item under the bar, and two of them read at the floor at one of the two row counts.
+  read-outs, 2.07), and 3 readings disagreed (up to 20.7). The point's other clause, "if §9a shows control arms at
+  the floor tripping it, read the rule on the edit's arms alone and print the control arms' ratios", is applied as
+  written (16 November 2026; the coordinating session decided on 14 November that every open point follows the spec's
+  recommendation). Its condition was met: 6 of 969 control arms disagreed, every one on an item under the bar, and
+  three of them sat at the floor at one row count (control 14 on prose 10 as an answer, 3.34 on KL; control 15 on the
+  raw prose 3 with no start mark, 3.19 on the text's own log-probability, its two readings of opposite signs; control
+  9 on the raw recipe with no start mark, 7.57 and 7.40, an item the edit's own arms made unstable too). So an item is
+  judged on the edit's arms alone, and each read-out's control-edit ratios are kept (`stability.metrics.<m>.controls`)
+  and printed beside them, not judged; the number, the floor and the rest of the rule are as they were. The edit's
+  arms disagreed on the same 3 items in section 9 and in 9a, and agreed on the other 48. Read as written, the clause
+  sets aside control arms clear of the floor too: on the raw recipe cut with no start mark controls 16 and 2 read
+  31.1 and 6.43 times apart on KL, neither at the floor, and that item now reads as its edit's arms do.
 - `ONE_ROW_MIN_LAYER` stays 44: open point 14 wrote no rule for moving it, and the card's reading of the one-row
   capture is above.
 - `ROWS_SMALL` and `ROWS_LARGE` stay 12 and 32 (open point 3: "set by hand" once the map is read, with no rule for
@@ -193,7 +204,8 @@ class Refused(ValueError):
 
 VERSION = 1
 ITEM_GATE_BAR = -6.0        # nats a piece [provisional]; a printed caution, not a refusal, since 16 November 2026
-STABLE_RATIO = 3.0          # [provisional; kept on 16 November 2026, the spec's open point 5]
+STABLE_RATIO = 3.0          # [provisional; kept on 16 November 2026 (the spec's open point 5), and read on the edit's
+#                             arms alone since then, as the point's second clause asks]
 ONE_ROW_MIN_LAYER = 44      # [provisional: the one layer where the one-row capture was shown, on raw text with no
 #                             start mark; on chat-formatted items the card read it off the same-shape reading at layers
 #                             40 and 44, 16 November 2026, and no rule was written for moving the bar]
@@ -224,11 +236,14 @@ PAIRED_SAY = ("These figures are read along the answer given, piece by piece. Th
               "would write.")
 FLOOR_SAY = ("The floor is the largest of {n0} null rows, not a bound: on 14 November 2026 a single neuron silenced at "
              "random read above its forward's floor in 26 of 72 readings, up to 2.25 times it.")
-# the item gate's caution, after the item's own figures (`_gate_caution`): the spec's open point 4, as the card found it
+# the item gate's caution, after the item's own figures (`_gate_caution`): the spec's open point 4, as the card found
+# it. Since 16 November 2026 it names the EDIT's two row counts: its arms disagreed on the same 3 items in sections 9
+# and 9a and agreed on the other 48, while 3 of those 48 had read "unstable" in 9a from control arms alone (open
+# point 5)
 GATE_SAY = ("The bar is a caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and "
-            "the base's log-probability did not separate the 3 whose two row counts disagreed (-3.09, -4.13 and -9.64 "
-            "nats a piece) from the 48 that agreed (the lowest -12.13). The item is read, and its two row counts "
-            "carry the weight.")
+            "the base's log-probability did not separate the 3 on which the edit's two row counts disagreed (-3.09, "
+            "-4.13 and -9.64 nats a piece) from the 48 on which they agreed (the lowest -12.13). The item is read, "
+            "and its two row counts carry the weight.")
 
 MAX_NULL_ROWS, MAX_NAMED_PIECES, MAX_NEW_MAX = 8, 16, 256
 WRITTEN_ROWS, WRITTEN_MAX_NEW, WRITTEN_CONTROLS = 8, 48, 3
@@ -237,7 +252,8 @@ SIGNED = {"kl": False, "own": True, "odds": True}
 FOLDED_BASE_FROM = "forward 0 of the same shape"
 WHY_NO_TWIN = {"never": "the plan says folded: never",
                "exact": ("a silencing or a scale by a power of two is exact in arithmetic on the input side; on the "
-                         "card it was read beside the folded form for a silencing only (14 November 2026)"),
+                         "card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 "
+                         "(16 November 2026)"),
                "lowrank": "the edit holds a low-rank term, which has no folded form in 1a"}
 _PAIRED_KEYS = ("name", "kind", "edit", "items", "doses", "main_dose", "controls", "null_e", "rows", "readouts",
                 "rank_by", "folded", "lower", "bars")
@@ -643,9 +659,12 @@ def _fact_refusals(plan: Mapping[str, Any], facts: Mapping[str, Any], n_layers: 
         return
     m, low = plan["bars"]["one_row_min_layer"], int(facts["lowest_layer"])
     if plan["lower"] == "one_row" and low < m:
-        raise Refused("A one-row capture replayed at many rows has been shown only at layer 44 (page layer 45), on "
-                      f"raw text with no start mark, on 14 November 2026; it is taken from layer {m} (page layer "
-                      f"{m + 1}) up. This edit starts at layer {low} (page layer {low + 1}).")
+        raise Refused("A one-row capture replayed at many rows has been shown to agree with the same-shape reading "
+                      "only at layer 44 (page layer 45), on raw text with no start mark, on 14 November 2026; on two "
+                      "chat-formatted items on 16 November 2026 it stood off that reading at layers 40 and 44 by 10 to "
+                      f"35 times the floor in 7 of 8 readings. It is taken from layer {m} (page layer {m + 1}) up, as "
+                      "a cheaper reading that is not the same-shape one. This edit starts at layer "
+                      f"{low} (page layer {low + 1}).")
     if plan["folded"] == "always" and facts.get("has_lowrank"):
         raise Refused("A low-rank term has no folded form yet, so this edit cannot be read folded.")
 
@@ -1287,8 +1306,11 @@ def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun) -> Dict[str, A
 
 
 def _stability(plan: Mapping[str, Any], small: Mapping[str, Any], large: Mapping[str, Any], same_bits: bool) -> Dict[str, Any]:
-    """The two classes of one item set side by side: for every read-out that is on and every arm that is an edit or a
-    control edit, the two means, their ratio and whether they agree (`agree`), against the larger of the two floors."""
+    """The two classes of one item set side by side, for every read-out that is on, against the larger of the two
+    floors (`agree`). Since 16 November 2026 the rule is read on the edit's arms alone (the spec's open point 5: the
+    card check showed control arms at the floor tripping it): each arm of the edit goes in `arms` with its two means,
+    their ratio and whether they agree, and only an arm of the edit can make the item unstable; each control edit's arm
+    goes in `controls` with its two means and their ratio, taken as the rule takes it, to be printed, not judged."""
     ratio = plan["bars"]["stable_ratio"]
     big = {a["key"]: a for a in large["arms"]}
     out: Dict[str, Any] = {"ratio_bar": ratio, "base_rows_same_bits": bool(same_bits), "metrics": {}, "disagree": []}
@@ -1296,7 +1318,7 @@ def _stability(plan: Mapping[str, Any], small: Mapping[str, Any], large: Mapping
         if not plan["readouts"][m]:
             continue
         floor = max((small["floor"][m]["mean_abs"] or 0.0), (large["floor"][m]["mean_abs"] or 0.0))
-        per: Dict[str, Any] = {"arms": {}, "disagree": []}
+        per: Dict[str, Any] = {"arms": {}, "disagree": [], "controls": {}}
         for a in small["arms"]:
             if a["what"] == "null":
                 continue
@@ -1304,6 +1326,9 @@ def _stability(plan: Mapping[str, Any], small: Mapping[str, Any], large: Mapping
             x = a["metrics"][m]["mean"] if a["metrics"] else None
             y = b["metrics"][m]["mean"] if b and b["metrics"] else None
             ok, r = agree(x, y, floor, SIGNED[m], ratio)
+            if a["what"] == "control":  # its ratio, beside the edit's; whether it agrees is not asked
+                per["controls"][a["key"]] = {"small": x, "large": y, "ratio": r}
+                continue
             per["arms"][a["key"]] = {"small": x, "large": y, "ratio": r, "agree": ok}
             if ok is False:
                 per["disagree"].append(a["key"])
@@ -2010,16 +2035,29 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
                     top = "largest ratio not finite"
                 else:
                     top = f"largest ratio {_n(max(ratios), 2)}" if ratios else "no ratio to take"
+                # a result written since 16 November 2026 keeps its control edits apart, in "controls": the rule read
+                # the edit's arms alone (before, the control edits were in "arms" too, and were judged)
+                ctl = per.get("controls")
+                judged = "" if ctl is None else " for the edit's arms"
                 if per["disagree"]:
                     out.append(f"    {small} and {large} rows disagree on {_METRIC_WORDS[m]} for "
                                f"{', '.join(_arm_name(k) for k in per['disagree'][:6])}"
                                f"{' and more' if len(per['disagree']) > 6 else ''} ({top}, bar "
                                f"{_n(stab['ratio_bar'], 2)})")
                 else:
-                    out.append(f"    {small} and {large} rows agree on {_METRIC_WORDS[m]}"
+                    out.append(f"    {small} and {large} rows agree on {_METRIC_WORDS[m]}{judged}"
                                + (" by construction, being one arithmetic" if one else "")
                                + f" ({top}, bar {_n(stab['ratio_bar'], 2)}); this does not show another row count "
                                  "would agree")
+                if ctl:
+                    seq = sorted(ctl.items(), key=lambda ka: int(str(ka[0]).partition(":")[2]))
+                    over = [k for k, a in seq if a["ratio"] is None or a["ratio"] > stab["ratio_bar"]]
+                    out.append(f"    the control edits' ratios on {_METRIC_WORDS[m]} between {small} and {large} rows, "
+                               "printed and not judged (the rule reads the edit's arms alone), from control edit "
+                               f"{seq[0][0].partition(':')[2]}: " + ", ".join(_n(a["ratio"], 2) for _k, a in seq)
+                               + (f"; {len(over)} not finite or over the bar ("
+                                  f"{', '.join(_arm_name(k) for k in over[:6])}{' and more' if len(over) > 6 else ''})"
+                                  if over else "; none over the bar"))
                 fa, fb = (((e["classes"][c] or {}).get("floor") or {}).get(m, {}).get("mean_abs") for c in read[:2])
                 if fa and fb and max(fa, fb) / min(fa, fb) > stab["ratio_bar"]:
                     apart = _g(round(max(fa, fb) / min(fa, fb), 1))

@@ -45,11 +45,12 @@ It checks, by the spec's own section numbers (a line with no tolerance is record
  7   writing under hooks; 7b a step under hooks within 10% of one without; 7c where a null row parts (recorded);
  8   the item gate at the shipped bar; 8b the gate's figure for every other item (recorded);
  9   the two row counts on every item with the gate set aside (on the model's own answers no arm disagrees on KL at
-     3.0; pilot 8's largest ratio was 1.60); 9a by item, and control arms, and log-odds (recorded); 9b the map of
-     which row counts share bits (recorded, and entered as one note);
+     3.0; pilot 8's largest ratio was 1.60); 9a by item, and control arms, and log-odds (recorded), with one line that
+     each item is judged on the edit's arms alone (since 16 November 2026); 9b the map of which row counts share bits
+     (recorded, and entered as one note);
 10   the cost model within 25% on every paired reading predicted at a second or more;
 11   the default null factors; no null row with a position above a nat (one line for items over the shipped bar,
-     one for those under it, which the gate would not have read); the floors by item and the null rows by e (recorded);
+     one for those under it, which the gate reads with its caution); the floors by item and the null rows by e (recorded);
 12   after everything: the model is the base, the unpacker has not fallen back, the ledger is whole; the peaks.
 What is new on the card and has no pilot behind it: an input-side factor other than 0, the float32 output-side add,
 a low-rank term that is not zeros, the pre-hook in a decode step, rows that stop while writing, a restart under hooks
@@ -602,16 +603,22 @@ def section_8() -> None:
     record("gate", {n: {"small": e["gate"]["small"]["mean"], "large": e["gate"]["large"]["mean"], "status": e["status"]} for n, e in by.items()})
 
     def passes(e: Optional[Dict[str, Any]]) -> bool:
-        return e is not None and e["gate"]["passed"] is True and e["status"] != "refused" and e["gate"]["small"]["mean"] >= bar and e["gate"]["large"]["mean"] >= bar
+        return e is not None and e["gate"]["passed"] is True and e["status"] != "refused" and e["gate"]["small"]["mean"] >= bar and e["gate"]["large"]["mean"] >= bar \
+            and e["gate"]["caution"] is None
 
-    def refused(e: Optional[Dict[str, Any]]) -> bool:
-        return e is not None and e["status"] == "refused" and e["gate"]["small"]["mean"] < bar and e["gate"]["large"]["mean"] < bar
+    # since 16 November 2026 the gate is a printed caution, not a refusal (the spec's open point 4, set from this check's
+    # first run): an item under the bar is read at both row counts all the same, with the caution in its words
+    def cautioned(e: Optional[Dict[str, Any]]) -> bool:
+        return e is not None and e["status"] in ("ok", "unstable") and e["gate"]["passed"] is False and e["gate"]["small"]["mean"] < bar and e["gate"]["large"]["mean"] < bar \
+            and isinstance(e["gate"]["caution"], str) and f"under the item gate's bar of {bar:.2f} at both row counts. " in e["gate"]["caution"] \
+            and e["gate"]["caution"].endswith(lv.GATE_SAY) and all((e.get("classes") or {}).get(c) is not None for c in ("small", "large")) and e.get("stability") is not None
 
     check(r["status"] == "ok" and r["bars_overridden"] is False, f"the reading over the ten items is taken at the module's own bar ({r['status']}: {r['why']})")
     check(all(passes(by.get(it.name)) for it in S["own"]), "all six of the model's own answers pass the gate, at both row counts (pilot 8: -0.07 to -0.17)")
     check(passes(by.get("recipe cut as an answer")) and passes(by.get("survey cut as an answer")), "the two cuts given as answers pass, at both row counts (pilot 8: -2.46 and -5.51)")
-    check(refused(by.get("raw recipe cut, no start mark")) and refused(by.get("raw survey cut, no start mark")),
-          "the same two cuts raw, with no start mark, are refused, at both row counts (pilot 8: -9.15 and -10.09)")
+    check(cautioned(by.get("raw recipe cut, no start mark")) and cautioned(by.get("raw survey cut, no start mark")),
+          "the same two cuts raw, with no start mark, stand under the bar at both row counts (pilot 8: -9.15 and -10.09) and are read at both all the same, "
+          "the gate's caution printed in its words (a caution, not a refusal, since 16 November 2026)")
 
 
 def section_9() -> None:
@@ -649,16 +656,30 @@ def section_9() -> None:
     for name, rec in by_item.items():
         rec["largest_ratio"] = {m: max((x["ratios"][m] for x in rec["readings"] if x["ratios"][m] is not None), default=None) for m in ("kl", "own")}
     # 9a: the set of 64 at layer 20 again with the default 19 control edits; on the model's own answers, log-odds too
-    arms_disagreeing, arms_read = 0, 0
+    arms_disagreeing, arms_read, misjudged = 0, 0, []
     for name, item in items.items():
         r = take(f"9a, hardest 64 at layer 20 silenced, 19 control edits, {name}", silence(20, hardest(item, 20, 64)), [item], bars={"item_gate": -30.0},
                  readouts={"kl": True, "own": True})
         e = r["items"][0] if r["status"] == "ok" and r["items"] else None
         st = (e or {}).get("stability") or {}
-        ctl = [d for d in (st.get("disagree") or []) if str(d[1]).startswith("control:")]
-        n_ctl = len({d[1] for d in ctl})
+        if e is not None:  # the status from the edit's arms alone, and the 19 control edits kept apart in every read-out
+            dis = [list(d) for d in (st.get("disagree") or [])]
+            if any(not str(k).startswith("edit:") for _m, k in dis) or (e["status"] == "unstable") != bool(dis) \
+                    or any(len((per or {}).get("controls") or {}) != 19 for per in (st.get("metrics") or {}).values()) or not st.get("metrics"):
+                misjudged.append((name, e["status"], dis))
+        # since 16 November 2026 the rule reads the edit's arms alone and a control edit's two means and ratio are kept in
+        # "controls", not judged (the spec's open point 5, from this check's first run): whether a control arm would
+        # disagree is asked here of `agree` itself, on the result's own figures and floors, as the rule asked it before
+        ctl = set()
+        for m, per in (st.get("metrics") or {}).items():
+            floor = max(((e["classes"][c]["floor"].get(m) or {}).get("mean_abs") or 0.0) for c in ("small", "large"))
+            ctl |= {k for k, a in (per.get("controls") or {}).items() if lv.agree(a["small"], a["large"], floor, m != "kl", st["ratio_bar"])[0] is False}
+        n_ctl = len(ctl)
         arms_disagreeing, arms_read = arms_disagreeing + n_ctl, arms_read + (19 if e is not None else 0)
         by_item[name]["with_controls"] = {"status": (e or {}).get("status"), "control_arms_disagreeing": n_ctl, "rank": {c: ((((e or {}).get("classes") or {}).get(c)) or {}).get("rank") for c in ("small", "large")}}
+    check(arms_read > 0 and not misjudged, "9a, with 19 control edits: every item is judged on the edit's arms alone and each read-out keeps its 19 control edits' ratios beside them, "
+          f"not judged (the spec's open point 5, since 16 November 2026; {arms_disagreeing} of {arms_read} control arms would disagree by the rule)"
+          + (f"; not: {misjudged[:4]}" if misjudged else ""))
     odds: Dict[str, Any] = {}
     for it in S["own"]:
         toward, away = int(it.answer_ids[0]), int(it.answer_ids[1])
@@ -761,12 +782,13 @@ def section_11() -> None:
                 if block and r["name"].startswith("verify: 9, "):
                     layer = int(r["name"].split("at layer ")[1].split()[0])
                     floors.setdefault(e["item"]["name"], {}).setdefault(str(layer), {})[cls] = (block.get("floor") or {}).get("kl", {}).get("mean_abs")
-    # 6.2 §11's line, as two: a null row that parts on an item the gate would have refused fails the second line alone,
-    # and that is the gate doing what it is there for, not the null rows failing where a reading is taken
+    # 6.2 §11's line, as two: a null row that parts on an item under the shipped bar fails the second line alone. Since 16
+    # November 2026 the gate reads such an item at both row counts with its caution (it refused it before), so the second
+    # line is about items a reading now takes, not ones the gate kept out
     check(read[True] > 0 and not above[True], f"no null row of {read[True]} read on items over the shipped bar ({lv.ITEM_GATE_BAR:g}) has a position above a nat"
           + (f" ({len(above[True])} have, the first {above[True][0]})" if above[True] else ""))
-    check(not above[False], f"no null row of {read[False]} read on items under the shipped bar, which the gate would not have read, has a position above a nat"
-          + (f" ({len(above[False])} have, the first {above[False][0]})" if above[False] else ""))
+    check(not above[False], f"no null row of {read[False]} read on items under the shipped bar, which the gate now reads at both row counts with its caution, "
+          "has a position above a nat" + (f" ({len(above[False])} have, the first {above[False][0]})" if above[False] else ""))
     # the null rows by e: the floor is the largest of them, and whether a null row reads more as its factor leaves 1 is unmeasured
     record("null_rows_by_e", {k: {"n": len(v), "median": sorted(v)[(len(v) - 1) // 2], "most": max(v)} for k, v in sorted(by_e.items())})
     # the floors at layer 44, which §9 did not read: one more reading an item, its hardest-firing neuron there silenced

@@ -2073,8 +2073,10 @@ many forwards as its arms need; the layers below the edit run once a class and t
 kept stream, which every forward must show again by bits. Read-outs, fp32 and softcapped: KL(base ‖ row), the text's
 own log-probability against the base row's, and the log-odds of named pieces; each with its mean, median, largest and
 count of positions above a nat. The floor is the largest null row of that item in that class: no constant floor
-serves. An item is "unstable" when an arm's two readings, set against the larger of the two floors, differ by more
-than `STABLE_RATIO` (3.0) or, signed, stand on opposite sides clear of the floor; it is then left out of the summary. A
+serves. An item is "unstable" when one of the edit's arms reads, at its two row counts set against the larger of the
+two floors, more than `STABLE_RATIO` (3.0) apart or, signed, on opposite sides clear of the floor; it is then left out
+of the summary. Control arms are not judged by it: each control edit's ratio is printed beside the edit's (since 16
+November 2026, by the spec's open point 5, after three control arms at the floor tripped the rule on the card). A
 folded twin (the same edit laid into the overlay dicts, one forward of the class's shape) is taken where the per-row
 form rounds. A reading is void, and stops, when the base row is not finite, an untouched row or a dose-0 row is not
 the base row by bits, a later forward's base or null rows are not forward 0's, memory runs out (a reading never

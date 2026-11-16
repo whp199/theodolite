@@ -1905,3 +1905,73 @@ passing on the CPU on 15 November 2026 (the desk's clock), in 45 s.
 7. *The two row counts.* The map makes "two batch classes" two of many arithmetics; whether 12 and 32 are the two to
    read, and whether `lower: "one_row"` should be offered at all on chat-formatted items, are the owner's.
 8. *The refit is in sample.* It was fit on the readings it would be judged on; the next card run is its test.
+
+### Items 1 to 3 of that list, closed (16 November 2026)
+
+Written 15 November 2026 (the desk's clock; about 02:45Z on the 16th) by the agent asked to close items 1 to 3 of
+"Not changed" above, from the record and the ledger alone: no GPU, no server, nothing above this heading changed.
+Items 4 to 8 are untouched and stay the owner's.
+
+**1. Open point 5's second clause, applied.** Its condition holds in the record. Of the 6 control arms of 969 that
+disagreed in §9a, three sat at the floor at one row count: control 14 on prose 10 as an answer (KL 0.00050 at 12 rows,
+under the larger floor of 0.00054, and 0.0018 at 32: 3.34); control 15 on the raw prose 3 with no start mark (its own
+log-probability -0.091 and 0.013 against 0.0285: 3.19, of opposite signs); and control 9 on the raw recipe with no
+start mark (KL 0.00849 against a floor of 0.00851, then 0.0644: 7.57; its own log-probability 7.40), on an item the
+edit's own arms made unstable as well, which is likely why the list above counted two. So, as the clause says,
+`_stability` judges the edit's arms alone. `stability.metrics.<m>.arms` holds the edit's arms with `agree`; a new
+`stability.metrics.<m>.controls` holds each control edit's two means and its ratio, taken by the rule against the
+larger floor, with no verdict; `disagree` names only arms of the edit. `lines` prints each read-out's control ratios
+beside the edit's, in the control edits' order, "printed and not judged", with how many are not finite or over the
+bar. The number, the floor, the sign test and the rest of 4.9 are as they were; 2.7's `stability` row gains `controls`
+in each metric. Replayed on the card's own §9a figures (the new `_stability` on the ledger's classes, in scratch), the
+edit's arms are judged exactly as before, the control ratios are the same numbers, and 3 items read "unstable", not 6:
+chat 10, the raw recipe with no start mark and the raw prose 2 behind the start mark, the same 3 whose edit's arms
+disagreed in §9. Read as written, the clause also sets aside control arms clear of the floor: on the raw recipe cut
+with no start mark controls 16 and 2 read 31.1 and 6.43 times apart on KL, neither at the floor, and that item now
+reads "ok". Whether a control arm clear of the floor should still count is not something the clause asks; it is the
+owner's.
+
+**2. `scripts/verify_levelling.py`.** §8's third line asserted that the two raw cuts with no start mark are refused. It
+now asserts what the code does: both stand under the bar at both row counts (pilot 8: -9.15 and -10.09), are read at
+both all the same, ok or unstable, with both classes and a stability block, and carry the caution in its words (the
+bar to two places, "at both row counts", `GATE_SAY` at its end); `passes` also asks that an item over the bar carries
+no caution. §11's second line, its comment and the docstring now say the items under the bar are read with the gate's
+caution, not that the gate "would not have read" them. §9a counted control arms from `stability.disagree`, which no
+longer holds them: it now asks `agree` itself of each control's two means against the result's own floors, the count
+the rule gave before (6 of 969 on the replay), and gains one standing line, that every item is judged on the edit's
+arms alone with its 19 control ratios kept in each read-out. The file was imported with the card hidden; it was not
+run.
+
+**3. Three printed sentences**, each corrected to the record and dated, with the CPU check's word-for-word line
+changed to the new words. `WHY_NO_TWIN["exact"]`: on the card a silencing and a scale by 2 read as their folded forms
+by bits, 48 comparisons of 48 (§5 and §5a). The one-row refusal: the capture has been shown to agree with the
+same-shape reading only at layer 44, on raw text with no start mark (14 November), and on two chat-formatted items (16
+November) stood off it at layers 40 and 44 by 10 to 35 times the floor in 7 of 8 readings (§6b: 10.2 to 35.3, the
+eighth 0.14, which is why the sentence says "shown to agree" and not "agreed"); it is taken
+from the bar's layer up as a cheaper reading that is not the same-shape one. `GATE_SAY`: "the 3 on which the edit's
+two row counts disagreed ... the 48 on which they agreed", the wording the review proposed. It is exact: the edit's
+arms disagreed on the same 3 items in §9's four readings and in §9a and agreed on the other 48 (the lowest -12.13),
+while under the rule as it then stood 3 of those 48 had read "unstable" in §9a from control arms alone. The caution
+quoted under "The gate as a caution, in the code" above carries the old words; the code's are these. The output-side
+add's mark ("not yet measured on the card") and the comment on `MAX_RANK` were not in this job and are as they were.
+
+**The CPU check** gained lines that fail on the code as it was: the three sentences word for word; the read-outs'
+section sets every arm of the edit by the rule and every control edit's ratio beside it, unjudged; the result's shape
+asks for `controls` in each read-out and only the edit's arms in `disagree`; the printed lines must give each item's
+control ratios, from control edit 0, as not judged; and a planted hook that moves one control edit's row in the batch
+of 16 rows alone (ratio over 3, so the old rule would have made the item unstable) must leave the item ok, in the
+summary, with that ratio printed as the one over the bar. Run on 15 November 2026 (the desk's clock), four threads,
+load under 3, 47 GB free: all 969 hold (914 before), 47 s, on the second run; the first failed only section 15, on a
+kept-out word in a new comment, which was reworded. Not done here, and the coordinating session's: ARCHITECTURE.md's
+stability paragraph ("an arm's two readings"), ROADMAP.md section viii (which lists these three items as open) and
+`pilot/RESULTS.md` ("two of them at the floor"; "not measured ... the rule on control arms alone") now describe the
+state before this change.
+
+*Reviewed* the same night (15 November 2026 by the desk's clock, about 02:50Z on the 16th), from the record and the
+ledger: the condition recounted from the classes' own means by a rule written out by hand, not by the module (6
+control arms of 969, three with one reading at or under the floor, as above); the edit's arms disagree on the same 3
+items in §9 and §9a. Two words mended. The one-row refusal said the capture "has agreed" with the same-shape reading
+only on raw text, but the eighth of §6b's readings (own 4 at layer 44, 32 rows, 0.14 of the floor) agreed on a
+chat-formatted item; it now says "has been shown to agree", in the code and in the check's word-for-word line alike.
+"Which is why the list above counted two" became "which is likely why": the list's reason is not on record. The CPU
+check was then run once: all 969 hold (47 s).

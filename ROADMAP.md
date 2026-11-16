@@ -1687,12 +1687,13 @@ in order:
   posture (5); budgets, and how many fresh readings a brief takes (6); the name and the words, “Levelling” and “level
   book” among them (7); the faults its section 3 found (8). The build’s own, in the spec’s section 12: whether an
   item whose two floors stand apart (on the card, 15.7 to 42.7 times on two raw texts behind the start mark, both read
-  “ok”) should read “unstable”; whether the stability rule should read the edit’s arms alone, as open point 5 says if
-  control arms at the floor trip it (two did, on items under the bar); what to do with raw text behind a start mark,
-  which the gate no longer refuses; whether 12 and 32 are the row counts to read, and whether a one-row capture should
-  be offered on chat-formatted items at all; the card check’s third line of its §8, which still asserts the gate’s
-  refusal and must assert the caution before the card check runs again; three printed sentences the card made stale
-  (a scale by 2 read folded “for a silencing only”, the one-row refusal, the output-side add “not yet measured”); and,
+  “ok”) should read “unstable”; what to do with raw text behind a start mark, which the gate no longer refuses;
+  whether 12 and 32 are the row counts to read, and whether a one-row capture should be offered on chat-formatted
+  items at all; whether a control arm clear of the floor that reads far apart between row counts should still count
+  (since 16 November 2026 the stability rule reads the edit’s arms alone and prints the control arms’ ratios beside
+  them, as open point 5 said it would if control arms at the floor tripped it, which three did, all on items under
+  the bar; on the raw recipe cut with no start mark two controls clear of the floor read 31.1 and 6.4 times apart,
+  and that item now reads “ok”); and,
   from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved,
   that a recipe’s files are read before their sizes are added up, and that the ledger keeps the items’ text and
   every per-item row, which must be reopened before any agent is given a way to read it.

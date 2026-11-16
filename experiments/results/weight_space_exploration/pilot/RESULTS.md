@@ -315,7 +315,8 @@ prose 2 behind the start mark, its own log-probability, in a reading whose KL di
 both read-outs, 2.07), and 2.4% of ratios were over 2; 3 readings disagreed there (chat 10, 5.2 on KL; the raw prose
 2 behind the start mark, 20.7 on KL for one neuron and 6.3 on its own log-probability for 64). Of 969 control arms
 read twice (19 control edits, the hardest 64 at layer 20, every item), 6 disagreed, all on items under the bar, and
-two of them at the floor at one of the row counts. Log-odds on the six own answers (toward the answer's first piece, away from its second):
+three of them at the floor at one of the row counts (two by the first count; control 9 on the raw recipe whole with no
+start mark is the third, recounted the same day). Log-odds on the six own answers (toward the answer's first piece, away from its second):
 floors 0.017 to 0.036, the edit's ratio 0.98 to 1.28. An item's two floors stood more than 3 times apart in 22 of 204
 readings (eleven item and layer pairs, each read twice): eight of them 3.0 to 4.1 times apart, on chats, passages and
 one raw text, and three 15.7 to 42.7 times, all on the two raw texts behind the start mark above. The spec's own
@@ -340,4 +341,6 @@ floor in 7 of the 8 class readings, at both layers.
 What it set, by the spec's rules written before the run (BUILD_SPEC_1a.md section 12, "The card check"): the gate a
 caution at -6.0, the stability ratio 3.0, the one-row bar 44 and the row counts 12 and 32 unchanged, and the cost
 figures refit. Not measured: any layer but 5, 20, 40 and 44; a second run; another card; a low-rank term that is not
-a column's add; the rule on control arms alone.
+a column's add. Later the same day, by open point 5's second clause (control arms at the floor tripped the rule), the
+stability rule was changed to read the edit's arms alone and print the control arms' ratios beside them, not judged:
+replayed on this run's figures it reads 3 items unstable where the old rule read 6. The next card run is its first.
