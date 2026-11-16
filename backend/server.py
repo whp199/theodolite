@@ -660,7 +660,9 @@ def pack_binary_and_json_frames(
         "poles_labels": poles_labels,
         "filaments_meta": filaments_meta,
         "larql_status": {
-            "active_patches_count": len(vault.active_patches),
+            # the edits in force, the latest of each neuron, as DESCRIBE and an edit's reply count them; the list below
+            # holds every record, replaced ones among them
+            "active_patches_count": len(vault.edits_in_force()),
             "active_patches": [
                 {
                     "patch_id": p.patch_id,
@@ -1472,7 +1474,10 @@ async def api_inspect_pole(req: PoleInspectRequest) -> Dict[str, Any]:
     # the scientist tools name their lens themselves ("lens"); these routes pass their replies on unchanged
     _runtime, _vault = get_app_state()
     async with _GPU_LOCK:
-        return await inspect_pole(layer=req.layer, neuron_idx=req.neuron_idx, polarity=req.polarity)
+        try:
+            return await inspect_pole(layer=req.layer, neuron_idx=req.neuron_idx, polarity=req.polarity)
+        except ValueError as exc:  # a layer or a neuron the model lacks: the vault's refusal, in its plain words
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/scientist/trace_readers")

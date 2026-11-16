@@ -18,7 +18,9 @@ What is read once for every neuron comes from the atlas's indexes (backend/atlas
 scripts/atlas_build.py); a route that needs one that is not built says so (`ready: false`, or the live reading it falls
 back to, named in `source`). The push's unit (the stream's median length leaving each layer) and the activation scale
 come from the stats index when it is built, else from the study's 36 texts, read once per set of vault edits in force
-(`scale_source` says which). The routes are in ARCHITECTURE.md §4.7.
+(`scale_source` says which). The stats index and every census were read on the model with no vault edit, and neither
+is read again here: while an edit is in force, a reply that serves a number of theirs says so (`stale`: STATS_STALE,
+CENSUS_STALE), as the wiring, the passages and the steer lens say it of theirs. The routes are in ARCHITECTURE.md §4.7.
 """
 
 from __future__ import annotations
@@ -76,6 +78,15 @@ MAX_COMPARE_TEXTS = 24
 # a neuron's push where it names no dose, in its mode's units (the push tab's defaults); a head or a whole block, 0
 DEFAULT_DOSE = {"add": 0.8, "mul": 2.0, "act": 0.8}
 CACHE_SIZE = 256
+# What a reply says of a number it takes from the stats index, and of anything it takes from a census, while a vault
+# edit is in force. Both were read on the model without the edit (a build and a census each load the checkpoint afresh
+# and apply none), and neither is read again here: the reply says so, as STALE_WEB and USE_STALE do of the wiring and
+# the passages. An edit changes what its neuron writes, so the stream leaving that layer and everything read after it.
+STATS_STALE = ("the stats index was read before the vault edits in force: from the first edited layer on, the stream's "
+               "median length (the push's unit) and the norms' scales, and after it each neuron's usual extremes, are as "
+               "they were")
+CENSUS_STALE = ("the census was taken before the vault edits in force: every answer in it, the unpushed ones too, was "
+                "written by the model as it was, so its words and ranks are as they were")
 
 
 # -------------------------------------------------------------------------------------------------- who may ask
@@ -218,6 +229,19 @@ class Atlas:
     def edited(self) -> set:
         return {(p.layer_idx, p.neuron_idx) for p in self.vault.edits_in_force()}
 
+    def stats_stale(self, layer: Optional[int] = None, own: bool = True) -> Optional[str]:
+        """STATS_STALE where a number is taken from the stats index and a vault edit in force could have moved it; None
+        otherwise. With no `layer`, any edit counts (the index as a whole). With one, an edit at that layer or an
+        earlier one (the stream's median length leaving the layer, the push's unit there, and the norms' scales); with
+        `own` false, at an earlier layer only (a neuron's usual extremes: an edit at its own layer changes what is
+        written there, not what fires). None without the stats index: the scales are then read over the study's texts
+        for the model as it now stands (`scales`)."""
+        if self.index.get("act_scale") is None:
+            return None
+        at = [l for l, _ in self.edited()]
+        hit = bool(at) if layer is None else any(l < int(layer) or (own and l == int(layer)) for l in at)
+        return STATS_STALE if hit else None
+
     # -- words
     def vocab(self) -> List[str]:
         """Every word-piece decoded alone, once (cached in memory and as the index folder's vocab.json)."""
@@ -251,8 +275,8 @@ class Atlas:
         """A face's words from the indexes: through the lens, by the naked eye (each with the label gate's check of the
         two), and the steer lens's rises when it is built (a measured effect, which the gate does not cover). The steer
         lens's words are the neuron's own: those its layer shares (`AtlasIndex.steer_common`) are left out, and at a
-        layer where the lens's check counts it a weak guide (`AtlasIndex.steer_weak`) none are given, as before the lens
-        was built; GET /neuron/lens gives all twelve with what the check found."""
+        layer where the lens's check counts it a weak guide, or did not check it (`AtlasIndex.steer_weak`), none are
+        given, as before the lens was built; GET /neuron/lens gives all twelve with what the check found."""
         out: Dict[str, Any] = {"lens": None, "eye": None, "check": None, "steer": None}
         is_edited = (layer, n) in (edited if edited is not None else self.edited())
         lens_ids = self.index.face_ids(layer, n, sign, "lens", k)
@@ -272,15 +296,17 @@ class Atlas:
     # -- the push's unit and the activation scale
     def scales(self) -> Dict[str, Any]:
         """{"p50": [L], "pos": [L, N], "neg": [L, N], "source": {...}}: from the stats index when built, else read over
-        the study's 36 texts for the model as it now stands (per set of vault edits in force). Call under the GPU lock
-        (the fallback runs the model)."""
+        the study's 36 texts for the model as it now stands (per set of vault edits in force). The stats index is as
+        it was read, on the model with no edit: while one is in force its `source` says so (`stale`, STATS_STALE), in
+        every reply that gives its `scale_source`. Call under the GPU lock (the fallback runs the model)."""
         s = self.index.get("act_scale")
         if s is not None:
+            stale = self.stats_stale()
             return {"p50": [float(x) for x in s["resid_q"][:, 1]], "pos": s["pos"], "neg": s["neg"],
                     "mlp_rms": [float(x) for x in s["mlp_rms_q"][:, 1]], "mid_rms": [float(x) for x in s["mid_rms_q"][:, 1]],
                     "regimes": {k: s[k] for k in ("pp", "nn", "pn", "np")},
                     "source": {"kind": "index", "corpus": s["meta"].get("corpus"), "tokens": int(s["tokens"]),
-                               "built_at": s["meta"].get("built_at")}}
+                               "built_at": s["meta"].get("built_at"), **({"stale": stale} if stale else {})}}
         key = self.edit_key()
         if key not in self._scales:
             ids = study_ids(self.rt)
@@ -306,6 +332,9 @@ class Atlas:
         if sc.get("regimes") is not None:
             # each GeGLU sign regime's extreme: (+gate, +up), (-gate, -up) on the positive side; (+, -), (-, +) negative
             out["regimes"] = {k: round(float(v[layer, n]), 4) for k, v in sc["regimes"].items()}
+        stale = self.stats_stale(layer, own=False)  # the stats index's range, with a vault edit in force before its layer
+        if stale:
+            out["stale"] = stale
         return out
 
     def _scales_if_ready(self) -> Optional[Dict[str, Any]]:
@@ -358,7 +387,9 @@ class Atlas:
 
     def interventions(self, ps: Sequence[ao.Push], hs: Sequence[ao.HeadScale], signs: Sequence[int]) -> Tuple[Optional[ao.Interventions], List[Dict[str, Any]]]:
         """Checked pushes and head scales resolved to per-row values (an "add" or "act" push needs the scales, which can
-        run the model: call under the GPU lock); and their echo."""
+        run the model: call under the GPU lock); and their echo. A push whose unit comes from the stats index while a
+        vault edit in force could have moved it says so in its echo (`stale`): an add's is the stream's median length
+        leaving its layer, an act's its neuron's usual extreme."""
         if not ps and not hs:
             return None, []
         sc = self.scales() if any(p.mode in ("add", "act") for p in ps) else None
@@ -367,7 +398,8 @@ class Atlas:
             p50=lambda l: sc["p50"][l] if sc else 1.0,
             act_scale=lambda l, n: max(abs(float(sc["pos"][l, n])), abs(float(sc["neg"][l, n])), 1e-6) if sc else 1.0,
         )
-        echo = [{"layer": p.layer, "n": p.neuron, "mode": p.mode, "dose": p.dose} for p in ps]
+        stale = lambda p: self.stats_stale(p.layer, own=p.mode == "add") if p.mode in ("add", "act") else None  # noqa: E731
+        echo = [{"layer": p.layer, "n": p.neuron, "mode": p.mode, "dose": p.dose, **({"stale": stale(p)} if stale(p) else {})} for p in ps]
         echo += [{"layer": h.layer, "head": "all" if h.head is None else h.head, "scale": h.scale} for h in hs]
         return iv, echo
 
@@ -1007,11 +1039,25 @@ def _unit_row(t: Any, i: int) -> Dict[str, Any]:
             "q": t.opt("q", i), "words": t.shown(i, 5), **marked}
 
 
+def census_stale(a: Atlas) -> Dict[str, str]:
+    """{"stale": CENSUS_STALE} while a vault edit is in force, else {}: what a census reply then says of itself. A
+    census pushes every unit of its layer and reads what the whole model writes, so an edit at any layer can have
+    moved any answer in it, the unpushed ones too; a reply that is a list or a file says it in a header
+    (`X-Census-Stale`, as /web's `X-Web-Stale`), and one that carries census words beside other things in
+    `census_stale`."""
+    return {"stale": CENSUS_STALE} if a.edited() else {}
+
+
 @router.get("/census/units")
-async def census_units(layer: int) -> List[Dict[str, Any]]:
-    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
+async def census_units(layer: int, response: Response) -> List[Dict[str, Any]]:
+    """The layer's census ranking, a row a unit; [] when the layer has none. A list, so a vault edit in force is said
+    in a header (`X-Census-Stale: 1`; `census_stale`), and in words by the layer's card (GET /census/card)."""
+    a = atlas()
+    d = await asyncio.to_thread(census_layer, layer, a.rt.model_id)
     if d is None:
         return []
+    if census_stale(a):
+        response.headers["X-Census-Stale"] = "1"
     notes = (await fn.all_notes())["neurons"]
     t = d["table"]
     name = lambda r: (notes.get(fn.note_key(layer, r["n"])) or {}).get("name", "") if r["kind"] == "neuron" else ""  # noqa: E731
@@ -1020,9 +1066,11 @@ async def census_units(layer: int) -> List[Dict[str, Any]]:
 
 @router.get("/census/card")
 async def census_card_route(layer: int) -> Dict[str, Any]:
-    """The layer's census card (`census_card`); {} when the layer has none."""
-    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
-    return census_card(d) if d is not None else {}
+    """The layer's census card (`census_card`), with `stale` while a vault edit is in force (`census_stale`); {} when
+    the layer has none."""
+    a = atlas()
+    d = await asyncio.to_thread(census_layer, layer, a.rt.model_id)
+    return {**census_card(d), **census_stale(a)} if d is not None else {}
 
 
 ROLLOUT_KEYS = ("prompt", "dose", "rel_push", "text", "finish", "n_gen")
@@ -1030,7 +1078,11 @@ ROLLOUT_KEYS = ("prompt", "dose", "rel_push", "text", "finish", "n_gen")
 
 @router.get("/census/unit")
 async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any]:
-    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
+    """One unit of a layer's census: its answers, the unpushed answers, its statistics and rank, and the run's card;
+    its name alone when the layer has no census. `stale`, here and in the card, while a vault edit is in force
+    (`census_stale`)."""
+    a = atlas()
+    d = await asyncio.to_thread(census_layer, layer, a.rt.model_id)
     notes = (await fn.all_notes())["neurons"]
     out: Dict[str, Any] = {"layer": layer, "n": n, "kind": kind, "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", "")}
     if d is None:
@@ -1050,19 +1102,22 @@ async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any
             "n_ranked": int(t.null["neurons"]),
         }
 
+    stale = census_stale(a)
     out.update({"run": d["path"].name, "prompts": d["meta"].get("prompts", cz.PROMPTS), "design": d["meta"].get("design_name"),
-                "card": census_card(d), **await asyncio.to_thread(work)})
+                "card": {**census_card(d), **stale}, **await asyncio.to_thread(work), **stale})
     return out
 
 
 @router.get("/census/rollout")
 async def census_rollout(layer: int, i: int) -> Dict[str, Any]:
-    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
+    """One answer of a layer's census, by its place in the run; `stale` while a vault edit is in force."""
+    a = atlas()
+    d = await asyncio.to_thread(census_layer, layer, a.rt.model_id)
     ix = await asyncio.to_thread(census_rows, d) if d is not None else None
     if ix is None or not 0 <= i < len(ix):
         raise HTTPException(status_code=404, detail="There is no such answer in this layer's census.")
     r = (await asyncio.to_thread(ix.read, [i]))[0]
-    return {k: r[k] for k in ("kind", "neuron", "prompt", "dose", "rel_push", "text")}
+    return {**{k: r[k] for k in ("kind", "neuron", "prompt", "dose", "rel_push", "text")}, **census_stale(a)}
 
 
 def _run_meta(path: Any) -> Dict[str, Any]:
@@ -1079,8 +1134,9 @@ async def census_layers() -> List[Dict[str, Any]]:
     """Every layer with a census, shallowest first, from the rankings' tables alone: its run and design, how many
     neurons and controls, how many neurons beat every control (and how many would by chance), how many have q <= 0.05,
     and whether its doses are calibrated at that layer. A layer whose run is not ranked yet has `ranked: false` and no
-    counts (opening the layer ranks it)."""
-    model = atlas().rt.model_id
+    counts (opening the layer ranks it). Each layer's row says `stale` while a vault edit is in force (`census_stale`)."""
+    a = atlas()
+    model, stale = a.rt.model_id, census_stale(a)
 
     def work() -> List[Dict[str, Any]]:
         out = []
@@ -1091,7 +1147,7 @@ async def census_layers() -> List[Dict[str, Any]]:
             out.append({"layer": int(layer), "run": path.name, "design": design, "ranked": t is not None,
                         "doses_calibrated": cz.doses_calibrated(design, meta.get("layer"), meta.get("max_new")),
                         **(dict(t.null) if t is not None else {}),
-                        **({"q05_neurons": int((t.is_neuron & (t.q <= 0.05)).sum())} if t is not None else {})})
+                        **({"q05_neurons": int((t.is_neuron & (t.q <= 0.05)).sum())} if t is not None else {}), **stale})
         return out
 
     return await asyncio.to_thread(work)
@@ -1119,7 +1175,8 @@ async def census_levels_route() -> Dict[str, Any]:
     """Every ranked census at once, for the map: `layers` (counted from 0) and `levels`, one byte a neuron for each of
     them in turn (base64; `census_levels`), so every layer with a census is inked without its list being read.
     `uncalibrated`: those of the layers whose doses are not calibrated there (census.doses_calibrated), which the map
-    inks without gilt: a rank there may only say the dose was wrong for the layer."""
+    inks without gilt: a rank there may only say the dose was wrong for the layer. `stale` while a vault edit is in
+    force (`census_stale`)."""
     a = atlas()
 
     def work() -> Dict[str, Any]:
@@ -1134,7 +1191,7 @@ async def census_levels_route() -> Dict[str, Any]:
             if not cz.doses_calibrated(meta.get("design_name"), meta.get("layer"), meta.get("max_new")):
                 uncal.append(int(layer))
         data = np.concatenate(rows).tobytes() if rows else b""
-        return {"layers": layers, "n": int(a.N), "levels": base64.b64encode(data).decode(), "uncalibrated": uncal}
+        return {"layers": layers, "n": int(a.N), "levels": base64.b64encode(data).decode(), "uncalibrated": uncal, **census_stale(a)}
 
     return await asyncio.to_thread(work)
 
@@ -1226,18 +1283,23 @@ async def census_search(q: str, limit: int = 400) -> Dict[str, Any]:
     matched, how many of them above, how many controls matched, and whether the layer's doses are calibrated
     (`doses_calibrated`: where they are not, a match or a miss may only say the dose was wrong for the layer).
     `not_read`: layers whose run is not ranked yet. Layers counted from 0. Every census here is a push at fixed
-    doses: `says`."""
+    doses: `says`. `stale` while a vault edit is in force (`census_stale`)."""
+    a = atlas()
     notes = (await fn.all_notes())["neurons"]
-    return await asyncio.to_thread(_census_search, atlas().rt.model_id, q, max(1, min(int(limit), 2000)), notes)
+    return {**await asyncio.to_thread(_census_search, a.rt.model_id, q, max(1, min(int(limit), 2000)), notes), **census_stale(a)}
 
 
 @router.get("/census/spread")
 async def census_spread(layer: int) -> Any:
-    path = cz.layer_runs(model=atlas().rt.model_id).get(int(layer))
+    """The layer's spread as its file has it ({} without one); `X-Census-Stale: 1` while a vault edit is in force."""
+    a = atlas()
+    path = cz.layer_runs(model=a.rt.model_id).get(int(layer))
     if path is None:
         return {}
     sp = cz.spread_path_of(path)
-    return Response(sp.read_bytes(), media_type="application/json") if sp.exists() else JSONResponse({})
+    if not sp.exists():
+        return JSONResponse({})
+    return Response(sp.read_bytes(), media_type="application/json", headers={"X-Census-Stale": "1"} if census_stale(a) else None)
 
 
 # -- a neuron's words, wiring and heads
@@ -1276,6 +1338,10 @@ def _lens_reply(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
 
 
 STALE_WEB = "the wiring index was read before the vault edit in force on this neuron: its links and web are as they were"
+# `nearest` is sent as the check's file has it (for an unchecked layer: which layer nearby was checked, and what was
+# found there). It is that layer's finding: nothing here takes a layer's standing from it (`AtlasIndex.steer_weak`). It
+# stays in the reply because a page built before 14 November 2026 reads it to hold back an unchecked layer beside a
+# weak one
 STEER_CHECK_KEYS = ("standing", "shared", "of", "matched", "shuffled", "neurons", "nearest", "group", "agrees_at")
 
 
@@ -1283,9 +1349,10 @@ def steer_marks(a: Atlas, layer: int, up_ids: Any, down_ids: Any) -> Dict[str, A
     """What the steer lens's own check says of a reading at this layer (backend/steer_check.py), when the lens is built:
     `common`, for each word-piece of each sign, the share of the layer's neurons that list it too where that is
     STEER_COMMON or more (else None: the word is this neuron's); and `check`, how the lens fared beside the layer's
-    census (`standing`: "agrees", "weak" or "unchecked", with the nearest checked layer for an unchecked one) and how
-    many of a neuron's word-pieces the layer shares on average. Nothing when the lens is not built; no `check` until
-    scripts/atlas_steer_check.py has been run on this build of it."""
+    census (`standing`: "agrees", "weak", or "unchecked" where no census checks it: it was not checked there, and
+    what was found at `nearest`, the nearest layer that was, is that layer's) and how many of a neuron's word-pieces
+    the layer shares on average. Nothing when the lens is not built; no `check` until scripts/atlas_steer_check.py has been run
+    on this build of it."""
     common = a.index.steer_common(layer)
     if common is None:
         return {}
@@ -1301,18 +1368,22 @@ def steer_marks(a: Atlas, layer: int, up_ids: Any, down_ids: Any) -> Dict[str, A
 
 def ceiling(a: Atlas, layer: int, n: int, sc: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     """The most the neuron can ever write to the stream leaving its layer (`Weights.write_ceiling`), and, with the push's
-    unit known, as a share of the stream's median length (`rel`): an add push of dose d is d / rel times it."""
+    unit known, as a share of the stream's median length (`rel`): an add push of dose d is d / rel times it. The
+    ceiling is read from the weights as they now stand; `stale` when its `p50` (and so `rel`) is the stats index's and
+    a vault edit is in force at its layer or before it."""
     c = float(a.w.write_ceiling(layer, [n])[0])
     p50 = float(sc["p50"][layer]) if sc else None
+    stale = a.stats_stale(layer) if sc else None
     return {"write": round(c, 5), "p50": round(p50, 5) if p50 else None, "rel": round(c / p50, 5) if p50 else None,
-            "source": sc["source"]["corpus"] if sc else None}
+            "source": sc["source"]["corpus"] if sc else None, **({"stale": stale} if stale else {})}
 
 
 @router.get("/neuron/lens")
 async def neuron_lens(layer: int, n: int) -> Dict[str, Any]:
     """Both faces' words through the lens and by the naked eye, read live from the weights (vault edits included), each
     face with its label check; the steer lens from its index (or as read live by POST /neuron/steer_lens); the
-    activation range."""
+    activation range and the write ceiling, each with `stale` (STATS_STALE) where its number is the stats index's and
+    a vault edit in force could have moved it."""
     a = atlas()
     _check_neuron(a, layer, n)
     reply = await on_gpu(_lens_reply, a, layer, n)
@@ -1413,7 +1484,9 @@ async def neuron_wiring(layer: int, n: int, k: int = 24, model: str = "rest") ->
     its reader, {"+", "-"}: the face the writer fired on its `gate` face pushes the reader toward at its operating
     point there (comparable with `sign`; null for a face with no stored event), the link's g and u from the index or
     read live, the operating points always from the passages index; `use` says whether they could be read (`why` when
-    not, every `use_sign` then null), from which passages, and `stale` after a vault edit at an earlier layer."""
+    not, every `use_sign` then null), from which passages, and `stale` after a vault edit at an earlier layer. While a
+    vault edit is in force: `scale_stale` where links read live were weighed across layers by the stats index's norm
+    scales (STATS_STALE), and `census_stale` where a link carries census words (CENSUS_STALE)."""
     a = atlas()
     _check_neuron(a, layer, n)
     _model(model)
@@ -1431,8 +1504,11 @@ async def neuron_wiring(layer: int, n: int, k: int = 24, model: str = "rest") ->
     notes = (await fn.all_notes())["neurons"]
     edited = a.edited()
     down, up = await asyncio.to_thread(lambda: (_decorate(a, res["down"], notes, edited, "down"), _decorate(a, res["up"], notes, edited, "up")))
+    scale_stale = a.stats_stale() if res["source"] == "live" else None  # `link_scale` took the index's norm scales
     return {"layer": layer, "n": n, "source": res["source"], "down": down, "up": up,
             "note": "weight-only direct-path links, read " + ao.LINK_MODEL + " Leads to check, not circuits.",
+            **({"scale_stale": scale_stale} if scale_stale else {}),
+            **({"census_stale": CENSUS_STALE} if edited and any(c["census"] for c in down + up) else {}),
             **({"model": "use", "use": use} if use is not None else {})}
 
 
@@ -1732,8 +1808,12 @@ def _written_test(a: Atlas, req: WrittenTestRequest, face: str) -> Dict[str, Any
     ext = float(sc["pos" if face == "+" else "neg"][layer, n])
     if abs(ext) < 1e-6:
         raise ValueError("This face never fired over the corpus its range was read on, so there is nothing to measure a text against.")
+    # each text is read now, and set against the stats index's extreme: with a vault edit in force before this layer,
+    # the result says so, and so does the test as kept
+    before_edit = a.stats_stale(layer, own=False)
+    stale = {"stale": before_edit} if before_edit else {}
     if req.behind is not None:
-        return _written_behind(a, req, face, ext, f"the face's extreme over {sc['source']['corpus']}")
+        return {**_written_behind(a, req, face, ext, f"the face's extreme over {sc['source']['corpus']}"), **stale}
 
     def read(text: str) -> Dict[str, Any]:
         ids = a.ids_of(text, req.chat)
@@ -1747,7 +1827,7 @@ def _written_test(a: Atlas, req: WrittenTestRequest, face: str) -> Dict[str, Any
 
     fire, quiet = [read(t) for t in req.fire], [read(t) for t in req.quiet]
     out = {**pt.written_result(fire, quiet), "pattern": req.pattern, "texts": {"fire": fire, "quiet": quiet},
-           "extreme": round(ext, 4), "rel_to": f"the face's extreme over {sc['source']['corpus']}"}
+           "extreme": round(ext, 4), "rel_to": f"the face's extreme over {sc['source']['corpus']}", **stale}
     # the test's own check: the face's strongest passages (not kept back), read with only what a short text could hold
     # before the peak. Where they no longer fire, a written text's silence is no fault of the pattern.
     if a.index.passages(layer, n, face, 1) is not None:
@@ -1778,7 +1858,8 @@ async def neuron_written_test(req: WrittenTestRequest) -> Dict[str, Any]:
     own (GET /neuron/written_test/lead shows where the cut falls). Near misses are required there. `behind` in the
     reply: the cut, the last of the kept text, and the passage's own ending read the same way (`own_ending`); each
     ending's peak is taken over its own word-pieces. Kept on the face (`keep`, GET /neuron/tests) with the pattern
-    it tested."""
+    it tested. `stale` (STATS_STALE), in the reply and in the test as kept, when the extreme is the stats index's and
+    a vault edit is in force at an earlier layer: the texts are read as the model now is."""
     a = atlas()
     _check_neuron(a, req.layer, req.n)
     face, by = _face_arg(req.face), _test_by(req.by)
@@ -1806,8 +1887,10 @@ async def neuron_written_test_lead(layer: int, n: int, window: int, face: str = 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     stats = a.index.get("act_scale")
     ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
+    stale = a.stats_stale(layer, own=False) if ext else None  # `in_window` is a share of the stats index's extreme
     return {"layer": layer, "n": n, "face": face, "window": lead["window"], "at": lead["at"], "drop": lead["drop"], "kept": len(lead["kept"]),
             "kept_tail": lead["kept_tail"], "dropped": lead["dropped_text"], "in_window": round(lead["act"] / ext, 3) if ext else None,
+            **({"stale": stale} if stale else {}),
             "note": ("Write endings that carry on from `kept_tail` in place of `dropped`: some to the pattern, and near misses that "
                      "share its words and lack what the pattern says matters. POST /neuron/written_test with `behind` (this window) "
                      "and `drop`.")}
@@ -1923,10 +2006,14 @@ def _blind_start(a: Atlas, req: BlindStartRequest, face: str) -> Dict[str, Any]:
         detail.append({"fires": {"window": int(x["window"]), "at": at, "rel": round(float(x["act"]) / ext, 3), "span": [int(s), int(e)]},
                        "quiet": {k: ctl[k] for k in ("window", "at", "rel", "match", "span")}})
     tid = secrets.token_hex(6)
+    # the quiet passages were read now, against the stats index's extreme: with a vault edit in force before this
+    # layer the test says so, when it is begun and as it is kept
+    before_edit = a.stats_stale(layer, own=False)
+    stale = {"stale": before_edit} if before_edit else {}
     a.cache["tests"].put(tid, {"layer": layer, "n": n, "face": face, "pattern": req.pattern, "truth": truth, "detail": detail, "pairs": pairs,
-                               "control": req.quiet, "before": int(req.before), "places": places if req.quiet == "near" else None})
+                               "control": req.quiet, "before": int(req.before), "places": places if req.quiet == "near" else None, **stale})
     return {"test": tid, "layer": layer, "n": n, "face": face, "pattern": req.pattern, "pairs": pairs, "kept_back": len(held),
-            "stored": len(events), "quiet": req.quiet, "before": int(req.before),
+            "stored": len(events), "quiet": req.quiet, "before": int(req.before), **stale,
             "system": pt.JUDGE_SYSTEM, "prompt": pt.judge_prompt(req.pattern, pairs),
             "note": ("In each pair one snippet is a kept-back passage where the face fires on the marked word-piece; the other is a passage "
                      f"where it stays under {pt.QUIET_BELOW:g} of its extreme, read just now"
@@ -1946,7 +2033,8 @@ async def neuron_blind_test_start(req: BlindStartRequest) -> Dict[str, Any]:
     the same two neighbours, else after the same one, else before the same one, else the word-piece alone, where the
     face stays quiet; only where there is none, a passage from anywhere. "anywhere": always from anywhere, the easier
     test. Returns the pairs without saying which is which, and the `prompt` a reader given the pattern alone would be
-    shown. The answer is kept in memory under `test` until it is answered."""
+    shown. The answer is kept in memory under `test` until it is answered. `stale` (STATS_STALE), here and in the
+    result as kept, when the extreme is the stats index's and a vault edit is in force at an earlier layer."""
     a = atlas()
     _check_neuron(a, req.layer, req.n)
     face = _face_arg(req.face)
@@ -1962,7 +2050,8 @@ async def _blind_finish(a: Atlas, tid: str, picks: Sequence[Optional[str]], judg
     res = {**pt.blind_result(picks, state["truth"], [d["quiet"]["match"] for d in state["detail"]], [d["fires"]["rel"] for d in state["detail"]]),
            "pattern": state["pattern"],
            "judge": judge, "control": state["control"], "before": state["before"],
-           **({"places": state["places"]} if state.get("places") else {})}
+           **({"places": state["places"]} if state.get("places") else {}),
+           **({"stale": state["stale"]} if state.get("stale") else {})}
     got = list(picks)[: len(state["truth"])] + [None] * max(0, len(state["truth"]) - len(picks))
     out = {"layer": state["layer"], "n": state["n"], "face": state["face"], **res, "said": pt.said(res),
            "by_pair": [{"truth": t, "picked": p, **d} for t, p, d in zip(state["truth"], got, state["detail"])]}
@@ -2038,7 +2127,8 @@ async def search(q: str, limit: int = 300) -> Dict[str, Any]:
     lens, by the naked eye, or in its steer lens (backend/atlas_index.AtlasIndex.search). Each row names the reading it
     matched in (`src`), the face's words, and the label check of the face. A match through the lens or the naked eye
     is a label like any other, so a face the gate holds back goes to `held` (for the apparatus), not `results` (the
-    main reading and the map's marks); `held_back` counts them."""
+    main reading and the map's marks); `held_back` counts them. `census_stale` where a row carries census words and a
+    vault edit is in force (CENSUS_STALE)."""
     a = atlas()
     notes = (await fn.all_notes())["neurons"]
     edited = a.edited()
@@ -2067,8 +2157,9 @@ async def search(q: str, limit: int = 300) -> Dict[str, Any]:
         dec = lambda r: {**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited),  # noqa: E731
                          "census": census_words(r["layer"], a.rt.model_id).get(r["n"]),
                          "name": (notes.get(fn.note_key(r["layer"], r["n"])) or {}).get("name", "")}
-        return {"ready": True, "results": [dec(r) for r in res], "held": [dec(r) for r in held], "held_back": n_held,
-                "tokens": int(len(match)), "total": total}
+        res, held = [dec(r) for r in res], [dec(r) for r in held]
+        return {"ready": True, "results": res, "held": held, "held_back": n_held, "tokens": int(len(match)), "total": total,
+                **({"census_stale": CENSUS_STALE} if edited and any(r["census"] for r in res + held) else {})}
 
     return await asyncio.to_thread(work)
 
@@ -2132,7 +2223,8 @@ async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse
     shared): greedily, or with the instrument's sampler (`sampler`), one draw a step shared by the three voices. One
     neuron (layer, n, dose, mode) or several (`neurons`, each pushed as asked in the first row and the other way in the
     last). Server-sent events: {"row", "t"} for each piece of text as it comes, then {"row": null, "done": true,
-    "sampling"} (or "error"), `sampling` "greedy" or the sampler with its seed. The GPU lock is held while it writes;
+    "sampling"} (or "error"), `sampling` "greedy" or the sampler with its seed, and `stale` where a push's unit is the
+    stats index's and a vault edit in force could have moved it (STATS_STALE). The GPU lock is held while it writes;
     closing the page stops it."""
     a = atlas()
     ps, hs = off_gpu(a.parse_pushes, _push_items(req))
@@ -2143,7 +2235,8 @@ async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse
 
     def work() -> None:
         try:
-            iv, _echo = a.interventions(ps, hs, ao.THREE_VOICES)
+            iv, echo = a.interventions(ps, hs, ao.THREE_VOICES)
+            stale = next((e["stale"] for e in echo if e.get("stale")), None)  # a push's unit from before a vault edit
             rows = []
             for r in range(3):
                 msgs: List[Dict[str, str]] = []
@@ -2159,7 +2252,7 @@ async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse
                 t = td.add(st.row, st.token_id, st.end)
                 if t:
                     loop.call_soon_threadsafe(q.put_nowait, {"row": st.row, "t": t})
-            loop.call_soon_threadsafe(q.put_nowait, {"row": None, "done": True, "sampling": sampling})
+            loop.call_soon_threadsafe(q.put_nowait, {"row": None, "done": True, "sampling": sampling, **({"stale": stale} if stale else {})})
         except Exception as exc:  # surfaced beside the chat, in plain words where it can be
             msg = str(exc) if isinstance(exc, ValueError) else f"{type(exc).__name__}: {exc}"
             loop.call_soon_threadsafe(q.put_nowait, {"row": None, "error": msg})
@@ -2364,7 +2457,9 @@ async def steer(req: SteerRequest) -> Dict[str, Any]:
     shape can move a row's numbers (`atlas_ops.write_rows`), so a greedy row may part from it: on Gemma-4-31B, 11
     November 2026, 6 of the 15 rows of five prompts did (two of them unpushed rows) and 6 of the 13 of six candidates
     (not the unpushed one), each set against its own batch of three, which wrote the reference unpacker's text to the
-    letter. A pushed row is read against the unpushed row of its own batch."""
+    letter. A pushed row is read against the unpushed row of its own batch. In `pushed`, a push whose unit is the stats
+    index's carries `stale` (STATS_STALE) while a vault edit in force could have moved it (`Atlas.interventions`; so
+    too in POST /reads and POST /logprobs)."""
     a = atlas()
     kind, asked = off_gpu(_steer_asks, a, req)
     smp, sampling = off_gpu(_sampler, req)
@@ -2394,7 +2489,8 @@ async def control_vector(req: ControlVectorRequest) -> Dict[str, Any]:
     dose), written as a llama.cpp control vector into the atlas folder's exports/ (backend/control_vector.py: the file
     scripts/export_control_vector.py writes, read from the model this server holds, the vault's edits in force
     included): {file, path, bytes, entries, directions, load_with, says}, and GET /exports/<file> downloads it. `name`
-    names the file (letters, digits, '.', '_', '-'); a file of that name is written over. Under the GPU lock: the
+    names the file (letters, digits, '.', '_', '-'); a file of that name already there is never written over: the
+    export is refused in plain words (backend/control_vector.build), a 400 like the others. Under the GPU lock: the
     columns are read from the model, and without a stats index the push's unit is read by running it."""
     return await on_gpu(_control_vector, atlas(), req)
 
@@ -2712,7 +2808,8 @@ async def run_paths(pos: int, top: int = 300, min_score: float = Query(1.0, alia
     firing gives the reader: from rest (a link kept only when its writer fired on its `gate` face), or with `model`
     "use" at the reader's operating point on the face it fired on (AtlasIndex.active_paths). Rows as /web's (hop 1);
     X-Active counts the neurons that fired, X-Model names the reading, and X-Use-Refused says why none could be read in
-    use. Needs the wiring index."""
+    use; X-Scale-Stale: 1 when the scores that chose the neurons were scaled by the stats index with a vault edit in
+    force (the run's `scale_source` says it in words). Needs the wiring index."""
     a = atlas()
     _model(model)
     if not a.run or not 0 <= pos < len(a.run["ids"]):
@@ -2726,7 +2823,8 @@ async def run_paths(pos: int, top: int = 300, min_score: float = Query(1.0, alia
     why = await asyncio.to_thread(a.index.use_refused) if model == "use" else None
     return Response(rows.tobytes(), media_type="application/octet-stream",
                     headers={"X-Web-Total": str(len(rows)), "X-Active": str(n_active), "X-Model": model,
-                             **({"X-Use-Refused": why} if why else {})})
+                             **({"X-Use-Refused": why} if why else {}),
+                             **({"X-Scale-Stale": "1"} if a.run["scales"]["source"].get("stale") else {})})
 
 
 @router.get("/head/row")
@@ -2769,8 +2867,9 @@ async def head_pattern(req: HeadTextRequest) -> Dict[str, Any]:
 def _pool_head(a: Atlas, nodes: List[Dict[str, Any]], edited: set, top: int = 24) -> Dict[str, Any]:
     """A head's linked neurons' words pooled as the web summary pools a cone (weighted by z, ranked by lift over each
     layer's base rate): the steer lens's when built, else the lens's, and then only faces the gate lets through. From
-    the steer lens, a neuron at a layer where the lens's own check counts it a weak guide is left out and counted in
-    `gated`, and the word-pieces its layer shares are not pooled (as `AtlasIndex.web_summary` pools a cone)."""
+    the steer lens, a neuron at a layer where the lens's own check counts it a weak guide, or did not check it, is left
+    out and counted in `gated`, and the word-pieces its layer shares are not pooled (as `AtlasIndex.web_summary` pools
+    a cone)."""
     vocab = a.vocab()
     st = a.index.get("steer_lens")
     lens = a.index.get("lens")
@@ -2975,7 +3074,9 @@ async def attn_drive(req: DriveRequest) -> Dict[str, Any]:
 @router.get("/neuron")
 async def neuron(layer: int, n: int) -> Dict[str, Any]:
     """Everything kept for one neuron, for the scientist: both faces' words with their checks, the steer lens and KL,
-    the activation range, its census rank, its 24 strongest links each way (each linked face's words and name)."""
+    the activation range, its census rank, its 24 strongest links each way (each linked face's words and name). What
+    was read before a vault edit in force says so where it sits: `act_range`, `ceiling` and `census` each carry
+    `stale`, and the links `scale_stale` and `census_stale`, as the routes they come from give them."""
     a = atlas()
     _check_neuron(a, layer, n)
     lens = await neuron_lens(layer, n)
@@ -2985,8 +3086,9 @@ async def neuron(layer: int, n: int) -> Dict[str, Any]:
             "steer": lens["steer"], "act_range": lens["act_range"], "edited": lens["edited"], "ceiling": lens.get("ceiling"),
             **({"steer_stale": lens["steer_stale"]} if lens.get("steer_stale") else {}),
             "census": {"rank": u.get("rank"), "n_ranked": u.get("n_ranked"), "stats": u.get("stats"),
-                       "n_rollouts": len(u.get("rollouts", []))} if "run" in u else None,
+                       "n_rollouts": len(u.get("rollouts", [])), **({"stale": u["stale"]} if u.get("stale") else {})} if "run" in u else None,
             "writes_into": con["down"], "reads_from": con["up"], "wiring_source": con["source"],
+            **{k: con[k] for k in ("scale_stale", "census_stale") if k in con},
             "label_gate": LABEL_GATE_CARD, "lens": a.rt.lens_card()}
 
 
@@ -2998,7 +3100,8 @@ async def cone(layer: int, n: int, k: int = 2, limit: int = 120, model: str = "r
     hop, the strength of the link that reached it (w, over the strongest of its node's links), z, the face it is read on
     and that face's words. With `model` "use" each link is read at its reader's operating point (LINK_MODEL_USE; not
     ready without the passages index, saying why), upstream toward each face in turn. Multi-hop paths are weight-only
-    guesses: leads to check, not circuits."""
+    guesses: leads to check, not circuits. `census_stale` where a node carries census words and a vault edit is in
+    force (CENSUS_STALE)."""
     a = atlas()
     _check_neuron(a, layer, n)
     _model(model)
@@ -3023,16 +3126,18 @@ async def cone(layer: int, n: int, k: int = 2, limit: int = 120, model: str = "r
             per_hop[r["hop"]] = per_hop.get(r["hop"], 0) + 1
         nodes = sorted(reached, key=lambda kv: (abs(kv[1]["hop"]), -kv[1]["w"]))[: max(1, min(int(limit), 1000))]
         read = ("read from rest (" + ao.LINK_MODEL + ")") if model == "rest" else ("read " + ao.LINK_MODEL_USE)
+        rows = [{"layer": l, "n": m, "hop": r["hop"], "w": r["w"], "z": r["z"], "face": r["face"],
+                 **({"when": r["when"]} if "when" in r else {}), **({"drives": r["drives"]} if "drives" in r else {}),
+                 "words": a.face(l, m, r["face"], 5, edited), "census": census_words(l, a.rt.model_id).get(m, []),
+                 "name": (notes.get(fn.note_key(l, m)) or {}).get("name") or None} for (l, m), r in nodes]
         return {"ready": True, "neurons": len(reached), "per_hop": {str(h): c for h, c in sorted(per_hop.items())},
                 **({"stale": STALE_WEB} if (layer, n) in edited else {}),
                 **({"model": "use"} if model == "use" else {}),
                 **({"use_stale": USE_STALE} if model == "use" and any(l_e < a.L - 1 for l_e, _ in edited) else {}),
+                **({"census_stale": CENSUS_STALE} if edited and any(x["census"] for x in rows) else {}),
                 "note": ("weight-only direct-path links chained, " + read + " Paths past hop 1 are "
                          "leads, not circuits. hop > 0 reads the neuron (when: the face it fires on), hop < 0 feeds it "
                          "(drives: the face it pushes the neuron toward); face is the face each is read on"),
-                "nodes": [{"layer": l, "n": m, "hop": r["hop"], "w": r["w"], "z": r["z"], "face": r["face"],
-                           **({"when": r["when"]} if "when" in r else {}), **({"drives": r["drives"]} if "drives" in r else {}),
-                           "words": a.face(l, m, r["face"], 5, edited), "census": census_words(l, a.rt.model_id).get(m, []),
-                           "name": (notes.get(fn.note_key(l, m)) or {}).get("name") or None} for (l, m), r in nodes]}
+                "nodes": rows}
 
     return await asyncio.to_thread(work)

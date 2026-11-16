@@ -379,7 +379,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
   between 06:45Z and 07:26Z, waited again behind the `match_ceil` walk, and went on from layer 5 at 14:56Z on 13
   November when that walk had stopped. **The lens is built** (13 November 2026, 23:43Z): all sixty layers, none
   skipped, in 10.5 hours of building over three sittings (2,702 s, 3,395 s and 31,646 s, against the 10.1–10.8
-  estimated), and it is served. **It is sound from layer 39 up and a weak guide below, and the page now says which**
+  estimated), and it is served. **It is sound at layers 39 to 52 and a weak guide at 32 to 38, and the page now says
+  which** (corrected 14 November 2026: this said “sound from layer 39 up and a weak guide below”, which claimed more
+  than was measured, since layers 53 to 59, like 0 to 31, have no census that checks it)
   ([`read_lens.py`](experiments/results/atlas_steer_dose/read_lens.py) and `lens.json` there, read on the CPU;
   `backend/steer_check.py`). Four readings:
   - *Beside the whole censuses, layers 40–50* (`against_census.py`, the build’s last step). For 85% of the neurons
@@ -418,7 +420,10 @@ layers, the determinism run and the sampled push on 29 October). In this section
   and say how the lens fared at that layer: in red where it shares a word with under half the neurons that stand
   out (layers 32–38), or where the layer has no census and its nearest checked layer is such a one (0–31). At those
   thirty-nine layers a neuron’s line of words and the word search leave the steer lens out, as they did before it
-  was built; at 39–59 a line gives the neuron’s own steer words, the shared ones dropped. The scientist is told the
+  was built; at 39–59 a line gives the neuron’s own steer words, the shared ones dropped. (Changed 14 November 2026:
+  a layer with no census no longer takes its nearest checked layer’s standing. Layers 0–31 and 53–59 say they were
+  not checked and are left out of lines, searches and pooled words as that; a line gives the neuron’s own steer
+  words at 39–52, fourteen layers.) The scientist is told the
   same (`check`, `shared_with_layer`). A web’s pooled words and a head’s leave out the neurons at those layers, and
   say how many (a first look at the page showed why: a layer-46 neuron’s web read “Some”, “Sometimes”, “Depending”,
   “Perhaps”, “Meanwhile”, the openers its upstream layers share). The repair not yet tried is a
@@ -435,7 +440,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   rented card.
 - **Faster unpacking, the same bits. Built, and timed.** Every forward unpacks the 4-bit weights afresh (five eager
   operations, three over int32 temporaries), which by the arithmetic is most of the 0.71 s step. `backend/w4a16_fast.py`
-  installs, without touching the R4-pinned runtime, a lookup-table unpacker (`--unpacker lut`), the same arithmetic
+  installs, without touching the runtime’s file (which R4 pinned, and which the instrument now holds to its own
+  recorded sha256, `scripts/runtime_files.py`), a lookup-table unpacker (`--unpacker lut`), the same arithmetic
   compiled alone (`compiled`, the model left eager with its hooks) or the weights kept unpacked (`resident`, about 60 GB
   beside the 4-bit ones). Each gives the reference’s bits: `scripts/check_dequant.py` shows it on the CPU for every
   (piece, bf16 scale) pair and for a 4-bit stand-in’s logits, vault edits, pushed answers and census rows, and `install`
@@ -1213,8 +1219,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
   and the steer lens say what a push along a neuron’s write direction does. No push strength has passed a trial
-  below layer 32, and the steer lens is a weak guide below 39, so thirty-two layers have no reading that has been
-  checked. Goodfire’s *Neurons as an Interpretable Basis* (10 November 2026; REFERENCES [54]) reads neurons from
+  below layer 32, and the steer lens is a weak guide at 32 to 38 and was not checked below 32, so thirty-two layers
+  have no reading that has been checked. Goodfire’s *Neurons as an Interpretable Basis* (10 November 2026; REFERENCES [54]) reads neurons from
   where they fire by themselves and tests a written description by whether it predicts the neuron; its early-layer
   neurons read crisply that way. Two of its tests are built here on what the atlas already keeps
   (`backend/pattern_tests.py`, ARCHITECTURE §4.7):
@@ -1511,7 +1517,12 @@ layers, the determinism run and the sampled push on 29 October). In this section
   takes up changed instructions and tools: a Claude Code chat at the folder reach is started again at the next message,
   resuming its session; any other is marked stale and the page offers a restart, since ending its process group also
   ends any commands it left running. The names and notes a scientist writes are proposals, kept or discarded by the
-  person (§iii). Still open: Codex in its sandbox can still read files outside its folder; another account is not told
+  person (§iii). Still open: Codex in its sandbox can still read files outside its folder, credentials kept in files
+  among them, and write the temporary folders (`/tmp`, `/dev/shm`: measured 14 November 2026 in its sandbox helper,
+  not through a chat); torch.compile’s cache was moved out of `/tmp` that day (`backend/runtime_factory.py`), except
+  in a volunteer’s kit and where a check script calls the checkpoint’s compiled unpacker with no install before it,
+  and what a compile writes while it runs still
+  passes through `/tmp`; no script tries the real Codex; another account is not told
   apart on macOS or elsewhere, nor through vite’s proxy (a per-launch key would cover both); a scientist with a shell
   over the home folder could keep its own proposal through the loopback port, which the guard cannot tell from the
   page; the rules hold for the CLI version tried, so a new one should be tried with the same script; and no live model
@@ -1606,9 +1617,11 @@ in order:
   number but its clock and memory gauge the same twice on the reference and once with `compiled`. Not yet run: a
   sighting on the CPU, one from a K-quant file, the Q4_0’s sighting against the checkpoint’s on the same prompt (how
   far a quantisation of its own moves the readings), and the server’s pages on a GGUF.
-  The pinned runtime’s two CUDA memory calls are sidestepped by hiding the GPUs on the CPU; mending them in the file
-  itself waits until R4’s record no longer needs `engine_runtime.py` pinned (a rerun of R4 would then go from its
-  registered commit). Those runs wait on nothing; the mending waits on R4’s pin.
+  The runtime’s two CUDA memory calls are sidestepped by hiding the GPUs on the CPU; mending them in the file itself
+  no longer waits on R4’s pin, as this entry said it did until 14 November 2026: `engine_runtime.py` left R4’s sha256 with the loader
+  change of 12 November 2026 (merged on the 13th, for 24 GB cards), and a rerun of R4 goes from its registration
+  commit (`2bdf5ad`, in `main`’s history). The mending is not yet made; when it is, it is a change to a runtime file,
+  written down in `scripts/runtime_files.py`. Those runs wait on nothing.
 - **A fast path with the reference’s bits. Built, and timed once on each device** (2 November 2026). The reference
   unpacks every weight at every forward (3 to 16 ns a weight on the 4-vCPU container, minutes a forward there; a prefill
   of the 31B took 31 to 37 s on the home machine’s 12 cores). `--unpacker compiled` now serves a GGUF’s packed layers on

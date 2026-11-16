@@ -114,9 +114,12 @@ def atlas_dir() -> Path:
 STEER_DOSE_FILE = "steer_dose.json"
 STEER_DOSE_REFERENCE = 0.8  # the reference's dose, the one every layer was pushed at before layers had their own
 # The steer lens's own check (backend/steer_check.py writes it beside the index, on the CPU). Built on the 31B on 13
-# November 2026, the lens agrees with the census from layer 39 up and less and less below it, and below layer 40 part
-# of every reading is the layer's: word-pieces that many of its neurons list whichever is pushed
-# (experiments/results/atlas_steer_dose/read_lens.py). So a page marks the shared words and says how the layer fared.
+# November 2026, the lens agrees with the census at layers 39 to 52 and less and less from 38 down to 32 (measured 14
+# November 2026, steer_check.json); layers 0 to 31 and 53 to 59 have no whole census, nor a trial whose doses are
+# counted calibrated, to set it beside, so it was not checked there. Below layer 40 part of every reading is the
+# layer's: word-pieces that many of its neurons list whichever is pushed
+# (experiments/results/atlas_steer_dose/read_lens.py). So a page marks the shared words and says how the layer fared,
+# and a layer that was not checked says so: it is not given a neighbour's standing.
 STEER_CHECK_FILE = "steer_check.json"
 STEER_COMMON = 0.02  # a word-piece that this share of a layer's neurons list, on one sign, is the layer's as much as a neuron's
 STEER_AGREES = 0.5   # the lens "agrees" with a layer's census when it shares a word with this share of the neurons that stand out
@@ -286,8 +289,10 @@ class AtlasIndex:
     def steer_check(self, layer: int) -> Optional[Dict[str, Any]]:
         """What the steer lens's check found at a layer (`steer_check.json`, backend/steer_check.py): how many of a
         neuron's word-pieces the layer shares, and how the lens fared beside the layer's census (`standing`: "agrees",
-        "weak" or "unchecked", with the nearest checked layer for an unchecked one). None when no check was written, or
-        when it was written for another build of the lens than the one read here."""
+        "weak" or "unchecked": no census there checks it, so the lens was set beside nothing). An unchecked layer's
+        row also names the nearest layer that was checked (`nearest`); what was found there is that layer's, and
+        nothing here takes this layer's standing from it. None when no check was written, or when it was written for
+        another build of the lens than the one read here."""
         st = self.get("steer_lens")
         p = self.root / STEER_CHECK_FILE
         if st is None:
@@ -314,17 +319,18 @@ class AtlasIndex:
         return {**row, "group": d.get("group"), "agrees_at": d.get("agrees_at")} if row else None
 
     def steer_weak(self, layer: int) -> bool:
-        """Whether the steer lens's check counts it a weak guide at a layer: beside the layer's census it shares a word
-        with fewer than STEER_AGREES of the neurons that stand out, or the layer has no census and the nearest layer
-        that has one is such a layer. Where it is, a face's line and the word search leave the steer lens's words out
-        (as before the lens was built) and the neuron's own details show them with what the check found. False when no
-        check has been written for this build of the lens: nothing is then known against it."""
+        """Whether the steer lens's words are held back at a layer: its check counts it a weak guide there (beside the
+        layer's census it shares a word with fewer than STEER_AGREES of the neurons that stand out), or did not check
+        it there (no census of the layer checks it). A layer that was not checked is held back as not checked,
+        whatever the nearest checked layer found: it borrows no neighbour's standing, a weak one's or one that agrees.
+        Where the words are held back, a face's line and the word search leave them out (as before the lens was built)
+        and the neuron's own details show them with what the check found, or that the layer was not checked. False
+        when no check has been written for this build of the lens, or when it does not name the layer: nothing is then
+        known of the lens at all."""
         c = self.steer_check(layer)
         if not c:
             return False
-        if c.get("standing") == "weak":
-            return True
-        return c.get("standing") == "unchecked" and (c.get("nearest") or {}).get("standing") == "weak"
+        return c.get("standing") in ("weak", "unchecked")
 
     def get(self, name: str) -> Optional[Dict[str, Any]]:
         p = self.path(name)
@@ -470,7 +476,8 @@ class AtlasIndex:
         weak = None
         if steer is not None:
             sources += [("+", "steer", steer["up"]), ("-", "steer", steer["down"])]
-            # a layer where the lens's check counts it a weak guide is not searched by its words (`steer_weak`)
+            # a layer where the lens's check counts it a weak guide, or did not check it, is not searched by its words
+            # (`steer_weak`)
             weak = np.array([self.steer_weak(l) for l in range(steer["up"].shape[0])], dtype=bool)
         if not sources or not len(match):
             return [], 0
@@ -756,10 +763,10 @@ class AtlasIndex:
         The words pooled are the steer lens's when it is built (`src` "steer": a measured effect on the next word-piece,
         which the label gate does not cover), else the J++ lens's, and then only faces the label gate lets through:
         `gated` counts the faces left out for it (a web that runs through early layers can leave out most of them).
-        From the steer lens, a neuron at a layer where the lens's own check counts it a weak guide (`steer_weak`) is
-        left out too and counted in `gated`, and the word-pieces a layer shares (`steer_common`) are not pooled. The
-        gate was validated for single neurons' labels, not for words pooled over many: a pool is a lead. Not ready
-        (`missing`) without the wiring index, or without both the steer-lens and the lens index."""
+        From the steer lens, a neuron at a layer where the lens's own check counts it a weak guide, or did not check
+        it (`steer_weak`), is left out too and counted in `gated`, and the word-pieces a layer shares (`steer_common`)
+        are not pooled. The gate was validated for single neurons' labels, not for words pooled over many: a pool is a
+        lead. Not ready (`missing`) without the wiring index, or without both the steer-lens and the lens index."""
         if self.get("wiring") is None:
             return {"src": None, "ready": False, "missing": "wiring"}
         if model == "use" and self.use_refused():

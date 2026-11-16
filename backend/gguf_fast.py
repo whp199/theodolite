@@ -41,6 +41,15 @@ layers and the layers dense at load (counted in the record). Only the shapes tes
 under `fail_on_recompile`: a call they were not tested for (under torch.inference_mode, say) goes through the
 reference instead, and is counted (`.fell_back`).
 
+Where the graphs are kept. torch keeps each compiled graph on disk, and a later process loads it from there. Before a
+graph is compiled its cache is given a folder of this account's own, ${XDG_CACHE_HOME:-~/.cache}/theodolite/torch_compile
+unless the person has set TORCHINDUCTOR_CACHE_DIR, not torch's default in the temporary folder, where other processes of
+the account can write (`runtime_factory.private_compile_cache`: why, and what else is moved). That folder starts empty,
+so the first install after this change (14 November 2026) compiles every graph afresh, once: seconds on a GPU
+(inferred, not timed for this change: on the RTX 5090 the 31B's graphs were compiled and tested in 3 to 10 s at load,
+the README, which does not say whether the cache was empty), longer on the CPU (runtime_factory's docstring: what one
+small graph cost there).
+
 Memory: the graphs, and the unpacked weight alone (2 bytes a weight in bf16) while a layer is unpacked. The self-test
 briefly holds one layer's compiled weight beside its reference one and the reference's chunk temporaries (some 12
 bytes a weight of 2,048 rows), never two layers' at once: about 1 GB for the 31B's down_proj (estimated); a table
@@ -64,6 +73,7 @@ import torch
 import torch.nn as nn
 
 from backend import gguf_weights as gw
+from backend.runtime_factory import private_compile_cache
 from backend.w4a16_fast import Refused, same_bits, same_layout
 
 logger = logging.getLogger("theodolite.gguf_fast")
@@ -156,9 +166,11 @@ def _compiled_for(key: _Key) -> Callable[..., torch.Tensor]:
     object, named after it), so each its own compile cache: dynamo keeps one per code object and stops compiling a
     ninth shape of one (`recompile_limit`, 8, past which it runs eager, silently), and the 31B has eight whole-layer
     shapes of a type. The unpacker's small tables are made on the device first (one eager unpacking of a block), so
-    the graph reads them as they are."""
+    the graph reads them as they are. What torch keeps of the graph on disk goes to a folder of this account's own
+    (`private_compile_cache`: module docstring)."""
     fn = _COMPILED.get(key)
     if fn is None:
+        private_compile_cache()
         qt, shape, dev, dt = key
         bs, ts = gw.block_shape(qt)
         gw.unpack(torch.zeros(1, ts, dtype=torch.uint8, device=dev), qt)  # _shifts and the IQ4 levels, on the device

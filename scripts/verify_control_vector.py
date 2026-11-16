@@ -39,6 +39,16 @@ The reading (`read`), as fixed before the run:
 `--stand-in` runs every step on the CPU stand-in (scripts/atlas_stand_in.py, written as a float32 GGUF, with a stats
 index of its own stream lengths; its layer 3, neurons 5 and 77, the instrument's own answers standing for a census's),
 for trying the script; its numbers say nothing of the 31B.
+
+What is written, and over what. Every step writes into `--out` under fixed names and asks no leave: `instrument.json`,
+`llama.json` and `summary.json` are written over, and the `llama` step writes the two exported control vectors again
+(`theodolite-L<layer>-n<neuron>.gguf`: on the 31B `theodolite-L45-n13641.gguf` and `theodolite-L45-n21200.gguf`;
+through `export_control_vector.export`, which writes over a file of the name it is given: only that script's command
+line refuses one already there). There is no flag for it. experiments/results/control_vector_L45 holds the run of 30
+October 2026 as it was written, its two exported files among it: give a new run a folder of its own, or that record
+is replaced. A control vector exported from 14 November 2026 on also carries the licence and the base model in its
+keys and `theodolite.derived_from` (scripts/export_control_vector.py); the two kept from 30 October carry neither.
+The directions are computed as they were.
 """
 
 from __future__ import annotations

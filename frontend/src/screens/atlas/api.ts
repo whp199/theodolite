@@ -122,6 +122,9 @@ export interface ScaleSource {
   kind: "index" | "study_texts";
   corpus: string;
   tokens: number;
+  built_at?: string;
+  /** set while a vault edit is in force: the stats index was read before it (backend/atlas.py STATS_STALE) */
+  stale?: string;
 }
 export interface Arch {
   model: string;
@@ -183,6 +186,11 @@ export interface Wiring {
   down: Link[];
   up: Link[];
   note: string;
+  /** set while a vault edit is in force and the links were read live: they were weighed across layers by norm scales
+   * read before it (backend/atlas.py STATS_STALE) */
+  scale_stale?: string;
+  /** set while a vault edit is in force and a link carries census words: the census was taken before it (CENSUS_STALE) */
+  census_stale?: string;
   /** with model=use: whether the readers' operating points could be read (`why` when not), and from which passages */
   model?: "use";
   use?: { ready: boolean; why?: string; note: string; stale?: string; operating_points?: { corpus: string | null; tokens: number | null } };
@@ -234,6 +242,8 @@ export interface ActRange {
   over_tokens: number;
   source: string;
   regimes?: Record<"pp" | "nn" | "pn" | "np", number>;
+  /** set while a vault edit is in force at an earlier layer: the range was read before it (backend/atlas.py STATS_STALE) */
+  stale?: string;
 }
 /** What the steer lens's own check found at a layer (backend/steer_check.py): how the lens fares beside the layer's
  * census, and how many of a neuron's word-pieces the layer shares. Layers count from 0 here, as the API does. */
@@ -247,26 +257,23 @@ export interface SteerCheck {
   /** the same with the neurons shuffled among themselves */
   shuffled?: number;
   neurons?: number;
-  /** for a layer with no census: the nearest layer that has one, and how the lens fared there */
+  /** for a layer with no census: the nearest layer that was checked and what was found there; that finding is the
+   * other layer's, and the page takes no layer's standing from it */
   nearest?: { layer: number; matched: number; standing: "agrees" | "weak" };
   census?: { kind?: "whole" | "trial"; design?: string };
 }
 
-/** The check in a sentence for a page, and whether it is a caution (red): the lens is a weak guide at this layer. */
+/** The check in a sentence for a page, and whether it is a caution (red): the lens is a weak guide at this layer, or
+ * was not checked there. */
 export function steerCheckSaid(c: SteerCheck): { text: string; caution: boolean } {
   const pct = (x: number | undefined) => `${Math.round(100 * (x ?? 0))} in 100`;
-  if (c.standing === "unchecked") {
-    const near = c.nearest;
-    if (!near) return { text: "No census checks the steer lens here: these words rest on its dose rule alone.", caution: false };
-    const weak = near.standing === "weak";
+  if (c.standing === "unchecked")
     return {
       text:
-        `No census is taken at this layer, so nothing checks the steer lens here. At the nearest layer with one (layer ${near.layer + 1}) ` +
-        `it shared a word with ${weak ? "only " : ""}${pct(near.matched)} of the neurons that stand out` +
-        (weak ? ": read these words as a weak guide to this neuron." : "."),
-      caution: weak,
+        "The steer lens was not checked at this layer: no census here checks it, so these words rest on its dose rule alone. " +
+        "What a checked layer nearby found is that layer’s, not this one’s.",
+      caution: true,
     };
-  }
   const beside = `Set beside this layer’s census${c.census?.kind === "trial" ? " trial" : ""}, the steer lens shares a word with `;
   const tail = ` of the neurons that stand out there (${pct(c.shuffled)} with the neurons shuffled)`;
   if (c.standing === "agrees") return { text: `${beside}${pct(c.matched)}${tail}.`, caution: false };
@@ -302,6 +309,9 @@ export interface PatternTest {
   by: "reader" | "scientist";
   at: string;
   said: string;
+  /** set when the test was run with a vault edit in force at an earlier layer: the extreme it is set against was read
+   * before the edit (backend/atlas.py STATS_STALE) */
+  stale?: string;
   /** written: texts meant to fire the face, how many reached half its extreme, how many beat the corpus's strongest */
   fire?: number;
   fired?: number;
@@ -410,7 +420,7 @@ export interface NeuronLens {
   edited: boolean;
   /** the most the neuron can ever write to the stream leaving its layer; `rel` is that over the push's unit, so an add
    * push of dose d is d / rel times it */
-  ceiling?: { write: number; p50: number | null; rel: number | null; source: string | null } | null;
+  ceiling?: { write: number; p50: number | null; rel: number | null; source: string | null; stale?: string } | null;
   lens: Record<string, unknown> | null;
 }
 export interface HeadRole {
@@ -552,6 +562,8 @@ export interface CensusLayerRow {
 }
 /** What every census reply says of its run (backend/atlas.py census_card). */
 export interface CensusCard {
+  /** set while a vault edit is in force: the census was taken before it (backend/atlas.py CENSUS_STALE) */
+  stale?: string;
   run: string;
   design: string | null;
   doses_from: string | null;

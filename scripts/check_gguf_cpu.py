@@ -41,7 +41,9 @@ tiny GGUF files, as scripts/check_gguf.py writes them:
    and with packed too; a layer of each type timed (printed, not checked); THEODOLITE_CHECKPOINT_LINEARS=int4mm's
    model id and card, the budget given to the GGUF runtime; int4mm off the CPU, on a file of which it takes no layer,
    THEODOLITE_CHECKPOINT_LINEARS beside a GGUF and a budget it cannot use refused;
-5. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
+5. the four runtime files (backend/engine_runtime.py among them) have the sha256 the instrument records for them
+   (scripts/runtime_files.py), and of the files R4 pins (experiments/scripts/R4_common.pinned_differ: R4's record of
+   what it ran on, not edited) those that differ are exactly the ones that record names as changed since R4.
 
 Run: .venv/bin/python -I scripts/check_gguf_cpu.py   (exits 0 when every check holds)
 """
@@ -943,13 +945,18 @@ def run_checks(tmp: Path) -> int:
     section("int4mm and the resident budget from the environment: the checkpoint's model id and card, the runtime given "
             "its budget, and int4mm off the CPU, on a file it takes no layer of, and a budget it cannot use, refused", before)
 
-    # ---------------------------------------------------------------- the files R4 pins
+    # ---------------------------------------------------------------- the runtime files, and the files R4 pins
     before = len(failures)
     sys.path.insert(0, str(ROOT_DIR / "experiments" / "scripts"))
     import R4_common
+    import runtime_files  # the instrument's own record of the runtime files' sha256 (scripts/runtime_files.py)
 
-    check(R4_common.pinned_differ() == [], f"the files R4 pins (engine_runtime.py among them) are unchanged: {R4_common.pinned_differ()}")
-    section("the R4-pinned runtime untouched: everything here is in new or unpinned modules", before)
+    check(runtime_files.differ() == [],
+          f"the four runtime files (engine_runtime.py among them) have the sha256 the instrument records: {runtime_files.differ()}")
+    check(sorted(R4_common.pinned_differ()) == sorted(runtime_files.CHANGED_SINCE_R4),
+          f"of the files R4 pins, those that differ are the ones the record names as changed since R4: {R4_common.pinned_differ()}")
+    section("the runtime files as the instrument records them, R4's other files unchanged: everything here is in new or "
+            "unpinned modules", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

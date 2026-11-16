@@ -222,12 +222,13 @@ const NeuronWeb: React.FC = () => {
   const mine = (x: { layer: number; n: number } | null) => !!x && x.layer === f.layer && x.n === f.n;
   const search = (t: string) => setQuery(t.trim() || t, "lens");
   // "its words" gives the steer lens's word-pieces that are the neuron's own: those its layer shares are left out, and at
-  // a layer where the lens's check counts it a weak guide none are shown (the details show all twelve, and what was found)
+  // a layer where the lens's check counts it a weak guide, or did not check it, none are shown (the details show all
+  // twelve, and what was found). The server's rule (AtlasIndex.steer_weak): weak, or not checked
   const sc = lens?.steer?.check;
-  const steerWeak = !!sc && (sc.standing === "weak" || (sc.standing === "unchecked" && sc.nearest?.standing === "weak"));
+  const steerHeld = !!sc && sc.standing !== "agrees";
   const steerOwn = (side: "up" | "down") => {
     const st = lens?.steer;
-    if (!st || steerWeak) return null;
+    if (!st || steerHeld) return null;
     const common = st.common?.[side];
     return common ? st[side].filter((_, i) => common[i] == null) : st[side];
   };
@@ -243,9 +244,13 @@ const NeuronWeb: React.FC = () => {
             <FaceLine layer={f.layer} face="-" w={{ ...lens.faces["-"], steer: steerOwn("down") }} k={10} />
           </div>
           {lens.steer ? (
-            <div className={steerWeak ? "red atlas-small" : "muted atlas-small"}>
+            <div className={steerHeld ? "red atlas-small" : "muted atlas-small"}>
               <a href={href.lexicon("steer-lens")}>steer lens</a> ({lens.steer.source}) · KL {lens.steer.kl_up} / {lens.steer.kl_down}
-              {steerWeak ? " · a weak guide at this layer, so its words are left to the details" : ""}
+              {steerHeld
+                ? sc?.standing === "unchecked"
+                  ? " · not checked at this layer, so its words are left to the details"
+                  : " · a weak guide at this layer, so its words are left to the details"
+                : ""}
             </div>
           ) : (
             <div className="muted atlas-small">no steer lens read for it yet (details)</div>
@@ -280,7 +285,7 @@ const NeuronWeb: React.FC = () => {
           {w.gated && (w.gated.down || w.gated.up) ? (
             <div className="muted atlas-small">
               {w.gated.up + w.gated.down} faces left out:{" "}
-              {w.src === "steer" ? "the steer lens is a weak guide at their layers" : "the label gate holds their words back"}
+              {w.src === "steer" ? "the steer lens is a weak guide at their layers, or was not checked there" : "the label gate holds their words back"}
             </div>
           ) : null}
           <Rubric style={{ fontSize: 14, margin: "4px 0 0" }}>
@@ -631,13 +636,14 @@ const CensusRows: React.FC = () => {
   );
 };
 
-const RunRows: React.FC<{ rows: RunRow[]; total: number; provisional: boolean }> = ({ rows, total, provisional }) => (
+const RunRows: React.FC<{ rows: RunRow[]; total: number; provisional: boolean; stale: boolean }> = ({ rows, total, provisional, stale }) => (
   <ol className="atlas-rows">
     <li className="atlas-rows-head">
       {total} neurons pass · score = activation over its usual extreme on that side
       {provisional
         ? " · usual extremes read over the study’s 36 texts, provisional until the stats index is built: a neuron those texts never woke scores high on little"
         : ""}
+      {stale ? " · usual extremes read before the vault edits in force: past the first edited layer they are the model’s as it was" : ""}
     </li>
     {rows.map((x) => (
       <li key={`${x.layer}/${x.n}`} onClick={() => goToNeuron(x.layer, x.n)} onMouseEnter={() => theMap()?.hover(x.layer, x.n)} onMouseLeave={() => theMap()?.hover(null)}>
@@ -713,7 +719,7 @@ const RunTab: React.FC = () => {
           <input className="input-line" placeholder="its words hold…" value={run.q} onChange={(e) => upd({ q: e.target.value })} style={{ width: 130 }} />
         </div>
       ) : null}
-      {run.view ? <RunRows rows={run.view.results} total={run.view.total} provisional={run.scaleSource?.kind === "study_texts"} /> : null}
+      {run.view ? <RunRows rows={run.view.results} total={run.view.total} provisional={run.scaleSource?.kind === "study_texts"} stale={!!run.scaleSource?.stale} /> : null}
     </div>
   );
 };

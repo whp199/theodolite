@@ -42,10 +42,12 @@ the GPU hidden, unless given --cuda, when the device sections run on cuda:0 too;
    with nothing compiling here, not loaded at all, and the run fails saying so): compiled installed (its record), one
    forward's logits on a fixed prompt the reference's bits, that forward and the timed ones through the compiled graphs
    (counted, none sent to the reference), one row's forward timed each way after a warm-up, the memory;
-7. the files R4 pins unchanged (R4_common.pinned_differ), and w4a16_fast's checkpoint-facing code as at the volunteer
+7. the four runtime files with the sha256 the instrument records for them (scripts/runtime_files.py), and of the
+   files R4 pins (R4_common.pinned_differ: R4's record of what it ran on, not edited) those that differ exactly the
+   ones that record names as changed since R4; and w4a16_fast's checkpoint-facing code as at the volunteer
    kit's tag (census-kit-1: every function and constant but install, _uninstall and describe, which hand a GGUF on,
-   its REFERENCE the pinned unpacker); importing it loads no GGUF module and sets no compiler config, and a GGUF's
-   install sets none either.
+   and default_mode, the server's own choice of unpacker, added 11 November 2026; its REFERENCE the pinned unpacker);
+   importing it loads no GGUF module and sets no compiler config, and a GGUF's install sets none either.
 
 "compiled" on the CPU goes through Inductor's C++ compiler: a child process tries one tiny compile first (240 s at
 most), and when that fails the sections that compile on the CPU are left out, with the reason said.
@@ -580,8 +582,10 @@ def readings(rt: Any, vault: LarqlVaultEngine, out: Path) -> Dict[str, Any]:
     r["update"] = {k: v for k, v in rep["patch"].items() if k not in ("timestamp", "patch_id")}
     r["logits_update"] = hf(input_ids=ids).logits
     r["slice_w_down"], r["full_w_down"] = rt.slice_w_down(3, idx), rt.get_full_w_down(3)
+    # since 14 November 2026 ROLLBACK clears the overlays of as many layers as the model has (larql_vault `_n_layers`:
+    # the stand-in's own count), not the 31B's 60, so setting the count here is no longer needed; it is left as it was
     n_layers = larql_vault.N_LAYERS
-    larql_vault.N_LAYERS = len(lm.layers)  # ROLLBACK sweeps the 31B's 60 layers; the stand-in has six
+    larql_vault.N_LAYERS = len(lm.layers)
     try:
         r["rollback"] = vault.execute_lql("ROLLBACK")
     finally:
@@ -1035,8 +1039,11 @@ def check_pins() -> None:
     before = len(failures)
     sys.path.insert(0, str(ROOT_DIR / "experiments" / "scripts"))
     import R4_common
+    import runtime_files  # the instrument's own record of the runtime files' sha256 (scripts/runtime_files.py)
 
-    check(R4_common.pinned_differ() == [], f"the files R4 pins are unchanged: {R4_common.pinned_differ()}")
+    check(runtime_files.differ() == [], f"the four runtime files have the sha256 the instrument records: {runtime_files.differ()}")
+    check(sorted(R4_common.pinned_differ()) == sorted(runtime_files.CHANGED_SINCE_R4),
+          f"of the files R4 pins, those that differ are the ones the record names as changed since R4: {R4_common.pinned_differ()}")
     check(wf.REFERENCE.__module__ == "backend.engine_runtime" and wf.REFERENCE.__name__ == "dequantize_w4a16_full"
           and not hasattr(wf.REFERENCE, "mode"), "w4a16_fast.REFERENCE is the pinned unpacker itself")
     r = subprocess.run(["git", "-C", str(ROOT_DIR), "show", "census-kit-1:backend/w4a16_fast.py"], capture_output=True, text=True)
@@ -1057,9 +1064,14 @@ def check_pins() -> None:
 
         kit, now = parts(r.stdout), parts((ROOT_DIR / "backend" / "w4a16_fast.py").read_text(encoding="utf-8"))
         differ = sorted(k for k in set(kit) | set(now) if kit.get(k) != now.get(k))
-        check(differ == ["_uninstall", "describe", "install"] and all(k in kit for k in ("_compiled_for", "_unpack", "_key",
-                                                                                       "_installed_compiled", "REFERENCE")),
-              f"w4a16_fast: every function and constant as at census-kit-1 but install, _uninstall and describe ({differ})")
+        # default_mode is the one name kit 1 did not have: commit 270d03e (11 November 2026) added it, and of the
+        # instrument only backend/server.py calls it. It is the server's choice of unpacker when $THEODOLITE_UNPACKER
+        # names none, not checkpoint-facing arithmetic, so it is allowed here by name. Any other name that differs, or
+        # one missing on either side, still fails this line
+        check(differ == ["_uninstall", "default_mode", "describe", "install"] and "default_mode" not in kit
+              and all(k in kit for k in ("_compiled_for", "_unpack", "_key", "_installed_compiled", "REFERENCE")),
+              "w4a16_fast: every function and constant as at census-kit-1 but install, _uninstall and describe, and default_mode, "
+              f"which kit 1 did not have ({differ})")
     code = ("import sys; sys.path.insert(0, sys.argv[1]); import torch, torch._dynamo.config as dc, torch._inductor.config as ic; "
             "b = (dc.get_config_copy(), ic.get_config_copy()); import backend.w4a16_fast; "
             "print('backend.gguf_fast' in sys.modules, b == (dc.get_config_copy(), ic.get_config_copy()))")
@@ -1069,7 +1081,8 @@ def check_pins() -> None:
     import torch._inductor.config as ic
 
     check(ic.emulate_precision_casts is False, "a GGUF's install set no global Inductor config (emulate_precision_casts is per compile)")
-    section("the R4 pins, and w4a16_fast's checkpoint-facing code, as they were", before)
+    section("the runtime files as the instrument records them, R4's other files unchanged, and w4a16_fast's "
+            "checkpoint-facing code as it was", before)
 
 
 def main(argv: Optional[List[str]] = None) -> int:

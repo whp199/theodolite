@@ -4,11 +4,31 @@ Copyright 2026 The Theodolite authors
 This product is licensed under the Apache License, Version 2.0 (see LICENSE),
 except where noted below.
 
-This repository does NOT redistribute any model weights, lens tensors,
-third-party binaries, or third-party text corpora. It contains code that
-downloads and uses the third-party works listed below, plus research results
-(statistics and model generations) computed with them. Full citations are in
-REFERENCES.md.
+This repository does NOT redistribute any model's weights as a whole, any lens
+tensors, third-party binaries, or third-party text corpora. It contains code
+that downloads and uses the third-party works listed below, plus research
+results (statistics and model generations) computed with them. Full citations
+are in REFERENCES.md.
+
+It does hold eleven small GGUF files of numbers derived from Gemma 4's weights,
+kept as the records of two measured runs (ARCHITECTURE.md section 6):
+* experiments/results/control_vector_L45/: two llama.cpp control vectors
+  (30 October 2026). Each holds one direction of 5,376 numbers, computed from
+  one neuron's column of layer 45's feed-forward down projection and the norm
+  after it, read from google/gemma-4-31B-it-qat-w4a16-ct.
+* experiments/results/lora_export_L45/: nine llama.cpp LoRA adapters
+  (2 November 2026). Each holds one or eight columns of layer 45's down
+  projection, 5,376 numbers a column, each times a factor, read from
+  lmstudio-community's gemma-4-31B-it-QAT-Q4_0.gguf.
+Together 134,400 numbers: 23 columns and two directions (counted 14 November
+2026). Gemma 4 is licensed under the Apache License 2.0
+(https://ai.google.dev/gemma/docs/gemma_4_license; the licence's text is in
+LICENSE), and these files are passed on under it, changed from Gemma 4's
+weights by the Theodolite authors: what each was made from, and how, is in its
+theodolite.* keys. They were written before the exporters recorded a licence,
+so the files themselves name none; this notice does. Control vectors and
+adapters the exporters write from 14 November 2026 on name the licence and the
+base model in their own keys.
 
 Third-party works used
 ----------------------

@@ -2,12 +2,12 @@
 
 A pattern is a sentence or two saying when one face of a neuron fires (the field book's `pattern`, or a scientist's
 description). The census and the steer lens say what a push along a neuron's write direction does; no push strength has
-passed a trial below layer 32, and the steer lens is a weak guide below layer 39. These two tests need neither. They
-ask whether the pattern predicts where the neuron fires by itself, in ordinary text, which a neuron does at every
-layer. Both follow Goodfire's "Neurons as an Interpretable Basis" (Tigges, Kowal, McGrath, Lewis and Cammarata, 10
-November 2026), which tested descriptions of Qwen3.6-35B-A3B's neurons by detection (a judge given the description
-picks the passage the neuron fires in from one where it stays quiet: 86 to 95 in 100) and by input synthesis (text
-written from the description fires the neuron harder than anything in a ten-billion-token corpus, for 94 in 100).
+passed a trial below layer 32, and the steer lens is a weak guide at layers 32 to 38 and was not checked below 32. These
+two tests need neither. They ask whether the pattern predicts where the neuron fires by itself, in ordinary text, which
+a neuron does at every layer. Both follow Goodfire's "Neurons as an Interpretable Basis" (Tigges, Kowal, McGrath, Lewis
+and Cammarata, 10 November 2026), which tested descriptions of Qwen3.6-35B-A3B's neurons by detection (a judge given the
+description picks the passage the neuron fires in from one where it stays quiet: 86 to 95 in 100) and by input synthesis
+(text written from the description fires the neuron harder than anything in a ten-billion-token corpus, for 94 in 100).
 
 1. Written (`written_result`). Texts written to fire the face, and near misses written not to, are run through the
    model. Each text's peak on the face is given as a share of the face's extreme in the stats index. A text fires the

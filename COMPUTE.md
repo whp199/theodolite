@@ -44,7 +44,8 @@ the home 5090 that evening (a GGUF’s on 2 November), the rest not yet:
   unpacked (about 60 GB beside the 4-bit weights). Each gives the runtime’s bits: `scripts/check_dequant.py` shows it
   for every (piece, bf16 scale) pair and for a 4-bit stand-in’s logits, vault edits, pushed answers and census rows,
   and `install` tests every linear again on the card, refusing in plain words on any difference. None of it touches
-  the R4-pinned `engine_runtime.py`. By the arithmetic `lut` shortens the step two to three times on a 5090 and
+  `engine_runtime.py` (R4 pinned the file; its unpacker is as it was then, and the instrument now records the file’s
+  sha256, `scripts/runtime_files.py`). By the arithmetic `lut` shortens the step two to three times on a 5090 and
   `compiled` about five times. **Timed** on the home 5090 beside a desktop (28 October 2026, `scripts/pod/pod_tool.py
   steps`, layer 45, census-shaped batches at `--max-new 64`, the lens freed;
   `experiments/results/atlas_unpacker_steps_rtx5090.json`), each passing its test on all 410 linears first:

@@ -40,13 +40,14 @@ theodolite2/
 │   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat; the folio's field book
 │   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex or an OpenAI-compatible endpoint (§4.8)
 │   ├── control_vector.py            # a push or a recipe as a llama.cpp control vector, from the running server (§6)
-│   ├── scientist_tools.py           # the scientist's 30 tools, in the pages' count of layers (stdlib only)
+│   ├── scientist_tools.py           # the scientist's 35 tools, in the pages' count of layers (stdlib only)
 │   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code and Codex
 │   ├── scientist_prompt.md          # the scientist's instructions (with scientist_methodology.md)
 │   └── scientist_methodology.md
 ├── scripts/
 │   ├── atlas_build.py               # builds the atlas's indexes (GPU): lens, stats, wiring, layout, steer, passages
 │   ├── atlas_stand_in.py            # a tiny random Gemma 4 for the atlas's checks, and the server on it (--serve)
+│   ├── runtime_files.py             # the instrument's own record of its four runtime files' sha256, and what changed since R4
 │   ├── census_run.py                # takes a layer's census (GPU), resumable, in planned batches or shards
 │   ├── census_tools.py              # rank, merge, depth, spread, the dose window and canaries over census runs (CPU)
 │   ├── export_control_vector.py     # a neuron's push (or a set's) as a llama.cpp control-vector GGUF (CPU, §6)
@@ -68,7 +69,7 @@ theodolite2/
 │   ├── check_control_vector.py      # the exported vector against the census's push, bit for bit, and llama.cpp itself (CPU only)
 │   ├── check_lora_export.py         # the adapters and silenced copies against the instrument's own arithmetic, and llama.cpp (CPU only)
 │   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
-│   ├── check_local_only.py          # who may ask: every route, the socket and the lab daemon, refused or let in (CPU only)
+│   ├── check_local_only.py          # who may ask: every route, the socket and the lab daemon, refused or let in; and where torch.compile's cache is kept (CPU only)
 │   ├── check_hypothesis_test.py     # test_motif_hypothesis's test against chance, its route and the folio's words (CPU only)
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
@@ -122,7 +123,7 @@ theodolite2/
 | `d_ff` (`intermediate_size`) | `21504` | GeGLU FFN width (`43,008` bipolar poles per layer) |
 | `vocab_size` | `262144` | Tied embedding / LM head vocabulary size |
 | `final_logit_softcapping` | `30.0` | `logits = 30.0 * tanh(logits / 30.0)` |
-| `rms_norm_eps` | `1e-6` | Gemma 4 RMSNorm with `(1 + w)` unit-offset scaling |
+| `rms_norm_eps` | `1e-6` | Gemma 4 RMSNorm: `x / rms(x) * w`, the weight multiplied as it is stored (no `1 + w`: the unit offset is already in `w`) |
 | `global_layers_1based` | `[6, 12, 18, 24, 30, 36, 42, 48, 54, 60]` | Every 6th layer is Full Global Attention (`head_dim=512`, p-RoPE) |
 | `global_layers_0based` | `[5, 11, 17, 23, 29, 35, 41, 47, 53, 59]` | 0-indexed equivalents in `interp-engine` and `J[l]` |
 | `sliding_window` | `1024` | Local attention window on the remaining 50 layers (`head_dim=256`) |
@@ -130,7 +131,8 @@ theodolite2/
 
 **The 4-bit weights.** The 410 quantised linears stay packed (int32 words of eight 4-bit pieces, a bf16 scale per 32
 weights: compressed-tensors' pack-quantized layout) and are unpacked to bf16 on every forward by
-`engine_runtime.dequantize_w4a16_full`, whose file R4 pins by sha256. `backend/w4a16_fast.py` installs a faster unpacker
+`engine_runtime.dequantize_w4a16_full`, whose file the instrument holds to a recorded sha256 (`scripts/runtime_files.py`;
+R4 pinned it, and the unpacker's text is as R4 read through it). `backend/w4a16_fast.py` installs a faster unpacker
 from outside it, chosen by `--unpacker` (`scripts/census_run.py`, `scripts/atlas_build.py`) or `$THEODOLITE_UNPACKER`
 (the server, the lab daemon and the scientist's MCP server run alone). The scripts' default is `reference`; the server,
 when the variable is unset, takes `compiled` for the checkpoint on a CUDA card and `reference` anywhere else
@@ -160,7 +162,12 @@ For each layer $l \in \{0, \dots, 59\}$:
 - `Address("resid_pre", l)`: Residual stream entering layer $l$, shape `[batch, pos, 5376]` (or `[pos, 5376]` unbatched).
 - `Address("resid_mid", l)`: Residual stream after Attention + post-attention sandwich RMSNorm, before MLP, shape `[batch, pos, 5376]`.
 - `Address("mlp_act", l)`: Post-GeGLU intermediate activations inside the FFN ($\text{GeLU}_{\tanh}(x W_{\text{gate}}) \odot (x W_{\text{up}})$), shape `[batch, pos, 21504]`.
-- `Address("resid_post", l)`: Residual stream exiting layer $l$ after post-FFN sandwich RMSNorm + residual add, shape `[batch, pos, 5376]`.
+- `Address("mlp_out", l)`: The FFN's output $y = W_{\text{down}}\, a$, before the post-FFN norm, shape `[batch, pos, 5376]` (for write sizes and direct paths).
+- `Address("resid_post", l)`: Residual stream exiting layer $l$, the block's output: after the post-FFN sandwich RMSNorm, the residual add and the layer scalar, $\text{resid\_post} = s_l \cdot \left(\text{resid\_mid} + \text{post\_ffn\_norm}(\text{mlp}(\cdot))\right)$ with $s_l$ = `layer_scalar` (0.03 to 0.99 on the 31B), shape `[batch, pos, 5376]`.
+
+These five are what a sweep captures (`TheodoliteRuntime._sweep_points`). `interp-engine` (1.14.0) names more points than
+these (`attn_in`, `attn_out`, `mlp_in`, `z`, `value`, the q and k norm points, `embeddings`, `final_norm` and `lm_head`
+among them) and takes any dotted module path (`EagerModel.resolve_point`).
 
 ### 3.2 Pre-Fitted Coordinate Lenses (`neuronpedia/jacobian-lens`)
 - **Files**:
@@ -176,9 +183,15 @@ For each layer $l \in \{0, \dots, 59\}$:
 
 ### 3.3 Four Mathematical Modules (`backend/theodolite_math.py`)
 
-1. **Attention Router vs. FFN Vault Causal Vector Split**:
-   $$\Delta_{\text{attn}, J}^{(l)} = \left(\text{resid\_mid}[l] - \text{resid\_pre}[l]\right) J_{\text{pp}}[l]^\top \in \mathbb{R}^{5376}$$
-   $$\Delta_{\text{ffn}, J}^{(l)} = \left(\text{resid\_post}[l] - \text{resid\_mid}[l]\right) J_{\text{pp}}[l]^\top \in \mathbb{R}^{5376}$$
+1. **Attention Router vs. FFN Vault Causal Vector Split**, with the layer scalar $s_l$ (`compute_causal_vector_split`,
+   `layer_scalar`; `resid_post` is read after it, §3.1):
+   $$\Delta_{\text{attn}, J}^{(l)} = s_l \left(\text{resid\_mid}[l] - \text{resid\_pre}[l]\right) J_{\text{pp}}[l]^\top \in \mathbb{R}^{5376}$$
+   $$\Delta_{\text{ffn}, J}^{(l)} = \left(\text{resid\_post}[l] - s_l\, \text{resid\_mid}[l]\right) J_{\text{pp}}[l]^\top \in \mathbb{R}^{5376}$$
+   $$\Delta_{\text{rescale}, J}^{(l)} = (s_l - 1)\, \text{resid\_pre}[l]\, J_{\text{pp}}[l]^\top \in \mathbb{R}^{5376}$$
+   The three add up exactly to $(\text{resid\_post}[l] - \text{resid\_pre}[l])\, J_{\text{pp}}[l]^\top$: the attention write as it
+   lands in `resid_post`, the FFN write $s_l \cdot \text{post\_ffn\_norm}(\text{mlp}(\cdot))$, and the scalar's shrinking of the
+   stream that came in, reported apart (`delta_rescale_J`, `rescale_norm`). Without the scalar ($s_l = 1$, as first
+   built) the FFN term took in that rescale and the attention write read $1/s_l$ too large.
 
 2. **Bipolar GeGLU Neuron Poles & J-VINDEX Fusion**:
    - Top-$k$ active poles per layer ($k = 15$):
@@ -626,9 +639,40 @@ watch_after}` (null when after failed), and `parted_at` the first word-piece ind
 when they are the same, or after failed). Every patch record (the reply's `patch`, DESCRIBE's `active_patches`) gains
 `voice` (null when not heard), `edit_kind` ("one_neuron_column") and `replaces_patch` (the id of the edit in force on
 the same neuron that this one replaced, else null); DESCRIBE gains `edit_method`: one down_proj column per edit, rank
-one, no covariance solve, named after MEMIT but not MEMIT. The voice is one question, written by the model itself: it
+one, no covariance solve, named after MEMIT but not MEMIT, and after those words a caution on the direction an UPDATE
+or INSERT writes (`EDIT_DIRECTION_CAUTION`, below). The voice is one question, written by the model itself: it
 shows what the edit did to that answer only. scripts/check_vault_voice.py checks all of this on a stand-in runtime,
 over HTTP, the WebSocket and MCP (`fastmcp.Client`, in memory), the tools' turns among it.
+
+**The direction an edit writes** (said since 14 November 2026). An UPDATE or INSERT adds the word's direction, pulled
+back through the lens, to the column as it is stored, and does not divide it by the post-feed-forward norm's weight.
+The stream therefore receives the direction times that weight: dimensions whose weight is small are under-written,
+those whose weight is large over-written (NEAREST and DESCRIBE POLE do read the column times the weight). The study's
+records (measured 16 October 2026) give the weights as 0.00016 to 63, none negative, and put 99-100% of a J++ pullback
+in the quietest tenth of the dimensions at layers 35-58 (counted from 0), four fifths or more of it at layer 40 in the
+181 persistently quiet ones, where the weight is 0.001-0.003 of the others'. Inferred from those records, not measured
+on a running edit: at those layers most of the push asked for does not reach the stream, and what does reach it points
+mostly elsewhere than along the word's direction. Nothing is said of the layers below 35, nor of the last layer, where
+the lens is the identity and the page's example edit is made. The arithmetic is unchanged, since the recorded example
+edit rests on it. DESCRIBE's `edit_method` carries the caution; an edit's own reply does not.
+
+**A place the model lacks, ROLLBACK and the count** (14 November 2026). A statement that names a layer or a neuron the
+model does not have (UPDATE, INSERT, DELETE, DESCRIBE POLE, a NEAREST search's `WHERE layer`) is refused in plain
+words, as the atlas refuses one: "Layer 99 does not exist: layers count from 0 to 59 here (page layers 1 to 60).",
+"Neuron 21504 does not exist: each layer has 21504 (0 to 21503).", an edit's ending "No edit was made."
+(`LarqlVaultEngine._place`; HTTP 400, `larql_result` ok false, an MCP tool error), and an edit before its voice is
+written. Until then such a place was read as the last layer or neuron. The layers are counted as the loaded model's
+own; a layer's neurons as the 31B's 21,504. The vault's own methods refuse likewise, so `inspect_pole` does over MCP
+(a tool error), over the WebSocket (a recoverable `error`) and over HTTP (`POST /api/scientist/inspect_pole` answers
+400 with the vault's words as `detail`; `backend/server.py` catches the refusal there since 14 November 2026, and
+`scripts/check_causal_check.py` asks that route for a layer and a neuron its stand-in lacks: the server as it was
+before answered 500). ROLLBACK clears every overlay on every module that carries the overlay dicts, attention's
+linears among them (nothing writes those today), whatever the model's layer count, and every record; its
+`cleared_patches` counts the records. `active_patches_count` (an edit's reply, DESCRIBE, and a sighting's
+`larql_status` since 14 November 2026: `scripts/check_sweep_protocol.py` §8 takes sightings through the server with a
+stand-in vault of three records, two of them of one neuron, and reads 2 on each, beside the three records
+listed, where the server as it was before counted 3) counts the edits in force, the latest of each neuron; DESCRIBE's
+`active_patches` and a sighting's still list every record, replaced ones among them.
 
 On the pages: the vault's edit tab hears every edit unless the reader turns hearing off (`executeLarql(query, voice)`,
 `voicePayload`: the example edit's own question at first, as a chat with nothing begun and no system prompt, or the
@@ -695,6 +739,28 @@ gives the defaults, the down row and the caps (`defaults`, `down_row`, `most`, w
 ‖w<sub>post</sub> ⊙ unit(W<sub>down</sub>[:, n])‖, however hard it fires (the norm caps it; `Weights.write_ceiling`);
 `/neuron/lens` gives it, and as a share of p50 (`ceiling.rel`), and the steer lens, the push tab and the census tab say
 how many times that most a dose is. On the 31B the steer lens's 0.8 is 1 to 10 times it at most layers.
+
+**What a vault edit leaves as it was** (14 November 2026). The stats index and every census were read on the model
+with no vault edit, and the server reads neither again. While an edit is in force a reply that takes a number from
+them says so, as the wiring, the passages and the steer lens say it of theirs: `stale` on `scale_source` (`/arch`,
+`/compare`, `/fires`, `/run`, `/run/view`, `/neuron/steer_lens`; `unit_source` of `/control_vector`) for an edit at
+any layer, on a neuron's `act_range` and on a pattern test (an edit at an earlier layer), on its `ceiling` and on an
+add push's echo in `pushed` (an edit at its layer or before; an act push's, before), and in `/push`'s last event;
+`scale_stale` on links read live; the header `X-Scale-Stale` on `/run/paths`. Every census reply carries `stale`
+(`/census/units` and `/census/spread`, a list and a file, the header `X-Census-Stale`), and a reply that carries
+census words beside other things `census_stale` (`/neuron/wiring`, `/search`, `/cone`, `/neuron`). Nothing is read
+again: the flag says the number is the model's as it was. The stats index's flags are raised only when it is built;
+without it the scales are read over the study's texts for the model as it stands. Not flagged: the steer-lens index
+of neurons other than the edited one, later neurons' stored links to an edited neuron, the wiring index's link
+strengths (weighed with the stats index's norm scales when it was built), the head profiles, and a text run before
+the edit. The scientist's tools pass these flags on, each where the route's reply has it (`backend/scientist_tools.py`,
+14 November 2026): `stale` in `neuron`'s `activation`, `ceiling`, `census` and kept tests, in `rollouts`, `top_units`
+and `search_census`, on an `act_range` (`activations`, `compare`, `attn_drive`), on each push a reply cites (`steer`,
+`activations`, `logprobs`), on a pattern test's result (`test_by_writing`, `blind_test`), in an exported file's
+`unit_source` and `overview`'s `scale_source`; `scale_stale` on `compare`, `top_firing`, `steer_lens` and `neuron`;
+`census_stale` on `neuron`, `cone` and `search_lens` (`scripts/check_scientist.py` asks each of these tools with an
+edit in force). Not passed on, as before: the wiring's own older flags on `/cone` and `/web/summary` (`stale` for an
+edited neuron's web, `use_stale`), which the `cone` and `web_summary` tools leave out.
 
 **The links.** A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at layer
 j > i reads g = W<sub>gate,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>) and u = W<sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙
@@ -823,7 +889,7 @@ and where it comes from: the built lens's (`index`), the pilot's for a neuron re
 *A pattern put to the test* (14 November 2026; `backend/pattern_tests.py`, after [54]). A pattern is a sentence or two
 saying when one face fires: the field book's `pattern`, or a scientist's. The census and the steer lens say what a push
 does, and neither reads the early layers (no push strength has passed a trial below layer 32; the steer lens is a weak
-guide below 39). These two tests push nothing, so they work at every layer. *Written*: texts written to fire the face,
+guide at 32 to 38 and was not checked below 32). These two tests push nothing, so they work at every layer. *Written*: texts written to fire the face,
 and near misses written not to, are each read once; a text fires at half the face's extreme in the stats index, the
 band the passages index draws its random events from, and beats the corpus at 1. *Blind*: a face's stored events in
 odd-numbered windows are kept back from the scientist (`atlas_index.passage_kept_back`; its `passages` tool asks for
@@ -865,8 +931,12 @@ away. And a stored passage that itself reads under the quiet bar is no longer us
 the score over the pairs whose firing passage reaches half the extreme (`strong_pairs`), because a face's weakest
 stored passages can be a third of it: in the pilot 50 of the 196 firing passages read under a half, and one face's
 ten were all such. What a near miss cannot do: where what tells the two apart lies further back than is shown, no
-pattern can be applied by a reader; `before` shows up to 256 word-pieces for that. Checked on the stand-in; not yet
-run on the 31B.
+pattern can be applied by a reader; `before` shows up to 256 word-pieces for that. Checked on the stand-in, and run on
+the 31B on 14 November 2026 (`experiments/results/pattern_tests_pilot/blind_near.json`; ROADMAP §vi): the pilot's 21
+faces again, with the same patterns and the same 196 held-back passages. A near miss was found for 189 of the pairs.
+Readers picked 158 of 196 with the face's own pattern, where they had picked 177 against a passage from anywhere, and
+106 with another face's, which is chance. For the 18 faces above layer 2 the neuron fired at none of the 68 other
+places with the same word between the same two neighbours.
 
 *Behind its own passage* (14 November 2026; `atlas._written_behind`, `_lead`). For a face that needs its own document
 the earlier text is held and the ending swapped: one of the face's stored passages that is not kept back is kept up
@@ -876,27 +946,35 @@ does by itself is counted. The passage's own ending is read the same way beside 
 fires at, or the passage is refused. Near misses are required: the held text is the neuron's own strongest, so
 endings that fire show little unless a near miss, sharing their words, stays quiet. What it shows is narrower than
 the plain test: that with this earlier text given, what the pattern names in the ending is what fires the face. It
-does not show what the earlier text has to be. Checked on the stand-in; the endings for the pilot's six faces are
-written (`experiments/results/pattern_tests_pilot/behind.json`) and wait for the card.
+does not show what the earlier text has to be. Checked on the stand-in, and run on the 31B on 14 November 2026 for the
+pilot's six faces that no short text fires (the endings in `experiments/results/pattern_tests_pilot/behind.json`, the
+readings in `behind_results.json`; ROADMAP §vi): 6 of 17 new endings fired, where none of the 18 short texts written
+for those faces had, and 2 of 24 near-miss endings fired. Ten passages were read; an eleventh was refused, because
+it reads under half the neuron's extreme where it peaks.
 
 *Its own check* (13 November 2026). The lens lists the word-pieces whose odds rose most; nothing in it sets a neuron
-against other pushes, as the census's controls do. On the 31B it agrees with the census from layer 39 up and less and
-less below, and below layer 40 part of every reading is the layer's own (ROADMAP §vi). So the lens is checked, on the
+against other pushes, as the census's controls do. On the 31B it agrees with the census at layers 39 to 52 and less and
+less from 38 down to 32 (measured 14 November 2026, `steer_check.json`); layers 0 to 31 and 53 to 59 have no census
+that checks it, so it was not checked there; and below layer 40 part of every reading is the layer's own (ROADMAP
+§vi). So the lens is checked, on the
 CPU, and a page says what was found. `scripts/atlas_steer_check.py` (`backend/steer_check.py`) writes
 `steer_check.json` beside the index. For each layer it holds how many of a neuron's twelve word-pieces the layer
 shares (those that `STEER_COMMON`, 2 in 100, of its neurons or more list on one sign), and, where the layer has a
 whole census or a trial whose doses are counted calibrated there, for how many of the neurons above 95 in 100
 controls a steer-lens word-piece is one of the neuron's five census words, begins one or is begun by one, beside the
 same count with the neurons shuffled. A layer `agrees` at `STEER_AGREES` (one half) or more, is `weak` under it, and
-is `unchecked` without a census, when it is given the nearest layer that has one. The file names the build of the
+is `unchecked` without a census: its row names the nearest layer that was checked (`nearest`), whose finding is that
+layer's. No layer takes its standing from a neighbour (since 14 November 2026; until then an unchecked layer was
+treated as its nearest checked layer was). The file names the build of the
 lens it was measured on; one written for another build is not read. `AtlasIndex.steer_common(layer)` gives the shared
 word-pieces (from the index itself, no file needed), `steer_check(layer)` the layer's row, and `steer_weak(layer)`
-whether the lens is a weak guide there: checked and weak, or unchecked beside a weak layer. `/neuron/lens` and
+whether its words are held back there: checked and weak, or not checked. `/neuron/lens` and
 `/neuron/steer_lens` give all twelve word-pieces with `common` (each word's share of the layer, or null) and `check`.
 A face's words everywhere else (`Atlas.face`: the hover, links, lists) give the neuron's own steer words, the shared
-ones left out, and none at a weak layer, as before the lens was built; `/search` does not match a weak layer's steer
-words. `/web/summary` and a head's pooled words leave out the neurons at a weak layer (counted in `gated`) and the
-word-pieces a layer shares.
+ones left out, and none at a layer that is weak or was not checked, as before the lens was built; `/search` does not
+match such a layer's steer words. `/web/summary` and a head's pooled words leave out the neurons at such a layer
+(counted in `gated`) and the word-pieces a layer shares. On the 31B (14 November 2026) that holds the steer lens back
+at layers 0 to 38 and 53 to 59 and shows it at 39 to 52.
 
 | route | what it answers |
 |---|---|
@@ -912,13 +990,13 @@ word-pieces a layer shares.
 | `POST /neuron/blind_test/start`, `/answer`, `/judge` | a blind test of a face's pattern (passages index; GPU for the controls): `start` pairs up to 12 of the face's kept-back passages with passages where it stays under 0.25 of its extreme, read live, both cut to the same number of word-pieces (`before` a marked one, 60 unless said, and 8 after), and returns the pairs without saying which fires; `quiet` "near" (the default): the quiet passage is a near miss where the corpus has one, the same word-piece between the same two neighbours, else after the same one, before the same one, or alone, the face quiet there; "anywhere": drawn from anywhere; `answer` takes `picks` (a or b a pair) and says how many were right, of how many, and the chance of guessing as well (`p`), the same over the pairs with a near miss (`near_pairs`), by how near (`by_match`) and over the pairs whose firing passage reaches half the extreme (`strong_pairs`), and `places`, how often the face fired at the other places tried that have the same phrase; `judge` has one of the scientist's endpoints answer in a fresh conversation, given the pattern and the pairs alone. A test is answered once |
 | `GET /neuron/tests?layer&n` | the tests kept for a neuron's faces, the latest first (six a face), each with the pattern it tested |
 | `GET /hover?layer&n` | the tooltip, from the indexes alone (no GPU) |
-| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`; not at a layer where the lens's own check counts it a weak guide), with each face's check: matches the label gate holds back go to `held` (`held_back` counts them), for the apparatus, never the main list or the map; `/run/view`'s word filter likewise matches only labels the gate shows, and the steer lens |
+| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`; not at a layer where the lens's own check counts it a weak guide or did not check it), with each face's check: matches the label gate holds back go to `held` (`held_back` counts them), for the apparatus, never the main list or the map; `/run/view`'s word filter likewise matches only labels the gate shows, and the steer lens |
 | `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |
 | `GET /web/summary?layer&n&…&src&model` | the cone's words, followed from rest (or in use, `model=use`: not ready, with `missing` and `why`, without the passages index) and pooled: `down["+"]` / `down["-"]`, what the neurons it drives write when it fires on its + / − face; `up["+"]` / `up["-"]`, what the neurons that push it toward its + / − face write; weighted by the reaching link's strength (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out); not ready, with `missing`, without the wiring index or without any words to pool |
 | `GET /layout` | `cell` [L, N] int16 as base64 |
 | `POST /push` | the three voices (server-sent events): `{prompt, history: [{user, replies: [3]}], layer, n, dose (by mode: 0.8, × 2 for mul), mode ("add"), neurons (in place of layer and n), system, max_new (160, ≤ 512), spare_bos (true), sampler}`; `sampler` as §4.1's (greedy unless a temperature is set; a seed drawn and echoed when none is given; a presence penalty only with a temperature; no min_p or repetition_penalty, `backend/sampler_request.py` says why), drawn once a step for all three voices: one exponential race over the vocabulary, its noise from a CPU generator seeded `seed`, so the voices part only where the push moves the odds (a row's draw follows the sampler's chances but is not interp_engine's, so a seed does not repeat a sweep's); events `{row, t}` per piece of text, then `{row: null, done: true, sampling}` (`"greedy"`, or `{temperature, top_k, top_p, presence_penalty, seed, seed_drawn, samples, seeds, draw: "shared across the three voices"}`) or `{row: null, error}` |
 | `POST /steer` | the three voices as whole texts, with `sampling`; the push chat's fields but `history` and `system`, `spare_bos` among them, and `max_new` 150 (not 160); `samples` (1–8, sampled only): 3k rows in one batch, sample s drawn with seed + s (on the GPU not always what one sample at seed + s writes alone: the same for only 3 of 8 on the 31B, `atlas_steer_sampling/`), `up`, `baseline` and `down` lists when samples > 1; several samples only while their 3k rows hold at most 6,144 word-pieces in all (prompt and answer), about 4.9 GB of context on the 31B (inferred from the census pilot, not measured). In place of `prompt`, `prompts` (at most 8) answers several prompts under the same pushes, three rows each in one batch: `{runs: [{prompt, up, baseline, down}], pushed, sampling}`, sampled with the one seed for every prompt. In place of the pushes, `candidates` (at most 12: `[{label, neurons}]`) tries several sets of pushes on one prompt: the unpushed row once, then each set on a row of its own and, unless `both` is false, the other way on another (`atlas_ops.merge` gives each row its own pushes): `{prompt, baseline, candidates: [{label, pushed, up, down}], sampling}`. Either holds one sample and, past three rows, at most 6,144 word-pieces over its rows. In float32 on the CPU each row is the one a steer of it alone writes (`check_atlas_api.py`); on the GPU a batch's shape can move a row's numbers: on the 31B (11 November 2026) 6 of the 15 rows of five prompts and 6 of the 13 of six candidates parted from their own batch of three before 80 word-pieces, two unpushed rows among them, so a pushed row is read against the unpushed row of its own call. Five prompts took 9.2 s and six candidates 8.8 s with `compiled`, where a call of three rows takes 8.3 |
-| `POST /control_vector` | `{neurons: [{layer, n, dose}], name}`: an add push, of one neuron or a recipe of several, written as a llama.cpp control vector into `<atlas folder>/exports/` from the model the server holds (§6): `{file, path, bytes, entries, directions: [{layer, tensor, length, of_p50}], unit_source, vault_edits_in_force, load_with, says}`; refused in plain words: a push that is not an add of one neuron, one at layer 0, a neuron with no dose or that writes nothing, a name that is not letters, digits, `.`, `_` and `-` |
+| `POST /control_vector` | `{neurons: [{layer, n, dose}], name}`: an add push, of one neuron or a recipe of several, written as a llama.cpp control vector into `<atlas folder>/exports/` from the model the server holds (§6): `{file, path, bytes, entries, directions: [{layer, tensor, length, of_p50}], unit_source, vault_edits_in_force, load_with, says}`; refused in plain words: a push that is not an add of one neuron, one at layer 0, a neuron with no dose or that writes nothing, a name that is not letters, digits, `.`, `_` and `-`, a file of that name already among the exports (never written over: name another; the old one stays until a person removes it) |
 | `GET /exports/<file>` | a control vector exported here, as a download |
 | `POST /reads` | one neuron's activation at every display unit of a text (`{layer, n, text, chat, neurons, heads}`, or `ids` in place of `text`, read exactly as given, a stored passage's among them; at most 2,048 positions), with `act_range` |
 | `POST /logprobs` | the next word-piece's log-probabilities (fp32, softcapped), with pushes or head scales: both rows, their KL and the pieces that gained and lost most |
@@ -1067,8 +1145,10 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   itself, so refused the scientist's own write there, but a Codex chat's sandbox may write in the same folder).
   `$THEODOLITE_CLAUDE_MODEL` picks the model.
 - `codex`: Codex (`codex app-server`, JSON-RPC) with the same MCP tools and its own shell, in a Codex home of its own,
-  `approvalPolicy: "never"`; `sandbox: "workspace-write"` by default (writes only in its work folder, no network; it
-  can read elsewhere), `"danger-full-access"` under "home" (the same caution).
+  `approvalPolicy: "never"`; `sandbox: "workspace-write"` by default (no network; it writes in its work folder and, as
+  nothing the instrument passes says otherwise, in the temporary folders too, `/tmp` and `/dev/shm`; it can read
+  elsewhere: measured in Codex's sandbox helper, not through the app-server, codex-cli 0.166.0, 14 November 2026),
+  `"danger-full-access"` under "home" (the same caution).
 - Neither process gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
   (`reach`); under "home" the page asks once, per browser, before the first Claude Code or Codex chat.
 - Nor does either get the Hugging Face or cloud credentials in the server's environment (`SECRET_ENV`: `HF_TOKEN`,
@@ -1077,7 +1157,10 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   keeps its own login: Claude Code's `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` or
   `~/.claude`, and the cloud's variables when `CLAUDE_CODE_USE_BEDROCK`, `_VERTEX` or `_FOUNDRY` is on (1, true, yes or
   on, as Claude Code reads it; to Claude Code only); Codex's `OPENAI_API_KEY`, `CODEX_*` or its `auth.json`. A
-  credential in a file (`~/.cache/huggingface/token`, say) is bounded only by the reach.
+  credential in a file (`~/.cache/huggingface/token`, say) is bounded only by the reach, and under Codex not by that:
+  Claude Code at the folder reach is refused a file outside its work folder (tried on 2.1.312,
+  `scripts/verify_scientist_cli.py`), and Codex's shell can read it at either reach (the token file was readable in
+  Codex's sandbox helper, 14 November 2026).
 - `openai`: any OpenAI-compatible Chat Completions endpoint that takes tool calls (LM Studio, Ollama, OpenRouter, vLLM,
   llama.cpp's server). The server runs the loop: it streams the reply, runs each tool call through the atlas's routes in
   this process (`InProcessApi`, an ASGI client), sends the results back (each cut to 16,000 characters) and goes on until
@@ -1129,11 +1212,15 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 | `GET /prompt?agent` | the system prompt as built |
 | `GET /work/<path>` | a file of the work folder, for the person to open from the chat: `.html`, `.svg`, texts and pictures shown in the tab, anything else a download; only files inside the folder (links followed first); each sent with `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:` and `nosniff`, so a page the scientist wrote runs no script, fetches nothing and has no origin |
 
-The tools (`backend/scientist_tools.py`, 32, standard library only) take and give layers in the pages' count (L54 N15491)
+The tools (`backend/scientist_tools.py`, 35, standard library only) take and give layers in the pages' count (L54 N15491)
 and call the atlas's routes: reading the atlas (`overview`, `neuron`, `passages`, `rollouts`, `cone`, `web_summary`,
 `search_lens`, `search_census`, `top_units`), names and notes (`set_name` and `write_note` propose, for the person to keep or discard on the
 page; `names` lists those kept), live readings (`steer`, `activations`, `compare`,
-`logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), a recipe
+`logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), a face's
+pattern put to the test (§4.7: `test_by_writing`, texts the scientist writes to fire the face and near misses written
+not to, each read once, or read as the ending of one of the face's own passages with `behind`; `blind_test`, the
+face's kept-back passages each paired with a quiet one, for a reader given the pattern alone to say which fires;
+`blind_test_answer`, the scientist's own picks for those pairs where no endpoint is there to read them), a recipe
 handed over (`export_control_vector`, §6), and the
 person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
 `show_text`, `show_search`). `steer` takes several prompts (`prompts`) or several candidate sets of pushes
@@ -1180,6 +1267,28 @@ and `scripts/check_sweep_refactor.py` (two checkouts, one older than the factory
 | `THEODOLITE_DTYPE` | `bfloat16`, `float32` | a GGUF model's dtype (default `bfloat16`, as the instrument runs) |
 | `THEODOLITE_GGUF_LENS` | `jpp`, `none` | load the J++ lens beside a GGUF model (default), or leave it out (3.4 GB) |
 | `THEODOLITE_CPU_MEMORY` | `off` | leave out the CPU's memory estimates (below) |
+
+**The compile cache** (14 November 2026). Before it builds anything, `make_runtime()` gives torch.compile's on-disk
+cache a folder of the account's own (`private_compile_cache`): `${XDG_CACHE_HOME:-~/.cache}/theodolite/torch_compile`,
+mode 0700, unless the person has set `TORCHINDUCTOR_CACHE_DIR`. torch's default is `/tmp/torchinductor_<user>`, which
+any process of the account can write, a sandboxed one that may write `/tmp` among them (§4.8: Codex's), and a later
+process loads pickles and generated code from it. Triton's files follow the folder, and torch's precompiled C++
+header, which torch keeps in its default folder whatever the variable says, is moved with it; `backend/gguf_fast.py`
+calls it again before each graph (`scripts/check_local_only.py` §10), and `backend/w4a16_fast.py`'s `install` calls it
+before it compiles the checkpoint's, so a process that holds 4-bit linears and builds no runtime here keeps its graphs
+there too (14 November 2026; `scripts/check_local_only.py` §10 holds that too, with a child process on the CPU that
+builds no runtime, has not imported `runtime_factory` and has a new temporary folder: the install's files, 39 when
+it was measured, are all in the folder and none under the temporary one, where the code as it was before left
+all 39 under it). Today such a process is a check script on stand-in linears (`scripts/check_dequant.py`, one part of
+`scripts/check_gguf_fast.py`): the server, the lab daemon and the scripts under `scripts/` that load the checkpoint
+build it with `make_runtime()`, and the atlas's own stand-in, which the `--stand-in` and dry runs use, holds no 4-bit
+linears, so its compiled install compiles nothing and records the reference (seen that day). The folder starts empty,
+so the first process to compile after the change builds every graph afresh, once. Not covered: the checkpoint's
+compiled unpacker called with no install before it (`dequantize_w4a16_full_compiled` itself, whose code is kept as the
+volunteer kit's tag has it; `scripts/check_dequant.py` calls it so, for its trial compile and its first comparisons);
+a volunteer's kit, which runs its tagged code; and a compile while it runs, whose intermediate files (g++'s, Triton's
+`.ptx` and the object ptxas makes of it) still pass through `/tmp` (read and seen 14 November 2026, changing one not
+tried). The GPU path is read from torch's code, not run.
 
 `GET /api/health` now also sends `device` and `weights`, the weights card (`runtime_factory.weights_card`: a GGUF's
 provenance; for the checkpoint its repo id, the snapshot of it the Hugging Face cache holds and its weight files); the
@@ -1519,16 +1628,23 @@ quantisation of its own moves the readings); another card; the CPU beyond one fo
 `torch.cuda.OutOfMemoryError`, which the CPU never raises (an allocation the CPU cannot make is a `RuntimeError` or the
 kernel's out-of-memory killer: five readings that hold large buffers are now estimated first and refused in plain
 words, `backend/cpu_memory.py`); `_GPU_LOCK` is named for the GPU but serialises the
-model wherever it runs; `scripts/verify_*.py` are GPU checks by design. In the pinned `engine_runtime.py`, left as it is:
-`load()` (`:833`) and every sighting (`:2393`) call `torch.cuda.max_memory_allocated(self.device)` whenever CUDA is
+model wherever it runs; `scripts/verify_*.py` are GPU checks by design. In `engine_runtime.py`, where these are left as
+they are:
+`load()` (`:875`) and every sighting (`:2435`) call `torch.cuda.max_memory_allocated(self.device)` whenever CUDA is
 available, which for a CPU device torch 2.14.1 answers with 0 while CUDA is not initialised in the process, and refuses
 once it is (`memory_stats_as_nested_dict`; read from torch's code, not seen: there is no GPU here), so the GPUs are
 hidden as a precaution against a library initialising CUDA (a process that already has is warned); the default device
-is `cuda:0` (`:741`); the J++ lens always goes to the runtime's device
-(`:879`); the norm loop counts 60 layers (`:818`); the accessors read `weight_packed` (`:990-1077`, `:1252`); the sweep's
-shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_math.py`). Changing any of these in the
-pinned file would make `R4_common.pinned_differ()` name it, and R4 reruns would then go from R4's registered commit, as
-R3's go from `it-jpp-refit`.
+is `cuda:0` (`:771`); the J++ lens always goes to the runtime's device
+(`:921`); the norm loop counts 60 layers (`:860`); the accessors read `weight_packed` (`:1032-1119`, `:1294`); the sweep's
+shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_math.py`). Changing any of these changes
+the file's sha256, which the instrument records and four checks hold it to (`scripts/runtime_files.py`, with the other
+three runtime files), so such a change is written down there. The file no longer has the sha256 R4 pinned: its loader
+changed on 12 November 2026 (`a766058`, `960b9ab`, merged on the 13th: on a CUDA card the vision tower loads on the
+CPU, so that a 24 GB card can load). `R4_common.pinned_differ()` therefore names it, R4's GPU scripts (`R4_00`,
+`R4_02`) refuse to run on `main`, and a rerun of R4 goes from R4's registration commit, `2bdf5ad` (28 October 2026,
+made on the branch `r4-r1-lens` and in `main`'s history), as R3's go from `it-jpp-refit`. By the code R4 ran none of
+the changed lines but an import: its scripts load the model themselves and take three functions from the file, whose
+text is unchanged (inferred from the code, 14 November 2026; not rerun).
 
 **Not supported yet:** Q1_0, Q8_K, Q8_1 and the integer types (refused in plain words); torch unpackers for the IQ types
 other than IQ4_NL and IQ4_XS, TQ1_0, TQ2_0, MXFP4 and NVFP4, which are therefore never packed (gguf-py unpacks them at
@@ -1588,7 +1704,7 @@ seen through llama.cpp itself on the stand-in (the check, below):
 | which positions | every word-piece but the start mark | every position, the start mark included |
 | how big | the dose is a share of p50 | SCALE multiplies the file. A file written at dose 1 (the default) takes the census's dose as its SCALE |
 | arithmetic | the push cast to bfloat16, added to a bfloat16 stream | float32 added to float32 |
-| metadata | — | none is read. `general.architecture` = controlvector, `controlvector.model_hint`, `controlvector.layer_count` are written as llama.cpp's cvector-generator writes them |
+| metadata | — | none is read. `general.architecture` = controlvector, `controlvector.model_hint`, `controlvector.layer_count` are written as llama.cpp's cvector-generator writes them; since 14 November 2026 the licence and the base model are written too, under gguf-py's own keys (below), which the loader does not read either |
 
 The flag in this version is `--control-vector-scaled FILE:SCALE`, comma-separated for several files (older builds
 took FILE and SCALE as two arguments). `--control-vector-layer-range START END` limits the layers (default 1 to the
@@ -1598,6 +1714,23 @@ layer count).
 revision and its file's sha256 as the Hub stores it, or a GGUF's fingerprint as `gguf_model.provenance` takes it); each
 entry's layer, page, neuron, dose and p50; the stats index, its build and its sha256; the push, the start mark, the
 scale, what of llama.cpp was read, the caveat below, the code's commit and the time it was written.
+
+**The licence and where the numbers came from.** A direction is computed from Gemma 4's weights and an adapter's B is
+made of the model's own columns, so from 14 November 2026 every control vector and every adapter the exporters write,
+the server's among them, says so in its own keys, which travel with it: `general.license` = apache-2.0,
+`general.license.link` = https://ai.google.dev/gemma/docs/gemma_4_license, `general.base_model.count` = 1,
+`general.base_model.0.name` = Gemma 4 31B It, `.organization` = Google, `.repo_url` =
+https://huggingface.co/google/gemma-4-31B-it, and `theodolite.derived_from`, one sentence in plain words: what the
+tensors are computed from and how, under which licence, and that the weights read are named under
+`theodolite.weights`. The six keys are the ones gguf-py's `Metadata` writes for llama.cpp's own converters
+(`convert_lora_to_gguf.py` among them, read at cd26896; gguf-py 0.19.0), with the values unsloth's GGUF of the model
+carries (its header read 14 November 2026). No loader asks for them (read at cd26896): the control vector's reads no
+key; the adapter's asks for `general.type`, `general.architecture` and `adapter.type` and keeps the rest as text.
+llama-server (cd26896) loads files that carry them as before: both checks' llama.cpp parts pass on the stand-in (14
+November 2026). Both checks read the keys back, and set the file against one kept from before: it holds no key the
+command line no longer writes. The eleven files kept in `experiments/results/control_vector_L45` and `lora_export_L45`
+were written before and carry none of these keys; they are left as written, the records of measured runs, and `NOTICE`
+says what they hold and under what licence.
 
 **Where the direction comes from.** From the checkpoint, the down column is unpacked by the instrument's own unpacker
 (`engine_runtime.dequantize_w4a16_cols`) and the direction is computed in `atlas_ops.Weights.write_dirs`'s order, so
@@ -1625,9 +1758,14 @@ vault's edits in force are in the direction (`theodolite.vault_edits_in_force` n
 silenced is refused: it writes nothing); p50 is the atlas's own (`Atlas.scales`: the stats index, or until that is
 built the study's 36 texts, and `theodolite.stats_index` says which). The file goes into `<atlas folder>/exports/`
 under the name asked for, or one that says what is in it in the pages' count (`theodolite-page36-n1095-dose-0.35.gguf`,
-`theodolite-set-of-3-<hash>.gguf`), a file of that name written over, and `GET /api/atlas/exports/<file>` downloads it.
+`theodolite-set-of-3-<hash>.gguf`), and `GET /api/atlas/exports/<file>` downloads it. A file of that name already
+there is never written over (since 14 November 2026; until then it was): the export is refused in plain words, a 400
+like the route's other refusals, whether the name was asked for or is the one the file would be given. Whoever asked
+names another file; the old one stays until a person removes it. So a tool that may name its file cannot replace one
+a person exported, and a second click on the push tab's link at the same dose says the file is already there.
 Checked: on the stand-in every direction is the add `atlas_ops.resolve` gives the push, bit for bit
-(`scripts/check_atlas_api.py`); on the 31B (11 November 2026, the checkpoint on the 5090) the three files of the
+(`scripts/check_atlas_api.py`; the refusal, and the server's file against the script's, in
+`scripts/check_control_vector.py`); on the 31B (11 November 2026, the checkpoint on the 5090) the three files of the
 recipes below came out bit for bit as `scripts/export_control_vector.py --set` writes them from the checkpoint's files
 on the CPU.
 
@@ -1643,12 +1781,16 @@ over with: **Who cares?**"), the caring file at SCALE −1 writing the contempt 
 villainy file leaking the collapse word `own` into two of its three answers, where the instrument's leaked it into one
 with the start mark pushed and into none with it spared: that recipe sits nearer its breaking point in llama.cpp.
 
-**The check** (`scripts/check_control_vector.py`, CPU only, 48 checks in about 15 s). The stand-in's down projections
+**The check** (`scripts/check_control_vector.py`, CPU only, 60 checks in about 17 s with a llama-server, 14 November
+2026). The stand-in's down projections
 are packed as W4A16 and written as a checkpoint, with a stats index of its own stream lengths. Every push a census of
 two neurons adds (48 rows: break_rel's six questions at ±1 and ±2) is an exported vector, bit for bit, and so are the
 atlas push tab's (one neuron, and a set across two layers). The file is what the loader asks for; the loader's scale
 and sum give the census's push at dose × SCALE, bit for bit. The command line writes the same vector and refuses what
-it should. `--gguf` on the same weights written as a float32 GGUF gives the same vector. Given a llama-server
+it should. `--gguf` on the same weights written as a float32 GGUF gives the same vector. The file carries the licence
+and base-model keys and `theodolite.derived_from`; a file kept from 30 October holds no key the command line no longer
+writes. The server's writer writes the script's vector bit for bit and never writes over a file, a name held by a
+dangling link included. Given a llama-server
 (`--llama-server`, `$LLAMA_SERVER` or the PATH), it also serves the stand-in's float32 GGUF on the CPU and reads every
 word-piece's log-probability at the first one written to a census question:
 
@@ -1796,6 +1938,15 @@ or heads at one layer share it, their ranks stacked). A silenced block's own pus
 Every file records, under `theodolite.*`, the pushes as given, each entry, the weights read, the push, the scale, the
 start mark, what of llama.cpp was read, the caveat, the code's commit and the time (`--show` prints it).
 
+Since 14 November 2026 an adapter also carries the licence and the base model under gguf-py's keys and
+`theodolite.derived_from` (above). A silenced copy keeps whatever licence and base-model keys the GGUF it is made from
+carries (by scale every key is copied, by norm every byte) and none is added where that file has none (headers read
+14 November 2026: of the three 31B GGUFs on the owner's machine, unsloth's UD-Q4_K_XL carries them, lmstudio-community's
+Q4_K_M and QAT Q4_0 do not); its record says what it is a copy of, under `theodolite.derived_from` by scale and in
+`FILE.theodolite.json` by norm. The command line never writes over a file already there without `--force`: the
+adapter, the copy, and the record a by-norm copy keeps beside it (until 14 November 2026 that record was written over
+without a word when it lay there with no copy beside it).
+
 **What llama-server does with what it cannot use** (seen through cd26896 on the stand-in; the exporter prints it):
 - an adapter it cannot read (a tensor the model lacks, a file not there) stops it at start: "failed to apply lora
   adapter: <why>", then "exiting due to model loading error". A good one logs nothing at the default verbosity
@@ -1812,14 +1963,18 @@ start mark, what of llama.cpp was read, the caveat, the code's commit and the ti
   f1 and mul f2 give the factor f1 + f2 − 1, not f1 × f2; a mul-0 file beside a vault edit of that neuron leaves v − W
   where the instrument leaves 0): export pushes of one neuron or head in one file.
 
-**The check** (`scripts/check_lora_export.py`, CPU only, 77 checks in about 50 s). The control-vector check's stand-in,
+**The check** (`scripts/check_lora_export.py`, CPU only, 91 checks in about 40 s with a llama-server, 14 November
+2026). The control-vector check's stand-in,
 its o_proj packed as W4A16 too and its config.json beside the checkpoint. The exporter reads PushIn bodies as
 `Atlas.parse_pushes` does. Each adapter's W + B A is the instrument's change on random inputs within float32 rounding
 (5.0e-7 of the largest element): mul 0, 2 and −1.5, SCALE −1, 0.5 and 0, heads on a sliding and on the full layer,
 the vault's UPDATE and an edited neuron multiplied; the checkpoint's columns and the same weights as a float32 GGUF
 give the same adapter, bit for bit. The files are what the loader asks for; the command line writes the same tensors
 (the `--vault` path through its own code, its runtime the stand-in), and refuses what it should. The silenced copies
-keep every other tensor and key (by scale) or byte (by norm). Then the float32 GGUF served on the CPU (-ngl 0, the
+keep every other tensor and key (by scale) or byte (by norm). Each adapter carries the licence and base-model keys
+and `theodolite.derived_from`, and an adapter kept from 2 November holds no key the command line no longer writes; a
+copy keeps its source's licence keys and gains none, and the record a by-norm copy keeps beside it is not written
+over without `--force`. Then the float32 GGUF served on the CPU (-ngl 0, the
 cache in float32, no flash attention), five adapters loaded at start and scaled per request, the log-probability of
 every word-piece at the first one written to a census question:
 

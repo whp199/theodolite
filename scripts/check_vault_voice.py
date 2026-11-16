@@ -23,7 +23,8 @@ the real MCP server (`fastmcp.Client`, in memory, on the same stand-in). It chec
    writing, parted_at names the first word-piece that differs, the watched word is the edit's target (none for
    DELETE), and KL(before || after) is >= 0, and 0 when the edit leaves the writing alone;
 4. replaces_patch and edits_in_force_before count the latest edit per neuron (A2's `edits_in_force`), so a second
-   edit of a neuron names the first and an edit heard after it does not count the replaced one;
+   edit of a neuron names the first and an edit heard after it does not count the replaced one; active_patches_count
+   (an edit's reply, DESCRIBE) counts the edits in force the same way, while DESCRIBE still lists every record;
 5. a voice that cannot be written before the edit leaves the vault untouched (no record, no overlay) and is refused
    in plain words; one that fails after the edit keeps the edit in force, with after null and the error said;
 6. a voice sent with DESCRIBE, NEAREST, DESCRIBE POLE or ROLLBACK is ignored (nothing written, the reply as
@@ -47,12 +48,23 @@ the real MCP server (`fastmcp.Client`, in memory, on the same stand-in). It chec
    "label_gate", marked as kept by hand and not measured; a neuron's name and note with who wrote each, and both
    faces of its field book, or the one face POLARITY names; a neuron with none has the field with nothing in it; a
    proposal of the scientist's is not returned until the person keeps it, and never once discarded; a head's name is
-   not a neuron's; a neuron past the last is read as the record reads it; everything outside the field (each face's
+   not a neuron's; a layer or neuron the model does not have is refused, and no notes are read for it (over MCP's
+   inspect_pole too); everything outside the field (each face's
    words and label_check, the rule, the lens, the console's count of labels held back) is the same with the notes as
    without, also when a note repeats a label's own word; the vault only reads (no file made, changed or moved aside,
    an unreadable one named under `unread` and said so under `warning`, the record still whole; no lock waited for;
    the reply's notes are copies); only DESCRIBE POLE reads them; the routes and the MCP tool `query_larql_vault` carry them from the
    statement's worker thread, the server gives its vault the notes' own reader, and `inspect_pole` carries none.
+10. places, overlays and the direction an UPDATE writes: a layer or a neuron the model does not have is refused in
+   plain words by every statement that names one (UPDATE, INSERT, DELETE, DESCRIBE POLE, NEAREST's WHERE layer) and by
+   the vault's own methods, never read as the last one: nothing is written, read or edited, the last layer and the
+   last neuron are still taken, and the layer count is the model's own where the runtime holds its layers; ROLLBACK
+   clears every overlay on every module that carries the overlay dicts (attention's linears and one outside every
+   layer among them), whatever the model's layer count and whatever the vault's layer constant is set to; UPDATE's
+   column is the stored column plus the word's direction, the same whatever the post-feed-forward norm's weight (the
+   arithmetic as it was), so the write the stream receives is that direction times the weight, and DESCRIBE's
+   edit_method says so after its first words, which are unchanged, its figures dated, what is inferred marked so and
+   kept to the layers the records speak of.
 
 Run: .venv/bin/python -I scripts/check_vault_voice.py   (exits 0 when every check holds)
 """
@@ -103,6 +115,7 @@ import backend.larql_vault as larql_vault
 import backend.mcp_scientist as mcp_scientist
 import backend.server as server
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
+from backend.gguf_weights import dense_cols, install_overlay_forward
 from backend.larql_vault import EDIT_METHOD, LarqlVaultEngine, PatchOperationRecord, kl_nats, parted_at, voice_spec
 from backend.theodolite_math import D_FF, N_LAYERS
 
@@ -199,8 +212,8 @@ class StandInRuntime(TheodoliteRuntime):
         self._lm_head_weight = torch.randn(V, D, generator=g)
         self._final_norm_weight = torch.ones(D)
         self.jpp_lenses = {l: torch.eye(D) for l in range(N_LAYERS)}
-        # down_proj is [D, D_FF], so every neuron index the vault may clamp to has a column; one set of weights is
-        # shared by the 60 layers, each with its own overlays
+        # down_proj is [D, D_FF], so every neuron index the vault takes (0 to 21,503) has a column; one set of weights
+        # is shared by the 60 layers, each with its own overlays
         down = packed_weights(D, D_FF, 1)
         small = packed_weights(D, 32, 2)
         self.mlps = [FakeMLP(FakeProj(*down), FakeProj(*small), FakeProj(*small)) for _ in range(N_LAYERS)]
@@ -386,9 +399,26 @@ def edit_keys(statement: str) -> List[str]:
     return ["status", "patch", "active_patches_count"] + (["lens"] if statement.split()[0] in ("UPDATE", "INSERT") else [])
 
 
+def refusal(run: Any) -> str:
+    """What `run()` was refused with: a plain-words refusal's own words (ValueError); "" when it was not refused; any
+    other failure with its type named first, so it is not mistaken for a refusal."""
+    try:
+        run()
+    except ValueError as exc:
+        return str(exc)
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+    return ""
+
+
 UPD = "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +"
 INS = "INSERT INTO LAYER 20 (subject, object) VALUES ('nurse', 'she')"
 DEL = "DELETE FROM LAYER 3 WHERE slot = 5"
+# an edit of a layer the model does not have (its 60 count from 0 to 59), and the vault's refusals of such places
+NO_LAYER = "UPDATE LAYER 99 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +"
+NO_LAYER_WORDS = "Layer {} does not exist: layers count from 0 to 59 here (page layers 1 to 60)."
+NO_NEURON_WORDS = "Neuron {} does not exist: each layer has 21504 (0 to 21503)."
+NO_EDIT = " No edit was made."
 
 
 def check_without_voice() -> None:
@@ -475,6 +505,18 @@ def check_in_force() -> None:
     check(last["voice"]["edits_in_force_before"] == [p2, p3] and len(vault.active_patches) == 4,
           f"in force: {last['voice']['edits_in_force_before']}, of {len(vault.active_patches)} records")
     check(len(rt.mlps[35].down_proj._memit_col_overlays) == 2, "one overlay per neuron")
+    # the count is of the edits in force (a replaced edit is not counted), as the page's history line reads it
+    # ("N edits in force", frontend/src/screens/vault/live.ts `entrySummary`); DESCRIBE still lists every record
+    counts = [r["active_patches_count"] for r in (first, again, other, last)]
+    desc = vault.execute_lql("DESCRIBE")
+    check(counts == [1, 1, 2, 3], f"each edit's reply counts the edits in force after it, not the records: {counts}")
+    check(desc["active_patches_count"] == 3 == len(vault.edits_in_force()) and len(desc["active_patches"]) == 4
+          and [p["replaces_patch"] for p in desc["active_patches"]] == [None, p1, None, None],
+          f"DESCRIBE counts the 3 edits in force and lists all 4 records: {desc['active_patches_count']}, "
+          f"{len(desc['active_patches'])}")
+    rolled = vault.execute_lql("ROLLBACK")
+    check(rolled["cleared_patches"] == 4 and rolled["active_patches_count"] == 0,
+          f"ROLLBACK says how many records it cleared (4), and none is in force: {rolled}")
 
 
 def check_failures() -> None:
@@ -582,6 +624,12 @@ def check_routes() -> None:
     check(r.status_code == 400 and "no edit was made" in r.json().get("detail", ""), f"HTTP, a failed voice: {r.text}")
     check(len(vault.active_patches) == n_records, "HTTP: nothing edited by a refused or failed voice")
     rt.fail_calls = {}
+    # a layer the model does not have: refused in the vault's own words, before the voice is written
+    n_calls = rt.n_voice_calls
+    r = client.post("/api/larql", json={"query": NO_LAYER, "voice": {"prompt": "Q"}})
+    check(r.status_code == 400 and r.json().get("detail") == NO_LAYER_WORDS.format(99) + NO_EDIT
+          and rt.n_voice_calls == n_calls and len(vault.active_patches) == n_records,
+          f"HTTP, a layer the model does not have: 400 in plain words, nothing written or edited: {r.text[:200]}")
 
     with client.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
         ws.send_json({"action": "larql", "query": UPD})
@@ -606,6 +654,11 @@ def check_routes() -> None:
                   and msg["error"].startswith("The voice was refused, and no edit was made") and words in msg["error"]
                   and "data" not in msg, f"WS voice {bad!r}: {msg}")
         check(len(vault.active_patches) == n_records, "WS: nothing edited by a refused voice")
+        ws.send_json({"action": "larql", "query": NO_LAYER, "voice": {"prompt": "Q"}})
+        msg = ws.receive_json()
+        check(msg["type"] == "larql_result" and msg["ok"] is False and msg["error"] == NO_LAYER_WORDS.format(99) + NO_EDIT
+              and "data" not in msg and len(vault.active_patches) == n_records,
+              f"WS, a layer the model does not have: ok false in plain words, nothing edited: {msg}")
         ws.send_json({"action": "larql", "query": "DESCRIBE", "voice": {"prompt": "Q"}})
         msg = ws.receive_json()
         check(msg["ok"] and "voice" not in msg["data"] and msg["data"]["edit_method"] == EDIT_METHOD, "WS DESCRIBE")
@@ -733,6 +786,10 @@ async def mcp_turns(rt: StandInRuntime, vault: LarqlVaultEngine) -> None:
         rt.fail_calls = {}
         check(len(vault.active_patches) == n_records and rt.n_voice_calls == n_calls + 1,
               "MCP: nothing edited by a refused or failed voice")
+        said = await refused(client, {"lql_query": NO_LAYER, "voice": {"prompt": "Q"}})
+        check(said is not None and NO_LAYER_WORDS.format(99) + NO_EDIT in said and len(vault.active_patches) == n_records
+              and rt.n_voice_calls == n_calls + 1,
+              f"MCP, a layer the model does not have: refused in plain words, nothing written or edited: {said}")
 
         # a concurrent tool waits its turn: inspect_pole, asked while the voice before is written, is logged after
         # the voice after, never between
@@ -1005,10 +1062,19 @@ def check_field_notes() -> None:
     check(without_notes(nine) == nine_old and nine["field_notes"]["faces"]["+"]["pattern"] == echo
           and held_back_in(nine) == held_back_in(nine_old), "a note that repeats a label's own word-pieces changes no label and no count")
 
-    # ---- a layer or neuron past the last is read as the last: the notes are those of the neuron the record is of
-    last = vault.execute_lql("DESCRIBE POLE LAYER 99 SLOT 99999")
+    # ---- a layer or neuron the model does not have is refused, never read as the last, and no notes are read for it;
+    # the last layer's last neuron is still read, with its own notes
+    n_calls = len(calls)
+    for st, words in (("DESCRIBE POLE LAYER 99 SLOT 99999", NO_LAYER_WORDS.format(99)),
+                      (f"DESCRIBE POLE LAYER {N_LAYERS} SLOT 5", NO_LAYER_WORDS.format(N_LAYERS)),
+                      (f"DESCRIBE POLE LAYER {L} SLOT 99999 POLARITY -", NO_NEURON_WORDS.format(99999)),
+                      (f"DESCRIBE POLE LAYER {L} SLOT {D_FF}", NO_NEURON_WORDS.format(D_FF))):
+        got = refusal(lambda: vault.execute_lql(st))
+        check(got == words, f"{st}: refused in plain words (a read, so nothing is said of an edit): {got!r}")
+    check(len(calls) == n_calls, f"no notes are read for a neuron that does not exist: {calls[n_calls:]}")
+    last = vault.execute_lql(f"DESCRIBE POLE LAYER {N_LAYERS - 1} SLOT {D_FF - 1}")
     check((last["layer"], last["neuron_idx"]) == (N_LAYERS - 1, D_FF - 1) and (last["field_notes"]["notes"] or {}).get("name") == "the last neuron"
-          and calls[-1][:2] == (N_LAYERS - 1, D_FF - 1), f"past the last: the record's own neuron's notes: {calls[-1]}")
+          and calls[-1][:2] == (N_LAYERS - 1, D_FF - 1), f"the last layer's last neuron: read, with its own notes: {calls[-1]}")
 
     # ---- only DESCRIBE POLE reads them, and inspect_bipolar_slot's own reply (inspect_pole's) carries none
     other = LarqlVaultEngine(rt, field_notes=reader)  # type: ignore[arg-type]
@@ -1080,15 +1146,21 @@ def check_field_notes() -> None:
 
         mcp_scientist.bind_runtime(rt, vault, caller_holds_lock=False)  # type: ignore[arg-type]
 
-        async def over_mcp() -> Tuple[Dict[str, Any], Dict[str, Any], int]:
+        async def over_mcp() -> Tuple[Dict[str, Any], Dict[str, Any], int, str]:
             async with Client(mcp_scientist.mcp) as c:
                 a = await c.call_tool("query_larql_vault", {"lql_query": BOTH})
                 n_read = len(calls)
                 b = await c.call_tool("inspect_pole", {"layer": L, "neuron_idx": N})
-                return a.data, b.data, n_read
+                try:  # a layer the model does not have: inspect_pole reads the vault's own record, which refuses it
+                    past = repr((await c.call_tool("inspect_pole", {"layer": 99, "neuron_idx": N})).data.get("layer"))
+                except ToolError as exc:
+                    past = str(exc)
+                return a.data, b.data, n_read, past
 
         n_before = len(calls)
-        a, b, n_read = run(over_mcp())
+        logging.getLogger("fastmcp").setLevel(logging.CRITICAL)  # a refusal is logged with its traceback
+        a, b, n_read, past = run(over_mcp())
+        check(NO_LAYER_WORDS.format(99) in past, f"MCP: inspect_pole of a layer the model does not have is refused: {past}")
         check(list(a) == list(r) and a["field_notes"] == f and n_read == n_before + 1 and calls[-1] == (L, N, False),
               f"MCP: query_larql_vault's DESCRIBE POLE, on the server's vault, carries them: {list(a)}")
         check(list(b) == POLE_KEYS + ["label_gate", "lens"] and len(calls) == n_read and b["north_pole"] == old["north_pole"],
@@ -1147,6 +1219,178 @@ def check_field_notes() -> None:
           "the vault's console reads field_notes out in plain words, as a person's and not a measurement")
 
 
+# --------------------------------------------------------------------------------------------------------------------
+# 10. places, overlays, and the direction an UPDATE writes
+# --------------------------------------------------------------------------------------------------------------------
+
+# DESCRIBE's edit_method as first sent: scripts/verify_e2e_ui_and_mcp.py reads its opening words
+EDIT_METHOD_FIRST = "one down_proj column per edit, rank one, no covariance solve: named after MEMIT, not MEMIT"
+
+
+def overlay_linear(n_in: int, n_out: int) -> torch.nn.Linear:
+    """A plain linear with the two overlay dicts and the forward that lays them on (gguf_weights
+    `install_overlay_forward`), as every packed linear of the checkpoint carries them, attention's among them
+    (engine_runtime `patch_compressed_tensors_for_low_vram`)."""
+    return install_overlay_forward(torch.nn.Linear(n_in, n_out, bias=False))
+
+
+class TreeLayer(torch.nn.Module):
+    """One layer of the tree: a feed-forward block (32 neurons) and attention's four projections."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.mlp = torch.nn.Module()
+        self.mlp.down_proj, self.mlp.gate_proj, self.mlp.up_proj = overlay_linear(32, D), overlay_linear(D, 32), overlay_linear(D, 32)
+        self.self_attn = torch.nn.Module()
+        for name in ("q_proj", "k_proj", "v_proj", "o_proj"):
+            setattr(self.self_attn, name, overlay_linear(D, D))
+
+
+class TreeRuntime:
+    """What ROLLBACK and the vault's count of layers ask of a runtime that holds a model: its module tree (`hf_model`),
+    its layers (`_decoder_layers`) and each layer's feed-forward block. Three layers, not the vault's 60, and one
+    linear that hangs outside every layer."""
+
+    def __init__(self, n_layers: int = 3) -> None:
+        self.hf_model = torch.nn.Module()
+        self.hf_model.layers = torch.nn.ModuleList(TreeLayer() for _ in range(n_layers))
+        self.hf_model.outside = overlay_linear(D, D)
+        self._decoder_layers = self.hf_model.layers
+
+    def get_mlp_module(self, layer_idx: int) -> Any:
+        return self._decoder_layers[layer_idx].mlp
+
+    def linears(self) -> List[Any]:
+        return [m for m in self.hf_model.modules() if hasattr(m, "_memit_col_overlays")]
+
+    def lay_on(self) -> int:
+        """A column overlay and a row overlay on every linear of the tree; how many overlays that makes."""
+        for m in self.linears():
+            m._memit_col_overlays[1] = torch.zeros(m.out_features)
+            m._memit_row_overlays[2] = torch.zeros(m.in_features)
+        return 2 * len(self.linears())
+
+    def left(self) -> List[str]:
+        """The linears that still carry an overlay, by name."""
+        return [name for name, m in self.hf_model.named_modules()
+                if hasattr(m, "_memit_col_overlays") and (m._memit_col_overlays or m._memit_row_overlays)]
+
+
+def check_places_and_overlays() -> None:
+    print("10. a place the model does not have is refused; ROLLBACK clears every overlay; the direction an UPDATE writes")
+
+    # ---- a layer or a neuron the model does not have: refused in plain words, never read as the last
+    rt, vault = stand_in_vault()
+    for st, words in (
+        (NO_LAYER, NO_LAYER_WORDS.format(99)),
+        (f"UPDATE LAYER {N_LAYERS} SLOT 100 SET object = 'six'", NO_LAYER_WORDS.format(N_LAYERS)),
+        (f"UPDATE LAYER 35 SLOT {D_FF} SET object = 'six'", NO_NEURON_WORDS.format(D_FF)),
+        ("DELETE FROM LAYER 99 WHERE slot = 5", NO_LAYER_WORDS.format(99)),
+        ("DELETE FROM LAYER 3 WHERE slot = 99999", NO_NEURON_WORDS.format(99999)),
+        ("INSERT INTO LAYER 99 (subject, object) VALUES ('nurse', 'she')", NO_LAYER_WORDS.format(99)),
+    ):
+        for voice in (None, VOICE):
+            got = refusal(lambda: vault.execute_lql(st, voice=voice))
+            check(got == words + NO_EDIT, f"{st}{', heard' if voice else ''}: refused in plain words: {got!r}")
+    check(vault.active_patches == [] and rt.n_overlays() == 0 and rt.n_voice_calls == 0 and rt.events == [],
+          "a place refused leaves no record and no overlay (layer 99 is not edited as layer 59), and no voice is "
+          f"written for it: {[(p.layer_idx, p.neuron_idx) for p in vault.active_patches]} {rt.events[:4]}")
+    last = refusal(lambda: vault.execute_lql(f"DELETE FROM LAYER {N_LAYERS - 1} WHERE slot = {D_FF - 1}"))
+    check(last == "" and [(p.layer_idx, p.neuron_idx) for p in vault.active_patches] == [(N_LAYERS - 1, D_FF - 1)]
+          and list(rt.mlps[N_LAYERS - 1].down_proj._memit_col_overlays) == [D_FF - 1],
+          f"the last layer's last neuron is still edited: {last!r}")
+    # the vault's own methods refuse too, for a caller that sends no statement (MCP's inspect_pole, a script), below
+    # nought as past the last; on a runtime that would fail at the first thing it lacks, so the refusal comes first
+    bare = LarqlVaultEngine(PoleRuntime())  # type: ignore[arg-type]
+    for what, run, words in (
+        ("NEAREST, layer 60", lambda: bare.execute_lql(f"SELECT * FROM EDGES NEAREST 'she' WHERE layer = {N_LAYERS} LIMIT 3"),
+         NO_LAYER_WORDS.format(N_LAYERS)),
+        ("NEAREST, layer 99", lambda: bare.execute_lql("SELECT * FROM POLES NEAREST 'she' WHERE layer = 99"), NO_LAYER_WORDS.format(99)),
+        ("query_nearest_edges, layer -1", lambda: bare.query_nearest_edges("she", layer_idx=-1), NO_LAYER_WORDS.format(-1)),
+        ("inspect_bipolar_slot, layer 99", lambda: bare.inspect_bipolar_slot(99, 5), NO_LAYER_WORDS.format(99)),
+        ("inspect_bipolar_slot, neuron -1", lambda: bare.inspect_bipolar_slot(5, -1), NO_NEURON_WORDS.format(-1)),
+        ("apply_patch_surgery, layer -1", lambda: bare.apply_patch_surgery("DELETE", layer_idx=-1, neuron_idx=5),
+         NO_LAYER_WORDS.format(-1) + NO_EDIT),
+        ("apply_patch_surgery, neuron -1", lambda: bare.apply_patch_surgery("UPDATE", layer_idx=3, neuron_idx=-1, target_concept="six"),
+         NO_NEURON_WORDS.format(-1) + NO_EDIT),
+    ):
+        got = refusal(run)
+        check(got == words, f"{what}: refused in plain words before anything is read: {got!r}")
+    # the layers counted are the model's own where the runtime holds them: three here, not the vault's 60
+    tree = TreeRuntime(3)
+    small = LarqlVaultEngine(tree)  # type: ignore[arg-type]
+    three = "Layer {} does not exist: layers count from 0 to 2 here (page layers 1 to 3)."
+    got = [refusal(lambda: small.execute_lql("DELETE FROM LAYER 3 WHERE slot = 5")), refusal(lambda: small.inspect_bipolar_slot(59, 5))]
+    check(got == [three.format(3) + NO_EDIT, three.format(59)] and tree.left() == [],
+          f"on a three-layer model, layer 3 and layer 59 are refused by its own count: {got}")
+
+    # ---- ROLLBACK clears every overlay on every module that carries the dicts, whatever the layer count
+    n_linears = len(tree.linears())
+    # the vault's layer constant as shipped (60), set to the stand-in's own count (as scripts/check_gguf_fast.py sets it
+    # around its ROLLBACK), and set too low
+    for const in (N_LAYERS, 3, 1):
+        n_laid = tree.lay_on()
+        small.active_patches.append(PatchOperationRecord(1, "DELETE", 0, 1, 1.0, "", 2.5, "a record", 0.0, 1.0, 0.0))
+        kept = larql_vault.N_LAYERS
+        larql_vault.N_LAYERS = const
+        try:
+            rolled = small.execute_lql("ROLLBACK")
+        except Exception as exc:
+            rolled = {"failed": f"{type(exc).__name__}: {exc}"}
+        finally:
+            larql_vault.N_LAYERS = kept
+        check(n_laid == 2 * n_linears == 2 * (3 * 7 + 1) and tree.left() == [] and small.active_patches == []
+              and rolled == {"status": "rolled_back", "cleared_patches": 1, "active_patches_count": 0},
+              f"ROLLBACK on a three-layer model, the vault's layer constant at {const}: every overlay cleared, attention's "
+              f"and the one outside every layer among them: left on {tree.left()}, reply {rolled}")
+    small.active_patches.clear()
+    rt2, vault2 = stand_in_vault()  # a runtime with no model tree: each layer's feed-forward projections, as before
+    vault2.execute_lql(UPD)
+    top = rt2.mlps[N_LAYERS - 1]
+    top.gate_proj._memit_row_overlays[3] = torch.zeros(32)
+    top.up_proj._memit_row_overlays[4] = torch.zeros(32)
+    top.down_proj._memit_col_overlays[6] = torch.zeros(D)
+    vault2.execute_lql("ROLLBACK")
+    check(not any(p._memit_col_overlays or p._memit_row_overlays for m in rt2.mlps for p in (m.down_proj, m.gate_proj, m.up_proj)),
+          "ROLLBACK on a runtime with no model tree: every layer's feed-forward overlays cleared, rows and the last layer's too")
+
+    # ---- the direction an UPDATE writes: added to the stored column as it is, whatever the norm after the block
+    rt3, vault3 = stand_in_vault()
+    orig = dense_cols(rt3.mlps[35].down_proj, torch.tensor([100]))[0]
+
+    def written() -> torch.Tensor:  # the column UPD lays on neuron 100 of layer 35
+        vault3.execute_lql("ROLLBACK")
+        vault3.execute_lql(UPD)
+        return rt3.mlps[35].down_proj._memit_col_overlays[100]
+
+    plain = written()
+    w_post = torch.linspace(0.01, 4.0, D)  # unequal weights for the norm after the block, as the 31B's are
+    rt3._post_ffn_norm_weights[35] = w_post
+    weighted = written()
+    del rt3._post_ffn_norm_weights[35]
+    # the word's direction: the stand-in's lens is the identity and its final norm's weight all ones
+    d = F.normalize(rt3.lm_head_weight[WORDS["six"]].float() * rt3.final_norm_weight.float(), dim=-1)
+    k = 3.0 * max(float(torch.linalg.vector_norm(orig.float()).item()), 0.25)
+    check(torch.equal(plain, weighted) and plain.dtype == orig.dtype
+          and torch.equal(plain, (orig.float() + 1.0 * 3.0 * max(float(torch.linalg.vector_norm(orig.float()).item()), 0.25) * d).to(orig.dtype)),
+          "UPDATE lays on the stored column plus strength x max(its length, 0.25) x the word's direction, the same "
+          "whatever the post-feed-forward norm's weight: the arithmetic as it was")
+    gained = w_post * (weighted.float() - orig.float())  # what the write, as NEAREST and DESCRIBE POLE read it, gains
+    cos = float(F.cosine_similarity(gained, d, dim=0))
+    check(torch.allclose(gained, w_post * k * d, atol=0.02 * k) and 0.0 < cos < 0.99,
+          f"so the write the stream receives gains that direction times the weight, not the direction itself (their cosine "
+          f"here: {cos:.3f})")
+    rest = EDIT_METHOD[len(EDIT_METHOD_FIRST):]
+    check(EDIT_METHOD.startswith(EDIT_METHOD_FIRST) and all(w in rest for w in ("UPDATE and INSERT", "post-feed-forward norm"))
+          and vault3.execute_lql("DESCRIBE")["edit_method"] == EDIT_METHOD,
+          f"DESCRIBE's edit_method keeps its first words and then says what an UPDATE's direction meets: {rest!r}")
+    check("measured 16 October 2026" in rest and "Inferred from those records, not measured on a running edit" in rest,
+          "the caution dates the figures it quotes and says which of its words are inferred from them, not measured")
+    inferred = rest.split("Inferred from those records, not measured on a running edit:")[-1]
+    check("layers 35-58 (counted from 0)" in rest and "at those layers" in inferred and "below the last layer" not in rest,
+          f"what is inferred is said of the layers the records speak of (35-58), not of every layer below the last: {inferred!r}")
+
+
 def main() -> int:
     check_write_voice()
     check_without_voice()
@@ -1160,6 +1404,7 @@ def main() -> int:
         check_field_notes()
     finally:
         shutil.rmtree(NOTES_DIR, ignore_errors=True)
+    check_places_and_overlays()
     if failures:
         print(f"\nvault voice: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

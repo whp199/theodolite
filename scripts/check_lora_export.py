@@ -10,12 +10,19 @@ them and written as a checkpoint, here with its config.json) and its llama-serve
    `gguf_weights.install_overlay_forward`), and a neuron both edited and multiplied; the same B read from the checkpoint
    and from the same weights written as a float32 GGUF, bit for bit;
 3. the file as llama.cpp's loader reads it: general.type adapter, general.architecture gemma4, adapter.type lora, no
-   alpha; <tensor>.lora_a [n_in, r] and .lora_b [r, n_out], F32; theodolite's record; the command line writes the same
-   tensors, reads `--push` as the short forms, and refuses add, act, what does not exist, a dose that is not a number,
-   a whole block or every head at any factor but 0, a file already there, several pushes without -o, a silenced block
-   without --model-out or --gguf, --vault beside --checkpoint, and a vault statement that is not an edit;
+   alpha; <tensor>.lora_a [n_in, r] and .lora_b [r, n_out], F32; theodolite's record; the licence and the base model
+   under gguf-py's keys (general.license, general.license.link, general.base_model.*) and theodolite.derived_from; an
+   adapter kept from 2 November 2026, before those keys (experiments/results/lora_export_L45, read and never written;
+   where it is not there, passed by and said so), holds no key the command line no longer writes, llama.cpp's with the
+   same values; the command line writes the same tensors, reads `--push` as the short forms, and refuses add, act,
+   what does not exist, a dose that is not a number,
+   a whole block or every head at any factor but 0, a file already there (written over only with --force), several
+   pushes without -o, a silenced block without --model-out or --gguf, --vault beside --checkpoint, and a vault
+   statement that is not an edit;
 4. the silenced copies (`--model-out`): by an added `.scale` tensor (every other tensor and key as it was) and by a
-   zeroed norm (every other byte as it was, the record beside it);
+   zeroed norm (every other byte as it was, the record beside it, which is not written over without --force either);
+   a source that carries a licence and a base model in its keys hands them to both copies as they were, a source that
+   carries none gets none, and the record says what the copy was made from;
 5. llama.cpp itself (`--llama-server`, else $LLAMA_SERVER, else `llama-server` on the PATH; without one, skipped and
    said so): the stand-in's float32 GGUF served on the CPU (CUDA_VISIBLE_DEVICES empty, -ngl 0, the cache in float32, no
    flash attention), the adapters loaded at start and scaled per request, and the log-probabilities of every word-piece
@@ -75,6 +82,12 @@ HEAD = 1
 BLOCK = 1  # the feed-forward block silenced in a copy
 HEADS = 2  # every head silenced in a copy
 UPDATE = f"UPDATE LAYER {LAYER} SLOT 7 SET object = 'she' STRENGTH 3"
+# an adapter of the 31B written on 2 November 2026, before the licence keys: the record of a measured run, only read
+KEPT = ROOT_DIR / "experiments" / "results" / "lora_export_L45" / "active" / "n19903-mul0.gguf"
+ORIGIN_KEYS = {"general.license": "apache-2.0", "general.license.link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+               "general.base_model.count": 1, "general.base_model.0.name": "Gemma 4 31B It",
+               "general.base_model.0.organization": "Google",
+               "general.base_model.0.repo_url": "https://huggingface.co/google/gemma-4-31B-it"}
 
 failures: List[str] = []
 passed = 0
@@ -249,6 +262,14 @@ def check_file(rt: Any, folder: Path, gguf_model: Path, tmp: Path) -> None:
     check(rec.get("model") == el.MODEL_ID and "model.safetensors" in str(rec.get("weights"))
           and all(rec.get(k) for k in ("entries", "given", "push", "start_mark", "llama_cpp", "caveat", "made_by", "scale")),
           "theodolite's record: the model, the weights, the entries, the push, the start mark, llama.cpp, the scale")
+    check({k: meta.get(k) for k in ORIGIN_KEYS} == ORIGIN_KEYS,
+          "the licence and the base model, under the keys gguf-py writes for llama.cpp's own converter: apache-2.0, its "
+          f"link, Gemma 4 31B it by Google ({ {k: meta.get(k) for k in ORIGIN_KEYS} })")
+    said = str(rec.get("derived_from"))
+    check(said == el.DERIVED and all(s in said for s in ("derived from the weights of Gemma 4", "Google DeepMind",
+                                                         "Apache License 2.0", ORIGIN_KEYS["general.license.link"],
+                                                         "the model's own columns", "theodolite.weights")),
+          "theodolite.derived_from: in plain words, B is made of the model's own columns, Gemma 4's, under its licence")
 
     cli = tmp / "cli.gguf"
     got = run_cli(["--checkpoint", folder, "--page", LAYER + 1, "--neuron", NEURON, "--mul", 0, "-o", cli])
@@ -259,6 +280,24 @@ def check_file(rt: Any, folder: Path, gguf_model: Path, tmp: Path) -> None:
         check(np.array_equal(mine[0], ref[0]) and np.array_equal(mine[1], ref[1]), "its tensors are the API's, bit for bit")
         check("GET /lora-adapters" in got.stdout and "failed to apply lora adapter" in got.stdout,
               "it says what to look for in llama-server's log")
+        # against an adapter written before the licence keys: nothing it holds is gone or renamed, llama.cpp's keys say
+        # what they said, and the licence, the base model and derived_from are new
+        if KEPT.is_file():
+            old = gm.read_metadata(gm.open_gguf(KEPT), long_arrays=True)
+            new = gm.read_metadata(gm.open_gguf(cli), long_arrays=True)
+            facing = ("general.type", "general.architecture", "adapter.type")
+            check(set(old) <= set(new) and all(old[k] == new[k] for k in facing)
+                  and set(ORIGIN_KEYS) | {el.KEY + "derived_from"} <= set(new) - set(old),
+                  f"an adapter kept from 2 November 2026 ({KEPT.name}): every key it holds is still written, llama.cpp's "
+                  f"with the same values; the licence, the base model and derived_from are new (gone: "
+                  f"{sorted(set(old) - set(new))}, new: {sorted(set(new) - set(old))})")
+        else:
+            print(f"  --    an adapter kept from 2 November 2026: not set against today's keys ({KEPT} is not here)")
+        again = run_cli(["--checkpoint", folder, "--page", LAYER + 1, "--neuron", NEURON, "--mul", 3, "-o", cli, "--force"])
+        over = el.read_lora(cli) if again.returncode == 0 else None  # mul 3: B = 2 W, where mul 0's is -W
+        check(over is not None and np.array_equal(over[0][name][1], np.float32(-2.0) * ref[1])
+              and "mul x3" in str(over[1].get(el.KEY + "entries")),
+              f"--force writes over a file already there ({again.stderr.strip()[-200:]})")
     cli2 = tmp / "cli-push.gguf"
     got = run_cli(["--checkpoint", folder, "--push", json.dumps({"layer": LAYER, "n": NEURON, "mode": "mul", "dose": 0}),
                    "-o", cli2])
@@ -366,12 +405,42 @@ def check_file(rt: Any, folder: Path, gguf_model: Path, tmp: Path) -> None:
     section("the file as llama.cpp's loader reads it, the command line and its refusals", before)
 
 
+def with_licence_keys(src: Path, dst: Path) -> Path:
+    """A copy of the GGUF `src` with a licence and a base model in its keys, every other key and every tensor as it
+    was: a source for the silenced copies that carries them, as a GGUF made by llama.cpp's converter from a model card
+    does (the stand-in's own, written by `gguf_model.write_gemma4_gguf`, carries none)."""
+    import gguf
+
+    r = gguf.GGUFReader(str(src))
+    w = gguf.GGUFWriter(str(dst), "gemma4", endianess=r.endianess)
+    w.data_alignment = r.alignment
+    for fld in r.fields.values():
+        if fld.name == gguf.Keys.General.ARCHITECTURE or fld.name.startswith("GGUF."):
+            continue
+        vt = fld.types[0]
+        w.add_key_value(fld.name, fld.contents(), vt, sub_type=fld.types[-1] if vt == gguf.GGUFValueType.ARRAY else None)
+    w.add_license(ORIGIN_KEYS["general.license"])
+    w.add_license_link(ORIGIN_KEYS["general.license.link"])
+    w.add_base_model_count(1)
+    w.add_base_model_name(0, ORIGIN_KEYS["general.base_model.0.name"])
+    w.add_base_model_organization(0, ORIGIN_KEYS["general.base_model.0.organization"])
+    w.add_base_model_repo_url(0, ORIGIN_KEYS["general.base_model.0.repo_url"])
+    for t in r.tensors:
+        w.add_tensor_info(t.name, t.data.shape, t.data.dtype, t.data.nbytes, t.tensor_type)
+    w.write_header_to_file(), w.write_kv_data_to_file(), w.write_ti_data_to_file()
+    for t in r.tensors:
+        w.write_tensor_data(t.data, tensor_endianess=r.endianess)
+    w.close()
+    return dst
+
+
 def check_silenced(gguf_model: Path, tmp: Path) -> Dict[str, Path]:
     import gguf
 
     before = len(failures)
     out: Dict[str, Path] = {}
     src = gguf.GGUFReader(str(gguf_model))
+    origin = lambda m: {k: v for k, v in m.items() if k.startswith(("general.license", "general.base_model."))}  # noqa: E731
     for by in ("scale", "norm"):
         for what, args in (("ffn", ["--block"]), ("attn", ["--head", "all", "--scale", 0])):
             l = BLOCK if what == "ffn" else HEADS
@@ -393,6 +462,10 @@ def check_silenced(gguf_model: Path, tmp: Path) -> Dict[str, Path]:
                 m0, m1 = gm.read_metadata(src, long_arrays=True), gm.read_metadata(r, long_arrays=True)
                 check(all(m1.get(k) == v for k, v in m0.items()) and m1.get(el.KEY + "silence_by"), "every key as it was, "
                       "and theodolite's record")
+                said = str(m1.get(el.KEY + "derived_from"))
+                check(said == el.DERIVED_COPY["scale"] and "a copy of a GGUF of Gemma 4" in said and "Apache License 2.0" in said
+                      and not origin(m0) and not origin(m1),
+                      "the record says what the copy was made from; a source with no licence key gets none added")
             else:
                 check(scale not in t and not np.asarray(t[norm].data).any(), f"{norm} zeroed, no tensor added")
                 a, b = gguf_model.read_bytes(), p.read_bytes()
@@ -400,6 +473,31 @@ def check_silenced(gguf_model: Path, tmp: Path) -> Dict[str, Path]:
                 check(len(a) == len(b) and a[:lo] == b[:lo] and a[lo + n:] == b[lo + n:], "every other byte as it was")
                 side = Path(str(p) + ".theodolite.json")
                 check(side.exists() and json.loads(side.read_text()).get("silence_by"), "the record beside it")
+                said = str(json.loads(side.read_text()).get("derived_from")) if side.exists() else ""
+                check(said == el.DERIVED_COPY["norm"] and "a copy of a GGUF of Gemma 4" in said and "Apache License 2.0" in said,
+                      "the record beside it says what the copy was made from")
+    # a source that carries a licence and a base model in its keys: both copies carry them as they were
+    lic = with_licence_keys(gguf_model, tmp / "stand-in-f32-licensed.gguf")
+    m0 = origin(gm.read_metadata(gguf.GGUFReader(str(lic)), long_arrays=True))
+    check(m0 == ORIGIN_KEYS, f"the source written with a licence and a base model in its keys ({m0})")
+    for by in ("scale", "norm"):
+        p = tmp / f"licensed-ffn-{by}.gguf"
+        got = run_cli(["--gguf", lic, "--layer", BLOCK, "--block", "--model-out", p, "--silence-by", by])
+        m1 = origin(gm.read_metadata(gguf.GGUFReader(str(p)), long_arrays=True)) if p.exists() else None
+        check(got.returncode == 0 and m1 == m0,
+              f"a source that carries a licence and a base model: the copy by {by} carries them as they were "
+              f"({m1}; {got.stderr.strip()[-200:]})")
+    # the record a by-norm copy keeps beside it is a file too: one already there is not written over without --force
+    p = tmp / "side-kept.gguf"
+    side = Path(str(p) + ".theodolite.json")
+    side.write_text("kept\n", encoding="utf-8")
+    args = ["--gguf", gguf_model, "--layer", BLOCK, "--block", "--model-out", p, "--silence-by", "norm"]
+    got = run_cli(args)
+    check(got.returncode != 0 and f"{side.name} is already there" in got.stderr and not p.exists() and side.read_text() == "kept\n",
+          f"a by-norm copy whose record is already there: refused, nothing written ({got.stderr.strip()[-200:]})")
+    got = run_cli(args + ["--force"])
+    check(got.returncode == 0 and p.exists() and side.read_text() != "kept\n" and json.loads(side.read_text()).get("silence_by"),
+          f"and written over with --force ({got.stderr.strip()[-200:]})")
     for key in ("ffn-scale", "ffn-norm"):  # a copy of a silenced copy would record only the second silencing
         if key in out:
             p = tmp / f"chain-{key}.gguf"

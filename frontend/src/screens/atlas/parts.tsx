@@ -132,6 +132,7 @@ const typesetDoses = (s: string) =>
 export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: React.CSSProperties }> = ({ card, style }) =>
   card ? (
     <p className="atlas-small atlas-prov" style={style}>
+      {card.stale ? <span className="red">Taken before the vault edits now in force: its answers, words and ranks are the model’s as it was. </span> : null}
       {card.doses_calibrated ? (
         <span>Doses:</span>
       ) : card.doses_calibrated_layers ? (

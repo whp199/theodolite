@@ -11,9 +11,11 @@ three backends; a chat keeps the one it starts with:
   Codex home of its own (the person's login, model and effort, nothing else).
 
 Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code to reading, writing and editing files in
-its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (writes only in the work folder,
-no network). "home" is the explorer's own setting, taken only when the person sets it: Claude Code's Read, Glob, Grep,
-Write, Edit and Bash pre-approved over the home folder, Codex with full access and never asking. Either way Claude Code
+its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (no network; it writes in the
+work folder and in the temporary folders, /tmp and /dev/shm, and can read files elsewhere: measured in Codex's own
+sandbox helper, codex-cli 0.166.0, 14 November 2026, not through a chat). "home" is the explorer's own setting, taken
+only when the person sets it: Claude Code's Read, Glob, Grep, Write, Edit and Bash pre-approved over the home folder,
+Codex with full access and never asking. Either way Claude Code
 loads no settings file, hook, rules file or CLAUDE.md (`--setting-sources ""`: a CLAUDE.md it wrote in its work folder
 would otherwise reach every later chat as instructions, and so would one in any folder above it, and a
 .claude/settings.json written there, by a Codex chat whose sandbox may write in that folder, say, would run its hooks as
@@ -100,7 +102,8 @@ REACH_ENV = "THEODOLITE_SCIENTIST_REACH"
 # what each backend can do beyond the atlas's tools, said on the page
 REACH_WORDS = {
     "folder": {"claude": "reads, writes and edits files only in its own work folder, and has no shell",
-               "codex": "runs commands in a sandbox that writes only in its own work folder and has no network; it can read files elsewhere",
+               "codex": "runs commands in a sandbox that has no network and writes in its own work folder and the temporary folders "
+                        "(/tmp, /dev/shm); it can read files elsewhere, credentials kept in files among them",
                "openai": "has the atlas's tools and nothing else: no shell, no files"},
     "home": {"claude": "has a shell, and reads, changes and runs anything in your home folder without asking",
              "codex": "has a shell with full access to this machine, and never asks before it acts",
@@ -233,9 +236,10 @@ CODEX_FOLDER_NOTE = """
 
 ## This session
 
-You are running as Codex, your shell in a sandbox: it writes only in `{WORK}` and has no network, so a script cannot
-reach the instrument's API; use the atlas's tools for every reading. A script that only writes a file in `{WORK}` from
-numbers you already have (a page, a table) you can run yourself: run it, and link what it wrote."""
+You are running as Codex, your shell in a sandbox: it writes in `{WORK}` and in the temporary folders (`/tmp`,
+`/dev/shm`), can read files elsewhere, and has no network, so a script cannot reach the instrument's API; use the
+atlas's tools for every reading. A script that only writes a file in `{WORK}` from numbers you already have (a page,
+a table) you can run yourself: run it, and link what it wrote."""
 OPENAI_NOTE = """
 
 ## This session

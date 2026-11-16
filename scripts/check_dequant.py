@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """A CPU-only check of the faster 4-bit unpackers (backend/w4a16_fast.py): that each gives the very bits the runtime's
-own unpacker gives (`engine_runtime.dequantize_w4a16_full`, R4-pinned and left as it is), and every reading through
-them is the same, byte for byte. It loads neither the real model nor the lens, and hides the GPU. It checks:
+own unpacker gives (`engine_runtime.dequantize_w4a16_full`, left as it is: its file is one of the four whose sha256
+the instrument records, scripts/runtime_files.py), and every reading through them is the same, byte for byte. It
+loads neither the real model nor the lens, and hides the GPU. It checks:
 1. the piece-by-scale table, exhaustively: each of the 16 pieces beside each of the 65,536 bf16 scale bit patterns,
    through "lut" and the reference, the same bits (NaNs by their bits, -0 apart from +0); the reference's own product
    is (piece - 8) x scale rounded once to the nearest bf16; through "compiled", the same bits but for the NaNs' own;
@@ -31,8 +32,13 @@ them is the same, byte for byte. It loads neither the real model nor the lens, a
 6. the command lines and the server: census_run.py --stand-in --unpacker lut records it in the run's meta and an
    unknown unpacker is refused; atlas_build.py --unpacker lut records it in an index's meta; the server's own lifespan
    installs $THEODOLITE_UNPACKER and GET /api/health says which, and a name that is not one stops it in plain words;
-7. the four runtime files R4 pins (experiments/scripts/R4_common.py's PINNED_UNCHANGED: backend/__init__.py,
-   theodolite_math.py, engine_runtime.py, label_gate.py) still have their pinned sha256.
+7. the four runtime files (backend/__init__.py, theodolite_math.py, engine_runtime.py, label_gate.py) each have the
+   sha256 the instrument records for them (scripts/runtime_files.py: the four backend files R4's table holds), and
+   runtime_files.differ names one with a byte added and one missing; the files that differ from R4's own table
+   (experiments/scripts/R4_common.py's PINNED_UNCHANGED, R4's record of what it ran on, not edited) are exactly the
+   ones the record names as changed since R4, its notes running from R4's sha256 to the recorded one, each with its
+   commit, date and reason; and R4_common.py is the file R4's analysis records, the record's R4_COMMIT the commit R4's
+   run was made at (experiments/results/R4_03_analysis.json).
 
 "compiled" goes through Inductor, which on the CPU needs a C++ compiler: a child process tries one tiny compile first
 (240 s at most), and when that fails "compiled" is left out, with the reason said (as with --no-compiled).
@@ -80,9 +86,6 @@ from backend.larql_vault import LarqlVaultEngine
 
 failures: List[str] = []
 passed = 0
-# the files R4 pins that the instrument's runtime is (R4_common.PINNED_UNCHANGED holds them beside R4's own)
-R4_RUNTIME_FILES = ("backend/__init__.py", "backend/theodolite_math.py", "backend/engine_runtime.py",
-                    "backend/label_gate.py")
 
 
 def check(ok: bool, what: str) -> None:
@@ -726,17 +729,53 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
 
 
 def check_pins() -> None:
+    import runtime_files  # the instrument's own record of the runtime files' sha256 (scripts/runtime_files.py)
+
     before = len(failures)
+    # R4's table, read from the file's text: R4's record of what it ran on, which the runtime need no longer match
     tree = ast.parse((ROOT_DIR / "experiments" / "scripts" / "R4_common.py").read_text(encoding="utf-8"))
     table: Dict[str, str] = {}
     for node in ast.walk(tree):
         target = node.target if isinstance(node, ast.AnnAssign) else (node.targets[0] if isinstance(node, ast.Assign) else None)
         if isinstance(target, ast.Name) and target.id == "PINNED_UNCHANGED" and node.value is not None:
             table = ast.literal_eval(node.value)
-    for rel in R4_RUNTIME_FILES:
+    recorded, changed = runtime_files.RUNTIME_FILES, runtime_files.CHANGED_SINCE_R4
+    check(sorted(recorded) == sorted(r for r in table if r.startswith("backend/")),
+          f"the record holds the four backend files R4's table holds: {sorted(recorded)}")
+    for rel in recorded:
         got = hashlib.sha256((ROOT_DIR / rel).read_bytes()).hexdigest()
-        check(table.get(rel) == got, f"{rel}: sha256 {got[:12]}, R4 pins {str(table.get(rel))[:12]}")
-    section("the four runtime files R4 pins keep their sha256 (R4_common.PINNED_UNCHANGED)", before)
+        check(recorded[rel] == got, f"{rel}: sha256 {got[:12]}, the instrument records {recorded[rel][:12]} (scripts/runtime_files.py)")
+        check((table.get(rel) != got) == (rel in changed),
+              f"{rel}: sha256 {got[:12]}, R4's table has {str(table.get(rel))[:12]}, and the record "
+              f"{'names it' if rel in changed else 'does not name it'} as changed since R4")
+    for rel, notes in changed.items():
+        check(bool(notes) and notes[0]["from"] == table.get(rel) and notes[-1]["to"] == recorded.get(rel)
+              and all(a["to"] == b["from"] for a, b in zip(notes, notes[1:]))
+              and all(n.get("commit") and n.get("date") and n.get("why") for n in notes),
+              f"{rel}: the record's notes run from R4's sha256 to the recorded one, each with its commit, date and reason")
+    # R4's own record of itself: the R4_common.py its analysis ran with, and the commit its GPU run was made at
+    analysis = json.loads((ROOT_DIR / "experiments" / "results" / "R4_03_analysis.json").read_text(encoding="utf-8"))
+    r4_common = hashlib.sha256((ROOT_DIR / "experiments" / "scripts" / "R4_common.py").read_bytes()).hexdigest()
+    check(analysis["analysis_code"]["R4_common.py"] == r4_common
+          and analysis["input"]["run_git"]["head"] == runtime_files.R4_COMMIT,
+          f"R4_common.py (sha256 {r4_common[:12]}) is the file R4's analysis records, and the record's R4_COMMIT "
+          f"({runtime_files.R4_COMMIT[:7]}) the commit R4's run was made at (R4_03_analysis.json)")
+    with tempfile.TemporaryDirectory(prefix="dequant-check-pins-") as d:  # differ itself, on a copy of the four files
+        copy = Path(d)
+        for rel in recorded:
+            (copy / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT_DIR / rel, copy / rel)
+        as_copied = {rel: hashlib.sha256((copy / rel).read_bytes()).hexdigest() for rel in recorded}
+        same = runtime_files.differ(copy, as_copied)
+        first, last = list(recorded)[0], list(recorded)[-1]
+        (copy / first).unlink()
+        with open(copy / last, "ab") as f:
+            f.write(b"\n")
+        check(same == [] and runtime_files.differ(copy, as_copied) == [first, last],
+              f"runtime_files.differ: nothing named on a copy of the four files; with {first} missing and a byte added "
+              f"to {last}, those two")
+    section("the four runtime files have the sha256 the instrument records (scripts/runtime_files.py), and those that "
+            "differ from R4's table (R4_common.PINNED_UNCHANGED) are the ones the record names as changed since R4", before)
 
 
 def main(argv: Optional[List[str]] = None) -> int:

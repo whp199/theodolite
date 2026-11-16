@@ -194,6 +194,11 @@ function parsedRows(p: Parsed, inForce: number, live: boolean): { k: string; v: 
     case "error":
       if (p.empty) return [{ k: "form", v: "nothing written yet" }];
       if (p.num) return [{ k: "form", v: "an edit whose STRENGTH is not a number" }];
+      if (p.place)
+        return [
+          { k: "form", v: "a statement naming a layer or a neuron the model does not have" },
+          { k: "refused", v: p.err },
+        ];
       return [
         { k: "form", v: "not a statement the vault reads" },
         { k: "compare", v: "the seven forms in the grammar beside this" },
@@ -596,7 +601,7 @@ export const ConsolePanel: React.FC = () => {
           <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", color: "var(--muted)", paddingTop: 6 }}>small print</span>
           <span>
             Keywords may be written in any case, and a closing semicolon is dropped; the word itself is read exactly, so “She” is not “she”.
-            Words go in single or double quotes and may not contain one. A layer past 59 is read as 59, a neuron past 21,503 as 21,503. The
+            Words go in single or double quotes and may not contain one. A layer past 59 or a neuron past 21,503 is refused, and nothing is read or edited. The
             parts in square brackets are read only in the order shown. STRENGTH takes no minus sign: one written with it is passed over, with
             all that follows, so the edit runs at 2.5 on the positive face. To push the other way, write POLARITY -.
           </span>

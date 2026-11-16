@@ -11,9 +11,14 @@ temporary folder:
 3. the file as llama.cpp's loader reads it: direction.<layer> tensors, F32, one-dimensional, the model's width, no
    direction.0; llama.cpp's keys (`general.architecture` controlvector, `controlvector.model_hint`, `layer_count`) and
    theodolite's record (the model, the weights, each entry's layer, neuron, dose and p50, the stats index's sha256);
+   the licence and the base model under gguf-py's keys (general.license, general.license.link, general.base_model.*)
+   and theodolite.derived_from; a file kept from 30 October 2026, before those keys
+   (experiments/results/control_vector_L45, read and never written; where it is not there, passed by and said so),
+   holds no key the command line no longer writes, llama.cpp's with the same values;
    the loader's arithmetic (each file times its SCALE, files summed) gives the push at dose x SCALE; the command line
    writes the same vector, and refuses layer 0, a layer or a neuron that is not there, a dose that is not a
-   number, a stats index of another model, a file already there, a set without a name, and a set given a --dose;
+   number, a stats index of another model, a file already there (written over only with --force), a set without a
+   name, and a set given a --dose;
 4. `--gguf`: the same weights written as a float32 GGUF (`gguf_model.write_gemma4_gguf`), its vector equal to the
    census's push element for element;
 5. llama.cpp itself, when a llama-server is found (`--llama-server`, else $LLAMA_SERVER, else `llama-server` on the
@@ -24,7 +29,12 @@ temporary folder:
    written); a file at SCALE 2 alike the instrument's push at dose 2 at the same layer with the start mark pushed too
    (2.0e-4), and at least 20 times further from it at the layers either side (0.18, 0.13) and with the start mark
    spared (3.9e-2), which is what the instrument does; a set across two layers alike its pushes (1.3e-4). So the layer
-   llama.cpp pushes, its scale, its sum and its start mark are read off llama.cpp, not only off its source.
+   llama.cpp pushes, its scale, its sum and its start mark are read off llama.cpp, not only off its source;
+6. the server's writer (`backend/control_vector.build`, what POST /api/atlas/control_vector calls, here into a folder
+   of the check's own): its file is the script's vector, bit for bit, with the same licence keys; a file already
+   there is never written over, whether its name was asked for or is the one the file would be given: refused in
+   plain words (a ValueError, which the route answers as a 400), the old file's bytes as they were and nothing left
+   beside it; another name is written; a name held by a link that leads nowhere is refused too.
 
 Run: .venv/bin/python -I scripts/check_control_vector.py [--llama-server PATH]   (exits 0 when every check holds)
 """
@@ -72,6 +82,12 @@ LAYER = 3
 NEURONS = (5, 77)
 DOSES = (-2.0, -1.0, 1.0, 2.0)  # break_rel's
 SET = [ecv.Entry(LAYER, 5, 1.0), ecv.Entry(LAYER, 90, -0.5), ecv.Entry(LAYER - 1, 12, 2.0)]
+# a control vector of the 31B written on 30 October 2026, before the licence keys: the record of a measured run, only read
+KEPT = ROOT_DIR / "experiments" / "results" / "control_vector_L45" / "theodolite-L45-n13641.gguf"
+ORIGIN_KEYS = {"general.license": "apache-2.0", "general.license.link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+               "general.base_model.count": 1, "general.base_model.0.name": "Gemma 4 31B It",
+               "general.base_model.0.organization": "Google",
+               "general.base_model.0.repo_url": "https://huggingface.co/google/gemma-4-31B-it"}
 
 failures: List[str] = []
 passed = 0
@@ -252,6 +268,15 @@ def check_file(rt: Any, folder: Path, stats: Path, p50: List[float], tmp: Path, 
     check(rec.get("stats_index_sha256") == cz.file_sha256(stats), "the record: the stats index's sha256")
     check("model.safetensors" in str(rec.get("weights")) and all(rec.get(k) for k in ("push", "start_mark", "scale", "caveat")),
           "the record: the weights read, the push, the start mark, the scale and the caveat")
+    check({k: meta.get(k) for k in ORIGIN_KEYS} == ORIGIN_KEYS,
+          "the licence and the base model, under the keys gguf-py writes for llama.cpp's own converters: apache-2.0, its "
+          f"link, Gemma 4 31B it by Google ({ {k: meta.get(k) for k in ORIGIN_KEYS} })")
+    said = str(rec.get("derived_from"))
+    check(said == ecv.DERIVED and all(s in said for s in ("derived from the weights of Gemma 4", "Google DeepMind",
+                                                          "Apache License 2.0", ORIGIN_KEYS["general.license.link"],
+                                                          "down projection", "theodolite.weights")),
+          "theodolite.derived_from: in plain words, the direction is computed from Gemma 4's weights, under its licence, "
+          "and how")
 
     two = llama_load([(path, 2.0)])
     check(np.array_equal(two[LAYER], vec[(n, 1.0)] * np.float32(2)), "SCALE 2 is the file's vector times 2")
@@ -264,10 +289,26 @@ def check_file(rt: Any, folder: Path, stats: Path, p50: List[float], tmp: Path, 
     got = run_cli(["--checkpoint", folder, "--stats", stats, "--model", rt.model_id, "--page", LAYER + 1, "--neuron", n,
                    "-o", out])
     check(got.returncode == 0, f"the command line writes a file ({got.stderr.strip()[-300:]})")
+    base = ["--checkpoint", folder, "--stats", stats, "--model", rt.model_id]
     if got.returncode == 0:
         check(np.array_equal(ecv.read_control_vector(out)[0][LAYER], vec[(n, 1.0)]),
               "the command line's file (--page) holds the same vector")
-    base = ["--checkpoint", folder, "--stats", stats, "--model", rt.model_id]
+        # against a file written before the licence keys: nothing it holds is gone or renamed, llama.cpp's keys say
+        # what they said, and the licence, the base model and derived_from are new
+        if KEPT.is_file():
+            old = gm.read_metadata(gm.open_gguf(KEPT), long_arrays=True)
+            new = gm.read_metadata(gm.open_gguf(out), long_arrays=True)
+            facing = ("general.architecture", "controlvector.model_hint", "controlvector.layer_count")
+            check(set(old) <= set(new) and all(old[k] == new[k] for k in facing)
+                  and set(ORIGIN_KEYS) | {ecv.KEY + "derived_from"} <= set(new) - set(old),
+                  f"a file kept from 30 October 2026 ({KEPT.name}): every key it holds is still written, llama.cpp's with "
+                  f"the same values; the licence, the base model and derived_from are new (gone: {sorted(set(old) - set(new))}, "
+                  f"new: {sorted(set(new) - set(old))})")
+        else:
+            print(f"  --    a file kept from 30 October 2026: not set against today's keys ({KEPT} is not here)")
+        again = run_cli(base + ["--layer", LAYER, "--neuron", n, "--dose", -2, "-o", out, "--force"])
+        check(again.returncode == 0 and np.array_equal(ecv.read_control_vector(out)[0][LAYER], vec[(n, -2.0)]),
+              f"--force writes over a file already there ({again.stderr.strip()[-200:]})")
     other = tmp / "act_scale_other.npz"
     with np.load(stats, allow_pickle=False) as z:
         save_npz(other, resid_q=z["resid_q"], tokens=z["tokens"], meta=np.array(json.dumps({"model": "another model"})))
@@ -438,6 +479,62 @@ def check_llama(exe: Optional[Path], rt: Any, gguf_model: Path, tmp: Path, vec: 
     return d
 
 
+def check_server(rt: Any, p50: List[float], tmp: Path, vec: Dict[Tuple[int, float], np.ndarray]) -> None:
+    """The server's writer (`backend/control_vector.build`), given a folder of the check's own in place of the atlas
+    folder's exports: the script's file, and never one written over."""
+    from backend import control_vector as cvm
+
+    before = len(failures)
+    w = ao.Weights(language_model(rt.hf_model), rt)
+    scales = {"p50": list(p50), "source": {"kind": "the check's stats index"}}
+    folder = tmp / "exports"
+    n = NEURONS[0]
+
+    def build(pushes: Sequence[ao.Push], name: Optional[str] = None) -> Dict[str, Any]:
+        return cvm.build(w, scales, rt.model_id, {"stand_in": True}, [], pushes, name, folder)
+
+    def refused(pushes: Sequence[ao.Push], name: Optional[str] = None) -> str:
+        try:
+            build(pushes, name)
+        except ValueError as exc:
+            return str(exc)
+        return ""
+
+    first = build([ao.Push(LAYER, n, "add", 1.0)], "kept")
+    path = Path(first["path"])
+    dirs, meta = ecv.read_control_vector(path)
+    check(first["file"] == "kept.gguf" and path.parent == folder and sorted(dirs) == [LAYER]
+          and np.array_equal(dirs[LAYER], vec[(n, 1.0)]),
+          "the server's writer: its file holds the script's vector, bit for bit")
+    check({k: meta.get(k) for k in ORIGIN_KEYS} == ORIGIN_KEYS and meta.get(ecv.KEY + "derived_from") == ecv.DERIVED
+          and "backend/control_vector.py" in str(meta.get(ecv.KEY + "made_by")),
+          "the server's file carries the licence, the base model and derived_from, as the script's does")
+    kept = path.read_bytes()
+    for name in ("kept", "kept.gguf"):
+        said = refused([ao.Push(LAYER, NEURONS[1], "add", -2.0)], name)
+        check("kept.gguf is already among the exports" in said and "never written over" in said and "name another" in said
+              and "until a person removes it" in said and str(path) in said,
+              f"a name given again ({name}): refused in plain words ({said})")
+    check(path.read_bytes() == kept and sorted(p.name for p in folder.iterdir()) == ["kept.gguf"],
+          "the file already there is as it was, byte for byte, and nothing is left beside it")
+    auto = build([ao.Push(LAYER, n, "add", 1.0)])
+    held = Path(auto["path"]).read_bytes()
+    said = refused([ao.Push(LAYER, n, "add", 1.0)])
+    check(auto["file"] == f"theodolite-page{LAYER + 1}-n{n}-dose1.gguf" and f"{auto['file']} is already among the exports" in said
+          and Path(auto["path"]).read_bytes() == held,
+          f"a file left unnamed, asked for again: refused too, the first as it was ({said})")
+    other = build([ao.Push(LAYER, NEURONS[1], "add", -2.0)], "another")
+    check(other["file"] == "another.gguf" and np.array_equal(ecv.read_control_vector(Path(other["path"]))[0][LAYER], vec[(NEURONS[1], -2.0)])
+          and sorted(p.name for p in folder.iterdir()) == sorted(["kept.gguf", auto["file"], "another.gguf"]),
+          "another name is written, beside the files kept")
+    link = folder / "linked.gguf"
+    link.symlink_to(folder / "nowhere")  # no file is there, and the name is taken all the same: a write would replace the link
+    said = refused([ao.Push(LAYER, n, "add", 1.0)], "linked")
+    check("linked.gguf is already among the exports" in said and link.is_symlink() and not link.exists(),
+          f"a name held by a link that leads nowhere: refused too, the link as it was ({said})")
+    section("the server's writer: the script's file, the licence keys, and no file written over", before)
+
+
 def find_llama_server(given: Optional[str]) -> Optional[Path]:
     for c in (given, os.environ.get("LLAMA_SERVER"), shutil.which("llama-server")):
         if c and Path(c).expanduser().is_file():
@@ -465,6 +562,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             log = tmp / "llama-server.log"
             if log.exists():
                 print(log.read_text(errors="replace")[-2000:])
+        check_server(rt, p50, tmp, vec)
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0
 

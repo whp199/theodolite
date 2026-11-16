@@ -236,7 +236,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | lens, connections, a name | the details: both faces under the gate, the steer lens, the activation range with GeGLU’s four sign regimes, wiring and head tables; a name and a note kept on the server; and each face’s stored passages in a tab of their own, with the regime at each and the word-pieces each face reads and that follow, which the reference does not keep |
 | embeddings: UMAP of a layer’s rollouts by neuron, prompt, dose or kind | the spread, the same colourings |
 | attention heads with q / k / v / o roles; head tools | the same, with each head’s profile over eight texts, its pattern on a text and the heads driving a neuron at a word-piece |
-| a Claude chat (the `claude` CLI with the explorer as an MCP server), Codex as an option, past chats, attachments, edit and reroll, “explain” | the same with 30 tools, plus any OpenAI-compatible endpoint (the server runs the tool loop); the tools count layers as the pages do |
+| a Claude chat (the `claude` CLI with the explorer as an MCP server), Codex as an option, past chats, attachments, edit and reroll, “explain” | the same with 35 tools, plus any OpenAI-compatible endpoint (the server runs the tool loop); the tools count layers as the pages do |
 | the sweep’s tools: neuron stats, steer lens, rank, depth report, word shift, merge | `scripts/atlas_build.py` and `scripts/census_run.py` on the GPU, `scripts/census_tools.py` (rank with the word shift, merge, depth, spread) |
 | — | a CPU stand-in of Gemma 4 for every check and for trying the page without the weights (`scripts/atlas_stand_in.py`) |
 
@@ -653,6 +653,10 @@ server needs no flag for it: with `THEODOLITE_UNPACKER` unset it takes `compiled
 (about 4 s more at load; a push’s three answers of 80 word-pieces then come in about 8 s where `reference` took 52,
 the same text to the letter), and `reference` on the CPU or for a GGUF, whose packed layers take `compiled` when asked;
 `THEODOLITE_UNPACKER=reference` keeps the old way.
+The compiled graphs are kept between runs in `${XDG_CACHE_HOME:-~/.cache}/theodolite/torch_compile`, a folder only
+your account can write (`TORCHINDUCTOR_CACHE_DIR` names another), not in torch’s default under `/tmp`; the first start
+after this change (14 November 2026) compiles them afresh, once. Nothing prunes the folder (it held 193 MiB here that
+day); deleted while nothing of the instrument’s is running, it is made again and the next start compiles afresh.
 `--unpacker resident` keeps them unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit
 weights (an 80 GB card holds it, with little left for a batch). On a GGUF only `compiled` serves
 (`backend/gguf_fast.py`: the reference’s bits, tested on every packed layer at load, on the card or the CPU); `lut` and
@@ -685,14 +689,18 @@ What the scientist makes for you, a page or a table say, it writes into its work
 link opens the file in a browser tab, shown with no scripts and no network. Its `steer` puts several prompts, or
 several candidate neurons, into one batch, which costs about the time of one. A push you want to run elsewhere leaves
 as a llama.cpp control vector: the push tab’s “save for llama.cpp” writes the open neuron’s push at the dose shown, and
-the scientist’s `export_control_vector` writes a recipe of several neurons, into `<atlas folder>/exports/`; load it with
+the scientist’s `export_control_vector` writes a recipe of several neurons, into `<atlas folder>/exports/` (a file
+already there is never written over: the export is refused, and says so); load it with
 `llama-server -m <a Gemma-4-31B-it GGUF> --control-vector-scaled FILE:1` (ARCHITECTURE §6: where llama.cpp adds it, what
 still differs, and the three recipes taken through llama.cpp on 11 November 2026).
 
 > [!WARNING]
 > By default, under Claude Code the scientist reads, writes and edits files only in its own work folder and has no
-> shell; under Codex its shell runs in a sandbox that writes only there and has no network, though it can read files
-> elsewhere. `THEODOLITE_SCIENTIST_REACH=home` gives it neuron-explorer’s own reach: a shell and file tools over your
+> shell; under Codex its shell runs in a sandbox that has no network and writes there and in the temporary folders
+> (`/tmp` and `/dev/shm`), and it can read your other files, a credential kept in a file among them (the Hugging Face
+> token under `~/.cache/huggingface` was readable in it; SSH keys and Codex’s own login by the same rule). That was
+> measured in Codex’s own sandbox helper, not through a chat (codex-cli 0.166.0, 14 November 2026).
+> `THEODOLITE_SCIENTIST_REACH=home` gives it neuron-explorer’s own reach: a shell and file tools over your
 > home folder, pre-approved, so it runs commands and edits files there without asking, and what it reads (the model’s
 > answers, names and notes, attachments) can steer it; the page asks once before the first such chat. At either reach
 > Claude Code loads no settings file, hook or CLAUDE.md (`--setting-sources ""`), so a CLAUDE.md it writes in its
@@ -823,8 +831,10 @@ verifier, though the verifiers that read a lens used the same base-fitted ones (
 [what the study found](#iv--what-the-study-found)), and the claims that failed are listed in §4 of that report.
 
 **License.** Code is licensed under the **Apache License 2.0** ([`LICENSE`](LICENSE)); third-party attributions and
-exceptions are in [`NOTICE`](NOTICE). This repository does **not** redistribute model weights, lens tensors or third-party
-corpora. Gemma is a trademark of Google LLC; this project is independent research, not affiliated with or endorsed by Google.
+exceptions are in [`NOTICE`](NOTICE). This repository does **not** redistribute a model’s weights as a whole, lens tensors
+or third-party corpora. Eleven small files under `experiments/results/` (two control vectors, nine LoRA adapters: the
+records of two measured runs) hold numbers derived from Gemma 4’s weights and are passed on under its Apache License
+2.0: see [`NOTICE`](NOTICE). Gemma is a trademark of Google LLC; this project is independent research, not affiliated with or endorsed by Google.
 
 <br>
 

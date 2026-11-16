@@ -6,11 +6,13 @@ so the chat is driven over real connections):
 1. the tools' schemas, and the pages' count: layers from 1 in every argument and reply, refused below 1;
 2. each tool against the atlas's routes in this process, its reply the routes' own in the pages' count (a neuron, its
    links, reads, steering (greedy, and sampled with its knobs passed through and its seeds given back; several prompts
-   or several candidate sets of pushes in one call; a recipe exported as a llama.cpp control vector), odds, compare,
-   fires, heads, the drive, the census, names and notes proposed by set_name and write_note and read by nothing (names,
-   neuron, the notes) until the person keeps them, kept without overwriting each other, the cone and the web once the
-   indexes are built), and each screen action reaching the chat's page in the API's count, a proposal among them, each
-   proposal recording the chat that made it;
+   or several candidate sets of pushes in one call; a recipe exported as a llama.cpp control vector, a file name given
+   again refused and the file there left byte for byte), odds, compare, fires, heads, the drive, the census, names and
+   notes proposed by set_name and write_note and read by nothing (names, neuron, the notes) until the person keeps
+   them, kept without overwriting each other, the cone and the web once the indexes are built; with a vault edit in
+   force, each tool passing on what the atlas says was read before it (`stale`, `scale_stale`, `census_stale`), and
+   none of them once the edit is gone), and each screen action reaching the chat's page in the API's count, a proposal
+   among them, each proposal recording the chat that made it;
 3. the MCP server, started as Claude Code starts it: initialize, its tools, a call, refusals in plain words;
 4. Claude Code, played by a fake `claude` that starts the MCP server from the config it is given and calls it: the
    command line (stream-json, the prompt file, the MCP config naming this server and the chat, the tools allowed, a
@@ -24,7 +26,8 @@ so the chat is driven over real connections):
    note, and only once; a message left waiting that runs as a turn of its own, a pause and thinking first: not ended
    in the pause (marked stale) nor while it thinks; under the home reach marked stale instead, and stale no more once
    its process has ended;
-5. Codex, played by a fake `codex app-server`: its home, the thread and its instructions, a turn's events, an
+5. Codex, played by a fake `codex app-server`: its home, the thread and its instructions (told what its sandbox was
+   measured to write and read, not that it writes only in its work folder), a turn's events, an
    approval it asks for declined, an interrupt, history from the log, a rewind (thread/revert); then its instructions
    changed: marked stale, once, with no new process, the first state event saying so; POST /restart ends its process
    group, a command it left running in the background with it, and says so, and the next message resumes the thread
@@ -608,6 +611,9 @@ def run_checks() -> int:
             os.environ[sc.REACH_ENV] = old_reach
     bk = hc.get("/api/atlas/scientist/backends").json()["reach"]
     check(bk["mode"] == "folder" and "no shell" in bk["claude"] and "sandbox" in bk["codex"], f"/backends says what each backend can do: {bk}")
+    check("its own work folder and the temporary folders (/tmp, /dev/shm)" in bk["codex"] and "can read files elsewhere" in bk["codex"]
+          and "writes only" not in bk["codex"],
+          "/backends, of Codex's sandbox: it writes in its work folder and the temporary folders and can read elsewhere, as measured")
     os.environ["OPENROUTER_API_KEY"] = "sk-or-test"
     env_ = sc.child_env()
     check("OPENROUTER_API_KEY" not in env_ and "THEODOLITE_OPENAI_API_KEY" not in env_ and "PATH" in env_, "the endpoints' keys are not passed to Claude Code or Codex")
@@ -813,7 +819,11 @@ def run_checks() -> int:
     check(tool["name"] == "neuron" and tool["input"] == {"layer": 3, "n": 5} and "L3 N5" in res["output"] and not res["error"], "its tool and result")
     rpcs = [x for x in clog() if x["kind"] == "rpc"]
     ts = next(x for x in rpcs if x["method"] == "thread/start")["params"]
-    check(ts["sandbox"] == "workspace-write" and "writes only in" in ts["developerInstructions"], "codex by default: its shell sandboxed to its work folder")
+    told = " ".join(ts["developerInstructions"].split())  # the instructions as one line, however they are wrapped
+    check(ts["sandbox"] == "workspace-write" and f"it writes in `{sc.work_dir()}` and in the temporary folders (`/tmp`, `/dev/shm`), can read "
+          "files elsewhere, and has no network" in told and "writes only in" not in told,
+          "codex by default: its shell in the workspace-write sandbox, and told what that sandbox was measured to write and read "
+          "(its work folder and the temporary folders; files elsewhere read), not that it writes only in its work folder")
     check(ts["config"]["mcp_servers"]["atlas"].get("default_tools_approval_mode") == "approve",
           "codex: the atlas's tools approved (in its sandbox Codex otherwise asks before each, and the chat never asks)")
     check(ts["approvalPolicy"] == "never" and ts["config"]["mcp_servers"]["atlas"]["env"] == {"THEODOLITE_URL": srv.url, "THEODOLITE_CHAT": chat2}
@@ -1289,8 +1299,12 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     # a recipe as a llama.cpp control vector: the route's file, cited in the pages' count, the file's name first
     recipe = [{"layer": 3, "n": 5, "dose": 0.35}, {"layer": 4, "n": 7, "dose": -0.5}]
     xv = await st.call("export_control_vector", {"neurons": recipe, "name": "caring"}, rec)
-    raw = hc.post("/api/atlas/control_vector", json={"neurons": [{**e, "layer": e["layer"] - 1} for e in recipe], "name": "caring"}).json()
-    check(list(xv)[0] == "file" and xv["file"] == "caring.gguf" and xv["path"] == raw["path"] == str(TMP / "atlas" / "exports" / "caring.gguf")
+    kept = Path(xv["path"]).read_bytes()
+    raw = hc.post("/api/atlas/control_vector", json={"neurons": [{**e, "layer": e["layer"] - 1} for e in recipe], "name": "caring"})
+    check(raw.status_code == 400 and "caring.gguf is already among the exports" in raw.json()["detail"]
+          and "never written over" in raw.json()["detail"] and Path(xv["path"]).read_bytes() == kept,
+          f"the route asked for the tool's file name again: refused in plain words, the file there as it was, byte for byte ({raw.text[:200]})")
+    check(list(xv)[0] == "file" and xv["file"] == "caring.gguf" and xv["path"] == str(TMP / "atlas" / "exports" / "caring.gguf")
           and Path(xv["path"]).is_file() and xv["bytes"] == Path(xv["path"]).stat().st_size
           and [e["neuron"] for e in xv["entries"]] == ["L3 N5", "L4 N7"] and [e["dose"] for e in xv["entries"]] == [0.35, -0.5]
           and [(d["tensor"], d["page_layer"]) for d in xv["directions"]] == [("direction.2", 3), ("direction.3", 4)]
@@ -1313,7 +1327,8 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check(auto["file"] == "theodolite-page3-n5-dose-0.35.gguf", f"a file left unnamed says what is in it, in the pages' count ({auto['file']})")
     for bad, says in (({"neurons": [{"layer": 1, "n": 5, "dose": 1}]}, "after layer 0"), ({"neurons": [{"layer": 3, "n": 5}]}, "its dose"),
                       ({"neurons": [{"layer": 3, "n": 5, "dose": 1, "mode": "mul"}]}, 'only "add" pushes'),
-                      ({"neurons": recipe, "name": "../caring"}, "file name")):
+                      ({"neurons": recipe, "name": "../caring"}, "file name"),
+                      ({"neurons": recipe, "name": "caring"}, "already among the exports")):
         try:
             await st.call("export_control_vector", bad, api)
             check(False, f"export_control_vector {bad} was not refused")
@@ -1358,10 +1373,12 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     said_u = st.steer_check_said({"standing": "unchecked", "nearest": {"layer": 32, "matched": 0.071, "standing": "weak"}})
     said_n = st.steer_check_said({"standing": "unchecked", "nearest": {"layer": 52, "matched": 0.755, "standing": "agrees"}})
     check("86 in 100" in said_a and "agrees with the census here" in said_a and "trial" not in said_a
-          and "(L33)" in said_u and "a weak guide" in said_u and "7 in 100" in said_u
-          and "(L53)" in said_n and "agreed with the census" in said_n
           and "dose rule alone" in st.steer_check_said({"standing": "unchecked"}) and st.steer_said({"up": ["a"], "down": ["b"]}) == {},
-          "steer_check_said: a layer that agrees, an unchecked one by its nearest checked layer in the pages' count, one with none")
+          "steer_check_said: a layer that agrees; an unchecked one rests on its dose rule alone")
+    # a layer that was not checked says so, and borrows nothing from the nearest checked layer, weak or agreeing
+    check(said_u == said_n == st.steer_check_said({"standing": "unchecked"}) and "was not checked at this layer" in said_n
+          and not any(w_ in said_n for w_ in ("L53", "L33", "agree", "weak guide", "in 100")),
+          f"steer_check_said: an unchecked layer says it was not checked, whatever the nearest checked layer found ({said_n})")
     try:
         await st.call("neuron", {"layer": 0, "n": 5}, api)
         check(False, "page layer 0 refused")
@@ -1591,6 +1608,8 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     ws = await st.call("web_summary", {"layer": 3, "n": 5}, api)
     check(ws["pooled"] == "steer" and isinstance(ws["downstream"]["when_plus"]["words"], list) and set(ws["upstream"]) == {"drives_plus", "drives_minus"},
           "web_summary pooled from the steer lens, by face each way")
+    check("left_out_at_weak_or_unchecked_steer_layers" in ws and "left_out_by_the_gate" not in ws,
+          "web_summary from the steer lens: the faces left out are counted as at layers where it is weak or was not checked")
     check(all(("when" in x) == (x["hop"] > 0) and ("drives" in x) == (x["hop"] < 0) and "w" in x for x in cn["nodes"]),
           "cone: a reader with the face the neuron fires on, a writer with the face it drives, each with its strength")
     cu = await st.call("cone", {"layer": 3, "n": 5, "model": "use"}, api)
@@ -1645,6 +1664,101 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     ov = await st.call("overview", {}, api)
     check(ov["census_layers"] == [4] and ov["indexes"]["wiring"] and ov["named"]["neurons"] == 1 and ov["proposals_awaiting_the_person"] == ["L3 N6"],
           f"overview: census at page layer 4, the indexes, the names kept, the one proposal waiting ({ov['named']}, {ov['proposals_awaiting_the_person']})")
+    # a vault edit in force: what the atlas says was read before it (`stale`: the stats index's numbers, a census;
+    # backend/atlas.py STATS_STALE, CENSUS_STALE) reaches the scientist through each tool that hands such a number
+    # over, and nothing is said once the edit is gone. A record alone stands for the edit here (no weight is changed),
+    # at the API's layer 0, so every tool answers as it did
+    from backend import atlas as atlas_routes
+    from backend.larql_vault import PatchOperationRecord
+
+    SS, CS = atlas_routes.STATS_STALE, atlas_routes.CENSUS_STALE
+    with_words = lambda rows: any(x.get("census") for x in rows)  # noqa: E731
+    near = None
+    a_.vault.active_patches.append(PatchOperationRecord(patch_id=1, op_type="DELETE", layer_idx=0, neuron_idx=1, polarity=1.0, target_concept="",
+                                                       strength=0.0, statement="DELETE LAYER 0 SLOT 1", timestamp=time.time(), orig_norm=1.0, new_norm=0.0))
+    try:
+        st_e = await st.call("steer", {"prompt": "Who are you?", "max_new": 4,
+                                       "neurons": [{"layer": 3, "n": 5}, {"layer": 3, "n": 6, "mode": "mul", "dose": 2.0}]}, api)
+        act_e = await st.call("activations", {"layer": 4, "n": 9, "text": "Alice called Bob", "neurons": [{"layer": 2, "n": 3}]}, api)
+        lp_e = await st.call("logprobs", {"text": "Who are you?", "k": 3, "neurons": [{"layer": 5, "n": 9, "dose": 2.0}]}, api)
+        check([p_.get("stale") for p_ in st_e["pushed"]] == [SS, None] and act_e["pushed"][0].get("stale") == SS and act_e["act_range"].get("stale") == SS
+              and lp_e["pushed"][0].get("stale") == SS,
+              "steer, activations and logprobs under a vault edit: an add push whose unit the stats index gave says it was read before the "
+              f"edit, a mul does not ({st_e['pushed']})")
+        cmp_e = await st.call("compare", {"neurons": [{"layer": 4, "n": 7}], "texts": ["hello there"]}, api)
+        tf_e = await st.call("top_firing", {"text": CORPUS[4], "limit": 5}, api)
+        sl_e = await st.call("steer_lens", {"layer": 3, "n": 5}, api)
+        check(cmp_e.get("scale_stale") == SS and cmp_e["neurons"][0]["act_range"].get("stale") == SS and tf_e.get("scale_stale") == SS
+              and sl_e.get("scale_stale") == SS,
+              "compare, top_firing and steer_lens under a vault edit: scores and a dose scaled by the stats index say it was read before the edit")
+        tw_e = await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "pattern": "under an edit", "fire": ["The ocean rose."], "quiet": ["Bob."]}, api)
+        pv_e = await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "behind": pv["window"], "drop": 3}, api)
+        nv_e = await st.call("neuron", {"layer": 3, "n": 5}, api)
+        check(tw_e.get("stale") == SS and pv_e.get("stale") == SS and nv_e["tests"]["+"][0]["pattern"] == "under an edit"
+              and nv_e["tests"]["+"][0].get("stale") == SS and "stale" not in nv_e["tests"]["+"][-1],
+              "test_by_writing under a vault edit at an earlier layer: the result, the cut behind a passage and the test as `neuron` lists it "
+              "say the extreme was read before the edit; a test kept before it does not")
+        bt_e = await st.call("blind_test", {"layer": 3, "n": n_b, "face": face_b, "pattern": "under an edit", "pairs": 4}, api)
+        ban_e = await st.call("blind_test_answer", {"test": bt_e["test"], "picks": ["a", "a", "a", "a"]}, api)
+        check(bt_e.get("stale") == SS and ban_e.get("stale") == SS and ban_e["pairs"] == 4,
+              "blind_test under a vault edit at an earlier layer: the test as begun says so, and so does its result")
+        tu_e = await st.call("top_units", {"layer": 4}, api)
+        sc_e = await st.call("search_census", {"query": "banana"}, api)
+        check(tu_e.get("stale") == CS and list(tu_e)[0] == "stale" and len(tu_e["ranked"]) == 2 and sc_e.get("stale") == CS
+              and [x["neuron"] for x in sc_e["results"]] == ["L4 N9"] and "census was taken before the vault edits in force" in CS,
+              "top_units and search_census under a vault edit: the census they hand over says it was taken before the edit, ahead of its rows")
+        # census words beside other things. Only a neuron whose words beat every random control's is described by them
+        # beside a link or in a search, and the census above has no controls: a second one, of the API's layer 4 (page
+        # 5), with four. Then the edited neuron's own links, read live; a neuron one of whose links carries census
+        # words (a neighbour of the API's layer 4 neuron 7); and the search, by that neuron's steer word
+        run5 = cdir / "L4-main_rel.jsonl"
+        rows5 = [{**x, "layer": 4} for x in rows] + [{**rows[0], "layer": 4, "kind": "random", "neuron": n_, "dose": 0.5, "rel_push": 0.5,
+                                                       "text": f"Some words number {n_} here, plainly."} for n_ in range(4)]
+        run5.write_text("".join(json.dumps(x) + "\n" for x in rows5))
+        cz.meta_path_of(run5).write_text(json.dumps({"layer": 4, "design_name": "main_rel", "prompts": cz.PROMPTS, "version": cz.CENSUS_VERSION,
+                                                     "doses_from": cz.DOSES_FROM["main_rel"]}))
+        atlas_routes._runs_cache.clear()  # the atlas lists the census runs again at most every five seconds
+        tu5 = await st.call("top_units", {"layer": 5}, api)  # opening the layer ranks it
+        raw7 = hc.get("/api/atlas/neuron", params={"layer": 4, "n": 7}).json()
+        near = next(((x["layer"], x["n"]) for x in raw7["writes_into"] + raw7["reads_from"] if (x["layer"], x["n"]) != (0, 1)
+                     and hc.get("/api/atlas/neuron", params={"layer": x["layer"], "n": x["n"]}).json().get("census_stale")), None)
+        check(tu5.get("stale") == CS and tu5["null"]["controls"] == 4 and near is not None,
+              f"a census with controls, and a neuron of the stand-in one of whose 24 links each way carries its words ({near})")
+        own_e = await st.call("neuron", {"layer": 1, "n": 1}, api)
+        sr_e = await st.call("search_lens", {"query": sword, "limit": 2000}, api)
+        check(own_e["wiring"] == "live" and own_e.get("scale_stale") == SS and sr_e.get("census_stale") == CS and with_words(sr_e["results"])
+              and list(sr_e).index("census_stale") < list(sr_e).index("results"),
+              "neuron and search_lens under a vault edit: links read live say they were weighed by scales read before it, and a search "
+              f"whose rows carry census words says the census was taken before it ({sword!r})")
+        if near is not None:
+            nb_e = await st.call("neuron", {"layer": near[0] + 1, "n": near[1]}, api)
+            cn_e = await st.call("cone", {"layer": near[0] + 1, "n": near[1], "limit": 1000}, api)
+            check(nb_e.get("census_stale") == CS and with_words(nb_e["writes_into"] + nb_e["reads_from"]) and "scale_stale" not in nb_e
+                  and cn_e.get("census_stale") == CS and with_words(cn_e["nodes"]) and list(cn_e).index("census_stale") < list(cn_e).index("nodes"),
+                  "neuron and cone under a vault edit: a reply whose links or nodes carry census words says the census was taken before it; "
+                  f"links from the index do not say their scales are stale (L{near[0] + 1} N{near[1]})")
+        # the flags that reached the scientist before 14 November 2026's change to the tools still do
+        ro_e = await st.call("rollouts", {"layer": 5, "n": 7, "max_chars": 50}, api)
+        dr_e = await st.call("attn_drive", {"layer": 5, "n": 9, "text": CORPUS[4], "token": "Bob"}, api)
+        xv_e = await st.call("export_control_vector", {"neurons": [{"layer": 3, "n": 6, "dose": 0.4}]}, api)
+        ov_e = await st.call("overview", {}, api)
+        n5_e = await st.call("neuron", {"layer": 5, "n": 7}, api)
+        check(ro_e.get("stale") == CS and ro_e["card"].get("stale") == CS and n5_e["census"].get("stale") == CS
+              and dr_e["act_range"].get("stale") == SS and n5_e["activation"].get("stale") == SS and n5_e["ceiling"].get("stale") == SS
+              and xv_e["unit_source"].get("stale") == SS and ov_e["push"]["scale_source"].get("stale") == SS,
+              "rollouts, attn_drive, export_control_vector, overview and neuron under a vault edit: a census, a range, a ceiling and the "
+              "push's unit each say they were read before it")
+    finally:
+        a_.vault.active_patches.clear()
+    st_g = await st.call("steer", {"layer": 3, "n": 5, "prompt": "Who are you?", "max_new": 4}, api)
+    nb_g = await st.call("neuron", {"layer": near[0] + 1, "n": near[1]}, api) if near is not None else {}
+    check(st_g["pushed"] == [{"neuron": "L3 N5", "mode": "add", "dose": 0.8}] and not any(k_ in nb_g for k_ in ("scale_stale", "census_stale"))
+          and "stale" not in await st.call("top_units", {"layer": 4}, api) and "stale" not in await st.call("search_census", {"query": "banana"}, api)
+          and "scale_stale" not in await st.call("compare", {"neurons": [{"layer": 4, "n": 7}], "texts": ["hello there"]}, api)
+          and "scale_stale" not in await st.call("steer_lens", {"layer": 3, "n": 5}, api)
+          and "census_stale" not in await st.call("search_lens", {"query": sword, "limit": 2000}, api)
+          and "stale" not in await st.call("test_by_writing", {"layer": 3, "n": 5, "face": "+", "behind": pv["window"], "drop": 3}, api),
+          "once the edit is gone the tools call nothing stale")
 
 
 if __name__ == "__main__":

@@ -61,6 +61,20 @@ const SUPPORTED =
 
 export const clampL = (s: string) => Math.max(0, Math.min(pyInt(s), 59));
 export const clampN = (s: string) => Math.max(0, Math.min(pyInt(s), 21503));
+/**
+ * The vault's refusal of a layer or a neuron the model does not have, in the server's own words
+ * (backend/larql_vault.py `_place`); null when the place exists. `slotS` null: only the layer is looked at (a
+ * search's WHERE layer, INSERT). An edit's refusal ends by saying none was made. Since 14 November 2026 the server
+ * refuses such a place; until then it read it as the last layer or neuron, and so did this page.
+ */
+export function placeRefusal(layerS: string, slotS: string | null, edit: boolean): string | null {
+  const tail = edit ? " No edit was made." : "";
+  const l = pyInt(layerS);
+  if (!(l >= 0 && l <= 59)) return "Layer " + l + " does not exist: layers count from 0 to 59 here (page layers 1 to 60)." + tail;
+  if (slotS === null) return null;
+  const n = pyInt(slotS);
+  return n >= 0 && n <= 21503 ? null : "Neuron " + n + " does not exist: each layer has 21504 (0 to 21503)." + tail;
+}
 export const isFloat = (s: string) => /^(\d+\.?\d*|\.\d+)$/.test(s);
 
 /** Python's repr() of a string, as the server's error messages print it. */
@@ -92,7 +106,7 @@ export type Parsed =
       polGiven: boolean;
     }
   | { kind: "insert"; stmt: string; layerS: string; subj: string; obj: string; strength: string | null }
-  | { kind: "error"; stmt: string; empty: boolean; num?: boolean; err: string };
+  | { kind: "error"; stmt: string; empty: boolean; num?: boolean; place?: boolean; err: string };
 
 export function parseLql(query: string): Parsed {
   const q = pyStrip(query).replace(/;+$/, "");
@@ -100,8 +114,13 @@ export function parseLql(query: string): Parsed {
   if (qu === "DESCRIBE" || qu === "SHOW LAYERS" || qu === "STATUS")
     return { kind: "describe", stmt: q, alias: qu === "DESCRIBE" ? "" : qu };
   if (qu === "ROLLBACK") return { kind: "rollback", stmt: q };
+  // a layer or a neuron the model does not have is refused, as the server refuses it: the place first, before
+  // STRENGTH is read (the server reads that only when the edit is made)
+  const noPlace = (no: string): Parsed => ({ kind: "error", stmt: q, empty: false, place: true, err: no });
   let m = RX_SEL.exec(q);
-  if (m)
+  if (m) {
+    const no = m[3] === undefined ? null : placeRefusal(m[3], null, false);
+    if (no) return noPlace(no);
     return {
       kind: "select",
       stmt: q,
@@ -110,12 +129,23 @@ export function parseLql(query: string): Parsed {
       layerS: m[3] === undefined ? null : m[3],
       limitS: m[4] === undefined ? null : m[4],
     };
+  }
   m = RX_POLE.exec(q);
-  if (m) return { kind: "pole", stmt: q, layerS: m[1], slotS: m[2], pol: m[3] === "-" ? "-" : "+", polGiven: m[3] !== undefined };
+  if (m) {
+    const no = placeRefusal(m[1], m[2], false);
+    if (no) return noPlace(no);
+    return { kind: "pole", stmt: q, layerS: m[1], slotS: m[2], pol: m[3] === "-" ? "-" : "+", polGiven: m[3] !== undefined };
+  }
   m = RX_DEL.exec(q);
-  if (m) return { kind: "delete", stmt: q, layerS: m[1], slotS: m[2] };
+  if (m) {
+    const no = placeRefusal(m[1], m[2], true);
+    if (no) return noPlace(no);
+    return { kind: "delete", stmt: q, layerS: m[1], slotS: m[2] };
+  }
   m = RX_UPD.exec(q);
   if (m) {
+    const no = placeRefusal(m[1], m[2], true);
+    if (no) return noPlace(no);
     if (m[4] !== undefined && !isFloat(m[4]))
       return { kind: "error", stmt: q, empty: false, num: true, err: "could not convert string to float: " + pyRepr(m[4]) };
     return {
@@ -131,6 +161,8 @@ export function parseLql(query: string): Parsed {
   }
   m = RX_INS.exec(q);
   if (m) {
+    const no = placeRefusal(m[1], null, true);
+    if (no) return noPlace(no);
     if (m[4] !== undefined && !isFloat(m[4]))
       return { kind: "error", stmt: q, empty: false, num: true, err: "could not convert string to float: " + pyRepr(m[4]) };
     return { kind: "insert", stmt: q, layerS: m[1], subj: m[2], obj: m[3], strength: m[4] === undefined ? null : m[4] };

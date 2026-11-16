@@ -1273,12 +1273,13 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <Note>
             How far to trust it depends on the layer. The steer lens lists whatever rose most, and nothing in it sets
             one neuron against another, so part of a reading can be what any push at that layer does. On this model it
-            agrees with the census from layer 40 up: for six to nine in ten of the neurons that stand out there, one of
-            its words is a census word. Below that it is a weak guide: a third at layer 39, one or two in ten at layers
-            33 to 38, and nothing checks it below 33, where about half of each reading is words that many of the
-            layer’s neurons share. (Nothing checks it from layer 54 up either; there each neuron’s words are its own,
-            and the nearest checked layer agrees.) The details show those shared words faint and say what was found at the neuron’s
-            layer; where the lens is a weak guide, a neuron’s line of words leaves it out.
+            agrees with the census at layers 40 to 53: for six to nine in ten of the neurons that stand out there, one
+            of its words is a census word. At layers 33 to 39 it is a weak guide: a third at layer 39, one or two in ten
+            at layers 33 to 38. Nothing checks it below layer 33, where about half of each reading is words that many of
+            the layer’s neurons share, nor from layer 54 up, where each neuron’s words are its own but no census is
+            there to set them beside. The details show those shared words faint and say what was found at the neuron’s
+            layer, or that it was not checked; where the lens is a weak guide or was not checked, a neuron’s line of
+            words leaves it out.
           </Note>
           <EntryApparatus title="the steer lens">
             ±d<sub>ℓ</sub> · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M> of its
@@ -1402,13 +1403,15 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <Note>
             It runs on Claude Code or Codex where they are installed beside the server, or on any service that speaks
             OpenAI’s chat completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. Under Claude Code
-            it reads and writes files only in its own work folder and has no shell, unless the server is started to give
-            it a shell over your home folder, which it then uses without asking; the page says which, and asks first.
+            it reads and writes files only in its own work folder and has no shell; under Codex it runs commands in a
+            sandbox with no network that writes there and in the temporary folders and can read your other files. Either
+            has a shell over your home folder when the server is started to give it one, which it then uses without
+            asking; the page says which, and asks first.
             What it says is a lead to check: it cites the neurons it read, so open them, and a name it gives is marked as
             its own guess.
           </Note>
           <EntryApparatus title="the scientist">
-            30 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (
+            35 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (
             <M>backend/scientist_mcp.py</M>) and to an OpenAI-compatible endpoint as functions, the tool loop then run by
             the server; its instructions are <M>backend/scientist_prompt.md</M> and <M>scientist_methodology.md</M>.
             Endpoints come from the environment or <M>endpoints.json</M>, their keys only from environment variables.

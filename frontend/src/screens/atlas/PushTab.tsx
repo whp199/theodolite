@@ -266,6 +266,7 @@ const DoseNote: React.FC<{ dose: number }> = ({ dose }) => {
     <p className="muted atlas-small" style={{ margin: "2px 0 0" }}>
       {dose} of the stream’s usual length is {over < 1 ? "less than" : `${over.toFixed(1)}×`} the most this neuron can ever write by itself
       {c.source && c.source.includes("provisional") ? ` (the usual length read over ${c.source})` : ""}.
+      {c.stale ? " The stream’s usual length here was read before the vault edits now in force." : ""}
     </p>
   );
 };

@@ -98,17 +98,15 @@ def label(check: Optional[Dict[str, Any]]) -> Optional[str]:
 
 
 def steer_check_said(c: Dict[str, Any]) -> str:
-    """How the steer lens fared beside the census at a layer (the atlas's `check`, backend/steer_check.py), in a line."""
+    """How the steer lens fared beside the census at a layer (the atlas's `check`, backend/steer_check.py), in a line.
+    A layer that was not checked says so: what the nearest checked layer found (`nearest`) is that layer's, and is
+    not said of this one."""
     pct = lambda x: f"{round(100 * float(x))} in 100"  # noqa: E731
     shared = (f" On average {c['shared']:g} of a neuron's {c.get('of', 12)} steer-lens word-pieces at this layer are listed by many "
               "of its neurons whichever is pushed." if c.get("shared") else "")
     if c.get("standing") == "unchecked":
-        near = c.get("nearest")
-        if not near:
-            return "No census at this layer checks the steer lens: it rests on its dose rule alone." + shared
-        how = "it agreed with the census" if near.get("standing") == "agrees" else "it was a weak guide"
-        return (f"No census at this layer checks the steer lens. At the nearest layer with one (L{int(near['layer']) + 1}) {how}: it "
-                f"shared a word with the census for {pct(near['matched'])} of the neurons that stand out there." + shared)
+        return ("The steer lens was not checked at this layer: no census here checks it, so it rests on its dose rule alone. What a "
+                "checked layer nearby found is that layer's, not this one's. Weigh the model's own answers above it." + shared)
     kind = "census trial" if (c.get("census") or {}).get("kind") == "trial" else "census"
     head = (f"Beside this layer's {kind} the steer lens shares a word with the census for {pct(c['matched'])} of the neurons that "
             f"stand out there ({pct(c['shuffled'])} with the neurons shuffled)")
@@ -138,7 +136,7 @@ def blind_card(neuron: str, r: Dict[str, Any]) -> Dict[str, Any]:
     what the other places tried say of the phrase by itself."""
     return {"neuron": neuron, "face": r["face"], "said": r["said"],
             **{k: r[k] for k in ("pairs", "right", "unanswered", "by_chance", "p", "judge", "control", "before", "near_pairs", "by_match",
-                                 "places", "strong_pairs") if k in r},
+                                 "places", "strong_pairs", "stale") if k in r},
             "by_pair": [{"truth": x["truth"], "picked": x["picked"], "fires_rel": x["fires"]["rel"], "quiet_rel": x["quiet"]["rel"],
                          "quiet_is": x["quiet"].get("match")} for x in r["by_pair"]],
             "kept": "on the face, with the pattern"}
@@ -344,7 +342,9 @@ TOOLS: List[Dict[str, Any]] = [
                      "median length leaving its layer, any sign), at most 32",
                      "items": {"type": "object", "properties": {**LN, "dose": {"type": "number"}}, "required": ["layer", "n", "dose"]}},
          "name": {"type": "string", "description": "the file's name: letters, digits, '.', '_' and '-' (.gguf is added); a "
-                  "file of that name among the exports is written over. Left out: a name that says what is in it"}},
+                  "file of that name already among the exports is never written over: the call is refused, so give another "
+                  "name, and leave the file there alone (a person may have exported it). Left out: a name that says what is "
+                  "in it"}},
                      "required": ["neurons"]}},
     {"name": "activations", "description": "Live: the neuron's activation at every display unit of a text (chat: true makes it a user turn), "
      "beside its range from `neuron`. `neurons` and `heads` are pushed or scaled in the same pass, to test what drives it: compare "
@@ -571,7 +571,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             f = r["faces"][s]
             faces[s] = {"lens": f["lens"], "eye": f["eye"], "label": label(f["check"]), "shared_top10": (f["check"] or {}).get("shared_top10")}
         kept = (await api.get("/api/atlas/neuron/tests", layer=a["layer"], n=a["n"])).get("tests") or {}
-        tests = {s: [{"pattern": t["pattern"], "said": t["said"], "at": t["at"]} for t in ts] for s, ts in kept.items() if ts}
+        tests = {s: [{"pattern": t["pattern"], "said": t["said"], "at": t["at"], **({"stale": t["stale"]} if t.get("stale") else {})}
+                     for t in ts] for s, ts in kept.items() if ts}
         return {
             **({"tests": tests} if tests else {}),
             "neuron": cite(a["layer"], a["n"]), "name": r.get("name") or None, "note": entry.get("note") or None,
@@ -579,7 +580,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             **({"awaiting_the_person": [p for p in ("name", "note") if p in waiting]} if waiting else {}),
             "edited_in_vault": r.get("edited"), "faces": faces, "gate_trigger": r.get("gate_trigger"),
             "steer": steer_card(r.get("steer")), "steer_stale": r.get("steer_stale"), "activation": r.get("act_range"), "ceiling": r.get("ceiling"),
-            "census": r.get("census"), "wiring": r.get("wiring_source"),
+            "census": r.get("census"), "wiring": r.get("wiring_source"), **{k: r[k] for k in ("scale_stale", "census_stale") if k in r},
             "writes_into": [_slim_link(c) for c in r["writes_into"]], "reads_from": [_slim_link(c) for c in r["reads_from"]],
             "lens": (r.get("lens") or {}).get("name"),
         }
@@ -619,7 +620,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         nodes = [{"neuron": cite(x["layer"], x["n"]), "hop": x["hop"], "w": x["w"], "z": x["z"], "face": x["face"],
                   **{k_: x[k_] for k_ in ("when", "drives") if k_ in x}, **face_words(x.get("words"), 5),
                   **({"census": x["census"]} if x.get("census") else {}), **({"name": x["name"]} if x.get("name") else {})} for x in r["nodes"]]
-        return {"neurons": r["neurons"], "per_hop": r["per_hop"], "read": r.get("model", "rest"), "note": r["note"], "nodes": nodes}
+        return {"neurons": r["neurons"], "per_hop": r["per_hop"], "read": r.get("model", "rest"), "note": r["note"],
+                **({"census_stale": r["census_stale"]} if r.get("census_stale") else {}), "nodes": nodes}
     if name == "web_summary":
         _need(a, "layer", "n")
         r = await api.get("/api/atlas/web/summary", layer=a["layer"], n=a["n"], first=a.get("first", 5), k=a.get("k", 2), top=20,
@@ -630,8 +632,9 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             return {"ready": False, "note": r.get("why") or missing.get(r.get("missing"), "not ready")}
         slim = lambda lst: [f"{t['tok']} ({t['n']})" for t in lst]  # noqa: E731
         d, u = r["down"], r["up"]
-        # from the steer lens, the faces left out are those at layers where its own check counts it a weak guide
-        left_out = "left_out_at_weak_steer_layers" if r["src"] == "steer" else "left_out_by_the_gate"
+        # from the steer lens, the faces left out are those at layers where its own check counts it a weak guide or did
+        # not check it
+        left_out = "left_out_at_weak_or_unchecked_steer_layers" if r["src"] == "steer" else "left_out_by_the_gate"
         return {"pooled": r["src"], "links": r["links"], left_out: r.get("gated"), "read": r.get("model", "rest"),
                 "downstream": {"when_plus": {"neurons": d["+"]["neurons"], "words": slim(d["+"]["words"])},
                                "when_minus": {"neurons": d["-"]["neurons"], "words": slim(d["-"]["words"])}},
@@ -643,6 +646,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         if not r.get("ready"):
             return {"ready": False, "note": "neither the lens index nor the steer-lens index is built"}
         return {"word_pieces_matched": r["tokens"], "total": r["total"], "held_back_by_the_gate": r.get("held_back", 0),
+                **({"census_stale": r["census_stale"]} if r.get("census_stale") else {}),
                 "results": [{"neuron": cite(x["layer"], x["n"]), "face": x["sign"], "matched_in": x["src"], "rank": x["rank"],
                              **face_words(x["words"], 6), **({"census": x["census"]} if x.get("census") else {}),
                              **({"name": x["name"]} if x.get("name") else {})} for x in r["results"]]}
@@ -658,6 +662,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
                    {"matched": ch["neurons"], "controls_matched": ch["controls"], "controls": ch["of_controls"],
                     **({"by_chance_at_most": ch["at_most"]} if ch.get("at_most") is not None else {"by_chance_alone": ch["expected"]})})
         return {"query": r["terms"], "total": r["total"], "against_chance": against, "says": r["says"],
+                **({"stale": r["stale"]} if r.get("stale") else {}),
                 "layers": [{"layer": int(c["layer"]) + 1, "neurons_matched": c["neurons"], "by_chance_alone": c["by_chance"],
                             "above_controls": c["above"], "controls_matched": c["controls"], "controls": c["of_controls"],
                             **({} if c.get("doses_calibrated") else {"doses_calibrated": False})} for c in r["layers"]],
@@ -673,7 +678,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             return {"ranked": [], "note": "this layer has no census"}
         card = await api.get("/api/atlas/census/card", layer=a["layer"])
         us.sort(key=lambda u: -u["z"])
-        return {"null": card.get("null"), "design": card.get("design"), "doses_from": card.get("doses_from"),
+        return {**({"stale": card["stale"]} if card.get("stale") else {}),
+                "null": card.get("null"), "design": card.get("design"), "doses_from": card.get("doses_from"),
                 "doses": card.get("doses"), "reading": card.get("reading"), "doses_calibrated": card.get("doses_calibrated") is True,
                 "push_unit_from": card.get("p50_source"), "lead_says": card.get("lead_says"),
                 **({"words_left_out": card["collapse"]["rule"]} if card.get("collapse") else {}),
@@ -751,6 +757,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         _need(a, "neurons", "texts")
         r = await api.post("/api/atlas/compare", {k: a[k] for k in ("neurons", "texts", "chat") if a.get(k) is not None})
         return {"texts": r["texts"], "scale_source": (r.get("scale_source") or {}).get("corpus"),
+                **({"scale_stale": r["scale_source"]["stale"]} if (r.get("scale_source") or {}).get("stale") else {}),
                 "neurons": [{"neuron": cite(x["layer"], x["n"]), "act_range": x["act_range"], "by_text": x["by_text"]} for x in r["neurons"]]}
     if name == "logprobs":
         _need(a, "text")
@@ -763,13 +770,15 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         _need(a, "text")
         r = await api.post("/api/atlas/fires", {k: a[k] for k in ("text", "token", "at", "limit", "layers", "chat") if a.get(k) is not None})
         return {"tokens": r["tokens"], "at": r["at"], "note": r["note"],
+                **({"scale_stale": r["scale_source"]["stale"]} if (r.get("scale_source") or {}).get("stale") else {}),
                 "neurons": [{"neuron": cite(x["layer"], x["n"]), "face": x["face"], "score": x["score"], "act": x["act"], "token": x["token"],
                              **face_words(x.get("words"), 6)} for x in r["results"]]}
     if name == "steer_lens":
         _need(a, "layer", "n")
         r = await api.post(f"/api/atlas/neuron/steer_lens?layer={int(a['layer'])}&n={int(a['n'])}", {})
         return {"neuron": cite(a["layer"], a["n"]), **{k: r[k] for k in ("up", "down", "kl_up", "kl_down", "dose")},
-                **{k: r[k] for k in ("dose_from", "dose_rule", "dose_note") if r.get(k) is not None}, **steer_said(r)}
+                **{k: r[k] for k in ("dose_from", "dose_rule", "dose_note") if r.get(k) is not None},
+                **({"scale_stale": r["scale_source"]["stale"]} if (r.get("scale_source") or {}).get("stale") else {}), **steer_said(r)}
     if name == "test_by_writing":
         _need(a, "layer", "n")
         behind = {"behind": int(a["behind"]), "drop": int(a.get("drop", 8))} if a.get("behind") is not None else {}
@@ -778,6 +787,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
                               window=behind["behind"], drop=behind["drop"])
             return {"neuron": cite(a["layer"], a["n"]), "face": r["face"],
                     **{k: r[k] for k in ("window", "drop", "kept_tail", "dropped", "in_window")},
+                    **({"stale": r["stale"]} if r.get("stale") else {}),
                     "next": "call again with pattern, fire (endings to the pattern) and quiet (near-miss endings), the same behind and drop"}
         _need(a, "pattern", "fire")
         r = await api.post("/api/atlas/neuron/written_test", {
@@ -785,7 +795,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             "quiet": a.get("quiet") or [], "chat": bool(a.get("chat", False)), "by": "scientist", **behind})
         return {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "said": r["said"],
                 **{k: r[k] for k in ("fire", "fired", "beat_corpus", "strongest", "quiet", "quiet_fired", "quiet_strongest", "apart",
-                                     "fires_at", "rel_to")},
+                                     "fires_at", "rel_to")}, **({"stale": r["stale"]} if r.get("stale") else {}),
                 **({"own": r["own"]} if r.get("own") else {}), **({"behind": r["behind"]} if r.get("behind") else {}),
                 "texts": r["texts"], "kept": "on the face, with the pattern"}
     if name == "blind_test":
@@ -802,7 +812,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             if "Name the endpoint" not in str(exc):
                 raise
         return {"neuron": cite(a["layer"], a["n"]), "face": start["face"], "test": start["test"], "pairs": start["pairs"],
-                "kept_back": start["kept_back"],
+                "kept_back": start["kept_back"], **({"stale": start["stale"]} if start.get("stale") else {}),
                 "note": "No endpoint is here to read blind, so the pairs are yours: answer with blind_test_answer (test, picks), "
                         "from the pattern alone. The result will say the reader was you, who have seen this face's other passages."}
     if name == "blind_test_answer":
@@ -883,7 +893,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
 def _cite_push(p: Dict[str, Any]) -> Dict[str, Any]:
     if "head" in p:
         return {"head": f"L{p['layer'] + 1} " + ("all heads" if p["head"] == "all" else f"h{p['head']}"), "scale": p.get("scale")}
-    return {"neuron": f"L{p['layer'] + 1} " + ("feed-forward (all)" if p.get("n") is None else f"N{p['n']}"), "mode": p.get("mode"), "dose": p.get("dose")}
+    return {"neuron": f"L{p['layer'] + 1} " + ("feed-forward (all)" if p.get("n") is None else f"N{p['n']}"), "mode": p.get("mode"), "dose": p.get("dose"),
+            **({"stale": p["stale"]} if p.get("stale") else {})}
 
 
 def as_text(result: Any, cut: Optional[int] = None) -> str:

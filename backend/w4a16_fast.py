@@ -1,6 +1,7 @@
 """Faster ways to unpack the checkpoint's 4-bit weights, each giving the very bits the runtime's own unpacker gives
-(`engine_runtime.dequantize_w4a16_full`), installed from outside the runtime (`install`): R4 pins engine_runtime.py by
-sha256 (experiments/scripts/R4_common.py), so the file is left byte for byte as it is.
+(`engine_runtime.dequantize_w4a16_full`), installed from outside the runtime (`install`): the instrument records
+engine_runtime.py's sha256 (scripts/runtime_files.py; R4 pinned the file, experiments/scripts/R4_common.py, and only
+its loader has changed since), so a change to it is a recorded one, and the unpacker in it is left as it is.
 
 Every forward of the runtime unpacks all 410 quantised linears from their packed int32 words (eight 4-bit pieces a
 word, a bf16 scale per 32 weights) with five eager operations, three of them over int32 tensors four bytes a weight
@@ -470,6 +471,12 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
     on_cuda = any(d.startswith("cuda") for d in devices)
 
     if mode in ("lut", "compiled"):
+        if mode == "compiled":
+            # what torch keeps of each compiled graph on disk goes to a folder of this account's own, not the
+            # temporary folder (backend/runtime_factory.py); imported here, so importing this module loads nothing more
+            from backend.runtime_factory import private_compile_cache
+
+            private_compile_cache()
         fast: Unpacker = dequantize_w4a16_full_lut if mode == "lut" else dequantize_w4a16_full_compiled
         test = True if mode == "compiled" else (on_cuda if self_test is None else bool(self_test))
         tested: Set[_Key] = set()

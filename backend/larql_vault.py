@@ -18,6 +18,18 @@ Supported LQL & .patch Operations:
   - `DELETE FROM LAYER <l> WHERE slot = <i>`
   - `ROLLBACK`
 
+Layers and neurons count from 0 (`<l>` 0-59 and `<i>` 0-21,503 on the 31B). A statement, or a call of the vault's own
+methods, that names a layer or a neuron the model does not have is refused in plain words (`_place`): it is never read
+as the last one in its stead, and nothing is read, written or edited. ROLLBACK clears every overlay on every module
+that carries the overlay dicts, attention's linears among them, whatever the model's layer count
+(`_overlaid_modules`), and every record. `active_patches_count` (an edit's reply, DESCRIBE) counts the edits in force,
+the latest of each neuron (`edits_in_force`); DESCRIBE's `active_patches` lists every record, replaced ones among them.
+
+UPDATE and INSERT add the word's direction to the column as it is stored; the post-feed-forward norm then multiplies
+each dimension by its own weight on the way to the stream, so the stream does not receive the direction asked for.
+`EDIT_DIRECTION_CAUTION` says what that means and what the study's records imply of it on the 31B; DESCRIBE sends it
+in `edit_method`. The arithmetic itself is as it was.
+
 The statements that read words through the J++ lens (the two NEAREST searches and DESCRIBE POLE) or write an edit along
 a direction pulled back through it (UPDATE, INSERT) name the lens in their reply, under "lens" (the last key;
 `TheodoliteRuntime.lens_card`, with a `caution` on how far to trust its words), as the scientist tools do. The two that
@@ -74,8 +86,54 @@ from backend.theodolite_math import (
     unembed_gemma4,
 )
 
-# What an edit is, for DESCRIBE (and the pages): E6 §3, item 12; REPORT §3.3
-EDIT_METHOD = "one down_proj column per edit, rank one, no covariance solve: named after MEMIT, not MEMIT"
+# What an UPDATE's or INSERT's direction meets on its way to the stream. `apply_patch_surgery` adds d, the word's
+# direction pulled back through the lens (unit length, in the stream's space), to the stored down_proj column. The
+# block's output then passes the post-feed-forward norm, x / rms(x) * w_post, so the stream receives w_post (.) d and
+# not d; writing d itself would take d / w_post in the column. NEAREST and DESCRIBE POLE do multiply the column by
+# w_post before they read it (`query_nearest_edges`, `inspect_bipolar_slot`), so the search and the edit disagree.
+# The arithmetic is left as it is: the recorded example (experiments/results/vault_example_edit/) and the page's
+# example edit rest on it.
+# What the study recorded of the 31B, all measured 16 October 2026 (layers counted from 0):
+# - w_post, 60 layers of 5,376: from 0.00016 to 63, mean 0.737, none negative
+#   (experiments/results/E4_causal_20_normweights.json.full.json);
+# - a J++ pullback lies 99-100% in the quietest tenth of the dimensions from layer 35 up, whatever the words. The
+#   vault's own query direction, which is the d an UPDATE adds, is one (experiments/results/E6_tool_audit_REPORT.md
+#   §3 item 6 and §4b). Word pairs' pullbacks have 0.988, 0.999 and 1.000 of their squared length there at layers 35,
+#   40 and 45-58, and 0.80-0.89 of it in the 181 persistently quiet dimensions at layer 40, 0.56-0.79 at layer 30
+#   (experiments/results/V6_quiet_dims_NOTES.md §2);
+# - on those 181 the weights of the two norms that write to the stream (after attention, after the feed-forward
+#   block) are 0.001-0.003 of the others' at layers 30-58 (V6_quiet_dims_NOTES.md §1, the write-gain ratio).
+# Inferred from these, not measured on a running edit: at layers 35-58 most of d lies where w_post is about a
+# thousandth of the rest, so most of the push asked for does not reach the stream, and what does reach it points
+# mostly elsewhere than along d (never against it: no weight is negative). Nothing here is said of the layers below
+# 35, where the records put less of a pullback in the quiet dimensions, nor of the last layer, whose lens is the
+# identity; the page's example edit is made there. Nor is anything said of what the later layers make of the little
+# that arrives: the same notes (§1) have them read the 181 dimensions with a gain 260-1,700 times the others' at
+# layers 40-58.
+# A direct reading on 14 November 2026 agreed (on the CPU, no model run: w_post, the rows of " six", " she" and
+# " eight" and the lens, read from the checkpoint's file at revision 52f3f65b and the shipped J++ lens's at e166deb5):
+# the cosine of d with w_post (.) d was 0.12-0.27 at layers 36-58 and 0.09-0.84 over all 60, with over 99.8% of d's
+# squared length at layers 36-58 in dimensions whose weight is under a tenth of the layer's median. Its scripts are
+# not kept in the repository, so the reply below quotes the study's records and not these figures.
+EDIT_DIRECTION_CAUTION = (
+    "UPDATE and INSERT add the word's direction, pulled back through the lens, to the column as it is stored. The "
+    "post-feed-forward norm then multiplies each dimension by its own weight, so the stream receives that direction "
+    "times the weight, not the direction itself: dimensions whose weight is small are under-written, those whose "
+    "weight is large over-written (NEAREST and DESCRIBE POLE do read the column times the weight). A record's "
+    "orig_norm and new_norm are the stored column's lengths, not the write's. Of Gemma-4-31B the study's records (all "
+    "measured 16 October 2026) give the weights as 0.00016 to 63, none negative, so the push keeps the sign asked "
+    "for; but they put 99-100% of a direction pulled back through the lens in the quietest tenth of the dimensions "
+    "at layers 35-58 (counted from 0), four fifths or more of it at layer 40 in the 181 persistently quiet ones, "
+    "where the weight is 0.001-0.003 of the others'. Inferred from those records, not measured on a running edit: "
+    "at those layers most of the push asked for does not reach the stream, and what does reach it points mostly "
+    "elsewhere than along the word's direction."
+)
+# What an edit is, for DESCRIBE (and the pages): E6 §3, item 12; REPORT §3.3. Its first words are as first sent; the
+# caution on an UPDATE's direction follows them.
+EDIT_METHOD = (
+    "one down_proj column per edit, rank one, no covariance solve: named after MEMIT, not MEMIT. "
+    + EDIT_DIRECTION_CAUTION
+)
 # A voice's answer: how long it may run (VoiceRequest below takes the same bounds), and its default.
 # V7 judged steering by 12-word-piece greedy answers (V7_tool_bugs_NOTES.md), hence 12.
 VOICE_MAX_NEW_TOKENS_DEFAULT = 12
@@ -241,6 +299,54 @@ class LarqlVaultEngine:
     def _edited_neurons(self) -> Set[Tuple[int, int]]:
         return {(p.layer_idx, p.neuron_idx) for p in self.edits_in_force()}
 
+    def _n_layers(self) -> int:
+        """How many layers the model has: the runtime's own count where it holds its layers (a stand-in's six, say),
+        else the 31B's 60 (`N_LAYERS`, read when asked)."""
+        layers = getattr(self.runtime, "_decoder_layers", None)
+        return len(layers) if layers is not None else N_LAYERS
+
+    def _place(self, layer_idx: Any, neuron_idx: Any = None, edit: bool = False) -> Tuple[int, Optional[int]]:
+        """`(layer_idx, neuron_idx)` as whole numbers, both counted from 0, or a refusal in plain words (ValueError)
+        when the model has no such layer or a layer no such neuron. Nothing is read as the last one in its stead: a
+        statement naming layer 99 is refused, not run on layer 59. `neuron_idx` None (a search's layer, INSERT's
+        before its neuron is chosen) is not looked at. For an `edit` the refusal ends by saying that none was made.
+        A layer's neurons are counted as the 31B's 21,504 (`D_FF`), whatever the model."""
+        none_made = " No edit was made." if edit else ""
+        n_layers = self._n_layers()
+        layer = int(layer_idx)
+        if not 0 <= layer < n_layers:
+            raise ValueError(
+                f"Layer {layer} does not exist: layers count from 0 to {n_layers - 1} here (page layers 1 to "
+                f"{n_layers}).{none_made}"
+            )
+        if neuron_idx is None:
+            return layer, None
+        neuron = int(neuron_idx)
+        if not 0 <= neuron < D_FF:
+            raise ValueError(f"Neuron {neuron} does not exist: each layer has {D_FF} (0 to {D_FF - 1}).{none_made}")
+        return layer, neuron
+
+    def _overlaid_modules(self) -> List[Any]:
+        """Every module that carries an overlay dict (`_memit_col_overlays`, `_memit_row_overlays`), each once: every
+        module of the model the runtime holds (`hf_model`: the forward lays the dicts on at every packed linear,
+        attention's q, k, v and o among them, engine_runtime `_w4a16_forward`), and each layer's feed-forward
+        projections as `get_mlp_module` gives them, for as many layers as the model has (`_n_layers`), which is all a
+        runtime with no model tree offers."""
+        found: Dict[int, Any] = {}
+        model = getattr(self.runtime, "hf_model", None)
+        if isinstance(model, torch.nn.Module):
+            for mod in model.modules():
+                found[id(mod)] = mod
+        for l in range(self._n_layers()):
+            mlp = self.runtime.get_mlp_module(l)
+            for name in ("down_proj", "gate_proj", "up_proj"):
+                proj = getattr(mlp, name, None)
+                if proj is not None:
+                    found[id(proj)] = proj
+        return [
+            m for m in found.values() if hasattr(m, "_memit_col_overlays") or hasattr(m, "_memit_row_overlays")
+        ]
+
     def _lens_id(self) -> Optional[str]:
         card = self.runtime.lens_card()
         return card.get("id") if card else None
@@ -261,7 +367,8 @@ class LarqlVaultEngine:
             "vocab_size": VOCAB_SIZE,
             "global_attention_layers_0based": list(GLOBAL_ATTN_LAYERS_0BASED),
             "cli_binaries": cli_info,
-            "active_patches_count": len(self.active_patches),
+            # the edits in force (the latest of each neuron); the list after it holds every record, replaced ones too
+            "active_patches_count": len(self.edits_in_force()),
             "active_patches": [asdict(p) for p in self.active_patches],
             "edit_method": EDIT_METHOD,
         }
@@ -280,10 +387,11 @@ class LarqlVaultEngine:
 
         Finds the Bipolar GeGLU FFN slots `(layer_idx, i, polarity)` in `W_down[layer_idx]`
         (or `W_gate[layer_idx]`) whose J++-aligned write vector (or gate read vector) has maximal
-        alignment with `<concept>`'s unembedding direction `W_U[token_id]`.
+        alignment with `<concept>`'s unembedding direction `W_U[token_id]`. A layer the model does not have is
+        refused in plain words (`_place`), before anything is read.
         """
         t0 = time.perf_counter()
-        layer_idx = max(0, min(int(layer_idx), N_LAYERS - 1))
+        layer_idx, _ = self._place(layer_idx)
         token_id, token_str = self.runtime.resolve_concept_token_id(concept)
 
         # Target unembedding vector u in [5376]
@@ -388,9 +496,9 @@ class LarqlVaultEngine:
         polarity: float = 1.0,
         top_k_tokens: int = 8,
     ) -> Dict[str, Any]:
-        """Inspect both North (+1) and South (-1) poles (and requested polarity) of neuron `(layer_idx, neuron_idx)`."""
-        layer_idx = max(0, min(int(layer_idx), N_LAYERS - 1))
-        neuron_idx = max(0, min(int(neuron_idx), D_FF - 1))
+        """Inspect both North (+1) and South (-1) poles (and requested polarity) of neuron `(layer_idx, neuron_idx)`.
+        A layer or a neuron the model does not have is refused in plain words (`_place`), before anything is read."""
+        layer_idx, neuron_idx = self._place(layer_idx, neuron_idx)
         pol_sign = 1.0 if float(polarity) >= 0 else -1.0
 
         idx_t = torch.tensor([neuron_idx], device=self.runtime.device, dtype=torch.long)
@@ -476,9 +584,13 @@ class LarqlVaultEngine:
         `down_proj`, overlaid (rank one, no covariance solve: named after MEMIT, not MEMIT). `INSERT` reads `gate_proj`
         only to choose the neuron; it edits only the `down_proj` column, as the others do (E6 §3, item 12). A later
         edit of the same neuron replaces its overlay, and its record names the one it replaced (`replaces_patch`).
+        A layer or a neuron the model does not have is refused in plain words (`_place`), before anything is touched.
+        `UPDATE` and `INSERT` add the word's direction to the column as it is stored, without dividing by the
+        post-feed-forward norm's weight, so the stream receives that direction times the weight
+        (`EDIT_DIRECTION_CAUTION`); the reply's `active_patches_count` counts the edits in force after this one.
         """
         op = op_type.upper().strip()
-        layer_idx = max(0, min(int(layer_idx), N_LAYERS - 1))
+        layer_idx, neuron_idx = self._place(layer_idx, neuron_idx, edit=True)
         mlp = self.runtime.get_mlp_module(layer_idx)
         down_proj = mlp.down_proj
         if not hasattr(down_proj, "_memit_col_overlays"):
@@ -494,10 +606,9 @@ class LarqlVaultEngine:
                 top_k=1,
                 matrix_target="gate_proj" if subject_concept else "down_proj",
             )
-            neuron_idx = int(nearest["results"][0]["neuron_idx"])
+            neuron_idx = int(nearest["results"][0]["neuron_idx"])  # the vault's own choice among the layer's neurons
             polarity = float(nearest["results"][0]["polarity_num"])
 
-        neuron_idx = max(0, min(int(neuron_idx), D_FF - 1))
         idx_t = torch.tensor([neuron_idx], device=self.runtime.device, dtype=torch.long)
 
         # Get current/original column (W4A16, GGUF or plain: `gguf_weights.dense_cols`)
@@ -516,7 +627,9 @@ class LarqlVaultEngine:
             J_l = self.runtime.jpp_lenses[layer_idx].float()
             pulled_dir = F.normalize(u_scaled @ J_l, dim=-1)
             pol_sign = 1.0 if float(polarity) >= 0 else -1.0
-            # Blend or set column to pulled-back target direction scaled by strength * orig_norm
+            # Blend or set column to pulled-back target direction scaled by strength * orig_norm. The direction is in
+            # the stream's space and the column is not: the post-feed-forward norm's weight is not divided out here,
+            # though NEAREST multiplies by it (EDIT_DIRECTION_CAUTION). Left so: recorded results rest on it.
             new_col = (
                 orig_col.float() + pol_sign * float(strength) * max(orig_norm, 0.25) * pulled_dir
             ).to(dtype=orig_col.dtype)
@@ -550,19 +663,21 @@ class LarqlVaultEngine:
         return {
             "status": "applied",
             "patch": asdict(rec),
-            "active_patches_count": len(self.active_patches),
+            # the edits in force now (the latest of each neuron), this one among them: a replaced edit is not counted
+            "active_patches_count": len(self.edits_in_force()),
         }
 
     def rollback_patches(self) -> Dict[str, Any]:
-        """Clear all active `.patch` overlays (the one-neuron column edits) across all 60 layers, and their records."""
+        """Clear every overlay, column and row, on every module that carries the overlay dicts (`_overlaid_modules`:
+        each layer's feed-forward projections and, where the runtime holds the model, every other linear its forward
+        lays overlays on, attention's among them), whatever the model's layer count, and every edit's record.
+        `cleared_patches` counts the records cleared, replaced ones among them."""
         cleared = len(self.active_patches)
-        for l in range(N_LAYERS):
-            mlp = self.runtime.get_mlp_module(l)
-            for proj in (mlp.down_proj, mlp.gate_proj, mlp.up_proj):
-                if hasattr(proj, "_memit_col_overlays"):
-                    proj._memit_col_overlays.clear()
-                if hasattr(proj, "_memit_row_overlays"):
-                    proj._memit_row_overlays.clear()
+        for mod in self._overlaid_modules():
+            for name in ("_memit_col_overlays", "_memit_row_overlays"):
+                overlays = getattr(mod, name, None)
+                if overlays is not None:
+                    overlays.clear()
         self.active_patches.clear()
         return {"status": "rolled_back", "cleared_patches": cleared, "active_patches_count": 0}
 
@@ -679,7 +794,8 @@ class LarqlVaultEngine:
         read neuron labels, carry "label_gate" just before it, and DESCRIBE POLE, given a notes' reader, the neuron's
         "field_notes" just before that (`_field_notes`); the rest reply as before. With a `voice`, an edit
         (DELETE, UPDATE, INSERT) is heard before and after (`_heard`; the caller holds the GPU lock), and its reply
-        carries "voice" before "lens"; every other statement ignores it."""
+        carries "voice" before "lens"; every other statement ignores it. A statement that names a layer or a neuron
+        the model does not have is refused in plain words (`_place`; ValueError), an edit before its voice is written."""
         q = query.strip().rstrip(";")
         q_upper = q.upper()
 
@@ -720,10 +836,10 @@ class LarqlVaultEngine:
             record = self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol)
             notes: Dict[str, Any] = {}
             if self.field_notes_reader is not None:
-                # the neuron the record is of (a layer or neuron past the last is read as the last), and the face the
-                # statement wrote, if it wrote one; kept in a field of their own, apart from every label
-                l_read = max(0, min(int(l_s), N_LAYERS - 1))
-                n_read = max(0, min(int(i_s), D_FF - 1))
+                # the neuron the record is of (one the model does not have was refused above, with the record, so no
+                # notes are read for it), and the face the statement wrote, if it wrote one; kept in a field of their
+                # own, apart from every label
+                l_read, n_read = self._place(l_s, i_s)
                 notes = {"field_notes": self._field_notes(l_read, n_read, pol_s)}
             return self._through_lens({**record, **notes, "label_gate": LABEL_GATE_CARD})
 
@@ -735,6 +851,7 @@ class LarqlVaultEngine:
         )
         if m_del:
             l_s, i_s = m_del.groups()
+            self._place(l_s, i_s, edit=True)  # refused here, before a voice is written
             return self._heard(
                 voice,
                 None,
@@ -756,6 +873,7 @@ class LarqlVaultEngine:
         )
         if m_upd:
             l_s, i_s, obj_c, str_s, pol_s = m_upd.groups()
+            self._place(l_s, i_s, edit=True)  # refused here, before a voice is written
             return self._through_lens(
                 self._heard(
                     voice,
@@ -781,6 +899,7 @@ class LarqlVaultEngine:
         )
         if m_ins:
             l_s, subj_c, obj_c, str_s = m_ins.groups()
+            self._place(l_s, edit=True)  # refused here, before a voice is written
             return self._through_lens(
                 self._heard(
                     voice,

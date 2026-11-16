@@ -53,6 +53,18 @@ copy), refused when it was built for another model than `--model`. Every file re
 the code's commit, and what a census label can bear), beside the keys llama.cpp's own cvector-generator writes
 (`general.architecture` = controlvector, `controlvector.model_hint`, `controlvector.layer_count`). `--show` prints
 them. Nothing here uses the GPU or downloads anything.
+
+The licence and where the numbers came from. A direction is computed from Gemma 4's weights, so since 14 November 2026
+every file says so in its own keys, which travel with it: Gemma 4's licence and the base model under the keys gguf-py
+writes for llama.cpp's own converters (`general.license`, `general.license.link`, `general.base_model.count` and
+`general.base_model.0.name`, `.organization`, `.repo_url`: `add_origin`), and `theodolite.derived_from`, in plain
+words. llama.cpp's control-vector loader reads no key, so nothing it does changes. The files written before that day
+(experiments/results/control_vector_L45 holds two) carry none of these keys and are left as they are: records of a
+measured run.
+
+A file already there is never written over by the command line unless `--force` is given. `write_control_vector` and
+`export` themselves write over a file of the name they are given (scripts/verify_control_vector.py's `llama` step
+writes so into its `--out`); the server's writer (backend/control_vector.py) refuses.
 """
 
 from __future__ import annotations
@@ -99,6 +111,23 @@ CAVEAT = ("a census label was read from six questions (break_rel) at +-1 and +-2
           "strong a lead). A dose of 1 is about 1.8 to 2.5 times the most one neuron at layers 40-50 can write by itself "
           "(its write ceiling). Other doses, sums of neurons, other prompts, sampling, other weights and a pushed start "
           "mark were not measured")
+# Where a file's numbers come from and under what licence: Gemma 4's licence as NOTICE and REFERENCES.md give it and as
+# the checkpoint's own card does (license: apache-2.0, license_link; read 14 November 2026), under the keys gguf-py's
+# Metadata writes for llama.cpp's own converters (convert_lora_to_gguf.py among them: read at cd26896, gguf-py 0.19.0
+# in the venv), with the values a GGUF of the model made by one of them carries (unsloth's
+# gemma-4-31B-it-UD-Q4_K_XL.gguf, its header read 14 November 2026). These exporters are Gemma-4-31B-it's: a file made
+# from another Gemma 4 or from a check's stand-in says the same, and `theodolite.weights` names the weights that were
+# read.
+LICENSE = "apache-2.0"  # general.license
+LICENSE_LINK = "https://ai.google.dev/gemma/docs/gemma_4_license"  # general.license.link
+BASE_MODEL = {"name": "Gemma 4 31B It", "organization": "Google",  # general.base_model.0.*
+              "repo_url": "https://huggingface.co/google/gemma-4-31B-it"}
+ORIGIN = f"Gemma 4 31B it (Google DeepMind; Apache License 2.0, {LICENSE_LINK})"
+DERIVED = (f"this file's tensors are derived from the weights of {ORIGIN}: each direction.<l> is, for every neuron "
+           "named here at layer l, the neuron's column of the model's feed-forward down projection times the weight of "
+           "the norm after it, element by element, scaled to unit length, then times its dose and the stream's median "
+           "length, summed over the layer's neurons (theodolite.push). The weights read are named under "
+           "theodolite.weights")
 
 
 @dataclass(frozen=True)
@@ -366,8 +395,10 @@ def describe(entries: Sequence[Entry]) -> str:
 
 
 def write_control_vector(path: Path, directions: Dict[int, np.ndarray], record: Dict[str, Any]) -> Path:
-    """Write the file: llama.cpp's keys, `theodolite.*` from `record` (str, int, float, or lists of one of them), and
-    a tensor direction.<l> per layer. Atomically: a temporary file beside it, then a rename."""
+    """Write the file: llama.cpp's keys, the licence and the base model (`add_origin`), `theodolite.*` from `record`
+    (str, int, float, or lists of one of them) and `theodolite.derived_from` (`DERIVED`), and a tensor direction.<l>
+    per layer. Atomically: a temporary file beside it, then a rename, over a file of that name: whoever calls says
+    whether one already there may go (`main` refuses without --force; backend/control_vector.py refuses always)."""
     import gguf
 
     if 0 in directions:
@@ -389,13 +420,27 @@ def _write(w: Any, directions: Dict[int, np.ndarray], record: Dict[str, Any]) ->
         w.add_description(str(record["description"]))
     w.add_string(f"{ARCH}.model_hint", MODEL_HINT)
     w.add_int32(f"{ARCH}.layer_count", len(directions))
-    add_record(w, record)
+    add_origin(w)
+    add_record(w, {**record, "derived_from": DERIVED})
     for layer in sorted(directions):
         w.add_tensor(f"direction.{int(layer)}", np.ascontiguousarray(directions[layer], dtype=np.float32))
     w.write_header_to_file()
     w.write_kv_data_to_file()
     w.write_tensors_to_file()
     w.close()
+
+
+def add_origin(w: Any) -> None:
+    """The licence and the base model through a gguf-py writer, under gguf-py's own keys: `general.license`,
+    `general.license.link`, `general.base_model.count` and `general.base_model.0.name`, `.organization`, `.repo_url`
+    (`LICENSE`, `LICENSE_LINK`, `BASE_MODEL`). No loader of llama.cpp's asks for them: the control vector's reads no
+    key, the adapter's lists every key it meets and asks for three others (scripts/export_lora.py writes those)."""
+    w.add_license(LICENSE)
+    w.add_license_link(LICENSE_LINK)
+    w.add_base_model_count(1)
+    w.add_base_model_name(0, BASE_MODEL["name"])
+    w.add_base_model_organization(0, BASE_MODEL["organization"])
+    w.add_base_model_repo_url(0, BASE_MODEL["repo_url"])
 
 
 def add_record(w: Any, record: Dict[str, Any]) -> None:

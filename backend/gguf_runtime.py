@@ -1,9 +1,9 @@
 """The instrument's runtime on a GGUF file (`backend/gguf_runtime.py`): `GGUFRuntime`, a `TheodoliteRuntime` whose
 model is built from the file (`backend/gguf_model.py`), on the CPU or a GPU.
 
-`backend/engine_runtime.py` is pinned by R4 (experiments/scripts/R4_common.py keeps its sha256, with backend/__init__.py,
-theodolite_math.py and label_gate.py), so nothing here edits it. This subclass replaces only what touches the
-checkpoint's packing:
+The instrument records `backend/engine_runtime.py`'s sha256 (scripts/runtime_files.py, with backend/__init__.py,
+theodolite_math.py and label_gate.py; R4 pinned the four, experiments/scripts/R4_common.py, and only engine_runtime.py's
+loader has changed since), so nothing here edits it. This subclass replaces only what touches the checkpoint's packing:
 - `load()` builds the model from the GGUF, then does everything the pinned `load()` does once its model is built, in
   the same order: `ie_missing_keys`, the EagerModel, the cached layers, final norm, lm_head and feed-forward norms, the
   J++ lens (and the Jacobian lens when asked) registered on interp_engine's lens stream, the allocator's settings and

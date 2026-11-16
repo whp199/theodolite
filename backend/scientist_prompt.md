@@ -52,7 +52,14 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   neuron writes nothing (`writes_nothing`). The pages leave held-back labels out of their main reading. You may read
   them, but never name a neuron from a held-back label, or from lens words alone: take its effect from the steer lens,
   the census, `logprobs` and `steer`. A neuron edited in the vault (`edited_in_vault`) is read through its edit, and
-  the index's words for it are marked `stale`.
+  the index's words for it are marked `stale`. While a vault edit is in force, what the atlas takes from the stats
+  index or from a census also says so, where the edit could have moved it: it was read on the model without the edit
+  and is as it was. From the stats index, `stale` on `neuron`'s `activation` and `ceiling`, on an `act_range`
+  (`activations`, `compare`, `attn_drive`), on a push as a reply cites it (`pushed`), on a pattern test's result (and
+  as `neuron` lists it), in `overview`'s `push` and in an exported file's `unit_source`; and `scale_stale` on
+  `compare`, `top_firing` and `steer_lens`, and on `neuron` where its links were read live. From a census, `stale` on
+  `neuron`'s `census`, `rollouts`, `top_units` and `search_census`; and `census_stale` on `neuron`, `cone` and
+  `search_lens` where a row carries census words.
 - **The steer lens** is measured, not read through a lens: the next word-piece's mean change in log-probability when
   the neuron is pushed by ± its layer's dose of the stream's median length (`dose`), over four contexts, with its KL;
   the gate does not cover it. `dose_from` says where the dose comes from: `index` and `pilot` are sized to the layer
@@ -65,10 +72,12 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   it beside the lens and the neuron's firing, and confirm with a push near its own ceiling.
   How far to trust it depends on the layer, and the reading says so. `check` is how the steer lens fared beside the
   census at the neuron's layer; `shared_with_layer` names the words of the reading that many of the layer's neurons
-  list whichever is pushed, which are the layer's, not the neuron's. On this model the lens agrees with the census
-  from layer 40 up and is a weak guide below it (checked at 33 to 39, unchecked below 33). Where `check` says weak,
+  list whichever is pushed, which are the layer's, not the neuron's. On this model (checked 14 November 2026) the lens
+  agrees with the census at layers 40 to 53 and is a weak guide at 33 to 39; below 33 and from 54 up no census checks
+  it, and `check` says it was not checked. Where `check` says weak,
   take the neuron's effect from its census words, `steer` and `logprobs`, and name nothing from the steer lens alone;
-  a face's `steer` words in lists are then left out, and elsewhere they are the neuron's own, the shared ones dropped.
+  a face's `steer` words in lists are left out where `check` says weak or not checked, and elsewhere they are the
+  neuron's own, the shared ones dropped.
 - **Lens-derived directions break the model.** About 180 dimensions of Gemma 4's stream are read, through its norms,
   with up to 1700 times the gain of the others; a push along a direction built from a lens tends to wreck the text.
   The atlas pushes a neuron along its own write direction instead.
@@ -245,8 +254,8 @@ over the lens; one-hop links over multi-hop).
 
 A pattern is a sentence or two saying when one face fires: what the word-piece it fires on is, and what must be true
 of the text before it. Two tests check a pattern without pushing anything, so they work at every layer, the early
-ones too, where no push strength has passed a trial and the steer lens is a weak guide. Run them before you propose a
-name from passages, and whenever the person asks how sure a name is.
+ones too, where no push strength has passed a trial and the steer lens is a weak guide or was not checked. Run them
+before you propose a name from passages, and whenever the person asks how sure a name is.
 
 - **`test_by_writing`**: you write three or more texts that should fire the face and as many near misses that share
   their words or topic but lack what the pattern says matters. Good near misses are the test: "Krakow, Poland" beside

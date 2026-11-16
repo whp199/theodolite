@@ -48,6 +48,37 @@ it under "unpacker".
 provenance and how its model was built), the checkpoint's repo id, the snapshot of it this machine's Hugging Face cache
 holds and the weight files that snapshot links to (`checkpoint_files_id`), or the stand-in's; GET /api/health and the
 lab daemon's /health send it.
+
+The compile cache (`private_compile_cache`, which `make_runtime()` calls before it builds anything). The compiled
+unpacker (backend/w4a16_fast.py, backend/gguf_fast.py) goes through torch.compile, which keeps what it built on disk
+for a later process to load: its graph caches (pickles), each kernel's generated .py, .cpp and .so, Triton's files, and
+on the CPU a precompiled header that every kernel compiled includes. Left alone torch keeps them in the temporary
+folder (/tmp/torchinductor_<user>), where any process of the account can write, one shut in a sandbox that may still
+write /tmp among them: a scientist chat's shell under Codex at the default reach runs in Codex's workspace-write
+sandbox (backend/scientist_chat.py), and a review found Codex's own sandbox helper writing /tmp and opening that
+folder's files for writing (codex-cli 0.166.0, `codex sandbox -P :workspace`, 14 November 2026; not tried through the
+app-server the chat runs, and no file was planted). torch writes a cached file only when none of its name is there, so
+a file planted there is loaded as it stands (read from torch's code, not tried). So the cache is kept in
+${XDG_CACHE_HOME:-~/.cache}/theodolite/torch_compile, made for its user alone (0700) and outside what that sandbox
+was seen to write (in it a file under ~/.cache was refused; this folder itself was not tried), unless the person has set
+TORCHINDUCTOR_CACHE_DIR themselves: their folder is then left as torch keeps it, the precompiled header in the
+temporary folder included. The new folder starts empty, so the first process to compile after this change (14 November
+2026) builds every graph afresh, once. On a GPU that is seconds (inferred, no GPU run was made for this change: the
+documents give about 4 s for the checkpoint's graphs at load and 3 to 10 s for a GGUF's on the RTX 5090, COMPUTE §ii
+and the README, without saying whether the cache was empty, and the review saw installs of 1.7 to 2.2 s with it
+full). On the CPU a process that built a runtime and compiled one small graph took 13.6 s with nothing cached, its
+173 MiB header built too, and 4.3 s the next time, some 2.6 s of each its imports (measured here, 14 November 2026). A
+process that compiles without building a runtime here is covered only where its unpacker calls
+`private_compile_cache` itself: gguf_fast does, before each graph, and w4a16_fast's `install` does before it
+compiles (14 November 2026); the checkpoint's compiled unpacker called with no install before it, as
+scripts/check_dequant.py calls it for its trial compile and its first comparisons, still writes to the temporary
+folder, as does a volunteer's kit, which runs its own tagged copy of this file. At the "home" reach a scientist's shell writes wherever the account can, and
+no folder is private to the instrument. Nor is a compile covered while it runs: what the compilers themselves write on
+the way (g++'s intermediate .s and .o; on a GPU the .ptx Triton writes and the object ptxas makes of it, which Triton
+then loads) still passes through the temporary folder, where such a sandbox could change a file between its writing and
+its reading (14 November 2026: read in Triton 3.8.0's code; g++ 16.2.1 seen putting them there for a small file, and
+torch's command line has no -pipe; changing one was not tried). A compile runs only for a graph the folder does not
+yet hold. And a person whose XDG_CACHE_HOME is itself in the temporary folder has the cache there.
 """
 
 from __future__ import annotations
@@ -56,6 +87,7 @@ import hashlib
 import logging
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -75,6 +107,80 @@ DEFAULT_DEVICE = "cuda:0"
 _DTYPES = ("bfloat16", "float32")
 # what the checkpoint's model is built from, in its snapshot: the files its weights card is keyed on
 WEIGHT_FILES = ("config.json", "*.safetensors")
+# torch's own variables for where torch.compile and Triton keep what they built (`private_compile_cache`)
+COMPILE_CACHE_ENV = "TORCHINDUCTOR_CACHE_DIR"
+TRITON_CACHE_ENV = "TRITON_CACHE_DIR"
+_told: Dict[str, bool] = {}  # each of `private_compile_cache`'s warnings is said once a process
+
+
+def compile_cache_dir() -> Path:
+    """The instrument's own folder for torch.compile's cache: ${XDG_CACHE_HOME:-~/.cache}/theodolite/torch_compile."""
+    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(os.path.abspath(Path(base).expanduser() / "theodolite" / "torch_compile"))
+
+
+def private_compile_cache() -> Optional[str]:
+    """Keep torch.compile's cache in `compile_cache_dir()`, made for this account alone (0700), and return that folder
+    (module docstring: why). None, with nothing moved, when the person has set TORCHINDUCTOR_CACHE_DIR themselves (the
+    precompiled header then stays where torch keeps it, in its default folder), or when the folder cannot be made: a
+    warning then says why, once a process, and the cache stays where it was.
+
+    How torch 2.14.1 keeps its cache (its code read on 14 November 2026: torch/_inductor/runtime/cache_dir_utils.py,
+    codecache.py, async_compile.py, runtime/triton_heuristics.py), and so what is done here:
+    - torch reads the variable each time it needs the folder, and hands it to its compile workers with each job, so it
+      is enough to set it before the first compile, and this may be called again at any time;
+    - torch writes its own default into the variable as soon as torch._dynamo is imported, which importing
+      backend/engine_runtime.py does (through transformers' model classes; measured), so by the time a runtime is built
+      the variable is always set. A value that is torch's own default folder is therefore taken for torch's, and
+      moved; any other is the person's, and left;
+    - Triton's files follow the folder: torch sets TRITON_CACHE_DIR to <folder>/triton/<device> at the first kernel
+      when it is unset. One the person set is left where it is; one torch set at an earlier kernel of this process,
+      under its default folder, is unset, so that torch names it again;
+    - the precompiled header of torch's C++ kernels stays in the default folder whatever the variable says
+      (`codecache._HEADER_DIR`), so that name is pointed at <folder>/precompiled_headers. It is a name inside torch,
+      not a setting: with a torch that has no such name a warning says the header was not moved.
+    Not moved: torch's package cache (TORCH_CACHING_PRECOMPILE=1, off unless the person sets it), whose folder torch
+    fixes when torch._dynamo is imported, before this can run."""
+    now = os.environ.get(COMPILE_CACHE_ENV, "").strip()
+    utils = sys.modules.get("torch._inductor.runtime.cache_dir_utils")  # not loaded: torch has written no default yet
+    torchs = os.path.abspath(utils.default_cache_dir()) if utils is not None else None
+    try:
+        folder = compile_cache_dir()
+        if now and os.path.abspath(now) not in (str(folder), torchs):
+            return None  # the person's own folder
+        folder.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        folder.mkdir(exist_ok=True, mode=0o700)
+        os.chmod(folder, 0o700)  # one made wider before is narrowed
+    except (OSError, RuntimeError) as exc:  # a home that cannot be written, or none at all
+        if not _told.get("no folder"):
+            _told["no folder"] = True
+            logger.warning("torch.compile's cache could not be given a folder of this account's own (%s: %s), so it stays "
+                           "in %s, where other processes of this account may write: set %s to a folder only you can write.",
+                           type(exc).__name__, exc, now or torchs or "torch's default folder", COMPILE_CACHE_ENV)
+        return None
+    if now != str(folder):
+        logger.info("torch.compile's cache is kept in %s, which this account alone can write (not in %s).",
+                    folder, now or torchs or "torch's default folder")
+    os.environ[COMPILE_CACHE_ENV] = str(folder)
+    triton = os.environ.get(TRITON_CACHE_ENV, "").strip()
+    if triton and torchs and (os.path.abspath(triton) + os.sep).startswith(torchs + os.sep):
+        del os.environ[TRITON_CACHE_ENV]  # torch's own, from an earlier kernel
+    try:
+        import torch._inductor.codecache as codecache  # the header's folder is a name in this module of torch's
+    except Exception:  # a torch whose compiler does not import: nothing compiles here, and the runtime is still built
+        codecache = None  # type: ignore[assignment]
+    headers = os.path.join(str(folder), "precompiled_headers")
+    if hasattr(codecache, "_HEADER_DIR") and hasattr(codecache, "_HEADER_LOCK_DIR"):
+        if codecache._HEADER_DIR != headers:
+            codecache._HEADER_DIR, codecache._HEADER_LOCK_DIR = headers, os.path.join(headers, "locks")
+            built = getattr(getattr(codecache, "_precompile_header", None), "cache_clear", None)
+            if built is not None:
+                built()  # a header this process already built elsewhere is built again in the folder
+    elif not _told.get("no header"):
+        _told["no header"] = True
+        logger.warning("This torch names no folder for its C++ kernels' precompiled header (codecache._HEADER_DIR), so "
+                       "that header, if it keeps one, was not moved to %s with the rest of torch.compile's cache.", folder)
+    return str(folder)
 
 
 def runtime_device() -> str:
@@ -154,10 +260,12 @@ def resident_budget(value: str, linears: str) -> Optional[float]:
 def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     """The runtime this process runs, not yet loaded (call `.load()`): a `GGUFRuntime` on THEODOLITE_GGUF when it is
     set, else the pinned `TheodoliteRuntime` on the W4A16 checkpoint (a `CheckpointRuntime` on the CPU); on
-    THEODOLITE_DEVICE (default cuda:0). `kwargs` go to `GGUFRuntime` (`load_jpp=False` leaves the lenses out)."""
+    THEODOLITE_DEVICE (default cuda:0). `kwargs` go to `GGUFRuntime` (`load_jpp=False` leaves the lenses out). Before
+    it builds anything, torch.compile's cache is given a folder of this account's own (`private_compile_cache`)."""
     device = runtime_device()
     if device == "cpu":
         hide_gpus()
+    private_compile_cache()
     path = os.environ.get(GGUF_ENV, "").strip()
     resident = os.environ.get(RESIDENT_ENV, "").strip()
     if resident and not path:

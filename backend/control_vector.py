@@ -14,7 +14,13 @@ control vector (a mul, a head's scale and a silenced block are scripts/export_lo
 which llama.cpp's loader refuses.
 
 Files are written into `<atlas folder>/exports/` (`exports_dir`) under a name of letters, digits, `.`, `_` and `-`
-ending in .gguf, a file of that name written over; GET /api/atlas/exports/<name> hands one to the page as a download.
+ending in .gguf; GET /api/atlas/exports/<name> hands one to the page as a download. A file already there is never
+written over (since 14 November 2026; before, it was): the export is refused in plain words, whether the name was
+asked for or is the one the file would be given, and the route answers it as a 400 like its other refusals. Whoever
+asked names another file; the old one stays until a person removes it (the words do not tell a tool to). So a tool
+that may name its file cannot replace one a person exported, and a second click on the push tab's link at the same
+dose says the file is there instead of writing it again. Each file carries the script's keys for the licence and the
+base model and its `theodolite.derived_from` (`export_control_vector.add_origin`, `DERIVED`).
 """
 
 from __future__ import annotations
@@ -127,7 +133,8 @@ def build(weights: Any, scales: Dict[str, Any], model: str, card: Dict[str, Any]
     """Write the control vector of `pushes` (checked `atlas_ops.Push`es) and say what was written: the file, each
     entry's layer, neuron, dose and p50, each direction's length, and how llama.cpp loads it. `scales` is
     `Atlas.scales()` (its p50 and where that was read), `card` the weights' card, `edits` the neurons a vault edit is in
-    force on. A ValueError says in plain words what cannot be exported."""
+    force on. A ValueError says in plain words what cannot be exported, a file of that name already there among them:
+    nothing is written over."""
     ecv = script()
     entries = entries_of(pushes)
     source = LiveColumns(weights, card)
@@ -148,6 +155,9 @@ def build(weights: Any, scales: Dict[str, Any], model: str, card: Dict[str, Any]
     src = scales.get("source") or {}
     out = (folder or exports_dir()) / file_name(name, entries)
     assert NAME_OK.fullmatch(out.name[:-5]), out.name  # whatever is written, GET /exports can hand over
+    if out.exists() or out.is_symlink():  # a link that leads nowhere is still a name taken: the write would replace it
+        raise ValueError(f"{out.name} is already among the exports, and a file there is never written over: name another "
+                         f"file (`name`). The old one stays until a person removes it ({out}).")
     out.parent.mkdir(parents=True, exist_ok=True)
     one = len(entries) == 1
     record: Dict[str, Any] = {

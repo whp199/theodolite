@@ -549,7 +549,9 @@ export const Scientist: React.FC = () => {
             census answers, names and notes, attachments) can carry instructions, and nothing stands between them and that shell.
           </p>
           <p className="muted atlas-small" style={{ margin: "4px 0" }}>
-            Without {reach.env}=home on the server it would only read and write files in its own work folder; an endpoint has no shell at all.
+            Without {reach.env}=home on the server Claude Code would only read and write files in its own work folder, and Codex would run
+            its commands in a sandbox with no network that writes there and in the temporary folders and can read your other files; an
+            endpoint has no shell at all.
           </p>
           <button
             type="button"

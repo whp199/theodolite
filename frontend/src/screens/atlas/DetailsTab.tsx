@@ -261,6 +261,11 @@ const Range: React.FC = () => {
       <p className="atlas-small" style={{ margin: 0 }}>
         from <b>{r.act_min.toFixed(2)}</b> to <b>+{r.act_max.toFixed(2)}</b> over {r.over_tokens.toLocaleString()} word-pieces of {r.source}
       </p>
+      {r.stale ? (
+        <p className="atlas-small red" style={{ margin: "2px 0 0" }}>
+          Read before the vault edits now in force at earlier layers: this is its range as it was.
+        </p>
+      ) : null}
       {g ? (
         <IfApparatus>
           <p className="muted atlas-small" style={{ margin: "2px 0 0" }}>
@@ -386,7 +391,11 @@ const Wiring: React.FC = () => {
             layers, both below chance; the sign in use scored where each reader sat, 0.84). Leads to test with a push, not a circuit found.
           </Rubric>
           <IfApparatus>
-            <p className="muted atlas-small">{w.source === "index" ? "from the wiring index" : "read from the weights just now"} · {w.note}</p>
+            <p className="muted atlas-small">
+              {w.source === "index" ? "from the wiring index" : "read from the weights just now"} · {w.note}
+              {w.scale_stale ? " · weighed across layers by norm scales read before the vault edits in force" : ""}
+              {w.census_stale ? " · the census words were taken before the vault edits in force" : ""}
+            </p>
             {w.use ? (
               <p className="muted atlas-small">
                 {w.use.ready
@@ -638,6 +647,11 @@ const PatternTests: React.FC = () => {
         <p className={said.against ? "atlas-small red" : "atlas-small"} style={{ margin: "1px 0 0" }}>
           {said.text}
         </p>
+        {t.stale ? (
+          <p className="atlas-small red" style={{ margin: "1px 0 0" }}>
+            Run with a vault edit in force at an earlier layer: the extreme it is set against was read before the edit.
+          </p>
+        ) : null}
         <IfApparatus>
           <p className="muted atlas-small" style={{ margin: 0 }}>
             {t.by === "scientist" ? "run by the scientist" : "run by a reader"} · {t.at}

@@ -42,7 +42,24 @@ temporary directory:
    connects gets 403 and a refused handshake, and with THEODOLITE_PEER_CHECK=off gets in, as every account did before,
    and one that saves a system prompt without waiting, resetting its socket, or closing it while the guard is held
    back, is refused as gone and nothing is saved, while this account's own request is (skipped, saying so, when not
-   root).
+   root);
+10. what another process of the account may have written is not loaded as code: torch.compile's cache
+   (backend/runtime_factory.py's `private_compile_cache`). Its folder is ${XDG_CACHE_HOME:-~/.cache}/theodolite/
+   torch_compile; with the variable holding torch's own default, as torch itself writes it when the runtime's modules
+   are imported, the cache is moved there, the folder made 0700 (one made wider before narrowed), and torch's own
+   `cache_dir()` and Triton's folder then answer it, the precompiled header's folder too; a TORCHINDUCTOR_CACHE_DIR or
+   a TRITON_CACHE_DIR the person set is left, and nothing moved; a TRITON_CACHE_DIR torch set under its default is
+   unset; a folder that cannot be made is said in a warning, the cache left where it was, and so is a torch that names
+   no folder for its precompiled header, the rest moved; `make_runtime()` and gguf_fast's `_compiled_for`
+   (torch.compile stood in for) each move it; and in a child process whose temporary folder is a new one, a runtime
+   built and one small graph compiled on the CPU (a C++ compiler, some 14 s and a 173 MiB header when it was measured,
+   14 November 2026; left out, saying so, when that fails): torch had written its default under the temporary folder
+   on import, and every file of the compile, pickles, kernels and the precompiled header, is in the private folder,
+   none in the temporary one; and in another such child, which builds no runtime and has not imported
+   runtime_factory, backend/w4a16_fast.py's `install` asked for "compiled" on one small 4-bit linear patched as the
+   checkpoint's are (the same compiler, some 12 s more and a second header, 14 November 2026; left out likewise): the
+   install moves the cache before it compiles, and every file of its graphs is in the private folder (0700), none in
+   the temporary one.
 
 Run: .venv/bin/python -I scripts/check_local_only.py   (exits 0 when every check holds)
 """
@@ -56,8 +73,10 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ["HF_HUB_OFFLINE"] = "1"
 
+import atexit
 import re
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -68,6 +87,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 TMP = Path(tempfile.mkdtemp(prefix="local-only-"))
+if __name__ == "__main__":
+    # the folder goes however the run ends: a kill (`timeout`'s SIGTERM) is taken as an exit, so a compile's child is
+    # stopped first (subprocess.run does, on the way out) and its precompiled headers, 173 MiB each, do not stay in /tmp
+    atexit.register(shutil.rmtree, TMP, ignore_errors=True)
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
 os.environ["THEODOLITE_ATLAS_DIR"] = str(TMP / "atlas")
 os.environ["THEODOLITE_FIELD_NOTES"] = str(TMP / "notes.json")
 os.environ["THEODOLITE_CENSUS_DIR"] = str(TMP / "census")
@@ -655,6 +679,186 @@ def main() -> int:
         server.get_app_state = real_state  # type: ignore[assignment]
     section("which account asks: its own passes, another's is refused (403, and on the socket), and so are a sender gone "
             f"before it was looked up and a forwarded request, THEODOLITE_PEER_CHECK=off; a lookup took {ms:.2f} ms over {n_sockets} sockets", before)
+
+    # ----------------------------------------------------------------------------------- 10. the compile cache
+    before = len(failures)
+    import torch
+    import torch._inductor.codecache as codecache
+    from torch._inductor.runtime import cache_dir_utils
+
+    import backend.gguf_fast as gf
+    import backend.runtime_factory as rf
+
+    var, tri = rf.COMPILE_CACHE_ENV, rf.TRITON_CACHE_ENV
+    theirs = [var, tri, "XDG_CACHE_HOME", rf.DEVICE_ENV, rf.GGUF_ENV, rf.RESIDENT_ENV, rf.CHECKPOINT_LINEARS_ENV]
+    kept = {k: os.environ.pop(k, None) for k in theirs}
+    header_dirs = (codecache._HEADER_DIR, codecache._HEADER_LOCK_DIR)
+    torchs = cache_dir_utils.default_cache_dir()  # torch's own default: <the temporary folder>/torchinductor_<user>
+
+    def as_torch_leaves_it() -> None:
+        """The variables and the header's folder as they stand once the runtime's modules are imported and nothing
+        more: torch's default written into its variable, Triton's unset."""
+        os.environ[var] = torchs
+        os.environ.pop(tri, None)
+        codecache._HEADER_DIR, codecache._HEADER_LOCK_DIR = header_dirs
+
+    heard_rf: List[logging.LogRecord] = []
+    catch_rf = logging.Handler()
+    catch_rf.emit = heard_rf.append  # type: ignore[assignment]
+    logging.getLogger("backend.runtime_factory").addHandler(catch_rf)
+    real_compile = torch.compile
+    try:
+        check(torchs.startswith(tempfile.gettempdir()) and header_dirs[0].startswith(torchs),
+              f"torch's own default, and its precompiled header's folder, are in the temporary folder: {torchs}, {header_dirs[0]}")
+        check(rf.compile_cache_dir() == TMP / "home" / ".cache" / "theodolite" / "torch_compile", f"the folder's default place: {rf.compile_cache_dir()}")
+        os.environ["XDG_CACHE_HOME"] = str(TMP / "xdg")
+        folder = TMP / "xdg" / "theodolite" / "torch_compile"
+        check(rf.compile_cache_dir() == folder, f"XDG_CACHE_HOME names another: {rf.compile_cache_dir()}")
+        as_torch_leaves_it()
+        got = rf.private_compile_cache()
+        mode = stat.S_IMODE(folder.stat().st_mode) if folder.is_dir() else None
+        check(got == str(folder) == os.environ.get(var) and mode == 0o700,
+              f"torch's default in the variable: the cache moved to the folder, made 0700 ({got}, {oct(mode) if mode is not None else None})")
+        check(cache_dir_utils.cache_dir() == str(folder) and cache_dir_utils.triton_cache_dir(0) == str(folder / "triton" / "0")
+              and codecache._HEADER_DIR == str(folder / "precompiled_headers") and codecache._HEADER_LOCK_DIR == str(folder / "precompiled_headers" / "locks"),
+              f"torch's own cache_dir(), Triton's folder and the precompiled header's then answer it ({cache_dir_utils.cache_dir()}, {codecache._HEADER_DIR})")
+        os.chmod(folder, 0o755)
+        check(rf.private_compile_cache() == str(folder) and stat.S_IMODE(folder.stat().st_mode) == 0o700, "called again: the same folder, one made wider narrowed")
+        as_torch_leaves_it()
+        os.environ[var] = str(TMP / "mine")
+        check(rf.private_compile_cache() is None and os.environ[var] == str(TMP / "mine") and not (TMP / "mine").exists()
+              and codecache._HEADER_DIR == header_dirs[0], "a TORCHINDUCTOR_CACHE_DIR the person set is left, and nothing moved or made")
+        as_torch_leaves_it()
+        os.environ[tri] = str(Path(torchs) / "triton" / "0")
+        check(rf.private_compile_cache() == str(folder) and tri not in os.environ and cache_dir_utils.triton_cache_dir(0) == str(folder / "triton" / "0"),
+              "a TRITON_CACHE_DIR torch set under its default is unset, so torch names it again under the folder")
+        as_torch_leaves_it()
+        os.environ[tri] = str(TMP / "my-triton")
+        check(rf.private_compile_cache() == str(folder) and os.environ.get(tri) == str(TMP / "my-triton"), "a TRITON_CACHE_DIR the person set is left")
+        as_torch_leaves_it()
+        (TMP / "a-file").write_text("not a folder")
+        os.environ["XDG_CACHE_HOME"] = str(TMP / "a-file")
+        heard_rf.clear()
+        rf._told.clear()
+        got = (rf.private_compile_cache(), rf.private_compile_cache())
+        said = [x.getMessage() for x in heard_rf if x.levelno == logging.WARNING]
+        check(got == (None, None) and os.environ[var] == torchs and codecache._HEADER_DIR == header_dirs[0] and len(said) == 1
+              and var in said[0] and torchs in said[0], f"a folder that cannot be made: said in a warning, once, the cache left where it was ({said})")
+        os.environ["XDG_CACHE_HOME"] = str(TMP / "xdg")
+        as_torch_leaves_it()
+        del codecache._HEADER_DIR  # as a later torch might keep its header under another name
+        heard_rf.clear()
+        rf._told.clear()
+        got = (rf.private_compile_cache(), rf.private_compile_cache())
+        said = [x.getMessage() for x in heard_rf if x.levelno == logging.WARNING]
+        check(got == (str(folder), str(folder)) and os.environ.get(var) == str(folder) and len(said) == 1 and "precompiled header" in said[0],
+              f"a torch that names no folder for its precompiled header: the rest is moved, and a warning says the header was not, once ({said})")
+        as_torch_leaves_it()
+        os.environ[rf.DEVICE_ENV] = "cpu"
+        rt = rf.make_runtime()  # not loaded
+        check(os.environ.get(var) == str(folder) and rt.hf_model is None, f"make_runtime() moves it, before anything is loaded: {os.environ.get(var)}")
+        as_torch_leaves_it()
+        key = ("Q4_0", (1, 18), "cpu", torch.bfloat16)
+        torch.compile = lambda fn, **kw: fn  # type: ignore[assignment]  # no compiler here: only what happens before it
+        gf._compiled_for(key)
+        torch.compile = real_compile  # type: ignore[assignment]
+        check(os.environ.get(var) == str(folder), f"gguf_fast moves it before it compiles a graph: {os.environ.get(var)}")
+    finally:
+        torch.compile = real_compile  # type: ignore[assignment]
+        gf._COMPILED.pop(("Q4_0", (1, 18), "cpu", torch.bfloat16), None)
+        logging.getLogger("backend.runtime_factory").removeHandler(catch_rf)
+        codecache._HEADER_DIR, codecache._HEADER_LOCK_DIR = header_dirs
+        for k, v in kept.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+    # a child of its own: a new temporary folder (TMPDIR, which torch's default follows), a runtime built, one graph compiled
+    shared, private = TMP / "shared-tmp", TMP / "xdg-child" / "theodolite" / "torch_compile"
+    shared.mkdir()
+    child = (
+        "import json, os, sys, warnings\n"
+        "sys.path.insert(0, sys.argv[1]); warnings.simplefilter('ignore')\n"
+        "import torch\n"
+        "import backend.runtime_factory as rf\n"
+        "written = os.environ.get(rf.COMPILE_CACHE_ENV)\n"
+        "rf.make_runtime()\n"
+        "try:\n"
+        "    out = torch.compile(lambda x: (x * 2 + 1).to(torch.bfloat16), dynamic=False, fullgraph=True)(torch.arange(64, dtype=torch.float32))\n"
+        "    ok, why = bool(out[1] == 3), ''\n"
+        "except Exception as exc:\n"
+        "    ok, why = False, f'{type(exc).__name__}: {exc}'[:300]\n"
+        "files = lambda d: sorted(os.path.relpath(os.path.join(p, f), d) for p, _ds, fs in os.walk(d) for f in fs)\n"
+        "print(json.dumps({'written': written, 'var': os.environ.get(rf.COMPILE_CACHE_ENV), 'compiled': ok, 'why': why,\n"
+        "                  'shared': files(os.environ['TMPDIR']), 'private': files(str(rf.compile_cache_dir()))}))\n")
+    env = {k: v for k, v in os.environ.items() if k not in theirs}
+    env.update(TMPDIR=str(shared), XDG_CACHE_HOME=str(TMP / "xdg-child"), CUDA_VISIBLE_DEVICES="", THEODOLITE_DEVICE="cpu")
+    res = subprocess.run([sys.executable, "-I", "-c", child, str(ROOT_DIR)], env=env, capture_output=True, text=True, timeout=600)
+    try:
+        d = json.loads(res.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        d = {}
+    check(str(d.get("written", "")).startswith(str(shared) + os.sep) and d.get("var") == str(private),
+          f"in a child: torch had written its default under the temporary folder on import ({d.get('written')}), and make_runtime() "
+          f"moved the cache to the folder ({d.get('var')}) {res.stderr[-300:] if not d else ''}")
+    if d and not d.get("compiled"):
+        print(f"  skip  where a compile's files land: nothing compiles on the CPU here ({d.get('why')})")
+    elif d:
+        in_private, headers = d["private"], [f for f in d["private"] if f.startswith("precompiled_headers" + os.sep)]
+        check(d["shared"] == [] and any(f.startswith("fxgraph" + os.sep) for f in in_private) and any(f.endswith(".so") for f in in_private)
+              and (bool(headers) or os.environ.get("TORCHINDUCTOR_CPP_CACHE_PRECOMPILE_HEADERS", "1") != "1"),
+              f"a graph compiled on the CPU: its {len(in_private)} files in the folder ({len(headers)} of them the precompiled header's), "
+              f"none in the temporary folder ({d['shared'][:3]})")
+    # another child, which builds no runtime: w4a16_fast's install asked for "compiled" on one small 4-bit linear,
+    # patched as the checkpoint's are (a check script on stand-in linears is such a process)
+    shared, private = TMP / "shared-tmp-install", TMP / "xdg-install" / "theodolite" / "torch_compile"
+    shared.mkdir()
+    child = (
+        "import json, os, sys, warnings\n"
+        "sys.path.insert(0, sys.argv[1]); warnings.simplefilter('ignore')\n"
+        "import torch\n"
+        "import backend.engine_runtime as er\n"
+        "import backend.w4a16_fast as wf\n"
+        "var, private = 'TORCHINDUCTOR_CACHE_DIR', sys.argv[2]\n"
+        "written, factory = os.environ.get(var), 'backend.runtime_factory' in sys.modules\n"
+        "holder = torch.nn.Module()\n"
+        "holder.lin = lin = torch.nn.Linear(64, 8, bias=False).to(torch.bfloat16)\n"
+        "del lin.weight\n"
+        "g = torch.Generator().manual_seed(1)\n"
+        "lin.register_buffer('weight_packed', torch.randint(-(2**31), 2**31 - 1, (8, 8), generator=g, dtype=torch.int64).to(torch.int32))\n"
+        "lin.register_buffer('weight_scale', (torch.randn(8, 2, generator=g) * 0.02).to(torch.bfloat16))\n"
+        "lin.weight = None\n"
+        "er.patch_compressed_tensors_for_low_vram(holder)\n"
+        "try:\n"
+        "    rec = wf.install(holder, 'compiled', log=lambda s: None)\n"
+        "    ok, why = rec['mode'] == 'compiled' and rec['self_test']['same_bits'] is True, ''\n"
+        "except Exception as exc:\n"
+        "    ok, why = False, f'{type(exc).__name__}: {exc}'[:300]\n"
+        "files = lambda d: sorted(os.path.relpath(os.path.join(p, f), d) for p, _ds, fs in os.walk(d) for f in fs)\n"
+        "print(json.dumps({'written': written, 'factory': factory, 'var': os.environ.get(var), 'compiled': ok, 'why': why,\n"
+        "                  'shared': files(os.environ['TMPDIR']), 'private': files(private),\n"
+        "                  'mode': oct(os.stat(private).st_mode & 0o777) if os.path.isdir(private) else None}))\n")
+    env = {k: v for k, v in os.environ.items() if k not in theirs}
+    env.update(TMPDIR=str(shared), XDG_CACHE_HOME=str(TMP / "xdg-install"), CUDA_VISIBLE_DEVICES="")
+    res = subprocess.run([sys.executable, "-I", "-c", child, str(ROOT_DIR), str(private)], env=env, capture_output=True, text=True, timeout=600)
+    try:
+        d = json.loads(res.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        d = {}
+    check(str(d.get("written", "")).startswith(str(shared) + os.sep) and d.get("factory") is False and d.get("var") == str(private),
+          f"in a child that builds no runtime, runtime_factory not imported before the install (imported: {d.get('factory')}): torch "
+          f"had written its default under the temporary folder ({d.get('written')}), and w4a16_fast's install(\"compiled\") moved "
+          f"the cache to the folder ({d.get('var')}) {res.stderr[-300:] if not d else ''}")
+    if d and not d.get("compiled"):
+        print(f"  skip  where the install's files land: nothing compiles on the CPU here ({d.get('why')})")
+    elif d:
+        in_private = d["private"]
+        check(d["shared"] == [] and d.get("mode") == "0o700" and any(f.startswith("fxgraph" + os.sep) for f in in_private)
+              and any(f.endswith(".so") for f in in_private),
+              f"the install's graphs compiled on the CPU: every file of theirs in the folder (0700), none in the temporary folder, so "
+              f"it was moved before the compile ({len(in_private)} in the folder, mode {d.get('mode')}; {len(d['shared'])} in the "
+              f"temporary one {d['shared'][:3]})")
+    section("the compile cache: moved to a folder of the account's own (0700) unless the person set its variable, by make_runtime(), "
+            "by gguf_fast and by w4a16_fast's install; a compile's files all there, none in the temporary folder", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

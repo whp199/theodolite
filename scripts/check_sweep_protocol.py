@@ -32,7 +32,11 @@ returns small but complete sweep bundles, which the real `pack_binary_and_json_f
    came;
 7. contrasts: sent to prepare_sweep as asked (backgrounds once each), read on every pair from the bundle, never on
    the thinking comparison; an unknown background, "controls" with no control and a missing average state refused
-   before anything is written.
+   before anything is written;
+8. the vault's edits on a sighting (`larql_status`), with three records in a stand-in vault, two of them of one
+   neuron (the later replaces the earlier): `active_patches` lists all three, and `active_patches_count` is the two
+   edits in force, as the vault's own `edits_in_force` counts them, not the records; on the one-pair reply and on
+   every pair of a stream.
 
 Run: .venv/bin/python -I scripts/check_sweep_protocol.py   (exits 0 when every check holds)
 """
@@ -71,6 +75,7 @@ from backend.engine_runtime import (
     WrittenStep,
 )
 from backend.label_gate import LABEL_GATE_CARD, label_check
+from backend.larql_vault import LarqlVaultEngine, PatchOperationRecord
 from backend.theodolite_math import BipolarPolesResult, CausalSplitResult, TheodoliteTrajectory3D
 
 failures: List[str] = []
@@ -262,6 +267,26 @@ class FakeVault:
 
     def execute_lql(self, query: str) -> Dict[str, Any]:
         return {"command": query}
+
+
+def edit_record(patch_id: int, layer: int, neuron: int, replaces: Optional[int] = None) -> PatchOperationRecord:
+    """The vault's record of one edit, as `LarqlVaultEngine` keeps it; a sighting sends its id, kind, place, word and
+    statement."""
+    return PatchOperationRecord(
+        patch_id=patch_id, op_type="UPDATE", layer_idx=layer, neuron_idx=neuron, polarity=1.0, target_concept="x",
+        strength=1.0, statement=f"UPDATE LAYER {layer} SLOT {neuron}", timestamp=time.time(), orig_norm=1.0,
+        new_norm=1.0, replaces_patch=replaces,
+    )
+
+
+class EditedVault(FakeVault):
+    """A vault holding three records, the third a later edit of the first's neuron, so two edits are in force; they
+    are counted by the vault's own method, which reads `active_patches` alone."""
+
+    edits_in_force = LarqlVaultEngine.edits_in_force  # type: ignore[assignment]
+
+    def __init__(self) -> None:
+        self.active_patches = [edit_record(1, 45, 3), edit_record(2, 20, 4), edit_record(3, 45, 3, replaces=1)]
 
 
 class FakeRuntime:
@@ -919,6 +944,28 @@ def check_socket() -> None:
             err = next((o for k, o in frames if k == "json" and o.get("type") == "error"), {})
             check(types == ["error", "theodolite_sweep_end"] and words in err.get("message", "")
                   and len(rt.writes) == n_writes, f"{rid}: refused before writing: {types} {err.get('message')}")
+
+    print("8. the vault's edits on a sighting")
+    vault = EditedVault()
+    server._VAULT = vault  # type: ignore[assignment]  # a socket takes the vault that stands when it opens
+    try:
+        with client.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as raw:
+            s = Socket(raw)
+            s.sweep({"prompt": "legs?", "max_new_tokens": 6})
+            _k, _b = s.recv()
+            _k, meta = s.recv()
+            status = meta.get("larql_status") or {}
+            listed, count = [p["patch_id"] for p in status.get("active_patches", [])], status.get("active_patches_count")
+            check(listed == [1, 2, 3] and count == 2 == len(vault.edits_in_force()),
+                  f"three records, two of one neuron: every record is listed, the replaced one among them ({listed}), "
+                  f"and active_patches_count is the two edits in force, not the records ({count})")
+            s.sweep({"request_id": "r16", "prompt": "legs?", "max_new_tokens": 3, "sight_every_token": True})
+            metas = [o for k, o in s.until_end("r16") if k == "json" and o.get("type") == "theodolite_metadata"]
+            counts = [m["larql_status"]["active_patches_count"] for m in metas]
+            check(counts == [2, 2, 2] and all(len(m["larql_status"]["active_patches"]) == 3 for m in metas),
+                  f"every pair of a stream counts the two in force beside the three listed: {counts}")
+    finally:
+        server._VAULT = FakeVault()  # type: ignore[assignment]
 
 
 def main() -> int:

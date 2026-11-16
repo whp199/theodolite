@@ -41,7 +41,9 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    codes and scales are found identical, again with every other block written the other way round (d = -scale, codes
    16 - q, as llama.cpp's quantiser writes a negative d), and a changed code, a changed scale and a +1 norm convention
    are each found;
-7. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
+7. the four runtime files (backend/engine_runtime.py among them) have the sha256 the instrument records for them
+   (scripts/runtime_files.py), and of the files R4 pins (experiments/scripts/R4_common.pinned_differ: R4's record of
+   what it ran on, not edited) those that differ are exactly the ones that record names as changed since R4.
 
 Run: .venv/bin/python -I scripts/check_gguf.py   (exits 0 when every check holds)
 """
@@ -978,9 +980,13 @@ def run_checks(tmp: Path) -> int:
     before = len(failures)
     sys.path.insert(0, str(ROOT_DIR / "experiments" / "scripts"))
     import R4_common
+    import runtime_files  # the instrument's own record of the runtime files' sha256 (scripts/runtime_files.py)
 
-    check(R4_common.pinned_differ() == [], f"the files R4 pins (engine_runtime.py among them) are unchanged: {R4_common.pinned_differ()}")
-    section("the R4-pinned runtime untouched: everything here is in new modules", before)
+    check(runtime_files.differ() == [],
+          f"the four runtime files (engine_runtime.py among them) have the sha256 the instrument records: {runtime_files.differ()}")
+    check(sorted(R4_common.pinned_differ()) == sorted(runtime_files.CHANGED_SINCE_R4),
+          f"of the files R4 pins, those that differ are the ones the record names as changed since R4: {R4_common.pinned_differ()}")
+    section("the runtime files as the instrument records them, R4's other files unchanged: everything here is in new modules", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

@@ -39,7 +39,8 @@ each layer (the identity at the last) and the shipped lens's provenance, so the 
 14. the transports (fastapi TestClient, the model-loading lifespan replaced): the WebSocket action answers
    {type "causal_check"} with the MCP reply's keys; its refusals (pydantic's too, in plain words) come back as
    recoverable errors naming action, layer, neuron_idx and contexts, and the socket keeps answering; HTTP gives 200,
-   400 and 422; /api/health carries the causal_check card;
+   400 and 422; /api/health carries the causal_check card; and POST /api/scientist/inspect_pole answers 200 for a
+   place the model has and 400 with the vault's words for a layer or a neuron it lacks;
 15. the study's figures the folio quotes beside a test (frontend/src/screens/NeuronFolio/causal.ts: STUDY_LINEARITY,
    LINEARITY_TAIL, NOISE_RATIO_MAX, STUDY_K10) are the results files' own: N1V_audit_01_postnorm.json.full.json,
    N1V_audit_04_smallk_metrics.json and N1V_code_audit.md F2.
@@ -648,7 +649,9 @@ def check_tool(rt: TheodoliteRuntime, vault: LarqlVaultEngine) -> Dict[str, Any]
         check(r3["max_abs_act_cached"] is False and calls["study_max_abs"] == 2 and r3["vault_edits"] == [41],
               "an edit in force did not recompute the study max|a|")
         check(r3["faces"]["+"]["label_overlap"]["label_check"]["edited"] is True, "an edited neuron is not marked")
-        vault.active_patches.clear()  # what ROLLBACK does to the records (its overlay sweep runs over 60 layers)
+        # what ROLLBACK does to the records. Its overlay sweep, which since 14 November 2026 runs over the model's own
+        # layers (before, over 60), has nothing to clear here: the edit above is a record alone
+        vault.active_patches.clear()
         r4 = tool(layer=L, neuron_idx=I, token_ids=ids)
         check(r4["max_abs_act_cached"] is True and calls["study_max_abs"] == 2 and r4["vault_edits"] == [],
               "the clean model's max|a| was not reused after ROLLBACK")
@@ -826,6 +829,19 @@ def check_transports(rt: TheodoliteRuntime, vault: LarqlVaultEngine, mcp_reply: 
         ws.send_json({"action": "inspect_pole", "layer": L, "neuron_idx": I, "polarity": 1.0})
         msg = ws.receive_json()
         check(msg.get("type") == "pole_inspection", f"WS inspect_pole after: {msg.get('type')}")
+    # inspect_pole over HTTP: the vault refuses a layer or a neuron the model lacks (larql_vault `_place`), and the
+    # route hands the refusal on as a 400 with the vault's words (backend/server.py since 14 November 2026; before,
+    # nothing caught it there and the route answered 500). A client of its own, so a refusal not caught fails a line
+    # here where the client above would raise it
+    plain = TestClient(server.app, base_url="http://127.0.0.1:8765", raise_server_exceptions=False)
+    res = plain.post("/api/scientist/inspect_pole", json={"layer": L, "neuron_idx": I})
+    check(res.status_code == 200 and "north_pole" in res.json(), f"HTTP inspect_pole of a place the model has: {res.status_code}")
+    for place, words in (({"layer": 99, "neuron_idx": I}, f"Layer 99 does not exist: layers count from 0 to {N_LAYERS - 1} here"),
+                         ({"layer": L, "neuron_idx": 21504}, "Neuron 21504 does not exist")):
+        res = plain.post("/api/scientist/inspect_pole", json=place)
+        said = res.json().get("detail", "") if res.status_code == 400 else res.text
+        check(res.status_code == 400 and words in str(said),
+              f"HTTP inspect_pole of {place}: a 400 with the vault's words ({res.status_code} {str(said)[:120]})")
     section("the WebSocket action, the HTTP route and /api/health", before)
 
 

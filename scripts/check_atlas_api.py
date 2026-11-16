@@ -39,7 +39,10 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    weights are another file's refusing every index in plain words;
 7. a vault edit in force: the wiring is read live again (in use too, its readers' operating points from the index,
    marked stale for a neuron after the edit's layer), the faces say their index words are stale, the caches keyed by
-   the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale;
+   the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale; what a
+   reply takes from the stats index says it was read before the edit, where the edit could have moved it (a push's
+   unit at the edit's layer and after, a neuron's range and an act push's scale after it, the scores' scale_source,
+   links weighed live, a pattern test's extreme), and nothing says so once the edit is gone;
 8. the field notes: kept, shown on the tooltip and the wiring, forgotten, refused in plain words, a corrupt file moved
    aside with one warning; the folio's field book beside them: each face kept apart with its writer, a field left out
    kept, refused in plain words, a face with nothing said forgotten, a book of another version or a corrupt one moved
@@ -48,6 +51,9 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    tooltip, /neuron, /notes, the census, the book) before the person keeps them, refused in plain words, discarded in
    part, kept as the scientist's, a head's too, a malformed file moved aside;
 9. the census routes on a run written here: its units ranked, a unit's rollouts and baselines, one rollout, the spread;
+   with a vault edit in force, every census reply, and every reply that carries census words, says the census was
+   taken before it; the steer lens's own check on a lens made by hand, where a layer that was not checked is held
+   back as that and takes no neighbour's standing;
 10. the GPU lock: a reading waits for it while /arch and the notes still answer; a push chat closed mid-answer stops
     writing and holds the lock until its writer has stopped (uvicorn on a free port, a real connection closed).
 
@@ -548,20 +554,27 @@ def main() -> int:
           and c.get("/api/atlas/exports/caring.gguf", headers={"Origin": "http://evil.example"}).status_code == 403,
           "/exports: only a control vector exported here, and only to this machine's pages")
     one_n = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": -0.35}]}).json()
-    again = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.35}], "name": "caring.gguf"}).json()
-    plus = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.8}]}).json()
+    kept = Path(j["path"]).read_bytes()
+    again = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.35}], "name": "caring.gguf"})
+    other = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.35}], "name": "the-other-way"}).json()
+    plus =c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 2, "n": 5, "dose": 0.8}]}).json()
     check(plus["file"] == "theodolite-page3-n5-dose0.8.gguf" and c.get(f"/api/atlas/exports/{plus['file']}").status_code == 200
           and c.get(f"/api/atlas/exports/{one_n['file']}").status_code == 200 and c.get(f"/api/atlas/exports/{several_name(recipe)}").status_code == 404,
           f"/control_vector: a file it names itself is one /exports hands over, whatever the dose's sign ({plus['file']})")
-    check(one_n["file"] == "theodolite-page3-n5-dose-0.35.gguf" and again["file"] == "caring.gguf"
-          and sorted(ecv.read_control_vector(Path(again["path"]))[0]) == [2]
-          and np.array_equal(ecv.read_control_vector(Path(again["path"]))[0][2], -ecv.read_control_vector(Path(one_n["path"]))[0][2]),
-          "/control_vector: a file left unnamed says what is in it, in the pages' count; a name given again is written over; the other sign is the other way")
+    check(one_n["file"] == "theodolite-page3-n5-dose-0.35.gguf" and other["file"] == "the-other-way.gguf"
+          and sorted(ecv.read_control_vector(Path(other["path"]))[0]) == [2]
+          and np.array_equal(ecv.read_control_vector(Path(other["path"]))[0][2], -ecv.read_control_vector(Path(one_n["path"]))[0][2]),
+          "/control_vector: a file left unnamed says what is in it, in the pages' count; the other sign is the other way")
+    check(again.status_code == 400 and "caring.gguf is already among the exports" in again.json()["detail"]
+          and "never written over" in again.json()["detail"] and Path(j["path"]).read_bytes() == kept,
+          f"/control_vector: a name given again is refused in plain words, the file there as it was, byte for byte ({again.text[:200]})")
     several = c.post("/api/atlas/control_vector", json={"neurons": recipe}).json()
+    kept_set = Path(several["path"]).read_bytes()
+    twice = c.post("/api/atlas/control_vector", json={"neurons": recipe})
     check(several["file"].startswith("theodolite-set-of-3-") and several["file"] == several_name(recipe)
-          and several["file"] == c.post("/api/atlas/control_vector", json={"neurons": recipe}).json()["file"]
-          and c.get(f"/api/atlas/exports/{several['file']}").status_code == 200,
-          f"/control_vector: a set left unnamed is named by its size and its entries ({several['file']})")
+          and twice.status_code == 400 and f"{several['file']} is already among the exports" in twice.json()["detail"]
+          and Path(several["path"]).read_bytes() == kept_set and c.get(f"/api/atlas/exports/{several['file']}").status_code == 200,
+          f"/control_vector: a set left unnamed is named by its size and its entries; asked for again it is refused, not written over ({several['file']})")
     for bad, says in [({"neurons": [{"layer": 0, "n": 5, "dose": 1}]}, "no control vector after layer 0"), ({"neurons": [{"layer": 2, "n": 5}]}, "Give each neuron its dose"),
                       ({"neurons": [{"layer": 2, "n": 5, "dose": 1, "mode": "mul"}]}, 'only "add" pushes'), ({"neurons": [{"layer": 2, "n": 5, "dose": 1, "mode": "act"}]}, 'only "add" pushes'),
                       ({"neurons": [{"layer": 2, "all": True}]}, 'only "add" pushes'), ({"neurons": [{"layer": 2, "head": 1}]}, "a head's scale goes out as a LoRA"),
@@ -997,38 +1010,53 @@ def main() -> int:
               "4": {"standing": "unchecked", "shared": 0.1, "of": 12, "nearest": {"layer": 3, "matched": 0.9, "standing": "agrees"}}}
     check_file.write_text(json.dumps({"version": 1, "lens": {"built_at": built_at}, "group": "above 95 in 100 controls", "agrees_at": 0.5,
                                       "layers": rows_k}), encoding="utf-8")
-    check([idx.steer_weak(l) for l in range(5)] == [True, True, True, False, False] and idx.steer_weak(5) is False,
-          "steer_weak: a layer that shares a word with too few, or has no census and a weak neighbour; not a layer the check does not name")
+    check([idx.steer_weak(l) for l in range(5)] == [True, True, True, False, True] and idx.steer_weak(5) is False,
+          "steer_weak: a layer that shares a word with too few, or that was not checked, whether the nearest checked layer is weak or agrees; "
+          "not a layer the check does not name")
     nl2 = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()["steer"]
     check(nl2["up"] == nl["steer"]["up"] and nl2["check"] == {"standing": "weak", "shared": 2.5, "of": 12, "matched": 0.1, "shuffled": 0.02,
                                                              "neurons": 40, "group": "above 95 in 100 controls", "agrees_at": 0.5,
                                                              "census": {"kind": "trial", "design": "soft_ceil"}},
           f"/neuron/lens at a weak layer: all twelve words still, with what the check found ({nl2.get('check')})")
-    check(c.get("/api/atlas/neuron/lens", params={"layer": 0, "n": 5}).json()["steer"]["check"]["nearest"] == {"layer": 2, "matched": 0.1, "standing": "weak"},
-          "/neuron/lens at an unchecked layer: the nearest layer with a census")
+    nl0 = c.get("/api/atlas/neuron/lens", params={"layer": 0, "n": 5}).json()["steer"]["check"]
+    check(nl0["standing"] == "unchecked" and nl0["nearest"] == {"layer": 2, "matched": 0.1, "standing": "weak"} and "matched" not in nl0,
+          "/neuron/lens at an unchecked layer: it says unchecked, with no figure of its own, and names the nearest layer that was checked")
     hv_w = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["faces"]
     hv_ok = c.get("/api/atlas/hover", params={"layer": 3, "n": 5}).json()["faces"]
     check(hv_w["+"]["steer"] is None and hv_w["-"]["steer"] is None and hv_w["+"]["lens"] == hv["faces"]["+"]["lens"]
           and hv_ok["+"]["steer"] == own_steer(3, 5, "up"),
           "/hover at a weak layer: no steer words on a face's line, the lens's as before; at a layer that agrees, its own")
+    # a layer with no check of its own borrows no neighbour's standing: layer 4 was not checked and the nearest checked
+    # layer agrees, layer 0 was not checked and the nearest is weak; both are held back as not checked, and say so
+    hv_u, hv_u0 = (c.get("/api/atlas/hover", params={"layer": l_, "n": 5}).json()["faces"] for l_ in (4, 0))
+    nl4 = c.get("/api/atlas/neuron/lens", params={"layer": 4, "n": 5}).json()["steer"]
+    check(hv_u["+"]["steer"] is None and hv_u["-"]["steer"] is None and hv_u0["+"]["steer"] is None and hv_u0["-"]["steer"] is None
+          and nl4["check"]["standing"] == "unchecked" and nl4["up"] == [vocab[i] for i in st["up"][4, 5]] and len(nl4["down"]) == 12,
+          "/hover at a layer that was not checked, beside one that agrees or one that is weak: no steer words on a face's line; "
+          "/neuron/lens there still gives all twelve, and says unchecked")
     ws_w = idx.web_summary(4, 7, vocab)
     up_w = idx.walk(4, 7, "up", None, 5, 2, 15.0, None)
     hw_w = c.get("/api/atlas/head", params={"layer": 0, "head": 1}).json()
     check(ws_w["src"] == "steer" and ws_w["gated"] == {"down": 0, "up": sum(l_ in (0, 1, 2) for l_, _ in up_w)} and ws_w["gated"]["up"] > 0
-          and hw_w["o_pooled"]["gated"] == sum(x["layer"] in (0, 1, 2) for x in hw_w["o"]) > 0,
-          f"a web's pooled words and a head's: the neurons at a weak layer left out and counted ({ws_w['gated']}, {hw_w['o_pooled']['gated']})")
+          and hw_w["o_pooled"]["gated"] == sum(x["layer"] in (0, 1, 2, 4) for x in hw_w["o"]) > 0,
+          f"a web's pooled words and a head's: the neurons at a weak layer, or one not checked, left out and counted ({ws_w['gated']}, {hw_w['o_pooled']['gated']})")
+    # downstream of layer 3 (which agrees) lie layer 4, not checked, and layer 5, which the check does not name
+    down_of = lambda n_: [l_ for f_ in ("+", "-") for l_, _ in idx.walk(3, n_, "down", f_, 5, 2, 15.0, None)]  # noqa: E731
+    pick_u = next((n_ for n_ in range(N) if 4 in down_of(n_)), None)
+    check(pick_u is not None and idx.web_summary(3, pick_u, vocab)["gated"]["down"] == sum(l_ == 4 for l_ in down_of(pick_u)) > 0,
+          f"a web's pooled words: a neuron at a layer that was not checked, beside one that agrees, is left out and counted too (layer 3 neuron {pick_u})")
     tok_w = np.array([max(counts, key=counts.get)])  # the word-piece the most neurons of layer 2 list
     steer_rows = lambda: [x for x in idx.search(tok_w, 10**9)[0] if x["src"] == "steer"]  # noqa: E731
     rows_w = steer_rows()
-    check(not any(x["layer"] in (0, 1, 2) for x in rows_w), "search: a weak layer is not searched by its steer words")
+    check(not any(x["layer"] in (0, 1, 2, 4) for x in rows_w), "search: a weak layer, or one that was not checked, is not searched by its steer words")
     check_file.write_text(json.dumps({"version": 1, "lens": {"built_at": "another build"}, "layers": rows_k}), encoding="utf-8")
     check(idx.steer_check(2) is None and idx.steer_weak(2) is False
           and c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["faces"]["+"]["steer"] == own_steer(2, 5, "up"),
           "a check written for another build of the lens is not read")
     check_file.unlink()
     rows_b = steer_rows()
-    check(any(x["layer"] == 2 for x in rows_b) and [x for x in rows_b if x["layer"] > 2] == [x for x in rows_w if x["layer"] > 2],
-          "search: without a check, every layer's steer words are searched, the other layers' rows as they were")
+    check(any(x["layer"] == 2 for x in rows_b) and [x for x in rows_b if x["layer"] in (3, 5)] == [x for x in rows_w if x["layer"] in (3, 5)],
+          "search: without a check, every layer's steer words are searched, the rows of the layers that were searched before as they were")
     ws_b = idx.web_summary(4, 7, vocab)
     check(ws_b["gated"] == {"down": 0, "up": 0} and c.get("/api/atlas/head", params={"layer": 0, "head": 1}).json()["o_pooled"]["gated"] == 0,
           "a web's pooled words and a head's: without a check no neuron is left out")
@@ -1472,7 +1500,9 @@ def main() -> int:
     check(r.status_code == 400 and "Layer 2 (page 3) neuron 5 writes nothing" in r.json()["detail"] and "under the vault edit in force on it" in r.json()["detail"],
           f"/control_vector: a neuron silenced in the vault refused in plain words ({r.text[:200]})")
     ok_ = c.post("/api/atlas/control_vector", json={"neurons": [{"layer": 3, "n": 7, "dose": 1.0}], "name": "after-edit"}).json()
-    check(ok_.get("unit_source", {}).get("kind") == "index" and ok_["vault_edits_in_force"] == [], f"/control_vector: the push's unit from the stats index once built ({ok_.get('unit_source')})")
+    check(ok_.get("unit_source", {}).get("kind") == "index" and ok_["vault_edits_in_force"] == []
+          and ok_["unit_source"].get("stale") == atlas_routes.STATS_STALE,
+          f"/control_vector: the push's unit from the stats index once built, which says it was read before the edit in force ({ok_.get('unit_source')})")
     roles_after = c.get("/api/atlas/neuron/heads", params={"layer": 2, "n": 5}).json()
     check(roles_after != roles_before and all(x["z"] == 0 for x in roles_after["roles"]["q"]), "/neuron/heads: not the cache from before the edit")
     nl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()
@@ -1489,9 +1519,85 @@ def main() -> int:
           and c.get("/api/atlas/web", params={"layer": 2, "n": 5}).headers.get("X-Web-Stale") == "1"
           and "links_stale" in c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json(),
           "/web, /web/summary, /cone and /hover: an edited neuron's web and links marked as read before the edit")
+    # the stats index was read before the edit and is not read again: what a reply takes from it says so (`stale`),
+    # where the edit at layer 2 could have moved it. The stream's median length, the push's unit: at layer 2 and after.
+    # A neuron's usual extremes: after layer 2 only (an edit changes what is written at its layer, not what fires there)
+    SS = atlas_routes.STATS_STALE
+    lens_at = lambda l_, n_: c.get("/api/atlas/neuron/lens", params={"layer": l_, "n": n_}).json()  # noqa: E731
+    nl_after, nl_same, nl_before = lens_at(4, 7), lens_at(2, 6), lens_at(1, 7)
+    check(c.get("/api/atlas/arch").json()["push"]["scale_source"].get("stale") == SS and "stats index was read before the vault edits in force" in SS,
+          "/arch under a vault edit: the push's scale_source says the stats index was read before it")
+    check(nl_after["act_range"].get("stale") == SS and nl_after["ceiling"].get("stale") == SS
+          and "stale" not in nl_same["act_range"] and nl_same["ceiling"].get("stale") == SS
+          and "stale" not in nl["act_range"] and nl["ceiling"].get("stale") == SS
+          and "stale" not in nl_before["act_range"] and "stale" not in nl_before["ceiling"],
+          "/neuron/lens under a vault edit: a neuron's range says it is stale after the edit's layer, its ceiling's share of the stream at "
+          "that layer and after; neither before it")
+    rd_e = c.post("/api/atlas/reads", json={"layer": 4, "n": 7, "text": text, "neurons": [
+        {"layer": 3, "n": 1, "mode": "add"}, {"layer": 2, "n": 6, "mode": "add"}, {"layer": 1, "n": 2, "mode": "add"},
+        {"layer": 3, "n": 2, "mode": "act"}, {"layer": 2, "n": 7, "mode": "act"}, {"layer": 3, "n": 3, "mode": "mul", "dose": 2.0}]}).json()
+    lp_e = c.post("/api/atlas/logprobs", json={"text": prompt, "neurons": [{"layer": 4, "n": 9, "dose": 3.0}]}).json()
+    st_e = c.post("/api/atlas/steer", json={"neurons": [{"layer": 3, "n": 7}, {"layer": 1, "n": 3}], "prompt": prompt, "max_new": 4}).json()
+    check([p_.get("stale") for p_ in rd_e["pushed"]] == [SS, SS, None, SS, None, None] and rd_e["act_range"].get("stale") == SS
+          and lp_e["pushed"][0].get("stale") == SS and [p_.get("stale") for p_ in st_e["pushed"]] == [SS, None],
+          "/reads, /logprobs and /steer under a vault edit: an add push at the edit's layer or after, and an act push after it, say their "
+          f"unit is from before the edit; a push before it and a mul do not ({[bool(p_.get('stale')) for p_ in rd_e['pushed']]})")
+    ev_after = events(c.post("/api/atlas/push", json={"layer": 3, "n": 7, "prompt": prompt, "max_new": 4}).text)[-1]
+    ev_before = events(c.post("/api/atlas/push", json={"layer": 1, "n": 3, "prompt": prompt, "max_new": 4}).text)[-1]
+    check(ev_after.get("done") and ev_after.get("stale") == SS and ev_before.get("done") and "stale" not in ev_before,
+          "/push under a vault edit: its last event says the push's unit is from before the edit, where the push is at the edit's layer or after")
+    cmp_e = c.post("/api/atlas/compare", json={"neurons": [{"layer": 4, "n": 7}, {"layer": 1, "n": 7}], "texts": [text]}).json()
+    run_e = c.post("/api/atlas/run", json={"text": text}).json()
+    check(cmp_e["scale_source"].get("stale") == SS and cmp_e["neurons"][0]["act_range"].get("stale") == SS and "stale" not in cmp_e["neurons"][1]["act_range"]
+          and c.post("/api/atlas/fires", json={"text": text, "limit": 5}).json()["scale_source"].get("stale") == SS
+          and run_e["scale_source"].get("stale") == SS
+          and c.get("/api/atlas/run/view", params={"pos": 3, "min": 0.5}).json()["scale_source"].get("stale") == SS
+          and c.get("/api/atlas/run/paths", params={"pos": 4, "top": 60, "min": 0}).headers.get("X-Scale-Stale") == "1"
+          and c.post("/api/atlas/neuron/steer_lens", params={"layer": 4, "n": 7}).json()["scale_source"].get("stale") == SS,
+          "/compare, /fires, /run, /run/view, /run/paths and /neuron/steer_lens under a vault edit: scores and doses scaled by the stats "
+          "index say it was read before the edit")
+    check(wr.get("scale_stale") == SS and "scale_stale" not in wl,
+          "/neuron/wiring under a vault edit: links read live, weighed across layers by the stats index's norm scales, say so; links from the index do not")
+    wt_e = c.post("/api/atlas/neuron/written_test", json={"layer": 4, "n": 7, "face": "+", "pattern": "under an edit", "fire": ["a b"]})
+    wt_b = c.post("/api/atlas/neuron/written_test", json={"layer": 1, "n": 7, "face": "+", "pattern": "under an edit", "fire": ["a b"], "keep": False})
+    kept_e = c.get("/api/atlas/neuron/tests", params={"layer": 4, "n": 7}).json()["tests"]["+"]
+    check(wt_e.status_code == 200 and wt_e.json().get("stale") == SS and kept_e and kept_e[0].get("stale") == SS
+          and wt_b.status_code == 200 and "stale" not in wt_b.json(),
+          f"/neuron/written_test under a vault edit at an earlier layer: the texts are read now against the stats index's extreme, and the "
+          f"result and the test as kept say so; not for a neuron before the edit ({wt_e.text[:120]})")
+    ev_e = next((x for x in idx.passages(4, 7, "+", 64)["top"] if not passage_kept_back(x["window"]) and x["at"] >= 9), None)
+    if ev_e is not None:
+        check(c.get("/api/atlas/neuron/written_test/lead", params={"layer": 4, "n": 7, "window": ev_e["window"]}).json().get("stale") == SS,
+              "/neuron/written_test/lead under a vault edit at an earlier layer: its share of the stats index's extreme says so")
     down._memit_col_overlays = {}
     vault.active_patches.clear()
     check(c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()["source"] == "index", "/neuron/wiring: back to the index once the edit is gone")
+    rd_g = c.post("/api/atlas/reads", json={"layer": 4, "n": 7, "text": text, "neurons": [{"layer": 3, "n": 1, "mode": "add"}]}).json()
+    check("stale" not in c.get("/api/atlas/arch").json()["push"]["scale_source"] and "stale" not in lens_at(4, 7)["act_range"]
+          and "stale" not in lens_at(4, 7)["ceiling"] and "stale" not in rd_g["pushed"][0] and "stale" not in rd_g["act_range"]
+          and "stale" not in c.post("/api/atlas/run", json={"text": text}).json()["scale_source"]
+          and "X-Scale-Stale" not in c.get("/api/atlas/run/paths", params={"pos": 4, "top": 60, "min": 0}).headers,
+          "the stats index once the edit is gone: nothing is called stale")
+    # a blind test begun with an edit in force before its layer says so, and so does its result. A record alone stands
+    # for the edit here (no weight is changed), at layer 0, so the test of a face at a later layer goes as it did
+    if rich is not None:
+        vault.active_patches.append(PatchOperationRecord(patch_id=2, op_type="DELETE", layer_idx=0, neuron_idx=1, polarity=1.0, target_concept="",
+                                                         strength=0.0, statement="DELETE LAYER 0 SLOT 1", timestamp=time.time(), orig_norm=1.0, new_norm=0.0))
+        late = None
+        for t_ in [rich] + [t_ for t_ in faces_ if t_ != rich and len(held_of(t_)) >= pt.MIN_PAIRS]:
+            if t_[0] < 1:
+                continue
+            r_ = c.post("/api/atlas/neuron/blind_test/start", json={"layer": t_[0], "n": t_[1], "face": t_[2], "pattern": "under an edit", "pairs": 4, "seed": 3})
+            if r_.status_code == 200:
+                late = r_.json()
+                break
+        if late is not None:
+            ba_e = c.post("/api/atlas/neuron/blind_test/answer", json={"test": late["test"], "picks": ["a"] * 4, "judge": "the check", "keep": False}).json()
+            check(late.get("stale") == SS and ba_e.get("stale") == SS,
+                  "/neuron/blind_test under a vault edit at an earlier layer: the test says so when it is begun, and so does its result")
+        else:
+            print("        no face past layer 0 of the stand-in takes a blind test: its stale flag is not checked here")
+        vault.active_patches.clear()
     section("a vault edit in force: read live, marked stale, caches not reused", before)
 
     # ---------------------------------------------------------------------------------------------- 8. field notes
@@ -1769,6 +1875,47 @@ def main() -> int:
           and num["layers"][0]["by_chance"] == round(num["layers"][0]["controls"] * 2 / 4, 1)
           and num["chance"]["expected"] == num["layers"][0]["by_chance"] and num["chance"]["at_most"] is None,
           f"/census/search: a word only the controls bring finds no neuron, and says how many neurons that rate would give ({num['layers']})")
+    # a census is taken on the model with no vault edit and is not taken again: with an edit in force (a record alone
+    # stands for it here: no weight is changed) every census reply says so, a list or a file in a header, and so does
+    # a reply that carries census words beside other things; none of them once the edit is gone
+    CS = atlas_routes.CENSUS_STALE
+    census_gets = {"card": ("/api/atlas/census/card", {"layer": 3}), "unit": ("/api/atlas/census/unit", {"layer": 3, "n": 7}),
+                   "rollout": ("/api/atlas/census/rollout", {"layer": 3, "i": 3}), "layers": ("/api/atlas/census/layers", {}),
+                   "levels": ("/api/atlas/census/levels", {}), "search": ("/api/atlas/census/search", {"q": "OCE"}),
+                   "units": ("/api/atlas/census/units", {"layer": 3}), "spread": ("/api/atlas/census/spread", {"layer": 3}),
+                   "neuron": ("/api/atlas/neuron", {"layer": 3, "n": 7}), "wiring": ("/api/atlas/neuron/wiring", {"layer": 1, "n": 4, "k": 64}),
+                   "cone": ("/api/atlas/cone", {"layer": 1, "n": 4, "limit": 1000})}
+    asked = lambda: {k_: c.get(path_, params=params_) for k_, (path_, params_) in census_gets.items()}  # noqa: E731
+    vault.active_patches.append(PatchOperationRecord(patch_id=1, op_type="DELETE", layer_idx=5, neuron_idx=1, polarity=1.0, target_concept="",
+                                                     strength=0.0, statement="DELETE LAYER 5 SLOT 1", timestamp=time.time(), orig_norm=1.0, new_norm=0.0))
+    ce = asked()
+    cj = {k_: r_.json() for k_, r_ in ce.items()}
+    check("census was taken before the vault edits in force" in CS and cj["card"].get("stale") == CS and cj["unit"].get("stale") == CS
+          and cj["unit"]["card"].get("stale") == CS and cj["rollout"].get("stale") == CS and cj["levels"].get("stale") == CS
+          and cj["search"].get("stale") == CS and [x.get("stale") for x in cj["layers"]] == [CS],
+          "the census under a vault edit, at whatever layer: its card, a unit and its card, an answer, every layer's row, the map's inks and "
+          "the search say it was taken before the edit")
+    check(ce["units"].headers.get("X-Census-Stale") == "1" and cj["units"] == units and ce["spread"].headers.get("X-Census-Stale") == "1"
+          and cj["spread"] == {"x": [0.5], "y": [0.25], "n": [7]},
+          "the census under a vault edit: the ranking, a list, and the spread, a file, say it in a header, and are otherwise as they were")
+    # neuron 7 of layer 3 has census words: a search for one of its lens words lists it with them
+    word7 = next(vocab[int(t)].strip() for t in idx.get("lens")["lens_pos"][3, 7] if len(vocab[int(t)].strip()) >= 2)
+    found7 = lambda: c.get("/api/atlas/search", params={"q": word7, "limit": 2000}).json()  # noqa: E731
+    with_words = lambda rows: any(x.get("census") for x in rows)  # noqa: E731
+    se = found7()
+    check(cj["neuron"]["census"].get("stale") == CS and with_words(se["results"] + se["held"]) and se.get("census_stale") == CS
+          and (cj["wiring"].get("census_stale") == CS) == with_words(cj["wiring"]["down"] + cj["wiring"]["up"])
+          and (cj["cone"].get("census_stale") == CS) == with_words(cj["cone"]["nodes"])
+          and "census_stale" not in cj["neuron"] and not with_words(cj["neuron"]["writes_into"] + cj["neuron"]["reads_from"]),
+          "census words under a vault edit: /neuron's census says it was taken before the edit, and so does a reply whose rows carry census "
+          "words (/search, /neuron/wiring, /cone); one whose rows carry none does not")
+    vault.active_patches.clear()
+    cg = asked()
+    check(not any("stale" in r_.json() for k_, r_ in cg.items() if k_ not in ("layers", "units", "spread")) and "stale" not in cg["layers"].json()[0]
+          and "stale" not in cg["unit"].json()["card"] and "stale" not in cg["neuron"].json()["census"]
+          and not any("census_stale" in r_ for r_ in (cg["neuron"].json(), cg["wiring"].json(), cg["cone"].json(), found7()))
+          and "X-Census-Stale" not in cg["units"].headers and "X-Census-Stale" not in cg["spread"].headers and cg["card"].json() == card,
+          "the census once the edit is gone: nothing is called stale")
     # the steer lens set beside the census (backend/steer_check.py), on a lens and a trial's ranking made by hand: three
     # layers of eight neurons; layer 1 has a trial of a design counted calibrated there, layer 2 one that is not
     from backend import steer_check as sk
@@ -1812,6 +1959,12 @@ def main() -> int:
           "steer check: a trial of a design not counted calibrated checks nothing; an unchecked layer is given the nearest checked one")
     check(d_s["layers"]["2"]["shared"] == 0.5 and d_s["layers"]["1"]["shared"] == 0.0 and d_s["layers"]["2"]["of"] == 12,
           "steer check: how many of a neuron's word-pieces the layer shares, the mean of the two signs")
+    # the layers beside one that agrees were not checked: they do not take its standing, on the terminal or in the index
+    sk.write(sk_root, **sk_kw)
+    said_s = sk.said(d_s)
+    check([AtlasIndex(sk_root).steer_weak(l) for l in range(3)] == [True, False, True]
+          and all("not checked here" in said_s[l] and "agrees" not in said_s[l] for l in (0, 2)) and "agrees" in said_s[1],
+          f"steer check: a layer that was not checked is held back and says so, though the nearest checked layer agrees ({said_s[0].strip()})")
     up_s[1, 0, 3] = 599
     np.savez(sk_root / "steer_lens.npz", up=up_s, down=down_s, up_kl=np.full((3, 8), 0.3, dtype=np.float32), down_kl=np.full((3, 8), 0.5, dtype=np.float32),
              dose=np.array([0.2, 0.4, 0.8]), meta=np.array(json.dumps({"built_at": "then", "model": "m"})))
@@ -1820,8 +1973,9 @@ def main() -> int:
     sk_idx = AtlasIndex(sk_root)
     check(sk_path.name == "steer_check.json" and d_w["layers"]["1"]["standing"] == "weak" and d_w["layers"]["1"]["matched"] == 0.25
           and d_w["layers"]["0"]["nearest"]["standing"] == "weak" and len(sk.said(d_w)) == 3
-          and [sk_idx.steer_weak(l) for l in range(3)] == [True, True, True] and sk_idx.steer_check(1)["standing"] == "weak",
-          "steer check: under one half the layer is weak, and so are the unchecked layers beside it; the index reads the file written")
+          and [sk_idx.steer_weak(l) for l in range(3)] == [True, True, True] and sk_idx.steer_check(1)["standing"] == "weak"
+          and sk_idx.steer_check(0)["standing"] == "unchecked",
+          "steer check: under one half the layer is weak; the layers beside it were not checked and are held back as that; the index reads the file written")
     try:
         sk.measure(Path(tempfile.mkdtemp(prefix="steer-check-none-")), **sk_kw)
         refused_s = ""

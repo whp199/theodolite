@@ -452,8 +452,13 @@ export const EditPanel: React.FC = () => {
             ) : null}
             {isUpd && eLOk && eL >= 36 && eL <= 59 ? (
               <Rubric>
-                Between layers 36 and 59, the direction this edit pushes along lies almost wholly in the model’s quiet dimensions, where the
-                study found that even a small push can derail it.
+                Between layers 36 and 59, the direction this edit asks for lies almost wholly in the model’s quiet dimensions. The edit adds
+                it to the neuron’s stored column, and the norm after the feed-forward block then multiplies each dimension by its own weight:
+                at layer 41, four fifths or more of the direction lies in 181 dimensions where that weight is one to three thousandths of the
+                others’ (the study’s records, 16 October 2026). So, inferred from those records and not measured on a running edit, most of
+                the push does not reach the stream between these layers, and what does reach it points mostly elsewhere than along the
+                word’s direction. The study’s finding that even a small push in those dimensions can derail the model was of a push placed
+                in the stream itself.
               </Rubric>
             ) : null}
             {!isUpd ? (
@@ -485,7 +490,9 @@ export const EditPanel: React.FC = () => {
             <dd>
               c′ = c + p · α · max(‖c‖, 0.25) · d̂, where c = W<sub>down</sub>[:, i] of layer ℓ, unpacked from its 4-bit store; p = ±1, the
               POLARITY; α the STRENGTH (2.5 when left out); and d̂ = normalise((W<sub>U</sub>[t] ⊙ g) · J<sub>ℓ</sub>), the word’s pullback
-              through the J++ lens [4], fitted on the base model.
+              through the J++ lens [4], fitted on the base model. The norm after the block then multiplies each dimension by its weight
+              w, so what the stream receives from the neuron goes as w ⊙ c′: d̂ is not divided by w, though the nearness search and
+              DESCRIBE POLE read w ⊙ c.
             </dd>
             <dt>silence</dt>
             <dd>DELETE writes c′ = 0: the neuron still fires, but what it writes is nothing.</dd>
@@ -549,8 +556,11 @@ export const EditPanel: React.FC = () => {
             </dd>
             <dt>caveat</dt>
             <dd>
-              From layer 36 the pullback d̂ lies 99–100% in the quiet dimensions, where a small push can derail the model (E6 §4b), and the
-              lens it is pulled back through was fitted on another checkpoint (REPORT §3.4, bug 9). Of the vault’s edits, the study ran only
+              From layer 36 the pullback d̂ lies 99–100% in the quiet dimensions, where a small push placed in the stream can derail the
+              model (E6 §4b). An edit adds d̂ to the stored column, and the norm’s weights on the 181 persistently quiet dimensions are one
+              to three thousandths of the others’ (V6 §1), so most of it does not reach the stream: inferred from those records, not
+              measured on a running edit. The lens it is pulled back through was fitted on another checkpoint (REPORT §3.4, bug 9). Of
+              the vault’s edits, the study ran only
               DELETE: silencing ten neurons at layer 51 moved sentences about women by −1.80 (E6 §2.3). It never put UPDATE or INSERT to a
               causal test.
             </dd>

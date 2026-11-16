@@ -83,7 +83,24 @@ for.
 
 Every adapter records what it was made from under `theodolite.*` (the pushes as given, each entry, the weights read,
 the push, the scale, the start mark, what of llama.cpp was read, the code's commit), beside llama.cpp's keys. `--show`
-prints them. Nothing here uses the GPU or downloads anything; `--vault` loads the instrument's runtime on the CPU
+prints them.
+
+The licence and where the numbers came from. An adapter's B is made of the model's own columns, so since 14 November
+2026 every adapter says so in its own keys: Gemma 4's licence and the base model under the keys gguf-py writes for
+llama.cpp's own LoRA converter (`general.license`, `general.license.link`, `general.base_model.*`:
+`export_control_vector.add_origin`; llama.cpp's loader asks for none of them and lists every key it meets), and
+`theodolite.derived_from`, in plain words. A silenced copy is the whole model: by scale every key of the GGUF it is
+made from is copied, by norm every byte, so whatever licence and base-model keys that GGUF carries the copy carries
+too, and none is added where it carries none (measured, headers read 14 November 2026: of the three 31B GGUFs on the
+machine this was written on, unsloth's UD-Q4_K_XL carries them and lmstudio-community's Q4_K_M and QAT Q4_0 carry
+neither); the copy's record (`derived_from`, in the file or beside it) says what it is a copy of and what was changed.
+
+A file already there is never written over by the command line unless `--force` is given: the adapter, the silenced
+copy, and the record a by-norm copy keeps beside it (until 14 November 2026 that record was written over without a
+word when it lay there with no copy beside it). `write_lora` and `write_silenced` themselves write over a file of the
+name they are given: whoever calls them says whether one already there may go.
+
+Nothing here uses the GPU or downloads anything; `--vault` loads the instrument's runtime on the CPU
 (`runtime_factory.make_runtime`: the whole model, minutes and some 20 GB on the 31B, its J++ lens for UPDATE and
 INSERT), the reference on the weights the columns are read from (the GGUF of `--gguf`, else the checkpoint: packed,
 bfloat16), whatever runtime the shell is set up for; the rest reads a few tensors. Whatever can be refused without
@@ -161,6 +178,21 @@ SILENCE_BY = {"scale": ("a one-number F32 tensor blk.<l>.ffn_down.scale (or attn
                        "the block writes 0 whatever comes in, an adapter's part too")}
 CAVEAT = ("the census read its labels from add pushes, not from these: a neuron's mul, a head's scale and a vault edit "
           "carry the instrument's arithmetic, not a measured effect. Pushes and head scales act on the start mark too")
+# what each file says of where its numbers came from, under theodolite.derived_from (a by-norm copy: in the record
+# beside it, whose keys bear no theodolite. before them)
+DERIVED = (f"this file's tensors are derived from the weights of {ecv.ORIGIN}: each lora_b holds the model's own columns "
+           "of the projection it is named for (blk.<l>.ffn_down, the feed-forward down projection; blk.<l>.attn_output, "
+           "attention's output projection), each times f - 1 (f the factor asked), or for a vault edit the edited "
+           "column times f less the model's own; each lora_a holds only ones and noughts, which pick the inputs. The "
+           "weights read are named under theodolite.weights")
+DERIVED_COPY = {"scale": (f"this file is a copy of a GGUF of {ecv.ORIGIN}, the file named under theodolite.weights, "
+                          "changed by Theodolite: every tensor and every key of that file as it was (its licence and "
+                          "base-model keys among them, where it carries any), a one-number tensor set to 0 added for "
+                          "each block silenced, and this record"),
+                "norm": (f"the file this record lies beside is a copy of a GGUF of {ecv.ORIGIN}, the file named under "
+                         "weights, changed by Theodolite: every byte of that file as it was (its licence and base-model "
+                         "keys among them, where it carries any) but the weight of the norm after each block silenced, "
+                         "set to 0")}
 
 
 # --------------------------------------------------------------------------------------------------- what is pushed
@@ -383,7 +415,7 @@ class Columns:
 @contextmanager
 def vault_kept(vault: Any) -> Iterator[None]:
     """The vault as it was before the block, after it: its records, its count and every layer's column overlays (not
-    `rollback_patches`, which clears every edit, and walks the 31B's 60 layers)."""
+    `rollback_patches`, which clears every edit, on every linear that carries overlays)."""
     from backend.causal_check import language_model
 
     rt = vault.runtime
@@ -499,8 +531,10 @@ def base_record(plan: Plan, source: Columns, given: Dict[str, Any], kinds: Seque
 
 
 def write_lora(path: Path, tensors: Dict[str, Tuple[np.ndarray, np.ndarray]], record: Dict[str, Any]) -> Path:
-    """The adapter: llama.cpp's keys, `theodolite.*` from `record`, a lora_a and lora_b per model tensor, F32.
-    Atomically: a temporary file beside it, then a rename."""
+    """The adapter: llama.cpp's keys, the licence and the base model (`ecv.add_origin`), `theodolite.*` from `record`
+    and `theodolite.derived_from` (B is made of the model's own columns: `DERIVED`), a lora_a and lora_b per model
+    tensor, F32. Atomically: a temporary file beside it, then a rename, over a file of that name (`main` refuses one
+    already there unless --force)."""
     import gguf
 
     if not tensors:
@@ -514,7 +548,8 @@ def write_lora(path: Path, tensors: Dict[str, Tuple[np.ndarray, np.ndarray]], re
         w.add_name(str(record.get("name", "theodolite LoRA")))
         if record.get("description"):
             w.add_description(str(record["description"]))
-        ecv.add_record(w, record)
+        ecv.add_origin(w)
+        ecv.add_record(w, {**record, "derived_from": DERIVED})
         for name in sorted(tensors):
             A, B = tensors[name]
             w.add_tensor(f"{name}.lora_a", np.ascontiguousarray(A, dtype=np.float32))
@@ -607,11 +642,14 @@ def refuse_silencing(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], 
 def write_silenced(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], by: str,
                    record: Dict[str, Any]) -> Tuple[Path, str]:
     """A copy of the GGUF `src` with each (layer, "ffn" | "attn") silenced, `by` "scale" or "norm" (module docstring);
-    returns (the file, how). Atomically, as the adapter is written."""
+    returns (the file, how). Atomically, as the adapter is written. The copy keeps the licence and base-model keys
+    `src` carries (by scale every key but theodolite's own is copied, by norm every byte) and none is added; the
+    record says what it is a copy of (`derived_from`: `DERIVED_COPY`)."""
     import gguf
 
     src, out = Path(src), Path(out)
     reader, names = refuse_silencing(src, out, silenced, by)
+    record = {**record, "derived_from": DERIVED_COPY[by]}
     tmp = out.with_name(out.name + ".tmp")
     try:
         if by == "norm":
@@ -795,7 +833,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             raise ValueError("--model-out is for a whole block or every head silenced (--block, all: true, head: \"all\").")
         if pre.silenced:
             refuse_silencing(Path(a.gguf), Path(a.model_out), pre.silenced, a.silence_by)
-        for p in (Path(a.out) if a.out else None, Path(a.model_out) if a.model_out else None):
+        # the record a by-norm copy keeps beside it is a file this run writes too
+        side = Path(a.model_out + ".theodolite.json") if a.model_out and a.silence_by == "norm" else None
+        for p in (Path(a.out) if a.out else None, Path(a.model_out) if a.model_out else None, side):
             if p is not None and p.exists() and not a.force:
                 raise ValueError(f"{p} is already there (--force writes over it).")
         vault: Dict[Tuple[int, int], np.ndarray] = {}
@@ -832,7 +872,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             out = Path(a.out) if a.out else Path(default_name(plan))
         elif a.out:
             raise ValueError("Nothing here is a LoRA (-o): a silenced block is the copy --model-out writes.")
-        for p in (out, Path(a.model_out) if a.model_out else None):
+        for p in (out, Path(a.model_out) if a.model_out else None, side):
             if p is not None and p.exists() and not a.force:
                 raise ValueError(f"{p} is already there (--force writes over it).")
         given = {"pushes": bodies, "vault": list(a.vault)}

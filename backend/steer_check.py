@@ -18,7 +18,13 @@ twelve of either sign, three letters or more, case and marks dropped) is one of 
 or is begun by one. It is counted over the neurons that stand above 95 in 100 of the run's controls (GROUP), which a
 trial of 1,022 neurons fills with a few hundred, and beside it the same count with the neurons shuffled among
 themselves (five shuffles, seed 0): the lens agrees with the layer's census when it shares a word with STEER_AGREES
-of them or more. A layer with no census is "unchecked", and is given the nearest layer that has one.
+of them or more. A layer with no census is "unchecked": the lens was set beside nothing there. Its row names the
+nearest layer that was checked (`nearest`, with what was found there), so a reader can see where the checked layers
+lie; that finding is the other layer's, and the server takes no layer's standing from it (`AtlasIndex.steer_weak`
+holds an unchecked layer's words back as not checked, whatever its neighbour found).
+
+What was measured (14 November 2026, on the lens built 13 November; layers counted from 0, a page shows layer + 1):
+weak at 32 to 38, agrees at 39 to 52, unchecked at 0 to 31 and at 53 to 59.
 """
 from __future__ import annotations
 
@@ -176,8 +182,8 @@ def said(d: Dict[str, Any]) -> List[str]:
         c = row.get("census")
         tail = (f"{c['kind']} census ({c.get('design')}): shares a word with {row['matched']:.3f} of the {row['neurons']} {d['group']}"
                 f" ({row['shuffled']:.3f} shuffled)" if c else
-                "no census" + (f"; nearest is layer {row['nearest']['layer']} ({row['nearest']['matched']:.3f}, {row['nearest']['standing']})"
-                               if row.get("nearest") else ""))
+                # the nearest checked layer is named, not its finding: that is on its own line, and is not this layer's
+                "no census: not checked here" + (f" (the nearest checked layer is {row['nearest']['layer']})" if row.get("nearest") else ""))
         out.append(f"layer {int(l):>2}: dose {row['dose']:<6} median KL {row['kl_p50']:<5} {row['shared']:>5.2f} of {row['of']} shared   "
                    f"{row['standing']:<9} {tail}")
     return out
