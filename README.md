@@ -14,13 +14,14 @@
 <p align="center">
   <a href="#what-it-is">what it is</a> ·
   <a href="#the-atlas-and-its-census">the atlas</a> ·
+  <a href="#caring-contempt-and-a-stage-villain">a finding</a> ·
   <a href="#the-instrument">the instrument</a> ·
   <a href="#getting-started">getting started</a> ·
   <a href="#how-far-to-trust-it">how far to trust it</a> ·
   <a href="#where-it-is-heading">where it is heading</a> ·
+  <a href="#levelling-an-experimental-weight-space-harness">levelling</a> ·
   <a href="#built-on">built on</a> ·
-  <a href="#what-is-new-here">what is new here</a> ·
-  <a href="#the-study">the study</a>
+  <a href="#what-is-new-here">what is new here</a>
 </p>
 
 <p align="center">
@@ -117,6 +118,44 @@ census at length](docs/ATLAS.md) · [every figure](ROADMAP.md#vi--the-atlas).
   </tr>
 </table>
 
+## Caring, contempt and a stage villain
+
+On 11 November 2026, searching the atlas, a scientist chat found two recipes of three neurons each that change the
+voice the model answers in. Each neuron is pushed along its write direction by a share of its layer’s stream:
+
+| recipe | layer · neuron · dose |
+|---|---|
+| **caring** | 36 · 1095 · +0.35, 44 · 9148 · +0.5, 44 · 2057 · −0.25 |
+| **contempt** | the same three, every sign flipped |
+| **a stage villain** | 40 · 21379 · −1.0, 42 · 4330 · −0.5, 43 · 8862 · +0.4 |
+
+Pushed one way, an answer opens “I know how heartbreaking and discouraging it feels in the moment…”. Flipped, it
+opens “First off, stop reading this and just get it over with: **Who cares?**”. The villain speaks in wicked grins:
+“A wicked grin of salt and light… The tide retreats with a slow, low laugh”.
+
+The instrument wrote each recipe out as a llama.cpp control vector, so it runs without Theodolite (checked on the QAT
+Q4_0 GGUF; other GGUFs are untried). They are published as
+[Steering vectors 1](https://github.com/whp199/theodolite/releases/tag/steering-vectors-1):
+
+```bash
+llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled gemma4-31b-caring.gguf:1
+```
+
+What was checked, described and not judged against a bar set beforehand:
+- each file is, bit for bit, what the export writes from the checkpoint;
+- in llama.cpp, caring and contempt showed on all three prompts tried;
+- the caring file run backwards (`:-1`) wrote the contempt file’s answers to the letter;
+- in the instrument, on five prompts the recipes were not tuned on, caring showed on three and contempt on four;
+- the villain shows in llama.cpp too, but sits at its breaking point there.
+
+What was not checked:
+- whether any of them changes what the model does, rather than how it sounds;
+- sampled answers, long chats, thinking turned on, or prompts outside English.
+
+Each push is also more than one neuron can write by itself (1.3 times, for layer 36’s neuron 1095). So a recipe
+carries the effect of a direction, not of “the neuron turned up”. To make your own on a CPU in about ten seconds,
+from a GGUF you already have, see `scripts/export_control_vector.py` and [ARCHITECTURE §6](ARCHITECTURE.md).
+
 ## The instrument
 
 <p align="center">
@@ -186,7 +225,7 @@ The server answers only pages served from this machine. The full set-up is in [d
 - the CPU and GGUF paths, and the faster unpackers;
 - the server’s WebSocket, the passages and the steer lens;
 - the scientist’s backends and how far it can reach into your files;
-- rented cards, reproducing the study, and where everything is in the repository.
+- rented cards, reproducing the first study, and where everything is in the repository.
 
 To take a census layer on your own card, see [VOLUNTEERS.md](VOLUNTEERS.md).
 
@@ -198,22 +237,24 @@ This is research code. Read a single sighting as a lead, never as a finding.
   behaviour does, but through layer 50 its top word matches the model’s next word on prose at most about 5% of the
   time. This is the largest fault left. Lenses fitted on the instruct model were put to three registered tests (R2
   to R4), and none was served.
-- **The label gate.** The study found that a neuron’s lens words predicted its real effect only at the layers it
+- **The label gate.** The instrument’s first study found that a neuron’s lens words predicted its real effect only
+  at the layers it
   sampled from 41 on (32–40 were not sampled). So below layer 41, and wherever the lens and the naked eye share none
   of their first ten words, no page puts a neuron’s words in its main reading. The apparatus keeps them, with the
   reason.
 - **The census.** A rank is a lead against random pushes, with a p and a false-discovery q beside it. Where a layer’s
   doses are not counted calibrated, the atlas says so on its page.
-- **The study’s audit.** It found nine faults in the instrument. Seven are mended or applied. Each face’s own input
+- **The first study’s audit.** It found nine faults in the instrument. Seven are mended or applied. Each face’s own input
   passages are built but not yet validated as labels, and the lens is the one left open.
 
 The fault table and every caution are in [docs/TRUST.md](docs/TRUST.md).
 
 ## Where it is heading
 
-Theodolite began as the instrument of one study (below) and has outgrown it. It is becoming a general-purpose
-instrument for interpretability, and a way to learn it: one a newcomer can learn to read a model with, and one whose
-readings say how far they can be trusted. What is under way:
+Theodolite began as the instrument of one study, of whether Gemma 4 is “female-coded”
+([its findings](docs/FINDINGS.md)), and has outgrown it. It is becoming a general-purpose instrument for
+interpretability, and a way to learn it: one a newcomer can learn to read a model with, and one whose readings say
+how far they can be trusted. What is under way:
 - **The census of all sixty layers.** Layer by layer, a trial first, taken by the home card and by volunteers. Below
   layer 33 and above layer 53 the push that reads is still being found. On 16 November 2026 a design that asks twice
   the questions at one dose went on trial at layer 32 (31 on the board).
@@ -221,10 +262,36 @@ readings say how far they can be trusted. What is under way:
   pattern written from them can be put to a blind test. Neither is yet validated as a label.
 - **A lens fitted on the instruct model.** None tested so far has beaten the base-fitted J++ where it would be
   served.
-- **Weight edits read against the untouched model.** The first slice is built, as a tool at the terminal.
+- **Weight edits read against the untouched model.** This is Levelling, below.
 - **More than one kind of card.** The CPU, GGUF files and rented cards.
 
 Nothing on the [roadmap](ROADMAP.md) has a date.
+
+### Levelling, an experimental weight-space harness
+
+Every reading so far pushes the model’s stream while it runs. Levelling begins the other half: changing the model’s
+weights and reading what the change does. The question behind it is whether the instrument can become an
+environment where a model, today’s or the next, forms a hypothesis about Gemma-4-31B’s weights, makes the edit,
+tests it quickly and tries again.
+
+Its first slice (1a) was built on 16 November 2026, and it is deliberately narrow:
+- **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
+  projection, or add a low-rank term there. Its id is a hash of the edit and of every tensor it touches, so it is
+  refused on any other weights.
+- **It is read against the untouched model in the same forward.** The edited model runs in one row of a batch and the
+  base in another, beside null rows and control edits, at two row counts. The model is never left edited.
+- **Nothing is lost.** Every reading, refused and void ones too, goes into an append-only ledger. Each line carries
+  the hash of the line before it.
+- **It gives numbers, not verdicts.** It prints differences, ranks against control edits, floors, and “void” or
+  “unstable”. It names no edit.
+
+For now it is a command line for the owner at the terminal, run with the server stopped. No page, route or agent’s
+tool reaches it yet. Its first run on the 31B held 142 of its 145 standing checks. The next slices (direction
+removal, row edits, matched controls, then a door for an agent) wait on decisions that are the owner’s.
+
+“Levelling” is a working name: as a surveyor levels heights against a benchmark, it reads each edit against the
+untouched model. More is in [ARCHITECTURE §7](ARCHITECTURE.md) and [ROADMAP §viii](ROADMAP.md#viii--a-weight-edit-read-against-the-base), and the exploration
+that led to it is in [weight_space_exploration](experiments/results/weight_space_exploration/README.md).
 
 ## Built on
 
@@ -260,37 +327,23 @@ reads neurons from where they fire rather than by pushing them. Bracketed number
 - **A census anyone with a card can take.** A volunteer kit is pinned to a tag. Its canary batch is compared bit for
   bit with the home card’s, other kinds of card are judged against bars measured before any run, and claims and
   results go on a public board.
-- **The audit’s mends, built in.** The study’s audit of its own instrument found nine faults, and the mends for
+- **The audit’s mends, built in.** The first study’s audit of its own instrument found nine faults, and the mends for
   seven are built in. The nudge is sized to the stream’s own strength with its quiet dimensions masked. The landmark
-  frame is order-free, and threads are ranked by the direct path. A label gate comes from the study’s validation of
+  frame is order-free, and threads are ranked by the direct path. A label gate comes from that study’s validation of
   neuron labels.
 - **Weight links put to the test.** Links are weighed through Gemma 4’s norms and layer scalars, and were measured
   under pushes on the model. That check showed they are real by size, and where a link’s sign can be trusted.
+- **Pushes that leave the instrument.** A push, or a recipe of several neurons, is written as a llama.cpp control
+  vector that adds the same push.
 - **Two readers on every page**, and a plain vocabulary, each word mapped to its name in the literature.
-
-## The study
-
-Theodolite was first built for one question: is Gemma 4 “female-coded”? The study ran seven experiments with eight
-adversarial verifiers, a neuron-label validation and a lens refit on the instruct model, 314 GPU jobs in all. In short:
-- **It is not female-coded by default.** With no system prompt it calls itself *it* (0 of 320 samples say *she*).
-- **The “female” readings trace to other causes.** They come from:
-  - the bare name “Gemma” written as an antecedent;
-  - a forced-choice format that defaults to *woman*;
-  - late-layer readings of the base-fitted lens;
-  - a persona axis mixed with an AI/service-role offset.
-- **Gemma 4 has a quiet carry channel.** About 180 early-loud dimensions are read with up to 1700× the gain of the
-  others, which is why steering vectors derived from a lens break the model.
-- **Labels read off the lens predicted neurons’ real effects only at the sampled layers 41–58.** Layers 32–40 were
-  not sampled. This is where the instrument’s label gate comes from.
-
-Where a finding rests on a lens, it is the base-fitted one. The findings with their cautions:
-[docs/FINDINGS.md](docs/FINDINGS.md). The report: [experiments/REPORT.md](experiments/REPORT.md).
 
 ## Further reading
 
 - **The atlas:** [ATLAS](docs/ATLAS.md) (the atlas and the census at length).
 - **The pages:** [INSTRUMENT](docs/INSTRUMENT.md) (the pages leaf by leaf) and [SETUP](docs/SETUP.md) (running it in full).
-- **Trust and findings:** [TRUST](docs/TRUST.md) (faults and cautions) and [FINDINGS](docs/FINDINGS.md) (the study’s findings).
+- **Trust and findings:** [TRUST](docs/TRUST.md) (faults and cautions) and [FINDINGS](docs/FINDINGS.md) (the first
+  study, of whether Gemma 4 is “female-coded”: it is not, by default; its report is
+  [experiments/REPORT.md](experiments/REPORT.md)).
 - **The census and the code:** [VOLUNTEERS](VOLUNTEERS.md), [ROADMAP](ROADMAP.md), [ARCHITECTURE](ARCHITECTURE.md)
   (the tensor contracts), [COMPUTE](COMPUTE.md) (what each job costs) and [REFERENCES](REFERENCES.md).
 
