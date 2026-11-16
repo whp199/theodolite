@@ -1,0 +1,1683 @@
+"""The edit as a value (`backend/weight_edits.py`): one change to the base weights, named by its hash, passed through
+a gate, saved and loaded, and run as the arithmetic of one row of a batch beside the unedited model.
+
+What it is. An edit is a list of terms. A term names one feed-forward linear of the text model and stands for an
+additive difference Delta from the shipped tensor W; at dose d the weight is W + d * Delta (dose 1 the edit, 0 the
+base, -1 its mirror). Two kinds are built in this first slice (1a): a column term on a `down_proj` (what a neuron
+writes: a column scaled, silenced, set to a given vector or added to), and a low-rank term B @ A on a `down_proj`.
+An edit is never left in the model. `per_row` runs it as one row's own arithmetic for the length of a block, with
+other rows of the same forward untouched; `folded` lays the same edit into the overlay dicts every packed linear
+carries, for every row, for the length of a block; both take off what they put on, and `assert_base` says whether
+the model is the base again. `backend/levelling.py` reads an edit against the base row of the same forward and
+`backend/level_book.py` keeps what was read; this file calls neither, and takes the text model, never a runtime.
+
+Why an edit rides a row, and in which form. What follows was measured on 14 November 2026 on the RTX 5090
+(Gemma-4-31B-it, the W4A16 checkpoint, compiled unpacker, lens freed, server stopped; one run each; scripts and JSON
+in experiments/results/weight_space_exploration/pilot/). The pilots' raw text was text with no start mark, and
+pilot 6's and pilot 4's figures below are of one such text (a recipe of 150 pieces): the same comparisons have not
+been read on a chat-formatted item.
+- MEASURED (pilots 1 and 6): rows of one forward do not leak. An untouched row far from edited rows equals row 0 by
+  bits, a hooked forward's row 0 equals an unhooked forward's of the same shape, and one edit in rows 1, 9, 20 and
+  31 of 32 reads the same.
+- MEASURED (pilot 6, the raw recipe with no start mark): silencing a neuron on the INPUT side of its down_proj (the
+  row's activation set to nought before the product) reads as the folded weight does to five decimals of a mean KL
+  at the same batch size, 7 of 7 cases at 2 and at 32 rows. A factor of 0 only: no pilot ran another input-side
+  factor.
+- MEASURED (pilots 4 and 6, the same text): an OUTPUT-side delta for the same silencing is another arithmetic
+  (0.0227 where the other two read 0.7258). So a column edit rides its row on the input side, and only new content
+  is added after the product.
+- MEASURED (pilot 3): `atlas_ops.write_rows` under an output-side hook registered round it wrote the same 48 pieces
+  with the same log-probabilities in its untouched rows, at the same 0.095 s a step (8 rows, no row stopping).
+- MEASURED (pilot 1): a column overlay costs about 0.3 ms a cloned matrix, to 64 overlay columns on one linear.
+- RAN ON THE CPU (14 November 2026; arithmetic, not the card's): 1 + 0.001 and 1 - 0.001 are exactly 1 in bf16 (the
+  step at 1 is 1/128 above and 1/256 below), so a null row with such a factor is the base row again; a power of two
+  is an exact scaling the norm may undo exactly. A null row's factor is a value of the model's dtype other than 1
+  and not a power of two.
+- RAN ON THE CPU (the packed bf16 stand-in, 14 November 2026): input-side factors of 0, 2 and -0.5 equal the folded
+  overlay by bits at 12 and at 32 rows; 1.5 and -3 do not (the factor rounds once to the dtype and each product
+  rounds once, where the folded weight rounds each entry of the column): there the two forms differ by a mean KL of
+  1.3e-6 to 1.5e-6 nats, where that stand-in's null rows read 2.9e-7 to 2.7e-6 (this file's builder's own run: a
+  scale by 1.5 and by -3, a set and an add, a set at dose 0.5 and an add at dose -1; other columns and items give
+  other figures of that size, and the spec and `levelling` each quote their own run's).
+- RAN ON THE CPU (both stand-ins, one thread, 14 November 2026): a row at dose 0 of each kind (scale, set, add,
+  low-rank) is the base row by bits, in a whole forward and in every step of `write_rows`; rows beside edited rows
+  write what they write with no hook; a row that stops early stays in the batch, so the hooks' row count stands.
+  None of this is the card's arithmetic.
+
+The per-row forms (`per_row`), one program a row, acting at every position, the start mark included (it is a
+weight edit, not a push), and never indexing positions, so a decode step with a cache runs the same code:
+- a column scaled by f, at dose d: the row's activation of that neuron times g = 1 + d (f - 1), before the product
+  (the arithmetic of the atlas's `mul` push, for every listed column at once); g is worked in Python floats and
+  cast once to the model's dtype. Exact where g is 0 or a power of two; any other g rounds, and `exact_at` says so;
+- a column set to v: the old column's share that stays, g = 1 - d, on the input side, and the new content
+  a (d v) added after the product from the row's own activation a; a column added to: g = 1 and the same add. The
+  content is rounded to the model's dtype as the folded form rounds the column it writes, and the sum is made in
+  float32 and rounded once (the arithmetic of `int4_cpu.with_overlay_terms`);
+- a low-rank term: (x A^T) d B^T added after the product, into the same float32 sum;
+- a null row (`Null`): the layer's feed-forward output times 1 + e, in the model's dtype, which the norm after the
+  block undoes but for rounding. It measures the rounding a row can show with no edit in it.
+
+New on the card and not measured there: an input-side factor other than 0; the float32 output-side add (the pilots'
+hooks multiplied and summed in bf16); a low-rank term that is not zeros; the pre-hook in a decode step. A low-rank
+term has no folded form in 1a, so nothing confirms it as it would ship; every report says so.
+
+Provisional: every cap below (`MAX_TERMS` to `MAX_DOSE`) is a guard against a slip, not a finding.
+
+What the gate refuses, each in plain words (`Refused`, section "the gate"): row edits on gate_proj and up_proj (the
+per-row form of what a neuron reads, the edited coordinate recomputed, has not been measured) and a low-rank term
+on them (it would be the added form of the same change; the coordinating session's decision, 14 November 2026);
+direction removal (it must go through the post-feed-forward norm's weight and the layer's quiet mask); attention
+linears; the embedding, the norms and the layer scalars; a GGUF's layer and an int4mm linear (an edit is pinned to
+the W4A16 checkpoint's packed tensors or a stand-in's plain ones); and whatever passes a cap. An edit is pinned to
+its base: the model's id, the weights card's id and a sha256 of each tensor it touches, all in its own hash, and
+`load` refuses an edit made on another base.
+
+Saved edits live outside the checkout (`edits_dir`): a payload can carry pieces of Gemma's columns and is never
+committed. A term that only scales columns carries no array of Gemma's: its manifest alone rebuilds it.
+
+Nothing reaches the model but through the gate. A saved edit passes it again when it is loaded and an `Edit` handed
+to a reading as an object passes it again there (`gate_again`), its id worked from what it holds. A control edit is
+let past one cap only (a column's change over its own length): the mark that asks for this sits in a report, which
+is not hashed. A recipe's array files are named from the plan file's folder and lie inside it. A -0.0 in a factor or
+a vector is kept as 0.0, so that one arithmetic has one id.
+
+Layers count from 0 here and in every file; a message a person reads says both ("layer 20 (page layer 21)").
+"By bits" means `torch.equal` on final-normed states, as in the pilots (it reads -0 as 0).
+"""
+
+from __future__ import annotations
+
+import datetime
+import hashlib
+import io
+import json
+import math
+import os
+import re
+import weakref
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
+
+import numpy as np
+import torch
+import torch.nn as nn
+
+from backend.census import write_json_atomic
+from backend.gguf_weights import dense, dense_cols, packed_kind
+
+FORMAT = "theodolite-edit"
+VERSION = 1
+OPS = ("scale", "set", "add")  # a column's op, by its code in Term.op (0, 1, 2)
+WHICH = ("down_proj", "gate_proj", "up_proj")
+
+# Guards against slips, all provisional: none is a finding about the model.
+MAX_TERMS = 16
+MAX_COLUMNS = 4096  # columns a term
+MAX_VECTOR_COLUMNS = 1024  # set or added columns a term
+MAX_RANK = 64  # a per-row low-rank add was timed to rank 64 (pilot 1, 14 November 2026: terms of zeros, in the
+#                pilots' own bf16 hook; the float32 form built here is not timed)
+MAX_FACTOR = 64.0
+MAX_REL_CHANGE = 64.0  # a column's change over its own length; a low-rank term's bound; what a dose carries
+MAX_PAYLOAD_BYTES = 256 * 2**20
+MAX_DOSE = 4.0
+EDITS_ENV = "THEODOLITE_EDITS_DIR"
+
+CONTROL_CAPS = "not applied to a control edit"
+FORM_LOWRANK = "an output-side add; no folded form in 1a"
+_OVERLAYS = ("_memit_col_overlays", "_memit_row_overlays")  # read from engine_runtime.py, which 1a may not edit
+_NAME = re.compile(r"^layers\.(-?\d+)\.mlp\.(down_proj|gate_proj|up_proj)$")
+_ROOT = Path(__file__).resolve().parent.parent
+
+
+class Refused(ValueError):
+    """The gate, in plain words: what was asked is not built, not measured, or past a cap."""
+
+
+class NotBase(RuntimeError):
+    """The model is not the base: a hook or an overlay is in force that was not there at load."""
+
+
+# ------------------------------------------------------------------------------------------------ the gate's words
+# Section 2.2 of the build spec, in its order, which is the order of precedence: an input that breaks two rules is
+# told the earlier one. The one sentence not in that table is the low-rank term on gate_proj or up_proj.
+
+_SAY_ROWS = ("Row edits on gate_proj and up_proj (what a neuron reads) are not built: their per-row form, the edited "
+             "coordinate recomputed, has not been measured. They wait for 1b.")
+_SAY_DIRECTION = ("Direction removal is not built: it must go through the post-feed-forward norm's weight and the "
+                  "layer's quiet mask, and that form is 1b's.")
+_SAY_ATTENTION = ("Edits to attention linears ({name}) are refused until their facts are in the gate and a card check "
+                  "has passed: q, k and v each pass a per-head norm, and on a full-attention layer the values are the "
+                  "keys. They wait for 1b.")
+_SAY_NOT_FFN = ("Only the feed-forward linears take edits in 1a: layers.<L>.mlp.down_proj for a column edit, and "
+                'down_proj for a low-rank term. "{name}" is not one. The embedding, the norms and the layer scalars '
+                "are not built.")
+_SAY_LAYER = "Layer {L} does not exist: layers count from 0 to {last} here (page layers 1 to {n})."
+_SAY_COLS_WHICH = "A column edit changes what a neuron writes, so it names a down_proj; {name} is not one."
+_SAY_LOWRANK_WHICH = ("A low-rank term on {name} is not built in 1a: on {which} it would be the added form of a change "
+                      "to what neurons read, not the recomputed form asked of a row edit, and that waits for 1b. In "
+                      "1a a low-rank term names a down_proj.")
+_SAY_NEURON = "Neuron {n} does not exist: layer {L} (page layer {L1}) has {N} (0 to {last})."
+_SAY_TWICE = "Neuron {n} of layer {L} (page layer {L1}) is named twice in this edit: one change a column."
+_SAY_NO_COLUMN = "A term that names no neuron changes nothing."
+_SAY_NOT_FINITE = "An edit holds a number that is not finite ({where})."
+_SAY_FACTOR = "A column is scaled by at most {cap:g} either way here, not {f:g}."
+_SAY_VECTOR = "A column of layer {L}'s down_proj is {out} numbers long; the vector given for neuron {n} has {k}."
+_SAY_REL = ("Neuron {n} of layer {L} (page layer {L1}) would change by {x:.0f} times its own length; 1a takes at most "
+            "{cap:g}.")
+_SAY_UNIFORM = ("Scaling every column of layer {L}'s down_proj by {f:g} changes nothing: the norm after the block "
+                "undoes a uniform positive scale.")
+_SAY_CAP = "An edit takes at most {cap} {what} in 1a, not {k}."
+_SAY_LOWRANK_SHAPE = ("A low-rank term on {name} needs A [rank, {n_in}] and B [{n_out}, rank]; it was given A {a} and "
+                      "B {b}.")
+_SAY_RANK = "A low-rank term has rank at most {cap} here, not {r}."
+_SAY_BOUND = ("A low-rank term on {name} could change it by up to {x:.0f} times its own length (the lengths of B and A "
+              "over the weight's); 1a takes at most {cap:g}.")
+_SAY_BYTES = "This edit carries {mb:.0f} MiB of arrays; 1a takes at most {cap_mb:.0f}."
+_SAY_PIN = ("An edit is pinned to the W4A16 checkpoint's packed tensors, or to a stand-in's plain ones. {name} is "
+            "{kind}: another object, not taken in 1a.")
+_SAY_CONTROL = "Layer {L} (page layer {L1}) has {m} neurons outside this edit: too few for a control edit of {K}."
+_SAY_OTHER_BASE = ("This edit was made on {a} (weights {ia}); the loaded model is {b} (weights {ib}). An edit is a "
+                   "difference from one base and is not carried to another.")
+_SAY_OTHER_PIN = ("This edit was made against other weights: {name} then hashed to {a12}, the loaded model's hashes to "
+                  "{b12}.")
+_SAY_ARRAY = "The saved edit {id12}: its {array} no longer hashes to what its manifest says."
+_SAY_ID = "The saved edit says it is {id12} and hashes to {other12}."
+_SAY_FORMAT = "{path} is not a saved edit of format theodolite-edit, version 1."
+# 2.4 (the recipe), 2.6 and 4.1 (the plan's words that this file is asked for too), 4.6 (folding)
+_SAY_KEY = "An edit term has a key 1a does not know: {key}."
+_SAY_FILE_HASH = "The file {path} hashes to {a12}, not the {b12} the plan names."
+_SAY_FILE_SHAPE = "The file {path} is {dtype} {shape}; this term takes float32 {want}."
+_SAY_NO_FOLD = "A low-rank term has no folded form yet, so this edit cannot be read folded."
+_SAY_PLAIN = "{name} is a plain linear whose forward reads no overlay: the folded form is the packed checkpoint's."
+_SAY_NULL_RANGE = ("A null row scales the layer's feed-forward output by 1 + e, with e between -0.5 and 2 and not 0; "
+                   "{e:g} was asked.")
+_SAY_NULL_ONE = ("In {dtype} 1 + e is exactly 1 for e = {e:g}: that null row would be the base row again. In bf16 the "
+                 "nearest values are 1 + 1/128 and 1 - 1/256.")
+_SAY_NULL_POWER = ("For e = {e:g} the null row's factor is {s:g}, a power of two: an exact scaling, which the norm may "
+                   "undo exactly, so it measures no rounding. Factors that serve: 1 + 1/128, 1 - 1/256, 0.75, 1.5, 3.")
+_SAY_DOSE_GONE = ("At dose {d:g} every factor of this edit is exactly 1 in {dtype}: its row would be the base row "
+                  "again. Doses are dyadic here (1, 0.5, 0.25, -1); for a smaller effect take fewer columns, not a "
+                  "smaller dose.")
+_SAY_DOSE_NOTHING = ("This edit scales every column it names by exactly 1 and adds nothing: at any dose its row is the "
+                     "base row again, so there is nothing to read.")
+_SAY_DOSE_SIZE = ("At dose {d:g} this edit would change {name} by {x:.0f} times its own length; 1a takes at most "
+                  "{cap:g}.")
+
+
+# ------------------------------------------------------------------------------------------------ hashes and names
+
+
+def canonical(obj: Any) -> bytes:
+    """The one way an object is written before it is hashed: sorted keys, no spaces, ASCII, no NaN."""
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode("ascii")
+
+
+def array_sha256(a: Any, tag: str) -> str:
+    """sha256 of an array under one of three tags, "i8" (little-endian int64), "f4" (little-endian float32) or "u1"
+    (uint8): the tag, the shape, then the bytes in C order."""
+    a = np.ascontiguousarray(a, dtype={"i8": "<i8", "f4": "<f4", "u1": "u1"}[tag])
+    h = hashlib.sha256()
+    h.update((tag + ":" + ",".join(str(int(s)) for s in a.shape) + ":").encode("ascii"))
+    h.update(a.tobytes())
+    return h.hexdigest()
+
+
+def _sha(obj: Any) -> str:
+    return hashlib.sha256(canonical(obj)).hexdigest()
+
+
+def linear_name(layer: int, which: str = "down_proj") -> str:
+    """The dotted path of a feed-forward linear inside the text model."""
+    return f"layers.{layer}.mlp.{which}"
+
+
+def linear_shape(mod: nn.Module) -> Tuple[int, int]:
+    """(out, in) of a linear, packed or plain."""
+    packed = getattr(mod, "weight_packed", None)
+    if packed is not None and getattr(mod, "weight_scale", None) is not None:
+        return int(packed.shape[0]), 8 * int(packed.shape[1])
+    w = getattr(mod, "weight", None)
+    if w is not None:
+        return int(w.shape[0]), int(w.shape[1])
+    return int(mod.out_features), int(mod.in_features)
+
+
+def _dtype(dtype: Any) -> torch.dtype:
+    if isinstance(dtype, torch.dtype):
+        return dtype
+    got = getattr(torch, str(dtype).replace("torch.", ""), None)
+    if not isinstance(got, torch.dtype):
+        raise TypeError(f"{dtype!r} is not a torch dtype.")
+    return got
+
+
+def _dtype_name(dtype: Any) -> str:
+    return str(_dtype(dtype)).replace("torch.", "")
+
+
+def _raw(t: torch.Tensor) -> memoryview:
+    """A tensor's stored bytes, on the CPU, in C order (bf16 viewed as int16, which numpy can hold)."""
+    t = t.detach().cpu().contiguous()
+    if t.dtype == torch.bfloat16:
+        t = t.view(torch.int16)
+    a = np.ascontiguousarray(t.numpy())
+    return memoryview(a.tobytes() if a.size == 0 else a).cast("B")
+
+
+# A packed linear's pin and its weight's length are kept for the life of the process (a down_proj's packed words are
+# 58 MB, and nothing in the process writes packed words). A plain linear's are worked again at every call: its weight
+# can be written in place, and only the stand-ins have plain linears.
+_PINS: "weakref.WeakKeyDictionary[nn.Module, str]" = weakref.WeakKeyDictionary()
+_LENGTHS: "weakref.WeakKeyDictionary[nn.Module, float]" = weakref.WeakKeyDictionary()
+
+
+def _pin(mod: nn.Module, name: str) -> str:
+    kind = packed_kind(mod)
+    if kind.startswith("gguf"):
+        raise Refused(_SAY_PIN.format(name=name, kind=kind))
+    if getattr(mod, "int4mm", False):  # before the packed test: such a linear keeps weight_packed and weight_scale
+        raise Refused(_SAY_PIN.format(name=name, kind="w4a16 int4mm"))
+    h = hashlib.sha256()
+    if kind == "w4a16":
+        got = _PINS.get(mod)
+        if got is not None:
+            return got
+        p, s = mod.weight_packed, mod.weight_scale
+        p0, p1, s0, s1 = (int(n) for n in (*p.shape, *s.shape))
+        h.update(f"w4a16:{p0}x{p1}:{s0}x{s1}:{s.dtype}:".encode("ascii"))
+        h.update(_raw(p.to(torch.int32)))
+        h.update(_raw(s))
+        _PINS[mod] = h.hexdigest()
+        return _PINS[mod]
+    w = getattr(mod, "weight", None)
+    if not isinstance(w, torch.Tensor) or w.dim() != 2:
+        raise Refused(_SAY_PIN.format(name=name, kind="a module with no weight of its own"))
+    h.update(f"dense:{int(w.shape[0])}x{int(w.shape[1])}:{w.dtype}:".encode("ascii"))
+    h.update(_raw(w))
+    return h.hexdigest()
+
+
+def tensor_pin(mod: nn.Module) -> str:
+    """The sha256 an edit pins a linear by: of the packed words and scales as stored, or of a plain weight's own
+    bytes. `Refused` for a GGUF's layer and an int4mm linear."""
+    return _pin(mod, "This linear")
+
+
+def _linear_of(lm: nn.Module, name: str) -> Optional[nn.Module]:
+    try:
+        return lm.get_submodule(name)
+    except AttributeError:
+        return None
+
+
+def _parse(name: str) -> Tuple[int, str]:
+    m = _NAME.match(name)
+    if m is None:
+        raise Refused(_SAY_NOT_FFN.format(name=name))
+    return int(m.group(1)), m.group(2)
+
+
+def _exact(g: float) -> bool:
+    """A factor the model's arithmetic applies with no rounding: 0, or a power of two with either sign."""
+    return g == 0 or math.frexp(abs(g))[0] == 0.5
+
+
+def _applied(g: float, dtype: torch.dtype) -> float:
+    return float(torch.tensor(float(g), dtype=dtype))
+
+
+def _ro(a: Any, dtype: Any) -> np.ndarray:
+    """A C-contiguous copy of its own, set read-only."""
+    with np.errstate(all="ignore"):
+        out = np.array(a, dtype=dtype, order="C", copy=True)
+    out.setflags(write=False)
+    return out
+
+
+def _long(idx: np.ndarray) -> torch.Tensor:
+    return torch.from_numpy(np.array(idx, dtype=np.int64))
+
+
+def _clean(x: Any) -> Optional[float]:
+    x = float(x)
+    return x if math.isfinite(x) else None
+
+
+# ------------------------------------------------------------------------------------------------------ the edit
+
+
+@dataclass(frozen=True, eq=False)
+class Term:
+    """One linear's share of an edit. `kind` "cols": columns `idx` (strictly ascending), each with an op (0 scale,
+    1 set, 2 add), a factor (that of a scaled column; 1.0 for a set or added one) and, where any is set or added, a
+    row of `vectors` [K, out] (zeros for scaled columns). `kind` "lowrank": Delta = B @ A, A [r, in], B [out, r].
+    Arrays are numpy, C-contiguous and read-only; a term is compared by identity."""
+
+    linear: str
+    kind: str
+    layer: int
+    which: str
+    idx: Optional[np.ndarray] = field(default=None, repr=False)
+    op: Optional[np.ndarray] = field(default=None, repr=False)
+    factor: Optional[np.ndarray] = field(default=None, repr=False)
+    vectors: Optional[np.ndarray] = field(default=None, repr=False)
+    A: Optional[np.ndarray] = field(default=None, repr=False)
+    B: Optional[np.ndarray] = field(default=None, repr=False)
+
+
+def _term_core(t: Term) -> Dict[str, Any]:
+    if t.kind == "cols":
+        return {"linear": t.linear, "kind": "cols", "count": int(t.idx.shape[0]),
+                "columns": array_sha256(t.idx, "i8"), "ops": array_sha256(t.op, "u1"),
+                "factors": array_sha256(t.factor, "f4"),
+                "vectors": array_sha256(t.vectors, "f4") if t.vectors is not None else None}
+    return {"linear": t.linear, "kind": "lowrank", "rank": int(t.A.shape[0]),
+            "A": array_sha256(t.A, "f4"), "B": array_sha256(t.B, "f4")}
+
+
+def _edit_id(base: Dict[str, Any], terms: Sequence[Term]) -> str:
+    return _sha({"format": FORMAT, "version": VERSION, "base": base, "terms": [_term_core(t) for t in terms]})
+
+
+@dataclass(frozen=True, eq=False)
+class Edit:
+    """An edit: its `id` (the sha256 of its base and its terms' arrays), its terms sorted by (linear, kind), the base
+    it is a difference from ({"model", "weights_id", "tensors": {linear: pin}}), a note and a report (neither
+    hashed). The report is {"terms": [one entry a term, in the terms' order]}, and on a control edit also
+    {"caps": "not applied to a control edit"}. Two edits are the same edit when their ids are equal; `==` is
+    identity."""
+
+    id: str
+    terms: Tuple[Term, ...]
+    base: Dict[str, Any] = field(repr=False)
+    note: str = ""
+    report: Dict[str, Any] = field(default_factory=dict, repr=False)
+
+    def layers(self) -> List[int]:
+        return sorted({int(t.layer) for t in self.terms})
+
+    def lowest_layer(self) -> int:
+        return min(int(t.layer) for t in self.terms)
+
+    def has_lowrank(self) -> bool:
+        return any(t.kind == "lowrank" for t in self.terms)
+
+    def has_vectors(self) -> bool:
+        """Whether any column is set or added to (so the row carries an output-side add of new content)."""
+        return any(t.kind == "cols" and t.vectors is not None for t in self.terms)
+
+    def linears(self) -> List[str]:
+        return sorted({t.linear for t in self.terms})
+
+    def short(self) -> str:
+        return self.id[:12]
+
+    def manifest(self) -> Dict[str, Any]:
+        """What `save` writes as manifest.json, without its time. A term that only scales columns is whole in it
+        ("carried": false); a term with vectors, or a low-rank one, names its arrays in the payload."""
+        terms: List[Dict[str, Any]] = []
+        for i, t in enumerate(self.terms):
+            core = _term_core(t)
+            if t.kind == "cols":
+                terms.append({
+                    "linear": t.linear, "kind": "cols", "count": int(t.idx.shape[0]),
+                    "columns": [int(n) for n in t.idx], "ops": [OPS[int(o)] for o in t.op],
+                    "factors": [float(f) for f in t.factor],
+                    "vectors": f"t{i}.vectors" if t.vectors is not None else None,
+                    "sha256": {k: core[k] for k in ("columns", "ops", "factors", "vectors")},
+                    "carried": t.vectors is not None})
+            else:
+                terms.append({"linear": t.linear, "kind": "lowrank", "rank": int(t.A.shape[0]), "A": f"t{i}.A",
+                              "B": f"t{i}.B", "sha256": {"A": core["A"], "B": core["B"]}, "carried": True})
+        return {"format": FORMAT, "version": VERSION, "id": self.id, "base": self.base, "terms": terms,
+                "note": self.note, "report": self.report}
+
+
+def _payload(edit: Edit) -> Dict[str, np.ndarray]:
+    out: Dict[str, np.ndarray] = {}
+    for i, t in enumerate(edit.terms):
+        if t.kind == "cols" and t.vectors is not None:
+            out[f"t{i}.vectors"] = t.vectors
+        elif t.kind == "lowrank":
+            out[f"t{i}.A"], out[f"t{i}.B"] = t.A, t.B
+    return out
+
+
+# ------------------------------------------------------------------------------------------------- recipe terms
+
+
+@dataclass(frozen=True, eq=False)
+class TermSpec:
+    """A recipe term before it meets a model: the builder's arguments, as given. `kind` is "cols" (with `op` one of
+    OPS), "lowrank", or one of the two the gate refuses in 1a, "rows" and "remove_direction"."""
+
+    kind: str
+    layer: Any
+    which: str = "down_proj"
+    neurons: Tuple[Any, ...] = ()
+    op: Optional[str] = None
+    factor: Any = None
+    vectors: Any = field(default=None, repr=False)
+    A: Any = field(default=None, repr=False)
+    B: Any = field(default=None, repr=False)
+
+
+def _tuple(neurons: Any) -> Tuple[Any, ...]:
+    if isinstance(neurons, torch.Tensor):
+        neurons = neurons.detach().cpu().tolist()
+    if isinstance(neurons, (str, bytes)) or not hasattr(neurons, "__iter__"):
+        return (neurons,)
+    return tuple(neurons)
+
+
+def silence(layer: int, neurons: Sequence[int]) -> TermSpec:
+    """The neurons' down_proj columns scaled by 0: what they write, gone."""
+    return TermSpec("cols", layer, "down_proj", _tuple(neurons), "scale", 0.0)
+
+
+def scale(layer: int, neurons: Sequence[int], factor: Union[float, Sequence[float]]) -> TermSpec:
+    """The neurons' down_proj columns scaled: by one factor, or by one a neuron in the order listed."""
+    return TermSpec("cols", layer, "down_proj", _tuple(neurons), "scale", factor)
+
+
+def set_columns(layer: int, neurons: Sequence[int], vectors: Any) -> TermSpec:
+    """The neurons' down_proj columns set to `vectors` [K, out], row j for neurons[j]."""
+    return TermSpec("cols", layer, "down_proj", _tuple(neurons), "set", vectors=vectors)
+
+
+def add_to_columns(layer: int, neurons: Sequence[int], vectors: Any) -> TermSpec:
+    """`vectors` [K, out] added to the neurons' down_proj columns, row j to neurons[j]."""
+    return TermSpec("cols", layer, "down_proj", _tuple(neurons), "add", vectors=vectors)
+
+
+def lowrank(layer: int, A: Any, B: Any, which: str = "down_proj") -> TermSpec:
+    """B @ A added to a linear's weight: A [rank, in], B [out, rank]. In 1a the gate takes it on a down_proj only."""
+    return TermSpec("lowrank", layer, which, A=A, B=B)
+
+
+def rows(layer: int, which: str, neurons: Sequence[int], vectors: Any) -> TermSpec:
+    """A row edit on gate_proj or up_proj (what a neuron reads). It can be written down; `build` refuses it in 1a."""
+    return TermSpec("rows", layer, which, _tuple(neurons), vectors=vectors)
+
+
+_RECIPE_OPS = ("silence", "scale", "set", "add", "lowrank")
+_TERM_KEYS = ("layer",) + _RECIPE_OPS + ("factor", "factors", "vectors", "which", "sha256")
+
+
+def _recipe_shape(recipe: Any) -> Tuple[str, Any]:
+    """("terms", the list) or ("saved", the id or folder), the recipe's own keys checked."""
+    if not isinstance(recipe, dict):
+        raise Refused('An edit is given as {"terms": [...]} or as {"saved": "<id or folder>"}; '
+                      f"{type(recipe).__name__} is neither.")
+    for key in recipe:
+        if key not in ("terms", "saved", "note"):
+            raise Refused(f"An edit has a key 1a does not know: {key}.")
+    if ("terms" in recipe) == ("saved" in recipe):
+        raise Refused('An edit is given as "terms" (a list of terms) or as "saved" (the id or folder of a saved '
+                      "edit): one of the two.")
+    if "saved" in recipe:
+        if not isinstance(recipe["saved"], (str, os.PathLike)) or not str(recipe["saved"]):
+            raise Refused('"saved" names a saved edit by its id or its folder.')
+        return "saved", recipe["saved"]
+    if not isinstance(recipe["terms"], (list, tuple)):
+        raise Refused('"terms" is a list of terms, each with "layer" and one of silence, scale, set, add, lowrank.')
+    return "terms", list(recipe["terms"])
+
+
+def _read_npy(path: Path, want_hash: Any, want: str, k: Optional[int]) -> np.ndarray:
+    """A recipe's array: the file's sha256 checked first when the plan names one, then read with no pickle, then its
+    dtype and shape checked before anything is done with it (`k`: how many rows it must have, when that is known)."""
+    try:
+        size = path.stat().st_size
+        if size > MAX_PAYLOAD_BYTES + 4096:  # one file alone is over the cap on an edit's arrays: not read at all
+            raise Refused(_SAY_BYTES.format(mb=size / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20))
+        data = path.read_bytes()
+    except (OSError, ValueError):  # ValueError: a name the system will not take at all (a NUL in it)
+        raise Refused(f"The file {path!s:.300} cannot be read: a term's arrays are .npy files, their paths taken "
+                      "from the plan file's folder.") from None
+    if want_hash is not None:
+        got = hashlib.sha256(data).hexdigest()
+        if got != str(want_hash).strip().lower():
+            raise Refused(_SAY_FILE_HASH.format(path=path, a12=got[:12], b12=str(want_hash).strip().lower()[:12]))
+    try:
+        arr = np.load(io.BytesIO(data), allow_pickle=False)
+    except Exception as exc:  # a pickle, an object array, or no .npy file at all
+        raise Refused(f"The file {path} is not a plain .npy array ({str(exc).strip() or type(exc).__name__}): a "
+                      "term's file is one float32 array saved with numpy.save, with no pickle in it.") from None
+    if not isinstance(arr, np.ndarray):
+        raise Refused(f"The file {path} holds several arrays (.npz); a term's file is one float32 array saved with "
+                      "numpy.save.")
+    if arr.dtype != np.float32 or arr.ndim != 2 or (k is not None and arr.shape[0] != k):
+        raise Refused(_SAY_FILE_SHAPE.format(path=path, dtype=arr.dtype, shape=list(arr.shape), want=want))
+    return arr
+
+
+def _inside(base_dir: Path, name: str) -> Path:
+    """A term's file, named from the plan file's folder. A name that is absolute, or that climbs out of that folder,
+    is refused: a plan names its own arrays, not any file the process can read (a wrong sha256 would otherwise print
+    the first 12 of another file's hash). Links are not followed: one put inside the folder is the plan's own."""
+    base = os.path.normpath(os.path.abspath(str(base_dir)))
+    full = os.path.normpath(os.path.join(base, name))
+    if os.path.isabs(name) or "\x00" in name or not (full + os.sep).startswith(base + os.sep) or full == base:
+        raise Refused(f"A term's file is named from the plan file's folder and lies inside it; {name!s:.300} does not.")
+    return Path(base_dir) / name
+
+
+def _number(x: Any, what: str) -> float:
+    if isinstance(x, bool) or not isinstance(x, (int, float, np.integer, np.floating)):
+        raise Refused(f"{what} is a number; {x!r} is not one.")
+    try:
+        return float(x)
+    except OverflowError:  # a whole number past what a float holds
+        raise Refused(f"{what} is a number a float can hold; one of {len(str(x))} digits is not.") from None
+
+
+def _recipe_term(t: Any, base_dir: Path, read: bool) -> TermSpec:
+    """One term of a recipe as a TermSpec. With `read` false its files are not opened (the facts need none)."""
+    if not isinstance(t, dict):
+        raise Refused('An edit term is a set of keys, "layer" and one of silence, scale, set, add, lowrank; '
+                      f"{t!r} is not one.")
+    if "layer" not in t:
+        raise Refused('An edit term needs "layer": the layer it changes, counted from 0.')
+    layer = t["layer"]
+    if isinstance(layer, bool) or not isinstance(layer, int):
+        raise Refused(f"A layer is named by a whole number counted from 0; {layer!r} is not one.")
+    which = t.get("which", "down_proj")
+    if not isinstance(which, str):
+        raise Refused(f'"which" names a linear of the layer (down_proj); {which!r} is not a name.')
+    if "rows" in t:  # the gate's first two rows: said by `build`, whatever else the term holds
+        return TermSpec("rows", layer, which if "which" in t else "gate_proj", _tuple(t["rows"]))
+    if "remove_direction" in t:
+        return TermSpec("remove_direction", layer, which)
+    for key in t:
+        if key not in _TERM_KEYS:
+            raise Refused(_SAY_KEY.format(key=key))
+    named = [k for k in _RECIPE_OPS if k in t]
+    if len(named) != 1:
+        raise Refused("An edit term names exactly one of silence, scale, set, add and lowrank; this one names "
+                      + (" and ".join(named) if named else "none") + ".")
+    op = named[0]
+    takes = {"silence": (), "scale": ("factor", "factors"), "set": ("vectors", "sha256"), "add": ("vectors", "sha256"),
+             "lowrank": ("sha256",)}[op]
+    for key in ("factor", "factors", "vectors", "sha256"):
+        if key in t and key not in takes:
+            raise Refused(f'An edit term with "{op}" does not take "{key}".')
+    if op == "lowrank":
+        files = t["lowrank"]
+        named_ab = isinstance(files, dict) and set(files) == {"A", "B"}
+        if not named_ab or not all(isinstance(v, str) for v in files.values()):
+            raise Refused('"lowrank" names two files, {"A": "<a.npy>", "B": "<b.npy>"}: A [rank, in] and B [out, '
+                          "rank], float32.")
+        hashes = t.get("sha256") or {}
+        if not isinstance(hashes, dict) or not set(hashes) <= {"A", "B"}:
+            raise Refused('The "sha256" of a low-rank term is {"A": "<hex>", "B": "<hex>"}.')
+        path_a, path_b = _inside(base_dir, files["A"]), _inside(base_dir, files["B"])  # also when no file is opened
+        if not read:
+            return TermSpec("lowrank", layer, which)
+        A = _read_npy(path_a, hashes.get("A"), "[rank, in]", None)
+        B = _read_npy(path_b, hashes.get("B"), "[out, rank]", None)
+        return TermSpec("lowrank", layer, which, A=A, B=B)
+    neurons = t[op]
+    if not isinstance(neurons, (list, tuple)):
+        raise Refused(f'"{op}" lists the neurons it changes, as whole numbers; {neurons!r} is not a list.')
+    neurons = tuple(neurons)
+    if op == "silence":
+        return TermSpec("cols", layer, which, neurons, "scale", 0.0)
+    if op == "scale":
+        if ("factor" in t) == ("factors" in t):
+            raise Refused('A "scale" term gives "factor" (one number for every neuron) or "factors" (one a neuron): '
+                          "one of the two.")
+        if "factor" in t:
+            return TermSpec("cols", layer, which, neurons, "scale", _number(t["factor"], "A factor"))
+        if not isinstance(t["factors"], (list, tuple)):
+            raise Refused('"factors" is a list, one number a neuron in the order listed.')
+        return TermSpec("cols", layer, which, neurons, "scale", [_number(f, "A factor") for f in t["factors"]])
+    if not isinstance(t.get("vectors"), str):
+        raise Refused(f'A "{op}" term names its vectors\' file: "vectors": "<file.npy>", float32 [neurons, out], row j '
+                      "for the j-th neuron as listed.")
+    if t.get("sha256") is not None and not isinstance(t["sha256"], str):
+        raise Refused(f'The "sha256" of a "{op}" term is the hex sha256 of its vectors\' file.')
+    path = _inside(base_dir, t["vectors"])  # also when no file is opened: the estimate says what the reading will
+    if not read:
+        return TermSpec("cols", layer, which, neurons, op)
+    vectors = _read_npy(path, t.get("sha256"), f"[{len(neurons)}, out]", len(neurons))
+    return TermSpec("cols", layer, which, neurons, op, vectors=vectors)
+
+
+def from_recipe(recipe: dict, base_dir: Path) -> Union[List[TermSpec], str]:
+    """A plan's edit as recipe terms, its files read (paths taken from `base_dir`, the plan file's folder) and their
+    sha256 checked where the plan names one; or, for {"saved": x}, the folder or id x to hand to `load`. `Refused`
+    for a key it does not know and for a file that is not what the term takes; what the gate refuses, `build` says."""
+    kind, body = _recipe_shape(recipe)
+    if kind == "saved":
+        near = Path(base_dir) / str(body)
+        return str(near) if near.is_dir() else str(body)
+    return [_recipe_term(t, Path(base_dir), True) for t in body]
+
+
+def _facts(layers: Sequence[int], linears: Sequence[str], has_vectors: bool, has_lowrank: bool,
+           factors: Sequence[float]) -> Dict[str, Any]:
+    if not layers:
+        raise Refused("An edit with no term changes nothing.")
+    return {"layers": sorted({int(x) for x in layers}), "lowest_layer": int(min(layers)),
+            "linears": len(set(linears)), "has_vectors": bool(has_vectors), "has_lowrank": bool(has_lowrank),
+            "factors": sorted({float(np.float32(f)) for f in factors})}
+
+
+def _spec_name(s: TermSpec) -> str:
+    """The dotted path a recipe term names. `which` is one of the three feed-forward linears; anything else is kept
+    as the name it most plainly means, for the gate to refuse by name."""
+    if isinstance(s.layer, bool) or not isinstance(s.layer, (int, np.integer)):
+        raise Refused(f"A layer is named by a whole number counted from 0; {s.layer!r} is not one.")
+    w = str(s.which)
+    if w in WHICH:
+        return linear_name(int(s.layer), w)
+    if w.startswith("layers."):
+        return w
+    if w in ("q_proj", "k_proj", "v_proj", "o_proj"):
+        return f"layers.{int(s.layer)}.self_attn.{w}"
+    if "." in w:
+        return f"layers.{int(s.layer)}.{w}"
+    return linear_name(int(s.layer), w)
+
+
+def recipe_facts(recipe: dict, base_dir: Path) -> dict:
+    """What a plan can know of its edit with no model: {"layers", "lowest_layer", "linears", "has_vectors",
+    "has_lowrank", "factors": the distinct scale factors}. No file of a term is opened; a saved edit is read from its
+    manifest alone."""
+    kind, body = _recipe_shape(recipe)
+    if kind == "saved":
+        near = Path(base_dir) / str(body)
+        folder = _find_saved(near if near.is_dir() else body)
+        terms = _read_manifest(folder)["terms"]
+        try:
+            factors = [f for t in terms if t["kind"] == "cols" for f, o in zip(t["factors"], t["ops"]) if o == "scale"]
+            return _facts([_parse(t["linear"])[0] for t in terms], [t["linear"] for t in terms],
+                          any(t["kind"] == "cols" and t.get("vectors") for t in terms),
+                          any(t["kind"] == "lowrank" for t in terms), factors)
+        except (KeyError, TypeError, ValueError) as exc:
+            if isinstance(exc, Refused):
+                raise
+            raise Refused(_SAY_FORMAT.format(path=folder)) from None
+    specs = [_recipe_term(t, Path(base_dir), False) for t in body]
+    factors: List[float] = []
+    for s in specs:
+        if s.kind == "cols" and s.op == "scale":
+            factors += [float(f) for f in s.factor] if isinstance(s.factor, (list, tuple)) else [float(s.factor)]
+    names = [_spec_name(s) if s.kind in ("cols", "lowrank") else f"layers.{s.layer}.{s.kind}" for s in specs]
+    return _facts([s.layer for s in specs], names, any(s.kind == "cols" and s.op in ("set", "add") for s in specs),
+                  any(s.kind == "lowrank" for s in specs), factors)
+
+
+def edit_facts(edit: Edit) -> dict:
+    """The same keys as `recipe_facts`, from a built edit."""
+    factors = [float(f) for t in edit.terms if t.kind == "cols" for f, o in zip(t.factor, t.op) if int(o) == 0]
+    return _facts(edit.layers(), edit.linears(), edit.has_vectors(), edit.has_lowrank(), factors)
+
+
+def twin_wanted(facts: dict, dose: float) -> bool:
+    """Whether a folded twin has something to show at this dose: the edit has no low-rank term (which has no folded
+    form), and either sets or adds to a column, or scales one by a factor that at this dose is neither 0 nor a
+    power of two. A silencing or a scale by a power of two is exact on the input side and takes none."""
+    if facts["has_lowrank"]:
+        return False
+    if facts["has_vectors"]:
+        return True
+    return any(not _exact(1.0 + float(dose) * (float(f) - 1.0)) for f in facts["factors"])
+
+
+# ------------------------------------------------------------------------------------------------------ the gate
+
+
+def _f32(a: Any, what: str) -> np.ndarray:
+    if isinstance(a, torch.Tensor):
+        a = a.detach().to(torch.float32).cpu().numpy()
+    try:
+        with np.errstate(all="ignore"):
+            return np.asarray(a, dtype=np.float32)
+    except (TypeError, ValueError):
+        raise Refused(f"{what} is not an array of numbers.") from None
+
+
+def _rel_changes(mod: nn.Module, idx: np.ndarray, op: np.ndarray, factor: np.ndarray,
+                 vectors: Optional[np.ndarray]) -> np.ndarray:
+    """Each column's change over its own length, float32 [K]: |f - 1| for a scaled column; for a set or added one
+    the length of its difference over the base column's, read from the model. A base column of no length takes the
+    median length of the term's other base columns, and 1.0 when that is nought too."""
+    with np.errstate(all="ignore"):
+        rel = np.abs(factor.astype(np.float32) - np.float32(1.0))
+    if vectors is None:
+        return rel
+    with torch.no_grad():
+        Wc = dense_cols(mod, _long(idx)).float()  # [K, out], the model's device
+        V = torch.from_numpy(np.array(vectors)).to(Wc.device)
+        is_set = torch.from_numpy(np.array(op == 1)).to(Wc.device)
+        lengths = Wc.norm(dim=1).cpu().numpy()
+        moved = torch.where(is_set[:, None], V - Wc, V).norm(dim=1).cpu().numpy()
+    for j in np.nonzero(op != 0)[0]:
+        own = float(lengths[j])
+        if not own > 0:
+            others = np.delete(lengths, j)
+            own = float(np.median(others)) if others.size else 0.0
+            own = own if own > 0 else 1.0
+        with np.errstate(all="ignore"):
+            rel[j] = np.float32(float(moved[j]) / own)
+    return rel
+
+
+def _weight_length(mod: nn.Module) -> float:
+    """||W||_F of a linear's own weight, summed from float32 squares a few rows at a time."""
+    packed = packed_kind(mod) == "w4a16"
+    if packed and mod in _LENGTHS:
+        return _LENGTHS[mod]
+    with torch.no_grad():
+        w = dense(mod)
+        total = 0.0
+        for r0 in range(0, int(w.shape[0]), 512):
+            total += float(w[r0 : r0 + 512].float().pow(2).sum(dtype=torch.float64))
+    length = math.sqrt(total)
+    if packed:
+        _LENGTHS[mod] = length
+    return length
+
+
+def _bound(mod: nn.Module, A: np.ndarray, B: np.ndarray) -> float:
+    own = _weight_length(mod)
+    reach = float(np.linalg.norm(B.astype(np.float64))) * float(np.linalg.norm(A.astype(np.float64)))
+    return reach / own if own > 0 else reach
+
+
+def _entry(mod: nn.Module, t: Term, rel: Optional[np.ndarray] = None) -> Dict[str, Any]:
+    """One term's entry in an edit's report, by arithmetic alone."""
+    if t.kind == "cols":
+        if rel is None:
+            rel = _rel_changes(mod, t.idx, t.op, t.factor, t.vectors)
+        return {"linear": t.linear, "kind": "cols", "layer": int(t.layer), "page_layer": int(t.layer) + 1,
+                "count": int(t.idx.shape[0]), "ops": {name: int((t.op == code).sum()) for code, name in enumerate(OPS)},
+                "rel_change": {"max": _clean(rel.max()), "median": _clean(np.median(rel))},
+                "carried": t.vectors is not None}
+    return {"linear": t.linear, "kind": "lowrank", "layer": int(t.layer), "page_layer": int(t.layer) + 1,
+            "rank": int(t.A.shape[0]), "rel_change": {"bound": _clean(_bound(mod, t.A, t.B))}, "carried": True,
+            "form": FORM_LOWRANK}
+
+
+def _neurons(s: TermSpec) -> List[int]:
+    out = []
+    for n in s.neurons:
+        if isinstance(n, bool) or not isinstance(n, (int, np.integer)):
+            raise Refused(f"A neuron is named by a whole number; {n!r} is not one.")
+        out.append(int(n))
+    return out
+
+
+def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weights_id: Optional[str], note: str,
+              caps: bool = True) -> Edit:
+    """The gate. The tests run in the order of the table of refusals, each over every term before the next, so that
+    an input that breaks two rules is told the earlier one. Nothing is installed and nothing is written here.
+    `caps` false is a control edit met again (loaded, or handed to a reading): it is let past ONE cap, a column's
+    change over its own length, which a set carried to a short column can pass where its edit did not. Its counts, its
+    rank, its bound and its bytes are its edit's by construction, so those caps stand for it too: the mark that asks
+    for this sits in a saved edit's report, which is not hashed, and must not be a way round the gate."""
+    specs = [specs] if isinstance(specs, TermSpec) else list(specs)
+    for s in specs:
+        if not isinstance(s, TermSpec):
+            raise Refused("An edit is built from recipe terms (weight_edits.silence, scale, set_columns, "
+                          f"add_to_columns, lowrank, or from_recipe); {type(s).__name__} is not one.")
+    if any(s.kind == "rows" for s in specs):
+        raise Refused(_SAY_ROWS)
+    if any(s.kind == "remove_direction" for s in specs):
+        raise Refused(_SAY_DIRECTION)
+    for s in specs:
+        if s.kind not in ("cols", "lowrank") or (s.kind == "cols" and s.op not in OPS):
+            raise Refused(f"A term is a column term (scale, set or add) or a low-rank term; {s.kind!r} with op "
+                          f"{s.op!r} is neither.")
+    if not specs:
+        raise Refused("An edit with no term changes nothing.")
+    raw_names = [_spec_name(s) for s in specs]
+    for name in raw_names:
+        if "self_attn" in name.split("."):
+            raise Refused(_SAY_ATTENTION.format(name=name))
+    places = [_parse(name) for name in raw_names]  # refuses a name that is no feed-forward linear
+    n_layers = len(lm.layers)
+    for L, _which in places:
+        if not 0 <= L < n_layers:
+            raise Refused(_SAY_LAYER.format(L=L, last=n_layers - 1, n=n_layers))
+    names = [linear_name(L, which) for L, which in places]
+    for s, name, (_L, which) in zip(specs, names, places):
+        if s.kind == "cols" and which != "down_proj":
+            raise Refused(_SAY_COLS_WHICH.format(name=name))
+    for s, name, (_L, which) in zip(specs, names, places):
+        if s.kind == "lowrank" and which != "down_proj":
+            raise Refused(_SAY_LOWRANK_WHICH.format(name=name, which=which))
+    mods: Dict[str, nn.Module] = {}
+    for name in names:
+        mod = _linear_of(lm, name)
+        if mod is None:
+            raise Refused(_SAY_NOT_FFN.format(name=name))
+        mods[name] = mod
+    shape = {name: linear_shape(mod) for name, mod in mods.items()}
+
+    # the columns named: in range, once, and some
+    col = [(s, name, L, _neurons(s)) for s, name, (L, _w) in zip(specs, names, places) if s.kind == "cols"]
+    low = [(s, name, L) for s, name, (L, _w) in zip(specs, names, places) if s.kind == "lowrank"]
+    for _s, name, L, neurons in col:
+        N = shape[name][1]
+        for n in neurons:
+            if not 0 <= n < N:
+                raise Refused(_SAY_NEURON.format(n=n, L=L, L1=L + 1, N=N, last=N - 1))
+    seen: Dict[str, set] = {}
+    for _s, name, L, neurons in col:
+        for n in neurons:
+            if n in seen.setdefault(name, set()):
+                raise Refused(_SAY_TWICE.format(n=n, L=L, L1=L + 1))
+            seen[name].add(n)
+    for _s, _name, _L, neurons in col:
+        if not neurons:
+            raise Refused(_SAY_NO_COLUMN)
+
+    # the numbers given: as many as the neurons, finite, within the factor's cap, of a column's length
+    given: List[Tuple[Optional[np.ndarray], Optional[np.ndarray]]] = []  # (factors [K], vectors [K, k]) a column term
+    for s, _name, L, neurons in col:
+        K = len(neurons)
+        if s.op == "scale":
+            f = s.factor
+            if isinstance(f, torch.Tensor):
+                f = f.detach().cpu().numpy()
+            if isinstance(f, np.ndarray) and f.ndim == 0:
+                f = f.item()
+            if isinstance(f, (list, tuple, np.ndarray)):
+                f = _f32(f, f"The factors given for layer {L} (page layer {L + 1})").reshape(-1)
+            else:
+                f = _f32([_number(f, "A factor")] * K, "A factor")
+            if f.shape[0] != K:
+                raise Refused(f"{f.shape[0]} factor{'' if f.shape[0] == 1 else 's'} were given for {K} "
+                              f"neuron{'' if K == 1 else 's'} of layer {L} (page layer {L + 1}): one a neuron in the "
+                              "order listed, or one number for all.")
+            given.append((f, None))
+        else:
+            v = _f32(s.vectors, f"The vectors given for layer {L} (page layer {L + 1})")
+            if v.ndim == 1 and K == 1:
+                v = v.reshape(1, -1)
+            if v.ndim != 2 or v.shape[0] != K:
+                raise Refused(f"The vectors of a set or add term are one array [neurons, out], row j for the j-th "
+                              f"neuron as listed; {list(v.shape)} was given for {K} neuron{'' if K == 1 else 's'} of "
+                              f"layer {L} (page layer {L + 1}).")
+            given.append((None, v))
+    low_ab = [(_f32(s.A, f"A of the low-rank term on {name}"), _f32(s.B, f"B of the low-rank term on {name}"))
+              for s, name, _L in low]
+    for (_s, _name, L, neurons), (f, v) in zip(col, given):
+        if f is not None and not np.isfinite(f).all():
+            n = neurons[int(np.nonzero(~np.isfinite(f))[0][0])]
+            raise Refused(_SAY_NOT_FINITE.format(where=f"the factor of neuron {n}, layer {L} (page layer {L + 1})"))
+        if v is not None and not np.isfinite(v).all():
+            n = neurons[int(np.nonzero(~np.isfinite(v).all(axis=1))[0][0])]
+            raise Refused(_SAY_NOT_FINITE.format(
+                where=f"the vector given for neuron {n}, layer {L} (page layer {L + 1})"))
+    for (_s, name, _L), (A, B) in zip(low, low_ab):
+        for letter, arr in (("A", A), ("B", B)):
+            if not np.isfinite(arr).all():
+                raise Refused(_SAY_NOT_FINITE.format(where=f"{letter} of the low-rank term on {name}"))
+    for (_s, _name, _L, _neurons_), (f, _v) in zip(col, given):
+        if f is not None and (np.abs(f) > MAX_FACTOR).any():
+            raise Refused(_SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0])))
+    for (_s, name, L, neurons), (_f, v) in zip(col, given):
+        if v is not None and v.shape[1] != shape[name][0]:
+            raise Refused(_SAY_VECTOR.format(L=L, out=shape[name][0], n=neurons[0], k=int(v.shape[1])))
+
+    # one column term a linear, its columns ascending
+    merged: Dict[str, Dict[str, Any]] = {}
+    for (s, name, L, neurons), (f, v) in zip(col, given):
+        m = merged.setdefault(name, {"layer": L, "idx": [], "op": [], "factor": [], "vectors": []})
+        code = OPS.index(s.op)
+        m["idx"] += neurons
+        m["op"] += [code] * len(neurons)
+        m["factor"] += [float(x) for x in f] if f is not None else [1.0] * len(neurons)
+        m["vectors"] += [None] * len(neurons) if v is None else list(v)
+    cols: Dict[str, Dict[str, Any]] = {}
+    for name in sorted(merged):
+        m = merged[name]
+        order = np.argsort(np.asarray(m["idx"], dtype=np.int64), kind="stable")
+        idx = np.asarray(m["idx"], dtype=np.int64)[order]
+        op = np.asarray(m["op"], dtype=np.uint8)[order]
+        factor = np.asarray(m["factor"], dtype=np.float32)[order] + np.float32(0.0)  # -0.0 is 0.0: one edit, one id
+        vectors = None
+        if any(v is not None for v in m["vectors"]):
+            vectors = np.zeros((len(order), shape[name][0]), dtype=np.float32)
+            for j, k in enumerate(order):
+                if m["vectors"][int(k)] is not None:
+                    vectors[j] = m["vectors"][int(k)]
+            vectors += np.float32(0.0)  # -0.0 is 0.0
+        cols[name] = {"layer": m["layer"], "idx": idx, "op": op, "factor": factor, "vectors": vectors,
+                      "rel": _rel_changes(mods[name], idx, op, factor, vectors)}
+    if caps:
+        for name, c in cols.items():
+            over = np.nonzero(~(c["rel"] <= MAX_REL_CHANGE))[0]
+            if over.size:
+                j = int(over[0])
+                raise Refused(_SAY_REL.format(n=int(c["idx"][j]), L=c["layer"], L1=c["layer"] + 1,
+                                              x=float(c["rel"][j]), cap=MAX_REL_CHANGE))
+    for name, c in cols.items():
+        f0 = float(c["factor"][0])
+        every, alike = len(c["idx"]) == shape[name][1], bool((c["factor"] == c["factor"][0]).all())
+        if every and alike and f0 > 0 and not c["op"].any():
+            raise Refused(_SAY_UNIFORM.format(L=c["layer"], f=f0))
+    low_names = sorted({name for _s, name, _L in low})
+    if len(cols) + len(low_names) > MAX_TERMS:
+        raise Refused(_SAY_CAP.format(cap=MAX_TERMS, what="terms", k=len(cols) + len(low_names)))
+    for c in cols.values():
+        if len(c["idx"]) > MAX_COLUMNS:
+            raise Refused(_SAY_CAP.format(cap=MAX_COLUMNS, what="columns a term", k=len(c["idx"])))
+    for c in cols.values():
+        if int((c["op"] != 0).sum()) > MAX_VECTOR_COLUMNS:
+            raise Refused(_SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what="set or added columns a term",
+                                          k=int((c["op"] != 0).sum())))
+
+    # one low-rank term a linear: several are laid side by side, in an order their own hashes fix
+    for (_s, name, _L), (A, B) in zip(low, low_ab):
+        n_out, n_in = shape[name]
+        if A.ndim != 2 or B.ndim != 2 or A.shape[0] < 1 or A.shape[1] != n_in or tuple(B.shape) != (n_out, A.shape[0]):
+            raise Refused(_SAY_LOWRANK_SHAPE.format(name=name, n_in=n_in, n_out=n_out, a=list(A.shape),
+                                                    b=list(B.shape)))
+    lows: Dict[str, Dict[str, Any]] = {}
+    for name in low_names:
+        parts = sorted(((array_sha256(A, "f4"), array_sha256(B, "f4"), i) for i, ((_s, nm, _L), (A, B))
+                        in enumerate(zip(low, low_ab)) if nm == name))
+        A = np.concatenate([low_ab[i][0] for _a, _b, i in parts], axis=0) + np.float32(0.0)  # -0.0 is 0.0
+        B = np.concatenate([low_ab[i][1] for _a, _b, i in parts], axis=1) + np.float32(0.0)
+        lows[name] = {"layer": _parse(name)[0], "A": A, "B": B}
+    for name, c in lows.items():
+        if c["A"].shape[0] > MAX_RANK:
+            raise Refused(_SAY_RANK.format(cap=MAX_RANK, r=int(c["A"].shape[0])))
+    for name, c in lows.items():
+        x = _bound(mods[name], c["A"], c["B"])
+        if not x <= MAX_REL_CHANGE:
+            raise Refused(_SAY_BOUND.format(name=name, x=x, cap=MAX_REL_CHANGE))
+    carried = sum(c["vectors"].nbytes for c in cols.values() if c["vectors"] is not None)
+    carried += sum(c["A"].nbytes + c["B"].nbytes for c in lows.values())
+    if carried > MAX_PAYLOAD_BYTES:
+        raise Refused(_SAY_BYTES.format(mb=carried / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20))
+    touched = sorted(set(cols) | set(lows))
+    pins = {name: _pin(mods[name], name) for name in touched}
+
+    terms: List[Term] = []
+    entries: List[Dict[str, Any]] = []
+    for name in touched:  # sorted by (linear, kind): "cols" before "lowrank"
+        if name in cols:
+            c = cols[name]
+            t = Term(name, "cols", c["layer"], "down_proj", idx=_ro(c["idx"], np.int64), op=_ro(c["op"], np.uint8),
+                     factor=_ro(c["factor"], np.float32),
+                     vectors=None if c["vectors"] is None else _ro(c["vectors"], np.float32))
+            terms.append(t)
+            entries.append(_entry(mods[name], t, c["rel"]))
+        if name in lows:
+            c = lows[name]
+            t = Term(name, "lowrank", c["layer"], "down_proj", A=_ro(c["A"], np.float32), B=_ro(c["B"], np.float32))
+            terms.append(t)
+            entries.append(_entry(mods[name], t))
+    base = {"model": model_id, "weights_id": weights_id, "tensors": pins}
+    report: Dict[str, Any] = {"terms": entries}
+    if not caps:
+        report["caps"] = CONTROL_CAPS
+    return Edit(_edit_id(base, terms), tuple(terms), base, str(note or ""), report)
+
+
+def build(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weights_id: Optional[str],
+          note: str = "") -> Edit:
+    """An edit from recipe terms, against the text model `lm`: the gate, then the arrays (several terms on one linear
+    merged, columns ascending), the pins of the tensors it touches, its id and its report. `Refused`, in the words of
+    the gate, for whatever 1a does not build or a cap forbids. Nothing is installed in the model and nothing is
+    written."""
+    return _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=note)
+
+
+# ------------------------------------------------------------------------------------------------- save and load
+
+
+def edits_dir() -> Path:
+    """Where saved edits live: $THEODOLITE_EDITS_DIR, else ${XDG_DATA_HOME:-~/.local/share}/theodolite/edits, beside
+    the book and outside the checkout. Read from the environment at every call."""
+    given = os.environ.get(EDITS_ENV)
+    if given:
+        return Path(given).expanduser()
+    data = os.environ.get("XDG_DATA_HOME")
+    return (Path(data).expanduser() if data else Path.home() / ".local" / "share") / "theodolite" / "edits"
+
+
+def save(edit: Edit, folder: Optional[Path] = None) -> Path:
+    """Write an edit to `folder` (default `edits_dir() / edit.id`): manifest.json, and payload.safetensors when some
+    term carries arrays. Returns the folder. A folder inside the checkout is refused: a payload can carry pieces of
+    Gemma's columns and is never committed."""
+    folder = Path(folder).expanduser() if folder is not None else edits_dir() / edit.id
+    if _ROOT == folder.resolve() or _ROOT in folder.resolve().parents:
+        raise Refused(f"Saved edits are kept outside the checkout ({_ROOT}): a payload can carry pieces of Gemma's "
+                      f"columns and is never committed. {folder} is inside it; point ${EDITS_ENV} elsewhere.")
+    manifest = edit.manifest()
+    manifest["saved_at"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    canonical(manifest)  # JSON-clean, or a ValueError here and nothing written
+    folder.mkdir(parents=True, exist_ok=True)
+    payload = _payload(edit)
+    if payload:
+        from safetensors.numpy import save_file
+
+        tmp = folder / "payload.safetensors.tmp"
+        save_file({k: np.ascontiguousarray(v, dtype=np.float32) for k, v in payload.items()}, str(tmp))
+        os.replace(tmp, folder / "payload.safetensors")
+    write_json_atomic(folder / "manifest.json", manifest, indent=1)
+    return folder
+
+
+def _find_saved(where: Union[str, Path]) -> Path:
+    """The folder of a saved edit, given as a folder, or as an id or its first 12 or more hex under `edits_dir()`."""
+    if Path(where).is_dir():
+        return Path(where)
+    name = str(where)
+    if re.fullmatch(r"[0-9a-f]{12,64}", name):
+        root = edits_dir()
+        hits = sorted(d for d in root.iterdir() if d.is_dir() and d.name.startswith(name)) if root.is_dir() else []
+        if len(hits) == 1:
+            return hits[0]
+        if not hits:
+            raise Refused(f"No saved edit begins {name} under {root}.")
+        raise Refused(f"{len(hits)} saved edits begin {name} under {root}: give more of the id.")
+    raise Refused(_SAY_FORMAT.format(path=where))
+
+
+def _read_manifest(folder: Path) -> Dict[str, Any]:
+    """A saved edit's manifest, its shape checked far enough to be read; its format and version are the caller's to
+    compare (`load` says an edit of another base before it says a manifest of another format)."""
+    try:
+        m = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+        ok = (isinstance(m, dict) and isinstance(m["id"], str) and isinstance(m["base"], dict)
+              and isinstance(m["base"]["tensors"], dict) and isinstance(m["terms"], list)
+              and all(isinstance(t, dict) and t["kind"] in ("cols", "lowrank") and isinstance(t["linear"], str)
+                      and isinstance(t["sha256"], dict) for t in m["terms"]))
+    except (OSError, ValueError, KeyError, TypeError):
+        ok = False
+    if not ok:
+        raise Refused(_SAY_FORMAT.format(path=folder))
+    return m
+
+
+def _specs_of(terms: Sequence[Term]) -> List[TermSpec]:
+    """An edit's terms as the recipe terms that build them again, so that an edit met a second time (loaded, or
+    handed to a reading as an object) passes the gate as a built one does. `ValueError` for a term that is not laid
+    out as a term is."""
+    specs: List[TermSpec] = []
+    for t in terms:
+        if t.kind == "cols":
+            idx, op, factor = np.asarray(t.idx), np.asarray(t.op), np.asarray(t.factor)
+            if not (idx.ndim == op.ndim == factor.ndim == 1 and len(idx) == len(op) == len(factor)):
+                raise ValueError("a column term's lists are of one length")
+            for code, opname in enumerate(OPS):
+                at = np.nonzero(op == code)[0]
+                if at.size and code == 0:
+                    specs.append(TermSpec("cols", t.layer, t.which, tuple(int(n) for n in idx[at]), "scale",
+                                          [float(f) for f in factor[at]]))
+                elif at.size:
+                    if t.vectors is None or np.asarray(t.vectors).ndim != 2:
+                        raise ValueError("a set or added column with no vector")
+                    specs.append(TermSpec("cols", t.layer, t.which, tuple(int(n) for n in idx[at]), opname,
+                                          vectors=np.asarray(t.vectors)[at]))
+            if int(op.max(initial=0)) >= len(OPS):
+                raise ValueError("a column's op is 0, 1 or 2")
+        elif t.kind == "lowrank":
+            specs.append(TermSpec("lowrank", t.layer, t.which, A=t.A, B=t.B))
+        else:
+            specs.append(TermSpec(str(t.kind), t.layer, t.which))
+    return specs
+
+
+def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional[str]) -> Edit:
+    """An edit that was not built here and now (one handed to a reading as an object), passed through the gate as a
+    loaded one is: its terms are taken as recipe terms and built again against `lm`, and the id that comes out must be
+    the id the object carries. So the ledger never holds an id that is not the hash of what ran, and an object made by
+    hand cannot carry what the gate refuses. A control edit (its report says the caps were not applied) is let past
+    the one cap `_assemble` names. Returns the edit as built again, with a report worked from the model. `Refused` in
+    the gate's words, or `load`'s for an id that is not the edit's own."""
+    if not isinstance(edit, Edit):
+        raise Refused(f"An edit handed to a reading is a weight_edits.Edit; {type(edit).__name__} is not one.")
+    report = edit.report if isinstance(edit.report, dict) else {}
+    try:
+        specs = _specs_of(edit.terms)
+    except (ValueError, TypeError, AttributeError, IndexError):
+        raise Refused(f"The edit {str(edit.id)[:12]} is not laid out as an edit's terms are: build it with "
+                      "weight_edits.build.") from None
+    again = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=str(edit.note or ""),
+                      caps=report.get("caps") != CONTROL_CAPS)
+    if again.id != edit.id:
+        raise Refused(f"The edit handed in says it is {str(edit.id)[:12]} and hashes to {again.id[:12]}.")
+    return again
+
+
+def load(where: Union[str, Path], lm: nn.Module, *, model_id: str, weights_id: Optional[str]) -> Edit:
+    """A saved edit, read against the loaded model. `where` is a folder, or an id (or its first 12 or more hex) under
+    `edits_dir()`. Every array is rebuilt and its sha256 compared, the id is worked again, and the base is compared
+    with the model (its id, its weights' id, the pin of each linear the edit touches); then the edit goes through the
+    gate as a built one does. `Refused`, in the gate's words, on any difference: an edit is a difference from one base
+    and is not carried to another."""
+    folder = _find_saved(where)
+    m = _read_manifest(folder)
+    id12 = m["id"][:12]
+    try:
+        base = m["base"]
+        if base.get("model") != model_id or base.get("weights_id") != weights_id:
+            raise Refused(_SAY_OTHER_BASE.format(a=base.get("model"), ia=base.get("weights_id"), b=model_id,
+                                                 ib=weights_id))
+        for name in sorted(base["tensors"]):
+            then = str(base["tensors"][name])
+            mod = _linear_of(lm, name)
+            if mod is None:
+                raise Refused(f"This edit was made against other weights: {name} then hashed to {then[:12]}, and the "
+                              "loaded model has no such linear.")
+            now = _pin(mod, name)
+            if now != then:
+                raise Refused(_SAY_OTHER_PIN.format(name=name, a12=then[:12], b12=now[:12]))
+        payload: Dict[str, np.ndarray] = {}
+        carried = [t for t in m["terms"] if t["kind"] == "lowrank" or t.get("vectors")]
+        if carried:
+            first = carried[0]
+            what = f'{"A" if first["kind"] == "lowrank" else "vectors"} array ({first["linear"]})'
+            try:
+                from safetensors.numpy import load_file
+
+                payload = load_file(str(folder / "payload.safetensors"))
+            except Exception as exc:  # absent, cut short, or its header changed: it cannot be hashed at all
+                raise Refused(_SAY_ARRAY.format(id12=id12, array=what)[:-1]
+                              + f" (payload.safetensors cannot be read: {type(exc).__name__}).") from None
+        terms: List[Term] = []
+        for t in m["terms"]:
+            name, sums = t["linear"], t["sha256"]
+            layer, which = _parse(name)
+
+            def same(key: str, arr: np.ndarray, tag: str) -> None:
+                if array_sha256(arr, tag) != sums.get(key):
+                    raise Refused(_SAY_ARRAY.format(id12=id12, array=f"{key} array ({name})"))
+
+            if t["kind"] == "cols":
+                idx = _ro([int(n) for n in t["columns"]], np.int64)
+                op = _ro([OPS.index(o) for o in t["ops"]], np.uint8)
+                factor = _ro([float(f) for f in t["factors"]], np.float32)
+                same("columns", idx, "i8")
+                same("ops", op, "u1")
+                same("factors", factor, "f4")
+                vectors = None
+                if t.get("vectors"):
+                    if t["vectors"] not in payload:
+                        raise Refused(_SAY_ARRAY.format(id12=id12, array=f"vectors array ({name})"))
+                    vectors = _ro(payload[t["vectors"]], np.float32)
+                    same("vectors", vectors, "f4")
+                elif sums.get("vectors") is not None:
+                    raise Refused(_SAY_ARRAY.format(id12=id12, array=f"vectors array ({name})"))
+                if not (idx.ndim == op.ndim == factor.ndim == 1 and len(idx) == len(op) == len(factor)):
+                    raise ValueError("a column term's lists are of one length")
+                terms.append(Term(name, "cols", layer, which, idx=idx, op=op, factor=factor, vectors=vectors))
+            else:
+                for key in ("A", "B"):
+                    if t.get(key) not in payload:
+                        raise Refused(_SAY_ARRAY.format(id12=id12, array=f"{key} array ({name})"))
+                A, B = _ro(payload[t["A"]], np.float32), _ro(payload[t["B"]], np.float32)
+                same("A", A, "f4")
+                same("B", B, "f4")
+                terms.append(Term(name, "lowrank", layer, which, A=A, B=B))
+        specs = _specs_of(terms)
+        said = _edit_id(base, terms)
+        if said != m["id"]:
+            raise Refused(_SAY_ID.format(id12=id12, other12=said[:12]))
+    except Refused:
+        raise
+    except (KeyError, TypeError, ValueError, AttributeError, IndexError):
+        raise Refused(_SAY_FORMAT.format(path=folder)) from None
+    if m.get("format") != FORMAT or m.get("version") != VERSION:
+        raise Refused(_SAY_FORMAT.format(path=folder))
+    report = m.get("report") if isinstance(m.get("report"), dict) else {}
+    edit = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=str(m.get("note") or ""),
+                     caps=report.get("caps") != CONTROL_CAPS)
+    if edit.id != m["id"]:  # arrays that hash as the manifest says but are not laid out as `build` lays them
+        raise Refused(_SAY_ID.format(id12=id12, other12=edit.id[:12]))
+    return edit
+
+
+# ------------------------------------------------------------------------------------- what a dose does to an edit
+
+
+def _asked(t: Term, dose: float) -> np.ndarray:
+    """A column term's input-side factor g for each column at this dose, in Python's floats (float64): a scaled
+    column 1 + d (f - 1); a set column 1 - d, the old column's share that stays; an added column 1."""
+    d = float(dose)
+    g = 1.0 + d * (t.factor.astype(np.float64) - 1.0)
+    g[t.op == 1] = 1.0 - d
+    g[t.op == 2] = 1.0
+    return g
+
+
+def exact_at(edit: Edit, dose: float, dtype: Any) -> dict:
+    """What the cast to the model's dtype does to an edit's input-side factors at this dose. `factors`: the distinct
+    pairs [g asked, g as applied], ascending, the first 8. `input_side`: "none" (no column term, or every g is 1),
+    "gone" (some g is not 1 and every one is applied as 1: the row is the base row), "exact" (every g is 0 or a
+    power of two), "rounds" (the factor rounds to the dtype and each product rounds once, where the folded weight
+    rounds each entry of the column: the two differ by rounding). `output_add`: the row carries an output-side add (a
+    set or added column, or a low-rank term). `folded_form`: false with a low-rank term."""
+    dt = _dtype(dtype)
+    col = [t for t in edit.terms if t.kind == "cols"]
+    asked = sorted({float(g) for t in col for g in np.unique(_asked(t, dose))})
+    pairs = [[g, _applied(g, dt)] for g in asked]
+    if not col or all(g == 1.0 for g in asked):
+        side = "none"
+    elif all(a == 1.0 for _g, a in pairs):
+        side = "gone"
+    elif all(_exact(g) for g in asked):
+        side = "exact"
+    else:
+        side = "rounds"
+    return {"input_side": side, "output_add": edit.has_vectors() or edit.has_lowrank(),
+            "folded_form": not edit.has_lowrank(), "factors": pairs[:8]}
+
+
+def dose_refusal(edit: Edit, dose: float, dtype: Any) -> Optional[str]:
+    """None when the dose can be read, else the sentence: an edit that is the base at every dose (every factor asked
+    is 1 and nothing is added after the product), a dose the rounding eats whole (every factor exactly 1 in the dtype
+    and nothing added), or one that carries the edit past the size cap. None at dose 0, which is the base by
+    construction."""
+    d = float(dose)
+    if d == 0:
+        return None
+    ex = exact_at(edit, d, dtype)
+    if ex["input_side"] == "none" and not ex["output_add"]:  # a scale by 1, or by a number that is 1 in float32
+        return _SAY_DOSE_NOTHING
+    if ex["input_side"] == "gone" and not ex["output_add"]:
+        return _SAY_DOSE_GONE.format(d=d, dtype=_dtype_name(dtype))
+    worst, name = 0.0, ""
+    for entry in edit.report.get("terms", []):
+        rel = entry.get("rel_change", {})
+        x = rel.get("bound") if entry.get("kind") == "lowrank" else rel.get("max")
+        x = float("inf") if x is None else float(x)
+        if x > worst:
+            worst, name = x, str(entry.get("linear"))
+    if abs(d) * worst > MAX_REL_CHANGE:
+        return _SAY_DOSE_SIZE.format(d=d, name=name, x=abs(d) * worst, cap=MAX_REL_CHANGE)
+    return None
+
+
+def null_factor(e: float, dtype: Any) -> float:
+    """The factor of a null row as applied: 1 + e in the model's dtype."""
+    return float(torch.tensor(1.0 + float(e), dtype=_dtype(dtype)))
+
+
+def can_fold(lm: nn.Module, edit: Edit) -> Optional[str]:
+    """None when `folded` would run this edit, else the sentence it would refuse with: a low-rank term (no folded
+    form in 1a), or a touched linear whose forward reads no overlay (a plain linear not given
+    `gguf_weights.install_overlay_forward`: the float32 stand-in's)."""
+    if edit.has_lowrank():
+        return _SAY_NO_FOLD
+    for name in edit.linears():
+        mod = _linear_of(lm, name)
+        if mod is None:
+            return f"The edit {edit.short()} names {name}, which this model does not have."
+        packed = getattr(mod, "weight_packed", None) is not None and getattr(mod, "weight_scale", None) is not None
+        reads = isinstance(getattr(mod, _OVERLAYS[0], None), dict) and (packed or "forward" in vars(mod))
+        if not reads:
+            return _SAY_PLAIN.format(name=name)
+    return None
+
+
+def control_edits(edit: Edit, lm: nn.Module, seed: int, count: int) -> List[Edit]:
+    """`count` control edits of one family: other sites of the same layer and size. Control c draws, for term t (its
+    place in the edit's terms) from numpy's default_rng([seed, c, t]): for a column term as many other columns of the
+    same down_proj, ascending, the j-th taking the op, factor and vector of the edit's j-th; for a low-rank term the
+    same term with its neuron axis permuted (A's columns on a down_proj). Each is an edit on the same base with its
+    own id. The size caps are not applied (a set carried to a short column can pass the cap where the edit did not),
+    and its report says so. They are NOT matched on how hard the sites fire or on what the edit delivers. `Refused`
+    when a layer has too few other neurons."""
+    seed, count = int(seed), int(count)
+    if seed < 0 or count < 0:
+        raise Refused(f"A control edit's seed and count are whole numbers from 0 up; {seed} and {count} were given.")
+    mods: Dict[str, nn.Module] = {}
+    for t in edit.terms:
+        mod = _linear_of(lm, t.linear)
+        if mod is None:
+            raise Refused(f"The edit {edit.short()} names {t.linear}, which this model does not have.")
+        mods[t.linear] = mod
+        N, K = linear_shape(mod)[1], int(t.idx.shape[0]) if t.kind == "cols" else 0
+        if t.kind == "cols" and N - K < K:
+            raise Refused(_SAY_CONTROL.format(L=t.layer, L1=t.layer + 1, m=N - K, K=K))
+    out: List[Edit] = []
+    for c in range(count):
+        terms: List[Term] = []
+        for i, t in enumerate(edit.terms):
+            rng = np.random.default_rng([seed, c, i])
+            N = linear_shape(mods[t.linear])[1]
+            if t.kind == "cols":
+                pool = np.setdiff1d(np.arange(N), t.idx)
+                chosen = np.sort(rng.choice(pool, size=int(t.idx.shape[0]), replace=False))
+                terms.append(Term(t.linear, "cols", t.layer, t.which, idx=_ro(chosen, np.int64), op=t.op,
+                                  factor=t.factor, vectors=t.vectors))
+            else:
+                # the neuron axis: A's columns on a down_proj (B's rows on the other two, which the gate does not take)
+                down = t.which == "down_proj"
+                perm = rng.permutation(N if down else linear_shape(mods[t.linear])[0])
+                A, B = (_ro(t.A[:, perm], np.float32), t.B) if down else (t.A, _ro(t.B[perm, :], np.float32))
+                terms.append(Term(t.linear, "lowrank", t.layer, t.which, A=A, B=B))
+        base = {"model": edit.base.get("model"), "weights_id": edit.base.get("weights_id"),
+                "tensors": dict(edit.base.get("tensors", {}))}
+        report = {"terms": [_entry(mods[t.linear], t) for t in terms], "caps": CONTROL_CAPS}
+        note = f"control {c} of {edit.short()}, seed {seed}"
+        out.append(Edit(_edit_id(base, terms), tuple(terms), base, note, report))
+    return out
+
+
+# --------------------------------------------------------------------------------------------- the per-row forms
+
+
+@dataclass(frozen=True, eq=False)
+class Arm:
+    """A row's program: this edit at this dose."""
+
+    edit: Edit
+    dose: float = 1.0
+
+
+@dataclass(frozen=True)
+class Null:
+    """A row's program: the feed-forward output of `layer` scaled by 1 + e, which the norm undoes but for rounding."""
+
+    layer: int
+    e: float
+
+
+class _Site:
+    """One linear's hooks for one `per_row` block: which rows scale which activations before the product, which add
+    what after it, and which are null rows. Tensors are made on the first forward, from the tensor the hook is handed
+    (its dtype and device), and kept for the block."""
+
+    def __init__(self, name: str, rows: int, width: int) -> None:
+        self.name, self.rows, self.width = name, rows, width
+        self.factors: List[Tuple[int, np.ndarray, np.ndarray]] = []  # (row, columns, g asked float64)
+        self.adds: Dict[int, Tuple[Term, float]] = {}  # row -> (the column term with vectors, dose)
+        self.lows: Dict[int, Tuple[Term, float]] = {}  # row -> (the low-rank term, dose)
+        self.nulls: List[Tuple[int, float]] = []  # (row, e)
+        self.kept: Dict[int, Dict[str, torch.Tensor]] = {}
+        self._made: Dict[Any, Any] = {}
+
+    def _as_applied(self, gs: np.ndarray, dtype: torch.dtype) -> np.ndarray:
+        """Each g as the dtype applies it (float64 holding a value of the dtype exactly), worked once a distinct g."""
+        memo = self._made.setdefault(("applied", dtype), {})
+        u, inv = np.unique(gs, return_inverse=True)
+        for g in u.tolist():
+            if g not in memo:
+                memo[g] = _applied(g, dtype)
+        return np.array([memo[g] for g in u.tolist()], dtype=np.float64)[inv.reshape(-1)]
+
+    def scales(self, dtype: torch.dtype) -> bool:
+        """Whether any input-side factor differs from 1 as the dtype applies it."""
+        return any(bool((self._as_applied(gs, dtype) != 1.0).any()) for _r, _idx, gs in self.factors)
+
+    def adds_after(self) -> bool:
+        return bool(self.adds or self.lows or self.nulls)
+
+    def _check(self, t: torch.Tensor) -> None:
+        if t.dim() != 3:
+            raise RuntimeError(f"hooks made for {self.rows} rows of [rows, pieces, width] met a tensor of shape "
+                               f"{list(t.shape)} on {self.name}")
+        if int(t.shape[0]) != self.rows:
+            raise RuntimeError(f"hooks made for {self.rows} rows met {int(t.shape[0])}")
+
+    def _once(self, key: Any, make: Any) -> Any:
+        if key not in self._made:
+            self._made[key] = make()
+        return self._made[key]
+
+    def _factor_matrix(self, x: torch.Tensor) -> Optional[torch.Tensor]:
+        """Fm [R, N] in x's dtype: 1 everywhere but each row's own columns, where it is g as the dtype applies it;
+        None when no entry differs from 1."""
+        def make() -> Optional[torch.Tensor]:
+            if not self.scales(x.dtype):
+                return None
+            Fm = torch.ones(self.rows, self.width, dtype=x.dtype, device=x.device)
+            for r, idx, gs in self.factors:
+                applied = torch.from_numpy(self._as_applied(gs, x.dtype)).to(device=x.device, dtype=x.dtype)  # exact
+                Fm[r, torch.from_numpy(np.array(idx)).to(x.device)] = applied
+            return Fm
+
+        return self._once(("Fm", x.dtype, x.device), make)
+
+    def pre(self, _mod: nn.Module, args: Tuple[Any, ...]) -> Optional[Tuple[Any, ...]]:
+        x = args[0]
+        self._check(x)
+        self.kept = {}
+        for r, (t, _d) in self.adds.items():  # from the ORIGINAL input: the forward hook sees this hook's output
+            cols = self._once(("cols", id(t), x.device),
+                              lambda t=t: torch.from_numpy(t.idx[t.op != 0].copy()).to(x.device))
+            self.kept.setdefault(r, {})["a"] = x[r][:, cols]  # [T, K'], the model's dtype
+        for r, (t, _d) in self.lows.items():
+            At = self._once(("At", id(t), x.device), lambda t=t: torch.from_numpy(np.array(t.A.T)).to(x.device))
+            self.kept.setdefault(r, {})["z"] = x[r].float() @ At  # [T, rank] float32
+        Fm = self._factor_matrix(x)
+        if Fm is None:
+            return None
+        return (x * Fm[:, None, :],) + tuple(args[1:])
+
+    def post(self, _mod: nn.Module, _args: Tuple[Any, ...], out: torch.Tensor) -> torch.Tensor:
+        self._check(out)
+        kept, self.kept = self.kept, {}
+        out2 = out.clone()
+        for r in sorted(set(self.adds) | set(self.lows)):
+            acc = out[r].float()
+            if r in self.adds:
+                t, d = self.adds[r]
+                # the content at this dose, rounded to the model's dtype as the folded form rounds the column it writes
+                # (a control edit shares its edit's vectors and ops, so at one dose they share this tensor)
+                C = self._once(("C", id(t.vectors), id(t.op), d, out.dtype, out.device), lambda t=t, d=d: (
+                    (torch.from_numpy(t.vectors[t.op != 0].copy()).to(out.device) * d).to(out.dtype).float()))
+                acc = acc + kept[r]["a"].float() @ C
+            if r in self.lows:
+                t, d = self.lows[r]
+                Bt = self._once(("Bt", id(t.B), out.device),
+                                lambda t=t: torch.from_numpy(np.array(t.B.T)).to(out.device))
+                acc = acc + (kept[r]["z"] * d) @ Bt
+            out2[r] = acc.to(out.dtype)  # one sum in float32, rounded once
+        for r, e in self.nulls:
+            out2[r] = out[r] * torch.tensor(null_factor(e, out.dtype), dtype=out.dtype, device=out.device)
+        return out2
+
+
+def _compile(lm: nn.Module, programs: Sequence[Union[Arm, Null, None]]) -> Dict[str, _Site]:
+    """The programs as hooks to install, one site a linear touched. `Refused` for a program that cannot be run;
+    nothing is installed here."""
+    dt = lm.norm.weight.dtype
+    n_layers = len(lm.layers)
+    sites: Dict[str, _Site] = {}
+
+    def site(name: str, mod: nn.Module) -> _Site:
+        if name not in sites:
+            sites[name] = _Site(name, len(programs), linear_shape(mod)[1])
+        return sites[name]
+
+    for r, p in enumerate(programs):
+        if p is None:
+            continue
+        if isinstance(p, Null):
+            whole = isinstance(p.layer, (int, np.integer)) and not isinstance(p.layer, bool)
+            if not whole or not 0 <= int(p.layer) < n_layers:
+                raise Refused(_SAY_LAYER.format(L=p.layer, last=n_layers - 1, n=n_layers))
+            e = float(p.e)
+            s = null_factor(e, dt) if math.isfinite(e) else float("nan")
+            if not (math.isfinite(s) and s > 0):
+                raise Refused(_SAY_NULL_RANGE.format(e=e))
+            if s == 1.0:
+                raise Refused(_SAY_NULL_ONE.format(dtype=_dtype_name(dt), e=e))
+            if _exact(s):
+                raise Refused(_SAY_NULL_POWER.format(e=e, s=s))
+            name = linear_name(int(p.layer), "down_proj")
+            site(name, lm.get_submodule(name)).nulls.append((r, e))
+            continue
+        if not isinstance(p, Arm) or not isinstance(p.edit, Edit):
+            raise Refused(f"A row's program is None (untouched), an Arm (an edit at a dose) or a Null; {p!r} is none "
+                          "of them.")
+        d = float(p.dose)
+        if not math.isfinite(d):
+            raise Refused("A dose is a finite number: it multiplies the edit's difference from the base.")
+        for t in p.edit.terms:
+            mod = _linear_of(lm, t.linear)
+            if mod is None:
+                raise Refused(f"The edit {p.edit.short()} names {t.linear}, which this model does not have.")
+            n_out, n_in = linear_shape(mod)
+            if t.kind == "cols":
+                fits = int(t.idx[-1]) < n_in and (t.vectors is None or t.vectors.shape[1] == n_out)
+            else:
+                fits = t.A.shape[1] == n_in and t.B.shape[0] == n_out
+            if not fits:
+                raise Refused(f"The edit {p.edit.short()} was made for another shape of {t.linear}: this model's is "
+                              f"[{n_out}, {n_in}].")
+            st = site(t.linear, mod)
+            if t.kind == "cols":
+                g = _asked(t, d)
+                if (g != 1.0).any():
+                    st.factors.append((r, t.idx, g))
+                if t.vectors is not None:
+                    st.adds[r] = (t, d)
+            else:
+                st.lows[r] = (t, d)
+    return sites
+
+
+@contextmanager
+def per_row(lm: nn.Module, programs: Sequence[Union[Arm, Null, None]]) -> Iterator[None]:
+    """For the length of the block, row r of every forward of `lm` runs `programs[r]`: None (untouched), `Arm(edit,
+    dose)` or `Null(layer, e)`. At most one forward pre-hook and one forward hook go on each linear some program
+    touches, and every one comes off when the block ends, however it ends. An untouched row's activations are at most
+    multiplied by 1, which is exact, and its output copied: no other arithmetic touches it, and a linear no program
+    names gets no hook. A row at dose 0 does pass through its edit's arithmetic, with factors of 1 and nothing to add,
+    so that such a row shows the arithmetic itself leaves the bits alone (on both stand-ins it is the base row by
+    bits, ran on the CPU 14 November 2026; on the card the float32 sum is not yet measured). The hooks act at every
+    position and never index one, so a decode step with a cache runs the same code. `Refused`, before anything is
+    installed, for a program that cannot be run: an edit that names a linear this model lacks or of another shape, or
+    a null row whose factor is 1 or a power of two in the model's dtype. A forward whose row count is not
+    `len(programs)` raises `RuntimeError` from inside the hook. A dose is not judged here: `dose_refusal` is the
+    caller's to ask."""
+    programs = list(programs)
+    sites = _compile(lm, programs)
+    dt = lm.norm.weight.dtype
+    handles: List[Any] = []
+    try:
+        for name, st in sites.items():
+            mod = lm.get_submodule(name)
+            if st.scales(dt) or st.adds or st.lows:
+                handles.append(mod.register_forward_pre_hook(st.pre))
+            if st.adds_after():
+                handles.append(mod.register_forward_hook(st.post))
+        yield
+    finally:
+        for h in handles:
+            h.remove()
+        for st in sites.values():
+            st.kept, st._made = {}, {}
+
+
+# ------------------------------------------------------------------------- the folded form and the base assertion
+
+
+def hook_census(lm: nn.Module) -> Dict[str, List[int]]:
+    """Module path -> the sorted ids of its forward pre-hooks and forward hooks, for every module under `lm` that has
+    any (the text model itself is ""). The ids are the handles', which no two hooks of a process share, so a hook
+    swapped for another shows as well as one added. Hooks torch keeps for every module at once are listed under
+    "(every module)": they act on this model too."""
+    out: Dict[str, List[int]] = {}
+    for name, m in lm.named_modules():
+        ids = sorted(list(m._forward_pre_hooks) + list(m._forward_hooks))
+        if ids:
+            out[name] = [int(i) for i in ids]
+    everywhere = nn.modules.module
+    ids = sorted(list(getattr(everywhere, "_global_forward_pre_hooks", {}))
+                 + list(getattr(everywhere, "_global_forward_hooks", {})))
+    if ids:
+        out["(every module)"] = [int(i) for i in ids]
+    return out
+
+
+def _overlay_dicts(m: nn.Module) -> List[Dict[int, torch.Tensor]]:
+    return [d for d in (getattr(m, attr, None) for attr in _OVERLAYS) if isinstance(d, dict)]
+
+
+def overlays_in_force(lm: nn.Module) -> List[Tuple[str, int]]:
+    """(module path, entries) for every module under `lm` whose overlay dicts are not empty: the vault's edits, or a
+    folded edit still in place. Its column and row overlays are counted together."""
+    out: List[Tuple[str, int]] = []
+    for name, m in lm.named_modules():
+        k = sum(len(d) for d in _overlay_dicts(m))
+        if k:
+            out.append((name, k))
+    return out
+
+
+def assert_base(lm: nn.Module, hooks_at_load: Optional[Dict[str, List[int]]] = None) -> None:
+    """The model is the base: its hooks are those of `hooks_at_load` (a census taken at load; none when None), id for
+    id, and every overlay dict on every module is empty. Otherwise `NotBase`, naming up to three of what it found."""
+    then = {str(k): sorted(int(i) for i in v) for k, v in (hooks_at_load or {}).items() if v}
+    now = hook_census(lm)
+    found: List[str] = []
+    for name in sorted(set(then) | set(now)):
+        where = f"on {name}" if name else "on the text model itself"
+        added = [i for i in now.get(name, []) if i not in then.get(name, [])]
+        gone = [i for i in then.get(name, []) if i not in now.get(name, [])]
+        if added:
+            many = len(added) != 1
+            found.append(f"{len(added)} hook{'s' if many else ''} that {'were' if many else 'was'} not there at load "
+                         f"{where}")
+        if gone:
+            found.append(f"{len(gone)} hook{'s' if len(gone) != 1 else ''} of the load gone from "
+                         f"{name or 'the text model itself'}")
+    for name, k in overlays_in_force(lm):
+        found.append(f"{k} overlay{'s' if k != 1 else ''} in force on {name}")
+    if found:
+        more = f", and {len(found) - 3} more" if len(found) > 3 else ""
+        raise NotBase(f"The model is not the base: {'; '.join(found[:3])}{more}. A reading is taken on the base model "
+                      "only.")
+
+
+@contextmanager
+def folded(lm: nn.Module, edit: Edit, dose: float = 1.0, *,
+           hooks_at_load: Optional[Dict[str, List[int]]] = None) -> Iterator[None]:
+    """For the length of the block the edit is written into the overlay dicts every packed linear carries, at this
+    dose, for every row alike: the form the vault's edits take, and the one an edit would ship in. It is entered
+    outside any `per_row` block. `NotBase` when an overlay is already in force (the vault's edit: it is left as it
+    was); `Refused` with `can_fold`'s sentence when the edit cannot be folded. Each new column is worked in float32
+    from the base column and cast once to the model's dtype; where a scale's factor at this dose is exactly 0 the
+    column is zeros. When the block ends, however it ends, every overlay dict of every module is put back as it was
+    found and `assert_base` runs."""
+    inforce = overlays_in_force(lm)
+    if inforce:
+        name, k = inforce[0]
+        more = f" and on {len(inforce) - 1} more" if len(inforce) > 1 else ""
+        raise NotBase(f"The model is not the base: {k} overlay{'s' if k != 1 else ''} in force on {name}{more} (a "
+                      "vault edit, or one left behind). A folded edit is written over the base model only.")
+    why = can_fold(lm, edit)
+    if why:
+        raise Refused(why)
+    d = float(dose)
+    if not math.isfinite(d):
+        raise Refused("A dose is a finite number: it multiplies the edit's difference from the base.")
+    dt = lm.norm.weight.dtype
+    was = [(od, dict(od)) for m in lm.modules() for od in _overlay_dicts(m)]
+    try:
+        with torch.no_grad():
+            for t in edit.terms:
+                mod = lm.get_submodule(t.linear)
+                Wc = dense_cols(mod, _long(t.idx)).float()  # [K, out], the model's device
+                g = _asked(t, d)
+                new = torch.from_numpy(g.astype(np.float32)).to(Wc.device)[:, None] * Wc
+                if t.vectors is not None:
+                    at = torch.from_numpy(np.nonzero(t.op != 0)[0]).to(Wc.device)
+                    V = torch.from_numpy(t.vectors[t.op != 0].copy()).to(Wc.device)
+                    new[at] = new[at] + d * V
+                new = new.to(dt)
+                new[torch.from_numpy(np.array((g == 0) & (t.op == 0))).to(Wc.device)] = 0  # zeros, as the pilots wrote
+                for j, n in enumerate(t.idx):
+                    getattr(mod, _OVERLAYS[0])[int(n)] = new[j]
+        yield
+    finally:
+        for od, before in was:
+            od.clear()
+            od.update(before)
+        assert_base(lm, hooks_at_load)
