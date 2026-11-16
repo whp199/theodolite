@@ -1656,3 +1656,47 @@ in order:
   IQ4_NL and IQ4_XS, TQ1_0, TQ2_0, MXFP4 and NVFP4, which gguf-py unpacks at load into dense layers today (two bytes a
   weight for those layers, where packed they would hold 1.6 to 4.5 bits a weight); each is an unpacker and a check
   against gguf-py’s, as IQ4_XS’s was, and worth it only for a file with many such layers.
+
+<br>
+
+## viii · a weight edit read against the base
+
+- **1a, the first slice of the weight-edit kernel. Built** (16 November 2026, `96e4420`; ARCHITECTURE §7). One edit of
+  the base weights (columns of a layer’s down projection scaled, silenced, set or added to, or a low-rank term there)
+  is a hashed value pinned to its base, read in another row of the same forward as the untouched model, beside null
+  rows and control edits, at two row counts, and every reading, refused and void ones too, goes into a chained ledger
+  outside the checkout (`backend/weight_edits.py`, `backend/levelling.py`, `backend/level_book.py`,
+  `scripts/levelling.py`). It is the owner’s tool at the terminal with the server stopped. It is not a page, a route,
+  an agent’s tool, a claim or a verdict: it prints numbers, ranks against unmatched control edits, floors, and “void”
+  and “unstable”. Built from `experiments/results/weight_space_exploration/BUILD_SPEC_1a.md` on the pilots of 14
+  November 2026. The CPU check holds it to the spec on two stand-ins; the card check ran once on the 31B on 16
+  November 2026 (`experiments/results/levelling/verify_1a.json`): 142 of 145 standing lines held. Rows do not leak, a
+  silencing and a scale by 2 on the input side are the folded weight by bits, a restart under hooks is exact at layers
+  5, 20 and 44, writing under the hooks keeps the base’s pieces, and pilot 6’s 0.72581 came back. It failed the cost
+  model (refit since; the refit is in sample, so the next card run is its test) and “no null row above a nat” (every
+  such row on raw text, most of it behind the start mark). It found that the base’s log-probability does not separate
+  the items that misbehaved (3 of 51) from those that did not, so the item gate is now a printed caution, not a
+  refusal, by the spec’s own rule; nearly every row count is its own arithmetic (at the three lengths mapped), so the
+  two row counts read (12 and 32) are two of many; and on the two chat-formatted items read, a one-row capture stood
+  off the same-shape reading by more than the floor at layers 40 and 44. The bars set from it, each by a rule written
+  before the run, are in the spec’s section 12 (“The card check”); the run in full is the last section of
+  `experiments/results/weight_space_exploration/pilot/RESULTS.md`.
+- **What waits on the owner.** The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
+  §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
+  each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
+  posture (5); budgets, and how many fresh readings a brief takes (6); the name and the words, “Levelling” and “level
+  book” among them (7); the faults its section 3 found (8). The build’s own, in the spec’s section 12: whether an
+  item whose two floors stand apart (on the card, 15.7 to 42.7 times on two raw texts behind the start mark, both read
+  “ok”) should read “unstable”; whether the stability rule should read the edit’s arms alone, as open point 5 says if
+  control arms at the floor trip it (two did, on items under the bar); what to do with raw text behind a start mark,
+  which the gate no longer refuses; whether 12 and 32 are the row counts to read, and whether a one-row capture should
+  be offered on chat-formatted items at all; the card check’s third line of its §8, which still asserts the gate’s
+  refusal and must assert the caution before the card check runs again; three printed sentences the card made stale
+  (a scale by 2 read folded “for a silencing only”, the one-row refusal, the output-side add “not yet measured”); and,
+  from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved,
+  that a recipe’s files are read before their sizes are added up, and that the ledger keeps the items’ text and
+  every per-item row, which must be reopened before any agent is given a way to read it.
+- **Not built** (the spec’s section 8, with what would bring each in): direction removal; row edits on the gate and up
+  projections; attention, embedding and norm edits; a folded form for low-rank terms; control edits matched on firing
+  or on what an edit delivers, and sham-target controls; long sampled written readings; any page, route or agent’s
+  door; gradients; exports.

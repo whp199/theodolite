@@ -28,11 +28,16 @@ freed, server stopped, one run each, unless said otherwise (experiments/results/
 - Rows of one forward do not leak: an untouched row far from edited rows equals row 0 by bits, and the same edit in
   rows 1, 9, 20 and 31 of 32 reads the same [measured, pilots 1 and 6].
 - A restart from layer L on a stream kept at the same batch shape gives the whole forward's bits at layers 20, 40,
-  44, 52 and 58, unhooked [measured, pilot 1]. Under hooks and below layer 20 it is not measured on the card; every
+  44, 52 and 58, unhooked [measured, pilot 1], and under hooks at layers 5, 20 and 44, at 12 and at 32 rows, where
+  `lower: "whole"` gave the same figures exactly [measured, the card check of 16 November 2026, section 6]; every
   reading shows it again by rule (a later forward's base row and null rows must be forward 0's by bits).
 - A one-row capture replayed at 32 rows agreed with a same-shape forward at layer 44 and not at layers 5 and 20, on
-  raw text with no start mark [measured, pilot 3]; layers 21 to 43 and chat-formatted items were not read. So
-  `lower: "one_row"` is refused below `ONE_ROW_MIN_LAYER`.
+  raw text with no start mark [measured, pilot 3]. On chat-formatted items it did not agree to the floor at layer 44
+  or at layer 40: with each of two items' 64 hardest-firing neurons silenced, the one-row reading stood off the
+  same-shape one by 10 to 35 times the item's floor in 7 of 8 readings (on a study chat at layer 44, 0.0039 and 0.0033
+  nats of KL against floors of 0.00013 and 0.00011, 1.6% and 1.3% of the reading) and under the floor once [the card
+  check of 16 November 2026, section 6b]. `lower: "one_row"` is refused below `ONE_ROW_MIN_LAYER`; at or above it it
+  is a cheaper reading that is not the same-shape one, and the result says it ran so.
 - On raw text with no start mark one folded edit read 0.0091 nats at 2 rows and 0.7258 at 32; at 150 pieces there
   was one arithmetic up to 12 rows and another from 16. The same passages as chat-formatted answers showed no reading
   differing over fivefold, and at 91 pieces of chat-formatted text six batch sizes gave six different base rows
@@ -44,7 +49,9 @@ freed, server stopped, one run each, unless said otherwise (experiments/results/
   answers, layers 19 to 54] (`FLOOR_SAY`).
 - The base's mean log-probability of the scored span: its own greedy answers -0.07 to -0.17 nats a piece; a person's
   passage given as the answer -2.46 and -5.51; the same passages raw, with no start mark, -9.15 and -10.09
-  [measured, pilot 8]. Raw text behind a start mark is not measured.
+  [measured, pilot 8]. Over 51 items on the card: the model's own answers -0.07 to -0.17, the study's chats -0.000002
+  to -9.40, passages given as answers -2.45 to -8.61, raw text with no start mark -8.12 to -12.13, the same raw texts
+  behind a start mark -3.07 to -11.38 [measured, the card check of 16 November 2026, section 8b].
 - The model's own bf16 logits differ from fp32 softcapped logits by a mean KL of 0.0013 nats, the size of what is
   read here [measured, pilot 1, on a prose passage with no start mark], so every paired read-out is fp32
   (`causal_check.logits_fp32`). A position's KL is kept from going below nought, so a mean here reads at or above
@@ -53,39 +60,73 @@ freed, server stopped, one run each, unless said otherwise (experiments/results/
 - `atlas_ops.write_rows` under a hook registered round it: untouched rows wrote the same 48 pieces with the same
   log-probabilities, with an output-side hook and no row stopping [measured, pilot 3].
 
-The cost figures (`COST`), each measured 14 November 2026 unless marked: a whole forward 0.08 s + 0.33 ms a
-row-position (within 15% on nine shapes); the fp32 full-vocabulary read-out 0.11 ms a scored row-position; a decode
-step 0.095 s hooked and unhooked at 8 rows; a column overlay about 0.3 ms a cloned matrix, to 64 columns; load 9.5 s
-and unpacker install 1.83 s; memory above the model about 0.25 MiB a row-position [inferred from the pilots' peaks, no
-per-shape peak exists]; writing with a cache about 0.8 MB a row a word-piece of context [measured 28 October 2026,
-lens loaded]. The estimate counts each forward's base row, the null rows once, every arm and the twin's row; the code
-reads the base row of forward 0 once more for the item gate, and the twin's base and per-row rows again, so it is a
-little under.
+The cost figures (`COST`). The three time figures and the memory a row-position were refit on 16 November 2026 from
+the card check's own readings (`experiments/results/levelling/verify_1a.json`, `proposed_bars.cost`: a least-squares
+fit over 331 paired readings, and over the classes' peaks for the memory; the build spec's 6.2): 0.135 s a forward
+and 0.377 ms a row-position (a restart counted as its share of the layers), 0.088 ms a scored row-position of fp32
+full-vocabulary read-out, and 0.191 MiB a row-position of memory above the model. They price a reading, its own work
+round the forwards included, not a bare forward: a whole forward alone was 0.08 s + 0.33 ms a row-position (within
+15% on nine shapes) and the read-out 0.11 ms a scored row-position [measured 14 November 2026, pilot 1], and those
+figures put the 163 readings the card check judged 1.02 to 1.44 times their prediction (the 145 predicted under a
+second, not judged, 1.15 to 1.87), the worst where a reading carried 19 control edits (21 of 40 such readings more
+than a quarter over, none of the other 123). The refit puts all 163 within 0.85 to 1.13 of their prediction, but it
+was fit on them: the next card run is its test. The rest stand as measured
+before: a decode step 0.095 s hooked and unhooked at 8 rows [pilot 3; the card check read 0.110 s hooked and 0.107 s
+unhooked, section 7b]; a column overlay about 0.3 ms a cloned matrix, to 64 columns [pilot 1]; load 9.5 s and
+unpacker install 1.83 s [pilot 1, no lens; the card check's load, the lens loaded and then freed, took 16.0 s and its
+install with the self-test 3.46 s]; writing with a cache about 0.8 MB a row a word-piece of context [measured 28
+October 2026, lens loaded; on the card 8 rows to 74 pieces peaked 0.73 GiB above the model at rest, where that rate
+gives 0.44]. The estimate counts each forward's base row, the null rows once, every arm and the twin's row; the code
+reads the base row of forward 0 once more for the item gate's figure, and the twin's base and per-row rows again.
 
-Provisional, each to be set by hand from the card check (scripts/verify_levelling.py), with its date: the item gate's
-bar `ITEM_GATE_BAR` (-6.0 nats a piece, between the lowest chat-formatted item read and the raw texts with no start
-mark; whether the base's log-probability is the right thing to gate on is itself not measured: of two raw texts under
-the bar one misbehaved and one did not); `STABLE_RATIO` (3.0; over the answer's span pilot 8's largest ratio was
-1.60); `ONE_ROW_MIN_LAYER` (44); the row counts 12 and 32; `MAX_WRITTEN_GIB`; every figure of `COST`.
+The bars, set by hand on 16 November 2026 from the card check (`verify_1a.json`, its `proposed_bars`), each by the
+rule the build spec wrote for it before the card ran (BUILD_SPEC_1a.md, section 9; what was found and set is in its
+section 12). One card run each, so all of them stay provisional:
+- `ITEM_GATE_BAR` stays -6.0 nats a piece and is a printed caution, not a refusal (open point 4: "if the card finds
+  that the figure does not separate, the gate stays as a printed caution and the two row counts carry the weight").
+  With the gate set aside the card read 51 items: in the four readings of its section 9 (no control edits) 3 read
+  "unstable" (-3.09, -4.13 and -9.64 nats a piece) and 48 did not (the lowest -12.13), so the figure does not
+  separate; with 19 control edits 3 more read "unstable" from control arms alone, all under the bar (-8.61, -8.82 and
+  -10.08), which leaves that so. An item under the bar is read in both classes like any
+  other; its `gate.passed` is false and `gate.caution` says, in `GATE_SAY`'s words, why it was read anyway.
+- `STABLE_RATIO` stays 3.0 (open point 5: "ship as written"). On items over the bar the largest ratio that agreed was
+  2.44 (a read-out that agreed in a reading whose other read-out did not; among readings that agreed on both
+  read-outs, 2.07), and 3 readings disagreed (up to 20.7). The point's other clause, for control arms at the
+  floor tripping the rule, is the coordinating session's to read: 6 of 969 control arms disagreed, every one on an
+  item under the bar, and two of them read at the floor at one of the two row counts.
+- `ONE_ROW_MIN_LAYER` stays 44: open point 14 wrote no rule for moving it, and the card's reading of the one-row
+  capture is above.
+- `ROWS_SMALL` and `ROWS_LARGE` stay 12 and 32 (open point 3: "set by hand" once the map is read, with no rule for
+  other numbers). The map, the base row's bits at 2, 3, 4, 6, 8, 12, 16, 24, 32 and 48 rows: at 35 pieces every row
+  count gave its own; at 82 only 12 and 24 were one; at 175, 24, 32 and 48 were one. 12 and 32 never shared bits.
+- `COST`: refit, above. `MAX_WRITTEN_GIB` stays 6.0.
 
-New on the card and not measured: an input-side factor other than 0; the float32 output-side add of a set or added
-column; a low-rank term that is not zeros; the input-side pre-hook in a decode step and a batch in which rows stop;
-the stability rule on the text's own log-probability and on log-odds; a control arm's second reading; the cost of a
-twin of many columns.
+Read on the card for the first time on 16 November 2026 (the card check, one run): an input-side factor of 2 is the
+folded form by bits, as a silencing is (48 comparisons of 48: 1, 64 and 1,000 columns at layers 5 and 20, at 12 and 32
+rows, on two items; sections 5 and 5a); a scale by 1.5 or by -3, a set and the float32 output-side add stand off their
+folded twins by 0.00002 to 0.009 nats of KL, 0.04% to 22% of the reading (section 5c); a rank-1 low-rank term read as
+the one-column add it equals to 0.00004 and 0.00017 nats (section 5e); under the input-side pre-hook in a decode step,
+with two rows stopping, untouched rows and a dose-0 row wrote the base's pieces with its log-probabilities exactly
+(section 7); the stability rule on the text's own log-probability (section 9) and on log-odds (six items, section 9a);
+control arms' second readings (section 9a); a twin of 1,000 columns, 1.02 to 1.13 times its price at the figures then
+shipped (section 10). Not read on the card: a low-rank term that is not a column's add (one of rank 64 was timed, not
+compared), and any layer but 5, 20, 40 and 44.
 
 What it refuses, as results with plain words: a plan with a key it does not know or a number out of range
-(`normalise`); null rows that would be the base row again or an exact scaling; an item whose base log-probability is
-under the bar (the item, not the reading); a forward over `MAX_ROW_POSITIONS`; a written reading whose cache would
-not fit; a dose the rounding eats, and an edit that is the base at every dose; an answer that holds a start mark or
-another of the tokenizer's special pieces (they would be scored as text); an `Edit` handed in whose id is not the hash
-of what it holds; a model that carries a vault edit or a hook that was not there at load. Any other exception inside
-a reading, an interrupt included, is entered as void and raised again, so every call is in the ledger.
+(`normalise`); null rows that would be the base row again or an exact scaling; a forward over `MAX_ROW_POSITIONS`; a
+written reading whose cache would not fit; a dose the rounding eats, and an edit that is the base at every dose; an
+answer that holds a start mark or another of the tokenizer's special pieces (they would be scored as text); an `Edit`
+handed in whose id is not the hash of what it holds; a model that carries a vault edit or a hook that was not there at
+load. Any other exception inside a reading, an interrupt included, is entered as void and raised again, so every call
+is in the ledger. An item whose base log-probability is under the bar is not refused (since 16 November 2026, above):
+it is read with the gate's caution.
 
 What the stability rule does not see [found at the build's review, 14 November 2026, by a planted fault on the CPU]:
 an arm's two readings are set against the LARGER of the two row counts' floors, and the two floors are not themselves
 set side by side. A null row that moves with the row count therefore lifts the floor and an edit that moved with it
-"agrees". The printed lines say when an item's two floors stand apart by more than the ratio bar; whether that
-should make the item "unstable" is the owner's to decide once the card check has recorded how far two floors part.
+"agrees". The printed lines say when an item's two floors stand apart by more than the ratio bar. The card check
+recorded how far they part: by more than the bar in 22 of 204 readings, at most 42.7 times [measured, 16 November
+2026, section 9a]. Whether that should make an item "unstable" is still the owner's to decide.
 
 The written reading is greedy, taken at one row count, and is not a two-row-count reading: every untouched row and
 an arm at dose 0 must write the base row's pieces with its log-probabilities, exactly, or it is void. Its
@@ -98,9 +139,17 @@ On the float32 stand-in (scripts/atlas_stand_in.py) the same code runs in float3
 plain, so no folded twin is taken there, and its items read about -6.4 nats a piece, so a stand-in plan gives its own
 bar.
 
-What was run, and what was not. Nothing in this file has run on the card. On the CPU, 14 November 2026 [ran], at one
-thread, against the repository's `weight_edits` and `level_book`: on the float32 stand-in, a restart from the kept
-stream under hooks equals the whole forward under the same hooks by bits at layers 0, 2 and 5; KL, the text's own
+What was run, and what was not. On the card: the card check of 16 November 2026 (scripts/verify_levelling.py: 369
+readings through `read`, into a ledger of its own beside its JSON), 142 of its 145 standing lines passing. The three
+that did not: the cost model (above), and two lines asking that no null row has a position above a nat. Every null row
+that had one was on raw text: 28 of the 784 null rows read on the raw items (26 of them behind the start mark; 12
+distinct rows on three items, since the readings at one layer and row count repeat their null rows), and none of the
+2,208 read on the model's own answers (the one with its start mark dropped among them), the study's chats and
+passages given as answers.
+
+On the CPU, 14 November 2026 [ran], at one thread, against the repository's `weight_edits` and `level_book`: on the
+float32 stand-in, a restart from the kept stream under hooks equals the whole forward under the same hooks by bits at
+layers 0, 2 and 5; KL, the text's own
 log-probability and log-odds of every arm equal a direct computation from a whole forward's full log-softmax to
 1e-5; `lower: "whole"` gives the figures of `"same_shape"`; a one-row capture reads as `"same_shape"` does to 1e-5
 (float32 on the CPU: this says nothing of bf16 on the card); planted hooks give each void its code, and one that acts
@@ -143,10 +192,13 @@ class Refused(ValueError):
 
 
 VERSION = 1
-ITEM_GATE_BAR = -6.0        # nats a piece [provisional]
-STABLE_RATIO = 3.0          # [provisional]
-ONE_ROW_MIN_LAYER = 44      # [provisional: the one layer where the one-row capture was shown]
-ROWS_SMALL, ROWS_LARGE = 12, 32          # [provisional]
+ITEM_GATE_BAR = -6.0        # nats a piece [provisional]; a printed caution, not a refusal, since 16 November 2026
+STABLE_RATIO = 3.0          # [provisional; kept on 16 November 2026, the spec's open point 5]
+ONE_ROW_MIN_LAYER = 44      # [provisional: the one layer where the one-row capture was shown, on raw text with no
+#                             start mark; on chat-formatted items the card read it off the same-shape reading at layers
+#                             40 and 44, 16 November 2026, and no rule was written for moving the bar]
+ROWS_SMALL, ROWS_LARGE = 12, 32          # [provisional; unchanged 16 November 2026: open point 3 wrote no rule for
+#                                          other numbers (on the card's map, 12 and 32 never shared bits)]
 SMALL_MIN, SMALL_MAX, LARGE_MIN, LARGE_MAX = 5, 12, 16, 64
 WRITTEN_ROWS_MIN, WRITTEN_ROWS_MAX = 5, 32
 NULL_E = (0.03125, -0.03125, 0.125, -0.125)
@@ -154,10 +206,13 @@ NULL_E_WRITTEN = (0.125, -0.125)
 MAX_PIECES, MAX_ROW_POSITIONS, MAX_CONTROLS, MAX_DOSES, MAX_ITEMS = 512, 12288, 199, 8, 256
 MAX_WRITTEN_GIB = 6.0       # [provisional: 8.37 GiB was free after the load, measured 14 November 2026, lens freed]
 READ_CHUNK = 128            # positions of full-vocabulary fp32 logits worked at once
-COST = {"forward_fixed_s": 0.08, "row_position_s": 0.00033, "readout_row_position_s": 0.00011,
+COST = {"forward_fixed_s": 0.135, "row_position_s": 0.000377, "readout_row_position_s": 0.000088,
         "decode_step_s": 0.095, "overlay_matrix_s": 0.0003, "load_s": 9.5, "unpacker_s": 1.83,
-        "mib_row_position": 0.25, "mb_row_piece_written": 0.8}
-# measured 14 November 2026; mib_row_position inferred; mb_row_piece_written measured 28 October 2026
+        "mib_row_position": 0.191, "mb_row_piece_written": 0.8}
+# forward_fixed_s, row_position_s, readout_row_position_s and mib_row_position: refit on 16 November 2026 from the card
+# check's readings (experiments/results/levelling/verify_1a.json, proposed_bars.cost, to three figures; a reading's
+# cost, not a bare forward's); decode_step_s, overlay_matrix_s, load_s and unpacker_s measured 14 November 2026;
+# mb_row_piece_written measured 28 October 2026
 CONTROLS_SAY = ("Control edits are other sites of the same layer and size, drawn from seed {seed}. They are NOT "
                 "matched on how hard the sites fire on these items or on what the edit delivers, and the edit's own "
                 "sites were chosen where theirs were drawn, so a rank against them says only that the edit differs "
@@ -169,6 +224,11 @@ PAIRED_SAY = ("These figures are read along the answer given, piece by piece. Th
               "would write.")
 FLOOR_SAY = ("The floor is the largest of {n0} null rows, not a bound: on 14 November 2026 a single neuron silenced at "
              "random read above its forward's floor in 26 of 72 readings, up to 2.25 times it.")
+# the item gate's caution, after the item's own figures (`_gate_caution`): the spec's open point 4, as the card found it
+GATE_SAY = ("The bar is a caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and "
+            "the base's log-probability did not separate the 3 whose two row counts disagreed (-3.09, -4.13 and -9.64 "
+            "nats a piece) from the 48 that agreed (the lowest -12.13). The item is read, and its two row counts "
+            "carry the weight.")
 
 MAX_NULL_ROWS, MAX_NAMED_PIECES, MAX_NEW_MAX = 8, 16, 256
 WRITTEN_ROWS, WRITTEN_MAX_NEW, WRITTEN_CONTROLS = 8, 48, 3
@@ -258,7 +318,8 @@ def _key(what: str, x: Any) -> str:
 
 
 def whole(rows: int, pieces: int) -> float:
-    """The seconds of one whole forward of `rows` rows of `pieces` word-pieces (measured 14 November 2026)."""
+    """The seconds one whole forward of `rows` rows of `pieces` word-pieces adds to a reading (refit on 16 November
+    2026 from the card check's readings; a bare forward measured 0.08 s + 0.33 ms a row-position on 14 November)."""
     return COST["forward_fixed_s"] + COST["row_position_s"] * rows * pieces
 
 
@@ -1266,44 +1327,47 @@ def _arm_name(key: str) -> str:
     return f"the edit at dose {number}" if what == "edit" else f"the null row e = {number}"
 
 
-def _gate_why(mean: Optional[float], R: int, bar: float) -> str:
-    shown = "a figure that is not finite" if mean is None else f"{mean:.2f} nats a piece on average"
-    return (f"The base model gives this item's answer {shown} at {R} rows, under the bar of {bar:.2f}. On 14 November "
-            "2026 one of two raw texts with no start mark, which the base gave -9.6 nats a piece, gave readings that "
-            "moved eighty-fold with the batch size, so an item under the bar is not read.")
-
-
 def _under(figures: Mapping[str, Optional[float]], bar: float) -> bool:
     return figures["mean"] is None or figures["mean"] < bar
 
 
+def _gate_caution(gate: Mapping[str, Any], R_small: int, R_large: int, bar: float) -> str:
+    """The item gate's words for an item under the bar at either row count: its two figures, where it is under, and
+    `GATE_SAY`. Since 16 November 2026 they are a caution printed beside an item that is read, not a refusal."""
+    def shown(cls: str) -> str:
+        mean = gate[cls]["mean"]
+        return "a figure that is not finite" if mean is None else f"{mean:.2f}"
+
+    under = [R for cls, R in (("small", R_small), ("large", R_large)) if _under(gate[cls], bar)]
+    where = "both row counts" if len(under) == 2 else f"{under[0]} rows"
+    return (f"The base model gives this item's answer {shown('small')} at {R_small} rows and {shown('large')} at "
+            f"{R_large}, in nats a piece on average: under the item gate's bar of {bar:.2f} at {where}. {GATE_SAY}")
+
+
 def _paired_item(sit: _Sitting, item: Item, entry: Dict[str, Any]) -> None:
-    """One item of a paired reading, both classes: steps a to d of the spec's 4.7, written into `entry` as it goes."""
+    """One item of a paired reading, both classes: steps a to d of the spec's 4.7, written into `entry` as it goes.
+    The item gate is a printed caution since 16 November 2026 (the spec's open point 4, the card having found that the
+    base's log-probability does not separate the items whose two row counts disagree): an item under the bar is read
+    in both classes like any other, its `gate.passed` is false and `gate.caution` holds the words."""
     h, plan = sit.h, sit.plan
     sp = _Span.of(item, h.device)
     bar, R_small, R_large = plan["bars"]["item_gate"], plan["rows"]["small"], plan["rows"]["large"]
-    gate: Dict[str, Any] = {"bar": bar, "small": None, "large": None, "passed": False}
+    gate: Dict[str, Any] = {"bar": bar, "small": None, "large": None, "passed": False, "caution": None}
     entry["gate"] = gate
     one_row: Dict[str, torch.Tensor] = {}
     st = _begin_class(sit, item, sp, "small", one_row)
     gate["small"] = st.gate
-    if _under(st.gate, bar):  # the large class is begun for its figure alone
-        del st
-        gate["large"] = _begin_class(sit, item, sp, "large", one_row).gate
-        entry["status"], entry["why"] = "refused", _gate_why(gate["small"]["mean"], R_small, bar)
-        return
     small_base = st.Hf0[0, sp.lo:sp.T].clone()  # the base row at the span and end positions, for the large class
     entry["classes"]["small"] = _read_class(sit, item, sp, st)
     del st
     st = _begin_class(sit, item, sp, "large", one_row)
     gate["large"] = st.gate
     same_bits = bool(torch.equal(st.Hf0[0, sp.lo:sp.T], small_base))
-    if _under(st.gate, bar):
-        entry["status"], entry["why"] = "refused", _gate_why(gate["large"]["mean"], R_large, bar)
-        return
     entry["classes"]["large"] = _read_class(sit, item, sp, st)
     del st
-    gate["passed"] = True
+    gate["passed"] = not _under(gate["small"], bar) and not _under(gate["large"], bar)
+    if not gate["passed"]:
+        gate["caution"] = _gate_caution(gate, R_small, R_large, bar)
     stab = _stability(plan, entry["classes"]["small"], entry["classes"]["large"], same_bits)
     entry["stability"] = stab
     if stab["disagree"]:
@@ -1321,13 +1385,17 @@ def _paired_item(sit: _Sitting, item: Item, entry: Dict[str, Any]) -> None:
 
 def _summary(plan: Mapping[str, Any], entries: Sequence[Mapping[str, Any]], asked: int) -> Dict[str, Any]:
     """Over the items kept (status ok): each arm's mean and median over items of its per-item mean, the median of its
-    per-item medians and the sum of its counts above a nat; the largest floor; the edit's rank among control edits."""
+    per-item medians and the sum of its counts above a nat; the largest floor; the edit's rank among control edits.
+    `under_bar` counts the items read with the item gate's caution, whatever their status (an item kept among them is
+    in the figures like any other); `refused` stays for the results written before the gate became a caution."""
     kept = [e for e in entries if e["status"] == "ok"]
     out: Dict[str, Any] = {"items": {"asked": asked, "kept": len(kept),
                                      "refused": sum(e["status"] == "refused" for e in entries),
                                      "unstable": sum(e["status"] == "unstable" for e in entries),
                                      "one_arithmetic": sum(bool(e["stability"] and e["stability"]["base_rows_same_bits"])
-                                                           for e in entries)},
+                                                           for e in entries),
+                                     "under_bar": sum(bool((e.get("gate") or {}).get("caution"))
+                                                      for e in entries)},
                            "classes": {"small": None, "large": None}}
     on = [m for m in METRICS if plan["readouts"][m]]
     for cls in ("small", "large") if kept else ():
@@ -1912,13 +1980,17 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
                             for c in ("small", "large") if gate.get(c))
         out.append(f"  {_item_label(it, start_mark)}: {e['status']}; the base gives "
                    f"{figures or 'no figure'} in nats a piece (bar {_n(gate.get('bar'), 2)})")
+        if gate.get("caution"):  # under the bar: read all the same (since 16 November 2026), and said so
+            out.append(f"    {gate['caution']}")
         if e.get("why") and e["why"] != result.get("why"):
             out.append(f"    {e['why']}")
         read = [c for c in ("small", "large") if e["classes"].get(c)]
         if void and read:  # what was read before a void is in the book with status void: it is not printed as figures
             out.append("    read before the reading came out void: its figures are in the book, not printed")
             continue
-        if e["status"] == "refused" and read:  # the gate refused it at the large row count, after the small was read
+        # a result written before 16 November 2026, when the gate refused an item at the large row count after the
+        # small was read: those figures stay unprinted
+        if e["status"] == "refused" and read:
             out.append(f"    read at {plan['rows'][read[0]]} rows only, before the gate refused the item: those "
                        "figures are in the book, not printed")
             continue
@@ -1960,8 +2032,10 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
     if sm:
         n = sm["items"]
         kept = [e for e in result.get("items") or [] if e.get("status") == "ok"]
+        under = n.get("under_bar") or 0
         out.append(f"  over {n['kept']} item{'' if n['kept'] == 1 else 's'} kept of {n['asked']} ({n['refused']} "
-                   f"refused, {n['unstable']} unstable, {n['one_arithmetic']} read in one arithmetic):")
+                   f"refused, {n['unstable']} unstable, {n['one_arithmetic']} read in one arithmetic"
+                   + (f", {under} under the item gate's bar and read with its caution" if under else "") + "):")
         for c in ("small", "large"):
             cb = (sm.get("classes") or {}).get(c)
             if not cb:

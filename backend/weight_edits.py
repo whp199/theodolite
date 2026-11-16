@@ -14,8 +14,8 @@ the model is the base again. `backend/levelling.py` reads an edit against the ba
 Why an edit rides a row, and in which form. What follows was measured on 14 November 2026 on the RTX 5090
 (Gemma-4-31B-it, the W4A16 checkpoint, compiled unpacker, lens freed, server stopped; one run each; scripts and JSON
 in experiments/results/weight_space_exploration/pilot/). The pilots' raw text was text with no start mark, and
-pilot 6's and pilot 4's figures below are of one such text (a recipe of 150 pieces): the same comparisons have not
-been read on a chat-formatted item.
+pilot 6's and pilot 4's figures below are of one such text (a recipe of 150 pieces). The card check read the same
+comparisons on chat-formatted items on 16 November 2026 (after the list).
 - MEASURED (pilots 1 and 6): rows of one forward do not leak. An untouched row far from edited rows equals row 0 by
   bits, a hooked forward's row 0 equals an unhooked forward's of the same shape, and one edit in rows 1, 9, 20 and
   31 of 32 reads the same.
@@ -57,9 +57,15 @@ weight edit, not a push), and never indexing positions, so a decode step with a 
 - a null row (`Null`): the layer's feed-forward output times 1 + e, in the model's dtype, which the norm after the
   block undoes but for rounding. It measures the rounding a row can show with no edit in it.
 
-New on the card and not measured there: an input-side factor other than 0; the float32 output-side add (the pilots'
-hooks multiplied and summed in bf16); a low-rank term that is not zeros; the pre-hook in a decode step. A low-rank
-term has no folded form in 1a, so nothing confirms it as it would ship; every report says so.
+Read on the card on 16 November 2026, where no pilot had (scripts/verify_levelling.py, one run; its record is
+experiments/results/levelling/verify_1a.json): an input-side factor of 2 equals the folded overlay by bits, as a
+silencing does (48 comparisons of 48: 1, 64 and 1,000 columns at layers 5 and 20, at 12 and 32 rows, on a chat-formatted
+item and a passage given as an answer); a scale by 1.5 or -3, a set and the float32 output-side add (the pilots' hooks
+multiplied and summed in bf16) stand off the folded form by 0.00002 to 0.009 nats of mean KL; a rank-1 low-rank term on
+a down_proj that equals a one-column add reads as that add to 0.00004 and 0.00017 nats; a row at dose 0 of a scale, a
+set and a low-rank term is the base row by bits at 12 and 32 rows; under the pre-hook in a decode step, two rows
+stopping, untouched rows write the base's pieces with its log-probabilities exactly. A low-rank term has no folded
+form in 1a, so nothing confirms it as it would ship; every report says so.
 
 Provisional: every cap below (`MAX_TERMS` to `MAX_DOSE`) is a guard against a slip, not a finding.
 
@@ -1550,8 +1556,9 @@ def per_row(lm: nn.Module, programs: Sequence[Union[Arm, Null, None]]) -> Iterat
     multiplied by 1, which is exact, and its output copied: no other arithmetic touches it, and a linear no program
     names gets no hook. A row at dose 0 does pass through its edit's arithmetic, with factors of 1 and nothing to add,
     so that such a row shows the arithmetic itself leaves the bits alone (on both stand-ins it is the base row by
-    bits, ran on the CPU 14 November 2026; on the card the float32 sum is not yet measured). The hooks act at every
-    position and never index one, so a decode step with a cache runs the same code. `Refused`, before anything is
+    bits, ran on the CPU 14 November 2026; on the card too, for a scale, a set and a low-rank term at 12 and 32 rows,
+    16 November 2026). The hooks act at every position and never index one, so a decode step with a cache runs the
+    same code. `Refused`, before anything is
     installed, for a program that cannot be run: an edit that names a linear this model lacks or of another shape, or
     a null row whose factor is 1 or a power of two in the model's dtype. A forward whose row count is not
     `len(programs)` raises `RuntimeError` from inside the hook. A dose is not judged here: `dose_refusal` is the

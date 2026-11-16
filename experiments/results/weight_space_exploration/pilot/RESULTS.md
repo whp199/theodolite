@@ -233,3 +233,111 @@ two null rows were +-0.001, report a floor of 0. A power of two is no better (an
 undo exactly). A null row's factor must be a bf16 value other than 1 and not a power of two: 1 + 2^-7, 1 - 2^-8,
 1.5, 0.75, 3. Several of pilot 5's null rows (those with e of 0.001 and 0.002) were no rows for the same reason;
 its floors came from the others.
+
+---
+
+# The card check of slice 1a (16 November 2026)
+
+MEASURED on the same card, 16 November 2026 01:33 to 01:46Z (UTC; the evening of the 15th on the desk's clock), by
+`scripts/verify_levelling.py`: the kernel built from `BUILD_SPEC_1a.md` read on Gemma-4-31B-it W4A16, compiled
+unpacker (its self-test passing on all 410 linears), lens loaded and freed, server stopped. One run: 16 s to load, 793 s
+of readings, 369 readings (367 paired, 2 written) through `levelling.read` into a ledger of the check's own. Record:
+`experiments/results/levelling/verify_1a.json` (its `sections`, `checks` and `proposed_bars`) and
+`verify_1a_book.jsonl` beside it (370 entries, the chain whole). The three modules it ran are the ones committed at
+`96e4420` (their sha256 in the record's `code` are those files'). Section numbers below are the check's (the spec's
+6.2). 51 items: the model's own answers to pilot 8's six questions; the study's twelve chats; pilot 7's recipe and
+survey and pilot 8's cuts of them, and the study's twelve prose passages, each given as the answer to a question; the
+four passages and the first four prose texts raw with no start mark, as the pilots built them; the same eight behind
+the start mark; and the first own answer with the start mark dropped from its prompt.
+
+**142 of 145 standing lines held.** What held (each line in the record by its section):
+- The runtime (§1): 60 layers of 21,504, no overlay, no hook at load, the compiled unpacker never fell back. The chat
+  ids are the runtime's own on all 21 questions (§2), and the tokenizer adds no start mark to plain text (the recipe
+  cut is 90 pieces with special pieces asked for and without): the correction at the top of this note, on the card.
+- A row at dose 0 is the base row by bits for a scale, a set and a low-rank term, at 12 and 32 rows (§3); a silencing
+  in rows 1, 9, 20 and 31 of 32 gives the same bits (§4).
+- Input side against folded (§5, §5a): a silencing and a scale by 2, of 1, 64 and 1,000 hardest-firing columns at
+  layers 5 and 20, at 12 and 32 rows, on a model's own answer and the recipe cut given as an answer: the same bits in
+  48 of 48. Pilot 6 like for like (§5d, the raw recipe with no start mark, layer 20): neuron 4294 read 0.72581 at 32
+  rows (pilot 6: 0.72581) and 0.00850 at 12 (pilot 7: 0.0085), and the item read "unstable", the stability rule's
+  one known positive found; neuron 5316 read 0.52337 and 0.0035. The forms that round (§5c, the hardest 64 at layer
+  20): a scale by 1.5 stood off its folded twin by 0.00026 to 0.00047 nats of KL (6% to 22% of readings of 0.002 to
+  0.004),
+  a scale by -3 by 0.0006 to 0.009 (under 1% of 1.4 to 1.6), a set by 0.0010 to 0.0032 (1% to 3%), the float32 add by
+  0.00002 to 0.00037 (0.5% to 7%). A rank-1 low-rank term equal to a one-column add read as that add to 0.00004 and
+  0.00017 nats (§5e); a reading with a rank-64 term took 1.56 s, with the add 1.62 s.
+- A restart from the kept stream under hooks, 60 control edits, at layers 5, 20 and 44: every later forward's base
+  and null rows forward 0's by bits, and `lower: "whole"` the same figures exactly (§6).
+- Writing under the input-side pre-hook (§7): 8 rows, 48 pieces, on two own answers, not void; untouched and dose-0
+  rows wrote the base's pieces with its log-probabilities; two rows stopped in the check's own write and the rest went
+  on. A step took 0.110 s hooked and 0.107 s unhooked (within 10%). Null rows in writing never parted from the base in
+  48 pieces; their largest log-probability gap was 0.10 (pilot 3: 0.059).
+- The gate at -6 (§8): all six own answers and both cuts given as answers passed, the two raw cuts with no start mark
+  were refused, at both row counts. On the six own answers no arm disagreed on KL between 12 and 32 rows (largest
+  ratios 1.12 to 1.55; §9).
+- After everything the model was the base, the unpacker had not fallen back and the ledger verified (§12). The
+  largest peak was 19.33 GiB, 1.33 above the model at rest.
+
+**What failed, and why.**
+- The cost model (§10): 21 of the 163 readings it was judged on took more than 1.25 times their prediction (median
+  1.12, worst 1.44). Every one of the 21 was a reading with 19 control edits (21 of those 40); the other 123 all sat
+  within the band (median 1.11). The 145 readings predicted under a second, not judged, took 1.15 to 1.87 times their
+  prediction. The model priced
+  forwards and read-out from pilot 1's bare forward; what else a reading does is not in it, and the record does not
+  say where the time went. A least-squares refit over 331 readings (`proposed_bars.cost`): 0.135 s a forward, 0.377 ms
+  a row-position, 0.088 ms a scored row-position of read-out; on the same 163 readings it gives 0.85 to 1.13 (fit on
+  them: not a test). Memory refit from the classes' peaks: 0.191 MiB a row-position (the spec had 0.25, inferred).
+- Null rows with a position above a nat (§11, two lines: items over the -6 bar, and under it). 28 null rows of the
+  784 read on raw items had one, 12 distinct rows (the readings at one layer and row count repeat their null rows) on
+  three items: the raw recipe cut behind the start mark (over the bar, -4.82; layers 5 and 20), the raw survey behind
+  the start mark (-6.96; layers 5 and 20, at 12 rows only) and the raw recipe with no start mark (-9.64; layer 5).
+  Counted by read-out, all 28 had a position above a nat in the text's own log-probability and 17 in KL. None of the
+  640 read on the model's own answers, the 608 on the study's chats, the 912 on passages given as answers or the 48
+  on the own answer with its start mark dropped had one. On those two raw texts behind the start mark the null rows
+  themselves moved with the row count: at layer 20 the recipe cut's floor was 0.0011 nats at 12 rows and 0.046 at 32
+  (42.7 times), the survey's 0.025 and 0.0010. Both items still read "ok": an arm is set against the larger of the two
+  floors, the blind spot the build's review named. So in this run raw text behind a start mark did not read as the
+  chat-formatted items did either (on two of its eight items).
+
+**The item gate does not separate.** With the gate set aside (§9: the hardest neuron and the hardest 64 at layers 5
+and 20, silenced, no control edits), 3 of 51 items read "unstable": chat 10 (-3.09 nats a piece), the raw prose 2
+behind the start mark (-4.13) and the raw recipe with no start mark (-9.64). The 48 that did not reach down to -12.13
+(the raw prose 1 with no start mark). Two of the three are over the -6 bar, and 19 items under it behaved. With 19
+control edits (§9a) 3 more items read "unstable" from control arms alone, all under the bar (prose 10 as an answer
+-8.61, the raw prose 3 with no start mark -8.82, the raw recipe cut with no start mark -10.08): the figure still does
+not separate. By the spec's own rule for this case (open point 4, written before the card ran) the gate is now a
+printed caution, not a refusal. The figures by kind (§8b; each range over both row counts' means): own answers -0.07
+to -0.17; the study's chats -0.000002 to -9.40; passages given as answers -2.45 to -8.61; raw with no start mark -8.12
+to -12.13; raw behind the start mark -3.07 to -11.38; the own answer with the start mark dropped -1.93 and -1.92.
+
+**Stability (§9a).** On items over the bar the largest ratio between the row counts that agreed was 2.44 (the raw
+prose 2 behind the start mark, its own log-probability, in a reading whose KL disagreed; among readings that agreed on
+both read-outs, 2.07), and 2.4% of ratios were over 2; 3 readings disagreed there (chat 10, 5.2 on KL; the raw prose
+2 behind the start mark, 20.7 on KL for one neuron and 6.3 on its own log-probability for 64). Of 969 control arms
+read twice (19 control edits, the hardest 64 at layer 20, every item), 6 disagreed, all on items under the bar, and
+two of them at the floor at one of the row counts. Log-odds on the six own answers (toward the answer's first piece, away from its second):
+floors 0.017 to 0.036, the edit's ratio 0.98 to 1.28. An item's two floors stood more than 3 times apart in 22 of 204
+readings (eleven item and layer pairs, each read twice): eight of them 3.0 to 4.1 times apart, on chats, passages and
+one raw text, and three 15.7 to 42.7 times, all on the two raw texts behind the start mark above. The spec's own
+formula for a new ratio (1.5 times the largest seen over the bar) gives 31.1, from a reading that disagreed; from the
+ratios that agreed it gives 3.66, from the readings that agreed on both read-outs 3.10. The bar stays 3.0 (open point
+5).
+
+**The map of row counts (§9b).** The base row's final states, by sha256, at 2, 3, 4, 6, 8, 12, 16, 24, 32 and 48
+rows: on a study chat of 35 pieces every row count gave its own bits; on an own answer of 82 pieces only 12 and 24 were
+one; on the recipe given as an answer, 175 pieces, 24, 32 and 48 were one. Nearly every row count is its own
+arithmetic, so "two batch classes" is two of many; 12 and 32 never shared bits. The hardest 64 at layer 20, read at
+each row count: 0.035 to 0.052 nats on the chat (1.5 times between the lowest and the highest), 0.129 to 0.141 on the
+own answer, 0.0358 to 0.0374 on the recipe.
+
+**The one-row capture (§6b)**, the hardest 64 silenced, a one-row capture against the same-shape reading, on an own
+answer and a study chat: at layer 44 the gap was 0.00036 and 0.000004 nats of KL on the own answer (10.8 and 0.14
+times its floor) and 0.0039 and 0.0033 on the chat (31 times its floor, 1.6% and 1.3% of the reading); at layer 40,
+0.0020 and 0.0009 (35 and 10 times) and 0.0046 and 0.0066 (19 and 26 times). Pilot 3's agreement at layer 44 was on
+raw text with no start mark; on these two chat-formatted items the capture was a different reading by more than the
+floor in 7 of the 8 class readings, at both layers.
+
+What it set, by the spec's rules written before the run (BUILD_SPEC_1a.md section 12, "The card check"): the gate a
+caution at -6.0, the stability ratio 3.0, the one-row bar 44 and the row counts 12 and 32 unchanged, and the cost
+figures refit. Not measured: any layer but 5, 20, 40 and 44; a second run; another card; a low-rank term that is not
+a column's add; the rule on control arms alone.

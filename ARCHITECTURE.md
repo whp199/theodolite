@@ -2012,3 +2012,111 @@ read by this comparison.
 Not measured: a GPU backend's arithmetic for B (A x), quantised GGUFs other than that Q4_0, `--vault` on the real
 runtime, a silenced copy of the 31B, and what any of these pushes does to the text: the census's labels were read
 from add pushes.
+
+## 7. A weight edit read against the base (`backend/weight_edits.py`, `backend/levelling.py`, `backend/level_book.py`)
+
+Since 16 November 2026 (`96e4420`) one edit of the base weights can be read against the untouched model in another
+row of the same forward, and the reading kept in a ledger. This is 1a, the first slice of the weight-edit kernel
+("Levelling" is a working name, the owner's to keep or change). It is a library and a command line for the owner's own
+session at the terminal, with the server stopped: no page, no route, no agent's tool, and no word given to an edit
+beyond numbers, ranks against control edits, floors, and "void" and "unstable". It never leaves the model edited: an
+edit is an argument of a reading, and the base is asserted after each one. Built from
+`experiments/results/weight_space_exploration/BUILD_SPEC_1a.md`, which rests on the pilots of 14 November 2026
+(`pilot/RESULTS.md`) and the ruling `verify/arbiter.md`.
+
+```bash
+.venv/bin/python -I scripts/levelling.py estimate plan.json          # no model: forwards, seconds and GiB a reading
+.venv/bin/python -I scripts/levelling.py run plan.json               # the 31B on the card, the server stopped
+.venv/bin/python -I scripts/levelling.py run plan.json --stand-in    # a dry run on the CPU stand-in
+.venv/bin/python -I scripts/levelling.py book --tail 20              # the ledger; --seq K, --verify
+```
+
+| module | what |
+|---|---|
+| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, control edits, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
+| `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading, the read-outs, what a person reads (`lines`) |
+| `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before |
+| `scripts/levelling.py` | `estimate`, `run`, `book` |
+
+**The edit.** A list of terms, each an additive difference from one feed-forward linear's shipped tensor, at dose d
+the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Two kinds are built: a column term on a `down_proj` (what
+a neuron writes: scaled, silenced, set to a vector, added to) and a low-rank term B @ A on a `down_proj`. Its id is the
+sha256 of its canonical form, the model's id, the weights card's id and a sha256 of each tensor it touches included,
+so an edit is pinned to its base and `load` refuses it on another. The gate refuses, in plain words: row edits on
+`gate_proj` and `up_proj` and low-rank terms on them, direction removal, attention linears, the embedding, norms and
+layer scalars, a GGUF's layer, an int4mm linear, and anything past a cap. Saved edits live beside the ledger,
+outside the checkout (`$THEODOLITE_EDITS_DIR`, else `~/.local/share/theodolite/edits`): a payload can carry Gemma's
+columns.
+
+**The per-row forms** (`per_row`), one program a row, at every position, the start mark included, so a decode step
+with a cache runs the same code:
+
+| term | the row's arithmetic |
+|---|---|
+| a column scaled by f, or silenced (f = 0) | the row's activation of that neuron times g = 1 + d (f − 1), on `down_proj`'s input, g cast once to the model's dtype |
+| a column set to v | g = 1 − d on the input side, and the new content a (d v) added after the product, summed in float32 and rounded once |
+| a column added to | g = 1, and the same add |
+| a low-rank term | (x Aᵀ) d Bᵀ added after the product, into the same float32 sum |
+| a null row (e) | the layer's feed-forward output times 1 + e, in the model's dtype, which the norm undoes but for rounding |
+
+An untouched row passes through no arithmetic that can change it (at most a multiplication by 1, which is exact). On
+the card a silencing and a scale by 2 equal the folded weight by bits (48 of 48); a scale by 1.5 or −3, a set and the
+float32 add stand off it by 0.00002 to 0.009 nats of KL (16 November 2026).
+
+**The paired reading** (`levelling.read`, `kind: "paired"`). An item is a question and an answer in the model's own
+chat format, thinking off; the figures are read along the answer given, at the positions that predict its own pieces,
+and say nothing of what the edited model would write. A forward of R rows holds the base row (row 0), its untouched
+twin (the last row), the null rows (by default e = ±1/32 and ±1/8, at the edit's lowest layer) and arms: the edit at
+each dose, then control edits (other sites of the same layer and size, drawn from a seed, NOT matched on firing).
+Every item is read twice, in a small class of 12 rows and a large one of 32, each class laid out the same way in as
+many forwards as its arms need; the layers below the edit run once a class and the later forwards restart from the
+kept stream, which every forward must show again by bits. Read-outs, fp32 and softcapped: KL(base ‖ row), the text's
+own log-probability against the base row's, and the log-odds of named pieces; each with its mean, median, largest and
+count of positions above a nat. The floor is the largest null row of that item in that class: no constant floor
+serves. An item is "unstable" when an arm's two readings, set against the larger of the two floors, differ by more
+than `STABLE_RATIO` (3.0) or, signed, stand on opposite sides clear of the floor; it is then left out of the summary. A
+folded twin (the same edit laid into the overlay dicts, one forward of the class's shape) is taken where the per-row
+form rounds. A reading is void, and stops, when the base row is not finite, an untouched row or a dose-0 row is not
+the base row by bits, a later forward's base or null rows are not forward 0's, memory runs out (a reading never
+halves its rows) or the model is not the base when it ends. The item gate: the base's mean log-probability of the
+answer's pieces, against `ITEM_GATE_BAR` (−6.0 nats a piece). Since the card check it is a printed caution, not a
+refusal: the item is read, `gate.caution` and `lines` say it stands under the bar, and the summary counts it
+(`under_bar`).
+
+**The written reading** (`kind: "written"`): one batch (by default 8 rows and 48 new pieces) writing greedily from the
+item's prompt under `atlas_ops.write_rows` with the hooks round it; untouched and dose-0 rows must write the base's pieces
+with its log-probabilities exactly, or it is void. Each arm says where it parts from the base and the log-probability
+gap before that. It is taken at one row count and is not a two-row-count reading.
+
+**The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
+`~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
+result in its body (the plan, the edit, the items' text and ids, every row's figures, how it ended), refused and void
+readings included, each line carrying the sha256 of the line before; `append` locks the file, and `verify` walks
+the chain. Nothing is signed: the chain shows a quiet change in the middle, not where the book ends.
+
+**The estimate** (`levelling.estimate`, no model): a forward 0.135 s + 0.377 ms a row-position, the read-out 0.088
+ms a scored row-position, memory 0.191 MiB a row-position above the model, refit on 16 November 2026 from the card
+check's own readings (a reading's cost, not a bare forward's, which pilot 1 measured at 0.08 s + 0.33 ms); writing
+0.095 s a step and 0.8 MB a row a word-piece of cache. It refuses a forward over 12,288 row-positions and a written
+reading whose cache would pass 6 GiB.
+
+**The checks.** `scripts/check_levelling.py` (CPU, the GPU hidden, one thread, on the float32 six-layer stand-in and
+a packed bf16 one) holds the three modules to the spec line by line: hashes, the gate's every refusal, save and load,
+the hooks by bits and to rounding, a decode step, control edits, plans, the read-outs against brute force, whole
+readings and planted faults, the written reading, the ledger, the estimate, the command line, and the words the spec
+keeps out. `scripts/verify_levelling.py` is the card's: 50 items and a fifty-first, some 370 readings into a ledger
+of its own, and `experiments/results/levelling/verify_1a.json`. Its one run (16 November 2026, 13 minutes): 142 of
+145 standing lines held. Rows do not leak; a dose-0 row is the base row; input side equals folded for a silencing and
+a scale by 2; a restart under hooks is exact at layers 5, 20 and 44; writing under the hooks keeps the base's pieces;
+pilot 6's 0.72581 came back to five figures. It failed the cost model (readings with 19 control edits ran up to 1.44
+times their price; refit since) and "no null row above a nat", every such row on raw text, most of it behind the
+start mark. It found that the base's log-probability does not separate the items whose two row counts disagree
+(hence the caution), that nearly every row count is its own arithmetic (on 35, 82 and 175 pieces only 12 and 24, and
+24, 32 and 48, shared bits), and that on the two chat-formatted items it read a one-row capture stood off the
+same-shape reading by 10 to 35 times the floor in 7 of 8 readings at layers 40 and 44. The bars set from it, each by
+the spec's own rule, are in the spec's section 12; the run in full is the last section of `pilot/RESULTS.md`.
+
+**Not built:** direction removal, row edits on `gate_proj` and `up_proj`, attention, embedding and norm edits; a folded
+form for low-rank terms; control edits matched on firing or on what an edit delivers, and sham-target controls;
+long sampled written readings; any page, server route or agent's tool; gradients; exports. Each is in the spec's
+section 8 with what would bring it in.

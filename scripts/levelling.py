@@ -34,13 +34,15 @@ page layer 21):
 `estimate PLAN [--stand-in]` loads the tokenizer alone (from this machine's cache; nothing is fetched and the card
 is hidden), builds the items, checks every reading's plan and prints each one's forwards, row-positions, seconds and
 GiB above the model, then the run's total with the load. The seconds are a cost model, not a measurement of this
-plan (`levelling.COST`): 0.08 s a whole forward and 0.33 ms a row-position (within 15% on nine shapes), 0.11 ms a
-scored row-position of full-vocabulary read-out, 0.095 s a written step, 9.5 s to load the model and 1.83 s to
-install the unpacker, all measured on the RTX 5090 on 14 November 2026, one run each. The GiB of a paired reading is
-inferred, not measured; a written reading's comes from 0.8 MB a row a word-piece, measured 28 October 2026 with the
-lens loaded. The estimate is made without the model, so it prices a folded twin wherever the edit's arithmetic asks
-for one (on the stand-in none: its linears are plain); the reading itself asks the loaded model whether it can fold
-and records its own prediction beside its clock.
+plan (`levelling.COST`): 0.135 s a forward, 0.377 ms a row-position and 0.088 ms a scored row-position of
+full-vocabulary read-out, refit on 16 November 2026 from the card check's own readings (a reading's cost, its work
+round the forwards included; fit on those readings, so not yet tested on others); 0.095 s a written step, 9.5 s to
+load the model and 1.83 s to install the unpacker, measured on the RTX 5090 on 14 November 2026, one run each (the card
+check's load took 16.0 s with the lens loaded and freed, its install 3.46 s). The GiB of a paired reading is 0.191 MiB
+a row-position, refit from the card check's peaks; a written reading's comes from 0.8 MB a row a word-piece, measured
+28 October 2026 with the lens loaded. The estimate is made without the model, so it prices a folded twin wherever the
+edit's arithmetic asks for one (on the stand-in none: its linears are plain); the reading itself asks the loaded
+model whether it can fold and records its own prediction beside its clock.
 
 `run PLAN [--stand-in] [--only NAME ...] [--out FILE] [--save-edits] [--port 8765]`, in this order:
 1. refused when THEODOLITE_GGUF is set or THEODOLITE_DEVICE names anything but cuda:0 (1a reads the W4A16 checkpoint
@@ -70,7 +72,8 @@ is unset points into it, so a dry run never writes the DEFAULT book or the defau
 a folder the variables already name IS written by a dry run, and the first line says which. What a stand-in run shows is that a plan is well formed and the plumbing runs; its
 figures mean nothing. Run on the CPU on 14 November 2026: the stand-in is random over about 600 word-pieces, so a
 typed answer reads about -6.4 nats a piece (-6.43 and -6.40 on this script's two trial items) and the shipped item
-gate (-6.0) refuses nearly every item: a stand-in plan gives "bars": {"item_gate": -8.0} in each paired reading.
+gate (-6.0) would put its caution on nearly every item (since 16 November 2026 an item under the bar is read with a
+caution, not refused): a stand-in plan gives "bars": {"item_gate": -8.0} in each paired reading.
 Its linears are plain, so no folded twin is taken. Above one thread the rows of one written batch differ in their
 last digits on the float32 stand-in (measured on this machine, MKL 2024.2), which a written reading would void by
 its own rule, hence the one thread.
@@ -80,8 +83,9 @@ with its line number, time, kind, status, how many of its items a paired reading
 "ok" when its mechanism was sound, whatever its items came to), the edit's first 12, its name and its seconds. --seq K: that entry's JSON,
 indented. --verify: every line parses, is in its place, carries the hash of the line before and its own.
 
-Exit codes. 0: `estimate` done with every reading priced; `run` with every reading "ok" (items refused by the item
-gate or read "unstable" are results of an "ok" reading, not failures); `book` done, `--verify` with the chain whole.
+Exit codes. 0: `estimate` done with every reading priced; `run` with every reading "ok" (items read "unstable", or
+under the item gate's bar and read with its caution, are results of an "ok" reading, not failures); `book` done,
+`--verify` with the chain whole.
 1: a reading void or refused (in `estimate`, one whose plan is refused), a run stopped at step 5 or whose model is
 not the base at the end; `book --verify` with a bad line, which it names with the reason. 2: nothing could be begun:
 the port answers, no CUDA, too little of the card free, a plan that cannot be read or is refused at its top level,

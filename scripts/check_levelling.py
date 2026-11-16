@@ -64,6 +64,11 @@ shown to fail against the break it is there for (the mender's notes of that day 
 mends changed: an edit met again passes the gate again, the control mark lifts one cap only, a recipe's files lie
 inside the plan's folder, what a void or a refused item prints, a folded twin that is not finite.
 
+After the card check (16 November 2026) the bars were set from it by the spec's own rules, and the lines that asserted
+what changed assert the new values: the cost figures are the card's refit (8, 13), and the item gate is a printed
+caution, not a refusal (10): an item under the bar is read in both classes, its gate's caution given in words, and the
+summary counts it apart. No line was loosened.
+
 A section that stops at an exception is one failing line saying where; the sections after it still run.
 
 Run: .venv/bin/python -I scripts/check_levelling.py   (exits 0 when every check holds)
@@ -212,10 +217,19 @@ def s_null_two(e: float, s: float) -> str:
             "exactly, so it measures no rounding. Factors that serve: 1 + 1/128, 1 - 1/256, 0.75, 1.5, 3.")
 
 
-def s_gate(mean: float, rows: int, bar: float) -> str:
-    return (f"The base model gives this item's answer {mean:.2f} nats a piece on average at {rows} rows, under the bar "
-            f"of {bar:.2f}. On 14 November 2026 one of two raw texts with no start mark, which the base gave -9.6 nats "
-            "a piece, gave readings that moved eighty-fold with the batch size, so an item under the bar is not read.")
+# the item gate as a caution (the spec's open point 4, set from the card check of 16 November 2026: the base's
+# log-probability did not separate the items whose two row counts disagreed); the words are the spec's section 12's
+S_GATE_SAY = ("The bar is a caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and the "
+              "base's log-probability did not separate the 3 whose two row counts disagreed (-3.09, -4.13 and -9.64 nats "
+              "a piece) from the 48 that agreed (the lowest -12.13). The item is read, and its two row counts carry the "
+              "weight.")
+
+
+def s_caution(small: float, large: float, rows_small: int, rows_large: int, bar: float) -> str:
+    under = [rows for mean, rows in ((small, rows_small), (large, rows_large)) if mean < bar]
+    where = "both row counts" if len(under) == 2 else f"{under[0]} rows"
+    return (f"The base model gives this item's answer {small:.2f} at {rows_small} rows and {large:.2f} at {rows_large}, "
+            f"in nats a piece on average: under the item gate's bar of {bar:.2f} at {where}. " + S_GATE_SAY)
 
 
 def s_one_row(m: int, layer: int) -> str:
@@ -1558,9 +1572,11 @@ def check_items_plans(Fb: Box) -> None:
               and tuple(lv.NULL_E) == (0.03125, -0.03125, 0.125, -0.125) and tuple(lv.NULL_E_WRITTEN) == (0.125, -0.125)
               and (lv.MAX_PIECES, lv.MAX_ROW_POSITIONS, lv.MAX_CONTROLS, lv.MAX_DOSES, lv.MAX_ITEMS, lv.MAX_WRITTEN_GIB, lv.READ_CHUNK) == (512, 12288, 199, 8, 256, 6.0, 128),
               "8: the bars and caps of 3.3 as the spec ships them")
-        check(lv.COST == {"forward_fixed_s": 0.08, "row_position_s": 0.00033, "readout_row_position_s": 0.00011, "decode_step_s": 0.095,
-                          "overlay_matrix_s": 0.0003, "load_s": 9.5, "unpacker_s": 1.83, "mib_row_position": 0.25, "mb_row_piece_written": 0.8},
-              "8: COST holds the measured figures of 3.3")
+        # forward_fixed_s, row_position_s, readout_row_position_s and mib_row_position: the card check's refit of 16 November 2026
+        # (verify_1a.json, proposed_bars.cost: 0.13502, 0.000376947, 0.0000880039 and 0.19113, to three figures); the rest as 3.3 has them
+        check(lv.COST == {"forward_fixed_s": 0.135, "row_position_s": 0.000377, "readout_row_position_s": 0.000088, "decode_step_s": 0.095,
+                          "overlay_matrix_s": 0.0003, "load_s": 9.5, "unpacker_s": 1.83, "mib_row_position": 0.191, "mb_row_piece_written": 0.8},
+              "8: COST holds the card check's refit (16 November 2026) and the measured figures of 3.3")
         check(lv.CONTROLS_SAY.format(seed=3) == S_CONTROLS.format(seed=3) and lv.ROWS_SAY.format(small=12, large=32) == S_ROWS_SAY.format(small=12, large=32)
               and lv.PAIRED_SAY == S_PAIRED, "8: the three sentences of 4.9, word for word")
         check(issubclass(lv.Refused, ValueError), "8: levelling.Refused is a ValueError")
@@ -1937,8 +1953,12 @@ def paired_shape(r: Dict[str, Any], box: Box, what: str, n_items: int) -> None:
             and (q is None or ((it["question"], it["answer"], it["system"]) == q[1:] and it["prompt_ids"] == lv.chat_ids(box.tok, q[1], q[3])))
         check(ok, f"{what}, {name}: the entry's keys, and the item block with its question, answer and ids")
         g = e["gate"]
-        check(set(g) == {"bar", "small", "large", "passed"} and g["bar"] == plan["bars"]["item_gate"] and all(set(g[c]) == {"mean", "median", "worst"} for c in ("small", "large"))
-              and g["passed"] == (g["small"]["mean"] >= g["bar"] and g["large"]["mean"] >= g["bar"]), f"{what}, {name}: the gate's figure for both classes beside the bar")
+        check(set(g) == {"bar", "small", "large", "passed", "caution"} and g["bar"] == plan["bars"]["item_gate"] and all(set(g[c]) == {"mean", "median", "worst"} for c in ("small", "large"))
+              and g["passed"] == (g["small"]["mean"] >= g["bar"] and g["large"]["mean"] >= g["bar"])
+              and g["caution"] == (None if g["passed"] else s_caution(g["small"]["mean"], g["large"]["mean"], small, large, g["bar"])),
+              f"{what}, {name}: the gate's figure for both classes beside the bar, and its caution in words where either is under it")
+        # the gate refuses no item since 16 November 2026 (the spec's open point 4, set from the card check): an item is read
+        check(e["status"] in ("ok", "unstable"), f"{what}, {name}: the item was read, ok or unstable, whatever its gate's figure ({e['status']})")
         if e["status"] == "refused":
             continue
         for cls, R in (("small", small), ("large", large)):
@@ -1974,10 +1994,12 @@ def summary_shape(r: Dict[str, Any], what: str) -> None:
     s, plan = r["summary"], r["plan"]
     kept = [e for e in r["items"] if e["status"] == "ok"]
     same = [e for e in r["items"] if e["stability"] and e["stability"]["base_rows_same_bits"]]
-    counts = {"asked": len(r["items"]), "kept": len(kept), "refused": sum(e["status"] == "refused" for e in r["items"]), "unstable": sum(e["status"] == "unstable" for e in r["items"])}
+    counts = {"asked": len(r["items"]), "kept": len(kept), "refused": sum(e["status"] == "refused" for e in r["items"]), "unstable": sum(e["status"] == "unstable" for e in r["items"]),
+              "under_bar": sum(bool((e["gate"] or {}).get("caution")) for e in r["items"])}  # read with the gate's caution (16 November 2026)
     # 4.9: an item whose base rows are the same bits "keeps the status its arms give it ... and is counted apart": whatever its status
     check(set(s) == {"items", "classes"} and set(s["items"]) == set(counts) | {"one_arithmetic"} and all(s["items"][k] == v for k, v in counts.items())
-          and s["items"]["one_arithmetic"] == len(same), f"{what}: the summary counts the items asked, kept, refused, unstable and read in one arithmetic ({s.get('items')})")
+          and s["items"]["one_arithmetic"] == len(same),
+          f"{what}: the summary counts the items asked, kept, refused, unstable, read in one arithmetic and read under the gate's bar ({s.get('items')})")
     if not kept:
         check(s["classes"] is None or all(s["classes"][c] is None for c in ("small", "large")), f"{what}: with no item kept the summary's classes are None")
         return
@@ -2176,14 +2198,23 @@ def check_end_to_end(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
     with part("10 (F): every item under the bar"):
         path = plan_file(plans, "f_gate", [{**paired, "name": "the bar at -0.5", "edit": sil, "bars": {"item_gate": -0.5}}])
         (r,) = read_all(hF, path, Fb)
+        # since 16 November 2026 the gate is a printed caution (the spec's open point 4, set from the card check): every
+        # item is read at both row counts all the same, with its caution in words, and none is refused
         ok = r["status"] == "ok" and len(r["items"]) == 3
         for e in r["items"]:
             g = e["gate"]
-            ok = ok and e["status"] == "refused" and g["passed"] is False and g["bar"] == -0.5 and all(g[c]["mean"] < -0.5 for c in ("small", "large")) \
-                and e["classes"] == {"small": None, "large": None} and e["stability"] is None \
-                and e["why"] in (s_gate(g["small"]["mean"], 8, -0.5), s_gate(g["large"]["mean"], 16, -0.5))
-        check(ok, f"10: with the bar at -0.5 every item is refused by the gate in its words, with both classes' figures ({r['status']}; {r['items'][0]['why'] if r['items'] else None!r})")
-        check(r["summary"]["items"]["refused"] == 3 and r["summary"]["items"]["kept"] == 0, f"10: and the summary counts them ({r['summary']['items']})")
+            ok = ok and e["status"] in ("ok", "unstable") and g["passed"] is False and g["bar"] == -0.5 and all(g[c]["mean"] < -0.5 for c in ("small", "large")) \
+                and all(e["classes"][c] is not None for c in ("small", "large")) and e["stability"] is not None \
+                and g["caution"] == s_caution(g["small"]["mean"], g["large"]["mean"], 8, 16, -0.5) and "both row counts" in g["caution"]
+        check(ok, f"10: with the bar at -0.5 every item is read at both row counts all the same, with both classes' figures and the gate's caution in its words "
+              f"({r['status']}; {(r['items'][0]['gate'] or {}).get('caution') if r['items'] else None!r})")
+        n_ok = sum(e["status"] == "ok" for e in r["items"])
+        check(r["summary"]["items"]["refused"] == 0 and r["summary"]["items"]["under_bar"] == 3 and r["summary"]["items"]["kept"] == n_ok,
+              f"10: and the summary counts them under the bar, none refused, the ok ones kept ({r['summary']['items']})")
+        text = " ".join(" ".join(lv.lines(r)).split())
+        check(all(" ".join(str((e["gate"] or {}).get("caution")).split()) in text for e in r["items"]) and "3 under the item gate's bar and read with its caution" in text
+              and "before the gate refused" not in text, "10: and the lines print each item's caution, and the count of them beside the summary")
+        paired_shape(r, Fb, "10: every item under the bar", 3)
         summary_shape(r, "10: every item under the bar")
         top_shape(r, Fb, "10: every item under the bar")
     with part("10 (F): the ledger broken before the model is touched"):
@@ -2465,13 +2496,17 @@ def check_end_to_end(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
             r, n = plant(fin, "under the bar at 16 rows only", {"bars": {"item_gate": bar}}, mode="sharpen", rows=16, pieces=To)
             by = {e["item"]["name"]: e for e in r["items"]}
             o = by["orange"]
-            check(r["status"] == "ok" and o["status"] == "refused" and o["why"] == s_gate(o["gate"]["large"]["mean"], 16, bar) and o["gate"]["passed"] is False
-                  and o["gate"]["small"]["mean"] >= bar > o["gate"]["large"]["mean"] and o["classes"]["small"] is not None and o["classes"]["large"] is None
-                  and o["stability"] is None and by["fox"]["status"] == "ok" and r["summary"]["items"]["refused"] == 1 and r["summary"]["items"]["kept"] == 1,
-                  f"10: an item over the bar at 8 rows and under it at 16 is refused in the gate's words for 16 rows, its large class not read ({o['status']}: {o['why']!r})")
+            # the gate as a caution (16 November 2026): the item is read at both row counts, its caution naming 16 rows
+            check(r["status"] == "ok" and o["status"] in ("ok", "unstable") and o["gate"]["passed"] is False
+                  and o["gate"]["caution"] == s_caution(o["gate"]["small"]["mean"], o["gate"]["large"]["mean"], 8, 16, bar) and "at 16 rows." in o["gate"]["caution"]
+                  and o["gate"]["small"]["mean"] >= bar > o["gate"]["large"]["mean"] and o["classes"]["small"] is not None and o["classes"]["large"] is not None
+                  and o["stability"] is not None and by["fox"]["status"] == "ok" and by["fox"]["gate"]["caution"] is None
+                  and r["summary"]["items"]["refused"] == 0 and r["summary"]["items"]["under_bar"] == 1
+                  and r["summary"]["items"]["kept"] == 1 + (o["status"] == "ok"),
+                  f"10: an item over the bar at 8 rows and under it at 16 is read at both, with the gate's caution in its words for 16 rows ({o['status']}: {o['gate']['caution']!r})")
             text = text_of(r)
-            check("read at 8 rows only, before the gate refused the item" in text and text.count("the edit at dose 1:") == 2 + 2,
-                  "10: and its lines print no figure for the row count that was read before the gate refused it (the other item's two row counts and the summary's alone)")
+            check(" ".join(o["gate"]["caution"].split()) in text and "before the gate refused" not in text and text.count("the edit at dose 1:") == 2 + 2 + 2,
+                  "10: and its lines print its caution and both its row counts' figures (the two items' two row counts and the summary's two)")
             # the gate is on the MEAN: a bar between an item's mean and its median (every forward of the item sharpened alike, so the two stand apart)
             r0 = lv.read(h3, {**base_reading, "name": "planted: nothing, for the figures of a quiet reading"}, items)
             r, n = plant(fin, "every forward sharpened, the gate set aside", {"items": ["orange"], "bars": {"item_gate": -1e9}}, mode="sharpen", pieces=To, by=40.0)
@@ -2482,8 +2517,8 @@ def check_end_to_end(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
                   f"10: (the check's own need: sharpened, the item's mean and median log-probability stand apart at both row counts: {gm['mean']:.3f} and {gm['median']:.3f})")
             r, n = plant(fin, "every forward sharpened, a bar between the mean and the median", {"items": ["orange"], "bars": {"item_gate": bar}}, mode="sharpen", pieces=To, by=40.0)
             e = r["items"][0]
-            check(r["status"] == "ok" and (e["status"] == "refused") == (gm["mean"] < bar) and e["gate"]["passed"] == (gm["mean"] >= bar),
-                  f"10: with the bar between an item's mean and its median the gate goes by the mean ({e['status']}; mean {gm['mean']:.3f}, median {gm['median']:.3f}, bar {bar})")
+            check(r["status"] == "ok" and e["status"] != "refused" and (e["gate"]["caution"] is not None) == (gm["mean"] < bar) and e["gate"]["passed"] == (gm["mean"] >= bar),
+                  f"10: with the bar between an item's mean and its median the gate's caution goes by the mean ({e['status']}; mean {gm['mean']:.3f}, median {gm['median']:.3f}, bar {bar})")
             # stability's sign test: the edit's row put on the other side of the base row at 16 rows only
             row16 = lv.layout([1.0], 5, list(lv.NULL_E), 16)[0].index("edit:1.0")
             r, n = plant(fin, "the edit's row reflected about the base row at 16 rows", mode="reflect", row=row16, rows=16, pieces=To)
@@ -2813,13 +2848,15 @@ def check_book() -> None:
 
 
 def whole_s(rows: int, pieces: int) -> float:
-    """A whole forward's seconds as the spec's 4.11 has them: 0.08 s and 0.33 ms a row-position (fact 9, measured 14 November 2026)."""
-    return 0.08 + 0.00033 * rows * pieces
+    """A whole forward's seconds as the module prices it since 16 November 2026: 0.135 s and 0.377 ms a row-position, the
+    card check's refit of its own readings (verify_1a.json, proposed_bars.cost). The spec's 4.11 had 0.08 s and 0.33 ms,
+    a bare forward measured 14 November 2026 (fact 9)."""
+    return 0.135 + 0.000377 * rows * pieces
 
 
 def check_estimate() -> None:
     near = lambda a, b: math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12)  # noqa: E731
-    check(near(whole_s(32, 176), 1.93856), "13: whole(32, 176) is 1.93856 s by the spec's two figures")
+    check(near(whole_s(32, 176), 2.258264), "13: whole(32, 176) is 2.258264 s by the refit's two figures (1.93856 s by the spec's)")
 
     def facts(layer: int, **kw: Any) -> Dict[str, Any]:
         return {"layers": [layer], "lowest_layer": layer, "linears": 1, "has_vectors": False, "has_lowrank": False, "factors": [0.0], **kw}
@@ -2835,7 +2872,7 @@ def check_estimate() -> None:
         check(set(one) == {"seconds", "parts", "forwards", "row_positions", "gib_above_model"} and set(one["parts"]) == {"forwards", "readout", "folded", "writing"}
               and isinstance(one["forwards"], int) and isinstance(one["row_positions"], int), f"13: estimate's keys ({sorted(one)})")
         check(near(one["parts"]["forwards"], whole_s(12, 176) + whole_s(32, 176)) and one["forwards"] == 2,
-              f"13: one forward a class: whole(12, 176) + whole(32, 176), 1.93856 s of it the large one ({one['parts']['forwards']})")
+              f"13: one forward a class: whole(12, 176) + whole(32, 176), 2.258264 s of it the large one ({one['parts']['forwards']})")
         check(near(one["seconds"], sum(one["parts"].values())) and one["parts"]["folded"] == 0 and one["parts"]["writing"] == 0, "13: the seconds are the parts' sum; no twin and no writing")
         # 60 control edits and one dose are 61 arms: 11 forwards of 12 rows (6 slots) and 3 of 32 (26 slots)
         many = {"name": "a", "kind": "paired", "edit": edit44, "controls": {"count": 60, "seed": 0}}
@@ -2847,10 +2884,11 @@ def check_estimate() -> None:
         check(near(est({**many, "lower": "one_row"}, [(176, 30)], facts(44))["parts"]["forwards"], (11 * whole_s(12, 176) + 3 * whole_s(32, 176)) * share + whole_s(1, 176)),
               "13: under one_row every forward restarts, and one whole forward at one row is added an item")
         S = 176 - 30
-        check(near(same["parts"]["readout"], 0.00011 * S * ((11 + 4 + 1 + 60) + (3 + 4 + 1 + 60))), "13: the read-out: each forward's base row, the null rows once, every arm, 0.11 ms a scored row-position")
+        check(near(same["parts"]["readout"], 0.000088 * S * ((11 + 4 + 1 + 60) + (3 + 4 + 1 + 60))),
+              "13: the read-out: each forward's base row, the null rows once, every arm, 0.088 ms a scored row-position (the refit of 16 November 2026)")
         named = est({**many, "readouts": {"odds": {"toward": [5], "away": [6]}}}, [(176, 30)], facts(44))
-        # 4.11's read-out line is "for one item ... in one class": with kl and own off it is 0.00011 * S a class, two classes
-        check(near(named["parts"]["readout"], 0.00011 * S * 2),
+        # 4.11's read-out line is "for one item ... in one class": with kl and own off it is 0.000088 * S a class (0.00011 in the spec), two classes
+        check(near(named["parts"]["readout"], 0.000088 * S * 2),
               f"13: with named pieces alone the read-out is the gate's base row, once a class ({named['parts']['readout']})")
     with part("13: the twin"):
         setf = facts(44, has_vectors=True, factors=[])
@@ -2858,7 +2896,7 @@ def check_estimate() -> None:
         check(near(lone["parts"]["folded"], whole_s(12, 176) + whole_s(32, 176) + 2 * 0.0003), "13: the twin is priced whole when its class has one forward, plus 0.3 ms a linear touched")
         many = est({"name": "a", "kind": "paired", "edit": edit44, "controls": {"count": 60, "seed": 0}}, [(176, 30)], setf, twin=True)
         check(near(many["parts"]["folded"], (whole_s(12, 176) + whole_s(32, 176)) * 16 / 60 + 2 * 0.0003), "13: and as a restart when its class has later forwards")
-        check(near(many["parts"]["readout"], 0.00011 * (176 - 30) * ((11 + 4 + 1 + 60 + 1) + (3 + 4 + 1 + 60 + 1))), "13: the twin's row is read too")
+        check(near(many["parts"]["readout"], 0.000088 * (176 - 30) * ((11 + 4 + 1 + 60 + 1) + (3 + 4 + 1 + 60 + 1))), "13: the twin's row is read too")
         auto = est({"name": "a", "kind": "paired", "edit": edit44, "controls": {"count": 0, "seed": 0}}, [(176, 30)], setf)
         never = est({"name": "a", "kind": "paired", "edit": edit44, "controls": {"count": 0, "seed": 0}, "folded": "never"}, [(176, 30)], setf)
         check(near(auto["parts"]["folded"], lone["parts"]["folded"]) and never["parts"]["folded"] == 0 and est({"name": "a", "kind": "paired", "edit": edit44}, [(176, 30)], facts(44))["parts"]["folded"] == 0,
@@ -2870,13 +2908,13 @@ def check_estimate() -> None:
         share = 40 / 60
         # an item: 4 forwards of 12 rows (2 doses and 19 control edits are 21 arms in 6 slots) and 1 of 32 (spec 5.2)
         want_f = sum(whole_s(12, T) * (1 + 3 * share) + whole_s(32, T) for T, _p in pieces)
-        want_r = sum(0.00011 * (T - p) * ((4 + 4 + 2 + 19) + (1 + 4 + 2 + 19)) for T, p in pieces)
+        want_r = sum(0.000088 * (T - p) * ((4 + 4 + 2 + 19) + (1 + 4 + 2 + 19)) for T, p in pieces)
         check(near(got["parts"]["forwards"], want_f), f"13: the worked plan's forwards part ({got['parts']['forwards']} against {want_f})")
         check(near(got["parts"]["readout"], want_r), f"13: its read-out part ({got['parts']['readout']} against {want_r})")
         check(got["parts"]["folded"] == 0 and got["parts"]["writing"] == 0 and near(got["seconds"], want_f + want_r),
               "13: its twin part is nought (a silencing is exact on the input side, and its mirror is a scale by 2)")
-        check(est(first, [(82, 26)], facts(20))["forwards"] == 5 and near(est(first, [(82, 26)], facts(20))["gib_above_model"], 0.25 * 32 * 82 / 1024 + 0.5),
-              "13: an item is 5 forwards; memory above the model is the largest forward's 0.25 MiB a row-position and 0.5 GiB for the read-out")
+        check(est(first, [(82, 26)], facts(20))["forwards"] == 5 and near(est(first, [(82, 26)], facts(20))["gib_above_model"], 0.191 * 32 * 82 / 1024 + 0.5),
+              "13: an item is 5 forwards; memory above the model is the largest forward's 0.191 MiB a row-position (the card's refit) and 0.5 GiB for the read-out")
         second = {"name": "the same, written", "kind": "written", "edit": {"terms": [{"layer": 20, "silence": [4294, 9618]}]}, "items": ["moon"]}
         got = est(second, [(82, 26)], facts(20))
         check(near(got["parts"]["writing"], whole_s(8, 26) + 0.095 * 48) and near(got["seconds"], whole_s(8, 26) + 0.095 * 48) and near(got["gib_above_model"], 0.8e6 * 8 * (26 + 48) / 2**30),

@@ -1806,3 +1806,102 @@ joined by a second, under an unembedding 200 times as sharp, compared to 1 part 
   cannot be rebuilt from the book unless `save_edit` was passed* (3.3's design); *a recipe's files are read before
   their sizes are added up* (one file over the cap is refused unread); *`handle()` runs `git status`, which may
   refresh the index* (`census.runtime_record`, another file's).
+
+### The card check (16 November 2026), and what was set from it
+
+Written 15 November 2026 (the desk's clock; the card ran 16 November 2026 01:33 to 01:46Z) by the agent that set the
+bars, from the record alone: `experiments/results/levelling/verify_1a.json` and its ledger `verify_1a_book.jsonl`.
+The card was not touched again and no server was started; the only runs were the CPU check and scratch reads of the
+record. Nothing above this heading was changed. The full account of the run is the dated section at the end of
+`pilot/RESULTS.md`.
+
+**What ran.** `scripts/verify_levelling.py`, one run: a 16 s load, then 369 readings through `lv.read` (367 paired, 2
+written) in 793 s, into the check's own ledger (370 entries, the chain whole). The three modules' sha256 in the
+record are the files committed at `96e4420`. 142 of 145 standing lines passed. The three that failed:
+
+1. *6.2 §10, the cost model:* 21 of 163 readings outside 0.75 to 1.25 of their prediction (median 1.12, worst 1.44),
+   every one of the 21 a reading with 19 control edits (21 of 40 such; the other 123 all inside, median 1.11).
+2. and 3. *6.2 §11, no null row with a position above a nat,* on items over the shipped bar (12 null-row readings
+   had one) and under it (16). All 28 are on raw text: 12 distinct rows on three items, the raw recipe cut and the
+   raw survey behind the start mark and the raw recipe with no start mark. None of the 2,208 null rows read on the
+   model's own answers (640), the study's chats (608), passages given as answers (912) or the own answer with its
+   start mark dropped (48) had one. Counted on KL alone the rows are 17, as the coordinating session counted them; on
+   the text's own log-probability, 28.
+
+**Each bar, by the rule written for it here before the card ran** (section 9; the coordinating session decided on 14
+November that every open point follows its recommendation). Where no rule exists the bar was left as it was.
+
+| bar | rule | what the card read | set |
+|---|---|---|---|
+| `ITEM_GATE_BAR` and the gate | open point 4: "ship -6.0; if the card finds that the figure does not separate, the gate stays as a printed caution and the two row counts carry the weight" | `proposed_bars.item_gate.separates` false: the 3 items that read "unstable" in §9's four readings with no control edits stand at -3.09 (chat 10), -4.13 (raw prose 2 behind the start mark) and -9.64 (the raw recipe with no start mark); the 48 that did not reach down to -12.13; 19 items under -6 behaved. With 19 control edits (§9a) 3 more read "unstable" from control arms alone, all under the bar (-8.61, -8.82, -10.08): still no separation | -6.0, a printed caution, not a refusal (below) |
+| `STABLE_RATIO` | open point 5: "ship as written; if §9a shows control arms at the floor tripping it, read the rule on the edit's arms alone and print the control arms' ratios" | over the bar, the largest ratio that agreed 2.44 (a read-out that agreed in a reading whose other read-out disagreed; 2.07 among readings that agreed on both); 3 readings disagreed (5.2, 20.7, 6.3); 6 of 969 control arms disagreed, all on items under the bar, two of them at the floor at one row count | 3.0. The second clause's change is a change of the rule, not of a bar: left to the coordinating session (below) |
+| `ONE_ROW_MIN_LAYER` | open point 14: "44 until then", the decision to be taken after §6b; no rule for another value | §6b: the one-row capture stood off the same-shape reading by 10 to 35 times the floor in 7 of 8 class readings at layers 40 and 44 on two chat-formatted items (up to 0.0066 nats of KL, 2.5% of the reading) | 44; the module's words about it corrected |
+| `ROWS_SMALL`, `ROWS_LARGE` | open point 3: "12 and 32 until §9b's map is read, then set by hand"; no rule for other numbers | §9b: at 35 pieces all ten row counts gave their own base row; at 82, 12 and 24 were one; at 175, 24, 32 and 48. 12 and 32 never one | 12 and 32 |
+| `COST` | 6.2: "`cost` is a least-squares refit, its `mib_row_position` from §12's peaks", the bars "set from this file by hand" | `proposed_bars.cost`: 0.13502 s, 0.000376947 s, 0.0000880039 s, 0.19113 MiB (331 readings) | 0.135, 0.000377, 0.000088 and 0.191, to three figures; `decode_step_s`, `overlay_matrix_s`, `load_s`, `unpacker_s` and `mb_row_piece_written` are not in the refit and stay |
+
+6.2's formula for `stable_ratio.proposed` (the larger of 2 and 1.5 times the largest ratio seen over the bar) gives
+31.09, from the raw prose 2 behind the start mark, a reading that disagreed; from the ratios that agreed it gives
+3.66 (the record's `proposed_from_those_that_agreed`, which counts a read-out that agreed in a reading whose other
+read-out did not), and from the readings that agreed on both read-outs 3.10. None was taken: open point 5 is the rule
+the coordinating session adopted, and a bar set from the readings it judges would let through what it is there to
+catch.
+
+**The gate as a caution, in the code** (`backend/levelling.py`; 2.7, 4.7 b and d, 4.10 and 5.3 as they now read):
+
+- An item is read in both classes whatever its gate's figure. 4.7 b's early refusal and d's refusal are gone; no
+  item's `status` is "refused" any more (2.7's third item status no longer occurs; a reading's own "refused" stands).
+- The item's `gate` block gains `"caution"`: None when both classes' mean is at or over the bar (`passed` true), else
+  the words `The base model gives this item's answer {small:.2f} at {R_small} rows and {large:.2f} at {R_large}, in
+  nats a piece on average: under the item gate's bar of {bar:.2f} at {both row counts | R rows}. The bar is a
+  caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and the base's
+  log-probability did not separate the 3 whose two row counts disagreed (-3.09, -4.13 and -9.64 nats a piece) from
+  the 48 that agreed (the lowest -12.13). The item is read, and its two row counts carry the weight.` (the second
+  half is `GATE_SAY`). 4.10's refusal sentence is retired with it. An item under the bar that reads "ok" is kept in
+  the summary like any other.
+- The summary's `items` gains `"under_bar"`, the items read with the caution; `refused` stays (always 0 now) so that
+  older results keep their shape.
+- `lines` prints the caution under the item's line, and ", N under the item gate's bar and read with its caution" in
+  the summary's line when N is not 0. The branch that printed an item refused after its small class was read stays
+  for results written before this change.
+
+**The words corrected** where the record contradicts what a docstring said was measured or unmeasured, each dated
+16 November 2026: in `levelling`, the one-row capture (no longer "shown at layer 44" for chat-formatted items), the
+restart under hooks (now shown at layers 5, 20 and 44), the base's figures by kind, the cost paragraph, the bars
+paragraph, what was new on the card and is now read there, the stability rule's floors (22 of 204 readings over the
+bar apart, at most 42.7 times) and what has run on the card; the constants' comments. In `weight_edits`, the
+paragraph of what was not measured on the card and `per_row`'s dose-0 sentence. In `scripts/levelling.py`, the cost
+figures and the gate's words. The CPU check's lines that asserted the old cost figures and the gate's refusal now
+assert the new ones (section 8's `COST`, section 13's arithmetic, section 10's gate lines and the result's shape);
+none was loosened, and the gate's lines gained what the caution must say. It now has 914 lines (854 before), every one
+passing on the CPU on 15 November 2026 (the desk's clock), in 45 s.
+
+**Not changed, and whose it is**
+
+1. *Open point 5's second clause.* Two control arms tripped the rule from the floor (control 14 on prose 10 as an
+   answer read 0.00050 nats of KL at 12 rows and 0.0018 at 32, against the larger floor, 0.00054; control 15 on the
+   raw prose 3 with no start mark read -0.091 and 0.013 of its own log-probability against 0.0285), both on items
+   under the bar. Whether
+   that is "control arms at the floor tripping it", and so whether the rule moves to the edit's arms alone, is the
+   coordinating session's: it changes what the rule does, which setting a bar may not.
+2. *`scripts/verify_levelling.py` §8's third line* asserts that the two raw cuts with no start mark are refused; with
+   the gate a caution they are read, so a second card run fails that line until it asserts the caution. Its §11 words
+   ("which the gate would not have read") are stale too. That file was not to be touched here.
+3. *Printed words in `levelling` that the card made stale and that this pass might not change* (each is a sentence a
+   result carries, and the CPU check compares it word for word): `WHY_NO_TWIN["exact"]` says a power-of-two scale was
+   read beside its folded form "for a silencing only (14 November 2026)", and §5a read a scale by 2 the same bits 24
+   times; the one-row refusal says the capture "has been shown only at layer 44 ... on raw text", true, and silent on
+   §6b; the output-side add's mark says "not yet measured on the card", and §5c measured it. In `weight_edits` the
+   comment on `MAX_RANK` says the float32 form "is not timed"; §5e timed rank 64.
+4. *The stability rule's blind spot, now seen on the card.* On the raw recipe cut and the raw survey behind the start
+   mark the null rows moved 15.7 to 42.7 times between the row counts, and both items read "ok". Whether two floors
+   apart should make an item unstable is the owner's (section 12's review, "Not changed").
+5. *Raw text behind the start mark.* Every null row with a position above a nat was on raw text, 26 of the 28 behind
+   the start mark; one such item (-4.82) stands over the bar. What the instrument should do with raw text is the
+   owner's; with the gate a caution nothing refuses it.
+6. *Figures the card read that no rule sets:* a decode step 0.110 s hooked and 0.107 unhooked (0.095 shipped); the
+   load 16.0 s with the lens loaded and freed and the install 3.46 s (9.5 and 1.83 shipped, no lens); a written
+   reading of 8 rows to 74 pieces 0.73 GiB above the model where 0.8 MB a row a piece gives 0.44. They are beside the
+   shipped figures in the module's docstring.
+7. *The two row counts.* The map makes "two batch classes" two of many arithmetics; whether 12 and 32 are the two to
+   read, and whether `lower: "one_row"` should be offered at all on chat-formatted items, are the owner's.
+8. *The refit is in sample.* It was fit on the readings it would be judged on; the next card run is its test.
