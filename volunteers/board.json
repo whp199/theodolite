@@ -82,7 +82,8 @@
   6907606826,
   6907780420,
   6908184989,
-  6917386229
+  6917386229,
+  6923181068
  ],
  "claims": [
   {
@@ -883,12 +884,18 @@
      "via": "github",
      "what": "claim=c40b4d3a done=1% eta=2026-11-17T17:31Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-16T17:00Z",
+     "via": "github",
+     "what": "claim=c40b4d3a done=34% eta=2026-11-17T16:40Z",
+     "verb": "PROGRESS"
     }
    ],
    "started_at": "2026-11-16T05:27Z",
    "bits": "own",
-   "done": "1%",
-   "eta": "2026-11-17T17:31Z"
+   "done": "34%",
+   "eta": "2026-11-17T16:40Z"
   },
   {
    "code": "280c6dc2",
@@ -1114,11 +1121,11 @@
   },
   "30": {
    "state": "stopped",
-   "note": "no push strengths have passed a trial here: not taken"
+   "note": "its trial failed, 16 November 2026 (match_wide): not taken"
   },
   "31": {
    "state": "stopped",
-   "note": "its trial failed, 13 November 2026 (match_ceil): not taken"
+   "note": "its match_wide trial passed, 16 November 2026; no kit carries match_wide yet: not taken"
   },
   "32": {
    "state": "open",
@@ -1199,5 +1206,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-16T14:32Z"
+ "updated_at": "2026-11-16T19:37Z"
 }

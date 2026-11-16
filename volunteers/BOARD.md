@@ -1,11 +1,12 @@
 # The census: which layer is whose
 
-Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and no push strengths have passed a trial there.
+Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and none of this kit's push strengths has passed a trial there.
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
-| 0–30 | 1–31 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
-| 31 | 32 | not taken |  |  |  | its trial failed, 13 November 2026 (match_ceil): not taken |
+| 0–29 | 1–30 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
+| 30 | 31 | not taken |  |  |  | its trial failed, 16 November 2026 (match_wide): not taken |
+| 31 | 32 | not taken |  |  |  | its match_wide trial passed, 16 November 2026; no kit carries match_wide yet: not taken |
 | 32 | 33 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 33 | 34 | running | anon 280c6dc2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 1%, ends ~2026-11-17T02:14Z |  |
 | 34 | 35 | done | anon eaef4eff | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
@@ -26,7 +27,7 @@ Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 51 | 52 | done | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB |  | 14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole |
-| 52 | 53 | running | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB | 1%, ends ~2026-11-17T17:31Z |  |
+| 52 | 53 | running | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB | 34%, ends ~2026-11-17T16:40Z |  |
 | 53 | 54 | not taken |  |  |  | its trial failed, 16 November 2026 (soft_ceil): not taken |
 | 54–59 | 55–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
@@ -43,4 +44,4 @@ Judged:
 - L35 anon 5d30aa4a: accepted (15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
 - L39 anon 1f217635: accepted (15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-16T14:32Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-16T19:37Z.
