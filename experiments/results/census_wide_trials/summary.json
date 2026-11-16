@@ -1,0 +1,263 @@
+{
+ "bars": {
+  "lead": 0.6,
+  "beyond_text": 0.58,
+  "rep_AB": 0.57,
+  "rep_BA": 0.57,
+  "new_questions": 0.56
+ },
+ "layers": [
+  {
+   "layer": 31,
+   "pass": true,
+   "doses": [
+    -2.58,
+    2.58
+   ],
+   "dose_unit": "ceiling",
+   "half_a": [
+    "who",
+    "orange",
+    "free",
+    "self",
+    "green",
+    "interesting"
+   ],
+   "half_b": [
+    "bicycle",
+    "walk",
+    "chair",
+    "kettle",
+    "sleep",
+    "lamp"
+   ],
+   "whole": {
+    "pass": true,
+    "lead": 0.6304,
+    "beyond_text": 0.6448,
+    "rep_AB": 0.5831,
+    "rep_BA": 0.5808,
+    "new_questions": 0.608
+   },
+   "covered": {
+    "pass": true,
+    "lead": 0.636,
+    "beyond_text": 0.6401,
+    "rep_AB": 0.5861,
+    "rep_BA": 0.5866,
+    "new_questions": 0.6131,
+    "neurons": 986,
+    "of": 1022,
+    "outside_by_covariate": {
+     "lnw": 12,
+     "d4": 12,
+     "cut": 1,
+     "lp": 14,
+     "dep": 6,
+     "lost": 9
+    }
+   },
+   "text": {
+    "-2.58 neuron": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.967
+    },
+    "-2.58 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.968
+    },
+    "+2.58 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.969
+    },
+    "+2.58 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.969
+    }
+   },
+   "above_every_control": 6,
+   "counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 6,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.2417,
+    "pA05_and_pB05": 82,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "six (reported)": {
+    "half_a": [
+     "who",
+     "orange",
+     "free"
+    ],
+    "half_b": [
+     "bicycle",
+     "walk",
+     "chair"
+    ],
+    "lead": 0.6056,
+    "beyond_text": 0.6108,
+    "rep_AB": 0.5488,
+    "rep_BA": 0.5388,
+    "new_questions": 0.5658,
+    "above_every_control": 38,
+    "named": 31
+   },
+   "added (reported)": {
+    "half_a": [
+     "self",
+     "green",
+     "interesting"
+    ],
+    "half_b": [
+     "kettle",
+     "sleep",
+     "lamp"
+    ],
+    "lead": 0.6155,
+    "beyond_text": 0.6166,
+    "rep_AB": 0.567,
+    "rep_BA": 0.5623,
+    "new_questions": 0.59,
+    "above_every_control": 6,
+    "named": 39
+   },
+   "throughput": {
+    "answers_written": 48604,
+    "seconds": 4473.7,
+    "answers_per_s": 10.86,
+    "sessions": 2
+   }
+  },
+  {
+   "layer": 30,
+   "pass": false,
+   "doses": [
+    -2.42,
+    2.42
+   ],
+   "dose_unit": "ceiling",
+   "half_a": [
+    "who",
+    "orange",
+    "free",
+    "self",
+    "green",
+    "interesting"
+   ],
+   "half_b": [
+    "bicycle",
+    "walk",
+    "chair",
+    "kettle",
+    "sleep",
+    "lamp"
+   ],
+   "whole": {
+    "pass": false,
+    "lead": 0.5794,
+    "beyond_text": 0.6106,
+    "rep_AB": 0.5555,
+    "rep_BA": 0.5503,
+    "new_questions": 0.5844
+   },
+   "covered": {
+    "pass": false,
+    "lead": 0.5817,
+    "beyond_text": 0.6037,
+    "rep_AB": 0.5573,
+    "rep_BA": 0.5513,
+    "new_questions": 0.5848,
+    "neurons": 974,
+    "of": 1022,
+    "outside_by_covariate": {
+     "lnw": 15,
+     "d4": 3,
+     "cut": 4,
+     "lp": 24,
+     "dep": 5,
+     "lost": 12
+    }
+   },
+   "text": {
+    "-2.42 neuron": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.943
+    },
+    "-2.42 random": {
+     "d4_minus_unpushed": -0.001,
+     "cut_off": 0.948
+    },
+    "+2.42 neuron": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.948
+    },
+    "+2.42 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.951
+    }
+   },
+   "above_every_control": 3,
+   "counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 3,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.1634,
+    "pA05_and_pB05": 32,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "six (reported)": {
+    "half_a": [
+     "who",
+     "orange",
+     "free"
+    ],
+    "half_b": [
+     "bicycle",
+     "walk",
+     "chair"
+    ],
+    "lead": 0.5587,
+    "beyond_text": 0.5795,
+    "rep_AB": 0.5276,
+    "rep_BA": 0.5144,
+    "new_questions": 0.553,
+    "above_every_control": 2,
+    "named": 0
+   },
+   "added (reported)": {
+    "half_a": [
+     "self",
+     "green",
+     "interesting"
+    ],
+    "half_b": [
+     "kettle",
+     "sleep",
+     "lamp"
+    ],
+    "lead": 0.5938,
+    "beyond_text": 0.6154,
+    "rep_AB": 0.5474,
+    "rep_BA": 0.5468,
+    "new_questions": 0.571,
+    "above_every_control": 12,
+    "named": 0
+   },
+   "throughput": {
+    "answers_written": 49116,
+    "seconds": 4896.9,
+    "answers_per_s": 10.03,
+    "sessions": 1
+   }
+  }
+ ]
+}

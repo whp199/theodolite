@@ -995,6 +995,25 @@ layers, the determinism run and the sampled push on 29 October). In this section
        with either new design yet. Kit 3 offers seven of the eight to volunteers since 14 November 2026; layer 36
        is held for the home card (below). (Since then three `match_ceil` layers have been taken whole: 36 on the
        home card, 34 and 35 by a volunteer; below, under kit 4.)
+       **The walk downward with `match_wide`, layers 31 and 30** (the owner’s word, 16 November: “One dose, same
+       cost”; registered in [`census_wide_trials/prereg/`](experiments/results/census_wide_trials/prereg/), hashed at
+       15:22Z before any answer of the design existed). Re-read on fewer questions, `match_ceil`’s failed trial at 31
+       rose with each question a half (`census_question_count/NOTE.md`), so `match_wide` asks the lower of its two
+       doses alone on twelve questions, two halves of six, at the same 24 answers a neuron. Gates N1 and N3 as
+       before; with one dose there is no N2. **Layer 31, read at 16:59Z: it passes both.** ±2.58 ceilings, 79
+       minutes in two sessions (paused three minutes for the fine pilot at 53–59). Whole: 0.630, 0.645, 0.583 and
+       0.581, 0.608. The 986 of 1,022 neurons the controls cover: 0.636, 0.640, 0.586 and 0.587, 0.613. Read on
+       break_rel’s six questions alone, as the `match_ceil` walk read them, its words carry by 0.549 and 0.539,
+       where that walk’s lower dose was: the pass is the added questions’, not a better draw. Said beforehand and
+       missed: a lead of 0.66 to 0.76 (it did not grow with questions; the projection assumed it would). 6 of the
+       1,022 beat every control and none is named, though 31 and 39 are named on either six questions alone.
+       **Layer 30, read at 18:23Z: it fails both, and the walk stops.** ±2.42 ceilings, 82 minutes. Whole: 0.579,
+       0.611, 0.555 and 0.550, 0.584; the 974 covered: 0.582, 0.604, 0.557 and 0.551, 0.585. It fails on the lead
+       and on words carrying between the halves, with the text whole. By the registration layer 31 may be offered
+       under a kit of its own once its other card class’s bars are registered, `DOSES_CALIBRATED` is not widened
+       without the owner’s word, and nothing is taken at 30 with this design. Nine layers outside 39–51 now pass a
+       trial: 31 with `match_wide`, 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`
+       ([`census_wide_trials/RESULT.md`](experiments/results/census_wide_trials/RESULT.md)).
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based

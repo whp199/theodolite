@@ -1,0 +1,2 @@
+stop asked 2026-11-16T15:45:03Z (SIGINT to census_run between batches, for the fine pilot at 53-59; the wrappers ended first so walk.sh would not restart it)
+resumed 2026-11-16T15:47:57Z (the same walk.sh, after the fine pilot at 53-59 took the card 2026-11-16T15:45:21Z to 2026-11-16T15:47:49Z)

@@ -257,7 +257,7 @@ interpretability, and a way to learn it: one a newcomer can learn to read a mode
 how far they can be trusted. What is under way:
 - **The census of all sixty layers.** Layer by layer, a trial first, taken by the home card and by volunteers. Below
   layer 33 and above layer 53 the push that reads is still being found. On 16 November 2026 a design that asks twice
-  the questions at one dose went on trial at layer 32 (31 on the board).
+  the questions at one dose passed its trial at layer 32 (31 on the board) and failed at 31 (30 on the board).
 - **Reading a neuron without pushing it.** Each face’s strongest passages are kept, and since 14 November 2026 a
   pattern written from them can be put to a blind test. Neither is yet validated as a label.
 - **A lens fitted on the instruct model.** None tested so far has beaten the base-fitted J++ where it would be

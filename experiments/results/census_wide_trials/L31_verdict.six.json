@@ -1,0 +1,329 @@
+{
+ "run": "L31-match_wide-trial.jsonl",
+ "layer": 31,
+ "design": "match_wide",
+ "batch": 64,
+ "max_new": 48,
+ "seed": 8,
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "doses": [
+  -2.58,
+  2.58
+ ],
+ "read_gain": {
+  "neurons": 4.7644,
+  "controls": 4.8242,
+  "ratio": 1.013,
+  "read_by": "the next layer's input norm (the final norm after the last layer)"
+ },
+ "readings": {
+  "48": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.6056,
+     "p": 6.76e-17
+    },
+    "mass_u": {
+     "auc": 0.6034,
+     "p": 2.74e-16
+    },
+    "shift": {
+     "auc": 0.6177,
+     "p": 1.53e-20
+    },
+    "shift_up": {
+     "auc": 0.6142,
+     "p": 1.83e-19
+    },
+    "shift_down": {
+     "auc": 0.5494,
+     "p": 5.47e-05
+    },
+    "mass_A": {
+     "auc": 0.5642,
+     "p": 2.47e-07
+    },
+    "mass_B": {
+     "auc": 0.5658,
+     "p": 1.27e-07
+    },
+    "rep_AB": {
+     "auc": 0.5488,
+     "p": 6.65e-05
+    },
+    "rep_BA": {
+     "auc": 0.5388,
+     "p": 0.00118
+    },
+    "rep": {
+     "auc": 0.549,
+     "p": 6.27e-05
+    },
+    "xq": {
+     "auc": 0.5986,
+     "p": 5.86e-15
+    },
+    "cov_lnw": {
+     "auc": 0.5433,
+     "p": 0.000346
+    },
+    "cov_d4": {
+     "auc": 0.4895,
+     "p": 0.813
+    },
+    "cov_cut": {
+     "auc": 0.5099,
+     "p": 0.195
+    },
+    "cov_lp": {
+     "auc": 0.5061,
+     "p": 0.317
+    },
+    "cov_dep": {
+     "auc": 0.4853,
+     "p": 0.876
+    },
+    "cov_lost": {
+     "auc": 0.5342,
+     "p": 0.00366
+    },
+    "mass_c_res": {
+     "auc": 0.6108,
+     "p": 1.99e-18
+    },
+    "shift_res": {
+     "auc": 0.6261,
+     "p": 2.69e-23
+    },
+    "shift_up_res": {
+     "auc": 0.6199,
+     "p": 2.99e-21
+    },
+    "rep_res": {
+     "auc": 0.5518,
+     "p": 2.47e-05
+    },
+    "rho_AB_neurons": 0.22361622456192043,
+    "rho_AB_controls": 0.08161974868130115,
+    "counts": {
+     "neurons": 1022,
+     "controls": 1024,
+     "above_every_control": 38,
+     "by_chance": 1.0,
+     "q05": 42,
+     "named": 31,
+     "named_by_halves": 28,
+     "above_ctl_p95": 0.1898,
+     "pA05_and_pB05": 49,
+     "pA05_and_pB05_by_chance": 2.6
+    },
+    "null_split_auc": {
+     "mean": 0.4992,
+     "min": 0.4632,
+     "max": 0.543,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.5399,
+    "-": 0.5687
+   },
+   "text": {
+    "-2.58 neuron": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.937
+    },
+    "-2.58 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.936
+    },
+    "+2.58 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.94
+    },
+    "+2.58 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.939
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 1022,
+    "controls": 1024,
+    "units_in_run": 2046,
+    "units_planned": 2046,
+    "answers": 49116,
+    "answers_planned": 49116
+   },
+   "gates": {
+    "G1 lead (mass, every answer)": {
+     "values": [
+      [
+       "mass_c",
+       0.6056,
+       0.6
+      ]
+     ],
+     "pass": true
+    },
+    "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+     "values": [
+      [
+       "mass_c_res",
+       0.6108,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+     "values": [
+      [
+       "rep_AB",
+       0.5488,
+       0.57
+      ],
+      [
+       "rep_BA",
+       0.5388,
+       0.57
+      ]
+     ],
+     "pass": false
+    },
+    "G4 the new questions alone carry a lead (mass on half B)": {
+     "values": [
+      [
+       "mass_B",
+       0.5658,
+       0.56
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.4992,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.013,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    },
+    "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+     "values": [
+      [
+       "max_abs_diff",
+       35.61218,
+       0.002
+      ]
+     ],
+     "pass": false
+    }
+   },
+   "pass": false,
+   "named": [
+    864,
+    489,
+    21457,
+    21158,
+    19919,
+    18673,
+    17900,
+    14784,
+    14547,
+    14173,
+    13375,
+    13242,
+    12848,
+    12002,
+    11377,
+    9769,
+    9389,
+    8853,
+    7692,
+    7183,
+    6728,
+    4830,
+    4192,
+    4052,
+    4011,
+    2707,
+    1924,
+    1901,
+    1328,
+    355,
+    163
+   ],
+   "named_by_halves": [
+    864,
+    489,
+    21457,
+    19919,
+    19017,
+    18673,
+    14784,
+    14173,
+    13375,
+    13242,
+    11377,
+    9769,
+    9701,
+    9389,
+    8853,
+    7692,
+    7183,
+    6728,
+    4830,
+    4192,
+    4011,
+    3698,
+    2707,
+    1901,
+    1328,
+    932,
+    355,
+    163
+   ]
+  }
+ },
+ "pass": false,
+ "throughput": {
+  "answers": 49116,
+  "seconds": 4741.0,
+  "answers_per_s": 10.36,
+  "sessions": 2
+ },
+ "writing": {
+  "answers_written": 48604,
+  "seconds": 4473.7,
+  "answers_per_s": 10.86,
+  "sessions": 2
+ }
+}
