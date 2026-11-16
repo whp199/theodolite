@@ -77,7 +77,10 @@
   6900006821,
   6900911960,
   6902230708,
-  6905080827
+  6905080827,
+  6907503527,
+  6907606826,
+  6907780420
  ],
  "claims": [
   {
@@ -850,6 +853,24 @@
    ],
    "started_at": "2026-11-15T22:13Z",
    "bits": "home"
+  },
+  {
+   "code": "c40b4d3a",
+   "layer": 52,
+   "name": "eigentactics",
+   "card": "NVIDIA GeForce RTX 3090 24 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-16T05:00Z",
+   "state": "reserved",
+   "events": [
+    {
+     "at": "2026-11-16T05:00Z",
+     "via": "github",
+     "what": "claim=c40b4d3a card=NVIDIA GeForce RTX 3090 24 GB name=eigentactics kit=4",
+     "verb": "RESERVE"
+    }
+   ]
   }
  ],
  "layers": {
@@ -1126,5 +1147,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-16T03:56Z"
+ "updated_at": "2026-11-16T05:23Z"
 }

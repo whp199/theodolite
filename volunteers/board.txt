@@ -21,9 +21,9 @@ L48 done (anon 5cd76843)
 L49 done (home card)
 L50 done (anon b153da82)
 L51 done (eigentactics 6d708804)
-L52 OPEN
+L52 reserved eigentactics c40b4d3a NVIDIA GeForce RTX 3090 24 GB start by 2026-11-17T17:00Z
 L53–59 not taken
 
-4 open. To take one: https://github.com/whp199/theodolite/issues/1
+3 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints
