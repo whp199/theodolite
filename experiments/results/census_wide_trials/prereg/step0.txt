@@ -1,0 +1,19 @@
+who          kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+orange       kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+free         kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+skills       gives its place: in a batch of 64 it parts after 27 word-pieces ([27, 27]); its spare self: holds ([48, 48] of 48)
+blue         gives its place: in a batch of 64 it parts after 31 word-pieces ([31, 31]); its spare green: holds ([48, 48] of 48)
+interesting  kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+bicycle      kept: in a batch of 63 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+walk         kept: in a batch of 63 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+chair        kept: in a batch of 63 it holds 46 of 48 word-pieces with itself alone ([46, 46])
+kettle       kept: in a batch of 63 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+sleep        kept: in a batch of 63 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+bridge       gives its place: in a batch of 63 it parts after 4 word-pieces ([4, 4]); its spare lamp: holds ([48, 48] of 48)
+the questions asked: who, orange, free, self, green, interesting, bicycle, walk, chair, kettle, sleep, lamp
+halves: ['who', 'orange', 'free', 'self', 'green', 'interesting'] | ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp']
+census.DESIGN_QUESTIONS['match_wide'] at the checkout: who, orange, free, self, green, interesting, bicycle, walk, chair, kettle, sleep, lamp (the same)
+OK
+
+record: atlas_data/census/trials/wide/floor_match_wide.json sha256 d412aa73a1a8c89e675c654500756b92add34b94efbbe2515a42e926eac19ebf
+taken 2026-11-16T15:16:53Z (written_at) on the home RTX 5090, from the main checkout at 5deefd0 with the twelve questions and six spares added to census.MORE_PROMPTS, uncommitted then; --layer 31 --max-new 48 --batches 60,63,64 --unpacker compiled
