@@ -3,7 +3,7 @@
 >16 layers done (34-36, 39-51), 10 by volunteers. thanks to all who ran one
 >new: 24 GB cards can take a layer (3090, 4090), thanks to a contributor's PR
 >a layer outside 40-50 gets a 70-min trial on our card first
->ten passed; open: 32, 33, 38, 52 (37 running)
+>ten passed; open: 32, 38 (33, 37, 52 running)
 
 what you get when the atlas is published:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side

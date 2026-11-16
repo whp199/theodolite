@@ -81,7 +81,8 @@
   6907503527,
   6907606826,
   6907780420,
-  6908184989
+  6908184989,
+  6917386229
  ],
  "claims": [
   {
@@ -888,6 +889,40 @@
    "bits": "own",
    "done": "1%",
    "eta": "2026-11-17T17:31Z"
+  },
+  {
+   "code": "280c6dc2",
+   "layer": 33,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-16T13:12Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-16T13:12Z",
+     "via": "github",
+     "what": "claim=280c6dc2 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=4",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-16T13:12Z",
+     "via": "github",
+     "what": "claim=280c6dc2 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-16T13:12Z",
+     "via": "github",
+     "what": "claim=280c6dc2 done=1% eta=2026-11-17T02:14Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-16T13:12Z",
+   "bits": "own",
+   "done": "1%",
+   "eta": "2026-11-17T02:14Z"
   }
  ],
  "layers": {
@@ -1164,5 +1199,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-16T07:09Z"
+ "updated_at": "2026-11-16T14:32Z"
 }

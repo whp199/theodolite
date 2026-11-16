@@ -2,7 +2,7 @@ CENSUS BOARD (layers count from 0; page = layer + 1)
 L0–30 not taken
 L31 not taken
 L32 OPEN
-L33 OPEN
+L33 running anon 280c6dc2 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 1%, ends ~2026-11-17T02:14Z
 L34 done (anon eaef4eff)
 L35 done (anon 5d30aa4a)
 L36 done (home card)
@@ -25,6 +25,6 @@ L52 running eigentactics c40b4d3a NVIDIA GeForce RTX 3090 24 GB 1%, ends ~2026-1
 L53 not taken
 L54–59 not taken
 
-3 open. To take one: https://github.com/whp199/theodolite/issues/1
+2 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints
