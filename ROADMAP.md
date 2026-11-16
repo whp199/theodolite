@@ -1341,6 +1341,16 @@ layers, the determinism run and the sampled push on 29 October). In this section
       (9,087 neurons; 0.023 with the neurons shuffled), 0.154 at 35 (5,577; 0.030), 0.634 at 39 (5,260; 0.060) and
       0.850 at 51 (9,285; 0.012): weak at 34 and 35 and agrees at 39 and 51, as before. **Not done:** the page was
       not looked at with them.
+    - **The walk upward with `soft_ceil` stopped at layer 53** (the owner’s words that day: “continue the census walk
+      in hopes of opening more layers for our volunteers”; registered and committed before any answer, f935df9,
+      pushed at 05:59Z, six minutes into the run and before any answer was read; run 05:52Z–07:07Z, 16 November;
+      `experiments/results/census_soft_walk_up/RESULT.md`). Layer 53 failed all three
+      gates. The whole reading missed on words carrying between the question halves (0.557 against 0.57), and its lead
+      was 0.694, under the 0.72 to 0.82 said beforehand. The lower dose alone failed every figure (lead 0.551). The
+      upper dose alone led by 0.689, but its words read at chance across the halves. Both doses moved the next
+      word-piece inside the span where every earlier dose but one had led (0.37 and 1.53 nats), so by the
+      registration that span is no guide above layer 52. Layers 54–59 were not trialled. The board marks 53 failed.
+      What to try above 52, if anything, is the owner’s choice.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

@@ -80,7 +80,8 @@
   6905080827,
   6907503527,
   6907606826,
-  6907780420
+  6907780420,
+  6908184989
  ],
  "claims": [
   {
@@ -862,15 +863,31 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-16T05:00Z",
-   "state": "reserved",
+   "state": "running",
    "events": [
     {
      "at": "2026-11-16T05:00Z",
      "via": "github",
      "what": "claim=c40b4d3a card=NVIDIA GeForce RTX 3090 24 GB name=eigentactics kit=4",
      "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-16T05:27Z",
+     "via": "github",
+     "what": "claim=c40b4d3a bits=own card=NVIDIA GeForce RTX 3090 24 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-16T05:27Z",
+     "via": "github",
+     "what": "claim=c40b4d3a done=1% eta=2026-11-17T17:31Z",
+     "verb": "PROGRESS"
     }
-   ]
+   ],
+   "started_at": "2026-11-16T05:27Z",
+   "bits": "own",
+   "done": "1%",
+   "eta": "2026-11-17T17:31Z"
   }
  ],
  "layers": {
@@ -1120,7 +1137,7 @@
   },
   "53": {
    "state": "stopped",
-   "note": "not trialled with this kit's push strengths: not taken"
+   "note": "its trial failed, 16 November 2026 (soft_ceil): not taken"
   },
   "54": {
    "state": "stopped",
@@ -1147,5 +1164,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-16T05:23Z"
+ "updated_at": "2026-11-16T07:09Z"
 }

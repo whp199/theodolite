@@ -30,8 +30,9 @@ neuron can write by itself, its *write ceiling*:
 The script picks the right one for the layer you take; there is nothing to choose. The trials did not pass equally:
 layer 34 passed by the most, and layer 36 by a thousandth on one of its three checks
 (`experiments/results/census_scaled_design/MATCH.md` has every figure). So layer 36 was held for our own card and
-taken there (14 November 2026); read whole, it missed that same check by 0.006. Layer 31 failed its trial, and no push
-strengths have passed a trial at layers 0 to 30 or 53 to 59, so those are not taken yet. **The board says which layers
+taken there (14 November 2026); read whole, it missed that same check by 0.006. Layers 31 and 53 failed their trials,
+and no push strengths have passed a trial by layer 45's gates at layers 0 to 30 or 54 to 59, so those are not taken
+yet. **The board says which layers
 are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
 
 **Kit 4, the kit to use now, is kit 3 opened to 24 GB cards** (14 November 2026, from a contributor's pull request).

@@ -1,0 +1,91 @@
+Running as unit: census-chain.scope; invocation ID: 2f26eacee6c24fb19d91e948b998d004
+== 2026-11-16T05:52:47Z the soft_ceil walk upward: checks before the card is taken
+== 2026-11-16T05:52:47Z the registration of commit f935df9, copied to /home/eric/bin/ai/theodolite2/atlas_data/census/trials/soft_walk_up/prereg
+== 2026-11-16T05:52:47Z the card has 27466 MiB free; the walk
+== 2026-11-16T05:52:47Z layer 53: the trial
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 20130.46it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 37326.40it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<04:37,  7.24it/s]Loading weights:   0%|          | 3/2009 [00:00<04:29,  7.45it/s]Loading weights:   5%|▍         | 96/2009 [00:00<00:07, 266.14it/s]Loading weights:  10%|▉         | 195/2009 [00:00<00:03, 473.15it/s]Loading weights:  14%|█▍        | 290/2009 [00:00<00:02, 610.42it/s]Loading weights:  18%|█▊        | 366/2009 [00:00<00:02, 645.46it/s]Loading weights:  22%|██▏       | 441/2009 [00:01<00:03, 519.95it/s]Loading weights:  25%|██▌       | 504/2009 [00:01<00:03, 458.74it/s]Loading weights:  28%|██▊       | 558/2009 [00:01<00:03, 450.55it/s]Loading weights:  30%|███       | 609/2009 [00:01<00:03, 433.59it/s]Loading weights:  33%|███▎      | 656/2009 [00:01<00:03, 408.39it/s]Loading weights:  35%|███▍      | 700/2009 [00:01<00:03, 368.89it/s]Loading weights:  37%|███▋      | 742/2009 [00:01<00:03, 379.76it/s]Loading weights:  39%|███▉      | 782/2009 [00:01<00:03, 373.48it/s]Loading weights:  41%|████      | 822/2009 [00:02<00:03, 374.08it/s]Loading weights:  43%|████▎     | 861/2009 [00:02<00:03, 373.87it/s]Loading weights:  45%|████▍     | 899/2009 [00:02<00:03, 347.08it/s]Loading weights:  47%|████▋     | 940/2009 [00:02<00:02, 363.34it/s]Loading weights:  49%|████▊     | 977/2009 [00:02<00:02, 362.73it/s]Loading weights:  51%|█████▏    | 1030/2009 [00:02<00:02, 394.35it/s]Loading weights:  54%|█████▎    | 1079/2009 [00:02<00:02, 402.75it/s]Loading weights:  56%|█████▌    | 1120/2009 [00:02<00:02, 387.08it/s]Loading weights:  58%|█████▊    | 1163/2009 [00:02<00:02, 394.03it/s]Loading weights:  63%|██████▎   | 1273/2009 [00:03<00:01, 586.71it/s]Loading weights:  68%|██████▊   | 1359/2009 [00:03<00:00, 657.27it/s]Loading weights:  73%|███████▎  | 1466/2009 [00:03<00:00, 771.26it/s]Loading weights:  77%|███████▋  | 1552/2009 [00:03<00:00, 785.22it/s]Loading weights:  82%|████████▏ | 1651/2009 [00:03<00:00, 825.02it/s]Loading weights: 100%|██████████| 2009/2009 [00:03<00:00, 576.38it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 2.24 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 53: 1022 neurons + 1024 controls, 49110 answers to write (0 already written), push unit each neuron's write ceiling, p50 85.32 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+768/49110 answers, 361 pieces/s, 7.53 answers/s
+1536/49110 answers, 403 pieces/s, 8.40 answers/s
+2304/49110 answers, 418 pieces/s, 8.71 answers/s
+3072/49110 answers, 426 pieces/s, 8.88 answers/s
+3840/49110 answers, 431 pieces/s, 8.98 answers/s
+4608/49110 answers, 434 pieces/s, 9.05 answers/s
+5376/49110 answers, 437 pieces/s, 9.11 answers/s
+6144/49110 answers, 439 pieces/s, 9.16 answers/s
+6912/49110 answers, 441 pieces/s, 9.19 answers/s
+7680/49110 answers, 444 pieces/s, 9.26 answers/s
+8448/49110 answers, 452 pieces/s, 9.42 answers/s
+9216/49110 answers, 459 pieces/s, 9.57 answers/s
+9984/49110 answers, 466 pieces/s, 9.71 answers/s
+10752/49110 answers, 471 pieces/s, 9.82 answers/s
+11520/49110 answers, 476 pieces/s, 9.93 answers/s
+12288/49110 answers, 481 pieces/s, 10.02 answers/s
+13056/49110 answers, 485 pieces/s, 10.11 answers/s
+13824/49110 answers, 488 pieces/s, 10.18 answers/s
+14592/49110 answers, 492 pieces/s, 10.25 answers/s
+15360/49110 answers, 495 pieces/s, 10.31 answers/s
+16128/49110 answers, 497 pieces/s, 10.37 answers/s
+16896/49110 answers, 500 pieces/s, 10.42 answers/s
+17664/49110 answers, 502 pieces/s, 10.47 answers/s
+18432/49110 answers, 504 pieces/s, 10.51 answers/s
+19200/49110 answers, 506 pieces/s, 10.56 answers/s
+19968/49110 answers, 508 pieces/s, 10.59 answers/s
+20736/49110 answers, 510 pieces/s, 10.63 answers/s
+21504/49110 answers, 511 pieces/s, 10.66 answers/s
+22272/49110 answers, 513 pieces/s, 10.70 answers/s
+23040/49110 answers, 514 pieces/s, 10.73 answers/s
+23808/49110 answers, 516 pieces/s, 10.75 answers/s
+24576/49110 answers, 517 pieces/s, 10.78 answers/s
+25344/49110 answers, 518 pieces/s, 10.80 answers/s
+26112/49110 answers, 519 pieces/s, 10.83 answers/s
+26880/49110 answers, 520 pieces/s, 10.85 answers/s
+27648/49110 answers, 521 pieces/s, 10.87 answers/s
+28416/49110 answers, 522 pieces/s, 10.89 answers/s
+29184/49110 answers, 523 pieces/s, 10.91 answers/s
+29952/49110 answers, 524 pieces/s, 10.93 answers/s
+30720/49110 answers, 525 pieces/s, 10.94 answers/s
+31488/49110 answers, 526 pieces/s, 10.96 answers/s
+32256/49110 answers, 526 pieces/s, 10.98 answers/s
+33024/49110 answers, 527 pieces/s, 10.99 answers/s
+33792/49110 answers, 528 pieces/s, 11.01 answers/s
+34560/49110 answers, 528 pieces/s, 11.02 answers/s
+35328/49110 answers, 529 pieces/s, 11.03 answers/s
+36096/49110 answers, 530 pieces/s, 11.05 answers/s
+36864/49110 answers, 530 pieces/s, 11.06 answers/s
+37632/49110 answers, 531 pieces/s, 11.07 answers/s
+38400/49110 answers, 531 pieces/s, 11.08 answers/s
+39168/49110 answers, 532 pieces/s, 11.09 answers/s
+39936/49110 answers, 532 pieces/s, 11.10 answers/s
+40704/49110 answers, 533 pieces/s, 11.11 answers/s
+41472/49110 answers, 533 pieces/s, 11.12 answers/s
+42240/49110 answers, 534 pieces/s, 11.13 answers/s
+43008/49110 answers, 534 pieces/s, 11.14 answers/s
+43776/49110 answers, 535 pieces/s, 11.15 answers/s
+44544/49110 answers, 535 pieces/s, 11.16 answers/s
+45312/49110 answers, 535 pieces/s, 11.17 answers/s
+46080/49110 answers, 536 pieces/s, 11.17 answers/s
+46848/49110 answers, 536 pieces/s, 11.18 answers/s
+47616/49110 answers, 537 pieces/s, 11.19 answers/s
+48384/49110 answers, 537 pieces/s, 11.20 answers/s
+49110/49110 answers, 537 pieces/s, 11.19 answers/s
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/soft_walk_up/L53-soft_ceil-trial.jsonl (49110 answers written, 0 were there)
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/soft_walk_up/L53-soft_ceil-trial.units.jsonl (ranked as soft_ceil is read: every push counted, each word against the controls' mean, each answer's own question's unpushed words left out)
+written in /home/eric/bin/ai/theodolite2/atlas_data/census/trials/soft_walk_up: 53; not read here (read.sh)
+=== L53-soft_ceil-trial.jsonl (layer 53, counted from 0): FAIL
+FAIL  N1 whole
+FAIL  N2 the lower dose's answers alone (-1.6, +1.6)
+FAIL  N3 the neurons the controls cover (988 of 1022 covered, 96.7%; at least 50%)
+the upper dose alone (reported):   pass  G1 lead (mass, every answer): mass_c 0.6887 (bar 0.6)
+the upper dose alone (reported):   pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6263 (bar 0.58)
+the upper dose alone (reported):   FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5071 (bar 0.57), rep_BA 0.5112 (bar 0.57)
+the upper dose alone (reported):   pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6226 (bar 0.56)
+== 2026-11-16T07:07:16Z layer 53: fail
+the walk stops at layer 53, which did not pass
+== 2026-11-16T07:07:16Z the walk ended (exit 0); it stopped at layer 53
+== 2026-11-16T07:07:16Z passed all three gates: none
