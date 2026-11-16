@@ -22,6 +22,9 @@ claim holds a layer at a time. A claim holds for HOLD_RESERVED hours after its R
 HOLD_STARTED hours after START until its first PROGRESS with an end time, then until that end time and HOLD_GRACE hours
 more, each PROGRESS moving it; never past HOLD_MAX_DAYS after the RESERVE. A submitted claim holds until it is judged.
 A claim past its hold is lapsed when the board is shown, and its layer open again; its holder may claim it anew.
+`sync` judges each comment's lines at the time the comment was posted, not the time of the sync, and stamps them so:
+until 16 November 2026 it judged every line at the sync's own time, which lapsed layer 34's claim (eaef4eff) whose
+DONE had come inside its hold, 24 hours before the sync. A line given to `add` is judged at the time it is added.
 
 A layer's own state: open (it can be claimed), done, closed (held for the home card, or running there), waiting (its
 trial is not yet taken or read: a layer outside the band the doses were first calibrated for is trialled on the home
@@ -66,7 +69,12 @@ ENDED = ("accepted", "rejected", "released", "lapsed")
 CHROME = ("google-chrome-stable", "google-chrome", "chromium", "chromium-browser")
 
 
+_POSTED_AT: Optional[float] = None  # while `replay` applies a comment: the time it was posted
+
+
 def now() -> float:
+    if _POSTED_AT is not None:
+        return _POSTED_AT
     return float(os.environ.get("THEODOLITE_BOARD_NOW") or time.time())  # a check's clock
 
 
@@ -436,22 +444,31 @@ def gh(*args: str) -> str:
 def cmd_sync(board: Dict[str, Any], a: argparse.Namespace) -> List[str]:
     if not board.get("issue"):
         raise SystemExit("The board has no issue yet: census_board.py publish --create --yes makes one.")
-    # one comment a line, as a JSON array [id, login, body] (gh prints a jq string raw)
+    # one comment a line, as a JSON array [id, login, body, created_at] (gh prints a jq string raw), oldest first
     raw = gh("api", "--paginate", f"repos/{board['repo']}/issues/{board['issue']}/comments",
-             "--jq", ".[] | [.id, .user.login, .body] | @json")
+             "--jq", ".[] | [.id, .user.login, .body, .created_at] | @json")
+    return replay(board, [json.loads(ln) for ln in raw.splitlines() if ln.strip()])
+
+
+def replay(board: Dict[str, Any], comments: List[List[Any]]) -> List[str]:
+    """The comments not seen before ([id, login, body, created_at], oldest first), each one's CENSUS lines applied at
+    the time it was posted: a hold is judged then, and the line's event stamped then. Then the board as it stands now
+    (claims past their hold lapsed). A comment with no time is applied at the present."""
+    global _POSTED_AT
     seen = set(board.get("seen_comments") or [])
     said = []
-    for ln in raw.splitlines():
-        if not ln.strip():
-            continue
-        cid, login, body = json.loads(ln)
-        if cid in seen:
-            continue
-        seen.add(cid)
-        for line in census_lines(body or ""):
-            said.append(f"{login}: " + apply(board, line, "github", who=login))
+    try:
+        for cid, login, body, *rest in comments:
+            if cid in seen:
+                continue
+            seen.add(cid)
+            _POSTED_AT = parse_iso(rest[0]) if rest and rest[0] else None
+            for line in census_lines(body or ""):
+                said.append(f"{login}: " + apply(board, line, "github", who=login))
+    finally:
+        _POSTED_AT = None
     board["seen_comments"] = sorted(seen)
-    return said
+    return said + lapse(board)
 
 
 def cmd_publish(board: Dict[str, Any], a: argparse.Namespace, path: Path) -> None:
@@ -521,7 +538,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     a = ap.parse_args(argv)
     path = Path(a.board)
     board = load(path)
-    said = lapse(board)
+    said = lapse(board) if a.cmd != "sync" else []  # sync lapses as it replays, each comment at its own time
     if a.cmd == "add":
         texts = [sys.stdin.read()] if a.text == ["-"] else a.text
         found = 0

@@ -307,6 +307,29 @@ def run_checks(tmp: Path) -> int:
     r = run(b + ["expire"], {**env, "THEODOLITE_BOARD_NOW": str(1793390400 + 37 * 3600)})
     check("L%d 0badc0de lapsed" % other in r.stdout and f"L{LAYER} {code} lapsed" not in r.stdout,
           f"a claim past its hold lapses, a running one holds ({r.stdout[:300]})")
+    # a sync judges each comment at the time it was posted (layer 34's DONE, 15 November 2026, came inside its hold and
+    # was synced 24 hours after it): replay, the function sync hands the issue's comments to, run at a present past the
+    # hold. A DONE posted inside the hold is taken, stamped with its own time; one posted after the hold is refused.
+    for case, posted in (("inside", "2026-11-01T01:00:00Z"), ("after", "2026-11-01T09:00:00Z")):
+        lb = tmp / f"board_replay_{case}.json"
+        lb.write_text(json.dumps({"kit": kit["KIT"], "repo": "whp199/theodolite", "issue": 1, "seen_comments": [], "claims": [],
+                                  "layers": {str(LAYER): {"state": "open"}}}))
+        comments = [[1, "v", f"CENSUS RESERVE L{LAYER} claim=0badf00d name=v", "2026-10-30T20:00:00Z"],
+                    [2, "v", f"CENSUS START L{LAYER} claim=0badf00d bits=own", "2026-10-30T20:05:00Z"],
+                    [3, "v", f"CENSUS PROGRESS L{LAYER} claim=0badf00d done=10% eta=2026-10-31T08:00Z", "2026-10-30T21:00:00Z"],
+                    [4, "v", f"CENSUS DONE L{LAYER} claim=0badf00d sha256=00112233 size=1MB link=https://example.org/b.tar", posted]]
+        rp = run([PY, "-I", "-c", "import json, sys; sys.path.insert(0, sys.argv[1]); import census_board as b; "
+                  "p = sys.argv[2]; board = json.load(open(p)); said = b.replay(board, json.loads(sys.argv[3])); "
+                  "c = board['claims'][0]; print(json.dumps({'said': said, 'state': c['state'], 'at': c.get('submitted_at'), "
+                  "'seen': board['seen_comments']}))", BOARD_PY.parent, lb, json.dumps(comments)],
+                 {**env, "THEODOLITE_BOARD_NOW": "1793577600"})  # 2026-11-02T00:00Z, past the hold (11-01 08:00Z)
+        got = json.loads(rp.stdout) if rp.returncode == 0 and rp.stdout.strip() else {}
+        if case == "inside":
+            check(got.get("state") == "submitted" and got.get("at") == "2026-11-01T01:00Z" and got.get("seen") == [1, 2, 3, 4],
+                  f"sync: a DONE posted inside its hold and synced after it is taken, at the time it was posted ({got or rp.stderr[-300:]})")
+        else:
+            check(got.get("state") == "lapsed" and any("refused" in s for s in got.get("said", [])),
+                  f"sync: a DONE posted after its hold is refused, the claim lapsed ({got or rp.stderr[-300:]})")
     signed = "https://objects.example.org/bucket/b.tar?X-Amz-Credential=" + "A%2F" * 60 + "&X-Amz-Signature=" + "e4" * 32
     r = run(b + ["add", done.replace("PASTE_LINK_HERE", signed)], benv)
     check(r.returncode == 0 and "submitted" in r.stdout and "link given" in r.stdout, f"DONE with a signed link of {len(signed)} characters ({r.stdout[:200]})")
