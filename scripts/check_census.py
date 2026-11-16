@@ -1677,7 +1677,7 @@ def run_checks(tmp: Path) -> int:
 
     # ---------------------------------------------- 14d. match_ceil: two counts of ceilings that differ by layer, from a table
     before = len(failures)
-    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-1] == "match_ceil" and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
+    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-2:] == ["match_ceil", "match_wide"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
           and cz.DESIGN_QUESTIONS["match_ceil"] == q6 and cz.DESIGN_HALVES["match_ceil"] == cz.DESIGN_HALVES["break_rel"]
           and cz.DESIGN_UNITS["match_ceil"] == "ceiling" and cz.reading_of("match_ceil") == cz.reading_of("break_ceil")
           and cz.run_defaults("match_ceil") == cz.run_defaults("break_rel") and cz.DESIGN_PLAN["match_ceil"] == "12 x batch"
@@ -1745,6 +1745,63 @@ def run_checks(tmp: Path) -> int:
         if had3 is not None:
             cz.MATCH_CEIL[3] = had3
     section("match_ceil: its table and refusals, a stand-in run at a layer's own doses, its ranking and card", before)
+
+    # ------------------------------------------- 14e. match_wide: match_ceil's lower dose alone, on twelve questions
+    before = len(failures)
+    q12 = cz.DESIGN_QUESTIONS["match_wide"]
+    check("match_wide" not in cz.DESIGNS and cz.LAYER_DOSES["match_wide"] is cz.MATCH_WIDE
+          and cz.MATCH_WIDE == {l_: (v_[0],) for l_, v_ in cz.MATCH_CEIL.items()}
+          and len(q12) == len(set(q12)) == 12 and q12[:3] == q6[:3] and q12[6:9] == q6[3:]
+          and cz.DESIGN_HALVES["match_wide"] == (q12[:6], q12[6:]) and list(cz.design_questions("match_wide")) == list(q12)
+          and q12[3:6] == ("self", "green", "interesting") and q12[9:] == ("kettle", "sleep", "lamp")
+          and all(q_ in cz.ALL_PROMPTS for q_ in list(q12) + ["skills", "blue", "bridge", "lines", "clock", "rice"])
+          and len(set(cz.ALL_PROMPTS.values())) == len(cz.ALL_PROMPTS)
+          and cz.DESIGN_UNITS["match_wide"] == "ceiling" and cz.reading_of("match_wide") == cz.reading_of("match_ceil")
+          and cz.run_defaults("match_wide") == cz.run_defaults("match_ceil") and cz.DESIGN_PLAN["match_wide"] == "12 x batch"
+          and cz.COLLAPSE_RULE["match_wide"] == cz.COLLAPSE_RULE["match_ceil"] and "match_wide" not in cz.DOSES_CALIBRATED
+          and not any(cz.doses_calibrated("match_wide", l_) for l_ in range(60)) and "nats" in cz.DOSES_FROM["match_wide"]
+          and cz.design_at("match_wide", 31) == [(p_, s_ * 2.58) for p_ in q12 for s_ in (-1.0, 1.0)],
+          "match_wide: twelve questions (break_rel's six, each half one more of each of its genres, three of them the spares "
+          "step 0 put in place), match_ceil's lower dose alone at each layer (24 answers a unit at 31: +-2.58), read, taken and marked "
+          "as match_ceil is, calibrated nowhere")
+    wrun = tmp / "runs" / "L3-match_wide.jsonl"
+    try:
+        cz.design_at("match_wide", 3)
+        w_said = ""
+    except ValueError as exc:
+        w_said = str(exc)
+    check("has no doses for layer 3" in w_said, f"match_wide at a layer its table does not hold is refused ({w_said[:90]})")
+    cz.MATCH_WIDE[3] = (1.9,)
+    try:
+        wd = cz.design_at("match_wide", 3)
+        cz.take_census(rt, 3, list(range(8)), wrun, **{**kw, "design_name": "match_wide"})
+        wrows = list(cz.read_rows(wrun))
+        wmeta = json.loads(cz.meta_path_of(wrun).read_text())
+        wpushed = [r_ for r_ in wrows if r_["kind"] in ("neuron", "random")]
+        w_ctl = int(wmeta["random_controls"])
+        w19 = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in wpushed if r_["prompt"] in q6}
+        m19 = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in cz.read_rows(mrun)
+               if r_["kind"] in ("neuron", "random") and abs(abs(r_["dose"]) - 1.9) < 1e-9} if mrun.exists() else {}
+        check(len(wd) == 24 and len(wrows) == (8 + w_ctl) * 24 + 12 and wmeta["dose_unit"] == "ceiling"
+              and wmeta["design_name"] == "match_wide" and wmeta["doses_from"] == cz.DOSES_FROM["match_wide"]
+              and list(wmeta["prompts"]) == list(q12) and sorted({r_["dose"] for r_ in wpushed}) == [-1.9, 1.9]
+              and sum(1 for r_ in wrows if r_["kind"] == "baseline") == 12
+              and set(w19) == set(m19) and max(abs(w19[k_] - m19[k_]) for k_ in w19) <= 1e-4 * max(abs(v_) for v_ in m19.values()),
+              f"a match_wide run: twelve unpushed answers, each unit asked the twelve questions at plus and minus its layer's one "
+              f"dose times a write ceiling, its pushes on break_rel's six the very pushes match_ceil makes of the same units "
+              f"at that dose ({len(wrows)} rows)")
+        cz.write_units(wrun)
+        wunits = list(cz.read_rows(cz.units_path_of(wrun)))
+        wcol = json.loads(cz.collapse_path_of(wrun).read_text()) if cz.collapse_path_of(wrun).exists() else {}
+        wcard = atlas_routes.census_card({"path": wrun, "meta": wmeta, "null": {}, "units": wunits})
+        check(len(wunits) == 8 + w_ctl and all(u_["reading"] == cz.reading_of("match_wide") and set(u_["dose"]) == {"-1.9", "+1.9"} for u_ in wunits)
+              and wcol.get("doses") == [1.9] and wcard["doses_calibrated"] is False and wcard["doses_calibrated_layers"] is None
+              and wcard["dose_unit"] == "ceiling" and wcard["doses_from"] == cz.DOSES_FROM["match_wide"],
+              f"a match_wide run is ranked on every answer, its collapse words read at its one dose, and its card says its unit and "
+              f"that its doses are calibrated nowhere ({wcol.get('doses')}, {wcard.get('doses_calibrated_layers')})")
+    finally:
+        cz.MATCH_WIDE.pop(3, None)
+    section("match_wide: its questions and table, a stand-in run at its one dose, its ranking and card", before)
 
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)

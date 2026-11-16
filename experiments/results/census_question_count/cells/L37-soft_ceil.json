@@ -1,0 +1,391 @@
+{
+ "run": "L37-soft_ceil-trial.jsonl",
+ "layer": 37,
+ "design": "soft_ceil",
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "lower": [
+  -1.6,
+  1.6
+ ],
+ "upper": [
+  -2.3,
+  2.3
+ ],
+ "cells": [
+  {
+   "arm": "lower",
+   "q": 3,
+   "A": [
+    "who",
+    "orange",
+    "free"
+   ],
+   "B": [
+    "bicycle",
+    "walk",
+    "chair"
+   ],
+   "answers_per_half": 6,
+   "mass_c": 0.6327,
+   "mass_A": 0.5566,
+   "mass_B": 0.6156,
+   "rep_AB": 0.5827,
+   "rep_BA": 0.5415
+  },
+  {
+   "arm": "lower",
+   "q": 2,
+   "A": [
+    "who",
+    "orange"
+   ],
+   "B": [
+    "bicycle",
+    "walk"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.597,
+   "mass_A": 0.5132,
+   "mass_B": 0.5887,
+   "rep_AB": 0.5607,
+   "rep_BA": 0.5405
+  },
+  {
+   "arm": "lower",
+   "q": 2,
+   "A": [
+    "who",
+    "free"
+   ],
+   "B": [
+    "bicycle",
+    "chair"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6022,
+   "mass_A": 0.5263,
+   "mass_B": 0.5745,
+   "rep_AB": 0.5687,
+   "rep_BA": 0.5548
+  },
+  {
+   "arm": "lower",
+   "q": 2,
+   "A": [
+    "orange",
+    "free"
+   ],
+   "B": [
+    "walk",
+    "chair"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.5956,
+   "mass_A": 0.5563,
+   "mass_B": 0.5552,
+   "rep_AB": 0.5444,
+   "rep_BA": 0.5175
+  },
+  {
+   "arm": "lower",
+   "q": 1,
+   "A": [
+    "who"
+   ],
+   "B": [
+    "bicycle"
+   ],
+   "answers_per_half": 2,
+   "mass_c": 0.5563,
+   "mass_A": 0.4947,
+   "mass_B": 0.515,
+   "rep_AB": 0.53,
+   "rep_BA": 0.5357
+  },
+  {
+   "arm": "lower",
+   "q": 1,
+   "A": [
+    "orange"
+   ],
+   "B": [
+    "walk"
+   ],
+   "answers_per_half": 2,
+   "mass_c": 0.5529,
+   "mass_A": 0.4741,
+   "mass_B": 0.5031,
+   "rep_AB": 0.5274,
+   "rep_BA": 0.6035
+  },
+  {
+   "arm": "lower",
+   "q": 1,
+   "A": [
+    "free"
+   ],
+   "B": [
+    "chair"
+   ],
+   "answers_per_half": 2,
+   "mass_c": 0.5359,
+   "mass_A": 0.4978,
+   "mass_B": 0.4666,
+   "rep_AB": 0.5005,
+   "rep_BA": 0.5655
+  },
+  {
+   "arm": "upper",
+   "q": 3,
+   "A": [
+    "who",
+    "orange",
+    "free"
+   ],
+   "B": [
+    "bicycle",
+    "walk",
+    "chair"
+   ],
+   "answers_per_half": 6,
+   "mass_c": 0.6569,
+   "mass_A": 0.5876,
+   "mass_B": 0.6188,
+   "rep_AB": 0.604,
+   "rep_BA": 0.6051
+  },
+  {
+   "arm": "upper",
+   "q": 2,
+   "A": [
+    "who",
+    "orange"
+   ],
+   "B": [
+    "bicycle",
+    "walk"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6207,
+   "mass_A": 0.5445,
+   "mass_B": 0.5806,
+   "rep_AB": 0.5992,
+   "rep_BA": 0.5793
+  },
+  {
+   "arm": "upper",
+   "q": 2,
+   "A": [
+    "who",
+    "free"
+   ],
+   "B": [
+    "bicycle",
+    "chair"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6291,
+   "mass_A": 0.5639,
+   "mass_B": 0.5631,
+   "rep_AB": 0.5684,
+   "rep_BA": 0.5992
+  },
+  {
+   "arm": "upper",
+   "q": 2,
+   "A": [
+    "orange",
+    "free"
+   ],
+   "B": [
+    "walk",
+    "chair"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6382,
+   "mass_A": 0.5621,
+   "mass_B": 0.5812,
+   "rep_AB": 0.5766,
+   "rep_BA": 0.5659
+  },
+  {
+   "arm": "upper",
+   "q": 1,
+   "A": [
+    "who"
+   ],
+   "B": [
+    "bicycle"
+   ],
+   "answers_per_half": 2,
+   "mass_c": 0.5457,
+   "mass_A": 0.5074,
+   "mass_B": 0.4643,
+   "rep_AB": 0.5104,
+   "rep_BA": 0.5544
+  },
+  {
+   "arm": "upper",
+   "q": 1,
+   "A": [
+    "orange"
+   ],
+   "B": [
+    "walk"
+   ],
+   "answers_per_half": 2,
+   "mass_c": 0.5685,
+   "mass_A": 0.4836,
+   "mass_B": 0.4972,
+   "rep_AB": 0.5166,
+   "rep_BA": 0.5259
+  },
+  {
+   "arm": "upper",
+   "q": 1,
+   "A": [
+    "free"
+   ],
+   "B": [
+    "chair"
+   ],
+   "answers_per_half": 2,
+   "mass_c": 0.5746,
+   "mass_A": 0.5139,
+   "mass_B": 0.459,
+   "rep_AB": 0.5134,
+   "rep_BA": 0.5822
+  },
+  {
+   "arm": "both",
+   "q": 3,
+   "A": [
+    "who",
+    "orange",
+    "free"
+   ],
+   "B": [
+    "bicycle",
+    "walk",
+    "chair"
+   ],
+   "answers_per_half": 12,
+   "mass_c": 0.6721,
+   "mass_A": 0.6258,
+   "mass_B": 0.6484,
+   "rep_AB": 0.637,
+   "rep_BA": 0.6155
+  },
+  {
+   "arm": "both",
+   "q": 2,
+   "A": [
+    "who",
+    "orange"
+   ],
+   "B": [
+    "bicycle",
+    "walk"
+   ],
+   "answers_per_half": 8,
+   "mass_c": 0.6437,
+   "mass_A": 0.5819,
+   "mass_B": 0.6329,
+   "rep_AB": 0.606,
+   "rep_BA": 0.5843
+  },
+  {
+   "arm": "both",
+   "q": 2,
+   "A": [
+    "who",
+    "free"
+   ],
+   "B": [
+    "bicycle",
+    "chair"
+   ],
+   "answers_per_half": 8,
+   "mass_c": 0.6602,
+   "mass_A": 0.6094,
+   "mass_B": 0.6186,
+   "rep_AB": 0.5838,
+   "rep_BA": 0.5847
+  },
+  {
+   "arm": "both",
+   "q": 2,
+   "A": [
+    "orange",
+    "free"
+   ],
+   "B": [
+    "walk",
+    "chair"
+   ],
+   "answers_per_half": 8,
+   "mass_c": 0.6565,
+   "mass_A": 0.6191,
+   "mass_B": 0.6155,
+   "rep_AB": 0.6107,
+   "rep_BA": 0.5847
+  },
+  {
+   "arm": "both",
+   "q": 1,
+   "A": [
+    "who"
+   ],
+   "B": [
+    "bicycle"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6026,
+   "mass_A": 0.5318,
+   "mass_B": 0.5806,
+   "rep_AB": 0.5332,
+   "rep_BA": 0.5537
+  },
+  {
+   "arm": "both",
+   "q": 1,
+   "A": [
+    "orange"
+   ],
+   "B": [
+    "walk"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6065,
+   "mass_A": 0.5454,
+   "mass_B": 0.5749,
+   "rep_AB": 0.5732,
+   "rep_BA": 0.539
+  },
+  {
+   "arm": "both",
+   "q": 1,
+   "A": [
+    "free"
+   ],
+   "B": [
+    "chair"
+   ],
+   "answers_per_half": 4,
+   "mass_c": 0.6221,
+   "mass_A": 0.571,
+   "mass_B": 0.5256,
+   "rep_AB": 0.5555,
+   "rep_BA": 0.5381
+  }
+ ]
+}
