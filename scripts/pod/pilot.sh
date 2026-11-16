@@ -21,7 +21,10 @@
 #  4. a calib_rel run (--calib-neurons and --calib-controls, at the pilot's batch, unpacker and --max-new) timed (its wall
 #     time, the model's load with it), and its dose window (census_tools.py curves) (census/, calib.json, curves.json);
 #  5. one steer-lens layer (atlas_build.py steer --layers --steer-layer) timed as the build logs it, into the pilot's own
-#     index folder (the stats index linked in when built, for its push unit) (index/, steer.json);
+#     index folder (the stats index linked in when built, for its push unit) (index/, steer.json). It is pushed at one
+#     dose, 0.8 (--steer-dose 0.8): since 12 November 2026 the build refuses to start without a measured dose for each
+#     layer (steer_dose), and what is wanted here is the layer's time, which the dose does not change. The layer this
+#     leaves in the pilot's index is for timing only and is not a steer lens to read;
 #  6. a canary batch (census_run.py --canary-only): with --home-canary, the batch the home card wrote, taken with the
 #     same settings (its .canary.json beside it) and compared field by field (census_tools.py canary); without, the
 #     whole-layer job's own plan batch 0, to compare later (canary/, canary.json);
@@ -182,13 +185,16 @@ if ! skipped steer; then
     mkdir -p "$P/index"
     if [ "$DRY" = 1 ]; then ACT=$THEODOLITE_ATLAS_DIR/stand-in/index/act_scale.npz; else ACT=$THEODOLITE_ATLAS_DIR/index/act_scale.npz; fi
     if [ -f "$ACT" ]; then ln -sf "$ACT" "$P/index/act_scale.npz"; fi
-    step steer "$PY" -I scripts/atlas_build.py steer "${STAND[@]}" --layers "$SL" --out "$P/index" --unpacker "$UNP"
+    # one dose for the timing (the header's step 5 says why): the build refuses without a measured dose a layer
+    step steer "$PY" -I scripts/atlas_build.py steer "${STAND[@]}" --layers "$SL" --out "$P/index" --unpacker "$UNP" \
+        --steer-dose 0.8
     # the layer's own time, as the build logs it (the step's wall time adds the model's load)
-    layer_s=$(sed -n 's/^steer lens: layer [0-9]* done (\([0-9.]*\) s)$/\1/p' "$P/out/steer.txt" | tail -1)
+    # (since 12 November 2026 the line names the dose: "steer lens: layer 3 done at a dose of 0.8 (12 s)")
+    layer_s=$(sed -n 's/^steer lens: layer [0-9]* done[^(]* (\([0-9.]*\) s)$/\1/p' "$P/out/steer.txt" | tail -1)
     unit="the study's 36 texts"
     if [ -f "$ACT" ]; then unit="the stats index"; fi
-    printf '{"layer": %s, "seconds": %s, "wall_s": %s, "unpacker": "%s", "push_unit": "%s"}\n' "$SL" "${layer_s:-null}" "$LAST_S" \
-        "$UNP" "$unit" >"$P/steer.json"
+    printf '{"layer": %s, "seconds": %s, "wall_s": %s, "unpacker": "%s", "push_unit": "%s", "dose": 0.8, "dose_note": "one dose, for the timing only"}\n' \
+        "$SL" "${layer_s:-null}" "$LAST_S" "$UNP" "$unit" >"$P/steer.json"
 fi
 
 # 6. a canary: the home card's batch written here, or the whole-layer job's own
