@@ -150,11 +150,15 @@ DESIGN_QUESTIONS["match_ceil"] = DESIGN_QUESTIONS["break_rel"]
 DESIGN_HALVES["match_ceil"] = DESIGN_HALVES["break_rel"]
 MATCH_NATS = (1.0, 1.4)
 # the fine pilot of 13 November 2026 (05:24Z; experiments/results/census_scaled_design/fine_pilot.json), layers 30
-# to 38, each pair as `census_dose_pilot.py doses --targets 1.0,1.4` gave it. Layer 45, the pilot's reference, is
-# not here: its ladder ends under 1.0 nats
+# to 38, each pair as `census_dose_pilot.py doses --targets 1.0,1.4` gave it. Layer 45, the pilot's reference, had
+# none there: its ladder ended under 1.0 nats. The same pilot on its rungs carried higher (--ladder high, 0.53 to 2.2
+# of the stream) on 16 November 2026 (15:47Z; fine_pilot_high.json) gave 45 and 53 to 58 theirs by the same rule;
+# layer 59's ladder starts above both targets (5.85 nats at its lowest rung), so 59 has none
 MATCH_CEIL: Dict[int, Tuple[float, float]] = {
     30: (2.42, 2.67), 31: (2.58, 2.76), 32: (2.21, 2.44), 33: (2.31, 2.51), 34: (2.62, 2.79),
     35: (2.27, 2.41), 36: (2.27, 2.46), 37: (2.41, 2.55), 38: (2.14, 2.30),
+    45: (2.77, 2.95), 53: (2.24, 2.42), 54: (2.18, 2.34), 55: (1.95, 2.14), 56: (1.96, 2.11), 57: (1.55, 1.68),
+    58: (1.16, 1.27),
 }
 # match_wide is match_ceil with one dose and twice the questions (16 November 2026, once match_ceil's walk downward had
 # stopped at layer 31; experiments/results/census_question_count): its lower dose alone, the push that moves the next

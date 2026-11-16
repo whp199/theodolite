@@ -16,6 +16,7 @@ index's steer_dose.json, which the steer lens is built from.
 
     .venv/bin/python -I scripts/census_dose_pilot.py measure --layers 30-38 --out atlas_data/census/dose_pilot
     .venv/bin/python -I scripts/census_dose_pilot.py doses --out atlas_data/census/dose_pilot --targets 1.0,1.4
+    .venv/bin/python -I scripts/census_dose_pilot.py measure --layers 53-59 --ladder high --out atlas_data/census/dose_pilot_high
 """
 from __future__ import annotations
 
@@ -32,6 +33,11 @@ for p in (ROOT, ROOT / "scripts"):
 
 # 0.8 x 1.07^k, k from -15 to 2: eighteen rungs from 0.29 to 0.92 of the stream, the pilot's reference dose among them
 FINE_LADDER = tuple(0.8 if k == 0 else round(0.8 * 1.07 ** k, 4) for k in range(-15, 3))
+# the same rungs carried higher, k from -6 to 15: twenty-two from 0.53 to 2.2 of the stream, for the layers where the
+# fine ladder ends under the targets (layer 45's ended at 0.55 nats; at 53 soft_ceil's 1.6 ceilings, 0.98 of the
+# stream, moved the next word-piece 0.37 nats). Its rungs from 0.53 to 0.92 are the fine ladder's own
+HIGH_LADDER = tuple(0.8 if k == 0 else round(0.8 * 1.07 ** k, 4) for k in range(-6, 16))
+LADDERS = {"fine": FINE_LADDER, "high": HIGH_LADDER}
 CEILINGS = ROOT / "experiments" / "results" / "census_scaled_design" / "ceilings.json"
 PILOT_FILE = "steer_dose.json"  # the name backend.atlas_build.steer_dose_pilot writes under, in the folder it is given
 
@@ -85,6 +91,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--seed", type=int, default=0, help="measure: draws each layer's sample (seed + the layer), as the pilot's")
     ap.add_argument("--batch", type=int, default=64)
     ap.add_argument("--ref-layer", type=int, default=None, help="measure: the pilot's reference layer (default 45)")
+    ap.add_argument("--ladder", default="fine", choices=sorted(LADDERS), help="measure: the rungs (fine: 0.29 to 0.92 of "
+                    "the stream; high: 0.53 to 2.2, the same grid carried higher)")
     ap.add_argument("--unpacker", default="compiled", choices=["reference", "lut", "compiled", "resident"])
     ap.add_argument("--stand-in", action="store_true", help="measure: on the CPU stand-in, for a dry run")
     ap.add_argument("--targets", default="1.0,1.4", help="doses: the nats each dose is to move the next word-piece by")
@@ -160,10 +168,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         raise SystemExit("No stats index for this model here: the push's unit is the stream's median length, which it holds "
                          "(atlas_build.py stats).")
     ref = ab.STEER_DOSE_REF_LAYER if a.ref_layer is None else a.ref_layer
-    print(f"fine pilot: {len(FINE_LADDER)} rungs from {FINE_LADDER[0]:g} to {FINE_LADDER[-1]:g} of the stream, at layers "
+    ladder = LADDERS[a.ladder]
+    print(f"fine pilot: {len(ladder)} rungs from {ladder[0]:g} to {ladder[-1]:g} of the stream, at layers "
           f"{a.layers or 'all'} and the reference layer {ref}; into {out}", flush=True)
     try:
-        path = ab.steer_dose_pilot(rt, out, p50, layers=layers, neurons=a.neurons, ladder=FINE_LADDER, ref_layer=ref,
+        path = ab.steer_dose_pilot(rt, out, p50, layers=layers, neurons=a.neurons, ladder=ladder, ref_layer=ref,
                                    seed=a.seed, batch=a.batch, log=lambda s: print(s.replace("steer dose:", "fine pilot:"), flush=True))
     except ValueError as exc:
         raise SystemExit(str(exc))

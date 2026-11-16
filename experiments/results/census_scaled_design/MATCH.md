@@ -95,6 +95,49 @@ The finer rungs correct four things said above, which were read off the coarse p
 - **The curve is steeper than said.** At layer 37, near the doses, one rung (a push 7% larger) moves the next
   word-piece between 1.3 and 1.5 times as far. The two doses are 6% apart.
 
+## The fine pilot at layers 53 to 59, on a higher ladder
+
+Taken on 16 November 2026, 15:45Z to 15:48Z, on the owner's word ("Take the fine dose pilot at 53-59 meanwhile").
+Layer 31's `match_wide` trial was paused between batches for it and resumed (its `.pauses` file). It has the same
+code, the same 128 neurons a layer and the same seed, but a different ladder. The fine ladder ends at 0.92 of the
+stream, and at these layers that is under both targets: at 53 one stream is 1.63 ceilings, and 1.6 ceilings moved
+the next word-piece under 0.4 nats. So the same rungs, 7% apart, were carried higher: 22 of them, from 0.53 to 2.2
+of the stream (`census_dose_pilot.py measure --ladder high`). The rule above says a layer whose ladder does not hold
+the targets is measured on one that does, and that is what was done.
+
+The record is [`fine_pilot_high.json`](fine_pilot_high.json), and the raw pilot is in
+`atlas_data/census/dose_pilot_high`. The reference layer 45 was measured again on the nine rungs the two ladders
+share, and gave the 13 November figures to every digit. Every ladder rises all the way.
+
+| layer | ceilings for 1.0 nats | ceilings for 1.4 nats | nats at 1.6 ceilings | nats at 2.3 ceilings | one stream, in ceilings |
+|---|---|---|---|---|---|
+| 45 | 2.77 | 2.95 | 0.18 | 0.52 | 2.54 |
+| 53 | 2.24 | 2.42 | 0.30 | 1.12 | 1.63 |
+| 54 | 2.18 | 2.34 | 0.32 | 1.28 | 1.77 |
+| 55 | 1.95 | 2.14 | 0.61 | 2.07 | 1.71 |
+| 56 | 1.96 | 2.11 | 0.55 | 2.52 | 1.48 |
+| 57 | 1.55 | 1.68 | 1.14 | 7.94 | 1.21 |
+| 58 | 1.16 | 1.27 | 4.0 | 11.9 | 1.25 |
+| 59 | none | none | 11.6 | 15.8 | 1.66 |
+
+The pairs went into `MATCH_CEIL` as they came out, so `match_wide` takes the first of each. Layer 59 has none: its
+ladder starts at 5.85 nats, above both targets.
+
+What it corrects and what it says:
+
+- **The walk upward's nats were the coarse pilot's.** That walk read its doses' nats off the steer lens's pilot,
+  whose rungs are a factor of two apart: 0.37 and 1.53 at 53. The fine rungs give 0.30 and 1.12. So at 53,
+  `soft_ceil`'s upper dose (2.3 ceilings) already lay inside this design's 1.0 to 1.4 nats.
+- **That dose was read alone at 53, and failed.** Its answers led by 0.689, but did not carry a neuron's words from
+  one half of the questions to the other (0.507, 0.511). Re-read on fewer questions, those figures stayed near
+  chance (census_question_count). `match_ceil` at 53 (2.24, 2.42 ceilings) and `match_wide` (2.24) would ask nearly
+  that push again. A trial of either at 53 is therefore not likely to pass; this is said before any is registered.
+- **Layers 54 to 58 are unread at these pushes.** At 54, 2.3 ceilings is 1.28 nats, inside the band too, but no
+  trial was taken there. From 55 up the band falls to 2.1 ceilings and under, and at 58 to 1.2. `soft_ceil`'s upper
+  dose overdrives those layers: 2.1 nats at 55, and 12 at 58.
+- **Layer 45 now has a pair (2.77, 2.95), but no use for it.** It is the reference and lies in `break_rel`'s band.
+  Its pair is in the table only because the rule puts every measured layer there.
+
 ## What the trial at layer 37 said: it passes
 
 Registered in [`../census_match_trials/prereg/`](../census_match_trials/prereg/) (hashed at 05:28Z on 13 November,
