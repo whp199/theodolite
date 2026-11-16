@@ -34,7 +34,7 @@ and the study's reports do (page layer = code layer + 1). It checks:
    module names experiments/results/N1G_recorded_label_checks.json by its sha256, as the sidecar does, and each check
    is the file's; the sidecar's script and inputs are as committed (a note where the server code it names has changed
    since), each recorded face is the neuron and face the fixture or the vault's recorded list has at its key, each
-   recorded check follows the rule at its layer, and the counts README.md and ROADMAP.md quote are the file's summary;
+   recorded check follows the rule at its layer, and the counts README.md (or docs/) and ROADMAP.md quote are the file's summary;
 6. the pages' own gate (frontend/src/lib/labels.ts), bundled with the frontend's esbuild and run under node: the
    server's check is parsed and its verdict used, a label below page 41 is held back whatever its check says, a
    missing check is "unchecked" and holds back by the layer alone, shares_nothing and writes_nothing hold back, an
@@ -637,10 +637,10 @@ def check_committed() -> None:
         fx_n, fx_h, v_n, v_h = sm["fixture"]["faces"], sm["fixture"]["held_back"], sm["vault"]["faces"], sm["vault"]["held_back"]
         check(fx_h == sum(c["held_back"] for c in fx.values()) and v_h == sum(c["held_back"] for v in vx.values() for c in v.values()),
               "the results' summary counts the module's held-back checks")
-        readme = re.sub(r"\s+", " ", (ROOT_DIR / "README.md").read_text())
+        readme = re.sub(r"\s+", " ", "\n\n".join(p_.read_text() for p_ in [ROOT_DIR / "README.md"] + sorted((ROOT_DIR / "docs").glob("*.md"))))
         roadmap = re.sub(r"\s+", " ", (ROOT_DIR / "ROADMAP.md").read_text())
         check(f"hold back {fx_h} of the sighting's {fx_n} labelled faces and {v_h} of the vault's {v_n} rows" in readme,
-              f"README.md quotes {fx_h} of {fx_n} and {v_h} of {v_n}")
+              f"README.md or docs/ quotes {fx_h} of {fx_n} and {v_h} of {v_n}")
         check(f"{fx_h} of the sighting's {fx_n} labelled faces and {v_h} of the vault's {v_n} rows are held back" in roadmap,
               f"ROADMAP.md quotes {fx_h} of {fx_n} and {v_h} of {v_n}")
         print(f"  recordedLabelChecks.ts: {len(checks)} checks from {run['results']} ({run['runAt']})")

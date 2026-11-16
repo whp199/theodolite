@@ -15,7 +15,7 @@ itself, not a copy of it. It checks:
    "mended" sends the initial request again; neither changes a centring the reader chose;
 4. the text the other checks and pages lean on: FRAME_AS_BUILT is the frame as first built, word for word; the
    recorded sighting keeps its ranking by |a| and no echoed frame; frame.tsx's studyComparable is false for a frame
-   on the weighted rows; README §v's rows 3 and 8 say the interface sends the mend by default, on the rows decided,
+   on the weighted rows; the fault table's rows 3 and 8 (docs/TRUST.md, once README §v) say the interface sends the mend by default, on the rows decided,
    and that the server's own default stays as first built;
 5. the text pages give for E3 and the order: E3's seven sampled layers give 10–41% at layers 21–59 and 70–74% at
    layers 3 and 11, and no page names the five later layers alone as those sampled; no page says a Löwdin bearing does
@@ -104,6 +104,13 @@ READING_FIELDS = ["frame_squaring", "frame_per_layer", "frame_fnw", "centre_prom
 failures: List[str] = []
 passed = 0
 
+
+
+def readme_and_docs() -> str:
+    """The README and the pages moved out of it into docs/ (16 November 2026), one text: what the README said is now
+    said in one of them."""
+    parts = [ROOT_DIR / "README.md"] + sorted((ROOT_DIR / "docs").glob("*.md"))
+    return "\n\n".join(p.read_text(encoding="utf-8") for p in parts)
 
 def check(cond: bool, what: str) -> None:
     global passed
@@ -683,7 +690,7 @@ def check_text() -> None:
     check(m is not None, "frame.tsx: studyComparable not found")
     if m is not None:
         check("!fnw" in m.group(1), f"frame.tsx: studyComparable ignores the weighted rows: {m.group(1)}")
-    readme = (ROOT_DIR / "README.md").read_text(encoding="utf-8")
+    readme = readme_and_docs()
     rows = {n: re.search(rf"^\| \*\*{n}\*\* \|.*$", readme, re.M) for n in (3, 8)}
     for n, row in rows.items():
         check(row is not None, f"README.md: row {n} of the fault table not found")
@@ -728,7 +735,7 @@ def check_e3_and_order_text() -> None:
         check(f"{min(late) * 100:.0f}–{max(late) * 100:.0f}%" == "10–41%", f"E3 {key}: layers 21–59 give {late}")
         check(f"{min(early) * 100:.0f}–{max(early) * 100:.0f}%" == "70–74%", f"E3 {key}: layers 3 and 11 give {early}")
     texts = {name: (FRONTEND / "src" / name).read_text(encoding="utf-8") for name in E3_PAGES}
-    texts["README.md"] = (ROOT_DIR / "README.md").read_text(encoding="utf-8")
+    texts["README.md and docs/"] = readme_and_docs()
     texts["ROADMAP.md"] = (ROOT_DIR / "ROADMAP.md").read_text(encoding="utf-8")
     for name, text in texts.items():
         flat = re.sub(r"\s+", " ", text)
@@ -768,7 +775,7 @@ def check_contrast_text() -> None:
     rec = json.loads((results / "E3_lens_validation_c_background.json").read_text())
     pn = rec["real"]["prose_neutral"]
     sec = re.sub(r"\s+", " ", (FRONTEND / "src" / "screens" / "landmarks" / "ContrastSection.tsx").read_text(encoding="utf-8"))
-    readme = re.sub(r"\s+", " ", (ROOT_DIR / "README.md").read_text(encoding="utf-8"))
+    readme = re.sub(r"\s+", " ", readme_and_docs())
     # through the lens, on neutral prose at report L40-49 (page 41-50): the average state's share, raw, centred
     for key, said in (("jpp|meanpart|pron", "+1.4"), ("jpp|raw|pron", "+0.8"), ("jpp|cent|pron", "−0.7")):
         got = _shown(_band(pn[key], 40, 50))
@@ -819,7 +826,7 @@ def check_contrast_text() -> None:
                                               "takes no voice, since it does not hold the GPU lock",
                                               "the console and every other statement are sent without one"),
                           "REFERENCES.md": ("column overwrite",)}.items():
-        text = re.sub(r"\s+", " ", (ROOT_DIR / name).read_text(encoding="utf-8"))
+        text = re.sub(r"\s+", " ", readme_and_docs() if name == "README.md" else (ROOT_DIR / name).read_text(encoding="utf-8"))
         for phrase in phrases:
             check(phrase not in text, f"{name}: still says {phrase!r}")
 

@@ -62,7 +62,7 @@ import {
 /*
  * Lexicon — plain words for strange things (folio vii).
  * Built from the approved canvas Lexicon.dc.html. The page is the instrument's glossary: almost all of it
- * is static, sourced copy (README.md, ARCHITECTURE.md, REFERENCES.md, experiments/REPORT.md, the V6/V7/V8
+ * is static, sourced copy (README.md, docs/, ARCHITECTURE.md, REFERENCES.md, experiments/REPORT.md, the V6/V7/V8
  * notes, E6_tool_audit_REPORT.md, N1_REPORT.md, R1_IT_LENS_REPORT.md and the backend code as audited).
  * Every entry has a stable id (see ./lexicon/entries.ts) so other pages can link href.lexicon('<id>').
  * Only one line reads the store: the sighting entry says which sighting is on the instrument page.
@@ -1638,7 +1638,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         </p>
         <p style={{ margin: 0, maxWidth: 760 }}>
           To read more, open <code style={{ fontFamily: "var(--mono)", fontSize: 16 }}>experiments/REPORT.md</code> in
-          the repository, and read the README’s “Status and known issues” before you trust a reading.
+          the repository, and read docs/TRUST.md before you trust a reading.
         </p>
         <p style={{ margin: 0, maxWidth: 760 }}>
           The ideas this instrument joins together, from the Jacobian lens and J-space to the neuron’s two poles and the

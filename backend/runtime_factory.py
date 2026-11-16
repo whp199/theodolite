@@ -65,7 +65,7 @@ TORCHINDUCTOR_CACHE_DIR themselves: their folder is then left as torch keeps it,
 temporary folder included. The new folder starts empty, so the first process to compile after this change (14 November
 2026) builds every graph afresh, once. On a GPU that is seconds (inferred, no GPU run was made for this change: the
 documents give about 4 s for the checkpoint's graphs at load and 3 to 10 s for a GGUF's on the RTX 5090, COMPUTE §ii
-and the README, without saying whether the cache was empty, and the review saw installs of 1.7 to 2.2 s with it
+and docs/SETUP.md, without saying whether the cache was empty, and the review saw installs of 1.7 to 2.2 s with it
 full). On the CPU a process that built a runtime and compiled one small graph took 13.6 s with nothing cached, its
 173 MiB header built too, and 4.3 s the next time, some 2.6 s of each its imports (measured here, 14 November 2026). A
 process that compiles without building a runtime here is covered only where its unpacker calls

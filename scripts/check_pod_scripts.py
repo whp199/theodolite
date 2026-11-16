@@ -304,7 +304,7 @@ def run_checks(tmp: Path) -> int:
     check(dl.count("without a token\n") == 2 and dl.count("again with the one given (not shown)") == 2 and dl.count("implicit token off") == 2
           and "52f3f65bc7a02d555763bc923bd1d9094898219d" in dl and "e166deb5ad540932100ef803c8c9bcc2a5453694" in dl
           and "gemma-4-31B_jpp_lens.pt" in dl and (r1 / "logs" / "download.done").exists(),
-          f"the downloads pinned to the README's snapshots, each tried without a token first, then with it ({dl[-400:]})")
+          f"the downloads pinned to the snapshots docs/SETUP.md names, each tried without a token first, then with it ({dl[-400:]})")
     leaked = [str(p.relative_to(r1)) for p in r1.rglob("*") if p.is_file() and TOKEN.encode() in p.read_bytes()]
     check(not leaked and TOKEN not in out, f"the token is in no file under the root and in nothing printed ({leaked})")
     last = [ln for ln in r.stdout.splitlines() if ln.strip()][-1] if r.stdout.strip() else ""

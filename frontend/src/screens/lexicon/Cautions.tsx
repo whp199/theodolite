@@ -7,7 +7,7 @@ import { Lede, LexLink, LexSection, M } from "./parts";
 /*
  * v · where the instrument can mislead you. Eleven cautions, each a finding of the study told in plain
  * words, with what it means for the reader; the apparatus gives the measured values, where the code was
- * audited, and the proposed fix. All of it is recorded text from README.md, experiments/REPORT.md
+ * audited, and the proposed fix. All of it is recorded text from README.md and docs/, experiments/REPORT.md
  * (its caution on the lenses, §2.2, §3.1–3.5 and the errata), the V6/V7/V8 notes, the E6 tool-audit report,
  * N1 and R1, as the canvas sets it out, corrected where the errata qualify it. The second caution ("single")
  * is the one the red line beside each layer's words links to: it covers the lens's fit on the base model.
@@ -129,7 +129,7 @@ export const Cautions: React.FC = () => (
             layer 60, where the two readings are one, the words are shown.
           </>
         }
-        from="From the README’s headline findings, the report’s §3.2 and the N1 neuron-label study."
+        from="From the study’s headline findings (docs/FINDINGS.md), the report’s §3.2 and the N1 neuron-label study."
         notes={[
           [
             "measured",
@@ -286,7 +286,7 @@ export const Cautions: React.FC = () => (
             layers 51–59 as unreliable.
           </>
         }
-        from="From the README’s headline findings, the report’s summary, §3.1, §3.5 and errata E2 and E49, the E4 and E6 reports and the R1 lens report."
+        from="From the study’s headline findings (docs/FINDINGS.md), the report’s summary, §3.1, §3.5 and errata E2 and E49, the E4 and E6 reports and the R1 lens report."
         notes={[
           [
             "measured",
@@ -335,7 +335,7 @@ export const Cautions: React.FC = () => (
             enormously, and a nudge must be built to avoid them.
           </>
         }
-        from="From the README’s headline findings, the report’s §2.2 and the V6 notes."
+        from="From the study’s headline findings (docs/FINDINGS.md), the report’s §2.2 and the V6 notes."
         notes={[
           [
             "measured",
@@ -392,7 +392,7 @@ export const Cautions: React.FC = () => (
             enough. Either way, read a bearing as a sketch of direction, not a measurement.
           </>
         }
-        from="From the README’s “Status and known issues”, the report’s §3.4 (bugs 3 and 6) and the V7 notes."
+        from="From the fault table (docs/TRUST.md), the report’s §3.4 (bugs 3 and 6) and the V7 notes."
         notes={[
           [
             "where (as audited)",
@@ -467,7 +467,7 @@ export const Cautions: React.FC = () => (
             among the biggest writers it was not measured.
           </>
         }
-        from="From the README’s “Status and known issues”, the report’s §3.4 (bug 4) and the V7 notes."
+        from="From the fault table (docs/TRUST.md), the report’s §3.4 (bug 4) and the V7 notes."
         notes={[
           [
             "where (as audited)",
@@ -523,7 +523,7 @@ export const Cautions: React.FC = () => (
             the mended recipe by default; the window that reads fluently is still narrow.
           </>
         }
-        from="From the README’s “Status and known issues”, the report’s §3.4 (bug 1) and the V7 notes."
+        from="From the fault table (docs/TRUST.md), the report’s §3.4 (bug 1) and the V7 notes."
         notes={[
           [
             "where (as audited)",
@@ -579,7 +579,7 @@ export const Cautions: React.FC = () => (
             sentence is not a reading inside a conversation.
           </>
         }
-        from="From the README’s “Status and known issues”, the report’s §3.4 (bug 5) and the V7 notes."
+        from="From the fault table (docs/TRUST.md), the report’s §3.4 (bug 5) and the V7 notes."
         notes={[
           [
             "where (as audited)",
@@ -672,7 +672,7 @@ export const Cautions: React.FC = () => (
             fix.
           </>
         }
-        from="From the README’s “Status and known issues” and the V7 notes (bug 2)."
+        from="From the fault table (docs/TRUST.md) and the V7 notes (bug 2)."
         notes={[
           [
             "where (as audited)",
@@ -718,7 +718,7 @@ export const Cautions: React.FC = () => (
             Nothing to do now; but sightings taken before the fix, and the study’s audit numbers, carry this small bias.
           </>
         }
-        from="From the README’s “Status and known issues”, the report’s §3.4 (bug 6) and the E6 tool-audit report."
+        from="From the fault table (docs/TRUST.md), the report’s §3.4 (bug 6) and the E6 tool-audit report."
         notes={[
           [
             "where (as audited)",

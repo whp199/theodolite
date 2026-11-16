@@ -20,7 +20,7 @@ $THEODOLITE_UNPACKER picks how the weights are unpacked, as for the server (back
 set): its name is checked before the model loads, and an unpacker that fails its self-test stops the daemon in plain
 words.
 Binds 127.0.0.1 only, on port 8765 unless $LABD_PORT says otherwise: the same port as the instrument's server
-(README §vi), so run one or the other (one GPU process at a time), and through an SSH tunnel to a pod either one would
+(docs/SETUP.md), so run one or the other (one GPU process at a time), and through an SSH tunnel to a pod either one would
 sit at the browser's own 127.0.0.1:8765.
 
 Who may ask: a script run on this machine by the person who started the daemon. Every route refuses (403) a request

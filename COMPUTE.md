@@ -195,7 +195,7 @@ against what each meta names). At home, `scripts/export_constraints.sh` writes t
 canary`), and `scripts/gpu_log.py` records each approval and every pod’s start and stop and sums them. None has yet run
 on a rented card. What they encode:
 
-- **One volume.** The model (about 22 GB, at the README’s snapshot), the lenses (6.4 GB), the venv, the atlas’s
+- **One volume.** The model (about 22 GB, at the snapshot docs/SETUP.md names), the lenses (6.4 GB), the venv, the atlas’s
   indexes (`THEODOLITE_ATLAS_DIR`), the census runs and the field notes and saved prompts (`XDG_DATA_HOME`) all live on
   one network volume, so a stopped pod restarts ready and nothing written in a session is lost with the pod. Every
   shard of a run reads the same stats index (the merge refuses p50s that differ), so copy the home one up.

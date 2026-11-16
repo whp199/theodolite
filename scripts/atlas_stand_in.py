@@ -238,7 +238,7 @@ def main(argv: Optional[list] = None) -> int:
     print(f"the stand-in's atlas folder: {root}")
     rt, vault = stand_in()
     app = bind_server(rt, vault)
-    # a chat's event stream never ends: without a limit, a stop would wait on every page left open (README §vi)
+    # a chat's event stream never ends: without a limit, a stop would wait on every page left open (docs/SETUP.md)
     uvicorn.run(app, host="127.0.0.1", port=int(a.serve), log_level="info", timeout_graceful_shutdown=3)
     return 0
 

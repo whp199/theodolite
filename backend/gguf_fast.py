@@ -47,7 +47,7 @@ unless the person has set TORCHINDUCTOR_CACHE_DIR, not torch's default in the te
 the account can write (`runtime_factory.private_compile_cache`: why, and what else is moved). That folder starts empty,
 so the first install after this change (14 November 2026) compiles every graph afresh, once: seconds on a GPU
 (inferred, not timed for this change: on the RTX 5090 the 31B's graphs were compiled and tested in 3 to 10 s at load,
-the README, which does not say whether the cache was empty), longer on the CPU (runtime_factory's docstring: what one
+docs/SETUP.md, which does not say whether the cache was empty), longer on the CPU (runtime_factory's docstring: what one
 small graph cost there).
 
 Memory: the graphs, and the unpacked weight alone (2 bytes a weight in bf16) while a layer is unpacked. The self-test
