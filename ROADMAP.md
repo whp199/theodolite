@@ -338,7 +338,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
   each of six layers, below), two steer-lens layers timed into a scratch folder (45 and 5), the 16 + 8 determinism run
   of 29 October (868 answers), the `break_rel` trial taken and read that day (both below) and the whole `break_rel`
-  layers taken since 29 October, eleven by 11 November 2026 (40–50; layer 45 and the volunteers’ below). The steer
+  layers taken since 29 October, eleven by 11 November 2026 (40–50; layer 45 and the volunteers’ below), and five more
+  whole layers by 16 November 2026 (39 and 51 with `break_rel`, 34–36 with `match_ceil`; below, under kit 4). The steer
   lens is built since 13 November 2026, all sixty layers (below). The pilot
   measured the cost: every decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole
   `main_rel` layer is about 3.6 days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is
@@ -992,7 +993,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
        not calibrated there. The card’s `doses_calibrated_layers` lists every layer; the page, the lexicon, the
        scientist’s prompt and the depth report say where each design is calibrated. No whole layer has been taken
        with either new design yet. Kit 3 offers seven of the eight to volunteers since 14 November 2026; layer 36
-       is held for the home card (below).
+       is held for the home card (below). (Since then three `match_ceil` layers have been taken whole: 36 on the
+       home card, 34 and 35 by a volunteer; below, under kit 4.)
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
@@ -1097,7 +1099,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
     open on the board: 32–35, 37–39, 51 and 52. Layer 36 is closed, held for the home card;
     `census_board.py layer 36 open` offers it. PR #2 (24 GB cards) is not in this kit. *Not done:* no whole layer
     had been taken with `match_ceil` or `soft_ceil` to its end, on any card, when this kit was cut (the home card
-    has since taken layer 36, below); and whether the intake carries a volunteer card’s own writer floor through to the page is
+    has since taken layer 36, and a volunteer 34 and 35, below); and whether the intake carries a volunteer card’s own writer floor through to the page is
     not checked.
     *The reader for a whole layer taken with them* (written 14 November 2026):
     `experiments/results/census_scaled_design/read_whole.sh <layer>` reads a whole `match_ceil` or `soft_ceil`
@@ -1121,7 +1123,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
     board and canaries are kit 3’s, which was live for about an hour and had no claim. A 24 GB layer is a card class
     of its own, read against its own controls and spot-checked as the RTX PRO 6000 layers were; a 3090 takes about
     43 hours a layer, by the author’s sixteenth of layer 45. *Not shown yet:* a whole layer from a 24 GB card
-    through the intake, and a 4090.
+    through the intake, and a 4090. (Layer 51 from an RTX 3090 came through on 16 November, below; no 4090 has
+    taken a layer yet.)
     *Layer 36 on the home card* (the owner’s word, 14 November: “we can offer layer 36 using your best judgement”;
     the judgement was that the home card take it, since the card was free, the layer passed one gate by a
     thousandth and a whole `match_ceil` layer is what the new reader most needs). It began at 01:07Z on 14 November
@@ -1215,6 +1218,126 @@ layers, the determinism run and the sampled push on 29 October). In this section
       not modelled. And the bars at 32 to 37 were tightened after layer 34’s volunteer had begun under a guide
       that said 0.028 and 0.37; none of their answers had been seen, and the guide now says which bars hold
       where. `check_volunteer_kit` 74 checks then, 75 with the table held to the code.
+
+    *Five more whole layers: four from volunteers, and layer 36 counted done* (15 and 16 November 2026; the owner
+    approved the four downloads and, on 16 November, said how layer 36 is counted). The four bundles went through the
+    intake on the home card on 16 November, 01:54Z to 02:39Z, each bundle’s sha256 the one its volunteer posted, and
+    each layer was read whole by its trial’s registered reader by 03:29Z
+    ([`census_L34_whole/`](experiments/results/census_L34_whole/), `census_L35_whole/`, `census_L39_whole/`,
+    `census_L51_whole/`; a `read.sh` in each says how).
+    - **What came home.** All four were taken with kit 4 at its tag (`81c13628`), from a clean tree.
+      - Layer 34, `match_ceil`, by anon (claim eaef4eff), the volunteer who took 42, 48 and 50, on an RTX PRO 6000
+        Blackwell Server Edition, a card class of its own. Begun 14 November at 05:26Z by the run’s record; DONE
+        posted 15 November at 01:36Z. Its bars were tightened after it began, without sight of it (above); it is
+        inside both the old and the new.
+      - Layer 35, `match_ceil`, by the same volunteer (5d30aa4a) on the same card class: RESERVE and START at 01:47Z
+        on 15 November, DONE at 20:31Z.
+      - Layer 39, `break_rel`, by anon (1f217635), new to the census, on an RTX 5090 that writes the home card’s
+        bits. Its RESERVE, START and DONE came in one comment at 18:50Z on 15 November, and by its record the run
+        began at 05:42Z that day, so the board never held the layer for it; nothing else had claimed it. The rules
+        ask for the claim first; nothing in the intake turns on it.
+      - Layer 51, `break_rel`, by eigentactics (6d708804), who wrote this kit’s change for 24 GB cards, on an RTX
+        3090 24 GB, a card class of its own: **the first layer taken on a 24 GB card.** DONE 15 November at 19:14Z.
+        By the run’s record it began 14 November at 03:28Z, and the bundle keeps its answers file as last written at
+        18:07Z on 15 November: about 39 hours (inferred from a file time set on the volunteer’s machine; the guide
+        says about 43).
+    - **The intake.** Every check passed: the claim’s secret, every setting and the commit, all 565,254 answers once,
+      the canary. The spot chunks, 5 of 737 for each layer drawn when its bundle was checked, against the bars of the
+      layer’s design:
+
+      | layer | its bits | first word-piece the same (bar) | log-probabilities apart: median (bar) | 99th percentile (bar) |
+      |---|---|---|---|---|
+      | 34 | a class of its own | 0.990 (0.90) | 0.0051 (0.012) | 0.115 (0.25) |
+      | 35 | a class of its own | 0.989 (0.90) | 0.0046 (0.012) | 0.110 (0.25) |
+      | 39 | the home card’s | all 3,840 answers the same bit for bit | | |
+      | 51 | a class of its own | 0.989 (0.90) | 0.0111 (0.028) | 0.150 (0.37) |
+
+      The unpushed answers of 34 and 35 part from the home card’s at the three near-ties the RTX PRO 6000 layers
+      parted at before (pieces 5, 21 and 27, which the home card writes at p = 0.50, 0.41 and 0.50), the 3090’s at
+      two of them (5 and 27), and 39’s at none (bar 0.6). Under `match_ceil` the two medians, 0.0051 and 0.0046, sit
+      at what the home card’s own arithmetic gave when the bars were set (0.0050, and 0.117 at the 99th percentile):
+      what that entry expected of another card class, now seen on one.
+    - **What they read**, by the figures and bars of layer 36’s table above (the lead, the lead beyond how the text
+      survives, the two directions across the question halves, the new questions alone; 0.60, 0.58, 0.57 and 0.57,
+      0.56), at 48 word-pieces, each with its trial beside it and layer 36 again for comparison:
+
+      | layer, design, doses | every answer | the lower dose alone | the neurons the controls cover | its trial, every answer |
+      |---|---|---|---|---|
+      | 34, `match_ceil`, ±2.62 and ±2.79 ceilings | 0.761, 0.752, 0.693 and 0.698, 0.721 | 0.733, 0.723, 0.639 and 0.644, 0.679 | 98 in 100; 0.762, 0.750, 0.693 and 0.698, 0.722 | 0.758, 0.747, 0.683 and 0.692, 0.709 |
+      | 35, `match_ceil`, ±2.27 and ±2.41 ceilings | 0.675, 0.650, 0.633 and 0.631, 0.650 | 0.670, 0.653, 0.605 and 0.606, 0.635 | 96 in 100; 0.672, 0.648, 0.627 and 0.625, 0.646 | 0.664, 0.643, 0.639 and 0.623, 0.657 |
+      | 39, `break_rel`, ±1 and ±2 of the stream | 0.687, 0.733, 0.679 and 0.660, 0.684 | 0.689, 0.750, 0.675 and 0.660, 0.666 | 95 in 100; 0.696, 0.727, 0.680 and 0.662, 0.693 | 0.694, 0.738, 0.678 and 0.679, 0.690 |
+      | 51, `break_rel`, ±1 and ±2 of the stream | 0.763, 0.734, 0.698 and 0.697, 0.713 | 0.714, 0.679, 0.657 and 0.649, 0.655 | 95 in 100; 0.756, 0.723, 0.688 and 0.688, 0.707 | 0.773, 0.730, 0.707 and 0.709, 0.728 |
+      | 36, `match_ceil`, ±2.27 and ±2.46 ceilings, the home card | 0.632, 0.650, 0.589 and 0.597, 0.617 | 0.616, 0.630, 0.577 and **0.564**, 0.611 | 97 in 100; 0.629, 0.650, 0.584 and 0.592, 0.614 | 0.627, 0.636, 0.608 and 0.606, 0.612 |
+
+      Reported beside them, gating nothing: the upper dose alone reads 0.733, 0.733, 0.654 and 0.647, 0.675 at 34,
+      and 0.658, 0.646, 0.608 and 0.600, 0.620 at 35. By the length rule 34 and 51 keep 48 word-pieces and 39
+      would take 32, as their trials did; 35 keeps 48 where its trial would have taken 32, and 36 would take 32
+      where its trial kept 48 (above).
+    - **Where they differ from their trials.** Each passes every gate its trial passed. The least margin over a bar,
+      whole layer against trial: 0.069 against 0.070 at 34, 0.035 against 0.012 at 35, 0.087 against 0.090 at 39,
+      0.079 against 0.096 at 51 (and at 36, −0.006 against 0.001).
+      - Layer 34 reads at its trial or a little over on every answer (lead 0.761, against 0.758). Its lower dose
+        alone leads by a little less (0.733, against 0.745) and carries across the halves as its trial did (0.639 and
+        0.644, against 0.640 and 0.650).
+      - Layer 35: the check layer 36 missed, the lower dose’s words carried across the question halves, reads 0.605
+        and 0.606, over its trial’s 0.582 and 0.595. Layer 36’s entry said that if the others fell as far, 35 would
+        come close; it rose. That check is still layer 35’s thinnest.
+      - Layer 39 reads as its trial did but in one direction across the halves: 0.660, against 0.679 for every
+        answer and 0.680 for the ±1 answers alone.
+      - Layer 51 reads under its trial on 13 of the 15 figures, by 0.031 at most (the ±1 answers beyond how the
+        text survives, 0.679 against 0.710). Its trial was taken on the home card and the whole layer on a 3090,
+        each read against controls pushed on its own card.
+      - The text: at 34 and 35 it hardly moves at either dose (the neurons’ answers lose 0.006 to 0.018 of their
+        distinct 4-grams, the controls’ 0.004 to 0.011); at 39 and 51 it loses what the trials lost (at ±1, 0.04 and
+        0.01 for the neurons, 0.01 and none for the controls; at ±2, about 0.55 and 0.78, neurons and controls
+        alike).
+    - **Per neuron.** The first three counts are those earlier entries give, from each reading at 48 word-pieces.
+      The last two were computed for this entry from each run’s units file, by the step added at the end of each new
+      `read.sh` (gating nothing); it gives layers 48–50’s 1,408, 1,407 and 1,353 again, and 2,007 to 4,742 at 40–47.
+
+      | layer | above all 2,048 controls (10.5 by chance) | q ≤ 0.05 | above 95 in 100 controls | more than five control SDs over the controls’ median | the strongest control and the fifth, in those SDs |
+      |---|---|---|---|---|---|
+      | 34 | 110 | 0 | 43 in 100 | 2,445 | 11.5 and 8.3 |
+      | 35 | 35 | 0 | 27 in 100 | 928 | 10.4 and 7.2 |
+      | 36 | 18 | 0 | 23 in 100 | 930 | 13.3 and 8.9 |
+      | 39 | 87 | 436 | 25 in 100 | 870 | 7.8 and 5.2 |
+      | 51 | 2,123 | 7,145 | 43 in 100 | 2,485 | 5.3 and 3.6 |
+      | 40–50 | 95 to 4,794 | 3,534 to 9,133 | 32 to 49 in 100 | 1,353 to 4,742 | 4.9 to 10.8, and 3.4 to 5.3 |
+
+      - **At 34–36 no neuron has q ≤ 0.05, and the count hangs on a few controls that stand far out.** The count
+        rests on how far the strongest controls stand out, as the count above every control rests on the one
+        strongest (layers 40–50, above). Under `match_ceil` the strongest controls bring the words of another
+        language with the text unbroken (read from their words: Portuguese, Spanish, French and German at 34;
+        Indonesian, French, German and Portuguese at 35; Indonesian, Spanish, Portuguese, Vietnamese and French at
+        36), as the strongest does at 39 and did at 41; what is new is how many stand out: even the fifth
+        strongest stands 7.2 to 8.9 of the controls’ SDs above their median, where at every `break_rel` layer read
+        whole it stands 3.4 to 5.3. At 34, with the five strongest controls set aside, 6,236 neurons would have q ≤
+        0.05 (339 at 35; at 36 none until ten are set aside). That measures how much the count hangs on a few
+        controls; it is not a reading, and the gates count every control. At 35 and 36 the neurons stand out less
+        too: 928 and 930 lie more than five control SDs over the median and 27 and 23 in 100 beat 95 in 100 of the
+        controls, fewer than at any of 40–50 (1,353 and 32 in 100 at the least). By the other counts layer 34 stands
+        with layer 51: 43 in 100 of its neurons beat 95 in 100 of the controls.
+      - **Layer 39 tells the fewest single neurons of any `break_rel` layer:** 436 with q ≤ 0.05 (3,534 to 9,133 at
+        40–50, 7,145 at 51) and 87 above every control. Its trial had 28 of 1,022 above every control, and said then
+        that fewer of its neurons stand apart.
+      - **Layer 51 reads per neuron as 40–50 do**, from a 3090. Its strongest controls loop on glued “thought” words,
+        as those of 48–50 do.
+    - **Layer 36, as the owner decided** (16 November 2026, asked and answered): the board marks it done by the home
+      card, with a note naming the miss, and the README counts it among the done layers. `census.DOSES_CALIBRATED`
+      is unchanged (`match_ceil` 32–37, `soft_ceil` 38 and 52, `break_rel` 39–51): whether the miss changes what is
+      counted calibrated at 36 is the owner’s to decide, and was not part of what was asked.
+    - **The board** (16 November): sixteen layers done, 34–36 and 39–51, ten of them by volunteers; layer 37
+      running, reserved and started at 22:13Z on 15 November (anon 042ec8f2, the volunteer who took 39, on an RTX
+      5090 with the home card’s bits); 32, 33, 38 and 52 open; 0–31 and 53–59 not taken. Before the four were
+      judged, the board’s sync was mended (`abd12ec`): it had lapsed layer 34’s claim by judging its DONE at the
+      sync’s time.
+    - **What a volunteer reported, not checked here.** eigentactics wrote on the board issue that they also took
+      layer 51 whole on an AMD RX 7900 XTX under ROCm; that both runs pass the three checks by the kit’s
+      `neighbour_read.py`; that of 7,874 neurons with q < 0.05 on either card, 16 in 100 are so on one card only;
+      and that a layer split between the two cards passes too. They offer a pull request making 24 GB ROCm cards a
+      card class. None of it has been read here, and any answer to them is the owner’s.
+    - **Not done.** `scripts/atlas_steer_check.py` was not run again with these four layers in, and the page was not
+      looked at with them.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

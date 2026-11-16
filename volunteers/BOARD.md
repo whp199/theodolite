@@ -8,12 +8,12 @@ Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 31 | 32 | not taken |  |  |  | its trial failed, 13 November 2026 (match_ceil): not taken |
 | 32 | 33 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
 | 33 | 34 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
-| 34 | 35 | running | anon eaef4eff | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 14%, ends ~2026-11-14T18:08Z |  |
-| 35 | 36 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
-| 36 | 37 | closed |  |  |  | match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: the home card is taking it |
-| 37 | 38 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 34 | 35 | done | anon eaef4eff | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
+| 35 | 36 | done | anon 5d30aa4a | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
+| 36 | 37 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 14 Nov 2026, read whole; passed two of its trial's three gates, and on the lower dose alone missed one figure by 0.006 |
+| 37 | 38 | running | anon 042ec8f2 | NVIDIA GeForce RTX 5090 32 GB | ? |  |
 | 38 | 39 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
-| 39 | 40 | OPEN |  |  |  | break_rel; its trial passed, 12 November 2026 |
+| 39 | 40 | done | anon 1f217635 | NVIDIA GeForce RTX 5090 32 GB |  | 15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole |
 | 40 | 41 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 30-31 Oct 2026, passed layer 45's gates |
 | 41 | 42 | done | ReimusArmpit d4bcee00 | NVIDIA GeForce RTX 5090 32 GB |  | 1 Nov 2026, the home card's bits, spot-checked bit for bit; passed layer 45's gates |
 | 42 | 43 | done | anon a56863f2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
@@ -25,7 +25,7 @@ Kit 4 (census-kit-4). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 48 | 49 | done | anon 5cd76843 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
-| 51 | 52 | running | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB | 4%, ends ~2026-11-15T20:30Z |  |
+| 51 | 52 | done | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB |  | 14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole |
 | 52 | 53 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
 | 53–59 | 54–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
@@ -37,5 +37,9 @@ Judged:
 - L48 anon 5cd76843: accepted (10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L44 Kimi-chan 5c3e7396: accepted (9-10 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
 - L50 anon b153da82: accepted (10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates)
+- L51 eigentactics 6d708804: accepted (14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole)
+- L34 anon eaef4eff: accepted (14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
+- L35 anon 5d30aa4a: accepted (15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
+- L39 anon 1f217635: accepted (15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-14T13:50Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-16T03:56Z.

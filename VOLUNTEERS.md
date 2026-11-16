@@ -5,9 +5,13 @@ layer's 21,504 neurons is pushed along its own write direction, at four strength
 greedy answers are then read against those of 2,048 random directions pushed the same way. Layer 45 was the first
 done: 13.2 hours on one RTX 5090, and it passed every check set for it before it was run
 (`experiments/results/census_L45_whole/`). By 11 November 2026 the ten beside it were done too,
-**40 to 44 and 46 to 50**, six of them by volunteers, and each passed layer 45's gates, read after the fact.
+**40 to 44 and 46 to 50**, six of them by volunteers, and each passed layer 45's gates, read after the fact. By 16
+November 2026 five more were done, **34 to 36, 39 and 51**. Four came from volunteers, and each passed the three
+checks its trial was read by (below); layer 51 came from an RTX 3090, the first layer taken on a 24 GB card. Layer 36
+was taken on our own card and passed two of the three; on the third it missed one figure by 0.006, and it is counted
+done with that miss named on the board.
 
-Those eleven are the layers the first push strengths, ±1 and ±2 of the stream, were calibrated for. **A layer outside
+Layers 40 to 50 are the eleven the first push strengths, ±1 and ±2 of the stream, were calibrated for. **A layer outside
 them is not offered blind.** We first take a trial of it on our own card: about a thousand of its neurons against
 1,024 random directions, some 70 minutes, read by rules fixed before any trial ran. A layer whose trial passes is
 opened on the board; one whose trial fails is not taken. The first push strengths passed at layers 39 and 51 and no
@@ -25,8 +29,8 @@ neuron can write by itself, its *write ceiling*:
 
 The script picks the right one for the layer you take; there is nothing to choose. The trials did not pass equally:
 layer 34 passed by the most, and layer 36 by a thousandth on one of its three checks
-(`experiments/results/census_scaled_design/MATCH.md` has every figure). So layer 36 is held for our own card for now
-and is not on offer. Layer 31 failed its trial, and no push
+(`experiments/results/census_scaled_design/MATCH.md` has every figure). So layer 36 was held for our own card and
+taken there (14 November 2026); read whole, it missed that same check by 0.006. Layer 31 failed its trial, and no push
 strengths have passed a trial at layers 0 to 30 or 53 to 59, so those are not taken yet. **The board says which layers
 are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
 
@@ -242,7 +246,10 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
    If you began a `match_ceil` or `soft_ceil` layer when this guide still said 0.028 and 0.37 for every layer: the
    tighter bars do apply to your run, and they were set without sight of it. On the five layers accepted from other
    cards so far, the medians were 0.013 to 0.015 where our own arithmetic gave 0.013, so a run of the kit's code
-   should sit near our arithmetic under these designs too, well inside the new bars. A layer with no measured bars (53 to 59, which are shut) is
+   should sit near our arithmetic under these designs too, well inside the new bars. It did: layers 34 and 35, from an
+   RTX PRO 6000 under `match_ceil` and accepted on 16 November 2026, came to medians of 0.0051 and 0.0046 and 99th
+   percentiles of 0.115 and 0.110, where our own arithmetic gave 0.0050 and 0.117; and layer 51, from an RTX 3090
+   under `break_rel`, to 0.0111 and 0.150. A layer with no measured bars (53 to 59, which are shut) is
    not judged until they are measured.
 
    **Amended 31 October 2026: the unpushed answers.** The first rule asked each to share at least 16 word-pieces with
@@ -264,7 +271,10 @@ with each other, the card is named.
 reading against layer 45's gates, the gentler push's answers alone, and the neurons whose text survives as the random
 directions' does (the rules are in `experiments/results/census_neighbour_trials/prereg/`, `census_soft_trials/prereg/`
 and `census_match_walk/prereg/`). The push strengths are counted calibrated at each of the ten layers whose trial passed. The
-kit opens with nine of them; layer 36 is held for our own card. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
+kit opened with nine of them; layer 36 was held for our own card and taken there. Read whole by these checks (16
+November 2026), layers 34, 35, 39 and 51 pass all three, and layer 36 passes two and misses the gentler push's check
+on one figure, 0.564 against 0.57. Whether the push strengths stay counted calibrated at 36 is the owner's to decide;
+nothing has been changed. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
 drawn on the map without gilt.
 
 ## What you send, and what runs on your machine

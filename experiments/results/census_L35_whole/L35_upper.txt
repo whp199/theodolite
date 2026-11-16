@@ -1,0 +1,10 @@
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.6577 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6458 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6078 (bar 0.57), rep_BA 0.5998 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6201 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4985 (bar (0.47, 0.53)), read_gain_ratio 1.03 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 35.64015 (bar 0.002)
+  reported: shift 0.671, shift_up 0.661, shift_down 0.586, xq 0.644, rep 0.615, mass_A 0.605, mass_u 0.649, shift_res 0.654, rep_res 0.594
+  counts {'neurons': 21504, 'controls': 2048, 'above_every_control': 88, 'by_chance': 10.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.2249, 'pA05_and_pB05': 1715, 'pA05_and_pB05_by_chance': 53.8}; rho_AB neurons 0.329 controls 0.121; signs {'+': 0.5852, '-': 0.5749}
+-> experiments/results/census_L35_whole/L35_upper.json: FAIL

@@ -67,7 +67,17 @@
   6872261621,
   6872297234,
   6872381688,
-  6873601845
+  6873601845,
+  6881217816,
+  6887398373,
+  6887516814,
+  6889420448,
+  6899468606,
+  6899791456,
+  6900006821,
+  6900911960,
+  6902230708,
+  6905080827
  ],
  "claims": [
   {
@@ -583,7 +593,7 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-14T05:09Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-14T05:09Z",
@@ -602,12 +612,51 @@
      "via": "github",
      "what": "claim=6d708804 done=4% eta=2026-11-15T20:30Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-14T17:09Z",
+     "via": "github",
+     "what": "claim=6d708804 done=34% eta=2026-11-15T18:52Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-15T04:54Z",
+     "via": "github",
+     "what": "claim=6d708804 done=63% eta=2026-11-15T20:32Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-15T19:14Z",
+     "via": "github",
+     "what": "claim=6d708804 sha256=7c49fd98441f0e97 size=471MB link=https://huggingface.co/datasets/eigentactics/theodolite-census/resolve/main/L51-break_rel/L51-break_rel-6d708804.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-16T01:55Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-16T02:27Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA GeForce RTX 3090), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-16T02:40Z",
+     "what": "set accepted: own bits (NVIDIA GeForce RTX 3090), spot-checked"
+    },
+    {
+     "at": "2026-11-16T03:41Z",
+     "what": "set accepted: 14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole"
     }
    ],
    "started_at": "2026-11-14T13:50Z",
    "bits": "own",
-   "done": "4%",
-   "eta": "2026-11-15T20:30Z"
+   "done": "63%",
+   "eta": "2026-11-15T20:32Z",
+   "submitted_at": "2026-11-15T19:14Z",
+   "bundle_sha256": "7c49fd98441f0e97",
+   "size": "471MB",
+   "link": "https://huggingface.co/datasets/eigentactics/theodolite-census/resolve/main/L51-break_rel/L51-break_rel-6d708804.tar",
+   "note": "14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole"
   },
   {
    "code": "eaef4eff",
@@ -617,7 +666,7 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-14T13:50Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-14T13:50Z",
@@ -636,12 +685,171 @@
      "via": "github",
      "what": "claim=eaef4eff done=14% eta=2026-11-14T18:08Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-15T01:36Z",
+     "via": "github",
+     "what": "claim=eaef4eff sha256=c1df22fcbea2b443 size=535MB link=https://github.com/Asynonymous/census-L34/releases/download/L34-match_ceil-eaef4eff/L34-match_ceil-eaef4eff.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-16T01:54Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-16T02:04Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-16T02:31Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-16T03:41Z",
+     "what": "set accepted: 14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
     }
    ],
    "started_at": "2026-11-14T13:50Z",
    "bits": "own",
    "done": "14%",
-   "eta": "2026-11-14T18:08Z"
+   "eta": "2026-11-14T18:08Z",
+   "submitted_at": "2026-11-15T01:36Z",
+   "bundle_sha256": "c1df22fcbea2b443",
+   "size": "535MB",
+   "link": "https://github.com/Asynonymous/census-L34/releases/download/L34-match_ceil-eaef4eff/L34-match_ceil-eaef4eff.tar",
+   "note": "14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
+  },
+  {
+   "code": "5d30aa4a",
+   "layer": 35,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-15T01:47Z",
+   "state": "accepted",
+   "events": [
+    {
+     "at": "2026-11-15T01:47Z",
+     "via": "github",
+     "what": "claim=5d30aa4a card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=4",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-15T01:47Z",
+     "via": "github",
+     "what": "claim=5d30aa4a bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-15T20:31Z",
+     "via": "github",
+     "what": "claim=5d30aa4a sha256=c6b943d93e1e3427 size=535MB link=https://github.com/Asynonymous/census-L35/releases/download/L35-match_ceil-5d30aa4a/L35-match_ceil-5d30aa4a.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-16T01:55Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-16T02:11Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-16T02:34Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-16T03:41Z",
+     "what": "set accepted: 15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
+    }
+   ],
+   "started_at": "2026-11-15T01:47Z",
+   "bits": "own",
+   "submitted_at": "2026-11-15T20:31Z",
+   "bundle_sha256": "c6b943d93e1e3427",
+   "size": "535MB",
+   "link": "https://github.com/Asynonymous/census-L35/releases/download/L35-match_ceil-5d30aa4a/L35-match_ceil-5d30aa4a.tar",
+   "note": "15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
+  },
+  {
+   "code": "1f217635",
+   "layer": 39,
+   "name": "anon",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-15T18:50Z",
+   "state": "accepted",
+   "events": [
+    {
+     "at": "2026-11-15T18:50Z",
+     "via": "github",
+     "what": "claim=1f217635 card=NVIDIA GeForce RTX 5090 32 GB name=anon kit=4",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-15T18:50Z",
+     "via": "github",
+     "what": "claim=1f217635 bits=home card=NVIDIA GeForce RTX 5090 32 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-15T18:50Z",
+     "via": "github",
+     "what": "claim=1f217635 sha256=6fe7ca79823b0c09 size=542MB link=https://github.com/Zlorthishen/theodolite/releases/download/L39-break_rel-1f217635/L39-break_rel-1f217635.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-16T01:55Z",
+     "what": "set checking: on paper whole; home bits; spot-check next"
+    },
+    {
+     "at": "2026-11-16T02:19Z",
+     "what": "set checking: spot-checked: bit for bit on the spot chunks; accept next"
+    },
+    {
+     "at": "2026-11-16T02:39Z",
+     "what": "set accepted: home bits (NVIDIA GeForce RTX 5090), spot-checked"
+    },
+    {
+     "at": "2026-11-16T03:41Z",
+     "what": "set accepted: 15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
+    }
+   ],
+   "started_at": "2026-11-15T18:50Z",
+   "bits": "home",
+   "submitted_at": "2026-11-15T18:50Z",
+   "bundle_sha256": "6fe7ca79823b0c09",
+   "size": "542MB",
+   "link": "https://github.com/Zlorthishen/theodolite/releases/download/L39-break_rel-1f217635/L39-break_rel-1f217635.tar",
+   "note": "15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
+  },
+  {
+   "code": "042ec8f2",
+   "layer": 37,
+   "name": "anon",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "kit": "4",
+   "via": "github",
+   "at": "2026-11-15T22:13Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-15T22:13Z",
+     "via": "github",
+     "what": "claim=042ec8f2 card=NVIDIA GeForce RTX 5090 32 GB name=anon kit=4",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-15T22:13Z",
+     "via": "github",
+     "what": "claim=042ec8f2 bits=home card=NVIDIA GeForce RTX 5090 32 GB",
+     "verb": "START"
+    }
+   ],
+   "started_at": "2026-11-15T22:13Z",
+   "bits": "home"
   }
  ],
  "layers": {
@@ -848,16 +1056,22 @@
    "note": "match_ceil; its trial passed, 13 November 2026"
   },
   "34": {
-   "state": "open",
-   "note": "match_ceil; its trial passed, 13 November 2026"
+   "state": "done",
+   "by": "anon eaef4eff",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
   },
   "35": {
-   "state": "open",
-   "note": "match_ceil; its trial passed, 13 November 2026"
+   "state": "done",
+   "by": "anon 5d30aa4a",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
   },
   "36": {
-   "state": "closed",
-   "note": "match_ceil; its trial passed, by a thousandth on one of its checks, 13 November 2026: the home card is taking it"
+   "state": "done",
+   "by": "home card",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "14 Nov 2026, read whole; passed two of its trial's three gates, and on the lower dose alone missed one figure by 0.006"
   },
   "37": {
    "state": "open",
@@ -868,12 +1082,16 @@
    "note": "soft_ceil; its trial passed, 13 November 2026"
   },
   "39": {
-   "state": "open",
-   "note": "break_rel; its trial passed, 12 November 2026"
+   "state": "done",
+   "by": "anon 1f217635",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
   },
   "51": {
-   "state": "open",
-   "note": "break_rel; its trial passed, 12 November 2026"
+   "state": "done",
+   "by": "eigentactics 6d708804",
+   "card": "NVIDIA GeForce RTX 3090 24 GB",
+   "note": "14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole"
   },
   "52": {
    "state": "open",
@@ -908,5 +1126,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-14T13:50Z"
+ "updated_at": "2026-11-16T03:56Z"
 }
