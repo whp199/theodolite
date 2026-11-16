@@ -1,0 +1,20 @@
+who          kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+orange       kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+free         kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+self         kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+green        kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+interesting  kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+bicycle      kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+walk         kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+chair        kept: in a batch of 64 it holds 46 of 48 word-pieces with itself alone ([46, 46])
+kettle       kept: in a batch of 61 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+sleep        kept: in a batch of 61 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+lamp         kept: in a batch of 61 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+the questions asked: who, orange, free, self, green, interesting, bicycle, walk, chair, kettle, sleep, lamp
+halves: ['who', 'orange', 'free', 'self', 'green', 'interesting'] | ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp']
+census.DESIGN_QUESTIONS['match_both'] at the checkout: who, orange, free, self, green, interesting, bicycle, walk, chair, kettle, sleep, lamp (the same)
+OK
+
+record: atlas_data/census/trials/both/floor_match_both.json sha256 cfa21de5437dd01adef001ed5b48b80db52517a4731e57f5c98477d9a563fc94
+taken 2026-11-16T22:23:50Z (written_at) on the home RTX 5090, from the main checkout at 1729299 (match_both was added to census.py, uncommitted, while it ran; the check takes its questions by key and reads no design); --layer 30 --max-new 48 --batches 56,60,61,64 --unpacker compiled --questions who,orange,free,self,green,interesting,bicycle,walk,chair,kettle,sleep,lamp,lines,clock,rice
+the rule (step0.py) was hashed before the check: 74fb9e7560d05de2... at 2026-11-16T22:11:33Z
