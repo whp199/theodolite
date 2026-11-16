@@ -1159,9 +1159,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
       under p 0.05 on both halves of the questions where chance gives 54: the layer as a whole carries a lead,
       and few single neurons can be told from a control.
     - **Cut to 32 word-pieces the whole reading still passes** (0.619, 0.625, 0.584 and 0.587, 0.598), and by the
-      rule the shorter is the one kept.
-    - **The steer lens against it is weak, as at every layer below 39** (`scripts/atlas_steer_check.py`, run again
-      with the whole layer in): of the 4,751 neurons above 95 in 100 controls, a steer-lens word-piece is one of
+      length rule it would take 32; every figure here is at 48.
+    - **The steer lens against it is weak, as at every layer checked below 39 (32 to 38)**
+      (`scripts/atlas_steer_check.py`, run again with the whole layer in): of the 4,751 neurons above 95 in 100 controls, a steer-lens word-piece is one of
       the census’s words for 0.185, and for 0.034 with the neurons shuffled. Its neighbours’ trials read 0.127
       (35) and 0.197 (37).
     - **What this does not decide.** `match_ceil` is counted as calibrated at layers 32 to 37 on the trials
@@ -1312,8 +1312,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
         36), as the strongest does at 39 and did at 41; what is new is how many stand out: even the fifth
         strongest stands 7.2 to 8.9 of the controls’ SDs above their median, where at every `break_rel` layer read
         whole it stands 3.4 to 5.3. At 34, with the five strongest controls set aside, 6,236 neurons would have q ≤
-        0.05 (339 at 35; at 36 none until ten are set aside). That measures how much the count hangs on a few
-        controls; it is not a reading, and the gates count every control. At 35 and 36 the neurons stand out less
+        0.05 (339 at 35; at 36 none until six are set aside, 241, and 945 with ten). That measures how much the
+        count hangs on a few controls; it is not a reading, and the gates count every control. At 35 and 36 the neurons stand out less
         too: 928 and 930 lie more than five control SDs over the median and 27 and 23 in 100 beat 95 in 100 of the
         controls, fewer than at any of 40–50 (1,353 and 32 in 100 at the least). By the other counts layer 34 stands
         with layer 51: 43 in 100 of its neurons beat 95 in 100 of the controls.
@@ -1336,8 +1336,11 @@ layers, the determinism run and the sampled push on 29 October). In this section
       `neighbour_read.py`; that of 7,874 neurons with q < 0.05 on either card, 16 in 100 are so on one card only;
       and that a layer split between the two cards passes too. They offer a pull request making 24 GB ROCm cards a
       card class. None of it has been read here, and any answer to them is the owner’s.
-    - **Not done.** `scripts/atlas_steer_check.py` was not run again with these four layers in, and the page was not
-      looked at with them.
+    - **The steer lens, checked again with the four in** (`scripts/atlas_steer_check.py`, 16 November, 03:58Z): of
+      the neurons above 95 in 100 controls, a steer-lens word-piece is one of the census’s words for 0.157 at 34
+      (9,087 neurons; 0.023 with the neurons shuffled), 0.154 at 35 (5,577; 0.030), 0.634 at 39 (5,260; 0.060) and
+      0.850 at 51 (9,285; 0.012): weak at 34 and 35 and agrees at 39 and 51, as before. **Not done:** the page was
+      not looked at with them.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
@@ -1809,8 +1812,9 @@ in order:
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
   posture (5); budgets, and how many fresh readings a brief takes (6); the name and the words, “Levelling” and “level
   book” among them (7); the faults its section 3 found (8). The build’s own, in the spec’s section 12: whether an
-  item whose two floors stand apart (on the card, 15.7 to 42.7 times on two raw texts behind the start mark, both read
-  “ok”) should read “unstable”; what to do with raw text behind a start mark, which the gate no longer refuses;
+  item whose two floors stand apart (on the card 11 item-and-layer pairs had them more than 3 times apart: 7 on chats
+  and a passage given as an answer, 3.0 to 4.1 times, and 4 on raw text behind the start mark, 3.4 to 42.7 times; all
+  but one of their 22 readings read “ok”) should read “unstable”; what to do with raw text behind a start mark, which the gate no longer refuses;
   whether 12 and 32 are the row counts to read, and whether a one-row capture should be offered on chat-formatted
   items at all; whether a control arm clear of the floor that reads far apart between row counts should still count
   (since 16 November 2026 the stability rule reads the edit’s arms alone and prints the control arms’ ratios beside

@@ -97,11 +97,11 @@ scripts/volunteer/census.sh check                      # can this machine take a
 1. **Pick an open layer on the board and claim it.**
 
    ```bash
-   scripts/volunteer/census.sh reserve 34 --name yourname
+   scripts/volunteer/census.sh reserve 32 --name yourname
    ```
 
    The script reads the board first and refuses a layer that is not open there. Then it prints one line,
-   `CENSUS RESERVE L34 claim=… card=… name=… kit=3`. Post it in the thread, or as a comment on the board issue. The claim's secret stays in `~/theodolite-census/claims/`, and the bundle you send carries it: that is
+   `CENSUS RESERVE L32 claim=… card=… name=… kit=4`. Post it in the thread, or as a comment on the board issue. The claim's secret stays in `~/theodolite-census/claims/`, and the bundle you send carries it: that is
    how it is known to come from your claim. The board is kept by hand, so give it a while, and pick another layer if
    someone was there first.
 
@@ -123,7 +123,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 3. **The canary** (a few minutes):
 
    ```bash
-   scripts/volunteer/census.sh canary 34
+   scripts/volunteer/census.sh canary 32
    ```
 
    It writes the run's first batch on your card and sets it against the same batch written on ours. It also measures
@@ -133,7 +133,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 4. **Run the layer:**
 
    ```bash
-   scripts/volunteer/census.sh run 34
+   scripts/volunteer/census.sh run 32
    ```
 
    It runs detached, so you can close the terminal. Post the `CENSUS START` line it prints. If it stops (a reboot, a
@@ -143,7 +143,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 5. **Check on it** now and then:
 
    ```bash
-   scripts/volunteer/census.sh status 34
+   scripts/volunteer/census.sh status 32
    ```
 
    It prints the answers written, the rate, when it should finish, and a `CENSUS PROGRESS` line. Post that line every
@@ -152,15 +152,15 @@ scripts/volunteer/census.sh check                      # can this machine take a
 6. **Pack it** when it is whole (10–20 minutes):
 
    ```bash
-   scripts/volunteer/census.sh pack 34
+   scripts/volunteer/census.sh pack 32
    ```
 
    It checks the run is whole and taken with the kit's settings, then packs about 500 MB into
-   `~/theodolite-census/outbox/L34-match_ceil-<claim>.tar` (the name carries the layer's design). Upload that
+   `~/theodolite-census/outbox/L32-match_ceil-<claim>.tar` (the name carries the layer's design). Upload that
    somewhere anyone can download it for a week or more: a Hugging Face dataset, a torrent, a file host. Post the
    `CENSUS DONE` line with your link in it.
 
-If you can't finish, run `scripts/volunteer/census.sh release 34` and post the line it prints. That frees the layer
+If you can't finish, run `scripts/volunteer/census.sh release 32` and post the line it prints. That frees the layer
 for someone else.
 
 ### If you ran an earlier kit
@@ -245,7 +245,7 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
 
    If you began a `match_ceil` or `soft_ceil` layer when this guide still said 0.028 and 0.37 for every layer: the
    tighter bars do apply to your run, and they were set without sight of it. On the five layers accepted from other
-   cards so far, the medians were 0.013 to 0.015 where our own arithmetic gave 0.013, so a run of the kit's code
+   cards before these bars were measured (42, 44, 47, 48 and 50), the medians were 0.013 to 0.015 where our own arithmetic gave 0.013, so a run of the kit's code
    should sit near our arithmetic under these designs too, well inside the new bars. It did: layers 34 and 35, from an
    RTX PRO 6000 under `match_ceil` and accepted on 16 November 2026, came to medians of 0.0051 and 0.0046 and 99th
    percentiles of 0.115 and 0.110, where our own arithmetic gave 0.0050 and 0.117; and layer 51, from an RTX 3090
@@ -306,7 +306,7 @@ drawn on the map without gilt.
   census-kit-4`, then reserve again.
 - **The canary refuses "other settings"**: the checkout isn't at `census-kit-4`, or the stats index isn't the kit's.
 - **The run stopped**: run the same `census.sh run` again. The log is `~/theodolite-census/logs/L<layer>-<design>.log`
-  (`L34-match_ceil.log`).
+  (`L32-match_ceil.log`).
 - **Out of memory**: close everything else on the card. The batch is fixed at 64, so a card that can't hold it
   can't take part.
 - **Anything else**: ask in the thread or on the board issue.

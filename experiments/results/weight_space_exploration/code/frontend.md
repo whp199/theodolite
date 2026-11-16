@@ -147,10 +147,10 @@ calls the vault; the only vault traces are read-only fields (`:580, 741`). The o
 - **Two reading switches on every page**, kept per browser: **rubrics** (on by default; red italic guidance for
   newcomers) and **apparatus** (off by default; formulas, raw values, sources, every expert control)
   (`frontend/src/reading.ts`, `kit.tsx:217-265`). The owner's rule is never scare a novice and never hide a feature
-  from an expert (memory note of 16 October 2026).
+  from an expert (the owner's working notes, 16 October 2026).
 - **Vocabulary** (`lib/words.ts:1-6`, README.md:249-266): sighting, layer 1-60, word-piece, the lens and the naked eye,
   gathering and remembering, a neuron's two faces, threads, landmarks, nudge, push, the three voices, census, steer
-  lens, web, vault, edit, scientist. Words for navigation, not icons. No devotional imagery (same memory note).
+  lens, web, vault, edit, scientist. Words for navigation, not icons. No devotional imagery (the same notes).
 - **Honesty conventions a new screen inherits.** `<Missing>` prints a bracketed placeholder rather than an invented
   number (`kit.tsx:267-270`); every lens label passes the label gate (`screens/atlas/parts.tsx:1-7`); every readout of
   words carries a caution line; the server's echo, not the form, says what was done (README.md:285-286); a refusal is

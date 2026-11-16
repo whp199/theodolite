@@ -75,8 +75,8 @@ than a quarter over, none of the other 123). The refit puts all 163 within 0.85 
 was fit on them: the next card run is its test. The rest stand as measured
 before: a decode step 0.095 s hooked and unhooked at 8 rows [pilot 3; the card check read 0.110 s hooked and 0.107 s
 unhooked, section 7b]; a column overlay about 0.3 ms a cloned matrix, to 64 columns [pilot 1]; load 9.5 s and
-unpacker install 1.83 s [pilot 1, no lens; the card check's load, the lens loaded and then freed, took 16.0 s and its
-install with the self-test 3.46 s]; writing with a cache about 0.8 MB a row a word-piece of context [measured 28
+unpacker install 1.83 s [pilot 1, no lens; the card check's load, the lens loaded and then freed, took 16.0 s, its
+install with the self-test 3.46 s of them]; writing with a cache about 0.8 MB a row a word-piece of context [measured 28
 October 2026, lens loaded; on the card 8 rows to 74 pieces peaked 0.73 GiB above the model at rest, where that rate
 gives 0.44]. The estimate counts each forward's base row, the null rows once, every arm and the twin's row; the code
 reads the base row of forward 0 once more for the item gate's figure, and the twin's base and per-row rows again.
@@ -1893,7 +1893,8 @@ def _arm_words(arm: Mapping[str, Any], on: Sequence[str], exact: Optional[Mappin
             said += ("; input-side factor" + ("" if len(pairs) == 1 else "s") + " as applied: "
                      + ", ".join(f"{_g(b)} where {_g(a)} was asked" for a, b in pairs))
     if exact.get("output_add"):
-        said += " (output-side add, summed in float32: not yet measured on the card)"
+        said += (" (output-side add, summed in float32: read on the card, 16 November 2026, a set and an add 0.00002 to"
+                 " 0.0032 nats of KL off their folded twins, a rank-1 low-rank term at most 0.00017 off the add it equals)")
     return said
 
 

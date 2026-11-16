@@ -401,6 +401,14 @@ def cmd_spot(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
 def cmd_judge(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     work = Path(a.work)
     chk = json.loads((work / "check.json").read_text(encoding="utf-8"))
+    design = cv.kit_design(kit, chk["layer"])
+    # nothing drawn is nothing to judge (judging no answers would reject the run): the board is left as it is
+    if not chk["spot"]["chunks"]:
+        raise SystemExit("No spot chunks were drawn for this run (check.json): census_intake.py check it again first.")
+    # the bars are fixed before any spot chunk is drawn: those the check recorded are the ones it is judged by
+    if chk["bits"] != "home" and not kit.get("dry") and cv.accept_bars(design, chk["layer"]) != chk.get("bars"):
+        raise SystemExit(f"The bars for {design} at layer {chk['layer']} have changed since the check drew its spot chunks "
+                         f"(check.json has {chk.get('bars')}): census_intake.py check it again.")
     ours = []
     for c in chk["spot"]["chunks"]:
         p = work / "spot" / f"L{chk['layer']}-spot.s{c}of{chk['spot']['of']}.jsonl"
@@ -414,12 +422,15 @@ def cmd_judge(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
         if k in keys:
             theirs[k] = r
     cmp = cv.compare_rows(theirs, ours)
-    design = cv.kit_design(kit, chk["layer"])
     # a stand-in's dry run is judged by the first bars, as it always was: no bars are measured on a stand-in
     bars = None if chk["bits"] == "home" else (cv.accept_bars(design, chk["layer"]) or (cv.ACCEPT_OTHER_CLASS if kit.get("dry") else None))
     if chk["bits"] != "home" and bars is None:
         raise SystemExit(f"No bars have been measured for {design} at layer {chk['layer']}: a card class of its own is not "
                          "judged there until they are (scripts/census_bars.py; census_volunteer.OTHER_CLASS_BARS).")
+    if chk["bits"] != "home" and bars.get("lp_median") is None and bars.get("lp_p99") is None:
+        raise SystemExit(f"Both log-probability bars were dropped for {design} at layer {chk['layer']}: a card class of its own "
+                         "is not accepted there on first word-pieces and the unpushed answers alone until the owner has said "
+                         "so (experiments/results/census_other_card_bars/kit4/prereg/RULES.md, R6).")
     ok, why = cv.judge(cmp, chk["bits"] == "home", chk.get("baselines_shared") if chk["bits"] != "home" else None, bars)
     verdict = {"layer": chk["layer"], "claim": chk["claim"], "bits": chk["bits"], "card": (chk.get("runtime") or {}).get("device"),
                "spot": cmp, "rules": "bit for bit" if chk["bits"] == "home" else bars,

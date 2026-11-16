@@ -14,8 +14,8 @@ How to read this report:
   I checked three things in code: the scientist's tool list (`backend/scientist_tools.py`), the Lexicon's entry for an
   edit (`frontend/src/screens/Lexicon.tsx`), and `.gitignore`.
 - I also read, outside my file list and only where the README points to them, `ARCHITECTURE.md` §4.6, §4.8 and §6,
-  and four of the owner's memory notes (direction, design, validity review, review before push). They are cited as
-  such.
+  and four of the owner's working notes, which are not in the repository (direction, design, validity review, review
+  before push). They are cited as such.
 - `docs/` holds only `docs/readme/`, fourteen PNG pictures for the README (frontispiece, atlas, vault, cartouche and
   so on). There is no prose document in it.
 
@@ -32,7 +32,7 @@ How to read this report:
   interface reading the QAT W4A16 checkpoint through the J++ lens and the logit lens) and **the study**
   (`experiments/`: seven experiments, eight adversarial verifiers, a neuron-label validation and a lens refit, "314
   GPU jobs through a shared lab daemon") (README.md:119-129).
-- The owner's direction, recorded in the memory note `theodolite-direction.md` (22 October 2026, updated 1 November):
+- The owner's direction, recorded in the owner's working notes (22 October 2026, updated 1 November):
   the future is "a general-purpose interpretability tool and learning aid"; the gender study is no longer a focus;
   instrument features, accuracy and teaching value come before study write-ups; the atlas with the census is "our
   main selling point". The README was reordered on 2 November to lead with the atlas (README.md:31).
@@ -181,7 +181,7 @@ How to read this report:
 - **The base-lens caveat is shown once.** The head and foot of every page name the lens, a red line beside each
   layer's words says what the reading can bear there, and "the opening page says once, among its cautions, that the
   lens was fitted on the base model": the owner's choice of 28 October 2026 (README.md:383; ROADMAP.md:29-33). The
-  memory note `validity-review.md` adds: do not re-add per-page base-lens warnings, but keep the layer bands and the
+  owner's working notes add: do not re-add per-page base-lens warnings, but keep the layer bands and the
   label gate and still flag new validity problems. `/api/health`, every sweep and the scientist's tool replies still
   carry the full `lens` object.
 - "Results reached without a lens (what the model says, activation geometry, weights, patching, and steering
@@ -396,7 +396,7 @@ Further words in steady use:
   already has "edit, an", "push, a", "census, the", "scientist, the", "matched control", "test of a label, a",
   "pattern put to the test, a". A new feature gets Lexicon entries and a Lineage note.
 
-### 3.3 Tone, from the owner's memory note `theodolite-illuminated-design.md`
+### 3.3 Tone, from the owner's working notes
 
 - The look: vellum, ink, rubric red, gilt, lapis (lapis = attention, gilt = feed-forward); EB Garamond with true
   small caps, IBM Plex Mono only for code; hairlines, not cards or shadows; words, not icons, for navigation.
@@ -621,9 +621,9 @@ Precedent: R3 "used 5.54 of the 8 GPU-hours the user approved" (ROADMAP.md:71).
 - **Proposals.** The scientist's names are proposals until kept (ROADMAP.md:278-281). By the same rule an agent's
   weight edit would be a proposal until the person keeps it; an agent that could keep its own edit would break the
   pattern, and the document already notes that a home-shell scientist could keep its own proposal through loopback.
-- **The validity note.** Per `validity-review.md`, every multi-agent review gets a reader who asks whether the core
+- **The validity note.** Per the owner's working notes, every multi-agent review gets a reader who asks whether the core
   measurement is valid, and "documented as known" may not downgrade a problem that default-visible text hides.
-- **Review before push.** Per `review-before-push.md`, side sessions commit on their own branches and do not push;
+- **Review before push.** Per the owner's working notes, side sessions commit on their own branches and do not push;
   merges and pushes go through the coordinating chat after review, on the owner's word.
 
 ---

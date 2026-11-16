@@ -123,7 +123,8 @@ MAX_TERMS = 16
 MAX_COLUMNS = 4096  # columns a term
 MAX_VECTOR_COLUMNS = 1024  # set or added columns a term
 MAX_RANK = 64  # a per-row low-rank add was timed to rank 64 (pilot 1, 14 November 2026: terms of zeros, in the
-#                pilots' own bf16 hook; the float32 form built here is not timed)
+#                pilots' own bf16 hook); the float32 form built here was timed on the card on 16 November 2026: a
+#                reading with a rank-64 term 1.56 s, against 1.62 s for the one-column add (verify_1a.json, 5e)
 MAX_FACTOR = 64.0
 MAX_REL_CHANGE = 64.0  # a column's change over its own length; a low-rank term's bound; what a dose carries
 MAX_PAYLOAD_BYTES = 256 * 2**20

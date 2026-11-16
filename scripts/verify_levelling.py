@@ -7,12 +7,12 @@ ships as provisional.
 
 Stop the :8765 server and any census first: this loads the model itself (17.97 GiB at rest, measured 14 November 2026
 with the lens freed; the model and its lens took 21.2 GiB, measured 28 October 2026, and the lens is loaded before
-this frees it) and takes about half an hour of the card (inferred from the cost model, not timed).
+this frees it) and takes about a quarter of an hour of the card (793 s on 16 November 2026, the load among them).
 It starts as `scripts/levelling.py run` does: the port guard, the card's free memory, the lens freed, the compiled
 unpacker. It was written from the build spec (experiments/results/weight_space_exploration/BUILD_SPEC_1a.md, section
 6.2) and calls only the names its section 3 makes public, plus forwards of its own under `weight_edits.per_row`.
 
-Its readings go through `levelling.read`, each named "verify: ...", some 400 of them. They are entered in a ledger OF
+Its readings go through `levelling.read`, each named "verify: ...", 369 of them on 16 November 2026. They are entered in a ledger OF
 ITS OWN beside its JSON (experiments/results/levelling/verify_1a_book.jsonl): the variable THEODOLITE_LEVEL_BOOK is
 pointed there below, before the ledger is imported, so the owner's real ledger is never written (the coordinating
 session's decision, 14 November 2026). It writes experiments/results/levelling/verify_1a.json after every section.
@@ -974,7 +974,8 @@ def run_checks(rt: Any, unpacker: Dict[str, Any], t0: float) -> int:
     S.update({"rt": rt, "h": h, "lm": h.lm, "tok": h.tokenizer, "W_U": h.W_U, "dev": h.device, "files": Path(tempfile.mkdtemp(prefix="verify-levelling-"))})
     OUT.update({"when": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "model": rt.model_id, "weights": weights_card(rt), "runtime": h.runtime,
                 "unpacker": unpacker, "book": str(lb.book_path()), "book_entries_before": lb.head()[0], "load_seconds": round(time.perf_counter() - t0, 1),
-                "code": {name: cz.file_sha256(ROOT_DIR / "backend" / f"{name}.py") for name in ("weight_edits", "levelling", "level_book")}})
+                "code": {name: cz.file_sha256(ROOT_DIR / "backend" / f"{name}.py") for name in ("weight_edits", "levelling", "level_book")}
+                | {"verify_levelling": cz.file_sha256(Path(__file__).resolve())}})
     NOW["section"] = "items"
     print("the items", flush=True)
     build_items()

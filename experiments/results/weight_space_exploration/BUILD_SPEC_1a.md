@@ -1816,7 +1816,7 @@ record. Nothing above this heading was changed. The full account of the run is t
 `pilot/RESULTS.md`.
 
 **What ran.** `scripts/verify_levelling.py`, one run: a 16 s load, then 369 readings through `lv.read` (367 paired, 2
-written) in 793 s, into the check's own ledger (370 entries, the chain whole). The three modules' sha256 in the
+written) in about 777 s more, 793 s in all, into the check's own ledger (370 entries, the chain whole). The three modules' sha256 in the
 record are the files committed at `96e4420`. 142 of 145 standing lines passed. The three that failed:
 
 1. *6.2 §10, the cost model:* 21 of 163 readings outside 0.75 to 1.25 of their prediction (median 1.12, worst 1.44),
@@ -1899,7 +1899,7 @@ passing on the CPU on 15 November 2026 (the desk's clock), in 45 s.
    the start mark; one such item (-4.82) stands over the bar. What the instrument should do with raw text is the
    owner's; with the gate a caution nothing refuses it.
 6. *Figures the card read that no rule sets:* a decode step 0.110 s hooked and 0.107 unhooked (0.095 shipped); the
-   load 16.0 s with the lens loaded and freed and the install 3.46 s (9.5 and 1.83 shipped, no lens); a written
+   load 16.0 s with the lens loaded and freed, the install's 3.46 s among them (9.5 and 1.83 shipped, no lens); a written
    reading of 8 rows to 74 pieces 0.73 GiB above the model where 0.8 MB a row a piece gives 0.44. They are beside the
    shipped figures in the module's docstring.
 7. *The two row counts.* The map makes "two batch classes" two of many arithmetics; whether 12 and 32 are the two to
@@ -1975,3 +1975,8 @@ only on raw text, but the eighth of §6b's readings (own 4 at layer 44, 32 rows,
 chat-formatted item; it now says "has been shown to agree", in the code and in the check's word-for-word line alike.
 "Which is why the list above counted two" became "which is likely why": the list's reason is not on record. The CPU
 check was then run once: all 969 hold (47 s).
+
+The coordinating session brought all three up to date in the same commit. Before the push (15 November 2026 by the
+desk's clock, about 04:30Z on the 16th), the output-side add's mark and the comment on `MAX_RANK` were brought to the
+card's figures (§5c and §5e), and the run's times above were put right: the 793 s include the 16 s load, and the load
+includes the install's 3.46 s.

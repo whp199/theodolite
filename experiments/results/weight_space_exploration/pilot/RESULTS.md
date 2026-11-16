@@ -240,8 +240,8 @@ its floors came from the others.
 
 MEASURED on the same card, 16 November 2026 01:33 to 01:46Z (UTC; the evening of the 15th on the desk's clock), by
 `scripts/verify_levelling.py`: the kernel built from `BUILD_SPEC_1a.md` read on Gemma-4-31B-it W4A16, compiled
-unpacker (its self-test passing on all 410 linears), lens loaded and freed, server stopped. One run: 16 s to load, 793 s
-of readings, 369 readings (367 paired, 2 written) through `levelling.read` into a ledger of the check's own. Record:
+unpacker (its self-test passing on all 410 linears), lens loaded and freed, server stopped. One run: 16 s to load and about
+777 s after it, 793 s in all; 369 readings (367 paired, 2 written) through `levelling.read` into a ledger of the check's own. Record:
 `experiments/results/levelling/verify_1a.json` (its `sections`, `checks` and `proposed_bars`) and
 `verify_1a_book.jsonl` beside it (370 entries, the chain whole). The three modules it ran are the ones committed at
 `96e4420` (their sha256 in the record's `code` are those files'). Section numbers below are the check's (the spec's

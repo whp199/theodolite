@@ -357,7 +357,7 @@ so an edit exported as a full GGUF would get its own identity. Whether such an e
 - **Each loads the model itself**: 21.2 GiB of the 32 GB card with the J++ lens, about 16 s to load
   (`scripts/atlas_build.py:22-23`). Both scripts say "Run one GPU process at a time" (`scripts/atlas_build.py:19-20`).
   The server holds the card too, so on the home machine it is stopped for a build or a census
-  (`scripts/census_intake.py:389`; the project memory allows restarting the `:8765` server for GPU checks).
+  (`scripts/census_intake.py:389`; the owner's working notes allow restarting the `:8765` server for GPU checks).
 - **Who holds the card.** Inside the server one `asyncio.Lock` serialises every reading (`backend/server.py:99`,
   `backend/atlas.py:121-124`). Between processes on the home machine there is no lock: only convention. Rented pods
   have a `flock` on `logs/gpu.lock` (`scripts/pod/common.sh:104-110`). The steer-lens build was paused twice by hand
@@ -478,7 +478,7 @@ Two further cautions from the documents:
 3. `ARCHITECTURE.md:664-666` says the server reads a file "only for the model and shape it was built on"; the code
    also compares the weights card (`backend/atlas_index.py:354-356`), and three files on disk have no card to compare.
 4. `ARCHITECTURE.md:677` lists `head_profiles.json` among the index files; it does not exist in `atlas_data/index`.
-5. `ARCHITECTURE.md:882-884` and the project memory summarise the steer lens as "sound from layer 39 up". The check
+5. `ARCHITECTURE.md:882-884` and the owner's working notes summarise the steer lens as "sound from layer 39 up". The check
    on disk covers 39-52 only; 53-59 are `unchecked`, and the code treats them as not weak because their nearest
    checked layer agrees (`backend/atlas_index.py:316-327`).
 6. `backend/census.py:36-37` still opens with "on Gemma-4-31B they are not yet calibrated", which is true of

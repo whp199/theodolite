@@ -38,7 +38,7 @@ plan (`levelling.COST`): 0.135 s a forward, 0.377 ms a row-position and 0.088 ms
 full-vocabulary read-out, refit on 16 November 2026 from the card check's own readings (a reading's cost, its work
 round the forwards included; fit on those readings, so not yet tested on others); 0.095 s a written step, 9.5 s to
 load the model and 1.83 s to install the unpacker, measured on the RTX 5090 on 14 November 2026, one run each (the card
-check's load took 16.0 s with the lens loaded and freed, its install 3.46 s). The GiB of a paired reading is 0.191 MiB
+check's load took 16.0 s with the lens loaded and freed, its install 3.46 s of that). The GiB of a paired reading is 0.191 MiB
 a row-position, refit from the card check's peaks; a written reading's comes from 0.8 MB a row a word-piece, measured
 28 October 2026 with the lens loaded. The estimate is made without the model, so it prices a folded twin wherever the
 edit's arithmetic asks for one (on the stand-in none: its linears are plain); the reading itself asks the loaded

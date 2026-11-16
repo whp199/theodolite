@@ -2,7 +2,7 @@
 
 Reader's report for the weight-space harness design, 14 November 2026. Read-only: nothing in the repository was
 changed, no server was started, the model was not loaded. Paths are relative to `(the repository root)` unless
-they start with `/`. "Code" means I read the lines cited; "document" means a docstring, README or memory note says so
+they start with `/`. "Code" means I read the lines cited; "document" means a docstring, the README or one of the owner's working notes says so
 and I did not see code that enforces it.
 
 ## Short answers
@@ -332,15 +332,14 @@ A new harness would be expected to ship a `check_<thing>.py` that runs end to en
 - **What the server does while a job holds the card**: nothing; it is stopped. The pages fall back to the study's
   recorded sighting when no server answers (`README.md:758`), and `.claude/launch.json` offers a CPU server and a
   stand-in server on port 8766 that do not need the card. The owner's notes say the server reloads in about 10 s
-  and that stopping and restarting it for GPU checks is allowed (memory note `server-restart-ok.md`, 18 to 19
+  and that stopping and restarting it for GPU checks is allowed (the owner's working notes, 18 to 19
   October 2026); labd's own log says "ready in 13.3s; VRAM alloc 21.24 GB" with both lenses
   (`experiments/results/labd.log`, 16 October 2026).
 - **systemd scopes**: in the repository the only trace is `run_on_card.sh:15`, which waits while
   `census-chain.scope` is active. The practice itself is in the owner's notes: a job started from an agent shell sits
   in the app's systemd scope (`KillMode=control-group`) and dies with it even under `setsid nohup`, so long jobs are
   started with `systemd-run --user --scope --unit census-LNN`, and chains queue by waiting on a scope name
-  (`~/.claude/projects/-home-eric-bin-ai-theodolite2/memory/census-volunteers.md:67-70`). No code creates a
-  scope.
+  (the owner's working notes). No code creates a scope.
 - **On a pod or a volunteer's machine** there is a real lock: `flock -n` on `<root>/logs/gpu.lock`, taken by a census
   shard, the pilot and the setup self-test (`scripts/pod/common.sh:104-112`; `scripts/pod/census_shard.sh:120`,
   `:145-147`). `census_shard.sh` also shows the full detached-job shape: `setsid nohup`, a written `job.sh`,
