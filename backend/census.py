@@ -175,9 +175,20 @@ DESIGN_QUESTIONS["match_wide"] = ("who", "orange", "free", "self", "green", "int
                                   "bicycle", "walk", "chair", "kettle", "sleep", "lamp")
 DESIGN_HALVES["match_wide"] = (DESIGN_QUESTIONS["match_wide"][:6], DESIGN_QUESTIONS["match_wide"][6:])
 MATCH_WIDE: Dict[int, Tuple[float, ...]] = {l: (lo,) for l, (lo, _hi) in MATCH_CEIL.items()}
+# match_both is match_wide's twelve questions at both of match_ceil's doses, 48 answers a neuron, twice the cost of a
+# layer (16 November 2026, once match_wide's trial had failed at layer 30 on its lead, 0.579 against 0.60, with the
+# text whole). Read again on fewer questions (experiments/results/census_both_trial), that lead stopped rising at
+# three questions a half (0.584, 0.583, 0.577, 0.579 at three to six), so more questions would not lift it; at layers
+# 31 to 36 a second dose 6% to 10% above the first raised match_ceil's lead by up to 0.016 over the better dose alone.
+# Its questions' unpushed answers fall in other batches than match_wide's (64 for the first nine, 61 for the last
+# three), so match_wide's rule was read again in those shapes at step 0 (the trial's prereg/step0.py and step0.txt)
+DESIGN_QUESTIONS["match_both"] = DESIGN_QUESTIONS["match_wide"]
+DESIGN_HALVES["match_both"] = DESIGN_HALVES["match_wide"]
+MATCH_BOTH: Dict[int, Tuple[float, ...]] = MATCH_CEIL
 # the designs whose doses are set a layer at a time: a name to its table. They are not in DESIGNS, which holds one
 # list a design; `design_at` gives the list a run takes at its layer, for these and for the others
-LAYER_DOSES: Dict[str, Dict[int, Tuple[float, ...]]] = {"match_ceil": MATCH_CEIL, "match_wide": MATCH_WIDE}
+LAYER_DOSES: Dict[str, Dict[int, Tuple[float, ...]]] = {"match_ceil": MATCH_CEIL, "match_wide": MATCH_WIDE,
+                                                        "match_both": MATCH_BOTH}
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -290,6 +301,13 @@ DOSES_FROM = {
                   "where its two doses, 6% apart, read alike, and the twelve answers a neuron gave at one of them did not "
                   "carry its words from one half of its six questions to the other; here the second dose's answers are "
                   "asked on six more questions instead. Not calibrated at any layer until a trial of it passes there",
+    "match_both": "two counts of each neuron's own write ceiling that differ by layer, match_ceil's (the pushes that move "
+                  "the next word-piece by 1.0 and by 1.4 nats), each asked on match_wide's twelve questions read as two "
+                  "halves of six, 48 answers a unit. match_wide passed its trial at layer 32 (as the pages count them) and "
+                  "failed at layer 31 on its lead, with the text whole; there its lead had stopped rising at three "
+                  "questions a half, so this asks each question at a second dose instead of asking more questions. Its "
+                  "trial gates the answers of both doses together and of neither dose alone. Not calibrated at any layer "
+                  "until a trial of it passes there",
 }
 # where a design's doses are calibrated on this model: its spans of layers, each a first and a last (counted from 0, as
 # the commands count them). There the card says `doses_calibrated` and the page leaves out its red "not yet calibrated"
@@ -324,6 +342,7 @@ DESIGN_RUN_DEFAULTS["break_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # ta
 DESIGN_RUN_DEFAULTS["soft_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and so is this
 DESIGN_RUN_DEFAULTS["match_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 DESIGN_RUN_DEFAULTS["match_wide"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
+DESIGN_RUN_DEFAULTS["match_both"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
@@ -412,6 +431,7 @@ DESIGN_READING: Dict[str, Dict[str, Any]] = {
     "soft_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # as break_ceil: every answer counted
     "match_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and so here
     "match_wide": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
+    "match_both": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
 }
 
 
@@ -435,6 +455,7 @@ COLLAPSE_RULE["soft_ceil"] = {"doses": (SOFT_CEIL[1],), "answers": 2, "per_1024"
 # match_ceil's upper dose differs by layer, so its rule names it as the run's largest dose ("upper"), read from the rows
 COLLAPSE_RULE["match_ceil"] = {"doses": "upper", "answers": 2, "per_1024": 10}
 COLLAPSE_RULE["match_wide"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # its one dose, the run's largest
+COLLAPSE_RULE["match_both"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # as match_ceil's, at its upper dose
 
 # What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
 # pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
@@ -587,7 +608,7 @@ def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
 DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling",
-                "match_ceil": "ceiling", "match_wide": "ceiling"}
+                "match_ceil": "ceiling", "match_wide": "ceiling", "match_both": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -1741,7 +1762,7 @@ PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
 DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch", "soft_ceil": "12 x batch", "match_ceil": "12 x batch",
-               "match_wide": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
+               "match_wide": "12 x batch", "match_both": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:

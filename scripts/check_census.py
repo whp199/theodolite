@@ -1677,7 +1677,7 @@ def run_checks(tmp: Path) -> int:
 
     # ---------------------------------------------- 14d. match_ceil: two counts of ceilings that differ by layer, from a table
     before = len(failures)
-    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-2:] == ["match_ceil", "match_wide"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
+    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-3:] == ["match_ceil", "match_wide", "match_both"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
           and cz.DESIGN_QUESTIONS["match_ceil"] == q6 and cz.DESIGN_HALVES["match_ceil"] == cz.DESIGN_HALVES["break_rel"]
           and cz.DESIGN_UNITS["match_ceil"] == "ceiling" and cz.reading_of("match_ceil") == cz.reading_of("break_ceil")
           and cz.run_defaults("match_ceil") == cz.run_defaults("break_rel") and cz.DESIGN_PLAN["match_ceil"] == "12 x batch"
@@ -1802,6 +1802,59 @@ def run_checks(tmp: Path) -> int:
     finally:
         cz.MATCH_WIDE.pop(3, None)
     section("match_wide: its questions and table, a stand-in run at its one dose, its ranking and card", before)
+
+    # ------------------------------------------- 14f. match_both: match_ceil's two doses, on match_wide's twelve questions
+    before = len(failures)
+    check("match_both" not in cz.DESIGNS and cz.LAYER_DOSES["match_both"] is cz.MATCH_CEIL and cz.MATCH_BOTH is cz.MATCH_CEIL
+          and cz.DESIGN_QUESTIONS["match_both"] == q12 and cz.DESIGN_HALVES["match_both"] == cz.DESIGN_HALVES["match_wide"]
+          and cz.DESIGN_UNITS["match_both"] == "ceiling" and cz.reading_of("match_both") == cz.reading_of("match_ceil")
+          and cz.run_defaults("match_both") == cz.run_defaults("match_ceil") and cz.DESIGN_PLAN["match_both"] == "12 x batch"
+          and cz.COLLAPSE_RULE["match_both"] == cz.COLLAPSE_RULE["match_ceil"] and "match_both" not in cz.DOSES_CALIBRATED
+          and not any(cz.doses_calibrated("match_both", l_) for l_ in range(60)) and "nats" in cz.DOSES_FROM["match_both"]
+          and cz.design_at("match_both", 30) == [(p_, s_ * d_) for p_ in q12 for d_ in (2.42, 2.67) for s_ in (-1.0, 1.0)],
+          "match_both: match_wide's twelve questions and halves at both of match_ceil's doses (48 answers a unit at 30: +-2.42, "
+          "+-2.67), read, taken and marked as match_ceil is, calibrated nowhere")
+    mb_brun = tmp / "runs" / "L3-match_both.jsonl"
+    mb_had3b = cz.MATCH_CEIL.pop(3, None)
+    try:
+        cz.design_at("match_both", 3)
+        mb_b_said = ""
+    except ValueError as exc:
+        mb_b_said = str(exc)
+    check("has no doses for layer 3" in mb_b_said, f"match_both at a layer its table does not hold is refused ({mb_b_said[:90]})")
+    cz.MATCH_CEIL[3] = (1.9, 2.3)
+    try:
+        mb_bd = cz.design_at("match_both", 3)
+        cz.take_census(rt, 3, list(range(8)), mb_brun, **{**kw, "design_name": "match_both"})
+        mb_brows = list(cz.read_rows(mb_brun))
+        mb_bmeta = json.loads(cz.meta_path_of(mb_brun).read_text())
+        mb_bpushed = [r_ for r_ in mb_brows if r_["kind"] in ("neuron", "random")]
+        mb_b_ctl = int(mb_bmeta["random_controls"])
+        mb_b19 = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in mb_bpushed if abs(abs(r_["dose"]) - 1.9) < 1e-9}
+        mb_w19all = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in cz.read_rows(wrun)
+                  if r_["kind"] in ("neuron", "random")} if wrun.exists() else {}
+        check(len(mb_bd) == 48 and len(mb_brows) == (8 + mb_b_ctl) * 48 + 12 and mb_bmeta["dose_unit"] == "ceiling"
+              and mb_bmeta["design_name"] == "match_both" and mb_bmeta["doses_from"] == cz.DOSES_FROM["match_both"]
+              and list(mb_bmeta["prompts"]) == list(q12) and sorted({r_["dose"] for r_ in mb_bpushed}) == [-2.3, -1.9, 1.9, 2.3]
+              and sum(1 for r_ in mb_brows if r_["kind"] == "baseline") == 12
+              and set(mb_b19) == set(mb_w19all) and max(abs(mb_b19[k_] - mb_w19all[k_]) for k_ in mb_b19) <= 1e-4 * max(abs(v_) for v_ in mb_w19all.values()),
+              f"a match_both run: twelve unpushed answers, each unit asked the twelve questions at plus and minus both of its "
+              f"layer's doses times a write ceiling, its pushes at the lower dose the very pushes match_wide makes of the same "
+              f"units ({len(mb_brows)} rows)")
+        cz.write_units(mb_brun)
+        mb_bunits = list(cz.read_rows(cz.units_path_of(mb_brun)))
+        mb_bcol = json.loads(cz.collapse_path_of(mb_brun).read_text()) if cz.collapse_path_of(mb_brun).exists() else {}
+        mb_bcard = atlas_routes.census_card({"path": mb_brun, "meta": mb_bmeta, "null": {}, "units": mb_bunits})
+        check(len(mb_bunits) == 8 + mb_b_ctl and all(u_["reading"] == cz.reading_of("match_both") and set(u_["dose"]) == {"-2.3", "-1.9", "+1.9", "+2.3"} for u_ in mb_bunits)
+              and mb_bcol.get("doses") == [2.3] and mb_bcard["doses_calibrated"] is False and mb_bcard["doses_calibrated_layers"] is None
+              and mb_bcard["dose_unit"] == "ceiling" and mb_bcard["doses_from"] == cz.DOSES_FROM["match_both"],
+              f"a match_both run is ranked on every answer, its collapse words read at its upper dose, and its card says its unit and "
+              f"that its doses are calibrated nowhere ({mb_bcol.get('doses')}, {mb_bcard.get('doses_calibrated_layers')})")
+    finally:
+        cz.MATCH_CEIL.pop(3, None)
+        if mb_had3b is not None:
+            cz.MATCH_CEIL[3] = mb_had3b
+    section("match_both: its questions and table, a stand-in run at its two doses, its ranking and card", before)
 
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)
