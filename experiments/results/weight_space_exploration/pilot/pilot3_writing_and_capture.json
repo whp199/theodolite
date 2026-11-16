@@ -1,0 +1,170 @@
+{
+ "when": "2026-11-14T20:49:34Z",
+ "errors": [],
+ "A_writing": {
+  "capital": {
+   "prompt_pieces": 30,
+   "rows": 8,
+   "pieces_written": 48,
+   "seconds_unhooked": 4.654,
+   "seconds_hooked": 4.653,
+   "seconds_a_step_hooked": 0.095,
+   "base_rows_0_1_6_same_pieces": true,
+   "base_rows_same_logprobs": true,
+   "zero_delta_row_same_as_base": [
+    true,
+    true
+   ],
+   "hooked_base_same_as_unhooked_write": [
+    true,
+    true
+   ],
+   "same_edit_rows_3_4_same": [
+    true,
+    true
+   ],
+   "edit_row_parts_from_base_at": 10,
+   "other_edit_parts_from_base_at": null,
+   "times3_floor_row_parts_from_base_at": null,
+   "times3_floor_row_max_abs_logprob_gap": 0.05862,
+   "base_text": "The capital of France is Paris, and the Seine river runs through it.<turn|>\n}<turn|>\n<|channel>thought\n<channel|>The capital of France is Paris, and the Seine river runs through it.<turn|>\n}<turn|>\n---\n**Wait",
+   "edit_text": "The capital of France is Paris, and the Seine River runs through it.<turn|>\n}<turn|>\n<eos><turn|>\n<eos><turn|>\n du \n du \n du \n du \n du \n du \n du \n du"
+  },
+  "stock": {
+   "prompt_pieces": 27,
+   "rows": 8,
+   "pieces_written": 48,
+   "seconds_unhooked": 4.647,
+   "seconds_hooked": 4.647,
+   "seconds_a_step_hooked": 0.0948,
+   "base_rows_0_1_6_same_pieces": true,
+   "base_rows_same_logprobs": true,
+   "zero_delta_row_same_as_base": [
+    true,
+    true
+   ],
+   "hooked_base_same_as_unhooked_write": [
+    true,
+    true
+   ],
+   "same_edit_rows_3_4_same": [
+    true,
+    true
+   ],
+   "edit_row_parts_from_base_at": 10,
+   "other_edit_parts_from_base_at": null,
+   "times3_floor_row_parts_from_base_at": null,
+   "times3_floor_row_max_abs_logprob_gap": 0.05908,
+   "base_text": "You should not salt a stock while it simmers because of **evaporation**.\n\nAs a stock simmers, water evaporates, which concentrates the flavors and the salt. If you salt at the beginning, the liquid will reduce, and the",
+   "edit_text": "You should not salt a stock while it simmers for one primary reason: **evaporation.**\n\nAs a stock simmers for several hours, water evaporates, which concentrates all the remaining flavors\u2014including the salt. If you season the liquid"
+  }
+ },
+ "C_capture_and_E_floor": {
+  "prose_layer_5": {
+   "pieces": 176,
+   "candidates": 30,
+   "base_rows_between_ways_mean_KL": 0.0018005127785727382,
+   "effect_mean_KL_median_same_shape": 0.002277474384754896,
+   "effect_mean_KL_max_same_shape": 0.023958494886755943,
+   "effect_abs_gap_between_ways_median": 0.0005174663383513689,
+   "effect_abs_gap_between_ways_max": 0.01617930643260479,
+   "effect_correlation_between_ways": 0.943481981754303,
+   "same_row_between_ways_mean_KL_median": 0.002108441898599267,
+   "same_row_between_ways_mean_KL_max": 0.031027300283312798,
+   "times3_floor_row_mean_KL_same_shape": 0.0015117030125111341,
+   "times3_floor_row_mean_KL_replayed": 0.001642629038542509,
+   "candidates_above_5x_floor_same_shape": 2,
+   "rank_agreement_top5": 3,
+   "replay_seconds_32_rows": 1.803
+  },
+  "prose_layer_20": {
+   "pieces": 176,
+   "candidates": 30,
+   "base_rows_between_ways_mean_KL": 0.0018007730832323432,
+   "effect_mean_KL_median_same_shape": 0.0011201747693121433,
+   "effect_mean_KL_max_same_shape": 0.0032584830187261105,
+   "effect_abs_gap_between_ways_median": 7.97732500359416e-05,
+   "effect_abs_gap_between_ways_max": 0.0008406256092712283,
+   "effect_correlation_between_ways": 0.9175637364387512,
+   "same_row_between_ways_mean_KL_median": 0.0018519546138122678,
+   "same_row_between_ways_mean_KL_max": 0.002932280069217086,
+   "times3_floor_row_mean_KL_same_shape": 0.0009153618011623621,
+   "times3_floor_row_mean_KL_replayed": 0.0009094452834688127,
+   "candidates_above_5x_floor_same_shape": 0,
+   "rank_agreement_top5": 5,
+   "replay_seconds_32_rows": 1.312
+  },
+  "prose_layer_44": {
+   "pieces": 176,
+   "candidates": 30,
+   "base_rows_between_ways_mean_KL": 0.0016800427110865712,
+   "effect_mean_KL_median_same_shape": 0.00045439761015586555,
+   "effect_mean_KL_max_same_shape": 0.01544912625104189,
+   "effect_abs_gap_between_ways_median": 1.9574799807742238e-05,
+   "effect_abs_gap_between_ways_max": 0.0004232702776789665,
+   "effect_correlation_between_ways": 0.9997778534889221,
+   "same_row_between_ways_mean_KL_median": 0.0017194284591823816,
+   "same_row_between_ways_mean_KL_max": 0.0018438284751027822,
+   "times3_floor_row_mean_KL_same_shape": 0.0004217493406031281,
+   "times3_floor_row_mean_KL_replayed": 0.0003860469441860914,
+   "candidates_above_5x_floor_same_shape": 3,
+   "rank_agreement_top5": 4,
+   "replay_seconds_32_rows": 0.525
+  },
+  "recipe_layer_5": {
+   "pieces": 150,
+   "candidates": 30,
+   "base_rows_between_ways_mean_KL": 0.010982335545122623,
+   "effect_mean_KL_median_same_shape": 0.006352703087031841,
+   "effect_mean_KL_max_same_shape": 0.20648781955242157,
+   "effect_abs_gap_between_ways_median": 0.0032956930808722973,
+   "effect_abs_gap_between_ways_max": 0.20085909962654114,
+   "effect_correlation_between_ways": 0.022417349740862846,
+   "same_row_between_ways_mean_KL_median": 0.01131470501422882,
+   "same_row_between_ways_mean_KL_max": 0.20884911715984344,
+   "times3_floor_row_mean_KL_same_shape": 0.004906133748590946,
+   "times3_floor_row_mean_KL_replayed": 0.011195368133485317,
+   "candidates_above_5x_floor_same_shape": 3,
+   "rank_agreement_top5": 2,
+   "replay_seconds_32_rows": 1.574
+  },
+  "recipe_layer_20": {
+   "pieces": 150,
+   "candidates": 30,
+   "base_rows_between_ways_mean_KL": 0.008529391139745712,
+   "effect_mean_KL_median_same_shape": 0.005842107348144054,
+   "effect_mean_KL_max_same_shape": 0.7025498747825623,
+   "effect_abs_gap_between_ways_median": 0.003271153662353754,
+   "effect_abs_gap_between_ways_max": 0.6997071504592896,
+   "effect_correlation_between_ways": 0.3173556327819824,
+   "same_row_between_ways_mean_KL_median": 0.006419157376512885,
+   "same_row_between_ways_mean_KL_max": 0.6884838342666626,
+   "times3_floor_row_mean_KL_same_shape": 0.0033821898978203535,
+   "times3_floor_row_mean_KL_replayed": 0.003117998130619526,
+   "candidates_above_5x_floor_same_shape": 5,
+   "rank_agreement_top5": 3,
+   "replay_seconds_32_rows": 1.144
+  },
+  "recipe_layer_44": {
+   "pieces": 150,
+   "candidates": 30,
+   "base_rows_between_ways_mean_KL": 0.005957644898444414,
+   "effect_mean_KL_median_same_shape": 0.0007384581258520484,
+   "effect_mean_KL_max_same_shape": 0.031078549101948738,
+   "effect_abs_gap_between_ways_median": 7.349369116127491e-05,
+   "effect_abs_gap_between_ways_max": 0.0005487594753503799,
+   "effect_correlation_between_ways": 0.9999052286148071,
+   "same_row_between_ways_mean_KL_median": 0.005984664428979158,
+   "same_row_between_ways_mean_KL_max": 0.006300205830484629,
+   "times3_floor_row_mean_KL_same_shape": 0.0005784453824162483,
+   "times3_floor_row_mean_KL_replayed": 0.0005285292863845825,
+   "candidates_above_5x_floor_same_shape": 2,
+   "rank_agreement_top5": 5,
+   "replay_seconds_32_rows": 0.458
+  }
+ },
+ "peak_gib": 21.908,
+ "unpacker_after": {
+  "mode": "compiled"
+ }
+}

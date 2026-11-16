@@ -1,0 +1,165 @@
+{
+ "when": "2026-11-14T19:54:38Z",
+ "errors": [],
+ "silencing_mean_KL_top5": [
+  {
+   "neuron": 14802,
+   "mean_KL": 0.01528
+  },
+  {
+   "neuron": 16573,
+   "mean_KL": 0.00581
+  },
+  {
+   "neuron": 13086,
+   "mean_KL": 0.00254
+  },
+  {
+   "neuron": 16888,
+   "mean_KL": 0.00104
+  },
+  {
+   "neuron": 10008,
+   "mean_KL": 0.0009
+  }
+ ],
+ "silencing_mean_KL_median": 0.00040986304520629346,
+ "rowdelta_vs_overlay": [
+  {
+   "neuron": 14802,
+   "factor": 0.0,
+   "effect_mean_KL_rowdelta": 0.015769146382808685,
+   "effect_mean_KL_overlay": 0.015512199141085148,
+   "effect_max_KL_overlay": 0.17077437043190002,
+   "between_forms_mean_KL": 0.0004482170334085822,
+   "between_forms_max_KL": 0.00567924790084362,
+   "between_forms_as_share_of_effect": 0.028894487768411636,
+   "corr_of_per_position_effect": 0.9930371046066284,
+   "top1_agree_share": 0.9885714054107666,
+   "top1_changed_by_edit_share": 0.1428571343421936
+  },
+  {
+   "neuron": 14802,
+   "factor": -3.0,
+   "effect_mean_KL_rowdelta": 0.3877500295639038,
+   "effect_mean_KL_overlay": 0.38590267300605774,
+   "effect_max_KL_overlay": 1.8979482650756836,
+   "between_forms_mean_KL": 0.0005014186026528478,
+   "between_forms_max_KL": 0.003991574980318546,
+   "between_forms_as_share_of_effect": 0.0012993395794183016,
+   "corr_of_per_position_effect": 0.9993525147438049,
+   "top1_agree_share": 0.9942857027053833,
+   "top1_changed_by_edit_share": 0.4457142949104309
+  },
+  {
+   "neuron": 16573,
+   "factor": 0.0,
+   "effect_mean_KL_rowdelta": 0.006130661349743605,
+   "effect_mean_KL_overlay": 0.0059914542362093925,
+   "effect_max_KL_overlay": 0.9598453640937805,
+   "between_forms_mean_KL": 0.0004361640603747219,
+   "between_forms_max_KL": 0.005151963327080011,
+   "between_forms_as_share_of_effect": 0.07279769331216812,
+   "corr_of_per_position_effect": 0.9999872446060181,
+   "top1_agree_share": 0.9828571081161499,
+   "top1_changed_by_edit_share": 0.011428571306169033
+  },
+  {
+   "neuron": 16573,
+   "factor": -3.0,
+   "effect_mean_KL_rowdelta": 0.024811051785945892,
+   "effect_mean_KL_overlay": 0.025181066244840622,
+   "effect_max_KL_overlay": 4.208873271942139,
+   "between_forms_mean_KL": 0.00044399729813449085,
+   "between_forms_max_KL": 0.0033640051260590553,
+   "between_forms_as_share_of_effect": 0.01763218827545643,
+   "corr_of_per_position_effect": 0.9999992251396179,
+   "top1_agree_share": 0.9828571081161499,
+   "top1_changed_by_edit_share": 0.011428571306169033
+  },
+  {
+   "neuron": 13086,
+   "factor": 0.0,
+   "effect_mean_KL_rowdelta": 0.0024560997262597084,
+   "effect_mean_KL_overlay": 0.0024233595468103886,
+   "effect_max_KL_overlay": 0.24270859360694885,
+   "between_forms_mean_KL": 0.00041582336416468024,
+   "between_forms_max_KL": 0.0026265401393175125,
+   "between_forms_as_share_of_effect": 0.17158962786197662,
+   "corr_of_per_position_effect": 0.998487651348114,
+   "top1_agree_share": 1.0,
+   "top1_changed_by_edit_share": 0.017142856493592262
+  },
+  {
+   "neuron": 13086,
+   "factor": -3.0,
+   "effect_mean_KL_rowdelta": 0.013750886544585228,
+   "effect_mean_KL_overlay": 0.013801065273582935,
+   "effect_max_KL_overlay": 1.913910150527954,
+   "between_forms_mean_KL": 0.00044952318421564996,
+   "between_forms_max_KL": 0.0025941503699868917,
+   "between_forms_as_share_of_effect": 0.03257162868976593,
+   "corr_of_per_position_effect": 0.9999862909317017,
+   "top1_agree_share": 0.9885714054107666,
+   "top1_changed_by_edit_share": 0.017142856493592262
+  }
+ ],
+ "attention_row_delta": {
+  "layer_44_linears": [
+   "q_proj",
+   "k_proj",
+   "v_proj",
+   "o_proj"
+  ],
+  "layer_44": {
+   "no_hook": {
+    "median_s": 0.4967,
+    "min_s": 0.4965,
+    "n": 3
+   },
+   "zero_delta_on_each": {
+    "median_s": 0.4983,
+    "min_s": 0.4972,
+    "n": 3
+   },
+   "zero_delta_same_bits": true
+  },
+  "layer_47_linears": [
+   "q_proj",
+   "k_proj",
+   "o_proj"
+  ],
+  "layer_47": {
+   "no_hook": {
+    "median_s": 0.4985,
+    "min_s": 0.4982,
+    "n": 3
+   },
+   "zero_delta_on_each": {
+    "median_s": 0.499,
+    "min_s": 0.499,
+    "n": 3
+   },
+   "zero_delta_same_bits": true
+  }
+ },
+ "reading": {
+  "positions": 175,
+  "fp32_chunked": {
+   "median_s": 0.019,
+   "min_s": 0.0189,
+   "n": 5
+  },
+  "model_dtype_then_float": {
+   "median_s": 0.0035,
+   "min_s": 0.0035,
+   "n": 5
+  },
+  "mean_KL_fp32_to_model_dtype": 0.0012642625952139497,
+  "max_KL_fp32_to_model_dtype": 0.004038393497467041
+ },
+ "peak_gib": 21.908,
+ "unpacker_after": {
+  "mode": "compiled"
+ }
+}

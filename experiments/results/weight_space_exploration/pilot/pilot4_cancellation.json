@@ -1,0 +1,445 @@
+{
+ "when": "2026-11-14T20:52:30Z",
+ "errors": [],
+ "recipe_layer_5": {
+  "pieces": 150,
+  "output_norm_at_start_mark_over_median_elsewhere": 2.866407871246338,
+  "candidates_whose_act_at_start_mark_exceeds_max_elsewhere": 0,
+  "largest_share_of_start_mark_output_by_one_candidate": 0.006490638013929129,
+  "effects_median": {
+   "output_delta": 0.006352703087031841,
+   "input_side": 0.008288529701530933,
+   "output_delta_start_spared": 0.007370837032794952
+  },
+  "effects_max": {
+   "output_delta": 0.20648781955242157,
+   "input_side": 0.667445957660675,
+   "output_delta_start_spared": 0.6413739919662476
+  },
+  "corr_output_delta_vs_input_side": 0.020061668008565903,
+  "corr_output_delta_start_spared_vs_input_side": 0.6075869202613831,
+  "corr_output_delta_run1_vs_run2": 1.0,
+  "output_delta_same_bits_run1_run2": true,
+  "max_abs_gap_output_delta_vs_input_side": 0.6350868940353394,
+  "worst_five": [
+   {
+    "neuron": 13133,
+    "act_at_start_mark": -0.03,
+    "max_abs_act_elsewhere": 43.0,
+    "share_of_start_mark_output": 0.0001,
+    "effect_output_delta": 0.03235908970236778,
+    "effect_output_delta_start_spared": 0.6413739919662476,
+    "effect_input_side": 0.667445957660675,
+    "effect_folded_batch2": 0.019091039896011353
+   },
+   {
+    "neuron": 14825,
+    "act_at_start_mark": 0.0,
+    "max_abs_act_elsewhere": 45.25,
+    "share_of_start_mark_output": 0.0,
+    "effect_output_delta": 0.004696012940257788,
+    "effect_output_delta_start_spared": 0.004696012940257788,
+    "effect_input_side": 0.6282860040664673,
+    "effect_folded_batch2": 0.006807024125009775
+   },
+   {
+    "neuron": 16222,
+    "act_at_start_mark": -0.0,
+    "max_abs_act_elsewhere": 51.0,
+    "share_of_start_mark_output": 0.0,
+    "effect_output_delta": 0.20648781955242157,
+    "effect_output_delta_start_spared": 0.20648781955242157,
+    "effect_input_side": 0.008288529701530933,
+    "effect_folded_batch2": 0.011684433557093143
+   },
+   {
+    "neuron": 19298,
+    "act_at_start_mark": 0.11,
+    "max_abs_act_elsewhere": 37.5,
+    "share_of_start_mark_output": 0.0003,
+    "effect_output_delta": 0.007335978094488382,
+    "effect_output_delta_start_spared": 0.009906566701829433,
+    "effect_input_side": 0.05406290292739868,
+    "effect_folded_batch2": 0.011769791133701801
+   },
+   {
+    "neuron": 1378,
+    "act_at_start_mark": 2.05,
+    "max_abs_act_elsewhere": 53.25,
+    "share_of_start_mark_output": 0.0057,
+    "effect_output_delta": 0.01273977942764759,
+    "effect_output_delta_start_spared": 0.011692873202264309,
+    "effect_input_side": 0.029320547357201576,
+    "effect_folded_batch2": 0.012070638127624989
+   }
+  ]
+ },
+ "recipe_layer_20": {
+  "pieces": 150,
+  "output_norm_at_start_mark_over_median_elsewhere": 1.5964487791061401,
+  "candidates_whose_act_at_start_mark_exceeds_max_elsewhere": 0,
+  "largest_share_of_start_mark_output_by_one_candidate": 0.014150434173643589,
+  "effects_median": {
+   "output_delta": 0.005842107348144054,
+   "input_side": 0.005773670971393585,
+   "output_delta_start_spared": 0.005588572472333908
+  },
+  "effects_max": {
+   "output_delta": 0.7025498747825623,
+   "input_side": 0.7258099317550659,
+   "output_delta_start_spared": 0.7614578008651733
+  },
+  "corr_output_delta_vs_input_side": 0.6049028038978577,
+  "corr_output_delta_start_spared_vs_input_side": 0.5315163731575012,
+  "corr_output_delta_run1_vs_run2": 1.0,
+  "output_delta_same_bits_run1_run2": true,
+  "max_abs_gap_output_delta_vs_input_side": 0.7030653953552246,
+  "worst_five": [
+   {
+    "neuron": 4294,
+    "act_at_start_mark": -0.03,
+    "max_abs_act_elsewhere": 15.19,
+    "share_of_start_mark_output": 0.0003,
+    "effect_output_delta": 0.022744549438357353,
+    "effect_output_delta_start_spared": 0.748838484287262,
+    "effect_input_side": 0.7258099317550659,
+    "effect_folded_batch2": 0.009082731790840626
+   },
+   {
+    "neuron": 9618,
+    "act_at_start_mark": -0.03,
+    "max_abs_act_elsewhere": 12.81,
+    "share_of_start_mark_output": 0.0003,
+    "effect_output_delta": 0.008755483664572239,
+    "effect_output_delta_start_spared": 0.026689356192946434,
+    "effect_input_side": 0.6018689870834351,
+    "effect_folded_batch2": 0.005323414690792561
+   },
+   {
+    "neuron": 6540,
+    "act_at_start_mark": 0.0,
+    "max_abs_act_elsewhere": 25.38,
+    "share_of_start_mark_output": 0.0,
+    "effect_output_delta": 0.021456247195601463,
+    "effect_output_delta_start_spared": 0.2874208986759186,
+    "effect_input_side": 0.3437139093875885,
+    "effect_folded_batch2": 0.0032501264940947294
+   },
+   {
+    "neuron": 5316,
+    "act_at_start_mark": 0.03,
+    "max_abs_act_elsewhere": 13.62,
+    "share_of_start_mark_output": 0.0003,
+    "effect_output_delta": 0.7025498747825623,
+    "effect_output_delta_start_spared": 0.7018009424209595,
+    "effect_input_side": 0.5233726501464844,
+    "effect_folded_batch2": 0.005751525983214378
+   },
+   {
+    "neuron": 9726,
+    "act_at_start_mark": -0.15,
+    "max_abs_act_elsewhere": 28.0,
+    "share_of_start_mark_output": 0.0015,
+    "effect_output_delta": 0.0688929483294487,
+    "effect_output_delta_start_spared": 0.09239611774682999,
+    "effect_input_side": 0.016242317855358124,
+    "effect_folded_batch2": 0.004213941283524036
+   }
+  ]
+ },
+ "recipe_layer_44": {
+  "pieces": 150,
+  "output_norm_at_start_mark_over_median_elsewhere": 1.1861920356750488,
+  "candidates_whose_act_at_start_mark_exceeds_max_elsewhere": 1,
+  "largest_share_of_start_mark_output_by_one_candidate": 0.3341643214225769,
+  "effects_median": {
+   "output_delta": 0.0007384581258520484,
+   "input_side": 0.0007324762991629541,
+   "output_delta_start_spared": 0.0007005202933214605
+  },
+  "effects_max": {
+   "output_delta": 0.031078549101948738,
+   "input_side": 0.0305780079215765,
+   "output_delta_start_spared": 0.030710099264979362
+  },
+  "corr_output_delta_vs_input_side": 0.9997300505638123,
+  "corr_output_delta_start_spared_vs_input_side": 0.9997225999832153,
+  "corr_output_delta_run1_vs_run2": 0.9999998211860657,
+  "output_delta_same_bits_run1_run2": true,
+  "max_abs_gap_output_delta_vs_input_side": 0.00057944655418396,
+  "worst_five": [
+   {
+    "neuron": 8626,
+    "act_at_start_mark": -0.05,
+    "max_abs_act_elsewhere": 7.44,
+    "share_of_start_mark_output": 0.0005,
+    "effect_output_delta": 0.00396786630153656,
+    "effect_output_delta_start_spared": 0.003929860424250364,
+    "effect_input_side": 0.00454731285572052,
+    "effect_folded_batch2": 0.0040434543043375015
+   },
+   {
+    "neuron": 14802,
+    "act_at_start_mark": 30.25,
+    "max_abs_act_elsewhere": 42.25,
+    "share_of_start_mark_output": 0.3342,
+    "effect_output_delta": 0.031078549101948738,
+    "effect_output_delta_start_spared": 0.030710099264979362,
+    "effect_input_side": 0.0305780079215765,
+    "effect_folded_batch2": 0.03157440572977066
+   },
+   {
+    "neuron": 16888,
+    "act_at_start_mark": 15.19,
+    "max_abs_act_elsewhere": 24.75,
+    "share_of_start_mark_output": 0.1621,
+    "effect_output_delta": 0.002501536626368761,
+    "effect_output_delta_start_spared": 0.002564407419413328,
+    "effect_input_side": 0.0023994226939976215,
+    "effect_folded_batch2": 0.002714569913223386
+   },
+   {
+    "neuron": 15668,
+    "act_at_start_mark": -0.73,
+    "max_abs_act_elsewhere": 8.25,
+    "share_of_start_mark_output": 0.0072,
+    "effect_output_delta": 0.0009867269545793533,
+    "effect_output_delta_start_spared": 0.0008944474975578487,
+    "effect_input_side": 0.0008870157180353999,
+    "effect_folded_batch2": 0.0009965855861082673
+   },
+   {
+    "neuron": 8305,
+    "act_at_start_mark": -7.53,
+    "max_abs_act_elsewhere": 7.06,
+    "share_of_start_mark_output": 0.0852,
+    "effect_output_delta": 0.0009052349487319589,
+    "effect_output_delta_start_spared": 0.0009311254834756255,
+    "effect_input_side": 0.0010015752632170916,
+    "effect_folded_batch2": 0.0009319682139903307
+   }
+  ]
+ },
+ "prose_layer_5": {
+  "pieces": 105,
+  "output_norm_at_start_mark_over_median_elsewhere": 4.252144813537598,
+  "candidates_whose_act_at_start_mark_exceeds_max_elsewhere": 0,
+  "largest_share_of_start_mark_output_by_one_candidate": 0.04027248173952103,
+  "effects_median": {
+   "output_delta": 0.001826309016905725,
+   "input_side": 0.0017988788895308971,
+   "output_delta_start_spared": 0.0016323712188750505
+  },
+  "effects_max": {
+   "output_delta": 0.17024213075637817,
+   "input_side": 0.02865220047533512,
+   "output_delta_start_spared": 0.01331510953605175
+  },
+  "corr_output_delta_vs_input_side": 0.9965328574180603,
+  "corr_output_delta_start_spared_vs_input_side": 0.9831294417381287,
+  "corr_output_delta_run1_vs_run2": 1.0,
+  "output_delta_same_bits_run1_run2": true,
+  "max_abs_gap_output_delta_vs_input_side": 0.1415899246931076,
+  "worst_five": [
+   {
+    "neuron": 7171,
+    "act_at_start_mark": 1.83,
+    "max_abs_act_elsewhere": 73.5,
+    "share_of_start_mark_output": 0.0041,
+    "effect_output_delta": 0.17024213075637817,
+    "effect_output_delta_start_spared": 0.01331510953605175,
+    "effect_input_side": 0.02865220047533512,
+    "effect_folded_batch2": 0.02619062177836895
+   },
+   {
+    "neuron": 10350,
+    "act_at_start_mark": -0.06,
+    "max_abs_act_elsewhere": 43.0,
+    "share_of_start_mark_output": 0.0001,
+    "effect_output_delta": 0.0023108988534659147,
+    "effect_output_delta_start_spared": 0.0013340367004275322,
+    "effect_input_side": 0.001331000472418964,
+    "effect_folded_batch2": 0.003592255525290966
+   },
+   {
+    "neuron": 1190,
+    "act_at_start_mark": -5.03,
+    "max_abs_act_elsewhere": 41.25,
+    "share_of_start_mark_output": 0.0106,
+    "effect_output_delta": 0.0013691107742488384,
+    "effect_output_delta_start_spared": 0.0016977154882624745,
+    "effect_input_side": 0.0021013084333389997,
+    "effect_folded_batch2": 0.0014829805586487055
+   },
+   {
+    "neuron": 6854,
+    "act_at_start_mark": 0.0,
+    "max_abs_act_elsewhere": 51.75,
+    "share_of_start_mark_output": 0.0,
+    "effect_output_delta": 0.002070447662845254,
+    "effect_output_delta_start_spared": 0.002070447662845254,
+    "effect_input_side": 0.0013963669771328568,
+    "effect_folded_batch2": 0.0018132877303287387
+   },
+   {
+    "neuron": 17049,
+    "act_at_start_mark": 0.01,
+    "max_abs_act_elsewhere": 38.75,
+    "share_of_start_mark_output": 0.0,
+    "effect_output_delta": 0.0027268126141279936,
+    "effect_output_delta_start_spared": 0.0026128508616238832,
+    "effect_input_side": 0.002104745479300618,
+    "effect_folded_batch2": 0.0016024282667785883
+   }
+  ]
+ },
+ "prose_layer_20": {
+  "pieces": 105,
+  "output_norm_at_start_mark_over_median_elsewhere": 2.0723204612731934,
+  "candidates_whose_act_at_start_mark_exceeds_max_elsewhere": 0,
+  "largest_share_of_start_mark_output_by_one_candidate": 0.0021529262885451317,
+  "effects_median": {
+   "output_delta": 0.0012084459885954857,
+   "input_side": 0.0012479398865252733,
+   "output_delta_start_spared": 0.0012226864928379655
+  },
+  "effects_max": {
+   "output_delta": 0.0023170956410467625,
+   "input_side": 0.002367258770391345,
+   "output_delta_start_spared": 0.0025140726938843727
+  },
+  "corr_output_delta_vs_input_side": 0.9577211737632751,
+  "corr_output_delta_start_spared_vs_input_side": 0.886484682559967,
+  "corr_output_delta_run1_vs_run2": 1.0,
+  "output_delta_same_bits_run1_run2": true,
+  "max_abs_gap_output_delta_vs_input_side": 0.0002584671601653099,
+  "worst_five": [
+   {
+    "neuron": 20983,
+    "act_at_start_mark": 0.08,
+    "max_abs_act_elsewhere": 9.75,
+    "share_of_start_mark_output": 0.0007,
+    "effect_output_delta": 0.0010640850523486733,
+    "effect_output_delta_start_spared": 0.0011711274273693562,
+    "effect_input_side": 0.0013225522125139832,
+    "effect_folded_batch2": 0.0011671745451167226
+   },
+   {
+    "neuron": 2642,
+    "act_at_start_mark": 0.04,
+    "max_abs_act_elsewhere": 13.56,
+    "share_of_start_mark_output": 0.0003,
+    "effect_output_delta": 0.0012748449807986617,
+    "effect_output_delta_start_spared": 0.0013501625508069992,
+    "effect_input_side": 0.001468569622375071,
+    "effect_folded_batch2": 0.001298226648941636
+   },
+   {
+    "neuron": 9410,
+    "act_at_start_mark": 0.19,
+    "max_abs_act_elsewhere": 8.0,
+    "share_of_start_mark_output": 0.0014,
+    "effect_output_delta": 0.0013680121628567576,
+    "effect_output_delta_start_spared": 0.001269330270588398,
+    "effect_input_side": 0.0015541398897767067,
+    "effect_folded_batch2": 0.001464148866944015
+   },
+   {
+    "neuron": 2674,
+    "act_at_start_mark": 0.02,
+    "max_abs_act_elsewhere": 8.69,
+    "share_of_start_mark_output": 0.0002,
+    "effect_output_delta": 0.0010143580147996545,
+    "effect_output_delta_start_spared": 0.0012166990200057626,
+    "effect_input_side": 0.0011625769548118114,
+    "effect_folded_batch2": 0.0009353023488074541
+   },
+   {
+    "neuron": 19791,
+    "act_at_start_mark": -0.13,
+    "max_abs_act_elsewhere": 10.5,
+    "share_of_start_mark_output": 0.0009,
+    "effect_output_delta": 0.0011772289872169495,
+    "effect_output_delta_start_spared": 0.0011661637108772993,
+    "effect_input_side": 0.0013088022824376822,
+    "effect_folded_batch2": 0.0012096557766199112
+   }
+  ]
+ },
+ "prose_layer_44": {
+  "pieces": 105,
+  "output_norm_at_start_mark_over_median_elsewhere": 1.5472344160079956,
+  "candidates_whose_act_at_start_mark_exceeds_max_elsewhere": 1,
+  "largest_share_of_start_mark_output_by_one_candidate": 0.3349296748638153,
+  "effects_median": {
+   "output_delta": 0.00048147691995836794,
+   "input_side": 0.0004893786390312016,
+   "output_delta_start_spared": 0.00046413071686401963
+  },
+  "effects_max": {
+   "output_delta": 0.01742636226117611,
+   "input_side": 0.017390908673405647,
+   "output_delta_start_spared": 0.016908347606658936
+  },
+  "corr_output_delta_vs_input_side": 0.9998944401741028,
+  "corr_output_delta_start_spared_vs_input_side": 0.9999186396598816,
+  "corr_output_delta_run1_vs_run2": 0.9999999403953552,
+  "output_delta_same_bits_run1_run2": true,
+  "max_abs_gap_output_delta_vs_input_side": 0.0001896754838526249,
+  "worst_five": [
+   {
+    "neuron": 13086,
+    "act_at_start_mark": -0.09,
+    "max_abs_act_elsewhere": 17.75,
+    "share_of_start_mark_output": 0.0011,
+    "effect_output_delta": 0.003997652791440487,
+    "effect_output_delta_start_spared": 0.003827405860647559,
+    "effect_input_side": 0.003807977307587862,
+    "effect_folded_batch2": 0.0039791506715118885
+   },
+   {
+    "neuron": 16888,
+    "act_at_start_mark": 15.44,
+    "max_abs_act_elsewhere": 15.12,
+    "share_of_start_mark_output": 0.1618,
+    "effect_output_delta": 0.001161221764050424,
+    "effect_output_delta_start_spared": 0.001104313530959189,
+    "effect_input_side": 0.001072243438102305,
+    "effect_folded_batch2": 0.0010565463453531265
+   },
+   {
+    "neuron": 4376,
+    "act_at_start_mark": 0.75,
+    "max_abs_act_elsewhere": 8.62,
+    "share_of_start_mark_output": 0.0085,
+    "effect_output_delta": 0.0009133185958489776,
+    "effect_output_delta_start_spared": 0.0009513752884231508,
+    "effect_input_side": 0.0009719995432533324,
+    "effect_folded_batch2": 0.0009293501498177648
+   },
+   {
+    "neuron": 9548,
+    "act_at_start_mark": 1.23,
+    "max_abs_act_elsewhere": 6.31,
+    "share_of_start_mark_output": 0.0129,
+    "effect_output_delta": 0.0007730267243459821,
+    "effect_output_delta_start_spared": 0.0007830464746803045,
+    "effect_input_side": 0.0008282496128231287,
+    "effect_folded_batch2": 0.0008315386949107051
+   },
+   {
+    "neuron": 14729,
+    "act_at_start_mark": -0.07,
+    "max_abs_act_elsewhere": 7.81,
+    "share_of_start_mark_output": 0.0007,
+    "effect_output_delta": 0.00042674338328652084,
+    "effect_output_delta_start_spared": 0.0004186148289591074,
+    "effect_input_side": 0.0004731327935587615,
+    "effect_folded_batch2": 0.00046322919661179185
+   }
+  ]
+ },
+ "unpacker_after": {
+  "mode": "compiled"
+ }
+}

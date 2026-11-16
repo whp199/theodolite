@@ -1,0 +1,718 @@
+{
+ "when": "2026-11-14T21:00:31Z",
+ "errors": [],
+ "one_silencing_across_batch_sizes_recipe": {
+  "L20_n4294": {
+   "B2": {
+    "mean": 0.0091,
+    "median": 0.00623,
+    "first_above_0.5": null
+   },
+   "B3": {
+    "mean": 0.0127,
+    "median": 0.00744,
+    "first_above_0.5": null
+   },
+   "B4": {
+    "mean": 0.0075,
+    "median": 0.00369,
+    "first_above_0.5": null
+   },
+   "B6": {
+    "mean": 0.0085,
+    "median": 0.00554,
+    "first_above_0.5": null
+   },
+   "B8": {
+    "mean": 0.0085,
+    "median": 0.00554,
+    "first_above_0.5": null
+   },
+   "B12": {
+    "mean": 0.0085,
+    "median": 0.00554,
+    "first_above_0.5": null
+   },
+   "B16": {
+    "mean": 0.7258,
+    "median": 0.61632,
+    "first_above_0.5": 57
+   },
+   "B24": {
+    "mean": 0.7258,
+    "median": 0.61632,
+    "first_above_0.5": 57
+   },
+   "B32": {
+    "mean": 0.7258,
+    "median": 0.61632,
+    "first_above_0.5": 57
+   },
+   "B48": {
+    "mean": 0.7258,
+    "median": 0.61632,
+    "first_above_0.5": 57
+   }
+  },
+  "L20_n9618": {
+   "B2": {
+    "mean": 0.0053,
+    "median": 0.00293,
+    "first_above_0.5": null
+   },
+   "B3": {
+    "mean": 0.0036,
+    "median": 0.00216,
+    "first_above_0.5": null
+   },
+   "B4": {
+    "mean": 0.0034,
+    "median": 0.00203,
+    "first_above_0.5": null
+   },
+   "B6": {
+    "mean": 0.0052,
+    "median": 0.00336,
+    "first_above_0.5": null
+   },
+   "B8": {
+    "mean": 0.0052,
+    "median": 0.00336,
+    "first_above_0.5": null
+   },
+   "B12": {
+    "mean": 0.0052,
+    "median": 0.00336,
+    "first_above_0.5": null
+   },
+   "B16": {
+    "mean": 0.6019,
+    "median": 0.48696,
+    "first_above_0.5": 57
+   },
+   "B24": {
+    "mean": 0.6019,
+    "median": 0.48696,
+    "first_above_0.5": 57
+   },
+   "B32": {
+    "mean": 0.6019,
+    "median": 0.48696,
+    "first_above_0.5": 57
+   },
+   "B48": {
+    "mean": 0.6019,
+    "median": 0.48696,
+    "first_above_0.5": 57
+   }
+  },
+  "L5_n13133": {
+   "B2": {
+    "mean": 0.0191,
+    "median": 0.01234,
+    "first_above_0.5": null
+   },
+   "B3": {
+    "mean": 0.0312,
+    "median": 0.01928,
+    "first_above_0.5": null
+   },
+   "B4": {
+    "mean": 0.0186,
+    "median": 0.008,
+    "first_above_0.5": 139
+   },
+   "B6": {
+    "mean": 0.0358,
+    "median": 0.02055,
+    "first_above_0.5": null
+   },
+   "B8": {
+    "mean": 0.0358,
+    "median": 0.02055,
+    "first_above_0.5": null
+   },
+   "B12": {
+    "mean": 0.0358,
+    "median": 0.02055,
+    "first_above_0.5": null
+   },
+   "B16": {
+    "mean": 0.6674,
+    "median": 0.57117,
+    "first_above_0.5": 57
+   },
+   "B24": {
+    "mean": 0.6674,
+    "median": 0.57117,
+    "first_above_0.5": 57
+   },
+   "B32": {
+    "mean": 0.6674,
+    "median": 0.57117,
+    "first_above_0.5": 57
+   },
+   "B48": {
+    "mean": 0.6674,
+    "median": 0.57117,
+    "first_above_0.5": 57
+   }
+  },
+  "L20_n2642": {
+   "B2": {
+    "mean": 0.0042,
+    "median": 0.0033,
+    "first_above_0.5": null
+   },
+   "B3": {
+    "mean": 0.0055,
+    "median": 0.00338,
+    "first_above_0.5": null
+   },
+   "B4": {
+    "mean": 0.003,
+    "median": 0.00207,
+    "first_above_0.5": null
+   },
+   "B6": {
+    "mean": 0.005,
+    "median": 0.00296,
+    "first_above_0.5": null
+   },
+   "B8": {
+    "mean": 0.005,
+    "median": 0.00296,
+    "first_above_0.5": null
+   },
+   "B12": {
+    "mean": 0.005,
+    "median": 0.00296,
+    "first_above_0.5": null
+   },
+   "B16": {
+    "mean": 0.0057,
+    "median": 0.00352,
+    "first_above_0.5": null
+   },
+   "B24": {
+    "mean": 0.0057,
+    "median": 0.00352,
+    "first_above_0.5": null
+   },
+   "B32": {
+    "mean": 0.0057,
+    "median": 0.00352,
+    "first_above_0.5": null
+   },
+   "B48": {
+    "mean": 0.0057,
+    "median": 0.00352,
+    "first_above_0.5": null
+   }
+  }
+ },
+ "where_it_parts": [
+  {
+   "pos": 54,
+   "after": " turn the heat",
+   "true_next": " down",
+   "KL": 0.013,
+   "base_top3": [
+    [
+     " the",
+     0.405
+    ],
+    [
+     " to",
+     0.097
+    ],
+    [
+     "<|channel>",
+     0.094
+    ]
+   ],
+   "edit_top3": [
+    [
+     " the",
+     0.402
+    ],
+    [
+     "<|channel>",
+     0.1
+    ],
+    [
+     " to",
+     0.073
+    ]
+   ],
+   "true_next_logprob_base": -10.141,
+   "true_next_logprob_edit": -10.451
+  },
+  {
+   "pos": 55,
+   "after": " the heat down",
+   "true_next": " until",
+   "KL": 0.012,
+   "base_top3": [
+    [
+     " the",
+     0.471
+    ],
+    [
+     " to",
+     0.187
+    ],
+    [
+     "<|channel>",
+     0.039
+    ]
+   ],
+   "edit_top3": [
+    [
+     " the",
+     0.434
+    ],
+    [
+     " to",
+     0.189
+    ],
+    [
+     "<|channel>",
+     0.043
+    ]
+   ],
+   "true_next_logprob_base": -14.223,
+   "true_next_logprob_edit": -14.409
+  },
+  {
+   "pos": 56,
+   "after": " heat down until",
+   "true_next": " the",
+   "KL": 0.034,
+   "base_top3": [
+    [
+     " the",
+     0.497
+    ],
+    [
+     " uma",
+     0.054
+    ],
+    [
+     "//",
+     0.047
+    ]
+   ],
+   "edit_top3": [
+    [
+     " the",
+     0.404
+    ],
+    [
+     "**",
+     0.06
+    ],
+    [
+     "s",
+     0.058
+    ]
+   ],
+   "true_next_logprob_base": -0.698,
+   "true_next_logprob_edit": -0.907
+  },
+  {
+   "pos": 57,
+   "after": " down until the",
+   "true_next": " surface",
+   "KL": 2.741,
+   "base_top3": [
+    [
+     " uma",
+     0.356
+    ],
+    [
+     "<|channel>",
+     0.142
+    ],
+    [
+     " la",
+     0.103
+    ]
+   ],
+   "edit_top3": [
+    [
+     " idea",
+     0.522
+    ],
+    [
+     " same",
+     0.223
+    ],
+    [
+     "<|channel>",
+     0.064
+    ]
+   ],
+   "true_next_logprob_base": -15.019,
+   "true_next_logprob_edit": -15.147
+  },
+  {
+   "pos": 58,
+   "after": " until the surface",
+   "true_next": " barely",
+   "KL": 0.976,
+   "base_top3": [
+    [
+     "0",
+     0.116
+    ],
+    [
+     "1",
+     0.1
+    ],
+    [
+     " the",
+     0.092
+    ]
+   ],
+   "edit_top3": [
+    [
+     " is",
+     0.454
+    ],
+    [
+     "1",
+     0.071
+    ],
+    [
+     " the",
+     0.065
+    ]
+   ],
+   "true_next_logprob_base": -13.332,
+   "true_next_logprob_edit": -13.752
+  },
+  {
+   "pos": 59,
+   "after": " the surface barely",
+   "true_next": " trem",
+   "KL": 0.771,
+   "base_top3": [
+    [
+     "<|channel>",
+     0.394
+    ],
+    [
+     "**",
+     0.055
+    ],
+    [
+     "//",
+     0.053
+    ]
+   ],
+   "edit_top3": [
+    [
+     "<|channel>",
+     0.54
+    ],
+    [
+     " barely",
+     0.093
+    ],
+    [
+     "s",
+     0.022
+    ]
+   ],
+   "true_next_logprob_base": -16.514,
+   "true_next_logprob_edit": -12.899
+  },
+  {
+   "pos": 60,
+   "after": " surface barely trem",
+   "true_next": "bles",
+   "KL": 2.38,
+   "base_top3": [
+    [
+     "<|channel>",
+     0.67
+    ],
+    [
+     "}",
+     0.063
+    ],
+    [
+     ".",
+     0.028
+    ]
+   ],
+   "edit_top3": [
+    [
+     "ies",
+     0.161
+    ],
+    [
+     "<|channel>",
+     0.032
+    ],
+    [
+     "bles",
+     0.028
+    ]
+   ],
+   "true_next_logprob_base": -11.529,
+   "true_next_logprob_edit": -3.574
+  },
+  {
+   "pos": 61,
+   "after": " barely trembles",
+   "true_next": " and",
+   "KL": 2.485,
+   "base_top3": [
+    [
+     ".",
+     0.216
+    ],
+    [
+     " la",
+     0.069
+    ],
+    [
+     "**",
+     0.06
+    ]
+   ],
+   "edit_top3": [
+    [
+     " \uc5ec\uae30\uc11c",
+     0.136
+    ],
+    [
+     " barely",
+     0.097
+    ],
+    [
+     " of",
+     0.095
+    ]
+   ],
+   "true_next_logprob_base": -6.654,
+   "true_next_logprob_edit": -3.897
+  },
+  {
+   "pos": 62,
+   "after": " trembles and",
+   "true_next": " leave",
+   "KL": 0.695,
+   "base_top3": [
+    [
+     " the",
+     0.542
+    ],
+    [
+     " then",
+     0.068
+    ],
+    [
+     "<|channel>",
+     0.052
+    ]
+   ],
+   "edit_top3": [
+    [
+     " the",
+     0.854
+    ],
+    [
+     " then",
+     0.05
+    ],
+    [
+     "<|channel>",
+     0.018
+    ]
+   ],
+   "true_next_logprob_base": -16.338,
+   "true_next_logprob_edit": -16.268
+  },
+  {
+   "pos": 63,
+   "after": "bles and leave",
+   "true_next": " it",
+   "KL": 0.887,
+   "base_top3": [
+    [
+     " the",
+     0.428
+    ],
+    [
+     "<|channel>",
+     0.074
+    ],
+    [
+     "**",
+     0.069
+    ]
+   ],
+   "edit_top3": [
+    [
+     " the",
+     0.694
+    ],
+    [
+     "<|channel>",
+     0.038
+    ],
+    [
+     "}",
+     0.02
+    ]
+   ],
+   "true_next_logprob_base": -7.661,
+   "true_next_logprob_edit": -6.878
+  }
+ ],
+ "tipped_row_mean_logprob_of_text": {
+  "base": -9.6167,
+  "edit": -8.8712
+ },
+ "thirty_silencings_two_batch_sizes": {
+  "recipe_plain_L5": {
+   "pieces": 150,
+   "mean_KL_batch32": {
+    "median": 0.00829,
+    "max": 0.6674
+   },
+   "mean_KL_batch2": {
+    "median": 0.00902,
+    "max": 0.0195
+   },
+   "neurons_above_0.1_at_batch32": 2,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 2,
+   "neurons_whose_two_readings_differ_over_2x": 9,
+   "corr_batch32_vs_batch2": 0.2304,
+   "median_position_KL_batch32_max": 0.57117
+  },
+  "recipe_plain_L20": {
+   "pieces": 150,
+   "mean_KL_batch32": {
+    "median": 0.00577,
+    "max": 0.7258
+   },
+   "mean_KL_batch2": {
+    "median": 0.00511,
+    "max": 0.0169
+   },
+   "neurons_above_0.1_at_batch32": 5,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 6,
+   "neurons_whose_two_readings_differ_over_2x": 10,
+   "corr_batch32_vs_batch2": 0.1659,
+   "median_position_KL_batch32_max": 0.61632
+  },
+  "prose_plain_L5": {
+   "pieces": 129,
+   "mean_KL_batch32": {
+    "median": 0.00178,
+    "max": 0.0644
+   },
+   "mean_KL_batch2": {
+    "median": 0.00205,
+    "max": 0.0363
+   },
+   "neurons_above_0.1_at_batch32": 0,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 0,
+   "neurons_whose_two_readings_differ_over_2x": 0,
+   "corr_batch32_vs_batch2": 0.9946,
+   "median_position_KL_batch32_max": 0.01254
+  },
+  "prose_plain_L20": {
+   "pieces": 129,
+   "mean_KL_batch32": {
+    "median": 0.00119,
+    "max": 0.003
+   },
+   "mean_KL_batch2": {
+    "median": 0.00121,
+    "max": 0.0026
+   },
+   "neurons_above_0.1_at_batch32": 0,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 0,
+   "neurons_whose_two_readings_differ_over_2x": 0,
+   "corr_batch32_vs_batch2": 0.732,
+   "median_position_KL_batch32_max": 0.00156
+  },
+  "recipe_as_chat_L5": {
+   "pieces": 175,
+   "mean_KL_batch32": {
+    "median": 0.00045,
+    "max": 0.0013
+   },
+   "mean_KL_batch2": {
+    "median": 0.00044,
+    "max": 0.0012
+   },
+   "neurons_above_0.1_at_batch32": 0,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 0,
+   "neurons_whose_two_readings_differ_over_2x": 0,
+   "corr_batch32_vs_batch2": 0.8135,
+   "median_position_KL_batch32_max": 0.00029
+  },
+  "recipe_as_chat_L20": {
+   "pieces": 175,
+   "mean_KL_batch32": {
+    "median": 0.00038,
+    "max": 0.0058
+   },
+   "mean_KL_batch2": {
+    "median": 0.00036,
+    "max": 0.0055
+   },
+   "neurons_above_0.1_at_batch32": 0,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 0,
+   "neurons_whose_two_readings_differ_over_2x": 0,
+   "corr_batch32_vs_batch2": 0.9978,
+   "median_position_KL_batch32_max": 0.00101
+  },
+  "prose_as_chat_L5": {
+   "pieces": 153,
+   "mean_KL_batch32": {
+    "median": 0.00073,
+    "max": 0.0709
+   },
+   "mean_KL_batch2": {
+    "median": 0.00072,
+    "max": 0.0646
+   },
+   "neurons_above_0.1_at_batch32": 0,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 0,
+   "neurons_whose_two_readings_differ_over_2x": 2,
+   "corr_batch32_vs_batch2": 0.9997,
+   "median_position_KL_batch32_max": 0.00809
+  },
+  "prose_as_chat_L20": {
+   "pieces": 153,
+   "mean_KL_batch32": {
+    "median": 0.00055,
+    "max": 0.0007
+   },
+   "mean_KL_batch2": {
+    "median": 0.00053,
+    "max": 0.0006
+   },
+   "neurons_above_0.1_at_batch32": 0,
+   "neurons_above_0.1_at_batch2": 0,
+   "neurons_whose_two_readings_differ_over_5x": 0,
+   "neurons_whose_two_readings_differ_over_2x": 0,
+   "corr_batch32_vs_batch2": 0.0097,
+   "median_position_KL_batch32_max": 0.00026
+  }
+ }
+}
