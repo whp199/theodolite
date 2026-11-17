@@ -7,7 +7,7 @@ Kit 5 (census-kit-5). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 0–29 | 1–30 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
 | 30 | 31 | not taken |  |  |  | its trials failed, 16 and 17 November 2026 (match_wide, then its questions at two pushes): not taken |
 | 31 | 32 | OPEN |  |  |  | match_wide; its trial passed, 16 November 2026 |
-| 32 | 33 | OPEN |  |  |  | match_ceil; its trial passed, 13 November 2026 |
+| 32 | 33 | running | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | ? |  |
 | 33 | 34 | done | anon 280c6dc2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 34 | 35 | done | anon eaef4eff | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 35 | 36 | done | anon 5d30aa4a | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
@@ -46,4 +46,4 @@ Judged:
 - L37 anon 042ec8f2: accepted (15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole)
 - L33 anon 280c6dc2: accepted (16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-17T07:13Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-17T15:43Z.

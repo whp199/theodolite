@@ -85,7 +85,8 @@
   6917386229,
   6923181068,
   6930418938,
-  6939943101
+  6939943101,
+  6946493656
  ],
  "claims": [
   {
@@ -986,6 +987,32 @@
    "size": "529MB",
    "link": "https://github.com/Asynonymous/census-L33/releases/download/L33-match_ceil-280c6dc2/L33-match_ceil-280c6dc2.tar",
    "note": "16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
+  },
+  {
+   "code": "943783a3",
+   "layer": 32,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "5",
+   "via": "github",
+   "at": "2026-11-17T11:16Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-17T11:16Z",
+     "via": "github",
+     "what": "claim=943783a3 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=5",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-17T11:16Z",
+     "via": "github",
+     "what": "claim=943783a3 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    }
+   ],
+   "started_at": "2026-11-17T11:16Z",
+   "bits": "own"
   }
  ],
  "layers": {
@@ -1266,5 +1293,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-17T07:13Z"
+ "updated_at": "2026-11-17T15:43Z"
 }
