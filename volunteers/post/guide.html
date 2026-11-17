@@ -31,9 +31,9 @@ code { font-size:16.5px; background:rgba(160,122,46,.10); padding:0 4px; }
 
 <h1>Take a layer of the census</h1>
 <p class="sub">Gemma-4-31B. Every MLP neuron of a layer pushed along its own direction and read against 2,048 random
-ones. Sixteen layers are done (34–36, 39–51), one of them on a 24 GB card. Four more are open, 32, 33, 38 and 52, and
-37 is being taken: each passed a trial on our card with the push strengths the script uses there. The board says which
-are open.</p>
+ones. Eighteen layers are done (33–37, 39–51), one of them on a 24 GB card. Three more are open, 31, 32 and 38, and
+52 is being taken: each passed a trial on our card with the push strengths the script uses there. Kit 5 adds layer
+31, asked twelve questions at one push. The board says which are open.</p>
 
 <h2>what you get, when the atlas is published</h2>
 <div class="two">
@@ -65,7 +65,7 @@ are open.</p>
 <h2>do this</h2>
 <ol class="steps">
 <li><div><pre>git clone https://github.com/whp199/theodolite
-cd theodolite &amp;&amp; git checkout census-kit-4
+cd theodolite &amp;&amp; git checkout census-kit-5
 scripts/volunteer/census.sh check</pre></div></li>
 <li><div><pre>scripts/volunteer/census.sh reserve 32 --name you</pre>
 <p class="say">Pick an <b>open</b> layer on the board (the script checks). <span class="rub">Post the <code>CENSUS RESERVE</code>
@@ -98,11 +98,11 @@ continues it answer for answer.</p></div></li>
 <div>
 <h2>how it is checked</h2>
 <ul>
-<li>every setting and all 565,254 answers, the claim's secret, the commit</li>
+<li>every setting and all 565,254 answers (565,260 at layer 31), the claim's secret, the commit</li>
 <li>5 of the run's 737 chunks, drawn after it arrives, written again on our 5090</li>
 <li>same bits as ours: must match exactly; another card: rules fixed beforehand (first word-piece, log-probabilities)</li>
 <li>you send the answers, your card's name and versions, a claim code; no logs or paths</li>
-<li>ran an earlier kit? <code>git fetch --tags &amp;&amp; git checkout census-kit-4</code>: your downloads are reused</li>
+<li>ran an earlier kit? <code>git fetch --tags &amp;&amp; git checkout census-kit-5</code>: your downloads are reused; a layer already running under kit 4 is finished on kit 4</li>
 </ul>
 </div>
 </div>

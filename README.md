@@ -25,7 +25,7 @@
 </p>
 
 <p align="center">
-  <sub>The census: sixteen of the sixty layers done, three being taken, two open to volunteers (16 November 2026).
+  <sub>The census: eighteen of the sixty layers done, one being taken, three open to volunteers (17 November 2026).
   <a href="https://github.com/whp199/theodolite/issues/1">The board</a> · <a href="VOLUNTEERS.md">take a layer</a>.</sub>
 </p>
 
@@ -85,8 +85,9 @@ by the home card and by volunteers on their own. The first eleven layers taken (
 - **Checked against the home card.** Each volunteer run’s first batch is compared with the home card’s: bit for bit
   on the same kind of card, and within bars measured beforehand on another.
 
-On 16 November 2026 sixteen layers were done (35–37 and 40–52, counting 1–60 as the pages do; the board counts 0–59).
-Three were being taken, two were open, and the rest wait for a push that passes a trial there.
+On 17 November 2026 eighteen layers were done (34–38 and 40–52, counting 1–60 as the pages do; the board counts 0–59).
+One was being taken, three were open (kit 5 added layer 32, the board's 31), and the rest wait for a push that passes
+a trial there.
 [How to take a layer](VOLUNTEERS.md) · [the board](https://github.com/whp199/theodolite/issues/1) · [the atlas and the
 census at length](docs/ATLAS.md) · [every figure](ROADMAP.md#vi--the-atlas).
 
@@ -256,8 +257,9 @@ Theodolite began as the instrument of one study, of whether Gemma 4 is “female
 interpretability, and a way to learn it: one a newcomer can learn to read a model with, and one whose readings say
 how far they can be trusted. What is under way:
 - **The census of all sixty layers.** Layer by layer, a trial first, taken by the home card and by volunteers. Below
-  layer 33 and above layer 53 the push that reads is still being found. On 16 November 2026 a design that asks twice
-  the questions at one dose passed its trial at layer 32 (31 on the board) and failed at 31 (30 on the board).
+  layer 32 and above layer 53 the push that reads is still being found. On 16 November 2026 a design that asks twice
+  the questions at one dose passed its trial at layer 32 (31 on the board), which kit 5 offers, and failed at 31 (30
+  on the board); the same questions at two doses failed there too (17 November).
 - **Reading a neuron without pushing it.** Each face’s strongest passages are kept, and since 14 November 2026 a
   pattern written from them can be put to a blind test. Neither is yet validated as a label.
 - **A lens fitted on the instruct model.** None tested so far has beaten the base-fitted J++ where it would be

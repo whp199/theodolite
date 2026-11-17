@@ -23,8 +23,8 @@ both ways, by once and by twice the stream’s usual length. Its answers are set
 pushed as far: 565,254 answers a layer, about thirteen hours on one RTX 5090. A neuron ranks high when the words its push
 brings stand further above the random directions’ than nearly every random direction’s own words do. So a high rank says
 its push differs from a random one. It does not say that its words share a theme, or name what the neuron does when it
-fires. The doses were first calibrated at layers 41–51. The census covers those eleven layers and, since 16 November
-2026, five more: 35–37, 40 and 52 (below).
+fires. The doses were first calibrated at layers 41–51. The census covers those eleven layers and, since 16 and 17
+November 2026, seven more: 34–38, 40 and 52 (below).
 
 All eleven are in: layers 41–51 (40–50 on the [census board](https://github.com/whp199/theodolite/issues/1), which
 counts from 0), six of them taken by volunteers. Layer 46 was read against gates fixed before it ran, and the other ten
@@ -45,10 +45,13 @@ board) and fails at 38. One whose two counts are set a layer at a time, where th
 amount, passes at layers 33–38 (32–37 on the board) and fails at 32. The doses are counted calibrated at those eight
 layers, and a third kit offers them to volunteers beside layers 40 and 52, each with the design that passed there
 ([VOLUNTEERS.md](../VOLUNTEERS.md)); layer 37 (36 on the board), which passed one check by a thousandth, was held for the
-home card and taken there. Since 14 November 2026 (kit 4) a 24 GB card with nothing else on it can take a layer. The other thirty-nine layers (1–32 and 54–60) have no design that passed there. Where a census’s doses are not counted
+home card and taken there. Since 14 November 2026 (kit 4) a 24 GB card with nothing else on it can take a layer. A
+design that asks twelve questions at one push, the lower of the layer's two counts, passed a trial at layer 32 (31 on
+the board) on 16 November and failed at 31; since 17 November kit 5 offers it at 32. The other thirty-eight layers
+(1–31 and 54–60) have no design that passed there. Where a census’s doses are not counted
 calibrated the atlas marks it “doses not calibrated at this layer” and inks it without gilt.
 
-Five layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
+Seven layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
 board) on 14 and 15 November 2026, and each was accepted on 16 November; layer 52 came from an RTX 3090, the first
 layer taken on a 24 GB card. The home card took layer 37 (36) on 14 November. Each was read whole by its own trial’s
 reader and three gates. The four volunteers’ layers pass all three. Layer 37 passes two, and on the third its gentler
@@ -58,9 +61,11 @@ board; whether its doses stay counted calibrated is still the owner’s to decid
 layer 41 these layers say less of single neurons. At 35–37 none has a q of 0.05 or less, and 18 to 110 beat all 2,048 random directions: there the
 strongest random directions bring the words of another language (Portuguese, Spanish, French, German, Indonesian)
 with the text unbroken, and even the fifth strongest stands further above the rest than at any other layer read
-whole. At 40, 436 have q ≤ 0.05 and 87 beat all 2,048. Layer 52 reads as 41–51 do: 7,145 and 2,123. Layers 33, 34,
-39 and 53 (32, 33, 38 and 52 on the board) are open to volunteers, and 38 (37) is being taken. Every figure is in
-ROADMAP §vi.
+whole. At 40, 436 have q ≤ 0.05 and 87 beat all 2,048. Layer 52 reads as 41–51 do: 7,145 and 2,123. On 17 November two
+more came from volunteers and pass all three: layer 38 (37 on the board), from an RTX 5090 with the home card's bits,
+and layer 34 (33), from an RTX PRO 6000. Unlike 35–37 they say much of single neurons: 2,332 and 5,576 have q ≤ 0.05,
+and 454 and 1,041 beat all 2,048. Layers 32, 33 and 39 (31, 32 and 38 on the board) are open to volunteers, and 53
+(52) is being taken. Every figure is in ROADMAP §vi.
 
 <table>
   <tr>

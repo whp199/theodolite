@@ -1,5 +1,5 @@
 {
- "kit": 4,
+ "kit": 5,
  "repo": "whp199/theodolite",
  "issue": 1,
  "seen_comments": [
@@ -1180,8 +1180,8 @@
    "note": "its trials failed, 16 and 17 November 2026 (match_wide, then its questions at two pushes): not taken"
   },
   "31": {
-   "state": "stopped",
-   "note": "its match_wide trial passed, 16 November 2026; no kit carries match_wide yet: not taken"
+   "state": "open",
+   "note": "match_wide; its trial passed, 16 November 2026"
   },
   "32": {
    "state": "open",
@@ -1266,5 +1266,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-17T06:50Z"
+ "updated_at": "2026-11-17T07:13Z"
 }

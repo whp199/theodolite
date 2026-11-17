@@ -1383,6 +1383,69 @@ layers, the determinism run and the sampled push on 29 October). In this section
       word-piece inside the span where every earlier dose but one had led (0.37 and 1.53 nats), so by the
       registration that span is no guide above layer 52. Layers 54–59 were not trialled. The board marks 53 failed.
       What to try above 52, if anything, is the owner’s choice.
+    *Two more whole layers from volunteers, 37 and 33* (17 November 2026; the owner approved each download: “Yes, take
+    in 37” and “you can take it in”). Both were taken with kit 4 at its tag (`81c13628`), from a clean tree, and came
+    home after kit 5 was prepared and before it was cut, so each was checked by kit 4’s own file, read from its tag
+    (`census_volunteer.earlier_kit`). Each was read whole by its trial’s registered reader
+    ([`census_L37_whole/`](experiments/results/census_L37_whole/), `census_L33_whole/`; a `read.sh` in each says how).
+    - **What came home.**
+      - Layer 37, `match_ceil`, by anon (042ec8f2), the volunteer who took 39, on an RTX 5090 with the home card’s
+        bits. Begun 15 November at 22:14Z by the run’s record; DONE 16 November at 21:49Z. Its spot chunks (54, 183,
+        271, 461 and 675 of 737) are the home card’s bit for bit, all 3,840 answers.
+      - Layer 33, `match_ceil`, by anon (280c6dc2), the volunteer who took 34 and 35, on the same RTX PRO 6000 card
+        class. Begun 16 November at 13:03Z, in three sessions; DONE 17 November at 05:50Z. Its spot chunks (140,
+        249, 316, 447 and 657): the first word-piece the home card’s in 0.984 of answers (bar 0.90), log-probabilities
+        apart by a median 0.0055 (0.012) and 0.116 at the 99th percentile (0.25), as 34’s and 35’s were.
+    - **What they read**, by the figures and bars of the table above, at 48 word-pieces:
+
+      | layer, design, doses | every answer | the lower dose alone | the neurons the controls cover | its trial, every answer |
+      |---|---|---|---|---|
+      | 37, `match_ceil`, ±2.41 and ±2.55 ceilings | 0.662, 0.700, 0.626 and 0.630, 0.651 | 0.650, 0.667, 0.602 and 0.607, 0.636 | 89 in 100; 0.646, 0.687, 0.607 and 0.609, 0.636 | 0.653, 0.678, 0.609 and 0.627, 0.654 |
+      | 33, `match_ceil`, ±2.31 and ±2.51 ceilings | 0.745, 0.742, 0.653 and 0.662, 0.709 | 0.716, 0.707, 0.623 and 0.622, 0.668 | 97 in 100; 0.744, 0.738, 0.651 and 0.660, 0.707 | 0.726, 0.726, 0.630 and 0.637, 0.691 |
+
+      Each passes every gate, with more room than its trial: the least margin over a bar is 0.032 against 0.015 at
+      37, and 0.052 against 0.031 at 33, both on the lower dose’s words carried across the question halves (at 37’s
+      trial, on the covered neurons’). The message of `71c7104` says layer 37’s trial passed one gate by 0.001; that
+      was layer 36’s trial. Reported beside them, gating nothing: the upper dose alone reads 0.631, 0.665, 0.611 and
+      0.597, 0.622 at 37, and 0.712, 0.706, 0.614 and 0.612, 0.659 at 33. By the length rule 33 keeps 48
+      word-pieces, as its trial did, and 37 would take 32, as its trial would have. The text hardly moves: the
+      neurons’ answers lose 0.022 to 0.030 of their distinct 4-grams at 37 and 0.003 to 0.004 at 33, the controls’
+      0.005 to 0.009 and 0.002 to 0.004.
+    - **Per neuron they tell more than 34–36**, by the counts of the table above:
+
+      | layer | above all 2,048 controls (10.5 by chance) | q ≤ 0.05 | above 95 in 100 controls | more than five control SDs over the controls’ median | the strongest control and the fifth, in those SDs |
+      |---|---|---|---|---|---|
+      | 37 | 454 | 2,332 | 31 in 100 | 2,376 | 10.5 and 9.5 |
+      | 33 | 1,041 | 5,576 | 40 in 100 | 2,891 | 7.9 and 6.0 |
+
+      Their strongest controls bring another language’s words, as at 34–36 (French, Spanish, Portuguese and German
+      at 37; Portuguese and Indonesian at 33), and at 37 they stand as far out as there or further (the fifth at 9.5
+      SDs, against 7.2 to 8.9). Yet at 37 2,332 neurons have
+      q ≤ 0.05, where 34–36 had none: more of its neurons stand further out still. With the five strongest controls
+      set aside the count would be 4,017 at 37 and 6,197 at 33 (gating nothing).
+    - **The board** (17 November, before the cut): eighteen layers done, 33–37 and 39–51, twelve of them by
+      volunteers; 52 running (eigentactics, c40b4d3a, under kit 4); 32 and 38 open.
+  - **Kit 5: kit 4 with layer 31 added** (cut 17 November 2026, tag `census-kit-5`; the owner’s words: “Prepare kit 5
+    for layer 31”, 16 November, and “Cut kit 5”, 17 November). Layer 31 is taken with `match_wide`, `match_ceil`’s
+    lower count alone (±2.58 ceilings) on twelve questions, whose trial passed there on 16 November (above); it is
+    counted calibrated there alone, at 48 word-pieces (`a0e950e`). Every other layer is taken as under kit 4.
+    - **The answers.** All seventeen of kit 4’s home canaries, taken again under kit 5, are the ones kept; layer
+      31’s is new (`eebe4a6`). Nothing that writes an answer changed after that.
+    - **Its own unpushed answers.** `match_wide` asks twelve questions, and a whole layer writes the second half’s
+      unpushed answers in batches of 63, where chair’s log-probabilities differ from layer 45’s. So a design that
+      asks other questions is checked against its own unpushed answers, from its trial on the home card
+      (`census_volunteer.DESIGN_BASELINES`).
+    - **Its bars for another card class**, registered and pushed before anything was measured
+      ([`census_other_card_bars/kit5/prereg/RULES.md`](experiments/results/census_other_card_bars/kit5/prereg/RULES.md),
+      `e6fa0cf`, pushed 02:37:48Z; measured 02:37Z–03:36Z, `22e73db`). The control’s twelve unpushed answers are
+      the trial’s bit for bit. The near-tie bar stands at 0.6 (the home card’s own arithmetic parted only at pieces
+      written at 0.52 or less). On the kit’s own chunk 0, 768 answers to all twelve questions, the home card’s
+      arithmetic moves the median to 0.0053 and the 99th percentile to 0.115, as under `match_ceil`; the bars are
+      0.013 and 0.26, and 0.90 of first word-pieces.
+    - **A layer begun under kit 4** is finished on kit 4 and checked by kit 4’s own file, read from its tag
+      (`census_volunteer.earlier_kit`), as 37 and 33 were; at the cut that is layer 52.
+    - **The board** is kit 5’s with layer 31 open: 31, 32 and 38 open, 52 running. *Not shown yet:* a whole layer of
+      `match_wide` from a volunteer. The thread post is the owner’s.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
