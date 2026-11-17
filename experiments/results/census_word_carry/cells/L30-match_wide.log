@@ -1,0 +1,8 @@
+L30-match_wide-trial.jsonl: 49116 rows in 2s; halves ['who', 'orange', 'free', 'self', 'green', 'interesting'] | ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp']; arms {'lower': [-2.42, 2.42]}
+  units {'top_controls_sd': [12.29, 4.44, 4.36, 4.05, 3.74], 'top_controls_words': ['una que para aquí tienes diferencia', 'known called this not important perspective', 'will combination cannot see didn since', 'mean things asking who others some', 'have however provided because version explained'], 'above_5sd': 26, 'above_every_control': 3, 'q05': 0, 'q05_five_set_aside': 65} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 32, 'controls_pA05_and_pB05': 4, 'chance_scaled': 4.0}}
+  lower 2to1 within  n=120 mean 0.517 sd 0.014
+  lower 2to1 between n=180 mean 0.523 sd 0.013
+  lower 3to3 within  n= 40 mean 0.525 sd 0.014
+  lower 3to3 between n= 40 mean 0.530 sd 0.013
+  lower read in 22s

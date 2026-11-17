@@ -1,0 +1,12 @@
+L51-break_rel-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.0, 1.0], 'upper': [-2.0, 2.0], 'both': [-2.0, -1.0, 1.0, 2.0]}
+  units {'top_controls_sd': [3.57, 3.49, 3.48, 3.4, 3.31], 'top_controls_words': ['uma dependingy own range dependingthought distance', 'samethought stretta soon ownthought same created', 'soda sthought thoughtthought thoughts elegant move', 'ownthought thought ownthoughtthoughtthought ownthoughtthought thoughtthoughtthoughtthoughtthoughtthoughtthoughtthought thoughtthoughtthoughtthoughtthought', 'own dependingthought fascinating find heading and'], 'above_5sd': 131, 'above_every_control': 238, 'q05': 346, 'q05_five_set_aside': 366} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 175, 'controls_pA05_and_pB05': 5, 'chance_scaled': 5.0}}
+  lower 2to1 within  n=  6 mean 0.618 sd 0.026
+  lower 2to1 between n= 18 mean 0.606 sd 0.028
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.543 sd 0.005
+  upper 2to1 between n= 18 mean 0.545 sd 0.013
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.626 sd 0.013
+  both  2to1 between n= 18 mean 0.629 sd 0.018
+  both read in 1s

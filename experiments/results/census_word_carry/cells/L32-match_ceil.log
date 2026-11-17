@@ -1,0 +1,12 @@
+L32-match_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-2.21, 2.21], 'upper': [-2.44, 2.44], 'both': [-2.44, -2.21, 2.21, 2.44]}
+  units {'top_controls_sd': [6.41, 5.97, 4.72, 4.34, 4.33], 'top_controls_words': ['que tres tienes aquí para una', 'please safety disclaimer warning professional general', 'wait let check know overview cozy', 'known problem categorized few when classic', 'example perspective great asking ranging have'], 'above_5sd': 96, 'above_every_control': 54, 'q05': 120, 'q05_five_set_aside': 166} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 86, 'controls_pA05_and_pB05': 3, 'chance_scaled': 3.0}}
+  lower 2to1 within  n=  6 mean 0.542 sd 0.017
+  lower 2to1 between n= 18 mean 0.539 sd 0.019
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.554 sd 0.008
+  upper 2to1 between n= 18 mean 0.542 sd 0.020
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.570 sd 0.013
+  both  2to1 between n= 18 mean 0.569 sd 0.020
+  both read in 2s

@@ -1,0 +1,12 @@
+L35-match_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-2.27, 2.27], 'upper': [-2.41, 2.41], 'both': [-2.41, -2.27, 2.27, 2.41]}
+  units {'top_controls_sd': [9.57, 7.65, 6.68, 6.43, 6.28], 'top_controls_words': ['yang adalah berikut untuk kamu dari', 'для как если вот это что', 'que uma você para aqui resposta', 'para una que necesario lenguaje soy', 'que una aquí para cual tienes'], 'above_5sd': 38, 'above_every_control': 3, 'q05': 0, 'q05_five_set_aside': 25} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 100, 'controls_pA05_and_pB05': 15, 'chance_scaled': 15.0}}
+  lower 2to1 within  n=  6 mean 0.558 sd 0.009
+  lower 2to1 between n= 18 mean 0.545 sd 0.017
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.550 sd 0.009
+  upper 2to1 between n= 18 mean 0.550 sd 0.017
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.577 sd 0.013
+  both  2to1 between n= 18 mean 0.569 sd 0.014
+  both read in 2s

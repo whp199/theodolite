@@ -1,0 +1,998 @@
+{
+ "run": "L39-break_rel-trial.jsonl",
+ "layer": 39,
+ "design": "break_rel",
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "arms": {
+  "lower": [
+   -1.0,
+   1.0
+  ],
+  "upper": [
+   -2.0,
+   2.0
+  ],
+  "both": [
+   -2.0,
+   -1.0,
+   1.0,
+   2.0
+  ]
+ },
+ "cells": [
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6263
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6041
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.5951
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6344
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6257
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6042
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6064
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6042
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.6419
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6197
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6193
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6481
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6252
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.6083
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6038
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6397
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6157
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.6056
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6112
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6239
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.613
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.6065
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6022
+  },
+  {
+   "arm": "lower",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6318
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.5357
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.5189
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.5379
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.5265
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.5218
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.5292
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.5419
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.5365
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.5056
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.5529
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.5561
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.5573
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.5689
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.5
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.5311
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.5594
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.5724
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.4997
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.545
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.5741
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.571
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.4996
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.5491
+  },
+  {
+   "arm": "upper",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.5648
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6507
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6249
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6242
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "orange"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6449
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6479
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6462
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6345
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "who",
+    "free"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6445
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.6492
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6512
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6425
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "orange",
+    "free"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6662
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "chair"
+   ],
+   "auc": 0.6566
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.5923
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6254
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "walk"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6686
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "walk"
+   ],
+   "auc": 0.6586
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.5924
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6336
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "bicycle",
+    "chair"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6557
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "within",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "bicycle"
+   ],
+   "auc": 0.6526
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "who"
+   ],
+   "auc": 0.6116
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "orange"
+   ],
+   "auc": 0.6351
+  },
+  {
+   "arm": "both",
+   "kind": "2to1",
+   "type": "between",
+   "pick": [
+    "walk",
+    "chair"
+   ],
+   "score": [
+    "free"
+   ],
+   "auc": 0.6556
+  }
+ ],
+ "counts": {
+  "all doses": {
+   "neurons": 1022,
+   "controls": 1024,
+   "pA05_and_pB05": 154,
+   "controls_pA05_and_pB05": 11,
+   "chance_scaled": 11.0
+  }
+ },
+ "units": {
+  "top_controls_sd": [
+   6.4,
+   5.11,
+   4.92,
+   4.82,
+   4.65
+  ],
+  "top_controls_words": [
+   "\u043c\u043d\u0435 uma \u043a\u043e\u043d\u0446\u0435 voc\u00ea simples tr\u00eas",
+   "some general other more immediate believe",
+   "category division que aqu\u00ed naturaleza una",
+   "que una aqu\u00ed humana varias energ\u00eda",
+   "yang adalah bagaimana anda berikut melihatnya"
+  ],
+  "above_5sd": 71,
+  "above_every_control": 28,
+  "q05": 81,
+  "q05_five_set_aside": 126
+ }
+}

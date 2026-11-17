@@ -1,0 +1,12 @@
+L38-soft_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.6, 1.6], 'upper': [-2.3, 2.3], 'both': [-2.3, -1.6, 1.6, 2.3]}
+  units {'top_controls_sd': [11.0, 6.5, 5.58, 4.03, 3.82], 'top_controls_words': ['que aqui para mais estão você', 'para como simples perspective seu modelo', 'broken down whether imagining between enjoyed', 'since never specify consider era especially', 'see someone cannot who mechanisms four'], 'above_5sd': 216, 'above_every_control': 110, 'q05': 263, 'q05_five_set_aside': 283} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 209, 'controls_pA05_and_pB05': 6, 'chance_scaled': 6.0}}
+  lower 2to1 within  n=  6 mean 0.574 sd 0.018
+  lower 2to1 between n= 18 mean 0.568 sd 0.018
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.593 sd 0.007
+  upper 2to1 between n= 18 mean 0.590 sd 0.014
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.622 sd 0.007
+  both  2to1 between n= 18 mean 0.607 sd 0.013
+  both read in 2s

@@ -1,0 +1,12 @@
+L31-match_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-2.58, 2.58], 'upper': [-2.76, 2.76], 'both': [-2.76, -2.58, 2.58, 2.76]}
+  units {'top_controls_sd': [6.61, 4.79, 3.98, 3.8, 3.74], 'top_controls_words': ['você para vou como não quem', 'life where recovering from changes depending', 'improve visualize weight helps trying support', 'ask who people confusing resonance example', 'particular since didn general specify focusing'], 'above_5sd': 40, 'above_every_control': 19, 'q05': 84, 'q05_five_set_aside': 143} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 50, 'controls_pA05_and_pB05': 1, 'chance_scaled': 1.0}}
+  lower 2to1 within  n=  6 mean 0.532 sd 0.027
+  lower 2to1 between n= 18 mean 0.527 sd 0.015
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.529 sd 0.018
+  upper 2to1 between n= 18 mean 0.524 sd 0.009
+  upper read in 2s
+  both  2to1 within  n=  6 mean 0.552 sd 0.019
+  both  2to1 between n= 18 mean 0.548 sd 0.013
+  both read in 2s

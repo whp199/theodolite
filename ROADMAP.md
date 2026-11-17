@@ -1027,6 +1027,19 @@ layers, the determinism run and the sampled push on 29 October). In this section
        nothing is taken at 30 with this design, kit 5 is prepared for 31 with `match_wide` alone, and what to try at
        and below 30 is the owner’s choice
        ([`census_both_trial/RESULT.md`](experiments/results/census_both_trial/RESULT.md)).
+       **Why the words do not carry at 30 and 53, read again from the trials** (17 November, exploratory, CPU, about
+       two minutes; [`census_word_carry/NOTE.md`](experiments/results/census_word_carry/NOTE.md)). G3’s statistic was
+       taken on matched sets of questions, picked on two and scored on one (or three and three) of the same half or
+       of the other, on eighteen trials. It gives the registered figures back exactly when read whole. The halves
+       are not what stops the words: on every trial they carry as well between the halves as within one (within
+       minus between −0.014 to +0.017; at 30, −0.005 to +0.008). At 30 they carry faintly every way (0.52 to 0.55,
+       where 32–36 read 0.56 to 0.62), and what differs is where they come back: half A’s questions, about the model
+       and colours, take them up less than half B’s whichever half they were picked on (0.533 against 0.554 under
+       `match_both`), so B→A fails. At 31 the halves take them up alike. The harder dose carried no more than the
+       lower at 30. No neuron is named at 30 in either trial, as none is at 31 under `match_wide` or at 34–36, which
+       passed: one control stands 12 SD out (it writes Spanish). Against the controls, 32 neurons are strong on both
+       halves where about 4 would be by chance, and with the five strongest controls set aside 65 have q ≤ 0.05
+       (35: 25, 36: 0). Under `match_both` five controls stand 7 to 12 SD out and the count stays 0. Nothing decided.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based

@@ -1,0 +1,12 @@
+L52-break_rel-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.0, 1.0], 'upper': [-2.0, 2.0], 'both': [-2.0, -1.0, 1.0, 2.0]}
+  units {'top_controls_sd': [2.8, 2.79, 2.73, 2.62, 2.6], 'top_controls_words': ['walking less much effort faster allowing', 'ownthought thought didnthought since several based', 'bit little something emotion idea versatile', 'idea socks type perfect like will', 'will help think these avoid injury'], 'above_5sd': 126, 'above_every_control': 229, 'q05': 284, 'q05_five_set_aside': 286} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 176, 'controls_pA05_and_pB05': 8, 'chance_scaled': 8.0}}
+  lower 2to1 within  n=  6 mean 0.554 sd 0.051
+  lower 2to1 between n= 18 mean 0.547 sd 0.039
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.518 sd 0.023
+  upper 2to1 between n= 18 mean 0.520 sd 0.020
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.546 sd 0.012
+  both  2to1 between n= 18 mean 0.560 sd 0.014
+  both read in 1s

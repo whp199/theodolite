@@ -1,0 +1,8 @@
+L31-match_wide-trial.jsonl: 49116 rows in 2s; halves ['who', 'orange', 'free', 'self', 'green', 'interesting'] | ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp']; arms {'lower': [-2.58, 2.58]}
+  units {'top_controls_sd': [10.07, 7.04, 5.01, 4.98, 4.89], 'top_controls_words': ['genellikle bir olarak için temel genel', 'tienes aquí una para con simplemente', 'cómo tienes aquí una view detallada', 'reading screen words likely this way', 'mean things comprehensive never provide can'], 'above_5sd': 54, 'above_every_control': 6, 'q05': 0, 'q05_five_set_aside': 126} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 82, 'controls_pA05_and_pB05': 7, 'chance_scaled': 7.0}}
+  lower 2to1 within  n=120 mean 0.530 sd 0.013
+  lower 2to1 between n=180 mean 0.530 sd 0.011
+  lower 3to3 within  n= 40 mean 0.554 sd 0.011
+  lower 3to3 between n= 40 mean 0.555 sd 0.010
+  lower read in 21s

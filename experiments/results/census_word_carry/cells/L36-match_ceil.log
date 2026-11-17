@@ -1,0 +1,12 @@
+L36-match_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-2.27, 2.27], 'upper': [-2.46, 2.46], 'both': [-2.46, -2.27, 2.27, 2.46]}
+  units {'top_controls_sd': [10.34, 9.12, 8.71, 8.18, 8.12], 'top_controls_words': ['você que uma quiser não specifically', 'cho tôi bạn theo cách của', 'die ist ein auf und antwort', 'que como ela uma aqui para', 'que una fascinante tienes aquí para'], 'above_5sd': 35, 'above_every_control': 6, 'q05': 0, 'q05_five_set_aside': 0} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 81, 'controls_pA05_and_pB05': 11, 'chance_scaled': 11.0}}
+  lower 2to1 within  n=  6 mean 0.539 sd 0.010
+  lower 2to1 between n= 18 mean 0.537 sd 0.016
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.544 sd 0.011
+  upper 2to1 between n= 18 mean 0.535 sd 0.012
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.559 sd 0.015
+  both  2to1 between n= 18 mean 0.563 sd 0.012
+  both read in 2s

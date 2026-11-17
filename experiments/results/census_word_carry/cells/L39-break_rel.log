@@ -1,0 +1,12 @@
+L39-break_rel-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.0, 1.0], 'upper': [-2.0, 2.0], 'both': [-2.0, -1.0, 1.0, 2.0]}
+  units {'top_controls_sd': [6.4, 5.11, 4.92, 4.82, 4.65], 'top_controls_words': ['мне uma конце você simples três', 'some general other more immediate believe', 'category division que aquí naturaleza una', 'que una aquí humana varias energía', 'yang adalah bagaimana anda berikut melihatnya'], 'above_5sd': 71, 'above_every_control': 28, 'q05': 81, 'q05_five_set_aside': 126} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 154, 'controls_pA05_and_pB05': 11, 'chance_scaled': 11.0}}
+  lower 2to1 within  n=  6 mean 0.625 sd 0.009
+  lower 2to1 between n= 18 mean 0.615 sd 0.015
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.546 sd 0.026
+  upper 2to1 between n= 18 mean 0.538 sd 0.022
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.653 sd 0.004
+  both  2to1 between n= 18 mean 0.636 sd 0.021
+  both read in 1s

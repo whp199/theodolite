@@ -1,0 +1,12 @@
+L38-break_rel-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.0, 1.0], 'upper': [-2.0, 2.0], 'both': [-2.0, -1.0, 1.0, 2.0]}
+  units {'top_controls_sd': [6.56, 5.52, 5.11, 5.09, 5.07], 'top_controls_words': ['một mỗi cho chi nói phần', 'altern bir dem zaman gibi olsun', 'thể bạn hiểu học nói logic', 'para con más quien que ownthought', 'other some use user que called'], 'above_5sd': 6, 'above_every_control': 2, 'q05': 0, 'q05_five_set_aside': 0} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 44, 'controls_pA05_and_pB05': 20, 'chance_scaled': 20.0}}
+  lower 2to1 within  n=  6 mean 0.558 sd 0.019
+  lower 2to1 between n= 18 mean 0.565 sd 0.016
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.474 sd 0.006
+  upper 2to1 between n= 18 mean 0.473 sd 0.009
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.551 sd 0.008
+  both  2to1 between n= 18 mean 0.557 sd 0.014
+  both read in 1s

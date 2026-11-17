@@ -1,0 +1,1602 @@
+[
+ {
+  "trial": "L30 match_both",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    12.15,
+    8.8,
+    8.3,
+    7.41,
+    7.05
+   ],
+   "top_controls_words": [
+    "aqui que diferentes est\u00e3o est\u00e1 pode",
+    "que para tres una tienes aqu\u00ed",
+    "tienes aqu\u00ed una para que consejos",
+    "det kan som s\u00e4tt olika h\u00e4r",
+    "que aqu\u00ed para tienes una fascinante"
+   ],
+   "above_5sd": 16,
+   "above_every_control": 1,
+   "q05": 0,
+   "q05_five_set_aside": 0
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 48,
+    "controls_pA05_and_pB05": 14,
+    "chance_scaled": 14.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 120,
+     "within": 0.5198,
+     "between_n": 180,
+     "between": 0.5188,
+     "diff": 0.0009,
+     "paired_diff": 0.0009,
+     "by_scored_question": {
+      "free": 0.515,
+      "self": 0.5243,
+      "green": 0.5116,
+      "interesting": 0.5076,
+      "bicycle": 0.5182,
+      "walk": 0.5209,
+      "chair": 0.5325,
+      "kettle": 0.5227,
+      "sleep": 0.519,
+      "lamp": 0.5292,
+      "orange": 0.514,
+      "who": 0.5157
+     }
+    },
+    "3to3": {
+     "within_n": 40,
+     "within": 0.5332,
+     "between_n": 40,
+     "between": 0.5275,
+     "diff": 0.0058,
+     "paired_diff": 0.0053
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 120,
+     "within": 0.5185,
+     "between_n": 180,
+     "between": 0.5193,
+     "diff": -0.0008,
+     "paired_diff": -0.0008,
+     "by_scored_question": {
+      "free": 0.5102,
+      "self": 0.5274,
+      "green": 0.5179,
+      "interesting": 0.5244,
+      "bicycle": 0.5176,
+      "walk": 0.5235,
+      "chair": 0.5154,
+      "kettle": 0.5263,
+      "sleep": 0.5171,
+      "lamp": 0.5181,
+      "orange": 0.5161,
+      "who": 0.5135
+     }
+    },
+    "3to3": {
+     "within_n": 40,
+     "within": 0.5271,
+     "between_n": 40,
+     "between": 0.5189,
+     "diff": 0.0082,
+     "paired_diff": 0.0095
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 120,
+     "within": 0.5298,
+     "between_n": 180,
+     "between": 0.5309,
+     "diff": -0.0011,
+     "paired_diff": -0.0011,
+     "by_scored_question": {
+      "free": 0.527,
+      "self": 0.5261,
+      "green": 0.5258,
+      "interesting": 0.5286,
+      "bicycle": 0.5303,
+      "walk": 0.5371,
+      "chair": 0.5361,
+      "kettle": 0.5376,
+      "sleep": 0.5307,
+      "lamp": 0.5374,
+      "orange": 0.5268,
+      "who": 0.522
+     }
+    },
+    "3to3": {
+     "within_n": 40,
+     "within": 0.5413,
+     "between_n": 40,
+     "between": 0.5449,
+     "diff": -0.0036,
+     "paired_diff": -0.006
+    }
+   }
+  }
+ },
+ {
+  "trial": "L30 match_wide",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    12.29,
+    4.44,
+    4.36,
+    4.05,
+    3.74
+   ],
+   "top_controls_words": [
+    "una que para aqu\u00ed tienes diferencia",
+    "known called this not important perspective",
+    "will combination cannot see didn since",
+    "mean things asking who others some",
+    "have however provided because version explained"
+   ],
+   "above_5sd": 26,
+   "above_every_control": 3,
+   "q05": 0,
+   "q05_five_set_aside": 65
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 32,
+    "controls_pA05_and_pB05": 4,
+    "chance_scaled": 4.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 120,
+     "within": 0.5173,
+     "between_n": 180,
+     "between": 0.5227,
+     "diff": -0.0054,
+     "paired_diff": -0.0054,
+     "by_scored_question": {
+      "free": 0.5245,
+      "self": 0.5216,
+      "green": 0.5181,
+      "interesting": 0.5151,
+      "bicycle": 0.5243,
+      "walk": 0.5173,
+      "chair": 0.5297,
+      "kettle": 0.5213,
+      "sleep": 0.5191,
+      "lamp": 0.531,
+      "orange": 0.5122,
+      "who": 0.5122
+     }
+    },
+    "3to3": {
+     "within_n": 40,
+     "within": 0.5252,
+     "between_n": 40,
+     "between": 0.5301,
+     "diff": -0.005,
+     "paired_diff": -0.0053
+    }
+   }
+  }
+ },
+ {
+  "trial": "L31 match_ceil",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    6.61,
+    4.79,
+    3.98,
+    3.8,
+    3.74
+   ],
+   "top_controls_words": [
+    "voc\u00ea para vou como n\u00e3o quem",
+    "life where recovering from changes depending",
+    "improve visualize weight helps trying support",
+    "ask who people confusing resonance example",
+    "particular since didn general specify focusing"
+   ],
+   "above_5sd": 40,
+   "above_every_control": 19,
+   "q05": 84,
+   "q05_five_set_aside": 143
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 50,
+    "controls_pA05_and_pB05": 1,
+    "chance_scaled": 1.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5317,
+     "between_n": 18,
+     "between": 0.5274,
+     "diff": 0.0043,
+     "paired_diff": 0.0043,
+     "by_scored_question": {
+      "free": 0.5257,
+      "bicycle": 0.5419,
+      "walk": 0.5343,
+      "chair": 0.5169,
+      "orange": 0.5477,
+      "who": 0.5042
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5295,
+     "between_n": 18,
+     "between": 0.5243,
+     "diff": 0.0051,
+     "paired_diff": 0.0051,
+     "by_scored_question": {
+      "free": 0.5186,
+      "bicycle": 0.5358,
+      "walk": 0.5326,
+      "chair": 0.5316,
+      "orange": 0.526,
+      "who": 0.5092
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5517,
+     "between_n": 18,
+     "between": 0.5478,
+     "diff": 0.0038,
+     "paired_diff": 0.0038,
+     "by_scored_question": {
+      "free": 0.5481,
+      "bicycle": 0.5551,
+      "walk": 0.5482,
+      "chair": 0.5554,
+      "orange": 0.5491,
+      "who": 0.5369
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L31 match_wide",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    10.07,
+    7.04,
+    5.01,
+    4.98,
+    4.89
+   ],
+   "top_controls_words": [
+    "genellikle bir olarak i\u00e7in temel genel",
+    "tienes aqu\u00ed una para con simplemente",
+    "c\u00f3mo tienes aqu\u00ed una view detallada",
+    "reading screen words likely this way",
+    "mean things comprehensive never provide can"
+   ],
+   "above_5sd": 54,
+   "above_every_control": 6,
+   "q05": 0,
+   "q05_five_set_aside": 126
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 82,
+    "controls_pA05_and_pB05": 7,
+    "chance_scaled": 7.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 120,
+     "within": 0.5299,
+     "between_n": 180,
+     "between": 0.5304,
+     "diff": -0.0004,
+     "paired_diff": -0.0004,
+     "by_scored_question": {
+      "free": 0.5271,
+      "self": 0.5253,
+      "green": 0.5346,
+      "interesting": 0.5314,
+      "bicycle": 0.5327,
+      "walk": 0.5218,
+      "chair": 0.5309,
+      "kettle": 0.5299,
+      "sleep": 0.531,
+      "lamp": 0.5357,
+      "orange": 0.53,
+      "who": 0.5317
+     }
+    },
+    "3to3": {
+     "within_n": 40,
+     "within": 0.5543,
+     "between_n": 40,
+     "between": 0.5551,
+     "diff": -0.0008,
+     "paired_diff": 0.0001
+    }
+   }
+  }
+ },
+ {
+  "trial": "L32 match_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    6.41,
+    5.97,
+    4.72,
+    4.34,
+    4.33
+   ],
+   "top_controls_words": [
+    "que tres tienes aqu\u00ed para una",
+    "please safety disclaimer warning professional general",
+    "wait let check know overview cozy",
+    "known problem categorized few when classic",
+    "example perspective great asking ranging have"
+   ],
+   "above_5sd": 96,
+   "above_every_control": 54,
+   "q05": 120,
+   "q05_five_set_aside": 166
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 86,
+    "controls_pA05_and_pB05": 3,
+    "chance_scaled": 3.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5425,
+     "between_n": 18,
+     "between": 0.5387,
+     "diff": 0.0038,
+     "paired_diff": 0.0038,
+     "by_scored_question": {
+      "free": 0.5525,
+      "bicycle": 0.5441,
+      "walk": 0.53,
+      "chair": 0.5362,
+      "orange": 0.5478,
+      "who": 0.5271
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5539,
+     "between_n": 18,
+     "between": 0.5415,
+     "diff": 0.0123,
+     "paired_diff": 0.0123,
+     "by_scored_question": {
+      "free": 0.5545,
+      "bicycle": 0.5563,
+      "walk": 0.5282,
+      "chair": 0.5515,
+      "orange": 0.5416,
+      "who": 0.5356
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.57,
+     "between_n": 18,
+     "between": 0.5687,
+     "diff": 0.0013,
+     "paired_diff": 0.0013,
+     "by_scored_question": {
+      "free": 0.5797,
+      "bicycle": 0.5718,
+      "walk": 0.5622,
+      "chair": 0.5737,
+      "orange": 0.5812,
+      "who": 0.5453
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L33 match_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    8.23,
+    7.8,
+    5.33,
+    5.22,
+    5.09
+   ],
+   "top_controls_words": [
+    "uma voc\u00ea est\u00e1 como pessoas mas",
+    "jika anda bisa berikut adalah yang",
+    "como variar tres tienes aqu\u00ed que",
+    "aqui para est\u00e3o que tr\u00eas voc\u00ea",
+    "disclaimer forget hidden not since people"
+   ],
+   "above_5sd": 119,
+   "above_every_control": 29,
+   "q05": 192,
+   "q05_five_set_aside": 264
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 123,
+    "controls_pA05_and_pB05": 6,
+    "chance_scaled": 6.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5581,
+     "between_n": 18,
+     "between": 0.5522,
+     "diff": 0.0059,
+     "paired_diff": 0.0059,
+     "by_scored_question": {
+      "free": 0.5659,
+      "bicycle": 0.5546,
+      "walk": 0.5535,
+      "chair": 0.554,
+      "orange": 0.5609,
+      "who": 0.533
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5547,
+     "between_n": 18,
+     "between": 0.5533,
+     "diff": 0.0014,
+     "paired_diff": 0.0014,
+     "by_scored_question": {
+      "free": 0.5577,
+      "bicycle": 0.5664,
+      "walk": 0.5476,
+      "chair": 0.5694,
+      "orange": 0.5586,
+      "who": 0.5221
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5927,
+     "between_n": 18,
+     "between": 0.5899,
+     "diff": 0.0028,
+     "paired_diff": 0.0028,
+     "by_scored_question": {
+      "free": 0.5979,
+      "bicycle": 0.5967,
+      "walk": 0.5914,
+      "chair": 0.605,
+      "orange": 0.5982,
+      "who": 0.5543
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L34 match_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    11.21,
+    8.76,
+    8.4,
+    7.29,
+    6.34
+   ],
+   "top_controls_words": [
+    "que voc\u00ea n\u00e3o como uma para",
+    "que para con tienes aqu\u00ed una",
+    "voc\u00ea como para que n\u00e3o aqui",
+    "bir i\u00e7in temel veya farkl\u0131 ancak",
+    "per una posso come vuoi che"
+   ],
+   "above_5sd": 121,
+   "above_every_control": 8,
+   "q05": 0,
+   "q05_five_set_aside": 266
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 170,
+    "controls_pA05_and_pB05": 9,
+    "chance_scaled": 9.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5707,
+     "between_n": 18,
+     "between": 0.5657,
+     "diff": 0.0051,
+     "paired_diff": 0.0051,
+     "by_scored_question": {
+      "free": 0.571,
+      "bicycle": 0.5853,
+      "walk": 0.5594,
+      "chair": 0.5607,
+      "orange": 0.5738,
+      "who": 0.5515
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5753,
+     "between_n": 18,
+     "between": 0.5741,
+     "diff": 0.0012,
+     "paired_diff": 0.0012,
+     "by_scored_question": {
+      "free": 0.573,
+      "bicycle": 0.5789,
+      "walk": 0.57,
+      "chair": 0.5759,
+      "orange": 0.5893,
+      "who": 0.5593
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6099,
+     "between_n": 18,
+     "between": 0.6168,
+     "diff": -0.0069,
+     "paired_diff": -0.0069,
+     "by_scored_question": {
+      "free": 0.6305,
+      "bicycle": 0.6227,
+      "walk": 0.6181,
+      "chair": 0.6176,
+      "orange": 0.6271,
+      "who": 0.5742
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L35 match_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    9.57,
+    7.65,
+    6.68,
+    6.43,
+    6.28
+   ],
+   "top_controls_words": [
+    "yang adalah berikut untuk kamu dari",
+    "\u0434\u043b\u044f \u043a\u0430\u043a \u0435\u0441\u043b\u0438 \u0432\u043e\u0442 \u044d\u0442\u043e \u0447\u0442\u043e",
+    "que uma voc\u00ea para aqui resposta",
+    "para una que necesario lenguaje soy",
+    "que una aqu\u00ed para cual tienes"
+   ],
+   "above_5sd": 38,
+   "above_every_control": 3,
+   "q05": 0,
+   "q05_five_set_aside": 25
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 100,
+    "controls_pA05_and_pB05": 15,
+    "chance_scaled": 15.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.558,
+     "between_n": 18,
+     "between": 0.5453,
+     "diff": 0.0126,
+     "paired_diff": 0.0126,
+     "by_scored_question": {
+      "free": 0.5471,
+      "bicycle": 0.543,
+      "walk": 0.548,
+      "chair": 0.5518,
+      "orange": 0.563,
+      "who": 0.538
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5498,
+     "between_n": 18,
+     "between": 0.5498,
+     "diff": 0.0001,
+     "paired_diff": 0.0001,
+     "by_scored_question": {
+      "free": 0.5417,
+      "bicycle": 0.5532,
+      "walk": 0.5471,
+      "chair": 0.5526,
+      "orange": 0.5653,
+      "who": 0.5388
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5766,
+     "between_n": 18,
+     "between": 0.5694,
+     "diff": 0.0072,
+     "paired_diff": 0.0072,
+     "by_scored_question": {
+      "free": 0.5586,
+      "bicycle": 0.5663,
+      "walk": 0.5827,
+      "chair": 0.5848,
+      "orange": 0.5792,
+      "who": 0.5559
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L36 match_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    10.34,
+    9.12,
+    8.71,
+    8.18,
+    8.12
+   ],
+   "top_controls_words": [
+    "voc\u00ea que uma quiser n\u00e3o specifically",
+    "cho t\u00f4i b\u1ea1n theo c\u00e1ch c\u1ee7a",
+    "die ist ein auf und antwort",
+    "que como ela uma aqui para",
+    "que una fascinante tienes aqu\u00ed para"
+   ],
+   "above_5sd": 35,
+   "above_every_control": 6,
+   "q05": 0,
+   "q05_five_set_aside": 0
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 81,
+    "controls_pA05_and_pB05": 11,
+    "chance_scaled": 11.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5392,
+     "between_n": 18,
+     "between": 0.5368,
+     "diff": 0.0024,
+     "paired_diff": 0.0024,
+     "by_scored_question": {
+      "free": 0.5199,
+      "bicycle": 0.5481,
+      "walk": 0.5435,
+      "chair": 0.5328,
+      "orange": 0.5433,
+      "who": 0.5368
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5439,
+     "between_n": 18,
+     "between": 0.5348,
+     "diff": 0.009,
+     "paired_diff": 0.009,
+     "by_scored_question": {
+      "free": 0.5234,
+      "bicycle": 0.5433,
+      "walk": 0.5333,
+      "chair": 0.5403,
+      "orange": 0.5462,
+      "who": 0.5361
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5588,
+     "between_n": 18,
+     "between": 0.5633,
+     "diff": -0.0045,
+     "paired_diff": -0.0045,
+     "by_scored_question": {
+      "free": 0.5536,
+      "bicycle": 0.5677,
+      "walk": 0.5627,
+      "chair": 0.5723,
+      "orange": 0.5676,
+      "who": 0.5492
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L37 soft_ceil",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    13.28,
+    8.73,
+    5.58,
+    4.43,
+    3.83
+   ],
+   "top_controls_words": [
+    "que por aqui para uma est\u00e3o",
+    "una tienes aqu\u00ed como naturaleza varias",
+    "even want when simple preparing thoughts",
+    "broken study elements down simplicity first",
+    "even specific though bustling clinical lately"
+   ],
+   "above_5sd": 141,
+   "above_every_control": 28,
+   "q05": 188,
+   "q05_five_set_aside": 212
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 139,
+    "controls_pA05_and_pB05": 5,
+    "chance_scaled": 5.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5437,
+     "between_n": 18,
+     "between": 0.5415,
+     "diff": 0.0022,
+     "paired_diff": 0.0022,
+     "by_scored_question": {
+      "free": 0.5324,
+      "bicycle": 0.5522,
+      "walk": 0.5449,
+      "chair": 0.5384,
+      "orange": 0.5337,
+      "who": 0.5509
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5751,
+     "between_n": 18,
+     "between": 0.5647,
+     "diff": 0.0104,
+     "paired_diff": 0.0104,
+     "by_scored_question": {
+      "free": 0.5681,
+      "bicycle": 0.5744,
+      "walk": 0.5608,
+      "chair": 0.5723,
+      "orange": 0.5525,
+      "who": 0.5756
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5781,
+     "between_n": 18,
+     "between": 0.5838,
+     "diff": -0.0056,
+     "paired_diff": -0.0056,
+     "by_scored_question": {
+      "free": 0.577,
+      "bicycle": 0.5885,
+      "walk": 0.5772,
+      "chair": 0.5942,
+      "orange": 0.5885,
+      "who": 0.5687
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L38 break_rel",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    6.56,
+    5.52,
+    5.11,
+    5.09,
+    5.07
+   ],
+   "top_controls_words": [
+    "m\u1ed9t m\u1ed7i cho chi n\u00f3i ph\u1ea7n",
+    "altern bir dem zaman gibi olsun",
+    "th\u1ec3 b\u1ea1n hi\u1ec3u h\u1ecdc n\u00f3i logic",
+    "para con m\u00e1s quien que ownthought",
+    "other some use user que called"
+   ],
+   "above_5sd": 6,
+   "above_every_control": 2,
+   "q05": 0,
+   "q05_five_set_aside": 0
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 44,
+    "controls_pA05_and_pB05": 20,
+    "chance_scaled": 20.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5577,
+     "between_n": 18,
+     "between": 0.565,
+     "diff": -0.0074,
+     "paired_diff": -0.0074,
+     "by_scored_question": {
+      "free": 0.5739,
+      "bicycle": 0.5537,
+      "walk": 0.5739,
+      "chair": 0.5632,
+      "orange": 0.5732,
+      "who": 0.5412
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.4738,
+     "between_n": 18,
+     "between": 0.4726,
+     "diff": 0.0012,
+     "paired_diff": 0.0012,
+     "by_scored_question": {
+      "free": 0.4823,
+      "bicycle": 0.48,
+      "walk": 0.4646,
+      "chair": 0.4717,
+      "orange": 0.4705,
+      "who": 0.4685
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5506,
+     "between_n": 18,
+     "between": 0.5572,
+     "diff": -0.0066,
+     "paired_diff": -0.0066,
+     "by_scored_question": {
+      "free": 0.5656,
+      "bicycle": 0.5525,
+      "walk": 0.5616,
+      "chair": 0.5583,
+      "orange": 0.5612,
+      "who": 0.5341
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L38 soft_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    11.0,
+    6.5,
+    5.58,
+    4.03,
+    3.82
+   ],
+   "top_controls_words": [
+    "que aqui para mais est\u00e3o voc\u00ea",
+    "para como simples perspective seu modelo",
+    "broken down whether imagining between enjoyed",
+    "since never specify consider era especially",
+    "see someone cannot who mechanisms four"
+   ],
+   "above_5sd": 216,
+   "above_every_control": 110,
+   "q05": 263,
+   "q05_five_set_aside": 283
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 209,
+    "controls_pA05_and_pB05": 6,
+    "chance_scaled": 6.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5735,
+     "between_n": 18,
+     "between": 0.5679,
+     "diff": 0.0056,
+     "paired_diff": 0.0056,
+     "by_scored_question": {
+      "free": 0.5689,
+      "bicycle": 0.5804,
+      "walk": 0.5623,
+      "chair": 0.5628,
+      "orange": 0.5652,
+      "who": 0.5764
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5929,
+     "between_n": 18,
+     "between": 0.5897,
+     "diff": 0.0032,
+     "paired_diff": 0.0032,
+     "by_scored_question": {
+      "free": 0.5868,
+      "bicycle": 0.6027,
+      "walk": 0.5909,
+      "chair": 0.5923,
+      "orange": 0.5806,
+      "who": 0.5897
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6225,
+     "between_n": 18,
+     "between": 0.6073,
+     "diff": 0.0152,
+     "paired_diff": 0.0152,
+     "by_scored_question": {
+      "free": 0.6083,
+      "bicycle": 0.6153,
+      "walk": 0.6098,
+      "chair": 0.6155,
+      "orange": 0.6111,
+      "who": 0.6063
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L39 break_rel",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    6.4,
+    5.11,
+    4.92,
+    4.82,
+    4.65
+   ],
+   "top_controls_words": [
+    "\u043c\u043d\u0435 uma \u043a\u043e\u043d\u0446\u0435 voc\u00ea simples tr\u00eas",
+    "some general other more immediate believe",
+    "category division que aqu\u00ed naturaleza una",
+    "que una aqu\u00ed humana varias energ\u00eda",
+    "yang adalah bagaimana anda berikut melihatnya"
+   ],
+   "above_5sd": 71,
+   "above_every_control": 28,
+   "q05": 81,
+   "q05_five_set_aside": 126
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 154,
+    "controls_pA05_and_pB05": 11,
+    "chance_scaled": 11.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6246,
+     "between_n": 18,
+     "between": 0.6149,
+     "diff": 0.0097,
+     "paired_diff": 0.0097,
+     "by_scored_question": {
+      "free": 0.6304,
+      "bicycle": 0.6102,
+      "walk": 0.6091,
+      "chair": 0.628,
+      "orange": 0.6107,
+      "who": 0.6156
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5459,
+     "between_n": 18,
+     "between": 0.5378,
+     "diff": 0.0081,
+     "paired_diff": 0.0081,
+     "by_scored_question": {
+      "free": 0.5585,
+      "bicycle": 0.543,
+      "walk": 0.5521,
+      "chair": 0.5473,
+      "orange": 0.5368,
+      "who": 0.5012
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6526,
+     "between_n": 18,
+     "between": 0.6361,
+     "diff": 0.0165,
+     "paired_diff": 0.0165,
+     "by_scored_question": {
+      "free": 0.6576,
+      "bicycle": 0.6437,
+      "walk": 0.6399,
+      "chair": 0.6531,
+      "orange": 0.6355,
+      "who": 0.6114
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L45 break_rel",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    4.62,
+    3.88,
+    3.86,
+    3.73,
+    3.68
+   ],
+   "top_controls_words": [
+    "cop ado rest restthought our things",
+    "ownthought ownthoughtthought idea single vehicle created",
+    "owns ass same own ownss little",
+    "thoughtthoughtthought thoughtthoughtthoughtthought thought sss best thoughtthought",
+    "ownu ownss owns home sensation art"
+   ],
+   "above_5sd": 159,
+   "above_every_control": 180,
+   "q05": 331,
+   "q05_five_set_aside": 355
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1086,
+    "controls": 1024,
+    "pA05_and_pB05": 158,
+    "controls_pA05_and_pB05": 7,
+    "chance_scaled": 7.4
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6269,
+     "between_n": 18,
+     "between": 0.6286,
+     "diff": -0.0017,
+     "paired_diff": -0.0017,
+     "by_scored_question": {
+      "free": 0.6403,
+      "bicycle": 0.6133,
+      "walk": 0.6355,
+      "chair": 0.6375,
+      "orange": 0.6164,
+      "who": 0.6261
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5198,
+     "between_n": 18,
+     "between": 0.5174,
+     "diff": 0.0024,
+     "paired_diff": 0.0024,
+     "by_scored_question": {
+      "free": 0.53,
+      "bicycle": 0.5144,
+      "walk": 0.5272,
+      "chair": 0.5129,
+      "orange": 0.5117,
+      "who": 0.5121
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6357,
+     "between_n": 18,
+     "between": 0.6323,
+     "diff": 0.0034,
+     "paired_diff": 0.0034,
+     "by_scored_question": {
+      "free": 0.6455,
+      "bicycle": 0.6275,
+      "walk": 0.6458,
+      "chair": 0.6348,
+      "orange": 0.6214,
+      "who": 0.6237
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L51 break_rel",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    3.57,
+    3.49,
+    3.48,
+    3.4,
+    3.31
+   ],
+   "top_controls_words": [
+    "uma dependingy own range dependingthought distance",
+    "samethought stretta soon ownthought same created",
+    "soda sthought thoughtthought thoughts elegant move",
+    "ownthought thought ownthoughtthoughtthought ownthoughtthought thoughtthoughtthoughtthoughtthoughtthoughtthoughtthought thoughtthoughtthoughtthoughtthought",
+    "own dependingthought fascinating find heading and"
+   ],
+   "above_5sd": 131,
+   "above_every_control": 238,
+   "q05": 346,
+   "q05_five_set_aside": 366
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 175,
+    "controls_pA05_and_pB05": 5,
+    "chance_scaled": 5.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6181,
+     "between_n": 18,
+     "between": 0.6061,
+     "diff": 0.0119,
+     "paired_diff": 0.0119,
+     "by_scored_question": {
+      "free": 0.6016,
+      "bicycle": 0.6138,
+      "walk": 0.6003,
+      "chair": 0.6206,
+      "orange": 0.613,
+      "who": 0.6054
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5426,
+     "between_n": 18,
+     "between": 0.5455,
+     "diff": -0.0029,
+     "paired_diff": -0.0029,
+     "by_scored_question": {
+      "free": 0.5546,
+      "bicycle": 0.5329,
+      "walk": 0.5486,
+      "chair": 0.5393,
+      "orange": 0.5453,
+      "who": 0.5477
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6262,
+     "between_n": 18,
+     "between": 0.6287,
+     "diff": -0.0025,
+     "paired_diff": -0.0025,
+     "by_scored_question": {
+      "free": 0.6363,
+      "bicycle": 0.6161,
+      "walk": 0.6471,
+      "chair": 0.6275,
+      "orange": 0.6261,
+      "who": 0.6153
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L52 break_rel",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    2.8,
+    2.79,
+    2.73,
+    2.62,
+    2.6
+   ],
+   "top_controls_words": [
+    "walking less much effort faster allowing",
+    "ownthought thought didnthought since several based",
+    "bit little something emotion idea versatile",
+    "idea socks type perfect like will",
+    "will help think these avoid injury"
+   ],
+   "above_5sd": 126,
+   "above_every_control": 229,
+   "q05": 284,
+   "q05_five_set_aside": 286
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 176,
+    "controls_pA05_and_pB05": 8,
+    "chance_scaled": 8.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5543,
+     "between_n": 18,
+     "between": 0.5472,
+     "diff": 0.0071,
+     "paired_diff": 0.0071,
+     "by_scored_question": {
+      "free": 0.5612,
+      "bicycle": 0.5464,
+      "walk": 0.5212,
+      "chair": 0.5313,
+      "orange": 0.5784,
+      "who": 0.5553
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5177,
+     "between_n": 18,
+     "between": 0.5204,
+     "diff": -0.0028,
+     "paired_diff": -0.0028,
+     "by_scored_question": {
+      "free": 0.5368,
+      "bicycle": 0.4928,
+      "walk": 0.524,
+      "chair": 0.4945,
+      "orange": 0.5361,
+      "who": 0.5344
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5462,
+     "between_n": 18,
+     "between": 0.5605,
+     "diff": -0.0143,
+     "paired_diff": -0.0143,
+     "by_scored_question": {
+      "free": 0.5646,
+      "bicycle": 0.5478,
+      "walk": 0.5513,
+      "chair": 0.5512,
+      "orange": 0.5695,
+      "who": 0.5569
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L52 soft_ceil",
+  "pass": true,
+  "units": {
+   "top_controls_sd": [
+    3.28,
+    3.06,
+    2.9,
+    2.84,
+    2.76
+   ],
+   "top_controls_words": [
+    "clockmaker orizon lived didn work where",
+    "restthought rest dependingthought ownthought mood blister",
+    "same\uc9c0\uac00 from same basic most dependingthought",
+    "wait own time same ownthought wish",
+    "single singlethought care foot have are"
+   ],
+   "above_5sd": 166,
+   "above_every_control": 245,
+   "q05": 301,
+   "q05_five_set_aside": 329
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 206,
+    "controls_pA05_and_pB05": 8,
+    "chance_scaled": 8.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6127,
+     "between_n": 18,
+     "between": 0.5955,
+     "diff": 0.0172,
+     "paired_diff": 0.0172,
+     "by_scored_question": {
+      "free": 0.5769,
+      "bicycle": 0.5956,
+      "walk": 0.6097,
+      "chair": 0.5849,
+      "orange": 0.5898,
+      "who": 0.642
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5949,
+     "between_n": 18,
+     "between": 0.5982,
+     "diff": -0.0032,
+     "paired_diff": -0.0032,
+     "by_scored_question": {
+      "free": 0.6371,
+      "bicycle": 0.5658,
+      "walk": 0.6067,
+      "chair": 0.5753,
+      "orange": 0.5993,
+      "who": 0.6
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.6112,
+     "between_n": 18,
+     "between": 0.6179,
+     "diff": -0.0067,
+     "paired_diff": -0.0067,
+     "by_scored_question": {
+      "free": 0.6267,
+      "bicycle": 0.6103,
+      "walk": 0.627,
+      "chair": 0.5944,
+      "orange": 0.621,
+      "who": 0.618
+     }
+    }
+   }
+  }
+ },
+ {
+  "trial": "L53 soft_ceil",
+  "pass": false,
+  "units": {
+   "top_controls_sd": [
+    3.21,
+    3.02,
+    2.81,
+    2.53,
+    2.51
+   ],
+   "top_controls_words": [
+    "taste feeling sight are through experiencing",
+    "few fascinated always has depends tell",
+    "thing curiosity nature working together brought",
+    "enjoy journey blish don physical own",
+    "feelings seriesthought gallery precision evoke warmth"
+   ],
+   "above_5sd": 81,
+   "above_every_control": 123,
+   "q05": 154,
+   "q05_five_set_aside": 171
+  },
+  "counts": {
+   "all doses": {
+    "neurons": 1022,
+    "controls": 1024,
+    "pA05_and_pB05": 89,
+    "controls_pA05_and_pB05": 6,
+    "chance_scaled": 6.0
+   }
+  },
+  "arms": {
+   "lower": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5501,
+     "between_n": 18,
+     "between": 0.5528,
+     "diff": -0.0027,
+     "paired_diff": -0.0027,
+     "by_scored_question": {
+      "free": 0.5501,
+      "bicycle": 0.552,
+      "walk": 0.5367,
+      "chair": 0.5747,
+      "orange": 0.5516,
+      "who": 0.5478
+     }
+    }
+   },
+   "upper": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.4825,
+     "between_n": 18,
+     "between": 0.489,
+     "diff": -0.0065,
+     "paired_diff": -0.0065,
+     "by_scored_question": {
+      "free": 0.4633,
+      "bicycle": 0.4591,
+      "walk": 0.5047,
+      "chair": 0.4739,
+      "orange": 0.5184,
+      "who": 0.5048
+     }
+    }
+   },
+   "both": {
+    "2to1": {
+     "within_n": 6,
+     "within": 0.5588,
+     "between_n": 18,
+     "between": 0.5479,
+     "diff": 0.0109,
+     "paired_diff": 0.0109,
+     "by_scored_question": {
+      "free": 0.5316,
+      "bicycle": 0.5422,
+      "walk": 0.5671,
+      "chair": 0.5655,
+      "orange": 0.5572,
+      "who": 0.5401
+     }
+    }
+   }
+  }
+ }
+]

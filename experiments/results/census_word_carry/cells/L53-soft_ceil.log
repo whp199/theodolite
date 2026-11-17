@@ -1,0 +1,12 @@
+L53-soft_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.6, 1.6], 'upper': [-2.3, 2.3], 'both': [-2.3, -1.6, 1.6, 2.3]}
+  units {'top_controls_sd': [3.21, 3.02, 2.81, 2.53, 2.51], 'top_controls_words': ['taste feeling sight are through experiencing', 'few fascinated always has depends tell', 'thing curiosity nature working together brought', 'enjoy journey blish don physical own', 'feelings seriesthought gallery precision evoke warmth'], 'above_5sd': 81, 'above_every_control': 123, 'q05': 154, 'q05_five_set_aside': 171} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 89, 'controls_pA05_and_pB05': 6, 'chance_scaled': 6.0}}
+  lower 2to1 within  n=  6 mean 0.550 sd 0.041
+  lower 2to1 between n= 18 mean 0.553 sd 0.027
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.482 sd 0.018
+  upper 2to1 between n= 18 mean 0.489 sd 0.030
+  upper read in 1s
+  both  2to1 within  n=  6 mean 0.559 sd 0.018
+  both  2to1 between n= 18 mean 0.548 sd 0.018
+  both read in 1s

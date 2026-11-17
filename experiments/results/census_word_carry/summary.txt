@@ -1,0 +1,97 @@
+trial               pass  arm    kind  within (n, mean)   between (n, mean)  diff   paired diff (score q held fixed)
+L30 match_both      False lower  2to1  120 0.520           180 0.519       +0.001  +0.001
+L30 match_both      False lower  3to3   40 0.533            40 0.527       +0.006  +0.005
+L30 match_both      False upper  2to1  120 0.518           180 0.519       -0.001  -0.001
+L30 match_both      False upper  3to3   40 0.527            40 0.519       +0.008  +0.009
+L30 match_both      False both   2to1  120 0.530           180 0.531       -0.001  -0.001
+L30 match_both      False both   3to3   40 0.541            40 0.545       -0.004  -0.006
+L30 match_wide      False lower  2to1  120 0.517           180 0.523       -0.005  -0.005
+L30 match_wide      False lower  3to3   40 0.525            40 0.530       -0.005  -0.005
+L31 match_ceil      False lower  2to1    6 0.532            18 0.527       +0.004  +0.004
+L31 match_ceil      False upper  2to1    6 0.529            18 0.524       +0.005  +0.005
+L31 match_ceil      False both   2to1    6 0.552            18 0.548       +0.004  +0.004
+L31 match_wide      True  lower  2to1  120 0.530           180 0.530       -0.000  -0.000
+L31 match_wide      True  lower  3to3   40 0.554            40 0.555       -0.001  +0.000
+L32 match_ceil      True  lower  2to1    6 0.542            18 0.539       +0.004  +0.004
+L32 match_ceil      True  upper  2to1    6 0.554            18 0.541       +0.012  +0.012
+L32 match_ceil      True  both   2to1    6 0.570            18 0.569       +0.001  +0.001
+L33 match_ceil      True  lower  2to1    6 0.558            18 0.552       +0.006  +0.006
+L33 match_ceil      True  upper  2to1    6 0.555            18 0.553       +0.001  +0.001
+L33 match_ceil      True  both   2to1    6 0.593            18 0.590       +0.003  +0.003
+L34 match_ceil      True  lower  2to1    6 0.571            18 0.566       +0.005  +0.005
+L34 match_ceil      True  upper  2to1    6 0.575            18 0.574       +0.001  +0.001
+L34 match_ceil      True  both   2to1    6 0.610            18 0.617       -0.007  -0.007
+L35 match_ceil      True  lower  2to1    6 0.558            18 0.545       +0.013  +0.013
+L35 match_ceil      True  upper  2to1    6 0.550            18 0.550       +0.000  +0.000
+L35 match_ceil      True  both   2to1    6 0.577            18 0.569       +0.007  +0.007
+L36 match_ceil      True  lower  2to1    6 0.539            18 0.537       +0.002  +0.002
+L36 match_ceil      True  upper  2to1    6 0.544            18 0.535       +0.009  +0.009
+L36 match_ceil      True  both   2to1    6 0.559            18 0.563       -0.004  -0.004
+L37 soft_ceil       False lower  2to1    6 0.544            18 0.541       +0.002  +0.002
+L37 soft_ceil       False upper  2to1    6 0.575            18 0.565       +0.010  +0.010
+L37 soft_ceil       False both   2to1    6 0.578            18 0.584       -0.006  -0.006
+L38 break_rel       False lower  2to1    6 0.558            18 0.565       -0.007  -0.007
+L38 break_rel       False upper  2to1    6 0.474            18 0.473       +0.001  +0.001
+L38 break_rel       False both   2to1    6 0.551            18 0.557       -0.007  -0.007
+L38 soft_ceil       True  lower  2to1    6 0.574            18 0.568       +0.006  +0.006
+L38 soft_ceil       True  upper  2to1    6 0.593            18 0.590       +0.003  +0.003
+L38 soft_ceil       True  both   2to1    6 0.623            18 0.607       +0.015  +0.015
+L39 break_rel       True  lower  2to1    6 0.625            18 0.615       +0.010  +0.010
+L39 break_rel       True  upper  2to1    6 0.546            18 0.538       +0.008  +0.008
+L39 break_rel       True  both   2to1    6 0.653            18 0.636       +0.017  +0.017
+L45 break_rel       True  lower  2to1    6 0.627            18 0.629       -0.002  -0.002
+L45 break_rel       True  upper  2to1    6 0.520            18 0.517       +0.002  +0.002
+L45 break_rel       True  both   2to1    6 0.636            18 0.632       +0.003  +0.003
+L51 break_rel       True  lower  2to1    6 0.618            18 0.606       +0.012  +0.012
+L51 break_rel       True  upper  2to1    6 0.543            18 0.545       -0.003  -0.003
+L51 break_rel       True  both   2to1    6 0.626            18 0.629       -0.003  -0.003
+L52 break_rel       False lower  2to1    6 0.554            18 0.547       +0.007  +0.007
+L52 break_rel       False upper  2to1    6 0.518            18 0.520       -0.003  -0.003
+L52 break_rel       False both   2to1    6 0.546            18 0.560       -0.014  -0.014
+L52 soft_ceil       True  lower  2to1    6 0.613            18 0.596       +0.017  +0.017
+L52 soft_ceil       True  upper  2to1    6 0.595            18 0.598       -0.003  -0.003
+L52 soft_ceil       True  both   2to1    6 0.611            18 0.618       -0.007  -0.007
+L53 soft_ceil       False lower  2to1    6 0.550            18 0.553       -0.003  -0.003
+L53 soft_ceil       False upper  2to1    6 0.482            18 0.489       -0.006  -0.006
+L53 soft_ceil       False both   2to1    6 0.559            18 0.548       +0.011  +0.011
+
+per neuron (all doses; chance read off the controls, leave-one-out, scaled to 1,022)
+trial               pass  pA,pB<=.05 (chance)  above every ctl  q05  q05 five ctl aside  >5sd  strongest controls (sd)
+L30 match_both      False   48 (14.0)           1              0     0                 16  12.2 8.8 8.3 7.4 7.0
+L30 match_wide      False   32 ( 4.0)           3              0    65                 26  12.3 4.4 4.4 4.0 3.7
+L31 match_ceil      False   50 ( 1.0)          19             84   143                 40  6.6 4.8 4.0 3.8 3.7
+L31 match_wide      True    82 ( 7.0)           6              0   126                 54  10.1 7.0 5.0 5.0 4.9
+L32 match_ceil      True    86 ( 3.0)          54            120   166                 96  6.4 6.0 4.7 4.3 4.3
+L33 match_ceil      True   123 ( 6.0)          29            192   264                119  8.2 7.8 5.3 5.2 5.1
+L34 match_ceil      True   170 ( 9.0)           8              0   266                121  11.2 8.8 8.4 7.3 6.3
+L35 match_ceil      True   100 (15.0)           3              0    25                 38  9.6 7.7 6.7 6.4 6.3
+L36 match_ceil      True    81 (11.0)           6              0     0                 35  10.3 9.1 8.7 8.2 8.1
+L37 soft_ceil       False  139 ( 5.0)          28            188   212                141  13.3 8.7 5.6 4.4 3.8
+L38 break_rel       False   44 (20.0)           2              0     0                  6  6.6 5.5 5.1 5.1 5.1
+L38 soft_ceil       True   209 ( 6.0)         110            263   283                216  11.0 6.5 5.6 4.0 3.8
+L39 break_rel       True   154 (11.0)          28             81   126                 71  6.4 5.1 4.9 4.8 4.7
+L45 break_rel       True   158 ( 7.4)         180            331   355                159  4.6 3.9 3.9 3.7 3.7
+L51 break_rel       True   175 ( 5.0)         238            346   366                131  3.6 3.5 3.5 3.4 3.3
+L52 break_rel       False  176 ( 8.0)         229            284   286                126  2.8 2.8 2.7 2.6 2.6
+L52 soft_ceil       True   206 ( 8.0)         245            301   329                166  3.3 3.1 2.9 2.8 2.8
+L53 soft_ceil       False   89 ( 6.0)         123            154   171                 81  3.2 3.0 2.8 2.5 2.5
+
+2to1 by scored question (mean AUC over every cell scored on it), the gate's dose levels together where two
+L30 match_both      both  free 0.527 self 0.526 green 0.526 interesting 0.529 bicycle 0.530 walk 0.537 chair 0.536 kettle 0.538 sleep 0.531 lamp 0.537 orange 0.527 who 0.522
+L30 match_wide      lower free 0.524 self 0.522 green 0.518 interesting 0.515 bicycle 0.524 walk 0.517 chair 0.530 kettle 0.521 sleep 0.519 lamp 0.531 orange 0.512 who 0.512
+L31 match_ceil      both  free 0.548 bicycle 0.555 walk 0.548 chair 0.555 orange 0.549 who 0.537
+L31 match_wide      lower free 0.527 self 0.525 green 0.535 interesting 0.531 bicycle 0.533 walk 0.522 chair 0.531 kettle 0.530 sleep 0.531 lamp 0.536 orange 0.530 who 0.532
+L32 match_ceil      both  free 0.580 bicycle 0.572 walk 0.562 chair 0.574 orange 0.581 who 0.545
+L33 match_ceil      both  free 0.598 bicycle 0.597 walk 0.591 chair 0.605 orange 0.598 who 0.554
+L34 match_ceil      both  free 0.630 bicycle 0.623 walk 0.618 chair 0.618 orange 0.627 who 0.574
+L35 match_ceil      both  free 0.559 bicycle 0.566 walk 0.583 chair 0.585 orange 0.579 who 0.556
+L36 match_ceil      both  free 0.554 bicycle 0.568 walk 0.563 chair 0.572 orange 0.568 who 0.549
+L37 soft_ceil       both  free 0.577 bicycle 0.589 walk 0.577 chair 0.594 orange 0.589 who 0.569
+L38 break_rel       both  free 0.566 bicycle 0.552 walk 0.562 chair 0.558 orange 0.561 who 0.534
+L38 soft_ceil       both  free 0.608 bicycle 0.615 walk 0.610 chair 0.616 orange 0.611 who 0.606
+L39 break_rel       both  free 0.658 bicycle 0.644 walk 0.640 chair 0.653 orange 0.635 who 0.611
+L45 break_rel       both  free 0.645 bicycle 0.627 walk 0.646 chair 0.635 orange 0.621 who 0.624
+L51 break_rel       both  free 0.636 bicycle 0.616 walk 0.647 chair 0.627 orange 0.626 who 0.615
+L52 break_rel       both  free 0.565 bicycle 0.548 walk 0.551 chair 0.551 orange 0.570 who 0.557
+L52 soft_ceil       both  free 0.627 bicycle 0.610 walk 0.627 chair 0.594 orange 0.621 who 0.618
+L53 soft_ceil       both  free 0.532 bicycle 0.542 walk 0.567 chair 0.566 orange 0.557 who 0.540

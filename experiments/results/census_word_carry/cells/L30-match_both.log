@@ -1,0 +1,18 @@
+L30-match_both-trial.jsonl: 98220 rows in 4s; halves ['who', 'orange', 'free', 'self', 'green', 'interesting'] | ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp']; arms {'lower': [-2.42, 2.42], 'upper': [-2.67, 2.67], 'both': [-2.67, -2.42, 2.42, 2.67]}
+  units {'top_controls_sd': [12.15, 8.8, 8.3, 7.41, 7.05], 'top_controls_words': ['aqui que diferentes estão está pode', 'que para tres una tienes aquí', 'tienes aquí una para que consejos', 'det kan som sätt olika här', 'que aquí para tienes una fascinante'], 'above_5sd': 16, 'above_every_control': 1, 'q05': 0, 'q05_five_set_aside': 0} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 48, 'controls_pA05_and_pB05': 14, 'chance_scaled': 14.0}}
+  lower 2to1 within  n=120 mean 0.520 sd 0.016
+  lower 2to1 between n=180 mean 0.519 sd 0.016
+  lower 3to3 within  n= 40 mean 0.533 sd 0.018
+  lower 3to3 between n= 40 mean 0.527 sd 0.013
+  lower read in 23s
+  upper 2to1 within  n=120 mean 0.518 sd 0.014
+  upper 2to1 between n=180 mean 0.519 sd 0.014
+  upper 3to3 within  n= 40 mean 0.527 sd 0.009
+  upper 3to3 between n= 40 mean 0.519 sd 0.011
+  upper read in 24s
+  both  2to1 within  n=120 mean 0.530 sd 0.014
+  both  2to1 between n=180 mean 0.531 sd 0.012
+  both  3to3 within  n= 40 mean 0.541 sd 0.020
+  both  3to3 between n= 40 mean 0.545 sd 0.011
+  both read in 29s

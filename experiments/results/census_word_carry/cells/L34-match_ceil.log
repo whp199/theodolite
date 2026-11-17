@@ -1,0 +1,12 @@
+L34-match_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-2.62, 2.62], 'upper': [-2.79, 2.79], 'both': [-2.79, -2.62, 2.62, 2.79]}
+  units {'top_controls_sd': [11.21, 8.76, 8.4, 7.29, 6.34], 'top_controls_words': ['que você não como uma para', 'que para con tienes aquí una', 'você como para que não aqui', 'bir için temel veya farklı ancak', 'per una posso come vuoi che'], 'above_5sd': 121, 'above_every_control': 8, 'q05': 0, 'q05_five_set_aside': 266} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 170, 'controls_pA05_and_pB05': 9, 'chance_scaled': 9.0}}
+  lower 2to1 within  n=  6 mean 0.571 sd 0.021
+  lower 2to1 between n= 18 mean 0.566 sd 0.021
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.575 sd 0.008
+  upper 2to1 between n= 18 mean 0.574 sd 0.016
+  upper read in 2s
+  both  2to1 within  n=  6 mean 0.610 sd 0.018
+  both  2to1 between n= 18 mean 0.617 sd 0.024
+  both read in 2s

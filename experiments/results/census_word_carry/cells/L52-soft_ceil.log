@@ -1,0 +1,12 @@
+L52-soft_ceil-trial.jsonl: 49110 rows in 2s; halves ['who', 'orange', 'free'] | ['bicycle', 'walk', 'chair']; arms {'lower': [-1.6, 1.6], 'upper': [-2.3, 2.3], 'both': [-2.3, -1.6, 1.6, 2.3]}
+  units {'top_controls_sd': [3.28, 3.06, 2.9, 2.84, 2.76], 'top_controls_words': ['clockmaker orizon lived didn work where', 'restthought rest dependingthought ownthought mood blister', 'same지가 from same basic most dependingthought', 'wait own time same ownthought wish', 'single singlethought care foot have are'], 'above_5sd': 166, 'above_every_control': 245, 'q05': 301, 'q05_five_set_aside': 329} 
+  counts {'all doses': {'neurons': 1022, 'controls': 1024, 'pA05_and_pB05': 206, 'controls_pA05_and_pB05': 8, 'chance_scaled': 8.0}}
+  lower 2to1 within  n=  6 mean 0.613 sd 0.044
+  lower 2to1 between n= 18 mean 0.595 sd 0.033
+  lower read in 1s
+  upper 2to1 within  n=  6 mean 0.595 sd 0.027
+  upper 2to1 between n= 18 mean 0.598 sd 0.024
+  upper read in 0s
+  both  2to1 within  n=  6 mean 0.611 sd 0.016
+  both  2to1 between n= 18 mean 0.618 sd 0.015
+  both read in 1s
