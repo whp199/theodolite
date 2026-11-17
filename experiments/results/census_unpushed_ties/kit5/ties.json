@@ -1,0 +1,1343 @@
+{
+ "taken_at": "20261117T023810Z",
+ "layer": 31,
+ "design": "match_wide",
+ "kit": 5,
+ "stand_in": false,
+ "reference": "L31-match_wide-trial.jsonl",
+ "rule": {
+  "tie": 0.6,
+  "step": 0.05,
+  "batches": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48,
+   56,
+   64
+  ]
+ },
+ "runtime": {
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "transformers": "5.20.0",
+  "interp_engine": "1.14.0",
+  "compressed_tensors": "0.19.0",
+  "git": "e6fa0cfb2f1f97851bc5ba875538476d27afd909",
+  "git_clean": false,
+  "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+ },
+ "parts": [
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "free",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "chair",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 46,
+   "n": 48,
+   "p": 0.3305,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 21,
+   "n": 48,
+   "p": 0.4136,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 23,
+   "n": 48,
+   "p": 0.4496,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 46,
+   "n": 48,
+   "p": 0.3305,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 22,
+   "n": 48,
+   "p": 0.4888,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 22,
+   "n": 48,
+   "p": 0.4988,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 5,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 22,
+   "n": 48,
+   "p": 0.4888,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 22,
+   "n": 48,
+   "p": 0.4988,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 20,
+   "n": 48,
+   "p": 0.3692,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 21,
+   "n": 48,
+   "p": 0.509,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 13,
+   "n": 48,
+   "p": 0.4312,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 21,
+   "n": 48,
+   "p": 0.4136,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 13,
+   "n": 48,
+   "p": 0.4312,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 5,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 24,
+   "n": 48,
+   "p": 0.5194,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 27,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 22,
+   "n": 48,
+   "p": 0.4888,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 13,
+   "n": 48,
+   "p": 0.4312,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "who",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "orange",
+   "k": 5,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "free",
+   "k": 21,
+   "n": 48,
+   "p": 0.4136,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "self",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "green",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "interesting",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 24,
+   "n": 48,
+   "p": 0.5194,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 27,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  }
+ ],
+ "control_identical": true,
+ "verdict": {
+  "bar": 0.6,
+  "raised": false,
+  "surest": 0.5194
+ },
+ "old_bar": {
+  "baseline_shared": 16
+ }
+}

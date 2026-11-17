@@ -1,0 +1,24 @@
+census bars, measured 20261117T030834Z on NVIDIA GeForce RTX 5090, kit 5, layers 31
+
+match_wide (the push in the ceiling unit), layers 31
+variant              answers  same  first prefix pieces  median     p99     max
+control                  768   768 1.0000 48.0000  22359  0.0000  0.0000  0.0000
+batch16                  192     0 0.9792 48.0000   4420  0.0053  0.1111  0.2180
+batch32                  384     0 0.9635 48.0000   8827  0.0051  0.1119  0.2633
+batch48                  576     0 0.9878 48.0000  13235  0.0051  0.1149  0.2713
+batch64-full-sums        768     0 0.9896 48.0000  17590  0.0049  0.1127  0.2674
+push+1%                  768    12 0.9727 48.0000  16481  0.0084  0.1468  0.3538
+push-1%                  768    12 0.9766 48.0000  16764  0.0083  0.1491  0.3194
+push+2%                  768    12 0.9622 35.0000  14237  0.0158  0.2215  0.5056
+push-2%                  768    12 0.9622 36.0000  14322  0.0154  0.2205  0.4417
+push+5%                  768    12 0.9023 16.0000   8832  0.0336  0.4059  1.0481
+push-5%                  768    12 0.9323 18.0000   9423  0.0330  0.4164  0.7870
+push+10%                 768    12 0.8320 9.0000   4657  0.0562  0.5777  0.9419
+push-10%                 768    12 0.8607 10.0000   5081  0.0516  0.5952  1.1537
+lp_median: floor 0.0053 (batch16); near misses 1% 0.0083, 2% 0.0154, 5% 0.0330 ok, 10% 0.0516 ok -> by the rule 0.013, built to catch a push 5% off
+lp_p99: floor 0.1149 (batch48); near misses 1% 0.1468, 2% 0.2205, 5% 0.4059, 10% 0.5777 ok -> by the rule 0.26, built to catch a push 10% off
+first piece: the arithmetic-only variants keep at least 0.9635; the near misses at most 1% 0.9766, 2% 0.9622, 5% 0.9323, 10% 0.8607 -> 0.9 (stands)
+  layer 31 alone: lp_median floor 0.0053, by the rule 0.013; lp_p99 floor 0.1149, by the rule 0.26
+
+what census_volunteer.OTHER_CLASS_BARS takes (a layer's own entry stands before its group's):
+  match_wide at 31: first piece 0.9, lp_median 0.013, lp_p99 0.26 (the group's own bars by the rule)
