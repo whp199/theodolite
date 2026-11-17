@@ -103,6 +103,10 @@
   "answers": 64,
   "sha256": "4751c98cf29c2e87d122e8b188ba53a4809be0acc32d6f4b8d066f9c78b4e746"
  },
+ "L31-match_wide.canary.jsonl": {
+  "answers": 64,
+  "sha256": "57bbcc51a96cbdab39bf9b6fe3033a9052ffbda5057a23c57bbd11e290a1782f"
+ },
  "L32-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "611421adb9a58a9ae416c643ef2ef83d69f4d8ea4877a849f7f8353536742375"

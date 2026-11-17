@@ -51,6 +51,16 @@ at layers 40-50 and says nothing of a design that pushes by other lengths, so:
   - a kit after the first writes into a folder of its own (kit4/), and the record of 31 October stays as it is.
 
     .venv/bin/python -I scripts/census_bars.py --layers 32,33,34,35,36,37,38,39,51,52     # kit 4's (~30 min, GPU)
+
+Since 17 November 2026 (kit 5: layer 31 with match_wide, a design at one layer alone). A layer's plan batch 0 is 64
+answers to one question, and a design at a single layer would be measured on those alone. With --chunk0 each layer's
+plan chunk 0 is written instead (take_census, shard 0 of the plan's C chunks, as census_ties.py writes it): under
+match_wide at batch 64, 768 answers to all twelve questions at both signs, every question's first batch among them.
+The reference is then the control's own chunk 0, and the control's first batch must be the home canary bit for bit,
+or nothing is derived. A variant at a smaller batch writes its own chunk 0, a part of the control's, and is set
+against the same answers there. The rule is unchanged.
+
+    .venv/bin/python -I scripts/census_bars.py --layers 31 --chunk0                       # kit 5's (~25 min, GPU)
 """
 
 from __future__ import annotations
@@ -245,6 +255,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--also", action="append", default=[], help="LAYER=PATH: a canary set beside the variants, reported, "
                     "not used by the rule")
     ap.add_argument("--stand-in", action="store_true", help="the CPU stand-in at the kit's dry-run settings")
+    ap.add_argument("--chunk0", action="store_true", help="each layer's plan chunk 0, not its batch 0, set against the "
+                                                          "control's, whose first batch must be the home canary bit for bit")
     ap.add_argument("--out", default="", help="where bars.json and bars.txt go (default: this kit's folder under "
                     f"{OUT.relative_to(ROOT_DIR)})")
     a = ap.parse_args(argv)
@@ -257,6 +269,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         sorted(set(kit["layers"]) | ({45} if not a.stand_in else set()))
     design_of = {layer: cv.kit_design(kit, layer, cz.DEFAULT_DESIGN) for layer in layers}
     by_ceiling = {layer: cz.DESIGN_UNITS.get(design_of[layer], "stream") == "ceiling" for layer in layers}
+    if a.chunk0 and not a.stand_in:  # the control's first batch is held to the home canary: there must be one
+        none = [layer for layer in layers if not cv.home_canary(layer, design_of[layer])[0].exists()]
+        if none:
+            raise SystemExit(f"No home canary at layer{'s' if len(none) > 1 else ''} {' '.join(map(str, none))} under the "
+                             "kit's design: take them first (scripts/census_intake.py home-canaries).")
     base = int(kit["KIT_BATCH"])
     batches = [b for b in BATCHES if b < base] if not a.stand_in else [b for b in (1, 2, 3) if b < base]
     vs = variants(base, batches)
@@ -320,6 +337,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             d = rows_dir / stamp / v["name"]
             d.mkdir(parents=True, exist_ok=True)
             run = d / f"L{layer}-{design_of[layer]}.jsonl"
+            part: Dict[str, Any] = {"canary_only": True}
+            if a.chunk0:  # the plan's chunk 0 at this variant's batch: every question's first batch
+                jobs = cz.census_jobs(neurons, int(kit["KIT_CONTROLS"]), cz.design_at(design_of[layer], layer),
+                                      list(cz.design_questions(design_of[layer])))
+                C = cz.plan_batches(jobs, v["batch"], cz.DESIGN_PLAN.get(design_of[layer], cz.PLAN))[-1][0] + 1
+                run = d / f"L{layer}-{design_of[layer]}.s0of{C}.jsonl"
+                part = {"shard": (0, C)}
             # the push made longer or shorter: p50 under the stream unit, the ceiling under the ceiling unit
             with push_scaled(by_ceiling[layer], v["scale"]):
                 cz.take_census(rt, layer, neurons, run, p50=p50s[layer] * (1.0 if by_ceiling[layer] else v["scale"]),
@@ -327,16 +351,22 @@ def main(argv: Optional[List[str]] = None) -> int:
                                seed=int(kit["KIT_SEED"]), max_new=int(kit["KIT_MAX_NEW"]), top_k=5, batch=v["batch"],
                                neurons_spec=str(kit["KIT_NEURONS"]),
                                p50_file=index.path("act_scale") if stats is not None else None, lens_id=lens_id,
-                               canary_only=True, log=lambda s: None)
-            written[v["name"]][layer] = list(cz.read_rows(cz.canary_path_of(run)))
+                               log=lambda s: None, **part)
+            written[v["name"]][layer] = list(cz.read_rows(run if a.chunk0 else cz.canary_path_of(run)))
             print(f"{v['name']:<20} L{layer}: {len(written[v['name']][layer])} answers ({time.time() - t0:.0f} s)", flush=True)
     torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = True
 
     # the reference: the home canaries (the stand-in has none: its own control stands in for them)
     home: Dict[int, List[Dict[str, Any]]] = {}
+    first_batch_home: Dict[int, bool] = {}  # under --chunk0: the control's first batch is the home canary, bit for bit
     for layer in layers:
         hp, _ = cv.home_canary(layer, design_of[layer])
-        home[layer] = list(cz.read_rows(hp)) if hp.exists() and not a.stand_in else written["control"][layer]
+        canary = list(cz.read_rows(hp)) if hp.exists() and not a.stand_in else None
+        if a.chunk0:
+            home[layer] = written["control"][layer]
+            first_batch_home[layer] = canary is None or written["control"][layer][:len(canary)] == canary
+        else:
+            home[layer] = canary if canary is not None else written["control"][layer]
     per: Dict[str, Dict[int, Dict[str, Any]]] = {}
     for v in vs:
         per[v["name"]] = {}
@@ -348,7 +378,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 c = cv.compare_rows(mine, ours)
                 assert c["lp_median"] == quantile(per[v["name"]][layer]["diffs"], 0.5)
     control = summarize(list(per["control"].values()))
-    moved = control["identical"] != control["answers"] or control["answers"] != sum(len(home[l]) for l in layers)
+    moved = control["identical"] != control["answers"] or control["answers"] != sum(len(home[l]) for l in layers) \
+        or not all(first_batch_home.values())
     # every near miss must have moved something: a variant that writes the control's own rows scaled nothing
     idle = [f"{v['name']} at layer {l}" for v in vs if v["group"] == "miss" for l in layers
             if written[v["name"]][l] == written["control"][l]]
@@ -372,6 +403,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ok = not moved and not idle
     result: Dict[str, Any] = {
         "taken_at": stamp, "layers": layers, "kit": kit["KIT"], "stand_in": a.stand_in,
+        "written": "each layer's plan chunk 0, set against the control's (its first batch the home canary's bits: "
+                   f"{first_batch_home})" if a.chunk0 else "each layer's plan batch 0, set against the home canary",
         "rule": {"scales": SCALES, "batches": batches, "gap": GAP, "min_pieces": MIN_PIECES, "floor_min": FLOOR_MIN,
                  "lp_sure": cv.LP_SURE, "first_bars": FIRST_BARS, "first_piece": {"clear": FP_CLEAR, "under": FP_UNDER},
                  "kept": {k: cv.ACCEPT_OTHER_CLASS[k] for k in ("first_piece", "baseline_tie")}},

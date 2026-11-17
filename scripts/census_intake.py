@@ -14,9 +14,9 @@ unpacked (zstd) and their sha256; the meta set against the home canary's of that
 meta_problems: every setting a run is continued by, the push's p50, the job list, the stats index, the unpacker's test),
 the commit the kit's tag names and a clean checkout; every answer of the job list once and no other; the volunteer's
 canary against their run's first batch (the same card writing the same batch) and against the home card's (the same
-bits, or a card class of its own); the six unpushed answers against the home card's; and the spot plan, SPOT_CHUNKS of
-the run's planned chunks drawn at random here, after the bundle came, so no volunteer knows them. A bundle that fails
-any of these is not spot-checked.
+bits, or a card class of its own); the unpushed answers against the home card's (census_volunteer.baselines_for); and
+the spot plan, SPOT_CHUNKS of the run's planned chunks drawn at random here, after the bundle came, so no volunteer
+knows them. A bundle that fails any of these is not spot-checked.
 
 spot: each spot chunk written again on the home card (census_run.py --shard i/C, the kit's settings): a minute or so a
 chunk on the 5090, the model loaded for each; the server must be stopped for the card's memory. Without --run it prints
@@ -85,8 +85,9 @@ def run(cmd: List[str], **kw: Any) -> subprocess.CompletedProcess:
 # ------------------------------------------------------------------------------------------------------- home canaries
 
 def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
-    """Each kit layer's canary on this card, taken with the design the kit names for that layer, and the six unpushed
-    answers a volunteer's are set against. A canary already in the folder is never written over (the writer refuses
+    """Each kit layer's canary on this card, taken with the design the kit names for that layer, and the unpushed
+    answers a volunteer's are set against: the six of layer 45's run, and a design's own where it asks other questions
+    (census_volunteer.DESIGN_BASELINES). A canary already in the folder is never written over (the writer refuses
     one taken by other code): a layer carried over from an earlier kit, or taken by this command before, is taken
     again into a scratch folder and set against the one kept, every field of every answer. If any differs the command
     says which and fails: the code no longer writes the bits that kit's volunteers were checked against."""
@@ -136,12 +137,40 @@ def cmd_home_canaries(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
             base[r["prompt"]] = {"token_ids": r["token_ids"], "logprob": r["logprob"]}
         elif len(base) >= 6:
             break
+    # a design that asks other questions: its own unpushed answers, from its run on the home card
+    # (census_volunteer.DESIGN_BASELINES), each kit design's that asks other questions than the six
+    own: Dict[str, Dict[str, Any]] = {}
+    own_from: Dict[str, str] = {}
+    for design in sorted({cv.kit_design(kit, layer, a.design or None) for layer in kit["layers"]} | set(by_design)):
+        if list(cz.design_questions(design)) == list(base):
+            continue
+        given = dict(x.split("=", 1) for x in a.design_baselines if "=" in x)
+        src_d = Path(given[design]) if design in given else (cz.census_dir().parent / cv.DESIGN_BASELINES[design]
+                                                             if design in cv.DESIGN_BASELINES else None)
+        if src_d is None or not src_d.exists():
+            raise SystemExit(f"{design} asks other questions than the six, and no run of it on the home card gives its unpushed "
+                             f"answers ({src_d or 'census_volunteer.DESIGN_BASELINES names none'}).")
+        want = list(cz.design_questions(design))
+        got: Dict[str, Any] = {}
+        for r in cz.read_rows(src_d):
+            if r["kind"] == "baseline":
+                got[r["prompt"]] = {"token_ids": r["token_ids"], "logprob": r["logprob"]}
+            elif len(got) >= len(want):
+                break
+        if list(got) != want:
+            raise SystemExit(f"{src_d.name} does not hold {design}'s {len(want)} unpushed answers in order ({', '.join(got)}).")
+        own[design], own_from[design] = got, src_d.name
     cz.write_json_atomic(out / "baselines.json", {"what": "the six unpushed answers of the kit's questions on the home card (they "
-                                                          "are the same at every layer and under every design of the kit)",
-                                                  "from": src.name, "baselines": base})
+                                                          "are the same at every layer and under every design of the kit "
+                                                          "that asks them; `by_design`: a design that asks others, its own)",
+                                                  "from": src.name, "baselines": base,
+                                                  **({"by_design": own, "by_design_from": own_from} if own else {})})
+    saved_b = {"baselines": base, "by_design": own}
     for p in taken + kept:
+        design_p = p.name.split(".")[0].split("-", 1)[1]
+        mine = cv.baselines_for(saved_b, design_p)
         for r in cz.read_rows(p):
-            b = base.get(r["prompt"]) if r["kind"] == "baseline" else None
+            b = mine.get(r["prompt"]) if r["kind"] == "baseline" else None
             if b is not None and (b["token_ids"], b["logprob"]) != (r["token_ids"], r["logprob"]):
                 print(f"{p.name}: its unpushed answer to {r['prompt']!r} is NOT the one in baselines.json")
     prints = {}
@@ -206,8 +235,16 @@ def check_bundle(a: argparse.Namespace, kit: Dict[str, Any]) -> Dict[str, Any]:
                            "claim": code, "name": str(man.get("name", ""))[:24], "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     if (layer, code) != (int(m.group(1)), m.group(2)):
         fails.append("the manifest's layer and claim are not the bundle's name's")
-    if int(man.get("kit", -1)) != kit["KIT"]:
-        fails.append(f"packed by kit {man.get('kit')}, not kit {kit['KIT']}")
+    packed = int(man.get("kit", -1)) if str(man.get("kit", "")).isdigit() else -1
+    if packed != kit["KIT"]:
+        old = cv.earlier_kit(kit, packed)
+        if old is None:
+            fails.append(f"packed by kit {man.get('kit')}, not kit {kit['KIT']}")
+        else:  # a claim taken before this kit was cut: checked by the kit it was taken with
+            notes.append(f"packed by kit {packed}, before kit {kit['KIT']} was cut: checked by kit {packed}'s own file "
+                         f"({old['KIT_TAG']}), its layers, designs and commit")
+            kit = old
+    out["kit"] = kit["KIT"]
     if layer not in kit["layers"]:
         fails.append(f"layer {layer} is not a kit layer ({' '.join(map(str, kit['layers']))})")
     out["secret_ok"] = cv.claim_code(str(man.get("secret", ""))) == code
@@ -300,7 +337,8 @@ def check_bundle(a: argparse.Namespace, kit: Dict[str, Any]) -> Dict[str, Any]:
         bits = "home" if cmp["same"] else "own"
     out["bits"] = bits
     # the unpushed answers: the same at every layer
-    hb = json.loads((home_dir() / "baselines.json").read_text(encoding="utf-8"))["baselines"] if (home_dir() / "baselines.json").exists() else {}
+    hb = cv.baselines_for(json.loads((home_dir() / "baselines.json").read_text(encoding="utf-8")), design) \
+        if (home_dir() / "baselines.json").exists() else {}
     shared = {}
     for q, b in hb.items():
         t = scan["baselines"].get(q)
@@ -496,6 +534,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                                                 "(with THEODOLITE_KIT_HOME_CANARIES set to a scratch folder), to show the code "
                                                 "still writes that kit's bits")
     h.add_argument("--baselines-from", default="", help="a whole run of the home card (default: layer 45's)")
+    h.add_argument("--design-baselines", action="append", default=[], metavar="DESIGN=RUN",
+                   help="a run of the home card that gives a design's own unpushed answers, where it asks other questions "
+                        "than the six (default: census_volunteer.DESIGN_BASELINES)")
     c = sub.add_parser("check")
     c.add_argument("bundle")
     c.add_argument("--work", default="", help="default: <atlas>/census/volunteer/L<layer>-<claim>")
@@ -510,6 +551,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     ac.add_argument("--into", default="", help="default: the census folder")
     a = ap.parse_args(argv)
     kit = cv.read_kit(dry=a.dry_run)
+    if a.cmd in ("spot", "judge", "accept"):  # a bundle packed by an earlier kit is spot-checked and taken by that kit
+        man = Path(a.work) / "bundle" / "manifest.json"
+        packed = json.loads(man.read_text(encoding="utf-8")).get("kit") if man.exists() else None
+        if str(packed).isdigit() and int(packed) != kit["KIT"]:
+            old = cv.earlier_kit(kit, int(packed))
+            if old is None:
+                raise SystemExit(f"This bundle was packed by kit {packed}, which is neither this kit ({kit['KIT']}) nor an "
+                                 "earlier one whose tag is in this checkout.")
+            kit = old
     return {"home-canaries": cmd_home_canaries, "check": cmd_check, "spot": cmd_spot, "judge": cmd_judge,
             "accept": cmd_accept}[a.cmd](a, kit)
 

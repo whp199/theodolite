@@ -1,0 +1,447 @@
+{
+ "what": "plan batch 0 of L31-match_wide.jsonl, written alone (census_run.py --canary-only), to compare with the same batch written on another card (census_tools.py canary)",
+ "written_at": "2026-11-17T02:17:01Z",
+ "answers": 64,
+ "meta": {
+  "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "layer": 31,
+  "prompts": {
+   "who": "Who are you?",
+   "orange": "Describe the color orange.",
+   "free": "Write whatever you like.",
+   "self": "Tell me about yourself.",
+   "green": "Describe the color green.",
+   "interesting": "Tell me something interesting.",
+   "bicycle": "Explain how a bicycle works.",
+   "walk": "Give me three tips for a long walk.",
+   "chair": "Describe a wooden chair.",
+   "kettle": "Explain how a kettle works.",
+   "sleep": "Give me three tips for sleeping well.",
+   "lamp": "Describe a brass lamp."
+  },
+  "prompt_ids": {
+   "who": [
+    2,
+    105,
+    2364,
+    107,
+    15938,
+    659,
+    611,
+    236881,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "orange": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    506,
+    2258,
+    11167,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "free": [
+    2,
+    105,
+    2364,
+    107,
+    6974,
+    9002,
+    611,
+    1133,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "self": [
+    2,
+    105,
+    2364,
+    107,
+    54593,
+    786,
+    1003,
+    5869,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "green": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    506,
+    2258,
+    3826,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "interesting": [
+    2,
+    105,
+    2364,
+    107,
+    54593,
+    786,
+    2613,
+    6121,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "bicycle": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    30979,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "walk": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    496,
+    1440,
+    3727,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "chair": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    7116,
+    9048,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "kettle": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    71603,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "sleep": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    20537,
+    1388,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "lamp": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    28575,
+    15123,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ]
+  },
+  "design_name": "match_wide",
+  "design": [
+   [
+    "who",
+    -2.58
+   ],
+   [
+    "who",
+    2.58
+   ],
+   [
+    "orange",
+    -2.58
+   ],
+   [
+    "orange",
+    2.58
+   ],
+   [
+    "free",
+    -2.58
+   ],
+   [
+    "free",
+    2.58
+   ],
+   [
+    "self",
+    -2.58
+   ],
+   [
+    "self",
+    2.58
+   ],
+   [
+    "green",
+    -2.58
+   ],
+   [
+    "green",
+    2.58
+   ],
+   [
+    "interesting",
+    -2.58
+   ],
+   [
+    "interesting",
+    2.58
+   ],
+   [
+    "bicycle",
+    -2.58
+   ],
+   [
+    "bicycle",
+    2.58
+   ],
+   [
+    "walk",
+    -2.58
+   ],
+   [
+    "walk",
+    2.58
+   ],
+   [
+    "chair",
+    -2.58
+   ],
+   [
+    "chair",
+    2.58
+   ],
+   [
+    "kettle",
+    -2.58
+   ],
+   [
+    "kettle",
+    2.58
+   ],
+   [
+    "sleep",
+    -2.58
+   ],
+   [
+    "sleep",
+    2.58
+   ],
+   [
+    "lamp",
+    -2.58
+   ],
+   [
+    "lamp",
+    2.58
+   ]
+  ],
+  "max_new": 48,
+  "top_k": 5,
+  "seed": 7,
+  "random_controls": 2048,
+  "neurons": "all",
+  "push": "add: dose x the neuron's write ceiling (s_l sqrt(D) ||w_post * unit(W_down[:, n])||, the most it can write by itself) along unit(w_post * W_down[:, n]) (a control: dose x the ceiling of the neuron it is paired with, along unit(w_post * r), r isotropic), at the stream leaving the layer, every word-piece but the start mark",
+  "controls": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+  "dose_unit": "ceiling",
+  "ceilings": "each pushed answer records its unit's write ceiling (`ceiling`; a control's is that of the neuron it is paired with, `ref_neuron`), the push's own unit",
+  "control_kind": "isotropic",
+  "version": 2,
+  "read_gain": {
+   "neurons": 4.7592,
+   "controls": 4.8238,
+   "ratio": 1.014,
+   "read_by": "the next layer's input norm (the final norm after the last layer)"
+  },
+  "doses_from": "one count of each neuron's own write ceiling that differs by layer: at each layer, the push that moves the next word-piece by 1.0 nats (match_ceil's lower dose), asked on twelve questions read as two halves of six. match_ceil passed its trials at layers 33-38 (as the pages count them) and failed at layer 32, where its two doses, 6% apart, read alike, and the twelve answers a neuron gave at one of them did not carry its words from one half of its six questions to the other; here the second dose's answers are asked on six more questions instead. Calibrated at layer 32 by a trial fixed before it was taken (16 November 2026, 1,022 fresh neurons against 1,024 controls, two gates fixed before any was read: the whole reading and the neurons whose text survives as the controls' does; with one dose there is no third), which passed both; not at layer 31, where its trial failed on its lead and on carrying a neuron's words from one half of the questions to the other, with the text whole, and tried at no other layer",
+  "p50": 267.9274597167969,
+  "p50_source": "the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces)",
+  "stop_ids": [
+   1,
+   106,
+   50
+  ],
+  "greedy": true,
+  "chat": "thinking off",
+  "lens": "jpp-base",
+  "stand_in": false,
+  "unpacker": {
+   "mode": "compiled",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ],
+   "self_test": {
+    "linears": 410,
+    "same_bits": true,
+    "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+    "table_nan_payloads": 0,
+    "seconds": 1.91
+   },
+   "install_s": 1.92
+  },
+  "d_ff": 21504,
+  "neuron_ids": "0-21503",
+  "batch": 64,
+  "runtime": {
+   "device": "NVIDIA GeForce RTX 5090",
+   "torch": "2.14.1+cu130",
+   "cuda": "13.0",
+   "transformers": "5.20.0",
+   "interp_engine": "1.14.0",
+   "compressed_tensors": "0.19.0",
+   "git": "423bc9e5b1007b5a1a659108d12d3ffc089a16da",
+   "git_clean": false,
+   "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+  },
+  "weights": {
+   "format": "compressed-tensors W4A16",
+   "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+   "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+   "id": "e0a93173c31ed2ec",
+   "linears": "packed",
+   "dtype": "bfloat16",
+   "device": "cuda:0",
+   "runtime": "TheodoliteRuntime"
+  },
+  "plan": "12 x batch",
+  "jobs": {
+   "n": 565260,
+   "sha256": "386bd429e597924f"
+  }
+ }
+}

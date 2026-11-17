@@ -31,6 +31,17 @@ highest such probability (the home card's own arithmetic must pass), and that is
 The results go to experiments/results/census_unpushed_ties/ (ties.json, and ties.txt in words); the rows written, to
 <atlas folder>/census/ties/. Nothing here changes ACCEPT_OTHER_CLASS: that is done by hand, from ties.json. The :8765
 server must be stopped (the model is loaded here).
+
+Since 17 November 2026 (kit 5: layer 31 with match_wide, which asks twelve questions). A design that asks other
+questions than break_rel's six has unpushed answers of its own (census_volunteer.DESIGN_BASELINES), so it is checked
+at its layer, with the kit's design there, against the run of it on the home card that gives them:
+
+    .venv/bin/python -I scripts/census_ties.py --layer 31 --reference atlas_data/census/trials/wide/L31-match_wide-trial.jsonl \
+        --out experiments/results/census_unpushed_ties/kit5
+
+The control (the kit's own chunk 0 at batch 64) must then equal that run's unpushed answers bit for bit, every question
+of the design, or nothing is concluded; the rule is as above. The card must have the kit's free memory
+(KIT_MIN_FREE_VRAM_MIB), as census_bars.py asks since 14 November.
 """
 
 from __future__ import annotations
@@ -79,6 +90,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--stand-in", action="store_true", help="the CPU stand-in at the kit's dry-run settings")
     ap.add_argument("--out", default=str(OUT), help="where ties.json and ties.txt go")
+    ap.add_argument("--layer", type=int, default=None, help=f"the layer whose kit run's chunk 0 is written (default {LAYER})")
+    ap.add_argument("--reference", default="", help="a run of the design on the home card whose unpushed answers the control "
+                                                    "must equal (default: volunteers/home_canaries/baselines.json's six)")
     a = ap.parse_args(argv)
 
     kit = cv.read_kit(dry=a.stand_in)
@@ -87,7 +101,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         os.environ["HF_HUB_OFFLINE"] = "1"
     base = int(kit["KIT_BATCH"])
     vs = variants(base, [b for b in BATCHES if b < base] if not a.stand_in else [b for b in (1, 2, 3) if b < base])
-    layer = LAYER if not a.stand_in else int(kit["layers"][0])
+    layer = (a.layer if a.layer is not None else LAYER) if not a.stand_in else int(kit["layers"][0])
     design = cv.kit_design(kit, layer, cz.DEFAULT_DESIGN)  # layer 45 is no layer of a later kit: break_rel, as it was measured
 
     import torch
@@ -105,7 +119,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         rt, _vault = stand_in()
     else:
         free, _total = torch.cuda.mem_get_info()
-        if free < 26 * 2**30:
+        if free < int(kit["KIT_MIN_FREE_VRAM_MIB"]) * 2**20:
             raise SystemExit(f"Only {free / 2**30:.1f} GB of the card is free: stop the :8765 server and any census first.")
         from backend.runtime_factory import make_runtime
 
@@ -134,7 +148,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         raise SystemExit("There is no stats index: the push's unit is read from it, as the kit's runs read it.")
     neurons = cz.parse_neurons(str(kit["KIT_NEURONS"]), N, int(kit["KIT_SEED"]))
-    jobs = cz.census_jobs(neurons, int(kit["KIT_CONTROLS"]), cz.DESIGNS[design], list(cz.design_questions(design)))
+    jobs = cz.census_jobs(neurons, int(kit["KIT_CONTROLS"]), cz.design_at(design, layer), list(cz.design_questions(design)))
     plan_name = cz.DESIGN_PLAN.get(design, cz.PLAN)
     rows_dir = (cz.census_dir().parent / "ties") if not a.stand_in else (cz.census_dir().parent / "ties-stand-in")
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
@@ -157,8 +171,16 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # the reference: the home card's unpushed answers (the stand-in has none: its own control stands in for them)
     hb = cv.HOME_CANARIES / "baselines.json"
-    home = json.loads(hb.read_text(encoding="utf-8"))["baselines"] if hb.exists() and not a.stand_in else \
-        {q: {"token_ids": r["token_ids"], "logprob": r["logprob"]} for q, r in written["control"].items()}
+    if a.reference and not a.stand_in:  # a design's own: every question it asks, from its run on the home card
+        home = {}
+        for r in cz.read_rows(Path(a.reference)):
+            if r["kind"] == "baseline":
+                home[r["prompt"]] = {"token_ids": r["token_ids"], "logprob": r["logprob"]}
+            elif len(home) >= len(cz.design_questions(design)):
+                break
+    else:
+        home = json.loads(hb.read_text(encoding="utf-8"))["baselines"] if hb.exists() and not a.stand_in else \
+            {q: {"token_ids": r["token_ids"], "logprob": r["logprob"]} for q, r in written["control"].items()}
     parts: List[Dict[str, Any]] = []
     for v in vs:
         for q, h in home.items():
@@ -173,7 +195,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     moved = any(x.get("missing") or not x["identical"] for x in ctrl) or len(ctrl) != len(home)
     arith = [x for x in parts if x["group"] == "arithmetic"]
     result: Dict[str, Any] = {
-        "taken_at": stamp, "layer": layer, "kit": kit["KIT"], "stand_in": a.stand_in,
+        "taken_at": stamp, "layer": layer, "design": design, "kit": kit["KIT"], "stand_in": a.stand_in,
+        "reference": Path(a.reference).name if a.reference else "baselines.json",
         "rule": {"tie": TIE, "step": STEP, "batches": [v["batch"] for v in vs if v["group"] == "arithmetic"]},
         "runtime": cz.runtime_record(next(lm.parameters()).device, act_scale=index.path("act_scale") if stats is not None else None),
         "parts": parts, "control_identical": not moved,

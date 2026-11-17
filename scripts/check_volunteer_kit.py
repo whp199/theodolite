@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -144,10 +145,46 @@ def run_checks(tmp: Path) -> int:
                                              "break_rel": [39, 51]} and counted == [32, 33, 34, 35, 36, 37, 38, 39, 51, 52]),
           f"kit 3: match_ceil at 32-37, soft_ceil at 38 and 52 to 59, break_rel at 39 and 51; doses counted calibrated at the ten "
           f"whose trial passed and at none of 53-59 ({by_design}, {counted})")
+    check(real["KIT"] != 5 or (by_design == {"match_wide": [31], "match_ceil": [32, 33, 34, 35, 36, 37],
+                                             "soft_ceil": [38, 52, 53, 54, 55, 56, 57, 58, 59], "break_rel": [39, 51]}
+                               and counted == [31, 32, 33, 34, 35, 36, 37, 38, 39, 51, 52]),
+          f"kit 5: kit 4's layers and designs, and layer 31 with match_wide; doses counted calibrated at the eleven whose "
+          f"trial passed ({by_design}, {counted})")
+    # a kit prepared and not yet cut (no tag of its number): the board is still the kit before it's, which volunteers
+    # reserve under until the cut
     repo_board = json.loads((ROOT_DIR / "volunteers" / "board.json").read_text())
     opened = sorted(int(l_) for l_, st_ in repo_board["layers"].items() if st_.get("state") == "open")
-    check(repo_board.get("kit") == real["KIT"] and set(opened) <= set(real["layers"]),
-          f"the repository's board is the kit's, and every layer open on it is one the kit takes (kit {repo_board.get('kit')}, open {opened})")
+    cut = subprocess.run(["git", "-C", str(ROOT_DIR), "rev-parse", "-q", "--verify", f"refs/tags/{real['KIT_TAG']}"],
+                         capture_output=True, text=True).returncode == 0
+    board_kit_ok = repo_board.get("kit") == real["KIT"] or (not cut and repo_board.get("kit") == real["KIT"] - 1)
+    check(board_kit_ok and set(opened) <= set(real["layers"]),
+          f"the repository's board is the kit's (or the kit before it's while this one is not cut), and every layer open on it "
+          f"is one the kit takes (kit {repo_board.get('kit')}, {'cut' if cut else 'not cut'}, open {opened})")
+    # a claim taken under an earlier kit is checked by that kit's own file, read from its tag; nothing else is
+    if real["KIT"] > 1:
+        prev = cv.earlier_kit(real, real["KIT"] - 1)
+        prev_tag = re.sub(r"\d+$", str(real["KIT"] - 1), real["KIT_TAG"])
+        check(prev is not None and prev["KIT"] == real["KIT"] - 1 and prev["KIT_TAG"] == prev_tag and prev["layers"]
+              and cv.earlier_kit(real, real["KIT"]) is None and cv.earlier_kit(real, real["KIT"] + 1) is None
+              and cv.earlier_kit(real, 0) is None and cv.earlier_kit(kit, 1) is None
+              and (real["KIT"] != 5 or (31 not in prev["layers"] and prev["designs"][33] == "match_ceil")),
+              f"an earlier kit's file is read from its tag for a bundle it packed; this kit, a later one, none and the stand-in's "
+              f"give none ({prev_tag}: {prev and prev['layers']})")
+    # a design that asks other questions than the six has unpushed answers of its own (census_volunteer.DESIGN_BASELINES)
+    six = list(cz.design_questions("break_rel"))
+    others = sorted(d_ for d_ in by_design if list(cz.design_questions(d_)) != six)
+    saved = {"baselines": {"who": 1}, "by_design": {"match_wide": {"who": 2}}}
+    check(all(d_ in cv.DESIGN_BASELINES for d_ in others)
+          and cv.baselines_for(saved, "match_wide") == {"who": 2} and cv.baselines_for(saved, "match_ceil") == {"who": 1}
+          and cv.baselines_for({"baselines": {"who": 1}}, "match_wide") == {"who": 1},
+          f"each kit design that asks other questions than the six has its own unpushed answers named, and a run is set "
+          f"against its design's ({others})")
+    hb_real = ROOT_DIR / "volunteers" / "home_canaries" / "baselines.json"
+    saved_real = json.loads(hb_real.read_text()) if hb_real.exists() else {}
+    check(all(list(cv.baselines_for(saved_real, d_)) == list(cz.design_questions(d_)) for d_ in others)
+          and list(saved_real.get("baselines") or {}) == six,
+          f"the home baselines hold the six and, for each design that asks others, its own in its order "
+          f"({ {d_: len(cv.baselines_for(saved_real, d_)) for d_ in others} })")
     check(cv.kit_design(kit, 2) != cv.kit_design(kit, 3) and kit["designs"] == {2: cv.kit_design(kit, 2), 3: cv.kit_design(kit, 3)},
           f"the stand-in's kit has a design a layer, so a kit of more than one is run here ({kit['designs']})")
     # a kit of one design, as kits 1 and 2 were (KIT_DESIGN, no KIT_DESIGNS), is read as before; a layer left without a
@@ -534,6 +571,10 @@ def run_checks(tmp: Path) -> int:
     # the bars in the code are the measurement's table as it came, a kit's layers each with bars or shut
     kit4 = ROOT_DIR / "experiments" / "results" / "census_other_card_bars" / "kit4" / "bars.json"
     measured = json.loads(kit4.read_text())["table"]
+    kit5 = kit4.parent / "kit5" / "bars.json"  # layer 31 under match_wide, measured by its own registration
+    measured += (json.loads(kit5.read_text()).get("table") or []) if kit5.exists() else []
+    check((cv.accept_bars("match_wide", 31) is None) == (not kit5.exists()),
+          "a run of another card class at 31 under match_wide is judged only once its bars are measured")
     in_code = [e for e in cv.OTHER_CLASS_BARS if e["measured"] != "2026-10-31"]
     real_kit = cv.read_kit()
     open_layers = [32, 33, 34, 35, 37, 38, 39, 51, 52]

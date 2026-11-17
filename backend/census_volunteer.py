@@ -86,6 +86,23 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
 ]
 
 
+# The unpushed answers a volunteer's are set against (volunteers/home_canaries/baselines.json, `baselines_for`). A
+# design that asks break_rel's six questions writes each one's unpushed answer in a batch of 64 of that question, as
+# layer 45's break_rel run did, so the six of that run stand for every such design at every layer. match_wide asks
+# twelve, and a whole layer's plan writes the second half's unpushed answers in batches of 63 (its chunk 0 holds 31 and
+# a half units' answers): chair's then differs from layer 45's in its log-probabilities. So a design that asks other
+# questions takes its unpushed answers from a run of it on the home card with the kit's settings, named here (its path
+# under the atlas folder's census/, beside runs/); scripts/census_ties.py checks, before a kit with it is cut, that the
+# kit's own plan writes that run's unpushed answers bit for bit.
+DESIGN_BASELINES: Dict[str, str] = {"match_wide": "trials/wide/L31-match_wide-trial.jsonl"}
+
+
+def baselines_for(saved: Dict[str, Any], design: str) -> Dict[str, Any]:
+    """The home card's unpushed answers a run of `design` is set against, from baselines.json as `saved`: the design's
+    own where it asks other questions (`by_design`), else the six every other design shares."""
+    return (saved.get("by_design") or {}).get(design) or saved.get("baselines") or {}
+
+
 def accept_bars(design: str, layer: int, table: Optional[Sequence[Dict[str, Any]]] = None) -> Optional[Dict[str, Any]]:
     """The bars a run of another card class is held to at `layer` (counted from 0) under `design`: ACCEPT_OTHER_CLASS
     with the bars measured there laid over it (OTHER_CLASS_BARS, or `table`); None where none have been measured, and
@@ -122,6 +139,31 @@ def read_kit(path: Optional[Path] = None, dry: bool = False) -> Dict[str, Any]:
             out[k] = int(kit[k])
     out["dry"] = dry
     return out
+
+
+def earlier_kit(kit: Dict[str, Any], n: int) -> Optional[Dict[str, Any]]:
+    """An earlier kit's settings, read from its own tag (volunteers/kit.env as kit `n` was cut, at census-kit-<n>), for
+    a bundle packed by it. A layer claimed under one kit and still running when the next is cut is checked by the kit
+    it was taken with: its layers, designs and commit. None where `n` is not an earlier kit than `kit` or its tag is not
+    in this checkout (a dry run has no tags)."""
+    import os
+    import subprocess
+    import tempfile
+
+    if kit.get("dry") or not isinstance(n, int) or not 0 < n < int(kit["KIT"]):
+        return None
+    tag = re.sub(r"\d+$", str(n), str(kit["KIT_TAG"]))
+    got = subprocess.run(["git", "-C", str(ROOT_DIR), "show", f"{tag}:volunteers/kit.env"], capture_output=True, text=True)
+    if got.returncode != 0:
+        return None
+    fd, tmp = tempfile.mkstemp(suffix=".env")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(got.stdout)
+        old = read_kit(Path(tmp))
+    finally:
+        os.unlink(tmp)
+    return old if old.get("KIT") == n and old.get("KIT_TAG") == tag else None
 
 
 def kit_design(kit: Dict[str, Any], layer: int, default: Optional[str] = None) -> str:
