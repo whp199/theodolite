@@ -1,0 +1,181 @@
+{
+ "bars": {
+  "lead": 0.6,
+  "beyond_text": 0.58,
+  "rep_AB": 0.57,
+  "rep_BA": 0.57,
+  "new_questions": 0.56
+ },
+ "layers": [
+  {
+   "layer": 30,
+   "pass": false,
+   "doses": [
+    -2.67,
+    -2.42,
+    2.42,
+    2.67
+   ],
+   "dose_unit": "ceiling",
+   "half_a": [
+    "who",
+    "orange",
+    "free",
+    "self",
+    "green",
+    "interesting"
+   ],
+   "half_b": [
+    "bicycle",
+    "walk",
+    "chair",
+    "kettle",
+    "sleep",
+    "lamp"
+   ],
+   "whole": {
+    "pass": false,
+    "lead": 0.618,
+    "beyond_text": 0.6398,
+    "rep_AB": 0.5727,
+    "rep_BA": 0.5449,
+    "new_questions": 0.6081
+   },
+   "covered": {
+    "pass": false,
+    "lead": 0.6217,
+    "beyond_text": 0.6308,
+    "rep_AB": 0.5765,
+    "rep_BA": 0.5463,
+    "new_questions": 0.6118,
+    "neurons": 956,
+    "of": 1022,
+    "outside_by_covariate": {
+     "lnw": 42,
+     "d4": 13,
+     "cut": 11,
+     "lp": 9,
+     "dep": 9,
+     "lost": 11
+    }
+   },
+   "text": {
+    "-2.67 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.949
+    },
+    "-2.67 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.956
+    },
+    "-2.42 neuron": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 0.942
+    },
+    "-2.42 random": {
+     "d4_minus_unpushed": -0.001,
+     "cut_off": 0.95
+    },
+    "+2.42 neuron": {
+     "d4_minus_unpushed": -0.004,
+     "cut_off": 0.946
+    },
+    "+2.42 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.95
+    },
+    "+2.67 neuron": {
+     "d4_minus_unpushed": -0.005,
+     "cut_off": 0.953
+    },
+    "+2.67 random": {
+     "d4_minus_unpushed": -0.002,
+     "cut_off": 0.958
+    }
+   },
+   "above_every_control": 1,
+   "counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 1,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.1693,
+    "pA05_and_pB05": 48,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "lower (reported)": {
+    "doses": [
+     -2.42,
+     2.42
+    ],
+    "lead": 0.5956,
+    "beyond_text": 0.6296,
+    "rep_AB": 0.5582,
+    "rep_BA": 0.5494,
+    "new_questions": 0.5925,
+    "above_every_control": 1,
+    "named": 0
+   },
+   "upper (reported)": {
+    "doses": [
+     -2.67,
+     2.67
+    ],
+    "lead": 0.5802,
+    "beyond_text": 0.6148,
+    "rep_AB": 0.536,
+    "rep_BA": 0.5347,
+    "new_questions": 0.565,
+    "above_every_control": 0,
+    "named": 0
+   },
+   "six (reported)": {
+    "half_a": [
+     "who",
+     "orange",
+     "free"
+    ],
+    "half_b": [
+     "bicycle",
+     "walk",
+     "chair"
+    ],
+    "lead": 0.5966,
+    "beyond_text": 0.6098,
+    "rep_AB": 0.5488,
+    "rep_BA": 0.5416,
+    "new_questions": 0.5907,
+    "above_every_control": 0,
+    "named": 0
+   },
+   "added (reported)": {
+    "half_a": [
+     "self",
+     "green",
+     "interesting"
+    ],
+    "half_b": [
+     "kettle",
+     "sleep",
+     "lamp"
+    ],
+    "lead": 0.6162,
+    "beyond_text": 0.6313,
+    "rep_AB": 0.5464,
+    "rep_BA": 0.5514,
+    "new_questions": 0.5988,
+    "above_every_control": 4,
+    "named": 0
+   },
+   "throughput": {
+    "answers_written": 98220,
+    "seconds": 9991.9,
+    "answers_per_s": 9.83,
+    "sessions": 1
+   }
+  }
+ ]
+}

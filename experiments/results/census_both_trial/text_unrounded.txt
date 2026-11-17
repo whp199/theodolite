@@ -1,0 +1,8 @@
+-2.67 neuron   12264 answers  distinct 4-grams less unpushed -0.0035
+-2.67 random   12288 answers  distinct 4-grams less unpushed -0.0018
+-2.42 neuron   12264 answers  distinct 4-grams less unpushed -0.0032
+-2.42 random   12288 answers  distinct 4-grams less unpushed -0.0014
++2.42 neuron   12264 answers  distinct 4-grams less unpushed -0.0037
++2.42 random   12288 answers  distinct 4-grams less unpushed -0.0016
++2.67 neuron   12264 answers  distinct 4-grams less unpushed -0.0048
++2.67 random   12288 answers  distinct 4-grams less unpushed -0.0019

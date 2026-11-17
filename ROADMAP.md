@@ -1014,6 +1014,19 @@ layers, the determinism run and the sampled push on 29 October). In this section
        without the owner’s word, and nothing is taken at 30 with this design. Nine layers outside 39–51 now pass a
        trial: 31 with `match_wide`, 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`
        ([`census_wide_trials/RESULT.md`](experiments/results/census_wide_trials/RESULT.md)).
+       **Two doses at layer 30, `match_both`** (the owner’s word, 16 November: “Two doses at 30 first”; registered in
+       [`census_both_trial/prereg/`](experiments/results/census_both_trial/prereg/), hashed at 22:34Z before any
+       answer of the design existed). Re-read on one to six questions a half, `match_wide`’s lead at 30 stopped
+       rising at three, so this design asks its twelve questions at both of `match_ceil`’s doses instead, ±2.42 and
+       ±2.67 ceilings, 48 answers a neuron. Gates N1 and N3; each dose alone is reported, not gated. **Read at
+       02:04Z on 17 November: it fails both, on one figure.** 98,220 answers in 167 minutes. Whole: 0.618, 0.640,
+       0.573 and 0.545, 0.608; the 956 covered: 0.622, 0.631, 0.577 and 0.546, 0.612. The lead passes, and the
+       second dose carried more than a repeat (0.596 to 0.618; written twice, the same answers rise 0.007). But a
+       neuron’s words picked on half B do not come back on half A (0.545 against 0.57). Said beforehand and missed:
+       that a failure would come on the lead. The text loses under 0.005 of its distinct 4-grams. By the registration
+       nothing is taken at 30 with this design, kit 5 is prepared for 31 with `match_wide` alone, and what to try at
+       and below 30 is the owner’s choice
+       ([`census_both_trial/RESULT.md`](experiments/results/census_both_trial/RESULT.md)).
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
