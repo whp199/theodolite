@@ -7,7 +7,7 @@ L33 running anon 280c6dc2 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 1%,
 L34 done (anon eaef4eff)
 L35 done (anon 5d30aa4a)
 L36 done (home card)
-L37 running anon 042ec8f2 NVIDIA GeForce RTX 5090 32 GB ?
+L37 done (anon 042ec8f2)
 L38 OPEN
 L39 done (anon 1f217635)
 L40 done (home card)

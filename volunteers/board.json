@@ -83,7 +83,8 @@
   6907780420,
   6908184989,
   6917386229,
-  6923181068
+  6923181068,
+  6930418938
  ],
  "claims": [
   {
@@ -839,7 +840,7 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-15T22:13Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-15T22:13Z",
@@ -852,10 +853,37 @@
      "via": "github",
      "what": "claim=042ec8f2 bits=home card=NVIDIA GeForce RTX 5090 32 GB",
      "verb": "START"
+    },
+    {
+     "at": "2026-11-16T21:49Z",
+     "via": "github",
+     "what": "claim=042ec8f2 sha256=79daecb184aee460 size=524MB link=https://github.com/Zlorthishen/theodolite/releases/download/L37-match_ceil-042ec8f2/L37-match_ceil-042ec8f2.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-17T02:42Z",
+     "what": "set checking: on paper whole; home bits; spot-check next"
+    },
+    {
+     "at": "2026-11-17T03:44Z",
+     "what": "set checking: spot-checked: bit for bit on the spot chunks; accept next"
+    },
+    {
+     "at": "2026-11-17T03:47Z",
+     "what": "set accepted: home bits (NVIDIA GeForce RTX 5090), spot-checked"
+    },
+    {
+     "at": "2026-11-17T04:09Z",
+     "what": "set accepted: 15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
     }
    ],
    "started_at": "2026-11-15T22:13Z",
-   "bits": "home"
+   "bits": "home",
+   "submitted_at": "2026-11-16T21:49Z",
+   "bundle_sha256": "79daecb184aee460",
+   "size": "524MB",
+   "link": "https://github.com/Zlorthishen/theodolite/releases/download/L37-match_ceil-042ec8f2/L37-match_ceil-042ec8f2.tar",
+   "note": "15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
   },
   {
    "code": "c40b4d3a",
@@ -1121,7 +1149,7 @@
   },
   "30": {
    "state": "stopped",
-   "note": "its trial failed, 16 November 2026 (match_wide): not taken"
+   "note": "its trials failed, 16 and 17 November 2026 (match_wide, then its questions at two pushes): not taken"
   },
   "31": {
    "state": "stopped",
@@ -1154,8 +1182,10 @@
    "note": "14 Nov 2026, read whole; passed two of its trial's three gates, and on the lower dose alone missed one figure by 0.006"
   },
   "37": {
-   "state": "open",
-   "note": "match_ceil; its trial passed, 13 November 2026"
+   "state": "done",
+   "by": "anon 042ec8f2",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
   },
   "38": {
    "state": "open",
@@ -1206,5 +1236,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-16T19:37Z"
+ "updated_at": "2026-11-17T04:09Z"
 }
