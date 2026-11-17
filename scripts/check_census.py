@@ -1392,7 +1392,8 @@ def run_checks(tmp: Path) -> int:
     # doses_calibrated follows census.DOSES_CALIBRATED at the run's layer: break_rel's at layers 39-51 (the owner's
     # choice on its trials' verdicts, 29 October and 12 November 2026), so not at the stand-in's layer 3; a design named there speaks with
     # DOSES_FROM's words, not the ones its meta recorded before its calibration was
-    check(cz.DOSES_CALIBRATED == {"break_rel": ((39, 51),), "soft_ceil": ((38, 38), (52, 52)), "match_ceil": ((32, 37),)}
+    check(cz.DOSES_CALIBRATED == {"break_rel": ((39, 51),), "soft_ceil": ((38, 38), (52, 52)), "match_ceil": ((32, 37),),
+                                  "match_wide": ((31, 31),)}
           and [cz.doses_calibrated("break_rel", l_) for l_ in (38, 39, 40, 45, 50, 51, 52, 57)] == [False, True, True, True, True, True, False, False]
           and not cz.doses_calibrated("main_rel", 45) and not cz.doses_calibrated(None, 45) and not cz.doses_calibrated("break_rel", None),
           f"census.doses_calibrated: break_rel's doses at layers 39-51 alone ({cz.DOSES_CALIBRATED})")
@@ -1408,6 +1409,18 @@ def run_checks(tmp: Path) -> int:
           and not cz.doses_calibrated("break_ceil", 38) and set(cz.calibrated_layers("match_ceil")) <= set(cz.MATCH_CEIL),
           f"census.doses_calibrated: soft_ceil's doses at layers 38 and 52 alone, match_ceil's at 32-37 alone, each at 48 "
           f"word-pieces, break_ceil's nowhere ({cz.DOSES_CALIBRATED})")
+    # match_wide at 31 alone (the owner's word of 16 November 2026, kit 5): not at 30, where its trial failed, nor at
+    # 32-37, where match_ceil is calibrated and match_wide was never tried; for answers of 48 pieces alone. match_both,
+    # whose trial at 30 failed, nowhere
+    check([l_ for l_ in range(60) if cz.doses_calibrated("match_wide", l_)] == [31] == cz.calibrated_layers("match_wide")
+          and cz.doses_calibrated("match_wide", 31, 48) and not cz.doses_calibrated("match_wide", 31, 32)
+          and cz.dose_note("match_wide", 31, 48, "ceiling") == cz.DOSES_FROM["match_wide"]
+          and "only at layer 31, counted from 0" in cz.dose_note("match_wide", 30, 48, "ceiling")
+          and "only for answers of 48 word-pieces" in cz.dose_note("match_wide", 31, 32, "ceiling")
+          and set(cz.calibrated_layers("match_wide")) <= set(cz.MATCH_WIDE) and cz.calibrated_layers("match_both") == []
+          and "Calibrated at layer 32" in cz.DOSES_FROM["match_wide"] and "Not calibrated at any layer" in cz.DOSES_FROM["match_both"],
+          f"census.doses_calibrated: match_wide's doses at layer 31 alone, at 48 word-pieces, its note naming the one layer; "
+          f"match_both's nowhere ({cz.calibrated_layers('match_wide')})")
     check([cz.layers_said(x_) for x_ in ([39, 40, 41], [38, 52], [5], [], [32, 33, 34, 40, 52], [52, 38, 38])]
           == ["39-41", "38 and 52", "5", "", "32-34, 40 and 52", "38 and 52"] and cz.layers_said([38, 52], 1) == "39 and 53"
           and "only at layers 38 and 52, counted from 0" in cz.dose_note("soft_ceil", 37, 48, "ceiling")
@@ -1758,12 +1771,12 @@ def run_checks(tmp: Path) -> int:
           and len(set(cz.ALL_PROMPTS.values())) == len(cz.ALL_PROMPTS)
           and cz.DESIGN_UNITS["match_wide"] == "ceiling" and cz.reading_of("match_wide") == cz.reading_of("match_ceil")
           and cz.run_defaults("match_wide") == cz.run_defaults("match_ceil") and cz.DESIGN_PLAN["match_wide"] == "12 x batch"
-          and cz.COLLAPSE_RULE["match_wide"] == cz.COLLAPSE_RULE["match_ceil"] and "match_wide" not in cz.DOSES_CALIBRATED
-          and not any(cz.doses_calibrated("match_wide", l_) for l_ in range(60)) and "nats" in cz.DOSES_FROM["match_wide"]
+          and cz.COLLAPSE_RULE["match_wide"] == cz.COLLAPSE_RULE["match_ceil"] and cz.calibrated_layers("match_wide") == [31]
+          and "nats" in cz.DOSES_FROM["match_wide"]
           and cz.design_at("match_wide", 31) == [(p_, s_ * 2.58) for p_ in q12 for s_ in (-1.0, 1.0)],
           "match_wide: twelve questions (break_rel's six, each half one more of each of its genres, three of them the spares "
           "step 0 put in place), match_ceil's lower dose alone at each layer (24 answers a unit at 31: +-2.58), read, taken and marked "
-          "as match_ceil is, calibrated nowhere")
+          "as match_ceil is, calibrated at 31 alone")
     wrun = tmp / "runs" / "L3-match_wide.jsonl"
     try:
         cz.design_at("match_wide", 3)
@@ -1795,10 +1808,10 @@ def run_checks(tmp: Path) -> int:
         wcol = json.loads(cz.collapse_path_of(wrun).read_text()) if cz.collapse_path_of(wrun).exists() else {}
         wcard = atlas_routes.census_card({"path": wrun, "meta": wmeta, "null": {}, "units": wunits})
         check(len(wunits) == 8 + w_ctl and all(u_["reading"] == cz.reading_of("match_wide") and set(u_["dose"]) == {"-1.9", "+1.9"} for u_ in wunits)
-              and wcol.get("doses") == [1.9] and wcard["doses_calibrated"] is False and wcard["doses_calibrated_layers"] is None
+              and wcol.get("doses") == [1.9] and wcard["doses_calibrated"] is False and wcard["doses_calibrated_layers"] == [31]
               and wcard["dose_unit"] == "ceiling" and wcard["doses_from"] == cz.DOSES_FROM["match_wide"],
               f"a match_wide run is ranked on every answer, its collapse words read at its one dose, and its card says its unit and "
-              f"that its doses are calibrated nowhere ({wcol.get('doses')}, {wcard.get('doses_calibrated_layers')})")
+              f"that its doses are calibrated at layer 31 alone, not at its own ({wcol.get('doses')}, {wcard.get('doses_calibrated_layers')})")
     finally:
         cz.MATCH_WIDE.pop(3, None)
     section("match_wide: its questions and table, a stand-in run at its one dose, its ranking and card", before)

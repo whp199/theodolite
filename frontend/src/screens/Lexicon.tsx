@@ -1186,9 +1186,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             layer 46 on 1,022 fresh neurons against 1,024 controls, and at 40 and 52 by a trial of each like it (12
             November 2026), both passing; not at 53–58, where its probe at layer 58 passed by 0.0008 and its lead could
             not be told from how the text survives, nor below 40. Outside 40–52 that push is too hard or too soft, and
-            two designs count theirs in what each neuron can write by itself: soft_ceil is calibrated at layers 39 and
-            53, match_ceil at layers 33–38, each layer by a trial of its own (13 November 2026); soft_ceil’s trial at
-            layer 38 and match_ceil’s at layer 32 failed, and neither was tried elsewhere.
+            three designs count theirs in what each neuron can write by itself: soft_ceil is calibrated at layers 39
+            and 53, match_ceil at layers 33–38, each layer by a trial of its own (13 November 2026), and match_wide at
+            layer 32 (16 November); soft_ceil’s trial at layer 38, match_ceil’s at layer 32 and match_wide’s at layer 31
+            failed, and none was tried elsewhere.
             Where a census’s doses are not calibrated at its layer, a low rank can mean only that the dose was wrong for
             the layer. break_rel is the design a census takes unless another is named. At its ±2 doses neurons and
             controls alike break into loops on the same few words (in its trial most neurons it named listed same, own or
@@ -1208,7 +1209,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             break_rel’s six questions at two doses on each sign, each dose a multiple of the pushed neuron’s write
             ceiling, the most it can write by itself (soft_ceil ±1.6 and ±2.3 at every layer; match_ceil two counts set
             a layer at a time where the next word-piece moves by 1.0 and by 1.4 nats, between 2.2 and 2.8 at the
-            layers it is calibrated at), read as break_rel is. Greedy answers. A
+            layers it is calibrated at), read as break_rel is. match_wide: match_ceil’s lower count alone, on twelve
+            questions read as two halves of six, break_rel’s and six more (tell me about yourself, the colour green,
+            tell me something interesting, how a kettle works, three tips for sleeping well and a brass lamp). Greedy
+            answers. A
             word (three letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5), for main_rel
             against the average unit over pushes of at most 1.6 of the stream with every word of the unpushed answers
             left out, for break_rel against the controls’ mean alone over every answer with the answer’s own question’s

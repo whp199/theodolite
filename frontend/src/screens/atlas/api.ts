@@ -581,7 +581,8 @@ export interface CensusCard {
    * whose unpushed words are left out */
   reading?: { max_rel: number; reference: "units" | "controls"; exclude: "all" | "own" };
   /** its design's doses, and whether they are calibrated on this model at the run's layer (census.doses_calibrated:
-   * break_rel's at layers 39–51 counted from 0, 40–52 on the pages; soft_ceil's at 38 and 52; match_ceil's at 32–37);
+   * break_rel's at layers 39–51 counted from 0, 40–52 on the pages; soft_ceil's at 38 and 52; match_ceil's at 32–37;
+   * match_wide's at 31);
    * where they are not, the census and details tabs say so in red, and the left panel's census head says so.
    * `doses_calibrated_layers`: every layer, counted from 0, that the run's design is calibrated at (they need not lie
    * side by side: `layersSaid`); null for a design calibrated at none */

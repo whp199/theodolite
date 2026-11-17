@@ -41,7 +41,7 @@ where, the share cut off, distinct 4-grams, and the push over each neuron's ceil
 Every page and tool that shows a census says so, save for a design calibrated at the run's layer (`DOSES_CALIBRATED`,
 `doses_calibrated`: break_rel at layers 39-51, counted from 0: 40-50 by its trial of 29 October 2026, 39 and 51 by a
 trial of each on 12 November; soft_ceil at layers 38 and 52 and match_ceil at layers 32-37, each layer by a trial of
-its own on 13 November). With 256 controls and
+its own on 13 November; match_wide at layer 31, by its trial of 16 November). With 256 controls and
 21,504 neurons about 84 neurons land above every
 control by chance alone (N / (C + 1)), so a rank is a lead, not a finding: each unit carries an empirical p against the
 controls and a layer-wide false-discovery q (`compute_units`). A second stage retests a screen's strongest neurons
@@ -300,14 +300,19 @@ DOSES_FROM = {
                   "of six. match_ceil passed its trials at layers 33-38 (as the pages count them) and failed at layer 32, "
                   "where its two doses, 6% apart, read alike, and the twelve answers a neuron gave at one of them did not "
                   "carry its words from one half of its six questions to the other; here the second dose's answers are "
-                  "asked on six more questions instead. Not calibrated at any layer until a trial of it passes there",
+                  "asked on six more questions instead. Calibrated at layer 32 by a trial fixed before it was taken (16 "
+                  "November 2026, 1,022 fresh neurons against 1,024 controls, two gates fixed before any was read: the whole "
+                  "reading and the neurons whose text survives as the controls' does; with one dose there is no third), "
+                  "which passed both; not at layer 31, where its trial failed on its lead and on carrying a neuron's words "
+                  "from one half of the questions to the other, with the text whole, and tried at no other layer",
     "match_both": "two counts of each neuron's own write ceiling that differ by layer, match_ceil's (the pushes that move "
                   "the next word-piece by 1.0 and by 1.4 nats), each asked on match_wide's twelve questions read as two "
                   "halves of six, 48 answers a unit. match_wide passed its trial at layer 32 (as the pages count them) and "
                   "failed at layer 31 on its lead, with the text whole; there its lead had stopped rising at three "
                   "questions a half, so this asks each question at a second dose instead of asking more questions. Its "
-                  "trial gates the answers of both doses together and of neither dose alone. Not calibrated at any layer "
-                  "until a trial of it passes there",
+                  "trial gates the answers of both doses together and of neither dose alone. Its trial at layer 31 failed "
+                  "(16 November 2026): its lead passed, but a neuron's words picked on the second half of the questions "
+                  "did not come back on the first. Not calibrated at any layer",
 }
 # where a design's doses are calibrated on this model: its spans of layers, each a first and a last (counted from 0, as
 # the commands count them). There the card says `doses_calibrated` and the page leaves out its red "not yet calibrated"
@@ -322,18 +327,24 @@ DOSES_FROM = {
 #   (experiments/results/census_soft_trials, census_match_trials, census_match_walk). soft_ceil's trial at 37 failed and
 #   so did match_ceil's at 31; neither design was tried anywhere else, so two layers side by side here are not a span
 #   that covers what lies between two of its entries.
+# - match_wide at layer 31: counted in on the owner's word of 16 November 2026 ("Prepare kit 5 for layer 31": kit 5), on
+#   its trial there, which passed two gates fixed before it was read: the whole reading and the neurons whose text
+#   survives as the controls' does; with one dose there is no third (experiments/results/census_wide_trials). Its trial
+#   at 30 failed, and so did match_both's there (census_both_trial).
 # A design named here speaks on every card with DOSES_FROM's words, which say where it is calibrated, not with the words
 # its runs' metas recorded before that was recorded (atlas.census_card).
 DOSES_CALIBRATED: Dict[str, Tuple[Tuple[int, int], ...]] = {
     "break_rel": ((39, 51),),
     "soft_ceil": ((38, 38), (52, 52)),
     "match_ceil": ((32, 37),),
+    "match_wide": ((31, 31),),
 }
 # the answer lengths a design's calibration was read at (break_rel's trial: 48 word-pieces, and 32 as those answers cut
 # short, both passing at layer 45): a run whose answers run longer is not calibrated, its doses read over more loops.
-# The trials of soft_ceil and match_ceil were gated at 48 word-pieces alone (the cut to 32 was reported, on the whole
-# reading only, and it passed by 0.0003 at layer 36)
-DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48), "soft_ceil": (48,), "match_ceil": (48,)}
+# The trials of soft_ceil, match_ceil and match_wide were gated at 48 word-pieces alone (the cut to 32 was reported, on
+# the whole reading only: it passed by 0.0003 at layer 36, and at 31 match_wide's words carried by 0.567 and 0.564)
+DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48), "soft_ceil": (48,), "match_ceil": (48,),
+                                                         "match_wide": (48,)}
 # the settings a design's census takes unless others are given (census_run.py): break_rel's are the owner's of 29
 # October 2026 for a whole layer, its trial's length and batch (the step-0 rule) with 2,048 controls; other designs
 # keep the command's own (256 word-pieces, a batch of 32, 256 controls)
@@ -396,7 +407,7 @@ def dose_note(design_name: Optional[str], layer: Optional[int], max_new: Optiona
     if layer is not None and int(layer) in at:  # at its layer, but not for answers of this length
         lengths = " or ".join(str(n) for n in DOSES_CALIBRATED_MAX_NEW.get(str(design_name), ()))
         return said + f"; doses calibrated at this layer only for answers of {lengths} word-pieces"
-    return said + f"; doses not yet calibrated on this model at this layer (only at layers {layers_said(at)}, counted from 0)"
+    return said + f"; doses not yet calibrated on this model at this layer (only at layer{'s' if len(at) > 1 else ''} {layers_said(at)}, counted from 0)"
 
 
 def design_questions(design_name: Optional[str]) -> Dict[str, str]:
