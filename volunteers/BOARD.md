@@ -27,7 +27,7 @@ Kit 5 (census-kit-5). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 49 | 50 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 10-11 Nov 2026, passed layer 45's gates |
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 51 | 52 | done | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB |  | 14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole |
-| 52 | 53 | running | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB | 34%, ends ~2026-11-17T16:40Z |  |
+| 52 | 53 | done | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 53 | 54 | not taken |  |  |  | its trial failed, 16 November 2026 (soft_ceil): not taken |
 | 54–59 | 55–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
@@ -44,6 +44,7 @@ Judged:
 - L35 anon 5d30aa4a: accepted (15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
 - L39 anon 1f217635: accepted (15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole)
 - L37 anon 042ec8f2: accepted (15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole)
+- L52 eigentactics c40b4d3a: accepted (own bits (NVIDIA GeForce RTX 3090), spot-checked)
 - L33 anon 280c6dc2: accepted (16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-17T15:43Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-17T21:34Z.

@@ -22,7 +22,7 @@ L48 done (anon 5cd76843)
 L49 done (home card)
 L50 done (anon b153da82)
 L51 done (eigentactics 6d708804)
-L52 running eigentactics c40b4d3a NVIDIA GeForce RTX 3090 24 GB 34%, ends ~2026-11-17T16:40Z
+L52 done (eigentactics c40b4d3a)
 L53 not taken
 L54–59 not taken
 

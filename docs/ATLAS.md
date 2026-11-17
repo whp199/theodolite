@@ -51,7 +51,7 @@ the board) on 16 November and failed at 31; since 17 November kit 5 offers it at
 (1–31 and 54–60) have no design that passed there. Where a census’s doses are not counted
 calibrated the atlas marks it “doses not calibrated at this layer” and inks it without gilt.
 
-Seven layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
+Eight layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
 board) on 14 and 15 November 2026, and each was accepted on 16 November; layer 52 came from an RTX 3090, the first
 layer taken on a 24 GB card. The home card took layer 37 (36) on 14 November. Each was read whole by its own trial’s
 reader and three gates. The four volunteers’ layers pass all three. Layer 37 passes two, and on the third its gentler
@@ -64,8 +64,12 @@ with the text unbroken, and even the fifth strongest stands further above the re
 whole. At 40, 436 have q ≤ 0.05 and 87 beat all 2,048. Layer 52 reads as 41–51 do: 7,145 and 2,123. On 17 November two
 more came from volunteers and pass all three: layer 38 (37 on the board), from an RTX 5090 with the home card's bits,
 and layer 34 (33), from an RTX PRO 6000. Unlike 35–37 they say much of single neurons: 2,332 and 5,576 have q ≤ 0.05,
-and 454 and 1,041 beat all 2,048. Layers 32, 33 and 39 (31, 32 and 38 on the board) are open to volunteers, and 53
-(52) is being taken. Every figure is in ROADMAP §vi.
+and 454 and 1,041 beat all 2,048. Later that day layer 53 (52) came home from the volunteer who took 52, on the same
+RTX 3090, and passes all three too, close to its trial: the whole lead is 0.804 as there, and the thinnest margin is
+the gentler push's lead on the new questions alone, 0.566 against a bar of 0.56 (0.577 in the trial). It reads as
+41–52 do: 6,933 have q ≤ 0.05 and 3,944 beat all 2,048, and its strongest random direction stands 4.5 of their
+deviations out, where at 35–38 even the fifth stood 7.2 or more. Layers 32 and
+39 (31 and 38 on the board) are open to volunteers, and 33 (32) is being taken. Every figure is in ROADMAP §vi.
 
 <table>
   <tr>

@@ -86,7 +86,8 @@
   6923181068,
   6930418938,
   6939943101,
-  6946493656
+  6946493656,
+  6956080748
  ],
  "claims": [
   {
@@ -895,7 +896,7 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-16T05:00Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-16T05:00Z",
@@ -920,12 +921,35 @@
      "via": "github",
      "what": "claim=c40b4d3a done=34% eta=2026-11-17T16:40Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-17T17:44Z",
+     "via": "github",
+     "what": "claim=c40b4d3a sha256=16f54ed5401bb907 size=492MB link=https://huggingface.co/datasets/eigentactics/theodolite-census/resolve/main/L52-soft_ceil/L52-soft_ceil-c40b4d3a.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-17T20:58Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-17T21:09Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA GeForce RTX 3090), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-17T21:11Z",
+     "what": "set accepted: own bits (NVIDIA GeForce RTX 3090), spot-checked"
     }
    ],
    "started_at": "2026-11-16T05:27Z",
    "bits": "own",
    "done": "34%",
-   "eta": "2026-11-17T16:40Z"
+   "eta": "2026-11-17T16:40Z",
+   "submitted_at": "2026-11-17T17:44Z",
+   "bundle_sha256": "16f54ed5401bb907",
+   "size": "492MB",
+   "link": "https://huggingface.co/datasets/eigentactics/theodolite-census/resolve/main/L52-soft_ceil/L52-soft_ceil-c40b4d3a.tar",
+   "note": "own bits (NVIDIA GeForce RTX 3090), spot-checked"
   },
   {
    "code": "280c6dc2",
@@ -1261,8 +1285,10 @@
    "note": "14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole"
   },
   "52": {
-   "state": "open",
-   "note": "soft_ceil; its trial passed, 13 November 2026"
+   "state": "done",
+   "by": "eigentactics c40b4d3a",
+   "card": "NVIDIA GeForce RTX 3090 24 GB",
+   "note": "16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
   },
   "53": {
    "state": "stopped",
@@ -1293,5 +1319,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-17T15:43Z"
+ "updated_at": "2026-11-17T21:34Z"
 }

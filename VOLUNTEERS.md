@@ -103,7 +103,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 1. **Pick an open layer on the board and claim it.**
 
    ```bash
-   scripts/volunteer/census.sh reserve 32 --name yourname
+   scripts/volunteer/census.sh reserve 38 --name yourname
    ```
 
    The script reads the board first and refuses a layer that is not open there. Then it prints one line,
@@ -129,7 +129,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 3. **The canary** (a few minutes):
 
    ```bash
-   scripts/volunteer/census.sh canary 32
+   scripts/volunteer/census.sh canary 38
    ```
 
    It writes the run's first batch on your card and sets it against the same batch written on ours. It also measures
@@ -139,7 +139,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 4. **Run the layer:**
 
    ```bash
-   scripts/volunteer/census.sh run 32
+   scripts/volunteer/census.sh run 38
    ```
 
    It runs detached, so you can close the terminal. Post the `CENSUS START` line it prints. If it stops (a reboot, a
@@ -149,7 +149,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 5. **Check on it** now and then:
 
    ```bash
-   scripts/volunteer/census.sh status 32
+   scripts/volunteer/census.sh status 38
    ```
 
    It prints the answers written, the rate, when it should finish, and a `CENSUS PROGRESS` line. Post that line every
@@ -158,7 +158,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 6. **Pack it** when it is whole (10–20 minutes):
 
    ```bash
-   scripts/volunteer/census.sh pack 32
+   scripts/volunteer/census.sh pack 38
    ```
 
    It checks the run is whole and taken with the kit's settings, then packs about 500 MB into
@@ -166,7 +166,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
    somewhere anyone can download it for a week or more: a Hugging Face dataset, a torrent, a file host. Post the
    `CENSUS DONE` line with your link in it.
 
-If you can't finish, run `scripts/volunteer/census.sh release 32` and post the line it prints. That frees the layer
+If you can't finish, run `scripts/volunteer/census.sh release 38` and post the line it prints. That frees the layer
 for someone else.
 
 ### If you ran an earlier kit

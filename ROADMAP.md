@@ -1446,6 +1446,34 @@ layers, the determinism run and the sampled push on 29 October). In this section
       (`census_volunteer.earlier_kit`), as 37 and 33 were; at the cut that is layer 52.
     - **The board** is kit 5’s with layer 31 open: 31, 32 and 38 open, 52 running. *Not shown yet:* a whole layer of
       `match_wide` from a volunteer. The thread post is the owner’s.
+  - **Layer 52 read whole, the last layer begun under kit 4** (17 November 2026; the owner approved the download:
+    “Yes, take in 52”). Taken with `soft_ceil` by eigentactics (c40b4d3a), the volunteer who took 51, on the same
+    RTX 3090 24 GB card class, with kit 4 at its tag (`81c13628`), from a clean tree. Begun 16 November at 05:00Z by
+    the run’s record; DONE 17 November at 17:44Z, on Hugging Face; the bundle’s sha256 matched its DONE line. Kit 5
+    was cut while it ran, so it was checked by kit 4’s own file, read from its tag (`census_volunteer.earlier_kit`).
+    Its spot chunks (291, 379, 642, 716 and 719 of 737): the first word-piece the home card’s in 0.995 of answers
+    (bar 0.90), log-probabilities apart by a median 0.0077 (0.013) and 0.132 at the 99th percentile (0.29). Read
+    whole by its trial’s registered reader ([`census_L52_whole/`](experiments/results/census_L52_whole/); the reader
+    is `census/trials/soft/prereg_L52`, hashed 13 November at 02:50Z), by the figures and bars of the tables above:
+
+    | layer, design, doses | every answer | the lower dose alone | the neurons the controls cover | its trial, every answer |
+    |---|---|---|---|---|
+    | 52, `soft_ceil`, ±1.6 and ±2.3 ceilings | 0.804, 0.703, 0.669 and 0.669, 0.765 | 0.628, 0.650, 0.598 and 0.617, 0.566 | 97 in 100; 0.805, 0.698, 0.665 and 0.665, 0.766 | 0.804, 0.693, 0.680 and 0.669, 0.758 |
+
+    - It passes every gate. The least margin is 0.006, the lower dose’s lead on the new questions alone (0.566
+      against 0.56); its trial’s was 0.017 on the same figure (0.577). The whole lead is the trial’s to the third
+      place. Reported beside it, gating nothing: the upper dose alone reads 0.789, 0.683, 0.656 and 0.709, 0.692. By
+      the length rule it would take 32 word-pieces, as its trial would have.
+    - The text: the upper dose (±2.3) takes away 0.60 to 0.61 of the neurons’ distinct 4-grams and 0.72 of the
+      controls’, as in the trial; the lower dose 0.024 to 0.027 and 0.010.
+    - Per neuron it reads as 41–51 do: 3,944 above all 2,048 controls (10.5 by chance), 6,933 with q ≤ 0.05 (7,192
+      with the five strongest controls set aside), 42 in 100 above 95 in 100 controls, 3,469 more than five control
+      SDs over the controls’ median. Its strongest control stands 4.5 of those SDs out and the fifth 2.8, against
+      6.0 to 9.5 for the fifth at 33–37; they loop on “thought”-glued words, as layer 50’s did.
+    - The steer check, run again with it: layer 52 still agrees, now against the whole layer (a word shared with
+      0.735 of the 9,077 neurons above 95 in 100 controls; 0.013 shuffled).
+    - **The board**: nineteen layers done, 33–37 and 39–52, thirteen of them by volunteers; 32 running (anon,
+      943783a3, kit 5); 31 and 38 open. Every layer begun under kit 4 is home.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

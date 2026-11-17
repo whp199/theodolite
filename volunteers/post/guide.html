@@ -31,8 +31,8 @@ code { font-size:16.5px; background:rgba(160,122,46,.10); padding:0 4px; }
 
 <h1>Take a layer of the census</h1>
 <p class="sub">Gemma-4-31B. Every MLP neuron of a layer pushed along its own direction and read against 2,048 random
-ones. Eighteen layers are done (33–37, 39–51), one of them on a 24 GB card. Three more are open, 31, 32 and 38, and
-52 is being taken: each passed a trial on our card with the push strengths the script uses there. Kit 5 adds layer
+ones. Nineteen layers are done (33–37, 39–52), two of them on a 24 GB card. Two more are open, 31 and 38, and
+32 is being taken: each passed a trial on our card with the push strengths the script uses there. Kit 5 adds layer
 31, asked twelve questions at one push. The board says which are open.</p>
 
 <h2>what you get, when the atlas is published</h2>
@@ -67,19 +67,19 @@ ones. Eighteen layers are done (33–37, 39–51), one of them on a 24 GB card. 
 <li><div><pre>git clone https://github.com/whp199/theodolite
 cd theodolite &amp;&amp; git checkout census-kit-5
 scripts/volunteer/census.sh check</pre></div></li>
-<li><div><pre>scripts/volunteer/census.sh reserve 32 --name you</pre>
+<li><div><pre>scripts/volunteer/census.sh reserve 38 --name you</pre>
 <p class="say">Pick an <b>open</b> layer on the board (the script checks). <span class="rub">Post the <code>CENSUS RESERVE</code>
 line it prints, in the thread or on the board issue, and wait to see it on the board.</span></p></div></li>
 <li><div><pre>scripts/volunteer/census.sh setup</pre>
 <p class="say">The pinned venv, Google's checkpoint, the lens files and the stats index, all under <code>~/theodolite-census</code>.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh canary 32</pre>
+<li><div><pre>scripts/volunteer/census.sh canary 38</pre>
 <p class="say">One batch set against our card's: the same bits, or a card class of its own. Both are fine.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh run 32</pre>
+<li><div><pre>scripts/volunteer/census.sh run 38</pre>
 <p class="say"><span class="rub">Post the <code>START</code> line.</span> It runs detached. If it stops, the same command
 continues it answer for answer.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh status 32</pre>
+<li><div><pre>scripts/volunteer/census.sh status 38</pre>
 <p class="say"><span class="rub">Post a <code>PROGRESS</code> line now and then;</span> it keeps your claim.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh pack 32</pre>
+<li><div><pre>scripts/volunteer/census.sh pack 38</pre>
 <p class="say">About 500 MB in <code>outbox/</code>. Upload it anywhere that keeps it a week. <span class="rub">Post the
 <code>DONE</code> line with the link.</span></p></div></li>
 </ol>
@@ -92,7 +92,7 @@ continues it answer for answer.</p></div></li>
 <li>change nothing: code, settings, batch (it refuses to run off the kit's tag)</li>
 <li>one card from start to finish</li>
 <li>a claim holds 36 h to <code>START</code>, then until your <code>PROGRESS</code> end time plus 24 h; 10 days at most</li>
-<li>can't finish? <code>census.sh release 32</code>, post the line</li>
+<li>can't finish? <code>census.sh release 38</code>, post the line</li>
 </ul>
 </div>
 <div>
