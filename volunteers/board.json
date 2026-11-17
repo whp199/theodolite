@@ -84,7 +84,8 @@
   6908184989,
   6917386229,
   6923181068,
-  6930418938
+  6930418938,
+  6939943101
  ],
  "claims": [
   {
@@ -933,7 +934,7 @@
    "kit": "4",
    "via": "github",
    "at": "2026-11-16T13:12Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-16T13:12Z",
@@ -952,12 +953,39 @@
      "via": "github",
      "what": "claim=280c6dc2 done=1% eta=2026-11-17T02:14Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-17T05:50Z",
+     "via": "github",
+     "what": "claim=280c6dc2 sha256=f16bb3ab6d9f59ad size=529MB link=https://github.com/Asynonymous/census-L33/releases/download/L33-match_ceil-280c6dc2/L33-match_ceil-280c6dc2.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-17T05:56Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-17T06:05Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-17T06:09Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-11-17T06:50Z",
+     "what": "set accepted: 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
     }
    ],
    "started_at": "2026-11-16T13:12Z",
    "bits": "own",
    "done": "1%",
-   "eta": "2026-11-17T02:14Z"
+   "eta": "2026-11-17T02:14Z",
+   "submitted_at": "2026-11-17T05:50Z",
+   "bundle_sha256": "f16bb3ab6d9f59ad",
+   "size": "529MB",
+   "link": "https://github.com/Asynonymous/census-L33/releases/download/L33-match_ceil-280c6dc2/L33-match_ceil-280c6dc2.tar",
+   "note": "16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
   }
  ],
  "layers": {
@@ -1160,8 +1188,10 @@
    "note": "match_ceil; its trial passed, 13 November 2026"
   },
   "33": {
-   "state": "open",
-   "note": "match_ceil; its trial passed, 13 November 2026"
+   "state": "done",
+   "by": "anon 280c6dc2",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole"
   },
   "34": {
    "state": "done",
@@ -1236,5 +1266,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-17T04:09Z"
+ "updated_at": "2026-11-17T06:50Z"
 }

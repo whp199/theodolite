@@ -3,7 +3,7 @@ L0–29 not taken
 L30 not taken
 L31 not taken
 L32 OPEN
-L33 running anon 280c6dc2 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 1%, ends ~2026-11-17T02:14Z
+L33 done (anon 280c6dc2)
 L34 done (anon eaef4eff)
 L35 done (anon 5d30aa4a)
 L36 done (home card)
