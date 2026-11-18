@@ -80,6 +80,12 @@ LP_SURE = -0.01
 # questions). The home card's own arithmetic moves the median by 0.0053 and the 99th percentile by 0.115, as under
 # match_ceil, so the bars are near match_ceil's. Its twelve unpushed answers are its trial run's bit for bit, and no
 # arithmetic-only variant parts at a piece written at 0.6 or more (the surest at 0.52), so baseline_tie stays 0.6.
+# Kit 6's (18 November 2026, experiments/results/census_other_card_bars/kit6/bars.json, by the rules registered in
+# kit6/prereg before the measurement): match_things at layer 30, measured on its plan's chunk 0 (768 answers to its
+# twelve questions at both doses). The home card's own arithmetic moves the median by 0.0053 and the 99th percentile by
+# 0.118, as under match_wide at 31, and the bars come out the same. Its twelve unpushed answers are its trial run's bit
+# for bit, and no arithmetic-only variant parts at a piece written at 0.6 or more (the surest at 0.52), so
+# baseline_tie stays 0.6.
 OTHER_CLASS_BARS: List[Dict[str, Any]] = [
     {"design": "break_rel", "layers": tuple(range(40, 51)), "measured": "2026-10-31", "bars": {}},
     {"design": "match_ceil", "layers": (32, 33, 34, 35, 36, 37), "measured": "2026-11-14",
@@ -89,6 +95,8 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
     {"design": "break_rel", "layers": (39, 51), "measured": "2026-11-14",
      "bars": {"lp_median": 0.028, "lp_p99": 0.37, "first_piece": 0.9}},
     {"design": "match_wide", "layers": (31,), "measured": "2026-11-17",
+     "bars": {"lp_median": 0.013, "lp_p99": 0.26, "first_piece": 0.9}},
+    {"design": "match_things", "layers": (30,), "measured": "2026-11-18",
      "bars": {"lp_median": 0.013, "lp_p99": 0.26, "first_piece": 0.9}},
 ]
 
