@@ -68,8 +68,11 @@ and 454 and 1,041 beat all 2,048. Later that day layer 53 (52) came home from th
 RTX 3090, and passes all three too, close to its trial: the whole lead is 0.804 as there, and the thinnest margin is
 the gentler push's lead on the new questions alone, 0.566 against a bar of 0.56 (0.577 in the trial). It reads as
 41–52 do: 6,933 have q ≤ 0.05 and 3,944 beat all 2,048, and its strongest random direction stands 4.5 of their
-deviations out, where at 35–38 even the fifth stood 7.2 or more. Layers 32 and
-39 (31 and 38 on the board) are open to volunteers, and 33 (32) is being taken. Every figure is in ROADMAP §vi.
+deviations out, where at 35–38 even the fifth stood 7.2 or more. On 18 November layer 33 (32 on the board) came
+home from the RTX PRO 6000 that took 34–36, and passes all three: the whole lead is 0.714 (0.699 in its trial), and
+the words carry by 0.626 both ways. It says much of single neurons: 2,946 have q ≤ 0.05 and 1,245 beat all 2,048,
+and its strongest random direction stands 6.1 of their deviations out, writing English, not another language. Layers
+32 and 39 (31 and 38 on the board) are being taken, and no layer is open. Every figure is in ROADMAP §vi.
 
 <table>
   <tr>

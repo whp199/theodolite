@@ -1505,6 +1505,33 @@ layers, the determinism run and the sampled push on 29 October). In this section
       0.735 of the 9,077 neurons above 95 in 100 controls; 0.013 shuffled).
     - **The board**: nineteen layers done, 33–37 and 39–52, thirteen of them by volunteers; 32 running (anon,
       943783a3, kit 5); 31 and 38 open. Every layer begun under kit 4 is home.
+  - **Layer 32 read whole, the first layer taken under kit 5** (18 November 2026; the owner approved the download:
+    “Yes, take in 32”). Taken with `match_ceil` by anon (Asynonymous, 943783a3), who took 33 to 35, on the same RTX
+    PRO 6000 Blackwell card class, with kit 5 at its tag (`3943703`), from a clean tree. Begun 17 November at 11:11Z by
+    the run’s record; DONE 18 November at 03:35Z, as a GitHub release; the bundle’s sha256 matched its DONE line. Its
+    spot chunks (91, 193, 432, 493 and 654 of 737): the first word-piece the home card’s in 0.986 of answers (bar
+    0.90), log-probabilities apart by a median 0.0052 (0.012) and 0.117 at the 99th percentile (0.25). Read whole by
+    its trial’s registered reader ([`census_L32_whole/`](experiments/results/census_L32_whole/); the reader is
+    `census/trials/match_walk/prereg`, hashed 13 November at 07:25Z):
+
+    | layer, design, doses | every answer | the lower dose alone | the neurons the controls cover | its trial, every answer |
+    |---|---|---|---|---|
+    | 32, `match_ceil`, ±2.21 and ±2.44 ceilings | 0.714, 0.701, 0.626 and 0.626, 0.681 | 0.689, 0.667, 0.600 and 0.588, 0.635 | 95 in 100; 0.708, 0.692, 0.620 and 0.619, 0.674 | 0.699, 0.678, 0.615 and 0.631, 0.675 |
+
+    - It passes every gate. The least margin is 0.018, the lower dose’s words carrying from half B to half A (0.588).
+      Reported beside it, gating nothing: the upper dose alone reads 0.683, 0.665, 0.596 and 0.586, 0.634. Cut to 32
+      word-pieces it still passes, but the lead falls by 0.028, so the length rule keeps 48.
+    - The text: neurons and controls alike lose 0.002 to 0.003 of their distinct 4-grams; 91 to 93 in 100 answers run
+      to the 48-piece cut.
+    - Per neuron it says much, unlike 35–37: 1,245 above all 2,048 controls (10.5 by chance), 2,946 with q ≤ 0.05
+      (3,625 with the five strongest controls set aside), 1,896 more than five control SDs over the controls’
+      median. Its strongest control stands 6.1 of those SDs out and the fifth 5.3, writing English (“however people
+      most just knowledge standard”), not another language as at 35–37.
+    - The steer check, run again with it: still weak at 32, now against the whole layer (a word shared with 0.064 of
+      the 6,645 neurons above 95 in 100 controls; 0.030 shuffled).
+    - **The board**: twenty layers done, 32–37 and 39–52, fourteen of them by volunteers; 31 (anon, eda6b586) and 38
+      (Zlorthishen, 3853d507) running under kit 5; none open. Layer 30’s third trial passed (`match_things`), but no
+      kit carries it yet.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

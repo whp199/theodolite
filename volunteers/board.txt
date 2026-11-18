@@ -2,7 +2,7 @@ CENSUS BOARD (layers count from 0; page = layer + 1)
 L0–29 not taken
 L30 not taken
 L31 running anon eda6b586 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 3%, ends ~2026-11-18T16:24Z
-L32 sent home anon 943783a3 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 2026-11-18T03:35Z
+L32 done (anon 943783a3)
 L33 done (anon 280c6dc2)
 L34 done (anon eaef4eff)
 L35 done (anon 5d30aa4a)
