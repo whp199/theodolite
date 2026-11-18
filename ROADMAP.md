@@ -1058,6 +1058,21 @@ layers, the determinism run and the sampled push on 29 October). In this section
        is asked none of who, orange or free. Ten layers outside 39–51 now pass a trial: 30 with `match_things`, 31
        with `match_wide`, 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`
        ([`census_things_trial/RESULT.md`](experiments/results/census_things_trial/RESULT.md)).
+       **The walk with `match_things`, up from 53 and down from 29** (the owner’s word, 18 November: “Yes, both ways”;
+       registered in [`census_things_walk/prereg/`](experiments/results/census_things_walk/prereg/), hashed at 16:18Z
+       before any answer of the design existed at these layers; the sha256 of its `SHA256SUMS` is `cf541b422de4…`).
+       First the fine dose pilot was taken at 25 to 29 (15:43Z to 15:52Z;
+       [`fine_pilot_low.json`](experiments/results/census_scaled_design/fine_pilot_low.json)), and its doses went into
+       `MATCH_CEIL` (2989b14): 2.15 and 2.20 ceilings at 25, 2.05 and 2.12 at 26, 2.03 and 2.13 at 27, 2.04 and 2.16
+       at 28, 2.10 and 2.32 at 29. 29 reads like 30 to 38. At 25 to 28 the doses sit on a steep step: near the lower
+       one a push 7% larger moves the next word-piece 1.6 to 2.8 times as far (1.26 to 1.55 at 29 to 38), and the two
+       are 2% to 6% apart. The walk takes 53, 29, 54, 28, 55, 27, 56, 26, 57, 25, 58 in turn. Each layer gets 1,022
+       neurons no census run had asked there, against 1,024 controls (seed 11), and is read by the layer-30 trial’s
+       reader byte for byte. Each arm stops at its first layer that fails N1 or N3. A third gate, N2 (the lower dose
+       alone), counts only where a layer passes. It neither stops nor carries the walk, and a pass on it would let the
+       layer be taken at one dose, half the answers, as a design of its own. Said beforehand: 53 and 29 each pass
+       about 1 in 3, and either arm reaching its end under 1 in 20. Up to eleven trials, about 32 hours on the home
+       card. Not begun: it is pushed first, on the owner’s word.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based

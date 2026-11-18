@@ -1,0 +1,20 @@
+The reader, tested before this registration was hashed (18 November 2026)
+
+things_read.py, trial_read.py and readlib.py here are the files of experiments/results/census_things_trial/prereg byte
+for byte (sha256 0e39a15b86c2..., ee28df398a5b... and 7ecc24489870..., as SHA256SUMS here and there hold them).
+things_read.py from this folder was run on match_things's trial at layer 30
+(atlas_data/census/trials/things/L30-match_things-trial.jsonl) into a scratch folder, over the clean checkout of
+repo_commit (THEODOLITE_TRIAL_REPO=.claude/worktrees/things-walk, at 2989b14), with CUDA_VISIBLE_DEVICES= and four
+threads, as read.sh runs it. Its verdict file equals the registered
+L30_verdict.json in every field but the run's name and the writing pace: N1 pass, N3 pass, pass. The lower dose
+alone, which this registration reads as N2, gives pass_G1_G4 true on doses -2.42 and 2.42, with mass_c 0.6156,
+mass_c_res 0.6342, rep_AB 0.5877, rep_BA 0.5812 and mass_B 0.606, as registered.
+
+Its printed lines:
+=== L30-match_things-trial.jsonl (layer 30, counted from 0): PASS
+pass  N1 whole
+pass  N3 the neurons the controls cover (998 of 1022 covered, 97.7%; at least 50%)
+reported, the lower dose alone (-2.42,2.42): mass_c 0.6156, mass_c_res 0.6342, rep_AB 0.5877, rep_BA 0.5812, mass_B 0.606
+reported, the upper dose alone (-2.67,2.67): mass_c 0.5877, mass_c_res 0.6091, rep_AB 0.559, rep_BA 0.5528, mass_B 0.5805
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.6077, mass_c_res 0.6201, rep_AB 0.5708, rep_BA 0.5593, mass_B 0.6077
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.6206, mass_c_res 0.6376, rep_AB 0.5605, rep_BA 0.5691, mass_B 0.6036
