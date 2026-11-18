@@ -1690,7 +1690,7 @@ def run_checks(tmp: Path) -> int:
 
     # ---------------------------------------------- 14d. match_ceil: two counts of ceilings that differ by layer, from a table
     before = len(failures)
-    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-3:] == ["match_ceil", "match_wide", "match_both"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
+    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-4:] == ["match_ceil", "match_wide", "match_both", "match_things"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
           and cz.DESIGN_QUESTIONS["match_ceil"] == q6 and cz.DESIGN_HALVES["match_ceil"] == cz.DESIGN_HALVES["break_rel"]
           and cz.DESIGN_UNITS["match_ceil"] == "ceiling" and cz.reading_of("match_ceil") == cz.reading_of("break_ceil")
           and cz.run_defaults("match_ceil") == cz.run_defaults("break_rel") and cz.DESIGN_PLAN["match_ceil"] == "12 x batch"
@@ -1868,6 +1868,59 @@ def run_checks(tmp: Path) -> int:
         if mb_had3b is not None:
             cz.MATCH_CEIL[3] = mb_had3b
     section("match_both: its questions and table, a stand-in run at its two doses, its ranking and card", before)
+
+    # ---------------------------------------- 14g. match_things: match_both's doses, on twelve questions of three genres
+    before = len(failures)
+    qt = ("bicycle", "walk", "chair", "kettle", "sleep", "lamp", "clock", "rice", "vase", "lock", "money", "blanket")
+    check("match_things" not in cz.DESIGNS and cz.LAYER_DOSES["match_things"] is cz.MATCH_CEIL and cz.MATCH_THINGS is cz.MATCH_CEIL
+          and cz.DESIGN_QUESTIONS["match_things"] == qt and cz.DESIGN_HALVES["match_things"] == (qt[:6], qt[6:])
+          and cz.DESIGN_HALVES["match_things"][0] == cz.DESIGN_HALVES["match_wide"][1]
+          and not set(qt[6:]) & {q_ for d_, qs_ in cz.DESIGN_QUESTIONS.items() if d_ != "match_things" for q_ in qs_}
+          and all(q_ in cz.MORE_PROMPTS for q_ in qt)
+          and cz.DESIGN_UNITS["match_things"] == "ceiling" and cz.reading_of("match_things") == cz.reading_of("match_ceil")
+          and cz.run_defaults("match_things") == cz.run_defaults("match_ceil") and cz.DESIGN_PLAN["match_things"] == "12 x batch"
+          and cz.COLLAPSE_RULE["match_things"] == cz.COLLAPSE_RULE["match_ceil"] and "match_things" not in cz.DOSES_CALIBRATED
+          and not any(cz.doses_calibrated("match_things", l_) for l_ in range(60)) and "nats" in cz.DOSES_FROM["match_things"]
+          and "Not calibrated at any layer" in cz.DOSES_FROM["match_things"]
+          and cz.design_at("match_things", 30) == [(p_, s_ * d_) for p_ in qt for d_ in (2.42, 2.67) for s_ in (-1.0, 1.0)],
+          "match_things: twelve questions of how a thing works, three tips and an object, its first half match_wide's second "
+          "and its second asked by no other design, at both of match_ceil's doses (+-2.42, +-2.67 at 30), read, taken and "
+          "marked as match_ceil is, calibrated nowhere")
+    mt_run = tmp / "runs" / "L3-match_things.jsonl"
+    mt_had3 = cz.MATCH_CEIL.pop(3, None)
+    cz.MATCH_CEIL[3] = (1.9, 2.3)
+    try:
+        cz.take_census(rt, 3, list(range(8)), mt_run, **{**kw, "design_name": "match_things"})
+        mt_rows = list(cz.read_rows(mt_run))
+        mt_meta = json.loads(cz.meta_path_of(mt_run).read_text())
+        mt_pushed = [r_ for r_ in mt_rows if r_["kind"] in ("neuron", "random")]
+        mt_ctl = int(mt_meta["random_controls"])
+        mt_push = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in mt_pushed if r_["prompt"] in qt[:6]}
+        mb_push = {(r_["kind"], r_["neuron"], r_["prompt"], r_["dose"]): r_["push"] for r_ in cz.read_rows(mb_brun)
+                   if r_["kind"] in ("neuron", "random") and r_["prompt"] in qt[:6]} if mb_brun.exists() else {}
+        check(len(mt_rows) == (8 + mt_ctl) * 48 + 12 and mt_meta["dose_unit"] == "ceiling"
+              and mt_meta["design_name"] == "match_things" and mt_meta["doses_from"] == cz.DOSES_FROM["match_things"]
+              and list(mt_meta["prompts"]) == list(qt) and sorted({r_["dose"] for r_ in mt_pushed}) == [-2.3, -1.9, 1.9, 2.3]
+              and [r_["prompt"] for r_ in mt_rows if r_["kind"] == "baseline"] == list(qt)
+              and mt_push and set(mt_push) == set(mb_push)
+              and max(abs(mt_push[k_] - mb_push[k_]) for k_ in mt_push) <= 1e-4 * max(abs(v_) for v_ in mb_push.values()),
+              f"a match_things run: its twelve questions' unpushed answers, each unit asked them at plus and minus both of its "
+              f"layer's doses times a write ceiling, its pushes on the six questions it shares with match_both the very pushes "
+              f"match_both makes of the same units ({len(mt_rows)} rows)")
+        cz.write_units(mt_run)
+        mt_units = list(cz.read_rows(cz.units_path_of(mt_run)))
+        mt_col = json.loads(cz.collapse_path_of(mt_run).read_text()) if cz.collapse_path_of(mt_run).exists() else {}
+        mt_card = atlas_routes.census_card({"path": mt_run, "meta": mt_meta, "null": {}, "units": mt_units})
+        check(len(mt_units) == 8 + mt_ctl and all(u_["reading"] == cz.reading_of("match_things") and set(u_["dose"]) == {"-2.3", "-1.9", "+1.9", "+2.3"} for u_ in mt_units)
+              and mt_col.get("doses") == [2.3] and mt_card["doses_calibrated"] is False and mt_card["doses_calibrated_layers"] is None
+              and mt_card["dose_unit"] == "ceiling" and mt_card["doses_from"] == cz.DOSES_FROM["match_things"],
+              f"a match_things run is ranked on every answer, its collapse words read at its upper dose, and its card says its "
+              f"unit and that its doses are calibrated nowhere ({mt_col.get('doses')}, {mt_card.get('doses_calibrated_layers')})")
+    finally:
+        cz.MATCH_CEIL.pop(3, None)
+        if mt_had3 is not None:
+            cz.MATCH_CEIL[3] = mt_had3
+    section("match_things: its questions and table, a stand-in run at its two doses, its ranking and card", before)
 
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)

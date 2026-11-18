@@ -123,6 +123,31 @@ MORE_PROMPTS: Dict[str, str] = {
     "clock": "Explain how a clock works.",
     "rice": "Give me three tips for cooking rice.",
     "lamp": "Describe a brass lamp.",
+    # match_things's (17 November 2026, before any run asked them): more in the three genres break_rel added (how a
+    # thing works, three tips, an object), whose questions took up a push's words better than the others at layer 30
+    # (experiments/results/census_word_carry). clock and rice, spares above that no design took, come first; then one
+    # more of each genre and a second object; then two spares a genre, which take the place of a question of their
+    # genre whose unpushed answer parts from itself written alone before 32 word-pieces in the census batch its runs
+    # write it in (scripts/verify_atlas_writer.py), decided before any neuron is read
+    "lock": "Explain how a lock works.",
+    "suitcase": "Give me three tips for packing a suitcase.",
+    "vase": "Describe a glass vase.",
+    "blanket": "Describe a wool blanket.",
+    "windmill": "Explain how a windmill works.",
+    "camera": "Explain how a camera works.",
+    "garden": "Give me three tips for planting a garden.",
+    "interview": "Give me three tips for a job interview.",
+    "boot": "Describe a leather boot.",
+    "mug": "Describe a ceramic mug.",
+    # match_things's step 0 (18 November 2026, 00:09Z, before any neuron was read): suitcase parted from itself written
+    # alone after 28 word-pieces in every batch shape, and both its genre's spares parted too (garden after 3, interview
+    # after 16), so by that round's rule no trial could be run with those questions. Four more of the genre, in this
+    # order, written before a second round of the check asked them; the first that holds in suitcase's batch takes its
+    # place (the trial's prereg/step0_round2.py)
+    "money": "Give me three tips for saving money.",
+    "language": "Give me three tips for learning a new language.",
+    "winter": "Give me three tips for staying warm in winter.",
+    "tidy": "Give me three tips for keeping a room tidy.",
 }
 ALL_PROMPTS: Dict[str, str] = {**PROMPTS, **MORE_PROMPTS}
 # A design's questions, in the order its runs ask them, where they are not the four PROMPTS. break_rel's six are read
@@ -185,10 +210,26 @@ MATCH_WIDE: Dict[int, Tuple[float, ...]] = {l: (lo,) for l, (lo, _hi) in MATCH_C
 DESIGN_QUESTIONS["match_both"] = DESIGN_QUESTIONS["match_wide"]
 DESIGN_HALVES["match_both"] = DESIGN_HALVES["match_wide"]
 MATCH_BOTH: Dict[int, Tuple[float, ...]] = MATCH_CEIL
+# match_things is match_both with other questions (17 November 2026, once match_both's trial had failed at layer 30 on
+# one figure: a neuron's words picked on its second half of questions came back on its first by 0.545, against 0.57).
+# Read again on matched sets of questions (experiments/results/census_word_carry), a neuron's words at 30 carried as
+# well between the halves as within one, but came back less on the first half's questions (who the model is, colours,
+# writing as it likes) than on the second's (how a thing works, three tips, an object), whichever half they were picked
+# on: 0.533 against 0.554. So all twelve questions here are of the second half's three genres, four of each, at both
+# of match_ceil's doses, 48 answers a neuron. Its first half is match_wide's second (the six that took words up at
+# 30); its second half is six asked by no run before, so the gate on the new questions alone reads questions that were
+# not chosen by how they read at 30. At step 0 (18 November 2026, before any neuron was read: the trial's
+# prereg/step0.py, step0_round2.py and their outputs) suitcase parted from itself written alone after 28 word-pieces in
+# the batch its runs write it in, and so did both its genre's spares; in a second round money, the first of four more
+# of the genre, held 38 and took its place
+DESIGN_QUESTIONS["match_things"] = ("bicycle", "walk", "chair", "kettle", "sleep", "lamp",
+                                    "clock", "rice", "vase", "lock", "money", "blanket")
+DESIGN_HALVES["match_things"] = (DESIGN_QUESTIONS["match_things"][:6], DESIGN_QUESTIONS["match_things"][6:])
+MATCH_THINGS: Dict[int, Tuple[float, ...]] = MATCH_CEIL
 # the designs whose doses are set a layer at a time: a name to its table. They are not in DESIGNS, which holds one
 # list a design; `design_at` gives the list a run takes at its layer, for these and for the others
 LAYER_DOSES: Dict[str, Dict[int, Tuple[float, ...]]] = {"match_ceil": MATCH_CEIL, "match_wide": MATCH_WIDE,
-                                                        "match_both": MATCH_BOTH}
+                                                        "match_both": MATCH_BOTH, "match_things": MATCH_THINGS}
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -313,6 +354,15 @@ DOSES_FROM = {
                   "trial gates the answers of both doses together and of neither dose alone. Its trial at layer 31 failed "
                   "(16 November 2026): its lead passed, but a neuron's words picked on the second half of the questions "
                   "did not come back on the first. Not calibrated at any layer",
+    "match_things": "two counts of each neuron's own write ceiling that differ by layer, match_ceil's (the pushes that "
+                    "move the next word-piece by 1.0 and by 1.4 nats), each asked on twelve questions of three genres, "
+                    "how a thing works, three tips and an object, read as two halves of six, 48 answers a unit. "
+                    "match_both, the same doses on questions half of which asked who the model is, about colours and to "
+                    "write as it likes, failed its trial at layer 31 (as the pages count them): a neuron's words came "
+                    "back less on those questions than on these three genres'. So this asks these genres alone, and "
+                    "none of the questions the census asks at other layers but bicycle, walk and chair. Its trial gates "
+                    "the answers of both doses together and of neither dose alone. Not calibrated at any layer until a "
+                    "trial of it passes there",
 }
 # where a design's doses are calibrated on this model: its spans of layers, each a first and a last (counted from 0, as
 # the commands count them). There the card says `doses_calibrated` and the page leaves out its red "not yet calibrated"
@@ -354,6 +404,7 @@ DESIGN_RUN_DEFAULTS["soft_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and
 DESIGN_RUN_DEFAULTS["match_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 DESIGN_RUN_DEFAULTS["match_wide"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 DESIGN_RUN_DEFAULTS["match_both"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
+DESIGN_RUN_DEFAULTS["match_things"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
@@ -443,6 +494,7 @@ DESIGN_READING: Dict[str, Dict[str, Any]] = {
     "match_ceil": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and so here
     "match_wide": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
     "match_both": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
+    "match_things": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
 }
 
 
@@ -467,6 +519,7 @@ COLLAPSE_RULE["soft_ceil"] = {"doses": (SOFT_CEIL[1],), "answers": 2, "per_1024"
 COLLAPSE_RULE["match_ceil"] = {"doses": "upper", "answers": 2, "per_1024": 10}
 COLLAPSE_RULE["match_wide"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # its one dose, the run's largest
 COLLAPSE_RULE["match_both"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # as match_ceil's, at its upper dose
+COLLAPSE_RULE["match_things"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # and so here
 
 # What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
 # pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
@@ -619,7 +672,7 @@ def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
 DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling",
-                "match_ceil": "ceiling", "match_wide": "ceiling", "match_both": "ceiling"}
+                "match_ceil": "ceiling", "match_wide": "ceiling", "match_both": "ceiling", "match_things": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -1773,7 +1826,7 @@ PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
 DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch", "soft_ceil": "12 x batch", "match_ceil": "12 x batch",
-               "match_wide": "12 x batch", "match_both": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
+               "match_wide": "12 x batch", "match_both": "12 x batch", "match_things": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:

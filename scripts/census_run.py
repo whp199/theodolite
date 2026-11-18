@@ -54,7 +54,8 @@ calibrated at that layer). Outside 39-51 two designs count their doses in each n
 (±1.6 and ±2.3, calibrated at layers 38 and 52) and match_ceil (two counts set a layer at a time, calibrated at layers
 32-37), each layer by a trial of its own on 13 November. A third, match_wide (match_ceil's lower count alone, on
 twelve questions in halves of six, still 24 answers a unit), is for the layers below 32 and calibrated nowhere,
-and a fourth, match_both (both of match_ceil's counts on those twelve questions, 48 answers a unit), likewise.
+and a fourth, match_both (both of match_ceil's counts on those twelve questions, 48 answers a unit), likewise,
+and a fifth, match_things (match_both's doses on twelve questions of break_rel's three added genres), likewise.
 break_rel asks six questions,
 who, orange, free and three asked by no other design (bicycle, walk, chair: census.DESIGN_QUESTIONS), read as two
 halves of three, 24 answers a unit, its batches planned 12 x batch. Each design is ranked its own way
