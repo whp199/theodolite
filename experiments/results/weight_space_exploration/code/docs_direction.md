@@ -632,7 +632,7 @@ Precedent: R3 "used 5.54 of the 8 GPU-hours the user approved" (ROADMAP.md:71).
 
 ### 7.1 Closest entries in REFERENCES.md
 
-- **[10] Hayuk, LARQL / VINDEX3** (REFERENCES.md:50-51): the vault's naming and "patch overlays"; the project's
+- **[10] Hay, LARQL / VINDEX3** (REFERENCES.md:50-51): the vault's naming and "patch overlays"; the project's
   `.patch` and `ROLLBACK` syntax is its own. REPORT §3.3 quotes LARQL's warning "that a projected contribution is not
   a counterfactual".
 - **[11] MEMIT** (REFERENCES.md:53-54): "named only"; the tool's edit "is **not** MEMIT".

@@ -425,7 +425,7 @@ export const Pillars: React.FC = () => (
       headId="p4-head"
       numeral="pillar iv"
       title="LARQL and VINDEX"
-      makers="C. Hayuk (chrishayuk) · Apache-2.0"
+      makers="C. Hay (chrishayuk) · Apache-2.0"
       about="LARQL treats a model’s weights as a catalogue you can question, in a small query language over an index format called VINDEX. You ask which neurons lean toward a word and a list comes back, and you can lay a correction over the weights and lift it off again."
       rubric="The vault borrows these names. What runs underneath is the instrument’s own."
       lends="The vault’s names and the shape of its questions: find neurons by their words, describe one, and change one neuron as an edit saved as a .patch, with a way back."
@@ -445,7 +445,7 @@ export const Pillars: React.FC = () => (
       foundWhere="REPORT §3.3 and erratum E46; E6_tool_audit_REPORT §2.3; N1A"
       source={
         <>
-          [10] Hayuk, C. (chrishayuk). <i>LARQL: reference implementation of VINDEX3.</i> Apache-2.0.{" "}
+          [10] Hay, C. (chrishayuk). <i>LARQL: reference implementation of VINDEX3.</i> Apache-2.0.{" "}
           <Ext url="https://github.com/chrishayuk/larql">github.com/chrishayuk/larql</Ext>
         </>
       }

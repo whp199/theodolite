@@ -21,7 +21,8 @@
   <a href="#where-it-is-heading">where it is heading</a> ·
   <a href="#levelling-an-experimental-weight-space-harness">levelling</a> ·
   <a href="#built-on">built on</a> ·
-  <a href="#what-is-new-here">what is new here</a>
+  <a href="#what-is-new-here">what is new here</a> ·
+  <a href="#how-to-cite">how to cite</a>
 </p>
 
 <p align="center">
@@ -301,7 +302,7 @@ This instrument is its maker’s synthesis of four recent pieces of research, jo
 - the **Jacobian lens and J-space** of Gurnee et al. (Anthropic, 2026) [2];
 - the **J++ lens** of Ayonrinde & Lindsey (2026) [4], as hosted by Neuronpedia [6];
 - **neurons as two-poled units**, from Cammarata’s *Neural Networks Are Already Clean* (Goodfire, 2026) [9];
-- the **LARQL / VINDEX** naming of a neuron vault, after Hayuk (chrishayuk) [10].
+- the **LARQL / VINDEX** naming of a neuron vault, after Hay (chrishayuk) [10].
 
 The **atlas** follows lyramakesmusic’s [neuron-explorer](https://github.com/lyramakesmusic/neuron-explorer) [47],
 made for Qwen3.5-4B. The census’s idea is neuron-explorer’s: steer each unit and rank its words against
@@ -351,11 +352,34 @@ reads neurons from where they fire rather than by pushing them. Bracketed number
 
 <br>
 
+## How to cite
+
+If Theodolite, its atlas or its census helps your work, please cite it:
+
+> Juul, E. (2026). *Theodolite: an atlas and census of the neurons of Gemma-4-31B-it, and the instrument to read them
+> with* [Software]. https://github.com/whp199/theodolite
+
+```bibtex
+@software{juul_theodolite_2026,
+  author = {Juul, Eric},
+  title  = {Theodolite: an atlas and census of the neurons of Gemma-4-31B-it, and the instrument to read them with},
+  year   = {2026},
+  url    = {https://github.com/whp199/theodolite}
+}
+```
+
+`CITATION.cff` holds the same, and GitHub offers it under “Cite this repository”. When you use a census layer, say
+which: most of them were taken by volunteers on their own cards, and
+[the board](https://github.com/whp199/theodolite/issues/1) names who took each. Please cite the work Theodolite is
+built on as well ([REFERENCES](REFERENCES.md)).
+
+<br>
+
 ## Makers’ marks
 
 <p align="center">
   <img src="docs/readme/cartouche.png" width="420"
-       alt="An engraved maker's cartouche: Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hayuk, with the logit lens, linear CKA and activation steering, for Gemma-4-31B-it, MMXXVI.">
+       alt="An engraved maker's cartouche: Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hay, with the logit lens, linear CKA and activation steering, for Gemma-4-31B-it, MMXXVI.">
 </p>
 
 **Provenance and AI assistance.** The experiments, analyses and reports in `experiments/` were designed, run and

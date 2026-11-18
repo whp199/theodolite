@@ -136,7 +136,7 @@ export const refsB: Reference[] = [
   ),
   R(
     10,
-    "Hayuk, C. (chrishayuk).",
+    "Hay, C. (chrishayuk).",
     "LARQL: reference implementation of VINDEX3.",
     "Apache-2.0.",
     "https://github.com/chrishayuk/larql",

@@ -1197,7 +1197,7 @@ const MAKERS: { numeral: string; what: string; name: string; who: string }[] = [
     name: "neurons as two-poled units",
     who: "Cammarata, “Neural Networks Are Already Clean”, Goodfire, 2026",
   },
-  { numeral: "iv", what: "a catalogue of neurons you can search and question", name: "the LARQL / VINDEX vault", who: "Hayuk" },
+  { numeral: "iv", what: "a catalogue of neurons you can search and question", name: "the LARQL / VINDEX vault", who: "Hay" },
 ];
 
 const MakersMarks: React.FC = () => (
@@ -1269,7 +1269,7 @@ const MakersMarks: React.FC = () => (
         </dd>
         <dt>iv · the vault</dt>
         <dd>
-          Hayuk (chrishayuk), LARQL, the reference implementation of VINDEX3 [10]. The names come from LARQL; backend/larql_vault.py
+          Hay (chrishayuk), LARQL, the reference implementation of VINDEX3 [10]. The names come from LARQL; backend/larql_vault.py
           calls it only for <span className="mono">--version</span>, and its <span className="mono">EDGES/POLES NEAREST</span>,{" "}
           <span className="mono">.patch</span> and <span className="mono">ROLLBACK</span> are this project’s own. An edit (.patch) is
           a single-neuron column edit, not MEMIT [11] (REPORT §3.3).

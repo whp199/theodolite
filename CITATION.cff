@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If Theodolite, its atlas or its census helps your work, please cite it as below."
+type: software
+title: "Theodolite: an atlas and census of the neurons of Gemma-4-31B-it, and the instrument to read them with"
+authors:
+  - family-names: Juul
+    given-names: Eric
+repository-code: "https://github.com/whp199/theodolite"
+url: "https://github.com/whp199/theodolite"
+license: Apache-2.0
+keywords:
+  - interpretability
+  - neurons
+  - Gemma
+  - logit lens
+  - activation steering

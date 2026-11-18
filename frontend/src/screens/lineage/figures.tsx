@@ -18,7 +18,7 @@ export const Cartouche: React.FC = () => (
     <svg
       viewBox="0 0 560 420"
       role="img"
-      aria-label="An engraved maker’s cartouche: Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hayuk; with the logit lens, linear CKA and activation steering; for Gemma-4-31B-it, 2026."
+      aria-label="An engraved maker’s cartouche: Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hay; with the logit lens, linear CKA and activation steering; for Gemma-4-31B-it, 2026."
       style={{ width: "100%", maxWidth: 520, height: "auto", display: "block" }}
     >
       <path
@@ -71,7 +71,7 @@ export const Cartouche: React.FC = () => (
           Gurnee et al., Ayonrinde &amp; Lindsey,
         </text>
         <text x="280" y="302" fontSize="23" fill="#2B2117">
-          Cammarata, and Hayuk
+          Cammarata, and Hay
         </text>
         <text x="280" y="336" fontSize="15" fontStyle="italic" fill="#6B5D4D">
           with the logit lens, linear CKA and activation steering
@@ -289,7 +289,7 @@ export const Stemma: React.FC = () => (
         <Node kind="pillar" left={1104} top={352} height={144}>
           <Kicker>pillar iv</Kicker>
           <Name>LARQL and VINDEX</Name>
-          <Cite>Hayuk · [10]</Cite>
+          <Cite>Hay · [10]</Cite>
         </Node>
 
         {/* the instrument and the study */}

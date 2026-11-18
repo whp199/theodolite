@@ -117,7 +117,7 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
           </dd>
           <dt>its names</dt>
           <dd>
-            After LARQL, the reference implementation of VINDEX3 by C. Hayuk, under Apache-2.0 [10]:{" "}
+            After LARQL, the reference implementation of VINDEX3 by C. Hay, under Apache-2.0 [10]:{" "}
             <a href="https://github.com/chrishayuk/larql">github.com/chrishayuk/larql</a>. The vault asks the installed binaries only for their
             versions (<span className="num">vindex 0.8.0 · larql 0.2.0</span>). Its EDGES and POLES searches, its edits and ROLLBACK are this
             project’s own syntax, not LARQL’s LQL.

@@ -47,7 +47,7 @@ This file lists the external sources, prior ideas and software that Theodolite a
      - the "double-negative regime" of gated MLPs;
      - the preliminary Qwen3-32B audit (about 90% of neuron poles with one main job, ~7% with two related jobs, ~2–4% not understood), which N1's cleanliness audit is compared against.
 
-10. **Hayuk, C. (chrishayuk). *LARQL*: reference implementation of VINDEX3. Apache-2.0.** https://github.com/chrishayuk/larql (LQL guide: https://github.com/chrishayuk/larql/blob/main/docs/lql-guide.md)
+10. **Hay, C. (chrishayuk). *LARQL*: reference implementation of VINDEX3. Apache-2.0.** https://github.com/chrishayuk/larql (LQL guide: https://github.com/chrishayuk/larql/blob/main/docs/lql-guide.md)
     - *Use:* inspiration for the names of the tool's "vault" and query dialect (VINDEX, LQL-like SELECT/DESCRIBE, patch overlays). `backend/larql_vault.py` does not call LARQL beyond `--version`. Its `EDGES/POLES NEAREST`, `.patch` and `ROLLBACK` syntax is this project's own, not LQL. REPORT §3.3 quotes the LARQL README's warning that a projected contribution is not a counterfactual.
 
 11. **Meng, K., Sen Sharma, A., Andonian, A., Belinkov, Y., Bau, D. *Mass-Editing Memory in a Transformer* (MEMIT). ICLR 2023. arXiv:2210.07229.** https://arxiv.org/abs/2210.07229
