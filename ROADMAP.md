@@ -1040,6 +1040,24 @@ layers, the determinism run and the sampled push on 29 October). In this section
        passed: one control stands 12 SD out (it writes Spanish). Against the controls, 32 neurons are strong on both
        halves where about 4 would be by chance, and with the five strongest controls set aside 65 have q ≤ 0.05
        (35: 25, 36: 0). Under `match_both` five controls stand 7 to 12 SD out and the count stays 0. Nothing decided.
+       **Layer 30 under `match_things`** (the owner’s word, 17 November: “You can go with design whose questions all
+       take words up the way half B’s do”; registered in
+       [`census_things_trial/prereg/`](experiments/results/census_things_trial/prereg/), hashed at 00:20:38Z on 18
+       November and pushed at 02:06Z, before any answer of the design existed). It asks `match_both`’s two doses on
+       twelve questions of the three genres that took words up at 30: how a thing works, three tips, an object. Half B
+       is six questions no run had asked. Step 0 took two rounds: suitcase and both its spares parted, and money took
+       its place by a rule hashed before its check. **Read at 05:04Z on 18 November: it passes both gates.** 98,220
+       answers in 175 minutes. Whole: 0.618, 0.637, 0.582 and 0.587, 0.625; the 998 covered: 0.615, 0.633, 0.580 and
+       0.586, 0.623. The words carry both ways, by 0.010 to 0.017 over the bar, under one standard error at the
+       narrowest. Reported: the lower dose alone passes all four figure gates (0.616, 0.634, 0.588 and 0.581, 0.606),
+       so the second dose added almost nothing here. Said beforehand and missed: that neither dose alone would. None
+       is named; with the five strongest controls set aside (they write Portuguese, Spanish and Russian), 45 have
+       q ≤ 0.05. It is the third design tried at 30, built on what the first two showed. By the registration layer 30
+       may be offered under a kit carrying `match_things` (about 33 hours a layer on the 5090) once its other card
+       classes’ bars are registered, and `DOSES_CALIBRATED` is not widened without the owner’s word. A layer so taken
+       is asked none of who, orange or free. Ten layers outside 39–51 now pass a trial: 30 with `match_things`, 31
+       with `match_wide`, 32 to 37 with `match_ceil`, 38 and 52 with `soft_ceil`
+       ([`census_things_trial/RESULT.md`](experiments/results/census_things_trial/RESULT.md)).
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
