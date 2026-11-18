@@ -6,14 +6,14 @@ Kit 5 (census-kit-5). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 |---:|---:|---|---|---|---|---|
 | 0–29 | 1–30 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
 | 30 | 31 | not taken |  |  |  | its trials failed, 16 and 17 November 2026 (match_wide, then its questions at two pushes): not taken |
-| 31 | 32 | OPEN |  |  |  | match_wide; its trial passed, 16 November 2026 |
-| 32 | 33 | running | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | ? |  |
+| 31 | 32 | running | anon eda6b586 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 3%, ends ~2026-11-18T16:24Z |  |
+| 32 | 33 | sent home | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 2026-11-18T03:35Z |  |
 | 33 | 34 | done | anon 280c6dc2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 34 | 35 | done | anon eaef4eff | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 14-15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 35 | 36 | done | anon 5d30aa4a | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 15 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 36 | 37 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 14 Nov 2026, read whole; passed two of its trial's three gates, and on the lower dose alone missed one figure by 0.006 |
 | 37 | 38 | done | anon 042ec8f2 | NVIDIA GeForce RTX 5090 32 GB |  | 15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole |
-| 38 | 39 | OPEN |  |  |  | soft_ceil; its trial passed, 13 November 2026 |
+| 38 | 39 | running | anon 3853d507 | NVIDIA GeForce RTX 5090 32 GB | ? |  |
 | 39 | 40 | done | anon 1f217635 | NVIDIA GeForce RTX 5090 32 GB |  | 15 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole |
 | 40 | 41 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 30-31 Oct 2026, passed layer 45's gates |
 | 41 | 42 | done | ReimusArmpit d4bcee00 | NVIDIA GeForce RTX 5090 32 GB |  | 1 Nov 2026, the home card's bits, spot-checked bit for bit; passed layer 45's gates |
@@ -47,4 +47,4 @@ Judged:
 - L52 eigentactics c40b4d3a: accepted (own bits (NVIDIA GeForce RTX 3090), spot-checked)
 - L33 anon 280c6dc2: accepted (16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-17T21:34Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-18T04:23Z.

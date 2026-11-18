@@ -87,7 +87,11 @@
   6930418938,
   6939943101,
   6946493656,
-  6956080748
+  6956080748,
+  6961109410,
+  6962904270,
+  6968244965,
+  6968647503
  ],
  "claims": [
   {
@@ -1020,7 +1024,7 @@
    "kit": "5",
    "via": "github",
    "at": "2026-11-17T11:16Z",
-   "state": "running",
+   "state": "submitted",
    "events": [
     {
      "at": "2026-11-17T11:16Z",
@@ -1033,10 +1037,80 @@
      "via": "github",
      "what": "claim=943783a3 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
      "verb": "START"
+    },
+    {
+     "at": "2026-11-18T03:35Z",
+     "via": "github",
+     "what": "claim=943783a3 sha256=609d01aaeabf5e3b size=523MB link=https://github.com/Asynonymous/theodolite/releases/download/L32-match_ceil-943783a3/L32-match_ceil-943783a3.tar",
+     "verb": "DONE"
     }
    ],
    "started_at": "2026-11-17T11:16Z",
-   "bits": "own"
+   "bits": "own",
+   "submitted_at": "2026-11-18T03:35Z",
+   "bundle_sha256": "609d01aaeabf5e3b",
+   "size": "523MB",
+   "link": "https://github.com/Asynonymous/theodolite/releases/download/L32-match_ceil-943783a3/L32-match_ceil-943783a3.tar"
+  },
+  {
+   "code": "3853d507",
+   "layer": 38,
+   "name": "anon",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "kit": "5",
+   "via": "github",
+   "at": "2026-11-17T22:31Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-17T22:31Z",
+     "via": "github",
+     "what": "claim=3853d507 card=NVIDIA GeForce RTX 5090 32 GB name=anon kit=5",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-17T22:31Z",
+     "via": "github",
+     "what": "claim=3853d507 bits=home card=NVIDIA GeForce RTX 5090 32 GB",
+     "verb": "START"
+    }
+   ],
+   "started_at": "2026-11-17T22:31Z",
+   "bits": "home"
+  },
+  {
+   "code": "eda6b586",
+   "layer": 31,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "5",
+   "via": "github",
+   "at": "2026-11-18T04:02Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-18T04:02Z",
+     "via": "github",
+     "what": "claim=eda6b586 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=5",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-18T04:02Z",
+     "via": "github",
+     "what": "claim=eda6b586 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-18T04:02Z",
+     "via": "github",
+     "what": "claim=eda6b586 done=3% eta=2026-11-18T16:24Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-18T04:02Z",
+   "bits": "own",
+   "done": "3%",
+   "eta": "2026-11-18T16:24Z"
   }
  ],
  "layers": {
@@ -1319,5 +1393,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-17T21:34Z"
+ "updated_at": "2026-11-18T04:23Z"
 }
