@@ -150,6 +150,12 @@ def run_checks(tmp: Path) -> int:
                                and counted == [31, 32, 33, 34, 35, 36, 37, 38, 39, 51, 52]),
           f"kit 5: kit 4's layers and designs, and layer 31 with match_wide; doses counted calibrated at the eleven whose "
           f"trial passed ({by_design}, {counted})")
+    check(real["KIT"] != 6 or (by_design == {"match_things": [30], "match_wide": [31], "match_ceil": [32, 33, 34, 35, 36, 37],
+                                             "soft_ceil": [38, 52, 53, 54, 55, 56, 57, 58, 59], "break_rel": [39, 51]}
+                               and counted in ([31, 32, 33, 34, 35, 36, 37, 38, 39, 51, 52],
+                                               [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 51, 52])),
+          f"kit 6: kit 5's layers and designs, and layer 30 with match_things; doses counted calibrated at kit 5's eleven, "
+          f"and at 30 once the owner has said so ({by_design}, {counted})")
     # a kit prepared and not yet cut (no tag of its number): the board is still the kit before it's, which volunteers
     # reserve under until the cut
     repo_board = json.loads((ROOT_DIR / "volunteers" / "board.json").read_text())
@@ -167,7 +173,8 @@ def run_checks(tmp: Path) -> int:
         check(prev is not None and prev["KIT"] == real["KIT"] - 1 and prev["KIT_TAG"] == prev_tag and prev["layers"]
               and cv.earlier_kit(real, real["KIT"]) is None and cv.earlier_kit(real, real["KIT"] + 1) is None
               and cv.earlier_kit(real, 0) is None and cv.earlier_kit(kit, 1) is None
-              and (real["KIT"] != 5 or (31 not in prev["layers"] and prev["designs"][33] == "match_ceil")),
+              and (real["KIT"] != 5 or (31 not in prev["layers"] and prev["designs"][33] == "match_ceil"))
+              and (real["KIT"] != 6 or (30 not in prev["layers"] and prev["designs"][31] == "match_wide")),
               f"an earlier kit's file is read from its tag for a bundle it packed; this kit, a later one, none and the stand-in's "
               f"give none ({prev_tag}: {prev and prev['layers']})")
     # a design that asks other questions than the six has unpushed answers of its own (census_volunteer.DESIGN_BASELINES)
@@ -575,6 +582,10 @@ def run_checks(tmp: Path) -> int:
     measured += (json.loads(kit5.read_text()).get("table") or []) if kit5.exists() else []
     check((cv.accept_bars("match_wide", 31) is None) == (not kit5.exists()),
           "a run of another card class at 31 under match_wide is judged only once its bars are measured")
+    kit6 = kit4.parent.parent / "kit6" / "bars.json"  # layer 30 under match_things, measured by its own registration
+    measured += (json.loads(kit6.read_text()).get("table") or []) if kit6.exists() else []
+    check((cv.accept_bars("match_things", 30) is None) == (not kit6.exists()),
+          "a run of another card class at 30 under match_things is judged only once its bars are measured")
     in_code = [e for e in cv.OTHER_CLASS_BARS if e["measured"] != "2026-10-31"]
     real_kit = cv.read_kit()
     open_layers = [31, 32, 33, 34, 35, 37, 38, 39, 51, 52]
@@ -583,7 +594,7 @@ def run_checks(tmp: Path) -> int:
           and all(cv.accept_bars(cv.kit_design(real_kit, l), l) is not None for l in open_layers)
           and cv.accept_bars("soft_ceil", 53) is None and cv.accept_bars("break_rel", 45) == cv.ACCEPT_OTHER_CLASS
           and cv.accept_bars("match_ceil", 34)["lp_median"] < cv.ACCEPT_OTHER_CLASS["lp_median"],
-          f"kits 4's and 5's bars in the code are their measurements' tables, and every layer open on the board has bars ({[e['bars'] for e in in_code]})")
+          f"kits 4's, 5's and 6's bars in the code are their measurements' tables, and every layer open on the board has bars ({[e['bars'] for e in in_code]})")
     far = {**ok_cmp, "lp_median": 0.03, "lp_p99": 0.9}
     check(not cv.judge(far, False)[0] and cv.judge(far, False, None, cv.accept_bars("match_ceil", 34, table))[1] != []
           and cv.judge({**far, "lp_p99": 0.1}, False, None, cv.accept_bars("match_ceil", 34, table))[0]

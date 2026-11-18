@@ -99,6 +99,10 @@
   "answers": 64,
   "sha256": "19eb14b05cc07d8dc2c87e3f20710fabed9fe6bf50e091500cbe7e927c0548a4"
  },
+ "L30-match_things.canary.jsonl": {
+  "answers": 64,
+  "sha256": "1a3c6ebbaf778113e91385892bba6e5c7b0ade7d6dd2077c66c17f6f3c2750c1"
+ },
  "L31-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "4751c98cf29c2e87d122e8b188ba53a4809be0acc32d6f4b8d066f9c78b4e746"

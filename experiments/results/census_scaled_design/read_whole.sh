@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Read a whole layer taken with a design that counts its push in write ceilings (match_ceil, soft_ceil, match_wide)
-# the way that layer's trial was read: the three checks N1, N2 and N3 of ceil_read.py, the reader and gates hashed
-# before any answer of the trial existed, on the CPU; then, reported and gating nothing, the upper dose's answers alone.
+# Read a whole layer taken with a design that counts its push in write ceilings (match_ceil, soft_ceil, match_wide,
+# match_things) the way that layer's trial was read: the three checks N1, N2 and N3 of ceil_read.py, the reader and
+# gates hashed before any answer of the trial existed, on the CPU; then, reported and gating nothing, the upper dose's
+# answers alone.
 # match_wide has one dose: its trial's reader is wide_read.py (N1 and N3, and its two readings on three questions a
 # half, reported), and there is no upper dose to read alone. The record is
 # kept in experiments/results/census_L<NN>_whole/ beside the other layers', each reading's named_words left out to
@@ -14,6 +15,8 @@
 #   soft_ceil   layer 38      census/trials/soft/prereg
 #               layer 52      census/trials/soft/prereg_L52
 #   match_wide  layer 31      census/trials/wide/prereg     (16 November 2026; kit 5)
+#   match_things layer 30     census/trials/things/prereg   (18 November 2026; kit 6): its trial's reader,
+#               things_read.py, reads each dose alone and two readings on three questions a half itself, reported
 # A layer with no trial here (53-59, should one pass later) is read with PREREG=<its trial's folder>.
 # For break_rel (39, 51, and 40-50) the reader is experiments/results/census_neighbour_trials/read_whole.sh.
 #
@@ -29,11 +32,11 @@ ATLAS=${THEODOLITE_ATLAS_DIR:-$ROOT/atlas_data}
 T=$ATLAS/census/trials
 R=${RUN:-}
 if [ -z "$R" ]; then
-    for d in match_ceil soft_ceil match_wide; do
+    for d in match_ceil soft_ceil match_wide match_things; do
         [ -f "$ATLAS/census/runs/L$L-$d.jsonl" ] && R=$ATLAS/census/runs/L$L-$d.jsonl
     done
 fi
-[ -n "$R" ] && [ -f "$R" ] || { echo "no run of layer $L taken with match_ceil, soft_ceil or match_wide under $ATLAS/census/runs (give RUN=)"; exit 2; }
+[ -n "$R" ] && [ -f "$R" ] || { echo "no run of layer $L taken with match_ceil, soft_ceil, match_wide or match_things under $ATLAS/census/runs (give RUN=)"; exit 2; }
 META=${R%.jsonl}.meta.json
 [ -f "$META" ] || { echo "no meta beside $R"; exit 2; }
 # the run's own layer, design and upper dose (the greater of its two sizes), from its meta
@@ -54,12 +57,14 @@ if [ -z "$P" ]; then
         soft_ceil:38)      P=$T/soft/prereg ;;
         soft_ceil:52)      P=$T/soft/prereg_L52 ;;
         match_wide:31)     P=$T/wide/prereg ;;
+        match_things:30)   P=$T/things/prereg ;;
         break_rel:*)       echo "layer $L was taken with break_rel: read it with experiments/results/census_neighbour_trials/read_whole.sh"; exit 2 ;;
         *)                 echo "no trial of $DESIGN at layer $L is known here: give PREREG=<its trial's folder of registered files>"; exit 2 ;;
     esac
 fi
 READER=ceil_read.py
 [ "$DESIGN" = match_wide ] && READER=wide_read.py
+[ "$DESIGN" = match_things ] && READER=things_read.py
 [ -f "$P/$READER" ] && [ -f "$P/SHA256SUMS" ] || { echo "no registered reader at $P"; exit 2; }
 (cd "$P" && sha256sum -c --quiet SHA256SUMS) || { echo "$P differs from its SHA256SUMS: see AMENDMENTS.txt there"; exit 2; }
 HERE=${OUT:-experiments/results/census_L${L}_whole}
@@ -68,15 +73,16 @@ mkdir -p "$HERE"
 export CUDA_VISIBLE_DEVICES= THEODOLITE_TRIAL_REPO="$ROOT"
 nice -n 15 "$PY" -I "$P/$READER" "$R" --out "$HERE/L${L}_verdict.json" > "$HERE/L${L}_verdict.txt" 2>&1 || true
 [ -f "$HERE/L${L}_verdict.json" ] || { echo "the reader wrote no verdict: see $HERE/L${L}_verdict.txt"; tail -n 5 "$HERE/L${L}_verdict.txt"; exit 3; }
-# reported, gating nothing: the upper dose's answers alone (a design of two doses)
-if [ "$UPPER" != none ]; then
+# reported, gating nothing: the upper dose's answers alone (a design of two doses; things_read.py reads each dose
+# itself)
+if [ "$UPPER" != none ] && [ "$DESIGN" != match_things ]; then
     nice -n 15 "$PY" -I "$P/trial_read.py" "$R" --gates L45 --cuts 48 "--doses=-$UPPER,$UPPER" --out "$HERE/L${L}_upper.json" > "$HERE/L${L}_upper.txt" 2>&1 || true
 fi
 "$PY" -I - "$HERE" "$L" <<'PY'
 import json, sys
 from pathlib import Path
 here, layer = Path(sys.argv[1]), sys.argv[2]
-for part in ("whole", "pm1", "six", "added"):
+for part in ("whole", "pm1", "six", "added", "lower", "upper", "first", "last"):
     p = here / f"L{layer}_verdict.{part}.json"
     if p.exists():
         d = json.loads(p.read_text())
@@ -91,5 +97,5 @@ if p.exists():
     p.write_text(json.dumps(d, indent=1))
 PY
 echo "layer $L, $DESIGN, read by $P"
-grep -E '^(===|pass  N|FAIL  N|reported, three)' "$HERE/L${L}_verdict.txt"
+grep -E '^(===|pass  N|FAIL  N|reported, (three|the))' "$HERE/L${L}_verdict.txt"
 grep -E '^  (pass|FAIL)  G[1-4]' "$HERE/L${L}_upper.txt" 2>/dev/null | sed "s/^/the upper dose alone, +-$UPPER (reported): /" || true

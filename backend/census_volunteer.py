@@ -100,8 +100,11 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
 # a half units' answers): chair's then differs from layer 45's in its log-probabilities. So a design that asks other
 # questions takes its unpushed answers from a run of it on the home card with the kit's settings, named here (its path
 # under the atlas folder's census/, beside runs/); scripts/census_ties.py checks, before a kit with it is cut, that the
-# kit's own plan writes that run's unpushed answers bit for bit.
-DESIGN_BASELINES: Dict[str, str] = {"match_wide": "trials/wide/L31-match_wide-trial.jsonl"}
+# kit's own plan writes that run's unpushed answers bit for bit. match_things (kit 6, layer 30) asks twelve others; its
+# trial's plan and a whole layer's write each unpushed answer in the same shape (nine in batches of 64, the last three in
+# batches of 61), and its trial run is the one named.
+DESIGN_BASELINES: Dict[str, str] = {"match_wide": "trials/wide/L31-match_wide-trial.jsonl",
+                                    "match_things": "trials/things/L30-match_things-trial.jsonl"}
 
 
 def baselines_for(saved: Dict[str, Any], design: str) -> Dict[str, Any]:
