@@ -1,6 +1,6 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
 L0–29 not taken
-L30 not taken
+L30 OPEN
 L31 running anon eda6b586 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 3%, ends ~2026-11-18T16:24Z
 L32 done (anon 943783a3)
 L33 done (anon 280c6dc2)
@@ -26,6 +26,6 @@ L52 done (eigentactics c40b4d3a)
 L53 not taken
 L54–59 not taken
 
-0 open; a claim that lapses opens again: https://github.com/whp199/theodolite/issues/1
+1 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

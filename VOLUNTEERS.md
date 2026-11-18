@@ -9,8 +9,8 @@ done: 13.2 hours on one RTX 5090, and it passed every check set for it before it
 November 2026 five more were done, **34 to 36, 39 and 51**. Four came from volunteers, and each passed the three
 checks its trial was read by (below); layer 51 came from an RTX 3090, the first layer taken on a 24 GB card. Layer 36
 was taken on our own card and passed two of the three; on the third it missed one figure by 0.006, and it is counted
-done with that miss named on the board. On 17 November 2026 two more came from volunteers, **33 and 37**, and both
-passed all three.
+done with that miss named on the board. On 17 and 18 November 2026 four more came from volunteers, **32, 33, 37 and
+52**, and each passed all three.
 
 Layers 40 to 50 are the eleven the first push strengths, ±1 and ±2 of the stream, were calibrated for. **A layer outside
 them is not offered blind.** We first take a trial of it on our own card: about a thousand of its neurons against
@@ -19,11 +19,12 @@ opened on the board; one whose trial fails is not taken. The first push strength
 further out. At 38 the same push is three times the most a neuron can write, and the text breaks; at 52 it is barely
 once, and the gentler half of the answers hardly moves.
 
-**Since kit 3 each layer is taken with the push strengths whose trial passed there.** Three newer designs count the push in what each
+**Since kit 3 each layer is taken with the push strengths whose trial passed there.** Four newer designs count the push in what each
 neuron can write by itself, its *write ceiling*:
 
 | Layers | Push strengths | Its trial |
 |---|---|---|
+| 30 | two counts, as at 32 to 37 (2.42 and 2.67 ceilings), on twelve other questions, each asking how a thing works, for three tips, or about an object | passed, 18 November 2026 |
 | 31 | the lower of those two counts alone (2.58 ceilings), on twelve questions instead of six | passed, 16 November 2026 |
 | 32 to 37 | two counts of the neuron's write ceiling, set for each layer where the next word-piece moves by a fixed amount (between 2.2 and 2.8 ceilings) | passed at each, 13 November 2026 |
 | 38 and 52 | ±1.6 and ±2.3 of the neuron's write ceiling | passed at each, 13 November 2026 |
@@ -34,15 +35,18 @@ layer 34 passed by the most, and layer 36 by a thousandth on one of its three ch
 (`experiments/results/census_scaled_design/MATCH.md` has every figure). So layer 36 was held for our own card and
 taken there (14 November 2026); read whole, it missed that same check by 0.006. Layers 31 and 53 failed their trials
 with these push strengths. At layer 31 the design that asks twice the questions at one push passed instead (16
-November 2026). It failed at layer 30, and so did the same twelve questions at both pushes (17 November). No push
-strengths have passed a trial by layer 45's gates at layers 0 to 30 or 54 to 59. None of those layers is taken yet. **The board says which layers
-are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
+November 2026). It failed at layer 30, and so did the same twelve questions at both pushes (17 November). At layer
+30 a third design passed (18 November): both pushes, on twelve other questions of the kinds whose answers took a
+push's words up there. No push strengths have passed a trial by layer 45's gates at layers 0 to 29 or 54 to 59. None
+of those layers is taken yet. **The board says which layers are open.** Layers count from 0, as every script counts
+them (the app's page = layer + 1).
 
-**Kit 5, the kit to use now, is kit 4 with layer 31 added** (17 November 2026), taken with the twelve-question
-design above. Every other layer is taken exactly as under kit 4. Kit 4 opened the census to 24 GB cards (14 November
-2026, from a contributor's pull request): the loader keeps a part of the model the census never reads off the card,
-and `census.sh check` asks how much of the card is free. **If a layer of yours is running under kit 4, finish it with
-kit 4**: do not switch its checkout. Its bundle is checked by kit 4's own rules.
+**Kit 6, the kit to use now, is kit 5 with layer 30 added** (18 November 2026), taken with the design for layer 30
+above. Every other layer is taken exactly as under kit 5. **Layer 30 is twice the others**: 48 answers a neuron, not
+24, so 1,130,508 in all, about 33 hours on a 5090. Kit 5 (17 November 2026) added layer 31. Kit 4 opened the census
+to 24 GB cards (14 November 2026, from a contributor's pull request): the loader keeps a part of the model the census
+never reads off the card, and `census.sh check` asks how much of the card is free. **If a layer of yours is running
+under kit 5, finish it with kit 5**: do not switch its checkout. Its bundle is checked by kit 5's own rules.
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 
@@ -61,11 +65,13 @@ layer on:
 - **Your name on the first public map of a 31B's neurons.** We found none published, only sparse autoencoders
   (`REFERENCES.md` §J). Your layer is credited to the name you gave, and you name the strongest neurons of your layer
   in the published atlas.
-- **Open data**: every answer of every layer, 565,254 a layer, to be published with the project.
+- **Open data**: every answer of every layer, 565,254 a layer (twice that at layer 30), to be published with the
+  project.
 - **Ready now: a neuron in your own frontend.** Any neuron exports as a llama.cpp control vector, for `llama-server`
   and SillyTavern or anything else on it. Keep the scale near ±1 (*Use a neuron in your own setup*, below).
 
-A census rank says what a neuron's push does to six fixed questions at four strengths (at layer 31, twelve at two).
+A census rank says what a neuron's push does to six fixed questions at four strengths (at layer 31, twelve at two;
+at layer 30, twelve others at four).
 What it does in your own chats, you try for yourself.
 
 ## What you need
@@ -80,9 +86,10 @@ What it does in your own chats, you try for yourself.
 - **A driver for CUDA 13**: `nvidia-smi` shows `CUDA Version: 13.0` or later (driver 580 or newer).
 - **Linux**, about **60 GB** free disk, 32 GB of memory, and `git`, `curl`, `zstd`, `tar` and `flock` (util-linux),
   and a C compiler (`gcc`), which Triton may need for its kernels.
-- **Time**: about 13 hours for a layer on a 5090, plus about an hour of setup, mostly downloading about 35 GB. Other
-  cards will differ (an RTX 3090 held at its 83 °C limit wrote a sixteenth of layer 45 at 3.7 answers a second: about
-  43 hours for a layer), and the status line tells you yours. The run can be stopped and continued at any point.
+- **Time**: about 13 hours for a layer on a 5090, plus about an hour of setup, mostly downloading about 35 GB. Layer
+  30 has twice the answers and takes about 33 hours on a 5090, by our trial's pace there. Other cards will differ (an
+  RTX 3090 held at its 83 °C limit wrote a sixteenth of layer 45 at 3.7 answers a second: about 43 hours for a layer,
+  and perhaps four or five days for layer 30), and the status line tells you yours. The run can be stopped and continued at any point.
 - **A quiet machine**: the card at full load, and nothing else heavy on it or on the CPU. Our own run was once stopped
   by NVIDIA's watchdog in the middle of a big kernel build.
 
@@ -96,18 +103,18 @@ below.
 ```bash
 mkdir -p ~/theodolite-census && cd ~/theodolite-census
 git clone https://github.com/whp199/theodolite.git && cd theodolite
-git checkout census-kit-5
+git checkout census-kit-6
 scripts/volunteer/census.sh check                      # can this machine take a layer?
 ```
 
 1. **Pick an open layer on the board and claim it.**
 
    ```bash
-   scripts/volunteer/census.sh reserve 38 --name yourname
+   scripts/volunteer/census.sh reserve 30 --name yourname
    ```
 
    The script reads the board first and refuses a layer that is not open there. Then it prints one line,
-   `CENSUS RESERVE L32 claim=… card=… name=… kit=4`. Post it in the thread, or as a comment on the board issue. The claim's secret stays in `~/theodolite-census/claims/`, and the bundle you send carries it: that is
+   `CENSUS RESERVE L30 claim=… card=… name=… kit=6`. Post it in the thread, or as a comment on the board issue. The claim's secret stays in `~/theodolite-census/claims/`, and the bundle you send carries it: that is
    how it is known to come from your claim. The board is kept by hand, so give it a while, and pick another layer if
    someone was there first.
 
@@ -129,7 +136,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 3. **The canary** (a few minutes):
 
    ```bash
-   scripts/volunteer/census.sh canary 38
+   scripts/volunteer/census.sh canary 30
    ```
 
    It writes the run's first batch on your card and sets it against the same batch written on ours. It also measures
@@ -139,7 +146,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 4. **Run the layer:**
 
    ```bash
-   scripts/volunteer/census.sh run 38
+   scripts/volunteer/census.sh run 30
    ```
 
    It runs detached, so you can close the terminal. Post the `CENSUS START` line it prints. If it stops (a reboot, a
@@ -149,7 +156,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
 5. **Check on it** now and then:
 
    ```bash
-   scripts/volunteer/census.sh status 38
+   scripts/volunteer/census.sh status 30
    ```
 
    It prints the answers written, the rate, when it should finish, and a `CENSUS PROGRESS` line. Post that line every
@@ -158,30 +165,29 @@ scripts/volunteer/census.sh check                      # can this machine take a
 6. **Pack it** when it is whole (10–20 minutes):
 
    ```bash
-   scripts/volunteer/census.sh pack 38
+   scripts/volunteer/census.sh pack 30
    ```
 
-   It checks the run is whole and taken with the kit's settings, then packs about 500 MB into
-   `~/theodolite-census/outbox/L32-match_ceil-<claim>.tar` (the name carries the layer's design). Upload that
+   It checks the run is whole and taken with the kit's settings, then packs about 500 MB (about twice that at layer
+   30) into `~/theodolite-census/outbox/L30-match_things-<claim>.tar` (the name carries the layer's design). Upload that
    somewhere anyone can download it for a week or more: a Hugging Face dataset, a torrent, a file host. Post the
    `CENSUS DONE` line with your link in it.
 
-If you can't finish, run `scripts/volunteer/census.sh release 38` and post the line it prints. That frees the layer
+If you can't finish, run `scripts/volunteer/census.sh release 30` and post the line it prints. That frees the layer
 for someone else.
 
 ### If you ran an earlier kit
 
 ```bash
 cd ~/theodolite-census/theodolite          # logos-theodolite, in a checkout cloned before the repository was renamed
-git fetch --tags && git checkout census-kit-5
+git fetch --tags && git checkout census-kit-6
 scripts/volunteer/census.sh check
 ```
 
-Kit 5 pins the same Python packages, the same checkpoint and the same stats index as kits 1 to 4, so `setup` finds
+Kit 6 pins the same Python packages, the same checkpoint and the same stats index as kits 1 to 5, so `setup` finds
 them and has little left to do. Run it once anyway, then go on from step 1 with a new `reserve`: the board refuses a
-`RESERVE` line made with an earlier kit. A layer you have already started under kit 4 is the exception: finish it in
-its kit 4 checkout and post its lines as before. Layers 39 and 51 are taken with kit 5 now, by the same command kit 2
-took them with.
+`RESERVE` line made with an earlier kit. A layer you have already started under kit 5 is the exception: finish it in
+its kit 5 checkout and post its lines as before.
 
 ## The rules
 
@@ -206,13 +212,13 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
 2. **The run**:
    - every setting, the job list, the stats index and the push strength must match ours at that layer;
    - the commit must be the kit's tag, from a clean checkout;
-   - every one of the layer's 565,254 answers must be there exactly once.
+   - every one of the layer's 565,254 answers must be there exactly once (565,260 at layer 31, 1,130,508 at layer 30).
 3. **The canary**:
    - against your own run's first batch (the same card writing the same batch);
    - against ours (the same bits, or a class of its own);
-   - your six unpushed answers against ours.
-4. **The spot-check**: when the bundle arrives, 5 of the run's 737 chunks are drawn at random, so nobody can know them
-   in advance. Each is written again on our 5090, about a minute a chunk. Then:
+   - your six unpushed answers against ours (twelve at layers 30 and 31).
+4. **The spot-check**: when the bundle arrives, 5 of the run's 737 chunks (1,473 at layer 30) are drawn at random, so
+   nobody can know them in advance. Each is written again on our 5090, about a minute a chunk. Then:
    - **The same bits as ours**: every spot answer must match bit for bit.
    - **A card class of its own**: the run must meet all of these:
      - at least 90% of answers start with the same word-piece as ours;
@@ -221,6 +227,8 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
 
        | layers | design | median at most | 99th percentile at most |
        |---|---|---|---|
+       | 30 | `match_things` | 0.013 | 0.26 |
+       | 31 | `match_wide` | 0.013 | 0.26 |
        | 32–37 | `match_ceil` | 0.012 | 0.25 |
        | 38 and 52 | `soft_ceil` | 0.013 | 0.29 |
        | 39–51 | `break_rel` | 0.028 | 0.37 |
@@ -255,9 +263,10 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
    cards before these bars were measured (42, 44, 47, 48 and 50), the medians were 0.013 to 0.015 where our own arithmetic gave 0.013, so a run of the kit's code
    should sit near our arithmetic under these designs too, well inside the new bars. It did: layers 34 and 35, from an
    RTX PRO 6000 under `match_ceil` and accepted on 16 November 2026, came to medians of 0.0051 and 0.0046 and 99th
-   percentiles of 0.115 and 0.110, where our own arithmetic gave 0.0050 and 0.117 (layer 33, from the same card on
-   17 November, 0.0055 and 0.116); and layer 51, from an RTX 3090 under `break_rel`, to 0.0111 and 0.150. A layer with no measured bars (53 to 59, which are shut) is
-   not judged until they are measured.
+   percentiles of 0.115 and 0.110, where our own arithmetic gave 0.0050 and 0.117 (layers 33 and 32, from the same
+   card on 17 and 18 November, 0.0055 and 0.116, and 0.0052 and 0.117); and layer 51, from an RTX 3090 under
+   `break_rel`, to 0.0111 and 0.150. A layer with no measured bars (53 to 59, which are shut) is not judged until they
+   are measured.
 
    **Amended 17 November 2026: kit 5's layer 31.** Layer 31 is taken with `match_wide`, which no earlier kit measured.
    Before kit 5 was offered, its bars were measured on our 5090, by the same rule, under a registration committed and
@@ -269,6 +278,17 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
      writes the second half's unpushed answers in batches of 63, where chair's log-probabilities differ from layer
      45's. Our run of the kit's own plan matched them bit for bit. The near-tie rule below stands for them: our
      arithmetic parted only at pieces written at 0.52 or less.
+
+   **Amended 18 November 2026: kit 6's layer 30.** Layer 30 is taken with `match_things`, which no earlier kit
+   measured. Before kit 6 was offered, its bars were measured on our 5090, by the same rule, under a registration
+   committed and pushed first ([`census_other_card_bars/kit6/prereg/RULES.md`](experiments/results/census_other_card_bars/kit6/prereg/RULES.md)).
+   The measurement used 768 answers to all twelve of its questions, at both its pushes.
+   - Our own arithmetic moves the median to 0.0053 and the 99th percentile to 0.118.
+   - So its bars are 0.013 and 0.26, the same as `match_wide`'s at 31. The first-piece bar stays 0.90.
+   - Its twelve unpushed answers are its own. Six of its questions had been asked by no run before its trial, and a
+     whole layer writes the last three's unpushed answers in batches of 61. Our run of the kit's own plan matched them
+     bit for bit. The near-tie rule below stands for them: our arithmetic parted only at pieces written at 0.52 or
+     less.
 
    **Amended 31 October 2026: the unpushed answers.** The first rule asked each to share at least 16 word-pieces with
    ours. That first volunteer's whole run kept three of the six word for word. The other three parted sooner, at
@@ -288,12 +308,14 @@ with each other, the card is named.
 **A layer outside 40 to 50** is read, once it is accepted, by the same three checks its trial was read by: the whole
 reading against layer 45's gates, the gentler push's answers alone, and the neurons whose text survives as the random
 directions' does (the rules are in `experiments/results/census_neighbour_trials/prereg/`, `census_soft_trials/prereg/`,
-`census_match_trials/prereg/`, `census_match_walk/prereg/` and `census_wide_trials/prereg/`). The push strengths are
-counted calibrated at each of the eleven layers whose trial passed. Kit 3 opened nine of them, layer 36 was held for
-our own card and taken there, and kit 5 adds layer 31. Read whole by these checks (16 and 17 November 2026), layers
-33, 34, 35, 37, 39 and 51 pass all three, and layer 36 passes two and misses the gentler push's check on one figure,
-0.564 against 0.57. Whether the push strengths stay counted calibrated at 36 is the owner's to decide;
-nothing has been changed. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
+`census_match_trials/prereg/`, `census_match_walk/prereg/` and `census_wide_trials/prereg/`). Layer 30's trial had
+two of them, the whole reading and the neurons the random directions cover, and a layer 30 is read by those two
+(`census_things_trial/prereg/`). The push strengths are counted calibrated at eleven of the twelve layers whose trial
+passed. Kit 3 opened nine of them, layer 36 was held for our own card and taken there, kit 5 added layer 31, and kit
+6 adds layer 30. At 30 they are not counted calibrated yet: that is the owner's to decide, and nothing has been
+changed. Read whole by these checks (16 to 18 November 2026), layers 32 to 35, 37, 39, 51 and 52 pass all three,
+and layer 36 passes two and misses the gentler push's check on one figure, 0.564 against 0.57. Whether the push
+strengths stay counted calibrated at 36 is the owner's to decide; nothing has been changed. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
 drawn on the map without gilt.
 
 ## What you send, and what runs on your machine
@@ -322,8 +344,8 @@ drawn on the map without gilt.
 - **`reserve` says the layer is not open**: the board shows it waiting for its trial, not taken, or held by someone
   else. Pick a layer shown OPEN.
 - **`reserve` says the board is another kit's**: your checkout is at an older tag. `git fetch --tags && git checkout
-  census-kit-5`, then reserve again.
-- **The canary refuses "other settings"**: the checkout isn't at `census-kit-5`, or the stats index isn't the kit's.
+  census-kit-6`, then reserve again.
+- **The canary refuses "other settings"**: the checkout isn't at `census-kit-6`, or the stats index isn't the kit's.
 - **The run stopped**: run the same `census.sh run` again. The log is `~/theodolite-census/logs/L<layer>-<design>.log`
   (`L32-match_ceil.log`).
 - **Out of memory**: close everything else on the card. The batch is fixed at 64, so a card that can't hold it
@@ -352,7 +374,7 @@ llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-
   - With the kit set up, run `. ~/theodolite-census/env.sh` first: it finds the checkpoint and the stats index you
     already have. Checkouts of kit 2 and later hold the script; run it there with the kit's Python
     (`~/theodolite-census/theodolite/.venv/bin/python`). It writes one new file and changes none, so the checkout
-    stays as `census.sh` needs it. (Kit 1's tag is older than the script: check out `census-kit-5`.)
+    stays as `census.sh` needs it. (Kit 1's tag is older than the script: check out `census-kit-6`.)
   - Without the kit: add `--gguf` with your own GGUF of Gemma-4-31B-it and `--stats` with the kit's stats index
     (`https://github.com/whp199/theodolite/releases/download/census-kit-1/act_scale.npz`, sha256
     `23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa`). It needs Python 3.12 with numpy, torch (the

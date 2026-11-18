@@ -5,7 +5,7 @@ Kit 6 (census-kit-6). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
 | 0–29 | 1–30 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
-| 30 | 31 | not taken |  |  |  | two trials failed, 16 and 17 November 2026; a third, with other questions (match_things), passed on 18 November; no kit  |
+| 30 | 31 | OPEN |  |  |  | match_things; its trial passed, 18 November 2026; twice the answers, about 33 hours on a 5090 |
 | 31 | 32 | running | anon eda6b586 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 3%, ends ~2026-11-18T16:24Z |  |
 | 32 | 33 | done | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 17-18 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 33 | 34 | done | anon 280c6dc2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
@@ -48,4 +48,4 @@ Judged:
 - L33 anon 280c6dc2: accepted (16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole)
 - L32 anon 943783a3: accepted (own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-18T05:47Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-18T14:29Z.

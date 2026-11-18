@@ -1,5 +1,5 @@
 {
- "kit": 5,
+ "kit": 6,
  "repo": "whp199/theodolite",
  "issue": 1,
  "seen_comments": [
@@ -1314,8 +1314,8 @@
    "note": "no push strengths have passed a trial here: not taken"
   },
   "30": {
-   "state": "stopped",
-   "note": "two trials failed, 16 and 17 November 2026; a third, with other questions (match_things), passed on 18 November; no kit carries it yet: not taken"
+   "state": "open",
+   "note": "match_things; its trial passed, 18 November 2026; twice the answers, about 33 hours on a 5090"
   },
   "31": {
    "state": "open",
@@ -1408,5 +1408,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-18T05:47Z"
+ "updated_at": "2026-11-18T14:29Z"
 }

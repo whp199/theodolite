@@ -1532,6 +1532,30 @@ layers, the determinism run and the sampled push on 29 October). In this section
     - **The board**: twenty layers done, 32–37 and 39–52, fourteen of them by volunteers; 31 (anon, eda6b586) and 38
       (Zlorthishen, 3853d507) running under kit 5; none open. Layer 30’s third trial passed (`match_things`), but no
       kit carries it yet.
+  - **Kit 6: kit 5 with layer 30 added** (cut 18 November 2026, tag `census-kit-6`; the owner’s words: “Push it and
+    register the bars for 30” and “Cut kit 6”, 18 November). Layer 30 is taken with `match_things`, `match_ceil`’s two
+    counts there (±2.42 and ±2.67 ceilings) on twelve questions of three genres, whose trial passed on 18 November
+    (above): 48 answers a unit, 1,130,508 a layer, about 33 hours on the home 5090. Its doses are not counted
+    calibrated there: `DOSES_CALIBRATED` is not widened without the owner’s word. Every other layer is taken as under
+    kit 5.
+    - **The answers.** All eighteen of kit 5’s home canaries, taken again under kit 6, are the ones kept; layer 30’s
+      is new (`76f9727`). Nothing that writes an answer changed after that. A 24 GB card still fits: at 30 the longest
+      batch (walk’s) leaves 203 MiB of the 23,900 MiB `census.sh check` asks for.
+    - **Its own unpushed answers**, from its trial on the home card (`census_volunteer.DESIGN_BASELINES`). A whole
+      layer writes the first nine in batches of 64 and the last three in batches of 61, as its trial did.
+    - **Its bars for another card class**, registered and pushed before anything was measured
+      ([`census_other_card_bars/kit6/prereg/RULES.md`](experiments/results/census_other_card_bars/kit6/prereg/RULES.md),
+      `ade1834`, pushed at 05:27Z; measured 05:28Z–06:43Z, `56f3021`). The control’s twelve unpushed answers are
+      the trial’s bit for bit. The near-tie bar stands at 0.6: 24 of 132 arithmetic-only answers parted, the surest
+      at a piece written at 0.52. On the kit’s own chunk 0, 768 answers to all twelve questions at both doses, the
+      home card’s arithmetic moves the median to 0.0053 and the 99th percentile to 0.118; the bars are 0.013 and
+      0.26, as `match_wide`’s at 31, and 0.90 of first word-pieces.
+    - **Read whole** by its trial’s reader and two gates, the whole reading and the neurons the controls cover
+      (`census_scaled_design/read_whole.sh`, which gives the trial’s verdict back gate for gate on the trial’s run).
+    - **A layer begun under kit 5** is finished on kit 5 and checked by kit 5’s own file, read from its tag
+      (`census_volunteer.earlier_kit`); at the cut those are 31 (anon, eda6b586) and 38 (Zlorthishen, 3853d507).
+    - **The board** is kit 6’s with layer 30 open; 31 and 38 running under kit 5. *Not shown yet:* a whole layer of
+      `match_things`. The thread post is the owner’s.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

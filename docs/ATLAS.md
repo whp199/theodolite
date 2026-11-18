@@ -23,8 +23,8 @@ both ways, by once and by twice the stream’s usual length. Its answers are set
 pushed as far: 565,254 answers a layer, about thirteen hours on one RTX 5090. A neuron ranks high when the words its push
 brings stand further above the random directions’ than nearly every random direction’s own words do. So a high rank says
 its push differs from a random one. It does not say that its words share a theme, or name what the neuron does when it
-fires. The doses were first calibrated at layers 41–51. The census covers those eleven layers and, since 16 and 17
-November 2026, seven more: 34–38, 40 and 52 (below).
+fires. The doses were first calibrated at layers 41–51. The census covers those eleven layers and, since 16 to 18
+November 2026, nine more: 33–38, 40, 52 and 53 (below).
 
 All eleven are in: layers 41–51 (40–50 on the [census board](https://github.com/whp199/theodolite/issues/1), which
 counts from 0), six of them taken by volunteers. Layer 46 was read against gates fixed before it ran, and the other ten
@@ -47,11 +47,13 @@ layers, and a third kit offers them to volunteers beside layers 40 and 52, each 
 ([VOLUNTEERS.md](../VOLUNTEERS.md)); layer 37 (36 on the board), which passed one check by a thousandth, was held for the
 home card and taken there. Since 14 November 2026 (kit 4) a 24 GB card with nothing else on it can take a layer. A
 design that asks twelve questions at one push, the lower of the layer's two counts, passed a trial at layer 32 (31 on
-the board) on 16 November and failed at 31; since 17 November kit 5 offers it at 32. The other thirty-eight layers
-(1–31 and 54–60) have no design that passed there. Where a census’s doses are not counted
+the board) on 16 November and failed at 31; since 17 November kit 5 offers it at 32. At 31 (30 on the board) two
+designs failed, and a third passed its trial on 18 November: both counts, on twelve other questions, each asking how
+a thing works, for three tips or about an object. Kit 6 offers it there; its doses are not yet counted calibrated.
+The other thirty-seven layers (1–30 and 54–60) have no design that passed there. Where a census’s doses are not counted
 calibrated the atlas marks it “doses not calibrated at this layer” and inks it without gilt.
 
-Eight layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
+Nine layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
 board) on 14 and 15 November 2026, and each was accepted on 16 November; layer 52 came from an RTX 3090, the first
 layer taken on a 24 GB card. The home card took layer 37 (36) on 14 November. Each was read whole by its own trial’s
 reader and three gates. The four volunteers’ layers pass all three. Layer 37 passes two, and on the third its gentler
@@ -72,7 +74,7 @@ deviations out, where at 35–38 even the fifth stood 7.2 or more. On 18 Novembe
 home from the RTX PRO 6000 that took 34–36, and passes all three: the whole lead is 0.714 (0.699 in its trial), and
 the words carry by 0.626 both ways. It says much of single neurons: 2,946 have q ≤ 0.05 and 1,245 beat all 2,048,
 and its strongest random direction stands 6.1 of their deviations out, writing English, not another language. Layers
-32 and 39 (31 and 38 on the board) are being taken, and no layer is open. Every figure is in ROADMAP §vi.
+32 and 39 (31 and 38 on the board) are being taken, and layer 31 (30) is open. Every figure is in ROADMAP §vi.
 
 <table>
   <tr>
