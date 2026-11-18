@@ -1,0 +1,92 @@
+# A test of things_read.py before any answer of match_things existed (17 November 2026): read on match_both's finished
+# trial at layer 30 (atlas_data/census/trials/both/L30-match_both-trial.jsonl), a two-dose run of twelve questions, it
+# gives that trial's registered verdict figure for figure (N1, N3, each dose alone, both readings of three questions a
+# half, which there are break_rel's six and the six match_wide added). 3 min 22 s on the CPU. Its output:
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.618 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6398 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5727 (bar 0.57), rep_BA 0.5449 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6081 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5003 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+  reported: shift 0.659, shift_up 0.632, shift_down 0.632, xq 0.567, rep 0.561, mass_A 0.571, mass_u 0.615, shift_res 0.668, rep_res 0.590
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 1, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1693, 'pA05_and_pB05': 48, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.323 controls 0.162; signs {'+': 0.5358, '-': 0.5608}
+--- read at 32 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5992 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6015 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5685 (bar 0.57), rep_BA 0.5318 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.594 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4996 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  reported: shift 0.634, shift_up 0.609, shift_down 0.622, xq 0.564, rep 0.556, mass_A 0.549, mass_u 0.595, shift_res 0.631, rep_res 0.563
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 1, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.138, 'pA05_and_pB05': 26, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.258 controls 0.151; signs {'+': 0.5364, '-': 0.5629}
+max_new rule: {'shorter_passes': False, 'mass_c_drop': 0.0188, 'rep_min_drop': 0.0131, 'take_shorter': False}
+throughput (wall): {'answers': 98220, 'seconds': 10034.0, 'answers_per_s': 9.79, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9991.9, 'answers_per_s': 9.83, 'sessions': 1}
+-> /tmp/claude-1000/-home-eric--claude-spares-spare-d6sPnT/a3750009-394c-419e-96bf-b2e266c841c4/scratchpad/mock/L30_verdict.whole.json: FAIL
+--- read at 48 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5956 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6296 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5582 (bar 0.57), rep_BA 0.5494 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.5925 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5003 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 39.23932 (bar 0.002)
+  reported: shift 0.635, shift_up 0.604, shift_down 0.615, xq 0.585, rep 0.560, mass_A 0.552, mass_u 0.594, shift_res 0.657, rep_res 0.582
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 1, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1477, 'pA05_and_pB05': 46, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.313 controls 0.101; signs {'+': 0.5233, '-': 0.5522}
+throughput (wall): {'answers': 98220, 'seconds': 10034.0, 'answers_per_s': 9.79, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9991.9, 'answers_per_s': 9.83, 'sessions': 1}
+-> /tmp/claude-1000/-home-eric--claude-spares-spare-d6sPnT/a3750009-394c-419e-96bf-b2e266c841c4/scratchpad/mock/L30_verdict.lower.json: FAIL
+--- read at 48 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5802 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6148 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.536 (bar 0.57), rep_BA 0.5347 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.565 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4984 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 38.89687 (bar 0.002)
+  reported: shift 0.615, shift_up 0.590, shift_down 0.595, xq 0.563, rep 0.536, mass_A 0.544, mass_u 0.575, shift_res 0.634, rep_res 0.558
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 0, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1252, 'pA05_and_pB05': 32, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.288 controls 0.172; signs {'+': 0.5305, '-': 0.5226}
+throughput (wall): {'answers': 98220, 'seconds': 10034.0, 'answers_per_s': 9.79, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9991.9, 'answers_per_s': 9.83, 'sessions': 1}
+-> /tmp/claude-1000/-home-eric--claude-spares-spare-d6sPnT/a3750009-394c-419e-96bf-b2e266c841c4/scratchpad/mock/L30_verdict.upper.json: FAIL
+--- read at 48 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5966 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6098 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5488 (bar 0.57), rep_BA 0.5416 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.5907 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4994 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 37.02588 (bar 0.002)
+  reported: shift 0.627, shift_up 0.605, shift_down 0.595, xq 0.540, rep 0.542, mass_A 0.562, mass_u 0.588, shift_res 0.630, rep_res 0.569
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 0, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1419, 'pA05_and_pB05': 21, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.179 controls 0.083; signs {'+': 0.5272, '-': 0.555}
+throughput (wall): {'answers': 98220, 'seconds': 10034.0, 'answers_per_s': 9.79, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9991.9, 'answers_per_s': 9.83, 'sessions': 1}
+-> /tmp/claude-1000/-home-eric--claude-spares-spare-d6sPnT/a3750009-394c-419e-96bf-b2e266c841c4/scratchpad/mock/L30_verdict.first.json: FAIL
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.6162 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6313 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5464 (bar 0.57), rep_BA 0.5514 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.5988 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5013 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 43.16881 (bar 0.002)
+  reported: shift 0.647, shift_up 0.624, shift_down 0.613, xq 0.548, rep 0.558, mass_A 0.590, mass_u 0.609, shift_res 0.655, rep_res 0.569
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 4, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1507, 'pA05_and_pB05': 31, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.114 controls 0.020; signs {'+': 0.5385, '-': 0.5562}
+throughput (wall): {'answers': 98220, 'seconds': 10034.0, 'answers_per_s': 9.79, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9991.9, 'answers_per_s': 9.83, 'sessions': 1}
+-> /tmp/claude-1000/-home-eric--claude-spares-spare-d6sPnT/a3750009-394c-419e-96bf-b2e266c841c4/scratchpad/mock/L30_verdict.last.json: FAIL
+=== L30-match_both-trial.jsonl (layer 30, counted from 0): FAIL
+FAIL  N1 whole
+    pass  G1 lead (mass, every answer): mass_c 0.618 (bar 0.6)
+    pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6398 (bar 0.58)
+    FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5727 (bar 0.57), rep_BA 0.5449 (bar 0.57)
+    pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6081 (bar 0.56)
+    pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5003 (bar [0.47, 0.53]), read_gain_ratio 1.011 (bar [0.8, 1.25]), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+    pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+FAIL  N3 the neurons the controls cover (956 of 1022 covered, 93.5%; at least 50%)
+    pass  G1 lead (mass, every answer): mass_c 0.6217 (bar 0.6)
+    pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6308 (bar 0.58)
+    FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5765 (bar 0.57), rep_BA 0.5463 (bar 0.57)
+    pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6118 (bar 0.56)
+reported, the lower dose alone (-2.42,2.42): mass_c 0.5956, mass_c_res 0.6296, rep_AB 0.5582, rep_BA 0.5494, mass_B 0.5925
+reported, the upper dose alone (-2.67,2.67): mass_c 0.5802, mass_c_res 0.6148, rep_AB 0.536, rep_BA 0.5347, mass_B 0.565
+reported, three questions a half (first: who+orange+free | bicycle+walk+chair): mass_c 0.5966, mass_c_res 0.6098, rep_AB 0.5488, rep_BA 0.5416, mass_B 0.5907
+reported, three questions a half (last: self+green+interesting | kettle+sleep+lamp): mass_c 0.6162, mass_c_res 0.6313, rep_AB 0.5464, rep_BA 0.5514, mass_B 0.5988
+reported: {"above_every_control": 1, "by_chance": 1.0, "text": {"-2.67 neuron": {"d4_minus_unpushed": -0.003, "cut_off": 0.949}, "-2.67 random": {"d4_minus_unpushed": -0.002, "cut_off": 0.956}, "-2.42 neuron": {"d4_minus_unpushed": -0.003, "cut_off": 0.942}, "-2.42 random": {"d4_minus_unpushed": -0.001, "cut_off": 0.95}, "+2.42 neuron": {"d4_minus_unpushed": -0.004, "cut_off": 0.946}, "+2.42 random": {"d4_minus_unpushed": -0.002, "cut_off": 0.95}, "+2.67 neuron": {"d4_minus_unpushed": -0.005, "cut_off": 0.953}, "+2.67 random": {"d4_minus_unpushed": -0.002, "cut_off": 0.958}}, "figures": {"neurons": 1022, "controls": 1024, "above_every_control": 1, "by_chance": 1.0, "q05": 0, "named": 0, "named_by_halves": 0, "above_ctl_p95": 0.1693, "pA05_and_pB05": 48, "pA05_and_pB05_by_chance": 2.6}, "named": 0, "max_new_rule": {"shorter_passes": false, "mass_c_drop": 0.0188, "rep_min_drop": 0.0131, "take_shorter": false}, "throughput": {"answers_written": 98220, "seconds": 9991.9, "answers_per_s": 9.83, "sessions": 1}}
+-> /tmp/claude-1000/-home-eric--claude-spares-spare-d6sPnT/a3750009-394c-419e-96bf-b2e266c841c4/scratchpad/mock/L30_verdict.json

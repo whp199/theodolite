@@ -1,0 +1,17 @@
+bicycle    kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+walk       kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+chair      kept (first round): in a batch of 64, 46 of 48 word-pieces ([46, 46])
+kettle     kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+sleep      kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+lamp       kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+clock      kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+rice       kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+vase       kept (first round): in a batch of 64, 48 of 48 word-pieces ([48, 48])
+lock       kept (first round): in a batch of 61, 48 of 48 word-pieces ([48, 48])
+suitcase   its place, second round: money in a batch of 61: holds ([38, 38] of 48)
+blanket    kept (first round): in a batch of 61, 48 of 48 word-pieces ([48, 48])
+the questions asked: bicycle, walk, chair, kettle, sleep, lamp, clock, rice, vase, lock, money, blanket
+halves: ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp'] | ['clock', 'rice', 'vase', 'lock', 'money', 'blanket']
+census.DESIGN_QUESTIONS['match_things'] at the checkout: bicycle, walk, chair, kettle, sleep, lamp, clock, rice, vase, lock, money, blanket (the same)
+reported: chair parts after 13 word-pieces unpushed in a batch of 56
+OK

@@ -1,0 +1,23 @@
+bicycle    kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+walk       kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+chair      kept: in a batch of 64 it holds 46 of 48 word-pieces with itself alone ([46, 46])
+kettle     kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+sleep      kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+lamp       kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+clock      kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+rice       kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+vase       kept: in a batch of 64 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+lock       kept: in a batch of 61 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+suitcase   parts after 28 word-pieces in a batch of 61 ([28, 28]); its genre's spare garden: parts too, passed over ([3, 3] of 48)
+suitcase   parts after 28 word-pieces in a batch of 61 ([28, 28]); its genre's spare interview: parts too, passed over ([16, 16] of 48)
+suitcase   has no spare of its genre left that holds
+blanket    kept: in a batch of 61 it holds 48 of 48 word-pieces with itself alone ([48, 48])
+the questions asked: bicycle, walk, chair, kettle, sleep, lamp, clock, rice, vase, lock, suitcase, blanket
+halves: ['bicycle', 'walk', 'chair', 'kettle', 'sleep', 'lamp'] | ['clock', 'rice', 'vase', 'lock', 'suitcase', 'blanket']
+census.DESIGN_QUESTIONS['match_things'] at the checkout: bicycle, walk, chair, kettle, sleep, lamp, clock, rice, vase, lock, suitcase, blanket (the same)
+reported: chair parts after 13 word-pieces unpushed in a batch of 56
+reported: suitcase parts after 28 word-pieces unpushed in a batch of 56
+reported: suitcase parts after 28 word-pieces unpushed in a batch of 60
+reported: suitcase parts after 28 word-pieces unpushed in a batch of 61
+reported: suitcase parts after 28 word-pieces unpushed in a batch of 64
+NOT RUN: a question parts with no spare of its genre left that holds, or the code asks other questions
