@@ -1,0 +1,810 @@
+== 2026-11-18T16:24:00Z layer 53 (up): the trial
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 22837.82it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 40384.78it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<31:48,  1.05it/s]Loading weights:   6%|▌         | 117/2009 [00:01<00:12, 151.76it/s]Loading weights:   9%|▉         | 183/2009 [00:01<00:09, 199.83it/s]Loading weights:  12%|█▏        | 234/2009 [00:01<00:07, 227.96it/s]Loading weights:  14%|█▍        | 278/2009 [00:01<00:06, 261.76it/s]Loading weights:  16%|█▌        | 321/2009 [00:01<00:06, 268.80it/s]Loading weights:  18%|█▊        | 364/2009 [00:01<00:05, 295.39it/s]Loading weights:  20%|██        | 403/2009 [00:01<00:05, 300.47it/s]Loading weights:  22%|██▏       | 441/2009 [00:02<00:04, 318.40it/s]Loading weights:  24%|██▍       | 478/2009 [00:02<00:04, 329.97it/s]Loading weights:  26%|██▌       | 515/2009 [00:02<00:04, 338.17it/s]Loading weights:  29%|██▉       | 591/2009 [00:02<00:03, 448.86it/s]Loading weights:  35%|███▍      | 694/2009 [00:02<00:02, 591.67it/s]Loading weights:  40%|███▉      | 795/2009 [00:02<00:01, 707.41it/s]Loading weights:  44%|████▍     | 888/2009 [00:02<00:01, 769.10it/s]Loading weights:  49%|████▉     | 985/2009 [00:02<00:01, 826.96it/s]Loading weights:  54%|█████▍    | 1080/2009 [00:02<00:01, 859.94it/s]Loading weights:  58%|█████▊    | 1168/2009 [00:02<00:00, 861.26it/s]Loading weights:  63%|██████▎   | 1274/2009 [00:03<00:00, 916.94it/s]Loading weights:  68%|██████▊   | 1367/2009 [00:03<00:00, 911.93it/s]Loading weights:  73%|███████▎  | 1469/2009 [00:03<00:00, 929.89it/s]Loading weights:  78%|███████▊  | 1563/2009 [00:03<00:00, 895.33it/s]Loading weights:  82%|████████▏ | 1653/2009 [00:03<00:00, 813.47it/s]Loading weights:  88%|████████▊ | 1764/2009 [00:03<00:00, 864.47it/s]Loading weights:  94%|█████████▎| 1881/2009 [00:03<00:00, 943.61it/s]Loading weights:  99%|█████████▉| 1989/2009 [00:03<00:00, 972.62it/s]Loading weights: 100%|██████████| 2009/2009 [00:03<00:00, 527.17it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 2.35 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 53: 1022 neurons + 1024 controls, 98220 answers to write (0 already written), push unit each neuron's write ceiling, p50 85.32 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+768/98220 answers, 328 pieces/s, 6.83 answers/s
+1536/98220 answers, 418 pieces/s, 8.71 answers/s
+2304/98220 answers, 461 pieces/s, 9.62 answers/s
+3072/98220 answers, 487 pieces/s, 10.14 answers/s
+3840/98220 answers, 503 pieces/s, 10.48 answers/s
+4608/98220 answers, 511 pieces/s, 10.65 answers/s
+5376/98220 answers, 517 pieces/s, 10.78 answers/s
+6144/98220 answers, 524 pieces/s, 10.93 answers/s
+6912/98220 answers, 530 pieces/s, 11.05 answers/s
+7680/98220 answers, 533 pieces/s, 11.11 answers/s
+8448/98220 answers, 536 pieces/s, 11.18 answers/s
+9216/98220 answers, 539 pieces/s, 11.23 answers/s
+9984/98220 answers, 540 pieces/s, 11.26 answers/s
+10752/98220 answers, 542 pieces/s, 11.30 answers/s
+11520/98220 answers, 543 pieces/s, 11.32 answers/s
+12288/98220 answers, 544 pieces/s, 11.33 answers/s
+13056/98220 answers, 544 pieces/s, 11.34 answers/s
+13824/98220 answers, 544 pieces/s, 11.34 answers/s
+14592/98220 answers, 545 pieces/s, 11.37 answers/s
+15360/98220 answers, 546 pieces/s, 11.38 answers/s
+16128/98220 answers, 546 pieces/s, 11.38 answers/s
+16896/98220 answers, 547 pieces/s, 11.39 answers/s
+17664/98220 answers, 548 pieces/s, 11.42 answers/s
+18432/98220 answers, 550 pieces/s, 11.45 answers/s
+19200/98220 answers, 551 pieces/s, 11.48 answers/s
+19968/98220 answers, 552 pieces/s, 11.51 answers/s
+20736/98220 answers, 554 pieces/s, 11.54 answers/s
+21504/98220 answers, 555 pieces/s, 11.57 answers/s
+22272/98220 answers, 557 pieces/s, 11.60 answers/s
+23040/98220 answers, 558 pieces/s, 11.63 answers/s
+23808/98220 answers, 559 pieces/s, 11.65 answers/s
+24576/98220 answers, 560 pieces/s, 11.68 answers/s
+25344/98220 answers, 561 pieces/s, 11.68 answers/s
+26112/98220 answers, 561 pieces/s, 11.69 answers/s
+26880/98220 answers, 562 pieces/s, 11.71 answers/s
+27648/98220 answers, 562 pieces/s, 11.71 answers/s
+28416/98220 answers, 562 pieces/s, 11.72 answers/s
+29184/98220 answers, 562 pieces/s, 11.71 answers/s
+29952/98220 answers, 562 pieces/s, 11.71 answers/s
+30720/98220 answers, 562 pieces/s, 11.70 answers/s
+31488/98220 answers, 562 pieces/s, 11.71 answers/s
+32256/98220 answers, 562 pieces/s, 11.71 answers/s
+33024/98220 answers, 562 pieces/s, 11.71 answers/s
+33792/98220 answers, 561 pieces/s, 11.68 answers/s
+34560/98220 answers, 559 pieces/s, 11.66 answers/s
+35328/98220 answers, 558 pieces/s, 11.62 answers/s
+36096/98220 answers, 557 pieces/s, 11.60 answers/s
+36864/98220 answers, 556 pieces/s, 11.59 answers/s
+37632/98220 answers, 557 pieces/s, 11.60 answers/s
+38400/98220 answers, 557 pieces/s, 11.62 answers/s
+39168/98220 answers, 558 pieces/s, 11.63 answers/s
+39936/98220 answers, 559 pieces/s, 11.64 answers/s
+40704/98220 answers, 559 pieces/s, 11.65 answers/s
+41472/98220 answers, 560 pieces/s, 11.66 answers/s
+42240/98220 answers, 560 pieces/s, 11.67 answers/s
+43008/98220 answers, 560 pieces/s, 11.68 answers/s
+43776/98220 answers, 561 pieces/s, 11.69 answers/s
+44544/98220 answers, 561 pieces/s, 11.69 answers/s
+45312/98220 answers, 561 pieces/s, 11.70 answers/s
+46080/98220 answers, 562 pieces/s, 11.70 answers/s
+46848/98220 answers, 562 pieces/s, 11.71 answers/s
+47616/98220 answers, 562 pieces/s, 11.71 answers/s
+48384/98220 answers, 562 pieces/s, 11.72 answers/s
+49152/98220 answers, 561 pieces/s, 11.70 answers/s
+49920/98220 answers, 560 pieces/s, 11.67 answers/s
+50688/98220 answers, 560 pieces/s, 11.67 answers/s
+51456/98220 answers, 559 pieces/s, 11.66 answers/s
+52224/98220 answers, 559 pieces/s, 11.65 answers/s
+52992/98220 answers, 558 pieces/s, 11.63 answers/s
+53760/98220 answers, 558 pieces/s, 11.62 answers/s
+54528/98220 answers, 557 pieces/s, 11.61 answers/s
+55296/98220 answers, 557 pieces/s, 11.60 answers/s
+56064/98220 answers, 556 pieces/s, 11.59 answers/s
+56832/98220 answers, 555 pieces/s, 11.57 answers/s
+57600/98220 answers, 555 pieces/s, 11.57 answers/s
+58368/98220 answers, 555 pieces/s, 11.57 answers/s
+59136/98220 answers, 556 pieces/s, 11.58 answers/s
+59904/98220 answers, 555 pieces/s, 11.57 answers/s
+60672/98220 answers, 555 pieces/s, 11.57 answers/s
+61440/98220 answers, 556 pieces/s, 11.58 answers/s
+62208/98220 answers, 555 pieces/s, 11.57 answers/s
+62976/98220 answers, 556 pieces/s, 11.58 answers/s
+63744/98220 answers, 556 pieces/s, 11.58 answers/s
+64512/98220 answers, 556 pieces/s, 11.58 answers/s
+65280/98220 answers, 556 pieces/s, 11.58 answers/s
+66048/98220 answers, 556 pieces/s, 11.58 answers/s
+66816/98220 answers, 556 pieces/s, 11.58 answers/s
+67584/98220 answers, 556 pieces/s, 11.58 answers/s
+68352/98220 answers, 556 pieces/s, 11.58 answers/s
+69120/98220 answers, 556 pieces/s, 11.58 answers/s
+69888/98220 answers, 555 pieces/s, 11.56 answers/s
+70656/98220 answers, 554 pieces/s, 11.55 answers/s
+71424/98220 answers, 553 pieces/s, 11.53 answers/s
+72192/98220 answers, 553 pieces/s, 11.52 answers/s
+72960/98220 answers, 552 pieces/s, 11.50 answers/s
+73728/98220 answers, 552 pieces/s, 11.50 answers/s
+74496/98220 answers, 552 pieces/s, 11.50 answers/s
+75264/98220 answers, 552 pieces/s, 11.50 answers/s
+76032/98220 answers, 551 pieces/s, 11.49 answers/s
+76800/98220 answers, 551 pieces/s, 11.48 answers/s
+77568/98220 answers, 550 pieces/s, 11.47 answers/s
+78336/98220 answers, 550 pieces/s, 11.47 answers/s
+79104/98220 answers, 550 pieces/s, 11.46 answers/s
+79872/98220 answers, 550 pieces/s, 11.45 answers/s
+80640/98220 answers, 549 pieces/s, 11.44 answers/s
+81408/98220 answers, 548 pieces/s, 11.43 answers/s
+82176/98220 answers, 548 pieces/s, 11.42 answers/s
+82944/98220 answers, 548 pieces/s, 11.42 answers/s
+83712/98220 answers, 548 pieces/s, 11.41 answers/s
+84480/98220 answers, 547 pieces/s, 11.40 answers/s
+85248/98220 answers, 547 pieces/s, 11.39 answers/s
+86016/98220 answers, 546 pieces/s, 11.38 answers/s
+86784/98220 answers, 545 pieces/s, 11.36 answers/s
+87552/98220 answers, 544 pieces/s, 11.34 answers/s
+88320/98220 answers, 544 pieces/s, 11.34 answers/s
+89088/98220 answers, 544 pieces/s, 11.33 answers/s
+89856/98220 answers, 543 pieces/s, 11.31 answers/s
+90624/98220 answers, 543 pieces/s, 11.31 answers/s
+91392/98220 answers, 542 pieces/s, 11.30 answers/s
+92160/98220 answers, 542 pieces/s, 11.30 answers/s
+92928/98220 answers, 542 pieces/s, 11.30 answers/s
+93696/98220 answers, 542 pieces/s, 11.30 answers/s
+94464/98220 answers, 542 pieces/s, 11.30 answers/s
+95232/98220 answers, 542 pieces/s, 11.30 answers/s
+96000/98220 answers, 542 pieces/s, 11.29 answers/s
+96768/98220 answers, 542 pieces/s, 11.28 answers/s
+97536/98220 answers, 541 pieces/s, 11.28 answers/s
+98220/98220 answers, 541 pieces/s, 11.27 answers/s
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L53-match_things-trial.jsonl (98220 answers written, 0 were there)
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L53-match_things-trial.units.jsonl (ranked as match_things is read: every push counted, each word against the controls' mean, each answer's own question's unpushed words left out)
+written in /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk: layer 53; not read here (read.sh)
+=== L53-match_things-trial.jsonl (layer 53, counted from 0): PASS
+pass  N1 whole
+pass  N3 the neurons the controls cover (995 of 1022 covered, 97.4%; at least 50%)
+reported, the lower dose alone (-2.24,2.24): mass_c 0.6565, mass_c_res 0.6964, rep_AB 0.5361, rep_BA 0.5505, mass_B 0.6314
+reported, the upper dose alone (-2.42,2.42): mass_c 0.7449, mass_c_res 0.6657, rep_AB 0.5454, rep_BA 0.5608, mass_B 0.7074
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.7406, mass_c_res 0.6544, rep_AB 0.5563, rep_BA 0.5296, mass_B 0.7325
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.7666, mass_c_res 0.7066, rep_AB 0.5651, rep_BA 0.5649, mass_B 0.7195
+FAIL  N2 the lower dose alone, G1 to G4 (-2.24,2.24)
+== 2026-11-18T18:55:17Z layer 53 (up): pass
+== 2026-11-18T18:55:17Z layer 29 (down): the trial
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 14427.32it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 26131.94it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:01<1:04:18,  1.92s/it]Loading weights:   0%|          | 3/2009 [00:04<43:38,  1.31s/it]  Loading weights:   1%|          | 22/2009 [00:04<04:06,  8.07it/s]Loading weights:   2%|▏         | 32/2009 [00:04<02:42, 12.16it/s]Loading weights:   3%|▎         | 66/2009 [00:04<00:57, 33.73it/s]Loading weights:   4%|▍         | 83/2009 [00:04<00:44, 43.72it/s]Loading weights:   5%|▍         | 98/2009 [00:04<00:39, 48.14it/s]Loading weights:   6%|▌         | 121/2009 [00:05<00:27, 68.90it/s]Loading weights:   7%|▋         | 139/2009 [00:05<00:22, 83.69it/s]Loading weights:   8%|▊         | 162/2009 [00:05<00:17, 103.25it/s]Loading weights:   9%|▉         | 179/2009 [00:05<00:16, 109.96it/s]Loading weights:  10%|█         | 201/2009 [00:05<00:13, 130.67it/s]Loading weights:  11%|█▏        | 227/2009 [00:05<00:11, 151.94it/s]Loading weights:  12%|█▏        | 246/2009 [00:05<00:13, 130.09it/s]Loading weights:  13%|█▎        | 262/2009 [00:05<00:14, 116.80it/s]Loading weights:  14%|█▍        | 284/2009 [00:06<00:12, 137.79it/s]Loading weights:  15%|█▌        | 306/2009 [00:06<00:10, 156.33it/s]Loading weights:  16%|█▌        | 324/2009 [00:06<00:12, 139.35it/s]Loading weights:  17%|█▋        | 340/2009 [00:06<00:14, 111.78it/s]Loading weights:  18%|█▊        | 360/2009 [00:06<00:12, 128.26it/s]Loading weights:  19%|█▊        | 375/2009 [00:06<00:13, 125.66it/s]Loading weights:  19%|█▉        | 389/2009 [00:06<00:14, 113.71it/s]Loading weights:  20%|██        | 406/2009 [00:07<00:12, 124.67it/s]Loading weights:  21%|██        | 420/2009 [00:07<00:14, 112.73it/s]Loading weights:  22%|██▏       | 448/2009 [00:07<00:10, 147.93it/s]Loading weights:  23%|██▎       | 471/2009 [00:07<00:10, 140.97it/s]Loading weights:  25%|██▍       | 502/2009 [00:07<00:09, 166.44it/s]Loading weights:  26%|██▌       | 520/2009 [00:07<00:08, 167.07it/s]Loading weights:  27%|██▋       | 538/2009 [00:07<00:11, 133.02it/s]Loading weights:  28%|██▊       | 557/2009 [00:08<00:11, 126.14it/s]Loading weights:  29%|██▉       | 583/2009 [00:08<00:11, 119.38it/s]Loading weights:  31%|███       | 613/2009 [00:08<00:09, 142.00it/s]Loading weights:  31%|███▏      | 629/2009 [00:08<00:12, 110.51it/s]Loading weights:  32%|███▏      | 642/2009 [00:08<00:12, 113.70it/s]Loading weights:  33%|███▎      | 662/2009 [00:09<00:11, 121.84it/s]Loading weights:  34%|███▎      | 676/2009 [00:09<00:13, 98.43it/s] Loading weights:  35%|███▍      | 699/2009 [00:09<00:12, 109.02it/s]Loading weights:  36%|███▌      | 715/2009 [00:09<00:12, 103.52it/s]Loading weights:  36%|███▌      | 727/2009 [00:09<00:12, 105.58it/s]Loading weights:  37%|███▋      | 753/2009 [00:09<00:09, 131.77it/s]Loading weights:  38%|███▊      | 773/2009 [00:09<00:08, 137.46it/s]Loading weights:  39%|███▉      | 791/2009 [00:10<00:08, 147.16it/s]Loading weights:  40%|████      | 807/2009 [00:10<00:10, 119.46it/s]Loading weights:  41%|████      | 821/2009 [00:10<00:10, 118.30it/s]Loading weights:  42%|████▏     | 834/2009 [00:10<00:10, 110.20it/s]Loading weights:  43%|████▎     | 859/2009 [00:10<00:08, 135.71it/s]Loading weights:  44%|████▎     | 874/2009 [00:10<00:09, 124.64it/s]Loading weights:  44%|████▍     | 888/2009 [00:10<00:09, 122.67it/s]Loading weights:  45%|████▍     | 901/2009 [00:11<00:09, 116.92it/s]Loading weights:  46%|████▌     | 916/2009 [00:11<00:08, 122.65it/s]Loading weights:  47%|████▋     | 938/2009 [00:11<00:07, 147.02it/s]Loading weights:  47%|████▋     | 954/2009 [00:11<00:08, 124.80it/s]Loading weights:  48%|████▊     | 968/2009 [00:11<00:08, 123.15it/s]Loading weights:  49%|████▉     | 981/2009 [00:11<00:09, 110.25it/s]Loading weights:  50%|████▉     | 995/2009 [00:12<00:13, 77.48it/s] Loading weights:  51%|█████     | 1024/2009 [00:12<00:08, 112.67it/s]Loading weights:  52%|█████▏    | 1040/2009 [00:12<00:08, 120.68it/s]Loading weights:  53%|█████▎    | 1055/2009 [00:12<00:08, 117.41it/s]Loading weights:  54%|█████▎    | 1076/2009 [00:12<00:10, 92.54it/s] Loading weights:  55%|█████▌    | 1108/2009 [00:12<00:06, 131.93it/s]Loading weights:  56%|█████▌    | 1127/2009 [00:12<00:06, 143.26it/s]Loading weights:  57%|█████▋    | 1145/2009 [00:13<00:06, 132.62it/s]Loading weights:  58%|█████▊    | 1161/2009 [00:13<00:06, 130.70it/s]Loading weights:  59%|█████▊    | 1176/2009 [00:13<00:06, 126.24it/s]Loading weights:  60%|█████▉    | 1201/2009 [00:13<00:05, 154.55it/s]Loading weights:  61%|██████    | 1220/2009 [00:13<00:05, 137.05it/s]Loading weights:  62%|██████▏   | 1245/2009 [00:13<00:04, 161.51it/s]Loading weights:  63%|██████▎   | 1263/2009 [00:13<00:04, 162.85it/s]Loading weights:  64%|██████▍   | 1281/2009 [00:13<00:04, 149.29it/s]Loading weights:  65%|██████▍   | 1301/2009 [00:14<00:05, 139.30it/s]Loading weights:  66%|██████▌   | 1321/2009 [00:14<00:04, 143.99it/s]Loading weights:  67%|██████▋   | 1337/2009 [00:14<00:07, 95.24it/s] Loading weights:  67%|██████▋   | 1349/2009 [00:14<00:06, 96.73it/s]Loading weights:  68%|██████▊   | 1376/2009 [00:14<00:04, 130.88it/s]Loading weights:  69%|██████▉   | 1392/2009 [00:14<00:05, 121.07it/s]Loading weights:  70%|███████   | 1410/2009 [00:15<00:06, 96.84it/s] Loading weights:  71%|███████▏  | 1433/2009 [00:15<00:04, 119.47it/s]Loading weights:  72%|███████▏  | 1448/2009 [00:15<00:05, 110.44it/s]Loading weights:  73%|███████▎  | 1461/2009 [00:15<00:05, 105.55it/s]Loading weights:  73%|███████▎  | 1473/2009 [00:15<00:04, 107.76it/s]Loading weights:  74%|███████▍  | 1485/2009 [00:15<00:04, 107.12it/s]Loading weights:  75%|███████▍  | 1497/2009 [00:16<00:04, 108.39it/s]Loading weights:  76%|███████▌  | 1519/2009 [00:16<00:03, 135.67it/s]Loading weights:  77%|███████▋  | 1542/2009 [00:16<00:02, 157.76it/s]Loading weights:  78%|███████▊  | 1559/2009 [00:16<00:03, 115.80it/s]Loading weights:  79%|███████▊  | 1581/2009 [00:16<00:03, 119.36it/s]Loading weights:  80%|███████▉  | 1602/2009 [00:16<00:02, 137.05it/s]Loading weights:  81%|████████  | 1619/2009 [00:16<00:02, 138.10it/s]Loading weights:  81%|████████▏ | 1637/2009 [00:16<00:02, 141.99it/s]Loading weights:  83%|████████▎ | 1677/2009 [00:17<00:01, 202.06it/s]Loading weights:  86%|████████▌ | 1722/2009 [00:17<00:01, 264.15it/s]Loading weights:  89%|████████▉ | 1795/2009 [00:17<00:00, 373.86it/s]Loading weights:  91%|█████████▏| 1834/2009 [00:17<00:00, 359.67it/s]Loading weights:  94%|█████████▍| 1886/2009 [00:17<00:00, 338.18it/s]Loading weights:  96%|█████████▋| 1936/2009 [00:17<00:00, 367.45it/s]Loading weights: 100%|██████████| 2009/2009 [00:17<00:00, 113.08it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 4.42 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 29: 1022 neurons + 1024 controls, 98220 answers to write (0 already written), push unit each neuron's write ceiling, p50 239.36 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+768/98220 answers, 325 pieces/s, 6.76 answers/s
+1536/98220 answers, 385 pieces/s, 8.07 answers/s
+2304/98220 answers, 424 pieces/s, 8.86 answers/s
+3072/98220 answers, 447 pieces/s, 9.34 answers/s
+3840/98220 answers, 461 pieces/s, 9.63 answers/s
+4608/98220 answers, 471 pieces/s, 9.82 answers/s
+5376/98220 answers, 475 pieces/s, 9.92 answers/s
+6144/98220 answers, 476 pieces/s, 9.95 answers/s
+6912/98220 answers, 480 pieces/s, 10.02 answers/s
+7680/98220 answers, 484 pieces/s, 10.10 answers/s
+8448/98220 answers, 486 pieces/s, 10.15 answers/s
+9216/98220 answers, 488 pieces/s, 10.20 answers/s
+9984/98220 answers, 492 pieces/s, 10.26 answers/s
+10752/98220 answers, 493 pieces/s, 10.29 answers/s
+11520/98220 answers, 495 pieces/s, 10.33 answers/s
+12288/98220 answers, 495 pieces/s, 10.34 answers/s
+13056/98220 answers, 496 pieces/s, 10.35 answers/s
+13824/98220 answers, 496 pieces/s, 10.36 answers/s
+14592/98220 answers, 498 pieces/s, 10.39 answers/s
+15360/98220 answers, 500 pieces/s, 10.43 answers/s
+16128/98220 answers, 502 pieces/s, 10.48 answers/s
+16896/98220 answers, 504 pieces/s, 10.52 answers/s
+17664/98220 answers, 506 pieces/s, 10.55 answers/s
+18432/98220 answers, 507 pieces/s, 10.58 answers/s
+19200/98220 answers, 508 pieces/s, 10.59 answers/s
+19968/98220 answers, 508 pieces/s, 10.61 answers/s
+20736/98220 answers, 509 pieces/s, 10.62 answers/s
+21504/98220 answers, 509 pieces/s, 10.62 answers/s
+22272/98220 answers, 509 pieces/s, 10.62 answers/s
+23040/98220 answers, 509 pieces/s, 10.63 answers/s
+23808/98220 answers, 509 pieces/s, 10.62 answers/s
+24576/98220 answers, 509 pieces/s, 10.63 answers/s
+25344/98220 answers, 510 pieces/s, 10.64 answers/s
+26112/98220 answers, 508 pieces/s, 10.60 answers/s
+26880/98220 answers, 505 pieces/s, 10.54 answers/s
+27648/98220 answers, 502 pieces/s, 10.47 answers/s
+28416/98220 answers, 498 pieces/s, 10.39 answers/s
+29184/98220 answers, 495 pieces/s, 10.33 answers/s
+29952/98220 answers, 493 pieces/s, 10.28 answers/s
+30720/98220 answers, 491 pieces/s, 10.25 answers/s
+31488/98220 answers, 490 pieces/s, 10.23 answers/s
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/scripts/census_run.py", line 371, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/scripts/census_run.py", line 328, in main
+    res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2472, in take_census
+    recs = write_batch([all_jobs[i] for i in miss])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2222, in write_batch
+    got = write_census_batch(rt, layer, prompt_ids[bj[0]["prompt"]], delta, max_new=max_new, stop_ids=stop, top_k=top_k,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2090, in write_census_batch
+    for st in ao.write_rows(language_model(rt.hf_model), rt.lm_head_weight, [list(prompt_ids)] * B, iv, max_new=max_new,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 61, in generator_context
+    response = gen.send(request)
+               ^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/atlas_ops.py", line 614, in write_rows
+    out = lm(input_ids=nxt[:, None], attention_mask=mask, position_ids=pos, past_key_values=cache, use_cache=True)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 1081, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/utils/output_capturing.py", line 287, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1681, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/modeling_layers.py", line 111, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1387, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1242, in forward
+    key_states, value_states = past_key_values.update(key_states, value_states, self.layer_idx)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/cache_utils.py", line 1423, in update
+    keys, values = self.layers[layer_idx].update(key_states, value_states, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/cache_utils.py", line 242, in update
+    full_value_states = torch.cat([self.values, value_states], dim=-2)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: the launch timed out and was terminated
+Search for `cudaErrorLaunchTimeout' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+
+layer 29: the trial stopped: once more
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 12991.64it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 19740.39it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<28:07,  1.19it/s]Loading weights:   0%|          | 3/2009 [00:02<22:53,  1.46it/s]Loading weights:   3%|▎         | 61/2009 [00:02<00:45, 42.95it/s]Loading weights:   4%|▍         | 90/2009 [00:02<00:29, 64.69it/s]Loading weights:   6%|▌         | 119/2009 [00:02<00:20, 90.51it/s]Loading weights:   7%|▋         | 149/2009 [00:02<00:15, 117.51it/s]Loading weights:   9%|▉         | 177/2009 [00:02<00:12, 142.98it/s]Loading weights:  11%|█         | 222/2009 [00:02<00:08, 200.05it/s]Loading weights:  13%|█▎        | 254/2009 [00:02<00:09, 194.41it/s]Loading weights:  14%|█▍        | 282/2009 [00:03<00:08, 206.02it/s]Loading weights:  16%|█▌        | 317/2009 [00:03<00:07, 234.70it/s]Loading weights:  17%|█▋        | 347/2009 [00:03<00:06, 250.31it/s]Loading weights:  19%|█▉        | 377/2009 [00:03<00:08, 202.83it/s]Loading weights:  20%|██        | 402/2009 [00:03<00:08, 198.32it/s]Loading weights:  21%|██        | 426/2009 [00:03<00:08, 193.97it/s]Loading weights:  22%|██▏       | 451/2009 [00:03<00:07, 206.83it/s]Loading weights:  24%|██▎       | 474/2009 [00:03<00:08, 187.82it/s]Loading weights:  25%|██▍       | 495/2009 [00:04<00:09, 164.60it/s]Loading weights:  26%|██▌       | 514/2009 [00:04<00:09, 165.84it/s]Loading weights:  27%|██▋       | 535/2009 [00:04<00:09, 163.38it/s]Loading weights:  28%|██▊       | 557/2009 [00:04<00:12, 117.33it/s]Loading weights:  29%|██▉       | 578/2009 [00:04<00:10, 133.78it/s]Loading weights:  30%|██▉       | 594/2009 [00:04<00:10, 129.10it/s]Loading weights:  31%|███       | 616/2009 [00:05<00:09, 144.03it/s]Loading weights:  32%|███▏      | 641/2009 [00:05<00:08, 161.39it/s]Loading weights:  33%|███▎      | 659/2009 [00:05<00:10, 129.72it/s]Loading weights:  34%|███▎      | 674/2009 [00:05<00:13, 101.91it/s]Loading weights:  35%|███▍      | 695/2009 [00:05<00:11, 112.35it/s]Loading weights:  36%|███▌      | 722/2009 [00:05<00:09, 137.83it/s]Loading weights:  37%|███▋      | 738/2009 [00:06<00:10, 121.47it/s]Loading weights:  37%|███▋      | 752/2009 [00:06<00:10, 125.06it/s]Loading weights:  38%|███▊      | 770/2009 [00:06<00:09, 136.71it/s]Loading weights:  39%|███▉      | 785/2009 [00:06<00:09, 126.91it/s]Loading weights:  40%|████      | 809/2009 [00:06<00:08, 147.03it/s]Loading weights:  41%|████      | 826/2009 [00:06<00:08, 145.50it/s]Loading weights:  42%|████▏     | 842/2009 [00:06<00:09, 124.57it/s]Loading weights:  43%|████▎     | 859/2009 [00:06<00:08, 133.87it/s]Loading weights:  44%|████▍     | 882/2009 [00:07<00:07, 152.69it/s]Loading weights:  45%|████▍     | 899/2009 [00:07<00:09, 115.94it/s]Loading weights:  46%|████▌     | 915/2009 [00:07<00:09, 115.14it/s]Loading weights:  47%|████▋     | 935/2009 [00:07<00:08, 128.28it/s]Loading weights:  47%|████▋     | 949/2009 [00:07<00:09, 107.42it/s]Loading weights:  48%|████▊     | 971/2009 [00:07<00:08, 128.66it/s]Loading weights:  49%|████▉     | 987/2009 [00:08<00:07, 130.15it/s]Loading weights:  50%|████▉     | 1002/2009 [00:08<00:08, 116.91it/s]Loading weights:  51%|█████     | 1020/2009 [00:08<00:07, 130.31it/s]Loading weights:  52%|█████▏    | 1035/2009 [00:08<00:09, 104.44it/s]Loading weights:  52%|█████▏    | 1050/2009 [00:08<00:09, 101.86it/s]Loading weights:  54%|█████▍    | 1080/2009 [00:08<00:07, 126.02it/s]Loading weights:  54%|█████▍    | 1094/2009 [00:08<00:07, 124.72it/s]Loading weights:  55%|█████▌    | 1107/2009 [00:09<00:07, 122.47it/s]Loading weights:  56%|█████▌    | 1120/2009 [00:09<00:08, 101.86it/s]Loading weights:  57%|█████▋    | 1140/2009 [00:09<00:07, 122.88it/s]Loading weights:  57%|█████▋    | 1154/2009 [00:09<00:06, 126.16it/s]Loading weights:  58%|█████▊    | 1168/2009 [00:09<00:08, 104.42it/s]Loading weights:  59%|█████▉    | 1190/2009 [00:09<00:06, 129.64it/s]Loading weights:  60%|██████    | 1206/2009 [00:09<00:06, 130.59it/s]Loading weights:  61%|██████    | 1221/2009 [00:09<00:06, 129.58it/s]Loading weights:  61%|██████▏   | 1235/2009 [00:10<00:06, 114.16it/s]Loading weights:  62%|██████▏   | 1248/2009 [00:10<00:07, 105.00it/s]Loading weights:  63%|██████▎   | 1262/2009 [00:10<00:06, 110.29it/s]Loading weights:  63%|██████▎   | 1274/2009 [00:10<00:06, 112.17it/s]Loading weights:  64%|██████▍   | 1286/2009 [00:10<00:06, 111.20it/s]Loading weights:  65%|██████▌   | 1307/2009 [00:10<00:05, 126.03it/s]Loading weights:  66%|██████▌   | 1326/2009 [00:10<00:05, 128.43it/s]Loading weights:  67%|██████▋   | 1339/2009 [00:11<00:06, 105.97it/s]Loading weights:  67%|██████▋   | 1353/2009 [00:11<00:06, 105.41it/s]Loading weights:  68%|██████▊   | 1371/2009 [00:11<00:05, 120.55it/s]Loading weights:  69%|██████▉   | 1384/2009 [00:11<00:05, 121.64it/s]Loading weights:  70%|██████▉   | 1402/2009 [00:11<00:04, 136.37it/s]Loading weights:  71%|███████   | 1417/2009 [00:11<00:04, 121.46it/s]Loading weights:  72%|███████▏  | 1438/2009 [00:11<00:04, 142.55it/s]Loading weights:  72%|███████▏  | 1454/2009 [00:11<00:04, 122.06it/s]Loading weights:  73%|███████▎  | 1468/2009 [00:12<00:04, 122.50it/s]Loading weights:  74%|███████▍  | 1483/2009 [00:12<00:04, 127.96it/s]Loading weights:  75%|███████▍  | 1497/2009 [00:12<00:04, 114.26it/s]Loading weights:  76%|███████▌  | 1522/2009 [00:12<00:03, 143.81it/s]Loading weights:  77%|███████▋  | 1547/2009 [00:12<00:02, 154.94it/s]Loading weights:  78%|███████▊  | 1564/2009 [00:12<00:02, 150.40it/s]Loading weights:  79%|███████▊  | 1580/2009 [00:12<00:03, 121.13it/s]Loading weights:  79%|███████▉  | 1595/2009 [00:13<00:03, 125.35it/s]Loading weights:  80%|████████  | 1609/2009 [00:13<00:03, 115.36it/s]Loading weights:  81%|████████  | 1631/2009 [00:13<00:02, 139.12it/s]Loading weights:  82%|████████▏ | 1652/2009 [00:13<00:02, 152.88it/s]Loading weights:  86%|████████▌ | 1721/2009 [00:13<00:01, 283.72it/s]Loading weights:  88%|████████▊ | 1771/2009 [00:13<00:00, 332.00it/s]Loading weights:  92%|█████████▏| 1845/2009 [00:13<00:00, 441.36it/s]Loading weights:  94%|█████████▍| 1892/2009 [00:13<00:00, 401.16it/s]Loading weights:  96%|█████████▋| 1935/2009 [00:13<00:00, 401.73it/s]Loading weights:  99%|█████████▊| 1979/2009 [00:14<00:00, 391.20it/s]Loading weights: 100%|██████████| 2009/2009 [00:14<00:00, 142.40it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 3.85 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 29: 1022 neurons + 1024 controls, 66732 answers to write (31488 already written), push unit each neuron's write ceiling, p50 239.36 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+32256/98220 answers, 510 pieces/s, 10.62 answers/s
+33024/98220 answers, 503 pieces/s, 10.49 answers/s
+33792/98220 answers, 493 pieces/s, 10.28 answers/s
+34560/98220 answers, 490 pieces/s, 10.21 answers/s
+35328/98220 answers, 493 pieces/s, 10.30 answers/s
+36096/98220 answers, 493 pieces/s, 10.31 answers/s
+36864/98220 answers, 497 pieces/s, 10.38 answers/s
+37632/98220 answers, 497 pieces/s, 10.38 answers/s
+38400/98220 answers, 497 pieces/s, 10.37 answers/s
+39168/98220 answers, 497 pieces/s, 10.38 answers/s
+39936/98220 answers, 493 pieces/s, 10.30 answers/s
+40704/98220 answers, 489 pieces/s, 10.22 answers/s
+41472/98220 answers, 489 pieces/s, 10.21 answers/s
+42240/98220 answers, 489 pieces/s, 10.21 answers/s
+43008/98220 answers, 489 pieces/s, 10.20 answers/s
+43776/98220 answers, 489 pieces/s, 10.21 answers/s
+44544/98220 answers, 490 pieces/s, 10.23 answers/s
+45312/98220 answers, 490 pieces/s, 10.24 answers/s
+46080/98220 answers, 492 pieces/s, 10.28 answers/s
+46848/98220 answers, 494 pieces/s, 10.31 answers/s
+47616/98220 answers, 495 pieces/s, 10.34 answers/s
+48384/98220 answers, 496 pieces/s, 10.36 answers/s
+49152/98220 answers, 497 pieces/s, 10.37 answers/s
+49920/98220 answers, 498 pieces/s, 10.39 answers/s
+50688/98220 answers, 499 pieces/s, 10.41 answers/s
+51456/98220 answers, 499 pieces/s, 10.42 answers/s
+52224/98220 answers, 499 pieces/s, 10.42 answers/s
+52992/98220 answers, 499 pieces/s, 10.42 answers/s
+53760/98220 answers, 500 pieces/s, 10.43 answers/s
+54528/98220 answers, 500 pieces/s, 10.45 answers/s
+55296/98220 answers, 501 pieces/s, 10.46 answers/s
+56064/98220 answers, 501 pieces/s, 10.47 answers/s
+56832/98220 answers, 502 pieces/s, 10.49 answers/s
+57600/98220 answers, 502 pieces/s, 10.48 answers/s
+58368/98220 answers, 502 pieces/s, 10.48 answers/s
+59136/98220 answers, 502 pieces/s, 10.48 answers/s
+59904/98220 answers, 502 pieces/s, 10.49 answers/s
+60672/98220 answers, 502 pieces/s, 10.49 answers/s
+61440/98220 answers, 502 pieces/s, 10.49 answers/s
+62208/98220 answers, 502 pieces/s, 10.49 answers/s
+62976/98220 answers, 502 pieces/s, 10.49 answers/s
+63744/98220 answers, 503 pieces/s, 10.50 answers/s
+64512/98220 answers, 503 pieces/s, 10.50 answers/s
+65280/98220 answers, 503 pieces/s, 10.51 answers/s
+66048/98220 answers, 503 pieces/s, 10.51 answers/s
+66816/98220 answers, 503 pieces/s, 10.51 answers/s
+67584/98220 answers, 503 pieces/s, 10.51 answers/s
+68352/98220 answers, 503 pieces/s, 10.50 answers/s
+69120/98220 answers, 503 pieces/s, 10.50 answers/s
+69888/98220 answers, 502 pieces/s, 10.49 answers/s
+70656/98220 answers, 503 pieces/s, 10.50 answers/s
+71424/98220 answers, 503 pieces/s, 10.50 answers/s
+72192/98220 answers, 503 pieces/s, 10.50 answers/s
+72960/98220 answers, 503 pieces/s, 10.50 answers/s
+73728/98220 answers, 503 pieces/s, 10.50 answers/s
+74496/98220 answers, 503 pieces/s, 10.50 answers/s
+75264/98220 answers, 502 pieces/s, 10.49 answers/s
+76032/98220 answers, 502 pieces/s, 10.49 answers/s
+76800/98220 answers, 502 pieces/s, 10.48 answers/s
+77568/98220 answers, 502 pieces/s, 10.48 answers/s
+78336/98220 answers, 502 pieces/s, 10.48 answers/s
+79104/98220 answers, 502 pieces/s, 10.48 answers/s
+79872/98220 answers, 502 pieces/s, 10.48 answers/s
+80640/98220 answers, 502 pieces/s, 10.48 answers/s
+81408/98220 answers, 502 pieces/s, 10.48 answers/s
+82176/98220 answers, 502 pieces/s, 10.48 answers/s
+82944/98220 answers, 502 pieces/s, 10.48 answers/s
+83712/98220 answers, 502 pieces/s, 10.47 answers/s
+84480/98220 answers, 502 pieces/s, 10.48 answers/s
+85248/98220 answers, 502 pieces/s, 10.49 answers/s
+86016/98220 answers, 502 pieces/s, 10.49 answers/s
+86784/98220 answers, 502 pieces/s, 10.49 answers/s
+87552/98220 answers, 502 pieces/s, 10.49 answers/s
+88320/98220 answers, 502 pieces/s, 10.49 answers/s
+89088/98220 answers, 503 pieces/s, 10.49 answers/s
+89856/98220 answers, 503 pieces/s, 10.49 answers/s
+90624/98220 answers, 503 pieces/s, 10.50 answers/s
+91392/98220 answers, 503 pieces/s, 10.50 answers/s
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/scripts/census_run.py", line 371, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/scripts/census_run.py", line 328, in main
+    res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2472, in take_census
+    recs = write_batch([all_jobs[i] for i in miss])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2222, in write_batch
+    got = write_census_batch(rt, layer, prompt_ids[bj[0]["prompt"]], delta, max_new=max_new, stop_ids=stop, top_k=top_k,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2090, in write_census_batch
+    for st in ao.write_rows(language_model(rt.hf_model), rt.lm_head_weight, [list(prompt_ids)] * B, iv, max_new=max_new,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 61, in generator_context
+    response = gen.send(request)
+               ^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/atlas_ops.py", line 614, in write_rows
+    out = lm(input_ids=nxt[:, None], attention_mask=mask, position_ids=pos, past_key_values=cache, use_cache=True)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 1081, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/utils/output_capturing.py", line 287, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1681, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/modeling_layers.py", line 111, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1387, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1218, in forward
+    query_states = self.q_norm(query_states)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 220, in forward
+    normed_output = self._norm(hidden_states.float())
+                               ^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: the launch timed out and was terminated
+Search for `cudaErrorLaunchTimeout' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+
+layer 29: the trial stopped twice (run this again to continue it)
+== 2026-11-18T21:35:18Z walk.sh begun again after layer 29's second stop (Xid 8 at 21:24:46Z, 91,904 answers written)
+== 2026-11-18T21:35:18Z layer 53 (up): pass
+== 2026-11-18T21:35:18Z layer 29 (down): the trial
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 17307.59it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 28590.08it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<27:35,  1.21it/s]Loading weights:   0%|          | 3/2009 [00:01<19:44,  1.69it/s]Loading weights:   2%|▏         | 41/2009 [00:01<01:00, 32.78it/s]Loading weights:   3%|▎         | 68/2009 [00:02<00:34, 56.66it/s]Loading weights:   5%|▍         | 95/2009 [00:02<00:22, 83.69it/s]Loading weights:   7%|▋         | 147/2009 [00:02<00:12, 151.01it/s]Loading weights:   9%|▉         | 180/2009 [00:02<00:10, 177.05it/s]Loading weights:  11%|█         | 226/2009 [00:02<00:07, 233.15it/s]Loading weights:  13%|█▎        | 262/2009 [00:02<00:07, 225.82it/s]Loading weights:  16%|█▌        | 314/2009 [00:02<00:05, 284.49it/s]Loading weights:  18%|█▊        | 359/2009 [00:02<00:05, 319.70it/s]Loading weights:  20%|█▉        | 398/2009 [00:03<00:06, 230.69it/s]Loading weights:  21%|██▏       | 429/2009 [00:03<00:06, 243.28it/s]Loading weights:  23%|██▎       | 460/2009 [00:03<00:06, 250.80it/s]Loading weights:  24%|██▍       | 490/2009 [00:03<00:06, 229.53it/s]Loading weights:  26%|██▌       | 517/2009 [00:03<00:07, 196.39it/s]Loading weights:  27%|██▋       | 540/2009 [00:03<00:07, 195.11it/s]Loading weights:  28%|██▊       | 563/2009 [00:03<00:07, 201.59it/s]Loading weights:  29%|██▉       | 591/2009 [00:04<00:07, 198.20it/s]Loading weights:  31%|███       | 613/2009 [00:04<00:07, 184.84it/s]Loading weights:  32%|███▏      | 633/2009 [00:04<00:07, 172.71it/s]Loading weights:  33%|███▎      | 657/2009 [00:04<00:07, 174.60it/s]Loading weights:  34%|███▎      | 675/2009 [00:04<00:07, 168.80it/s]Loading weights:  35%|███▍      | 700/2009 [00:04<00:07, 175.83it/s]Loading weights:  36%|███▌      | 722/2009 [00:04<00:07, 183.11it/s]Loading weights:  37%|███▋      | 741/2009 [00:05<00:08, 151.24it/s]Loading weights:  38%|███▊      | 758/2009 [00:05<00:08, 143.31it/s]Loading weights:  39%|███▉      | 779/2009 [00:05<00:08, 152.26it/s]Loading weights:  40%|████      | 808/2009 [00:05<00:06, 181.60it/s]Loading weights:  41%|████▏     | 829/2009 [00:05<00:06, 179.52it/s]Loading weights:  42%|████▏     | 848/2009 [00:05<00:06, 173.17it/s]Loading weights:  43%|████▎     | 866/2009 [00:05<00:08, 134.67it/s]Loading weights:  44%|████▍     | 890/2009 [00:05<00:07, 156.97it/s]Loading weights:  45%|████▌     | 914/2009 [00:06<00:06, 166.66it/s]Loading weights:  47%|████▋     | 942/2009 [00:06<00:05, 181.00it/s]Loading weights:  48%|████▊     | 966/2009 [00:06<00:05, 195.09it/s]Loading weights:  49%|████▉     | 987/2009 [00:06<00:05, 187.38it/s]Loading weights:  50%|█████     | 1007/2009 [00:06<00:05, 189.36it/s]Loading weights:  51%|█████▏    | 1030/2009 [00:06<00:04, 195.98it/s]Loading weights:  53%|█████▎    | 1058/2009 [00:06<00:04, 214.38it/s]Loading weights:  54%|█████▍    | 1083/2009 [00:06<00:04, 220.10it/s]Loading weights:  55%|█████▌    | 1111/2009 [00:06<00:03, 228.77it/s]Loading weights:  57%|█████▋    | 1136/2009 [00:07<00:03, 221.44it/s]Loading weights:  58%|█████▊    | 1159/2009 [00:07<00:04, 190.20it/s]Loading weights:  59%|█████▊    | 1179/2009 [00:07<00:04, 170.90it/s]Loading weights:  60%|█████▉    | 1197/2009 [00:07<00:05, 151.65it/s]Loading weights:  61%|██████    | 1220/2009 [00:07<00:04, 163.84it/s]Loading weights:  62%|██████▏   | 1240/2009 [00:07<00:04, 172.16it/s]Loading weights:  63%|██████▎   | 1258/2009 [00:07<00:04, 163.60it/s]Loading weights:  64%|██████▎   | 1279/2009 [00:08<00:04, 172.16it/s]Loading weights:  65%|██████▍   | 1300/2009 [00:08<00:03, 177.68it/s]Loading weights:  66%|██████▌   | 1319/2009 [00:08<00:04, 146.98it/s]Loading weights:  66%|██████▋   | 1335/2009 [00:08<00:05, 129.74it/s]Loading weights:  68%|██████▊   | 1360/2009 [00:08<00:04, 147.77it/s]Loading weights:  69%|██████▉   | 1384/2009 [00:08<00:03, 160.45it/s]Loading weights:  70%|███████   | 1410/2009 [00:08<00:03, 181.81it/s]Loading weights:  71%|███████   | 1430/2009 [00:08<00:03, 174.11it/s]Loading weights:  72%|███████▏  | 1449/2009 [00:09<00:03, 157.22it/s]Loading weights:  73%|███████▎  | 1469/2009 [00:09<00:03, 157.87it/s]Loading weights:  74%|███████▍  | 1486/2009 [00:09<00:03, 157.62it/s]Loading weights:  75%|███████▍  | 1503/2009 [00:09<00:03, 151.01it/s]Loading weights:  76%|███████▋  | 1535/2009 [00:09<00:02, 193.29it/s]Loading weights:  79%|███████▊  | 1580/2009 [00:09<00:01, 260.88it/s]Loading weights:  81%|████████  | 1631/2009 [00:09<00:01, 325.82it/s]Loading weights:  89%|████████▉ | 1789/2009 [00:09<00:00, 675.96it/s]Loading weights: 100%|██████████| 2009/2009 [00:09<00:00, 202.08it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 2.8 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 29: 1022 neurons + 1024 controls, 6316 answers to write (91904 already written), push unit each neuron's write ceiling, p50 239.36 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+92160/98220 answers, 511 pieces/s, 10.65 answers/s
+92928/98220 answers, 513 pieces/s, 10.74 answers/s
+93696/98220 answers, 508 pieces/s, 10.61 answers/s
+94464/98220 answers, 505 pieces/s, 10.55 answers/s
+95232/98220 answers, 509 pieces/s, 10.62 answers/s
+96000/98220 answers, 509 pieces/s, 10.62 answers/s
+96768/98220 answers, 508 pieces/s, 10.60 answers/s
+97536/98220 answers, 508 pieces/s, 10.60 answers/s
+98220/98220 answers, 498 pieces/s, 10.39 answers/s
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L29-match_things-trial.jsonl (6316 answers written, 91904 were there)
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L29-match_things-trial.units.jsonl (ranked as match_things is read: every push counted, each word against the controls' mean, each answer's own question's unpushed words left out)
+written in /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk: layer 29; not read here (read.sh)
+=== L29-match_things-trial.jsonl (layer 29, counted from 0): FAIL
+FAIL  N1 whole
+FAIL  N3 the neurons the controls cover (990 of 1022 covered, 96.9%; at least 50%)
+reported, the lower dose alone (-2.1,2.1): mass_c 0.5688, mass_c_res 0.5915, rep_AB 0.5299, rep_BA 0.5161, mass_B 0.5809
+reported, the upper dose alone (-2.32,2.32): mass_c 0.5319, mass_c_res 0.5691, rep_AB 0.5123, rep_BA 0.5142, mass_B 0.5499
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.5775, mass_c_res 0.5829, rep_AB 0.5179, rep_BA 0.5174, mass_B 0.6023
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.5721, mass_c_res 0.5963, rep_AB 0.5104, rep_BA 0.5217, mass_B 0.5976
+FAIL  N2 the lower dose alone, G1 to G4 (-2.1,2.1): decides nothing, the layer failed N1 or N3
+== 2026-11-18T21:51:55Z layer 29 (down): fail
+the down arm stops at layer 29, which did not pass
+== 2026-11-18T21:51:55Z layer 54 (up): the trial
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 14480.53it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 34910.67it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<10:57,  3.05it/s]Loading weights:   0%|          | 3/2009 [00:00<09:46,  3.42it/s]Loading weights:   1%|▏         | 26/2009 [00:00<00:52, 37.68it/s]Loading weights:   4%|▍         | 90/2009 [00:01<00:13, 143.88it/s]Loading weights:   7%|▋         | 149/2009 [00:01<00:08, 231.91it/s]Loading weights:  10%|█         | 205/2009 [00:01<00:05, 302.20it/s]Loading weights:  13%|█▎        | 261/2009 [00:01<00:04, 353.87it/s]Loading weights:  15%|█▌        | 308/2009 [00:01<00:05, 335.33it/s]Loading weights:  18%|█▊        | 363/2009 [00:01<00:04, 379.75it/s]Loading weights:  21%|██        | 423/2009 [00:01<00:03, 429.45it/s]Loading weights:  24%|██▍       | 491/2009 [00:01<00:03, 482.24it/s]Loading weights:  27%|██▋       | 549/2009 [00:02<00:02, 501.93it/s]Loading weights:  30%|███       | 603/2009 [00:02<00:03, 454.05it/s]Loading weights:  33%|███▎      | 661/2009 [00:02<00:02, 485.39it/s]Loading weights:  35%|███▌      | 713/2009 [00:02<00:02, 488.92it/s]Loading weights:  39%|███▊      | 778/2009 [00:02<00:02, 516.77it/s]Loading weights:  41%|████▏     | 831/2009 [00:02<00:02, 471.02it/s]Loading weights:  44%|████▍     | 880/2009 [00:02<00:02, 458.04it/s]Loading weights:  47%|████▋     | 943/2009 [00:02<00:02, 476.54it/s]Loading weights:  51%|█████     | 1016/2009 [00:02<00:01, 542.01it/s]Loading weights:  54%|█████▍    | 1086/2009 [00:03<00:01, 579.94it/s]Loading weights:  57%|█████▋    | 1146/2009 [00:03<00:01, 515.41it/s]Loading weights:  60%|█████▉    | 1200/2009 [00:03<00:01, 508.88it/s]Loading weights:  63%|██████▎   | 1266/2009 [00:03<00:01, 548.75it/s]Loading weights:  66%|██████▌   | 1329/2009 [00:03<00:01, 566.93it/s]Loading weights:  69%|██████▉   | 1388/2009 [00:03<00:01, 564.70it/s]Loading weights:  72%|███████▏  | 1446/2009 [00:03<00:01, 440.44it/s]Loading weights:  75%|███████▌  | 1511/2009 [00:03<00:01, 477.21it/s]Loading weights:  79%|███████▊  | 1578/2009 [00:04<00:00, 521.26it/s]Loading weights:  82%|████████▏ | 1647/2009 [00:04<00:00, 559.61it/s]Loading weights: 100%|██████████| 2009/2009 [00:04<00:00, 481.94it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 2.61 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 54: 1022 neurons + 1024 controls, 98220 answers to write (0 already written), push unit each neuron's write ceiling, p50 90.73 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+768/98220 answers, 341 pieces/s, 7.10 answers/s
+1536/98220 answers, 421 pieces/s, 8.77 answers/s
+2304/98220 answers, 456 pieces/s, 9.51 answers/s
+3072/98220 answers, 476 pieces/s, 9.91 answers/s
+3840/98220 answers, 489 pieces/s, 10.19 answers/s
+4608/98220 answers, 497 pieces/s, 10.35 answers/s
+5376/98220 answers, 503 pieces/s, 10.48 answers/s
+6144/98220 answers, 507 pieces/s, 10.56 answers/s
+6912/98220 answers, 511 pieces/s, 10.64 answers/s
+7680/98220 answers, 511 pieces/s, 10.65 answers/s
+8448/98220 answers, 509 pieces/s, 10.60 answers/s
+9216/98220 answers, 508 pieces/s, 10.58 answers/s
+9984/98220 answers, 508 pieces/s, 10.58 answers/s
+10752/98220 answers, 507 pieces/s, 10.56 answers/s
+11520/98220 answers, 507 pieces/s, 10.56 answers/s
+12288/98220 answers, 507 pieces/s, 10.55 answers/s
+13056/98220 answers, 508 pieces/s, 10.58 answers/s
+13824/98220 answers, 509 pieces/s, 10.61 answers/s
+14592/98220 answers, 510 pieces/s, 10.63 answers/s
+15360/98220 answers, 510 pieces/s, 10.63 answers/s
+16128/98220 answers, 510 pieces/s, 10.62 answers/s
+16896/98220 answers, 510 pieces/s, 10.62 answers/s
+17664/98220 answers, 509 pieces/s, 10.61 answers/s
+18432/98220 answers, 508 pieces/s, 10.59 answers/s
+19200/98220 answers, 508 pieces/s, 10.58 answers/s
+19968/98220 answers, 508 pieces/s, 10.57 answers/s
+20736/98220 answers, 507 pieces/s, 10.57 answers/s
+21504/98220 answers, 508 pieces/s, 10.57 answers/s
+22272/98220 answers, 508 pieces/s, 10.59 answers/s
+23040/98220 answers, 508 pieces/s, 10.59 answers/s
+23808/98220 answers, 509 pieces/s, 10.60 answers/s
+24576/98220 answers, 509 pieces/s, 10.60 answers/s
+25344/98220 answers, 509 pieces/s, 10.60 answers/s
+26112/98220 answers, 508 pieces/s, 10.59 answers/s
+26880/98220 answers, 508 pieces/s, 10.59 answers/s
+27648/98220 answers, 508 pieces/s, 10.59 answers/s
+28416/98220 answers, 508 pieces/s, 10.59 answers/s
+29184/98220 answers, 509 pieces/s, 10.60 answers/s
+29952/98220 answers, 509 pieces/s, 10.60 answers/s
+30720/98220 answers, 509 pieces/s, 10.60 answers/s
+31488/98220 answers, 509 pieces/s, 10.61 answers/s
+32256/98220 answers, 509 pieces/s, 10.61 answers/s
+33024/98220 answers, 510 pieces/s, 10.62 answers/s
+33792/98220 answers, 510 pieces/s, 10.62 answers/s
+34560/98220 answers, 510 pieces/s, 10.63 answers/s
+35328/98220 answers, 510 pieces/s, 10.63 answers/s
+36096/98220 answers, 510 pieces/s, 10.63 answers/s
+36864/98220 answers, 510 pieces/s, 10.62 answers/s
+37632/98220 answers, 509 pieces/s, 10.61 answers/s
+38400/98220 answers, 509 pieces/s, 10.60 answers/s
+39168/98220 answers, 508 pieces/s, 10.59 answers/s
+39936/98220 answers, 508 pieces/s, 10.58 answers/s
+40704/98220 answers, 507 pieces/s, 10.57 answers/s
+41472/98220 answers, 507 pieces/s, 10.57 answers/s
+42240/98220 answers, 507 pieces/s, 10.56 answers/s
+43008/98220 answers, 507 pieces/s, 10.56 answers/s
+43776/98220 answers, 507 pieces/s, 10.55 answers/s
+44544/98220 answers, 506 pieces/s, 10.55 answers/s
+45312/98220 answers, 506 pieces/s, 10.55 answers/s
+46080/98220 answers, 506 pieces/s, 10.54 answers/s
+46848/98220 answers, 506 pieces/s, 10.54 answers/s
+47616/98220 answers, 506 pieces/s, 10.55 answers/s
+48384/98220 answers, 506 pieces/s, 10.54 answers/s
+49152/98220 answers, 506 pieces/s, 10.54 answers/s
+49920/98220 answers, 506 pieces/s, 10.54 answers/s
+50688/98220 answers, 506 pieces/s, 10.53 answers/s
+51456/98220 answers, 505 pieces/s, 10.53 answers/s
+52224/98220 answers, 505 pieces/s, 10.52 answers/s
+52992/98220 answers, 504 pieces/s, 10.51 answers/s
+53760/98220 answers, 504 pieces/s, 10.50 answers/s
+54528/98220 answers, 504 pieces/s, 10.49 answers/s
+55296/98220 answers, 503 pieces/s, 10.48 answers/s
+56064/98220 answers, 503 pieces/s, 10.48 answers/s
+56832/98220 answers, 502 pieces/s, 10.47 answers/s
+57600/98220 answers, 502 pieces/s, 10.45 answers/s
+58368/98220 answers, 501 pieces/s, 10.44 answers/s
+59136/98220 answers, 501 pieces/s, 10.44 answers/s
+59904/98220 answers, 501 pieces/s, 10.44 answers/s
+60672/98220 answers, 501 pieces/s, 10.44 answers/s
+61440/98220 answers, 501 pieces/s, 10.44 answers/s
+62208/98220 answers, 501 pieces/s, 10.44 answers/s
+62976/98220 answers, 501 pieces/s, 10.44 answers/s
+63744/98220 answers, 501 pieces/s, 10.45 answers/s
+64512/98220 answers, 502 pieces/s, 10.45 answers/s
+65280/98220 answers, 502 pieces/s, 10.45 answers/s
+66048/98220 answers, 502 pieces/s, 10.46 answers/s
+66816/98220 answers, 502 pieces/s, 10.46 answers/s
+67584/98220 answers, 502 pieces/s, 10.47 answers/s
+68352/98220 answers, 503 pieces/s, 10.47 answers/s
+69120/98220 answers, 502 pieces/s, 10.47 answers/s
+69888/98220 answers, 502 pieces/s, 10.46 answers/s
+70656/98220 answers, 502 pieces/s, 10.46 answers/s
+71424/98220 answers, 502 pieces/s, 10.46 answers/s
+72192/98220 answers, 502 pieces/s, 10.46 answers/s
+72960/98220 answers, 502 pieces/s, 10.45 answers/s
+73728/98220 answers, 502 pieces/s, 10.45 answers/s
+74496/98220 answers, 502 pieces/s, 10.45 answers/s
+75264/98220 answers, 501 pieces/s, 10.45 answers/s
+76032/98220 answers, 501 pieces/s, 10.45 answers/s
+76800/98220 answers, 501 pieces/s, 10.44 answers/s
+77568/98220 answers, 501 pieces/s, 10.44 answers/s
+78336/98220 answers, 502 pieces/s, 10.45 answers/s
+79104/98220 answers, 502 pieces/s, 10.46 answers/s
+79872/98220 answers, 502 pieces/s, 10.46 answers/s
+80640/98220 answers, 502 pieces/s, 10.47 answers/s
+81408/98220 answers, 503 pieces/s, 10.47 answers/s
+82176/98220 answers, 503 pieces/s, 10.48 answers/s
+82944/98220 answers, 504 pieces/s, 10.49 answers/s
+83712/98220 answers, 504 pieces/s, 10.50 answers/s
+84480/98220 answers, 504 pieces/s, 10.51 answers/s
+85248/98220 answers, 505 pieces/s, 10.51 answers/s
+86016/98220 answers, 505 pieces/s, 10.52 answers/s
+86784/98220 answers, 505 pieces/s, 10.53 answers/s
+87552/98220 answers, 506 pieces/s, 10.54 answers/s
+88320/98220 answers, 506 pieces/s, 10.54 answers/s
+89088/98220 answers, 506 pieces/s, 10.55 answers/s
+89856/98220 answers, 507 pieces/s, 10.56 answers/s
+90624/98220 answers, 507 pieces/s, 10.56 answers/s
+91392/98220 answers, 507 pieces/s, 10.57 answers/s
+92160/98220 answers, 507 pieces/s, 10.57 answers/s
+92928/98220 answers, 508 pieces/s, 10.58 answers/s
+93696/98220 answers, 508 pieces/s, 10.58 answers/s
+94464/98220 answers, 508 pieces/s, 10.58 answers/s
+95232/98220 answers, 508 pieces/s, 10.58 answers/s
+96000/98220 answers, 508 pieces/s, 10.59 answers/s
+96768/98220 answers, 509 pieces/s, 10.60 answers/s
+97536/98220 answers, 509 pieces/s, 10.60 answers/s
+98220/98220 answers, 509 pieces/s, 10.60 answers/s
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54-match_things-trial.jsonl (98220 answers written, 0 were there)
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54-match_things-trial.units.jsonl (ranked as match_things is read: every push counted, each word against the controls' mean, each answer's own question's unpushed words left out)
+written in /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk: layer 54; not read here (read.sh)
+=== L54-match_things-trial.jsonl (layer 54, counted from 0): PASS
+pass  N1 whole
+pass  N3 the neurons the controls cover (975 of 1022 covered, 95.4%; at least 50%)
+reported, the lower dose alone (-2.18,2.18): mass_c 0.645, mass_c_res 0.656, rep_AB 0.5753, rep_BA 0.5827, mass_B 0.597
+reported, the upper dose alone (-2.34,2.34): mass_c 0.7032, mass_c_res 0.6878, rep_AB 0.5929, rep_BA 0.5906, mass_B 0.6625
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.7146, mass_c_res 0.6965, rep_AB 0.6103, rep_BA 0.595, mass_B 0.6909
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.7153, mass_c_res 0.6734, rep_AB 0.5894, rep_BA 0.6209, mass_B 0.6781
+pass  N2 the lower dose alone, G1 to G4 (-2.18,2.18)
+== 2026-11-19T00:30:14Z layer 54 (up): pass
+== 2026-11-19T00:30:14Z layer 55 (up): the trial
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 22920.30it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 39888.31it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<12:24,  2.70it/s]Loading weights:   0%|          | 3/2009 [00:01<11:00,  3.04it/s]Loading weights:   5%|▍         | 93/2009 [00:01<00:15, 126.96it/s]Loading weights:   8%|▊         | 163/2009 [00:01<00:08, 221.30it/s]Loading weights:  11%|█▏        | 230/2009 [00:01<00:05, 303.49it/s]Loading weights:  15%|█▌        | 311/2009 [00:01<00:04, 410.56it/s]Loading weights:  20%|█▉        | 394/2009 [00:01<00:03, 500.84it/s]Loading weights:  24%|██▎       | 476/2009 [00:01<00:02, 568.48it/s]Loading weights:  27%|██▋       | 548/2009 [00:01<00:03, 485.60it/s]Loading weights:  30%|███       | 609/2009 [00:01<00:03, 463.65it/s]Loading weights:  33%|███▎      | 664/2009 [00:02<00:03, 428.22it/s]Loading weights:  35%|███▌      | 713/2009 [00:02<00:03, 416.57it/s]Loading weights:  39%|███▉      | 782/2009 [00:02<00:02, 479.53it/s]Loading weights:  43%|████▎     | 859/2009 [00:02<00:02, 546.53it/s]Loading weights:  46%|████▌     | 928/2009 [00:02<00:01, 583.12it/s]Loading weights:  50%|████▉     | 999/2009 [00:02<00:01, 617.04it/s]Loading weights:  54%|█████▍    | 1083/2009 [00:02<00:01, 669.45it/s]Loading weights:  58%|█████▊    | 1161/2009 [00:02<00:01, 672.28it/s]Loading weights:  62%|██████▏   | 1237/2009 [00:02<00:01, 694.43it/s]Loading weights:  65%|██████▌   | 1308/2009 [00:03<00:01, 640.34it/s]Loading weights:  68%|██████▊   | 1374/2009 [00:03<00:01, 604.47it/s]Loading weights:  71%|███████▏  | 1436/2009 [00:03<00:00, 605.39it/s]Loading weights:  75%|███████▍  | 1498/2009 [00:03<00:00, 547.08it/s]Loading weights:  77%|███████▋  | 1555/2009 [00:03<00:00, 498.99it/s]Loading weights:  80%|███████▉  | 1607/2009 [00:03<00:00, 458.76it/s]Loading weights:  82%|████████▏ | 1655/2009 [00:03<00:00, 444.48it/s]Loading weights:  87%|████████▋ | 1750/2009 [00:03<00:00, 568.38it/s]Loading weights:  93%|█████████▎| 1863/2009 [00:04<00:00, 716.10it/s]Loading weights:  98%|█████████▊| 1974/2009 [00:04<00:00, 820.27it/s]Loading weights: 100%|██████████| 2009/2009 [00:04<00:00, 477.43it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 1.79 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 55: 1022 neurons + 1024 controls, 98220 answers to write (0 already written), push unit each neuron's write ceiling, p50 96.28 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+768/98220 answers, 358 pieces/s, 7.45 answers/s
+1536/98220 answers, 437 pieces/s, 9.11 answers/s
+2304/98220 answers, 473 pieces/s, 9.86 answers/s
+3072/98220 answers, 495 pieces/s, 10.32 answers/s
+3840/98220 answers, 508 pieces/s, 10.59 answers/s
+4608/98220 answers, 516 pieces/s, 10.75 answers/s
+5376/98220 answers, 522 pieces/s, 10.88 answers/s
+6144/98220 answers, 529 pieces/s, 11.01 answers/s
+6912/98220 answers, 533 pieces/s, 11.10 answers/s
+7680/98220 answers, 535 pieces/s, 11.15 answers/s
+8448/98220 answers, 538 pieces/s, 11.21 answers/s
+9216/98220 answers, 541 pieces/s, 11.26 answers/s
+9984/98220 answers, 543 pieces/s, 11.32 answers/s
+10752/98220 answers, 546 pieces/s, 11.38 answers/s
+11520/98220 answers, 548 pieces/s, 11.42 answers/s
+12288/98220 answers, 549 pieces/s, 11.44 answers/s
+13056/98220 answers, 550 pieces/s, 11.45 answers/s
+13824/98220 answers, 550 pieces/s, 11.45 answers/s
+14592/98220 answers, 549 pieces/s, 11.44 answers/s
+15360/98220 answers, 549 pieces/s, 11.43 answers/s
+16128/98220 answers, 548 pieces/s, 11.43 answers/s
+16896/98220 answers, 550 pieces/s, 11.46 answers/s
+17664/98220 answers, 551 pieces/s, 11.48 answers/s
+18432/98220 answers, 552 pieces/s, 11.50 answers/s
+19200/98220 answers, 553 pieces/s, 11.52 answers/s
+19968/98220 answers, 554 pieces/s, 11.54 answers/s
+20736/98220 answers, 555 pieces/s, 11.57 answers/s
+21504/98220 answers, 556 pieces/s, 11.59 answers/s
+22272/98220 answers, 557 pieces/s, 11.61 answers/s
+23040/98220 answers, 558 pieces/s, 11.63 answers/s
+23808/98220 answers, 559 pieces/s, 11.64 answers/s
+24576/98220 answers, 560 pieces/s, 11.66 answers/s
+25344/98220 answers, 561 pieces/s, 11.68 answers/s
+26112/98220 answers, 561 pieces/s, 11.69 answers/s
+26880/98220 answers, 561 pieces/s, 11.70 answers/s
+27648/98220 answers, 561 pieces/s, 11.70 answers/s
+28416/98220 answers, 562 pieces/s, 11.71 answers/s
+29184/98220 answers, 562 pieces/s, 11.72 answers/s
+29952/98220 answers, 563 pieces/s, 11.72 answers/s
+30720/98220 answers, 562 pieces/s, 11.72 answers/s
+31488/98220 answers, 562 pieces/s, 11.70 answers/s
+32256/98220 answers, 560 pieces/s, 11.68 answers/s
+33024/98220 answers, 560 pieces/s, 11.67 answers/s
+33792/98220 answers, 558 pieces/s, 11.63 answers/s
+34560/98220 answers, 556 pieces/s, 11.59 answers/s
+35328/98220 answers, 555 pieces/s, 11.56 answers/s
+36096/98220 answers, 555 pieces/s, 11.56 answers/s
+36864/98220 answers, 554 pieces/s, 11.55 answers/s
+37632/98220 answers, 554 pieces/s, 11.55 answers/s
+38400/98220 answers, 554 pieces/s, 11.53 answers/s
+39168/98220 answers, 553 pieces/s, 11.52 answers/s
+39936/98220 answers, 553 pieces/s, 11.52 answers/s
+40704/98220 answers, 551 pieces/s, 11.48 answers/s
+41472/98220 answers, 550 pieces/s, 11.45 answers/s
+42240/98220 answers, 549 pieces/s, 11.43 answers/s
+43008/98220 answers, 549 pieces/s, 11.43 answers/s
+43776/98220 answers, 549 pieces/s, 11.43 answers/s
+44544/98220 answers, 549 pieces/s, 11.43 answers/s
+45312/98220 answers, 549 pieces/s, 11.43 answers/s
+46080/98220 answers, 549 pieces/s, 11.43 answers/s
+46848/98220 answers, 549 pieces/s, 11.43 answers/s
+47616/98220 answers, 549 pieces/s, 11.44 answers/s
+48384/98220 answers, 549 pieces/s, 11.44 answers/s
+49152/98220 answers, 549 pieces/s, 11.44 answers/s
+49920/98220 answers, 549 pieces/s, 11.45 answers/s
+50688/98220 answers, 550 pieces/s, 11.45 answers/s
+51456/98220 answers, 550 pieces/s, 11.45 answers/s
+52224/98220 answers, 550 pieces/s, 11.46 answers/s
+52992/98220 answers, 550 pieces/s, 11.46 answers/s
+53760/98220 answers, 550 pieces/s, 11.46 answers/s
+54528/98220 answers, 550 pieces/s, 11.46 answers/s
+55296/98220 answers, 550 pieces/s, 11.47 answers/s
+56064/98220 answers, 550 pieces/s, 11.47 answers/s
+56832/98220 answers, 551 pieces/s, 11.47 answers/s
+57600/98220 answers, 551 pieces/s, 11.47 answers/s
+58368/98220 answers, 551 pieces/s, 11.47 answers/s
+59136/98220 answers, 551 pieces/s, 11.48 answers/s
+59904/98220 answers, 551 pieces/s, 11.49 answers/s
+60672/98220 answers, 552 pieces/s, 11.50 answers/s
+61440/98220 answers, 552 pieces/s, 11.50 answers/s
+62208/98220 answers, 552 pieces/s, 11.51 answers/s
+62976/98220 answers, 552 pieces/s, 11.50 answers/s
+63744/98220 answers, 552 pieces/s, 11.49 answers/s
+64512/98220 answers, 551 pieces/s, 11.49 answers/s
+65280/98220 answers, 551 pieces/s, 11.48 answers/s
+66048/98220 answers, 551 pieces/s, 11.48 answers/s
+66816/98220 answers, 551 pieces/s, 11.48 answers/s
+67584/98220 answers, 551 pieces/s, 11.48 answers/s
+68352/98220 answers, 551 pieces/s, 11.48 answers/s
+69120/98220 answers, 551 pieces/s, 11.48 answers/s
+69888/98220 answers, 551 pieces/s, 11.48 answers/s
+70656/98220 answers, 551 pieces/s, 11.49 answers/s
+71424/98220 answers, 552 pieces/s, 11.49 answers/s
+72192/98220 answers, 552 pieces/s, 11.49 answers/s
+72960/98220 answers, 552 pieces/s, 11.50 answers/s
+73728/98220 answers, 552 pieces/s, 11.50 answers/s
+74496/98220 answers, 552 pieces/s, 11.50 answers/s
+75264/98220 answers, 552 pieces/s, 11.50 answers/s
+76032/98220 answers, 552 pieces/s, 11.50 answers/s
+76800/98220 answers, 552 pieces/s, 11.51 answers/s
+77568/98220 answers, 552 pieces/s, 11.51 answers/s
+78336/98220 answers, 553 pieces/s, 11.51 answers/s
+79104/98220 answers, 553 pieces/s, 11.52 answers/s
+79872/98220 answers, 553 pieces/s, 11.52 answers/s
+80640/98220 answers, 553 pieces/s, 11.53 answers/s
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/scripts/census_run.py", line 371, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/scripts/census_run.py", line 328, in main
+    res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2472, in take_census
+    recs = write_batch([all_jobs[i] for i in miss])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2222, in write_batch
+    got = write_census_batch(rt, layer, prompt_ids[bj[0]["prompt"]], delta, max_new=max_new, stop_ids=stop, top_k=top_k,
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/census.py", line 2090, in write_census_batch
+    for st in ao.write_rows(language_model(rt.hf_model), rt.lm_head_weight, [list(prompt_ids)] * B, iv, max_new=max_new,
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 61, in generator_context
+    response = gen.send(request)
+               ^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/things-walk/backend/atlas_ops.py", line 614, in write_rows
+    out = lm(input_ids=nxt[:, None], attention_mask=mask, position_ids=pos, past_key_values=cache, use_cache=True)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1783, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1794, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/utils/generic.py", line 1081, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/utils/output_capturing.py", line 287, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/models/gemma4/modeling_gemma4.py", line 1662, in forward
+    "full_attention": create_causal_mask(**mask_kwargs),
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/masking_utils.py", line 962, in create_causal_mask
+    causal_mask = mask_interface(
+                  ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/masking_utils.py", line 496, in sdpa_mask
+    if allow_is_causal_skip and _ignore_causal_mask_sdpa(
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/transformers/masking_utils.py", line 271, in _ignore_causal_mask_sdpa
+    if (q_length == 1 or kv_length == q_length) and (padding_mask is None or fast_all(padding_mask)):
+                                                                             ^^^^^^^^^^^^^^^^^^^^^^
+torch.AcceleratorError: CUDA error: the launch timed out and was terminated
+Search for `cudaErrorLaunchTimeout' in https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html for more information.
+The CUDA driver logged these messages, which may provide useful details:
+Returning 702 (CUDA_ERROR_LAUNCH_TIMEOUT) from cuStreamSynchronize
+
+
+layer 55: the trial stopped: once more
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 18509.53it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 38761.74it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<16:13,  2.06it/s]Loading weights:   0%|          | 3/2009 [00:01<12:46,  2.62it/s]Loading weights:   2%|▏         | 39/2009 [00:01<00:43, 45.80it/s]Loading weights:   5%|▍         | 95/2009 [00:01<00:15, 120.66it/s]Loading weights:   7%|▋         | 149/2009 [00:01<00:09, 191.69it/s]Loading weights:   9%|▉         | 188/2009 [00:01<00:07, 229.59it/s]Loading weights:  12%|█▏        | 233/2009 [00:01<00:06, 274.55it/s]Loading weights:  14%|█▍        | 284/2009 [00:01<00:05, 329.05it/s]Loading weights:  17%|█▋        | 350/2009 [00:01<00:04, 409.49it/s]Loading weights:  21%|██        | 426/2009 [00:02<00:03, 500.82it/s]Loading weights:  25%|██▍       | 501/2009 [00:02<00:02, 555.86it/s]Loading weights:  28%|██▊       | 563/2009 [00:02<00:02, 543.54it/s]Loading weights:  31%|███       | 622/2009 [00:02<00:02, 548.81it/s]Loading weights:  34%|███▍      | 686/2009 [00:02<00:02, 571.12it/s]Loading weights:  37%|███▋      | 746/2009 [00:02<00:02, 525.47it/s]Loading weights:  40%|███▉      | 801/2009 [00:02<00:02, 445.86it/s]Loading weights:  42%|████▏     | 849/2009 [00:02<00:03, 371.29it/s]Loading weights:  44%|████▍     | 890/2009 [00:03<00:03, 319.62it/s]Loading weights:  46%|████▌     | 926/2009 [00:03<00:03, 315.69it/s]Loading weights:  48%|████▊     | 960/2009 [00:03<00:03, 319.73it/s]Loading weights:  49%|████▉     | 994/2009 [00:03<00:03, 314.32it/s]Loading weights:  51%|█████     | 1027/2009 [00:03<00:03, 299.94it/s]Loading weights:  53%|█████▎    | 1058/2009 [00:03<00:03, 301.61it/s]Loading weights:  54%|█████▍    | 1094/2009 [00:03<00:02, 316.20it/s]Loading weights:  56%|█████▌    | 1127/2009 [00:03<00:02, 316.71it/s]Loading weights:  58%|█████▊    | 1160/2009 [00:04<00:03, 269.79it/s]Loading weights:  59%|█████▉    | 1189/2009 [00:04<00:03, 226.92it/s]Loading weights:  60%|██████    | 1214/2009 [00:04<00:03, 225.27it/s]Loading weights:  62%|██████▏   | 1238/2009 [00:04<00:03, 211.20it/s]Loading weights:  63%|██████▎   | 1261/2009 [00:04<00:03, 209.58it/s]Loading weights:  64%|██████▍   | 1283/2009 [00:04<00:03, 194.08it/s]Loading weights:  65%|██████▍   | 1304/2009 [00:04<00:03, 176.68it/s]Loading weights:  66%|██████▌   | 1323/2009 [00:05<00:04, 165.74it/s]Loading weights:  67%|██████▋   | 1340/2009 [00:05<00:04, 145.28it/s]Loading weights:  68%|██████▊   | 1357/2009 [00:05<00:04, 149.49it/s]Loading weights:  69%|██████▊   | 1377/2009 [00:05<00:03, 161.79it/s]Loading weights:  69%|██████▉   | 1394/2009 [00:05<00:04, 145.62it/s]Loading weights:  70%|███████   | 1410/2009 [00:05<00:04, 121.37it/s]Loading weights:  72%|███████▏  | 1437/2009 [00:05<00:03, 154.30it/s]Loading weights:  72%|███████▏  | 1455/2009 [00:06<00:04, 118.07it/s]Loading weights:  73%|███████▎  | 1470/2009 [00:06<00:04, 124.22it/s]Loading weights:  74%|███████▍  | 1486/2009 [00:06<00:03, 132.22it/s]Loading weights:  75%|███████▍  | 1501/2009 [00:06<00:03, 130.70it/s]Loading weights:  76%|███████▋  | 1535/2009 [00:06<00:02, 182.22it/s]Loading weights:  78%|███████▊  | 1575/2009 [00:06<00:01, 238.86it/s]Loading weights:  81%|████████  | 1629/2009 [00:06<00:01, 320.70it/s]Loading weights:  84%|████████▍ | 1690/2009 [00:06<00:00, 394.99it/s]Loading weights:  91%|█████████ | 1833/2009 [00:06<00:00, 685.31it/s]Loading weights:  97%|█████████▋| 1955/2009 [00:07<00:00, 822.48it/s]Loading weights: 100%|██████████| 2009/2009 [00:07<00:00, 284.67it/s]
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 2.53 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 55: 1022 neurons + 1024 controls, 17452 answers to write (80768 already written), push unit each neuron's write ceiling, p50 96.28 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+81408/98220 answers, 562 pieces/s, 11.72 answers/s
+82176/98220 answers, 568 pieces/s, 11.83 answers/s
+82944/98220 answers, 566 pieces/s, 11.80 answers/s
+83712/98220 answers, 560 pieces/s, 11.67 answers/s
+84480/98220 answers, 559 pieces/s, 11.65 answers/s
+85248/98220 answers, 557 pieces/s, 11.60 answers/s
+86016/98220 answers, 560 pieces/s, 11.66 answers/s
+86784/98220 answers, 561 pieces/s, 11.70 answers/s
+87552/98220 answers, 563 pieces/s, 11.74 answers/s
+88320/98220 answers, 565 pieces/s, 11.77 answers/s
+89088/98220 answers, 566 pieces/s, 11.80 answers/s
+89856/98220 answers, 567 pieces/s, 11.82 answers/s
+90624/98220 answers, 568 pieces/s, 11.84 answers/s
+91392/98220 answers, 569 pieces/s, 11.85 answers/s
+92160/98220 answers, 570 pieces/s, 11.87 answers/s
+92928/98220 answers, 570 pieces/s, 11.88 answers/s
+93696/98220 answers, 571 pieces/s, 11.89 answers/s
+94464/98220 answers, 571 pieces/s, 11.90 answers/s
+95232/98220 answers, 572 pieces/s, 11.91 answers/s
+96000/98220 answers, 572 pieces/s, 11.91 answers/s
+96768/98220 answers, 572 pieces/s, 11.92 answers/s
+97536/98220 answers, 573 pieces/s, 11.93 answers/s
+98220/98220 answers, 571 pieces/s, 11.89 answers/s
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L55-match_things-trial.jsonl (17452 answers written, 80768 were there)
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L55-match_things-trial.units.jsonl (ranked as match_things is read: every push counted, each word against the controls' mean, each answer's own question's unpushed words left out)
+written in /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk: layer 55; not read here (read.sh)
+=== L55-match_things-trial.jsonl (layer 55, counted from 0): FAIL
+FAIL  N1 whole
+FAIL  N3 the neurons the controls cover (982 of 1022 covered, 96.1%; at least 50%)
+reported, the lower dose alone (-1.95,1.95): mass_c 0.5765, mass_c_res 0.6248, rep_AB 0.4936, rep_BA 0.528, mass_B 0.5409
+reported, the upper dose alone (-2.14,2.14): mass_c 0.6755, mass_c_res 0.612, rep_AB 0.4908, rep_BA 0.5195, mass_B 0.6634
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.7219, mass_c_res 0.651, rep_AB 0.5094, rep_BA 0.5197, mass_B 0.7135
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.6995, mass_c_res 0.6514, rep_AB 0.5193, rep_BA 0.5422, mass_B 0.6854
+FAIL  N2 the lower dose alone, G1 to G4 (-1.95,1.95): decides nothing, the layer failed N1 or N3
+== 2026-11-19T02:56:07Z layer 55 (up): fail
+the up arm stops at layer 55, which did not pass

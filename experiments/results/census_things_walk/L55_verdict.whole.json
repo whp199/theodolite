@@ -1,0 +1,912 @@
+{
+ "run": "L55-match_things-trial.jsonl",
+ "layer": 55,
+ "design": "match_things",
+ "batch": 64,
+ "max_new": 48,
+ "seed": 11,
+ "half_a": [
+  "bicycle",
+  "walk",
+  "chair",
+  "kettle",
+  "sleep",
+  "lamp"
+ ],
+ "half_b": [
+  "clock",
+  "rice",
+  "vase",
+  "lock",
+  "money",
+  "blanket"
+ ],
+ "doses": [
+  -2.14,
+  -1.95,
+  1.95,
+  2.14
+ ],
+ "read_gain": {
+  "neurons": 0.7253,
+  "controls": 0.7758,
+  "ratio": 1.07,
+  "read_by": "the next layer's input norm (the final norm after the last layer)"
+ },
+ "readings": {
+  "48": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.6847,
+     "p": 9.77e-48
+    },
+    "mass_u": {
+     "auc": 0.6417,
+     "p": 6.44e-29
+    },
+    "shift": {
+     "auc": 0.6903,
+     "p": 1.45e-50
+    },
+    "shift_up": {
+     "auc": 0.7019,
+     "p": 1.26e-56
+    },
+    "shift_down": {
+     "auc": 0.5319,
+     "p": 0.00617
+    },
+    "mass_A": {
+     "auc": 0.7084,
+     "p": 3.34e-60
+    },
+    "mass_B": {
+     "auc": 0.7159,
+     "p": 1.83e-64
+    },
+    "rep_AB": {
+     "auc": 0.5178,
+     "p": 0.0819
+    },
+    "rep_BA": {
+     "auc": 0.5389,
+     "p": 0.00116
+    },
+    "rep": {
+     "auc": 0.5261,
+     "p": 0.0204
+    },
+    "xq": {
+     "auc": 0.5342,
+     "p": 0.00372
+    },
+    "cov_lnw": {
+     "auc": 0.6899,
+     "p": 2.4e-50
+    },
+    "cov_d4": {
+     "auc": 0.7514,
+     "p": 1.29e-86
+    },
+    "cov_cut": {
+     "auc": 0.5015,
+     "p": 0.183
+    },
+    "cov_lp": {
+     "auc": 0.8756,
+     "p": 1.44e-190
+    },
+    "cov_dep": {
+     "auc": 0.7556,
+     "p": 1.79e-89
+    },
+    "cov_lost": {
+     "auc": 0.2367,
+     "p": 1.0
+    },
+    "mass_c_res": {
+     "auc": 0.6755,
+     "p": 2.74e-43
+    },
+    "shift_res": {
+     "auc": 0.7396,
+     "p": 6.6e-79
+    },
+    "shift_up_res": {
+     "auc": 0.6839,
+     "p": 2.34e-47
+    },
+    "rep_res": {
+     "auc": 0.6506,
+     "p": 2.03e-32
+    },
+    "rho_AB_neurons": 0.44949888389240006,
+    "rho_AB_controls": 0.2138637145948072,
+    "counts": {
+     "neurons": 1022,
+     "controls": 1024,
+     "above_every_control": 84,
+     "by_chance": 1.0,
+     "q05": 114,
+     "named": 106,
+     "named_by_halves": 106,
+     "above_ctl_p95": 0.1986,
+     "pA05_and_pB05": 119,
+     "pA05_and_pB05_by_chance": 2.6
+    },
+    "null_split_auc": {
+     "mean": 0.5048,
+     "min": 0.4689,
+     "max": 0.5494,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.6036,
+    "-": 0.6329
+   },
+   "text": {
+    "-2.14 neuron": {
+     "d4_minus_unpushed": -0.222,
+     "cut_off": 1.0
+    },
+    "-2.14 random": {
+     "d4_minus_unpushed": -0.389,
+     "cut_off": 1.0
+    },
+    "-1.95 neuron": {
+     "d4_minus_unpushed": -0.09,
+     "cut_off": 1.0
+    },
+    "-1.95 random": {
+     "d4_minus_unpushed": -0.141,
+     "cut_off": 1.0
+    },
+    "+1.95 neuron": {
+     "d4_minus_unpushed": -0.109,
+     "cut_off": 1.0
+    },
+    "+1.95 random": {
+     "d4_minus_unpushed": -0.117,
+     "cut_off": 1.0
+    },
+    "+2.14 neuron": {
+     "d4_minus_unpushed": -0.249,
+     "cut_off": 1.0
+    },
+    "+2.14 random": {
+     "d4_minus_unpushed": -0.351,
+     "cut_off": 1.0
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 1022,
+    "controls": 1024,
+    "units_in_run": 2046,
+    "units_planned": 2046,
+    "answers": 98220,
+    "answers_planned": 98220
+   },
+   "gates": {
+    "G1 lead (mass, every answer)": {
+     "values": [
+      [
+       "mass_c",
+       0.6847,
+       0.6
+      ]
+     ],
+     "pass": true
+    },
+    "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+     "values": [
+      [
+       "mass_c_res",
+       0.6755,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+     "values": [
+      [
+       "rep_AB",
+       0.5178,
+       0.57
+      ],
+      [
+       "rep_BA",
+       0.5389,
+       0.57
+      ]
+     ],
+     "pass": false
+    },
+    "G4 the new questions alone carry a lead (mass on half B)": {
+     "values": [
+      [
+       "mass_B",
+       0.7159,
+       0.56
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.5048,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.07,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    },
+    "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+     "values": [
+      [
+       "max_abs_diff",
+       0.0005,
+       0.002
+      ]
+     ],
+     "pass": true
+    }
+   },
+   "pass": false,
+   "named": [
+    20490,
+    16665,
+    13143,
+    9638,
+    9221,
+    19328,
+    14979,
+    14538,
+    12012,
+    11730,
+    10064,
+    4851,
+    21183,
+    15616,
+    13059,
+    12571,
+    11320,
+    10537,
+    7603,
+    3114,
+    1213,
+    731,
+    21396,
+    21333,
+    21297,
+    21250,
+    20485,
+    20393,
+    20270,
+    20159,
+    20108,
+    19824,
+    19714,
+    19557,
+    19462,
+    19289,
+    17910,
+    17799,
+    17425,
+    16879,
+    16710,
+    16600,
+    16231,
+    16204,
+    15613,
+    15530,
+    15300,
+    13836,
+    13525,
+    13449,
+    13439,
+    13375,
+    13358,
+    13297,
+    13232,
+    13007,
+    12774,
+    12515,
+    12281,
+    11951,
+    11562,
+    11522,
+    11382,
+    11157,
+    10860,
+    10725,
+    9963,
+    9612,
+    9498,
+    9112,
+    8811,
+    8157,
+    8155,
+    7947,
+    7634,
+    7486,
+    7419,
+    6926,
+    6692,
+    6686,
+    6501,
+    6404,
+    6216,
+    6127,
+    6097,
+    5613,
+    4994,
+    4870,
+    4852,
+    4383,
+    3948,
+    3932,
+    3718,
+    3618,
+    3480,
+    2918,
+    2830,
+    2573,
+    2547,
+    2312,
+    2245,
+    1258,
+    965,
+    863,
+    346,
+    9
+   ],
+   "named_by_halves": [
+    20490,
+    16755,
+    16665,
+    13143,
+    9221,
+    5734,
+    258,
+    19328,
+    14979,
+    12464,
+    10367,
+    5322,
+    4851,
+    1016,
+    15616,
+    13059,
+    12571,
+    11320,
+    10537,
+    7603,
+    3114,
+    1213,
+    731,
+    21396,
+    21333,
+    21297,
+    21250,
+    20485,
+    20393,
+    20270,
+    20159,
+    20108,
+    19824,
+    19714,
+    19557,
+    19462,
+    19289,
+    17910,
+    17799,
+    17425,
+    16879,
+    16710,
+    16600,
+    16231,
+    16204,
+    15613,
+    15530,
+    15300,
+    13836,
+    13525,
+    13449,
+    13439,
+    13375,
+    13358,
+    13297,
+    13232,
+    13007,
+    12774,
+    12515,
+    12281,
+    11951,
+    11562,
+    11522,
+    11382,
+    11157,
+    10860,
+    10725,
+    9963,
+    9612,
+    9112,
+    8811,
+    8157,
+    8155,
+    7947,
+    7634,
+    7486,
+    7419,
+    6926,
+    6692,
+    6686,
+    6501,
+    6404,
+    6216,
+    6127,
+    6097,
+    5613,
+    4994,
+    4870,
+    4852,
+    4383,
+    3948,
+    3932,
+    3718,
+    3618,
+    3480,
+    2918,
+    2830,
+    2573,
+    2547,
+    2312,
+    2245,
+    1258,
+    965,
+    863,
+    346,
+    9
+   ]
+  },
+  "32": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.6282,
+     "p": 5.03e-24
+    },
+    "mass_u": {
+     "auc": 0.5957,
+     "p": 3.38e-14
+    },
+    "shift": {
+     "auc": 0.6395,
+     "p": 4.45e-28
+    },
+    "shift_up": {
+     "auc": 0.6511,
+     "p": 1.31e-32
+    },
+    "shift_down": {
+     "auc": 0.54,
+     "p": 0.000869
+    },
+    "mass_A": {
+     "auc": 0.6641,
+     "p": 4.26e-38
+    },
+    "mass_B": {
+     "auc": 0.6499,
+     "p": 3.95e-32
+    },
+    "rep_AB": {
+     "auc": 0.4941,
+     "p": 0.678
+    },
+    "rep_BA": {
+     "auc": 0.497,
+     "p": 0.593
+    },
+    "rep": {
+     "auc": 0.4875,
+     "p": 0.837
+    },
+    "xq": {
+     "auc": 0.4655,
+     "p": 0.997
+    },
+    "cov_lnw": {
+     "auc": 0.6082,
+     "p": 1.19e-17
+    },
+    "cov_d4": {
+     "auc": 0.7446,
+     "p": 4.15e-82
+    },
+    "cov_cut": {
+     "auc": 0.502,
+     "p": 0.0228
+    },
+    "cov_lp": {
+     "auc": 0.8713,
+     "p": 2.67e-186
+    },
+    "cov_dep": {
+     "auc": 0.7588,
+     "p": 1.25e-91
+    },
+    "cov_lost": {
+     "auc": 0.2386,
+     "p": 1.0
+    },
+    "mass_c_res": {
+     "auc": 0.6678,
+     "p": 9.27e-40
+    },
+    "shift_res": {
+     "auc": 0.7283,
+     "p": 7.92e-72
+    },
+    "shift_up_res": {
+     "auc": 0.6831,
+     "p": 5.71e-47
+    },
+    "rep_res": {
+     "auc": 0.6436,
+     "p": 1.16e-29
+    },
+    "rho_AB_neurons": 0.3572692535246518,
+    "rho_AB_controls": 0.17499455783461304,
+    "counts": {
+     "neurons": 1022,
+     "controls": 1024,
+     "above_every_control": 64,
+     "by_chance": 1.0,
+     "q05": 88,
+     "named": 86,
+     "named_by_halves": 81,
+     "above_ctl_p95": 0.1517,
+     "pA05_and_pB05": 87,
+     "pA05_and_pB05_by_chance": 2.6
+    },
+    "null_split_auc": {
+     "mean": 0.5027,
+     "min": 0.4764,
+     "max": 0.5395,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.5779,
+    "-": 0.5911
+   },
+   "text": {
+    "-2.14 neuron": {
+     "d4_minus_unpushed": -0.151,
+     "cut_off": 1.0
+    },
+    "-2.14 random": {
+     "d4_minus_unpushed": -0.288,
+     "cut_off": 1.0
+    },
+    "-1.95 neuron": {
+     "d4_minus_unpushed": -0.06,
+     "cut_off": 1.0
+    },
+    "-1.95 random": {
+     "d4_minus_unpushed": -0.088,
+     "cut_off": 1.0
+    },
+    "+1.95 neuron": {
+     "d4_minus_unpushed": -0.073,
+     "cut_off": 1.0
+    },
+    "+1.95 random": {
+     "d4_minus_unpushed": -0.071,
+     "cut_off": 1.0
+    },
+    "+2.14 neuron": {
+     "d4_minus_unpushed": -0.173,
+     "cut_off": 1.0
+    },
+    "+2.14 random": {
+     "d4_minus_unpushed": -0.255,
+     "cut_off": 1.0
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 1022,
+    "controls": 1024,
+    "units_in_run": 2046,
+    "units_planned": 2046,
+    "answers": 98220,
+    "answers_planned": 98220
+   },
+   "gates": {
+    "G1 lead (mass, every answer)": {
+     "values": [
+      [
+       "mass_c",
+       0.6282,
+       0.6
+      ]
+     ],
+     "pass": true
+    },
+    "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+     "values": [
+      [
+       "mass_c_res",
+       0.6678,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+     "values": [
+      [
+       "rep_AB",
+       0.4941,
+       0.57
+      ],
+      [
+       "rep_BA",
+       0.497,
+       0.57
+      ]
+     ],
+     "pass": false
+    },
+    "G4 the new questions alone carry a lead (mass on half B)": {
+     "values": [
+      [
+       "mass_B",
+       0.6499,
+       0.56
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.5027,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.07,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    }
+   },
+   "pass": false,
+   "named": [
+    20485,
+    13143,
+    12012,
+    11320,
+    11157,
+    9638,
+    3035,
+    731,
+    3114,
+    19289,
+    17799,
+    16204,
+    12571,
+    12281,
+    11382,
+    10725,
+    9498,
+    8811,
+    7603,
+    2573,
+    863,
+    9,
+    21396,
+    21333,
+    21250,
+    20393,
+    20270,
+    20159,
+    20108,
+    19824,
+    19714,
+    19462,
+    17910,
+    17425,
+    16879,
+    16710,
+    16600,
+    16231,
+    15613,
+    13836,
+    13525,
+    13449,
+    13439,
+    13375,
+    13358,
+    13297,
+    13232,
+    13007,
+    12774,
+    12515,
+    11951,
+    11562,
+    11522,
+    10860,
+    9963,
+    9612,
+    9112,
+    8157,
+    7947,
+    7634,
+    7486,
+    7419,
+    6926,
+    6692,
+    6686,
+    6501,
+    6404,
+    6127,
+    6097,
+    5613,
+    4994,
+    4870,
+    4852,
+    4383,
+    3948,
+    3932,
+    3718,
+    3618,
+    3480,
+    2918,
+    2547,
+    2312,
+    2245,
+    1258,
+    965,
+    346
+   ],
+   "named_by_halves": [
+    20485,
+    13143,
+    11320,
+    11157,
+    731,
+    3114,
+    17799,
+    16204,
+    12571,
+    12281,
+    11382,
+    9498,
+    8811,
+    7603,
+    2573,
+    863,
+    9,
+    21396,
+    21333,
+    21250,
+    20393,
+    20270,
+    20159,
+    20108,
+    19824,
+    19714,
+    19462,
+    17910,
+    17425,
+    16879,
+    16710,
+    16600,
+    16231,
+    15613,
+    13836,
+    13525,
+    13449,
+    13439,
+    13375,
+    13358,
+    13297,
+    13232,
+    13007,
+    12774,
+    12515,
+    11951,
+    11562,
+    11522,
+    10860,
+    9963,
+    9612,
+    9112,
+    8157,
+    7947,
+    7634,
+    7486,
+    7419,
+    6926,
+    6692,
+    6686,
+    6501,
+    6404,
+    6127,
+    6097,
+    5613,
+    4994,
+    4870,
+    4852,
+    4383,
+    3948,
+    3932,
+    3718,
+    3618,
+    3480,
+    2918,
+    2547,
+    2312,
+    2245,
+    1258,
+    965,
+    346
+   ]
+  }
+ },
+ "pass": false,
+ "throughput": {
+  "answers": 98220,
+  "seconds": 8575.0,
+  "answers_per_s": 11.45,
+  "sessions": 2
+ },
+ "writing": {
+  "answers_written": 98092,
+  "seconds": 8461.7,
+  "answers_per_s": 11.59,
+  "sessions": 2
+ },
+ "max_new_rule": {
+  "shorter_passes": false,
+  "mass_c_drop": 0.0565,
+  "rep_min_drop": 0.0237,
+  "take_shorter": false
+ }
+}

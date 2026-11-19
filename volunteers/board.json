@@ -91,7 +91,11 @@
   6961109410,
   6962904270,
   6968244965,
-  6968647503
+  6968647503,
+  6993222037,
+  6993419645,
+  6993502946,
+  6993599257
  ],
  "claims": [
   {
@@ -1073,7 +1077,7 @@
    "kit": "5",
    "via": "github",
    "at": "2026-11-17T22:31Z",
-   "state": "running",
+   "state": "submitted",
    "events": [
     {
      "at": "2026-11-17T22:31Z",
@@ -1086,10 +1090,20 @@
      "via": "github",
      "what": "claim=3853d507 bits=home card=NVIDIA GeForce RTX 5090 32 GB",
      "verb": "START"
+    },
+    {
+     "at": "2026-11-18T22:16Z",
+     "via": "github",
+     "what": "claim=3853d507 sha256=8083ab5921c6b42b size=522MB link=https://github.com/Zlorthishen/theodolite/releases/download/L38-soft_ceil-3853d507/L38-soft_ceil-3853d507.tar",
+     "verb": "DONE"
     }
    ],
    "started_at": "2026-11-17T22:31Z",
-   "bits": "home"
+   "bits": "home",
+   "submitted_at": "2026-11-18T22:16Z",
+   "bundle_sha256": "8083ab5921c6b42b",
+   "size": "522MB",
+   "link": "https://github.com/Zlorthishen/theodolite/releases/download/L38-soft_ceil-3853d507/L38-soft_ceil-3853d507.tar"
   },
   {
    "code": "eda6b586",
@@ -1099,7 +1113,7 @@
    "kit": "5",
    "via": "github",
    "at": "2026-11-18T04:02Z",
-   "state": "running",
+   "state": "submitted",
    "events": [
     {
      "at": "2026-11-18T04:02Z",
@@ -1118,12 +1132,56 @@
      "via": "github",
      "what": "claim=eda6b586 done=3% eta=2026-11-18T16:24Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-18T22:25Z",
+     "via": "github",
+     "what": "claim=eda6b586 sha256=65204726f5fbc77c size=556MB link=https://github.com/Asynonymous/theodolite/releases/download/L31-match_wide-eda6b586/L31-match_wide-eda6b586.tar",
+     "verb": "DONE"
     }
    ],
    "started_at": "2026-11-18T04:02Z",
    "bits": "own",
    "done": "3%",
-   "eta": "2026-11-18T16:24Z"
+   "eta": "2026-11-18T16:24Z",
+   "submitted_at": "2026-11-18T22:25Z",
+   "bundle_sha256": "65204726f5fbc77c",
+   "size": "556MB",
+   "link": "https://github.com/Asynonymous/theodolite/releases/download/L31-match_wide-eda6b586/L31-match_wide-eda6b586.tar"
+  },
+  {
+   "code": "6413bb68",
+   "layer": 30,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "6",
+   "via": "github",
+   "at": "2026-11-18T22:28Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-18T22:28Z",
+     "via": "github",
+     "what": "claim=6413bb68 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=6",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-18T22:32Z",
+     "via": "github",
+     "what": "claim=6413bb68 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-18T22:32Z",
+     "via": "github",
+     "what": "claim=6413bb68 done=1% eta=2026-11-20T01:38Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-18T22:32Z",
+   "bits": "own",
+   "done": "1%",
+   "eta": "2026-11-20T01:38Z"
   }
  ],
  "layers": {
@@ -1311,7 +1369,7 @@
   },
   "29": {
    "state": "stopped",
-   "note": "no push strengths have passed a trial here: not taken"
+   "note": "its trial failed, 18 November 2026 (match_things): not taken"
   },
   "30": {
    "state": "open",
@@ -1381,15 +1439,15 @@
   },
   "53": {
    "state": "stopped",
-   "note": "its trial failed, 16 November 2026 (soft_ceil): not taken"
+   "note": "soft_ceil's trial failed, 16 November 2026; match_things's passed, 18 November; no kit carries it yet: not taken"
   },
   "54": {
    "state": "stopped",
-   "note": "not trialled with this kit's push strengths: not taken"
+   "note": "its trial passed, 19 November 2026 (match_things); no kit carries it yet: not taken"
   },
   "55": {
    "state": "stopped",
-   "note": "not trialled with this kit's push strengths: not taken"
+   "note": "its trial failed, 19 November 2026 (match_things): not taken"
   },
   "56": {
    "state": "stopped",
@@ -1408,5 +1466,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-18T14:29Z"
+ "updated_at": "2026-11-19T03:12Z"
 }

@@ -1,14 +1,15 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
-L0–29 not taken
-L30 OPEN
-L31 running anon eda6b586 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 3%, ends ~2026-11-18T16:24Z
+L0–28 not taken
+L29 not taken
+L30 running anon 6413bb68 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 1%, ends ~2026-11-20T01:38Z
+L31 sent home anon eda6b586 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 2026-11-18T22:25Z
 L32 done (anon 943783a3)
 L33 done (anon 280c6dc2)
 L34 done (anon eaef4eff)
 L35 done (anon 5d30aa4a)
 L36 done (home card)
 L37 done (anon 042ec8f2)
-L38 running anon 3853d507 NVIDIA GeForce RTX 5090 32 GB ?
+L38 sent home anon 3853d507 NVIDIA GeForce RTX 5090 32 GB 2026-11-18T22:16Z
 L39 done (anon 1f217635)
 L40 done (home card)
 L41 done (ReimusArmpit d4bcee00)
@@ -24,8 +25,10 @@ L50 done (anon b153da82)
 L51 done (eigentactics 6d708804)
 L52 done (eigentactics c40b4d3a)
 L53 not taken
-L54–59 not taken
+L54 not taken
+L55 not taken
+L56–59 not taken
 
-1 open. To take one: https://github.com/whp199/theodolite/issues/1
+0 open; a claim that lapses opens again: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

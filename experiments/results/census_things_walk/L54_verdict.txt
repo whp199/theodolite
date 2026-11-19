@@ -1,0 +1,89 @@
+--- read at 48 word-pieces: PASS
+  pass  G1 lead (mass, every answer): mass_c 0.7124 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7136 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6266 (bar 0.57), rep_BA 0.6195 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.7086 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5026 (bar (0.47, 0.53)), read_gain_ratio 1.037 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+  reported: shift 0.709, shift_up 0.718, shift_down 0.575, xq 0.653, rep 0.624, mass_A 0.719, mass_u 0.695, shift_res 0.736, rep_res 0.694
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 196, 'by_chance': 1.0, 'q05': 265, 'named': 243, 'named_by_halves': 232, 'above_ctl_p95': 0.3337, 'pA05_and_pB05': 235, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.620 controls 0.184; signs {'+': 0.6009, '-': 0.6411}
+--- read at 32 word-pieces: PASS
+  pass  G1 lead (mass, every answer): mass_c 0.6933 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7228 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6167 (bar 0.57), rep_BA 0.5892 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6821 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4992 (bar (0.47, 0.53)), read_gain_ratio 1.037 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  reported: shift 0.691, shift_up 0.697, shift_down 0.589, xq 0.611, rep 0.600, mass_A 0.689, mass_u 0.678, shift_res 0.732, rep_res 0.684
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 170, 'by_chance': 1.0, 'q05': 218, 'named': 210, 'named_by_halves': 204, 'above_ctl_p95': 0.3063, 'pA05_and_pB05': 216, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.551 controls 0.165; signs {'+': 0.5869, '-': 0.6162}
+max_new rule: {'shorter_passes': True, 'mass_c_drop': 0.0191, 'rep_min_drop': 0.0303, 'take_shorter': False}
+throughput (wall): {'answers': 98220, 'seconds': 9315.0, 'answers_per_s': 10.54, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9266.0, 'answers_per_s': 10.6, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54_verdict.whole.json: PASS
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.645 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.656 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5753 (bar 0.57), rep_BA 0.5827 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.597 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5026 (bar (0.47, 0.53)), read_gain_ratio 1.037 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 47.9978 (bar 0.002)
+  reported: shift 0.636, shift_up 0.649, shift_down 0.543, xq 0.635, rep 0.576, mass_A 0.627, mass_u 0.629, shift_res 0.678, rep_res 0.615
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 184, 'by_chance': 1.0, 'q05': 229, 'named': 195, 'named_by_halves': 125, 'above_ctl_p95': 0.2916, 'pA05_and_pB05': 127, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.456 controls 0.115; signs {'+': 0.536, '-': 0.5785}
+throughput (wall): {'answers': 98220, 'seconds': 9315.0, 'answers_per_s': 10.54, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9266.0, 'answers_per_s': 10.6, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54_verdict.lower.json: FAIL
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.7032 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6878 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5929 (bar 0.57), rep_BA 0.5906 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6625 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5029 (bar (0.47, 0.53)), read_gain_ratio 1.037 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 46.61185 (bar 0.002)
+  reported: shift 0.687, shift_up 0.709, shift_down 0.501, xq 0.673, rep 0.592, mass_A 0.676, mass_u 0.681, shift_res 0.713, rep_res 0.630
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 58, 'by_chance': 1.0, 'q05': 210, 'named': 185, 'named_by_halves': 117, 'above_ctl_p95': 0.3219, 'pA05_and_pB05': 127, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.459 controls 0.284; signs {'+': 0.5732, '-': 0.6137}
+throughput (wall): {'answers': 98220, 'seconds': 9315.0, 'answers_per_s': 10.54, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9266.0, 'answers_per_s': 10.6, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54_verdict.upper.json: FAIL
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.7146 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6965 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6103 (bar 0.57), rep_BA 0.595 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6909 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5014 (bar (0.47, 0.53)), read_gain_ratio 1.037 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 45.71878 (bar 0.002)
+  reported: shift 0.685, shift_up 0.718, shift_down 0.518, xq 0.611, rep 0.596, mass_A 0.686, mass_u 0.699, shift_res 0.702, rep_res 0.661
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 124, 'by_chance': 1.0, 'q05': 223, 'named': 186, 'named_by_halves': 144, 'above_ctl_p95': 0.2935, 'pA05_and_pB05': 149, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.419 controls 0.114; signs {'+': 0.6088, '-': 0.6431}
+throughput (wall): {'answers': 98220, 'seconds': 9315.0, 'answers_per_s': 10.54, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9266.0, 'answers_per_s': 10.6, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54_verdict.first.json: FAIL
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.7153 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6734 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5894 (bar 0.57), rep_BA 0.6209 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6781 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4999 (bar (0.47, 0.53)), read_gain_ratio 1.037 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 46.73723 (bar 0.002)
+  reported: shift 0.709, shift_up 0.719, shift_down 0.571, xq 0.606, rep 0.600, mass_A 0.686, mass_u 0.705, shift_res 0.691, rep_res 0.641
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 183, 'by_chance': 1.0, 'q05': 235, 'named': 207, 'named_by_halves': 139, 'above_ctl_p95': 0.3121, 'pA05_and_pB05': 142, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.379 controls 0.130; signs {'+': 0.6279, '-': 0.6423}
+throughput (wall): {'answers': 98220, 'seconds': 9315.0, 'answers_per_s': 10.54, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 98220, 'seconds': 9266.0, 'answers_per_s': 10.6, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54_verdict.last.json: FAIL
+=== L54-match_things-trial.jsonl (layer 54, counted from 0): PASS
+pass  N1 whole
+    pass  G1 lead (mass, every answer): mass_c 0.7124 (bar 0.6)
+    pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7136 (bar 0.58)
+    pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6266 (bar 0.57), rep_BA 0.6195 (bar 0.57)
+    pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.7086 (bar 0.56)
+    pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5026 (bar [0.47, 0.53]), read_gain_ratio 1.037 (bar [0.8, 1.25]), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+    pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+pass  N3 the neurons the controls cover (975 of 1022 covered, 95.4%; at least 50%)
+    pass  G1 lead (mass, every answer): mass_c 0.7046 (bar 0.6)
+    pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7068 (bar 0.58)
+    pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6158 (bar 0.57), rep_BA 0.6095 (bar 0.57)
+    pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.7025 (bar 0.56)
+reported, the lower dose alone (-2.18,2.18): mass_c 0.645, mass_c_res 0.656, rep_AB 0.5753, rep_BA 0.5827, mass_B 0.597
+reported, the upper dose alone (-2.34,2.34): mass_c 0.7032, mass_c_res 0.6878, rep_AB 0.5929, rep_BA 0.5906, mass_B 0.6625
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.7146, mass_c_res 0.6965, rep_AB 0.6103, rep_BA 0.595, mass_B 0.6909
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.7153, mass_c_res 0.6734, rep_AB 0.5894, rep_BA 0.6209, mass_B 0.6781
+reported: {"above_every_control": 196, "by_chance": 1.0, "text": {"-2.34 neuron": {"d4_minus_unpushed": -0.226, "cut_off": 1.0}, "-2.34 random": {"d4_minus_unpushed": -0.287, "cut_off": 0.999}, "-2.18 neuron": {"d4_minus_unpushed": -0.116, "cut_off": 1.0}, "-2.18 random": {"d4_minus_unpushed": -0.119, "cut_off": 1.0}, "+2.18 neuron": {"d4_minus_unpushed": -0.118, "cut_off": 1.0}, "+2.18 random": {"d4_minus_unpushed": -0.106, "cut_off": 1.0}, "+2.34 neuron": {"d4_minus_unpushed": -0.225, "cut_off": 1.0}, "+2.34 random": {"d4_minus_unpushed": -0.26, "cut_off": 1.0}}, "figures": {"neurons": 1022, "controls": 1024, "above_every_control": 196, "by_chance": 1.0, "q05": 265, "named": 243, "named_by_halves": 232, "above_ctl_p95": 0.3337, "pA05_and_pB05": 235, "pA05_and_pB05_by_chance": 2.6}, "named": 243, "max_new_rule": {"shorter_passes": true, "mass_c_drop": 0.0191, "rep_min_drop": 0.0303, "take_shorter": false}, "throughput": {"answers_written": 98220, "seconds": 9266.0, "answers_per_s": 10.6, "sessions": 1}}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/things_walk/L54_verdict.json
+pass  N2 the lower dose alone, G1 to G4 (-2.18,2.18)

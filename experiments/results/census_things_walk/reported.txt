@@ -1,0 +1,37 @@
+L30 baselines: 12 ['bicycle', 'blanket', 'chair', 'clock', 'kettle', 'lamp', 'lock', 'money', 'rice', 'sleep', 'vase', 'walk']
+L53: 12 unpushed answers; token_ids equal to L30 12/12, logprobs equal 12/12; differ: []
+L29: 12 unpushed answers; token_ids equal to L30 12/12, logprobs equal 12/12; differ: []
+L54: 12 unpushed answers; token_ids equal to L30 12/12, logprobs equal 12/12; differ: []
+L55: 12 unpushed answers; token_ids equal to L30 12/12, logprobs equal 12/12; differ: []
+--- L53: 1022 neurons, 1024 controls
+  control 11.31 sd over the controls' median: thoughtthought dependingthoughtthought thought thoughtthoughtthought atthought thoughtthoughtthoughtthoughtthought
+  control  5.92 sd over the controls' median: idea old options convey world giant
+  control  5.25 sd over the controls' median: idea could stove arening effects simplestthought
+  control  4.10 sd over the controls' median: idea dependingthought texture delicious descriptive counter
+  control  3.93 sd over the controls' median: know have let mind like general
+  neurons more than five sd over it: 152 of 1022
+  q <= 0.05: 187 ; with the five strongest controls set aside: 198
+--- L29: 1022 neurons, 1024 controls
+  control  7.62 sd over the controls' median: aqui para estão três como funciona
+  control  7.54 sd over the controls' median: saya memberikan untuk adalah umum atau
+  control  7.08 sd over the controls' median: que para estão aqui objeto uma
+  control  6.69 sd over the controls' median: untuk adalah yang anda berikut jika
+  control  4.61 sd over the controls' median: specified haven very acknowledge way what
+  neurons more than five sd over it: 21 of 1022
+  q <= 0.05: 0 ; with the five strongest controls set aside: 25
+--- L54: 1022 neurons, 1024 controls
+  control  7.29 sd over the controls' median: thought thoughtthought thoughtthoughtthought samethought going dependingage
+  control  5.68 sd over the controls' median: thought thoughtthought dependingthoughtthought vary samethought since
+  control  5.21 sd over the controls' median: thought dependingthought thoughtthought thoughtthoughtthought texture works
+  control  4.93 sd over the controls' median: thought dependingthought distance most payments bill
+  control  4.60 sd over the controls' median: dependingthoughtthought better than tool help others
+  neurons more than five sd over it: 230 of 1022
+  q <= 0.05: 265 ; with the five strongest controls set aside: 282
+--- L55: 1022 neurons, 1024 controls
+  control  7.27 sd over the controls' median: thoughtthoughtthought thought thoughtthought bringing aiming molecules
+  control  5.52 sd over the controls' median: thoughtthought thought thoughtthoughtthought same samethoughtthought samethought
+  control  4.42 sd over the controls' median: idea dependingthought industrial timeless pain have
+  control  4.39 sd over the controls' median: rest traditional wish heritage break convey
+  control  3.93 sd over the controls' median: styles provide general anything since could
+  neurons more than five sd over it: 101 of 1022
+  q <= 0.05: 114 ; with the five strongest controls set aside: 118

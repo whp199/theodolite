@@ -37,9 +37,10 @@ taken there (14 November 2026); read whole, it missed that same check by 0.006. 
 with these push strengths. At layer 31 the design that asks twice the questions at one push passed instead (16
 November 2026). It failed at layer 30, and so did the same twelve questions at both pushes (17 November). At layer
 30 a third design passed (18 November): both pushes, on twelve other questions of the kinds whose answers took a
-push's words up there. No push strengths have passed a trial by layer 45's gates at layers 0 to 29 or 54 to 59. None
-of those layers is taken yet. **The board says which layers are open.** Layers count from 0, as every script counts
-them (the app's page = layer + 1).
+push's words up there. The same design then passed at layers 53 and 54 and failed at 29 and 55 (18 and 19 November);
+no kit carries 53 or 54 yet. No push strengths have passed a trial by layer 45's gates at layers 0 to 29 or 55 to 59.
+None of those layers, nor 53 and 54, is taken yet. **The board says which layers are open.** Layers count from 0,
+as every script counts them (the app's page = layer + 1).
 
 **Kit 6, the kit to use now, is kit 5 with layer 30 added** (18 November 2026), taken with the design for layer 30
 above. Every other layer is taken exactly as under kit 5. **Layer 30 is twice the others**: 48 answers a neuron, not

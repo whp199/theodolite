@@ -1072,7 +1072,17 @@ layers, the determinism run and the sampled push on 29 October). In this section
        alone), counts only where a layer passes. It neither stops nor carries the walk, and a pass on it would let the
        layer be taken at one dose, half the answers, as a design of its own. Said beforehand: 53 and 29 each pass
        about 1 in 3, and either arm reaching its end under 1 in 20. Up to eleven trials, about 32 hours on the home
-       card. Not begun: it is pushed first, on the owner’s word.
+       card. Pushed at 16:23:53Z and begun at 16:24:00Z, on the owner’s “Push and start”. **It took four layers and
+       stopped at 29 and 55** ([`census_things_walk/RESULT.md`](experiments/results/census_things_walk/RESULT.md)). 53
+       passed (whole lead 0.751, words carrying 0.591 and 0.598), and so did 54 (0.712; 0.627 and 0.620), which passed
+       N2 as well, narrowly (its lower dose’s words carry 0.575 and 0.583). 29 failed on the lead and the words carrying
+       (0.574; 0.528 and 0.520), and 55 on the words carrying alone (0.518 and 0.539), so 25 to 28 and 56 to 58 were not
+       trialled. The lead came in over its forecast at 53 (0.62 to 0.72) and just under it at 29 (0.58 to 0.64). The
+       home card’s display watchdog (Xid 8) stopped trials three times; each was continued row for row, with no answer
+       written twice. 53 and 54 may be offered under a kit that carries `match_things` there once their other card
+       classes’ bars are registered; that kit, and widening `DOSES_CALIBRATED`, are the owner’s word. Twelve layers
+       outside 39–51 now pass a trial: 30, 53 and 54 with `match_things`, 31 with `match_wide`, 32 to 37 with
+       `match_ceil`, 38 and 52 with `soft_ceil`.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
        one of the 1,290,240 neurons a pushed reading that the page’s search already reads. It reads the next
        word-piece, not an answer, and has no controls of its own, so it is not a census; but it is the only push-based
