@@ -2032,14 +2032,15 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 .venv/bin/python -I scripts/levelling.py weights info                      # no card: inspect W4A16 checkpoint on CPU
 .venv/bin/python -I scripts/levelling.py sandbox-probe --default-weights   # active bwrap containment probe
 .venv/bin/python -I backend/level_mcp.py --session-dir /tmp/lvl --stand-in # Phase 2 practice-only stdio MCP server
-.venv/bin/python -I scripts/levelling_trial.py verify prereg/              # Phase 5 registration SHA256SUMS check
-.venv/bin/python -I scripts/levelling_export.py verify adapter.gguf        # Phase 5 owner-only LoRA export verify
-.venv/bin/python -I scripts/levelling_rerun.py verify-kit kit/             # Phase 5 volunteer re-run kit verify
+.venv/bin/python -I scripts/levelling_trial.py verify prereg/              # a trial's registration folder, against itself
+.venv/bin/python -I scripts/levelling_trial.py run prereg/ --out DIR       # read it: of record, or refused (--dry-run reads it anyway)
+.venv/bin/python -I scripts/levelling_export.py verify adapter.gguf        # an exported adapter's keys (with --trial and a base: that it is the edit)
+.venv/bin/python -I scripts/levelling_rerun.py verify-kit kit/             # a volunteer's re-run kit, against itself
 ```
 
 | module | what |
 |---|---|
-| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, `rebuilt_recipe`, `edit_provenance`, `base_checksum`, control edits, `stack`, `edit_diagnostics`, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
+| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, `rebuilt_recipe`, `edit_provenance`, `base_checksum` (every stored weight), `implant_shape`, control edits, `stack`, `edit_diagnostics`, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
 | `backend/weight_reader.py` | no-card CPU W4A16 / dense safetensors reader (`WeightReader`: `info`, `tensor_pin`, `dense_cols`, `dense_rows`, `quiet_mask`, `down_stream_norms`, `writers`, `save_array`), also mounted read-only inside the off-card sandbox |
 | `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading (short greedy or long sampled / thinking-on with loop & cut-off detectors), `capture_direction`, the read-outs, what a person reads (`lines`) |
 | `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before, plus `driver_view` redaction |
@@ -2047,15 +2048,15 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/level_session.py` | Phase 2 practice-only Agent's Door (`LevelSession`: reach/backend enforcement, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`estimate`/`read`/`write`/`book_view` gates, blinded in-memory planted & canary sessions with matched `estimate`/`read` normalization, transcript copy on close) |
 | `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver |
 | `backend/level_briefs.py` | Phase 3 versioned briefs, policy guard, disjoint practice/kept-back frame generators, wording-overlap `KeptBack`, retention battery generators, 4 starter briefs |
-| `backend/level_claim.py` | Phase 3 calibrated hashed `BarSet`s, post-freeze `os.urandom(32)` claim execution, dual-batch-class control/battery/knob judgement, bounded Claim Sheets |
+| `backend/level_claim.py` | Phase 3 calibrated hashed `BarSet`s, the gate every fresh reading is asked before it is registered (`fresh_reading_gate`, a claim's and a trial's alike), post-freeze `os.urandom(32)` claim execution, dual-batch-class control/battery/knob judgement, bounded Claim Sheets |
 | `backend/level_routes.py` | Phase 4 FastAPI `/api/level/*` routes (status, estimate, compare with 409 vault-overlay guard, model-free live & recorded ledger replay) |
-| `backend/level_trial.py` | Phase 5 Trial of Record: `RewordedSet` (5-use rotation cap), `prereg/` registration folders with `SHA256SUMS` (no weight payloads), live `base_checksum`, `folded="always"` verification, `passed`/`failed`/`void` verdict engine, Trial Sheet |
-| `backend/level_export.py` | Phase 5 owner-only LoRA GGUF exporter (isolated export directory, cross-base `--gguf` recompilation via `TargetBase`, Apache-2.0 keys, `implant_check`, companion `.manifest.json`, delta verification, optional `llama-server` re-measure) |
-| `backend/level_rerun.py` | Phase 5 volunteer re-run kit packager (rebuilt edits only), volunteer runner packing allowlisted `.tar` bundles, and defensive tar intake & judgement |
+| `backend/level_trial.py` | Phase 5 trial of record: the registration folder (exactly its files, `SHA256SUMS` read byte for byte), the reworded set (uses counted by an item's wording), the conditions of record (a process that has read nothing, a clean checkout, the folder committed, the runner and reader as hashed), `run_trial_of_record` (of record, refused, or a dry run), `judge_readings`, `rejudge_trial` from a book, the sheet and the sentence |
+| `backend/level_export.py` | Phase 5 owner's export: a llama.cpp LoRA adapter and its manifest outside every git checkout, compiled against the base served (`TargetBase`: a GGUF, a checkpoint, the loaded model), keys that say what was checked (`trial_standing`, the implant label), an edit rebuilt off the model and kept to its id, `verify_exported_lora` against the edit's own arithmetic, `llama_server_smoke` |
+| `backend/level_rerun.py` | Phase 5 re-run: a kit of a registration with the home draw's seed (rebuilt edits only), the volunteer's run of the home items into a book of its own, and an intake that unpacks a plain tar without trusting it and judges the returned book against the home book |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
-| `scripts/levelling_trial.py` | `reworded`, `register`, `verify`, `run` (owner Trial of Record CLI) |
-| `scripts/levelling_export.py` | `lora`, `verify`, `show`, `remeasure` (owner-only export CLI) |
-| `scripts/levelling_rerun.py` | `pack`, `verify-kit`, `run`, `intake` (volunteer re-run & intake CLI) |
+| `scripts/levelling_trial.py` | `reworded`, `register`, `verify`, `run` (the owner's command line for a trial; `run --dry-run` reads what would not be of record) |
+| `scripts/levelling_export.py` | `lora`, `verify`, `show`, `smoke` (the owner's export; CPU, no model loaded) |
+| `scripts/levelling_rerun.py` | `pack`, `verify-kit`, `run`, `intake` (a volunteer's re-run and its intake) |
 
 **The edit.** A list of terms, each an additive difference from one feed-forward linear's shipped tensor, at dose d
 the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Four forms are built (slices 1a and 1b): a column term on
@@ -2244,35 +2245,67 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
   entry to distinguish persistent vault patches (`ROLLBACK`) from transient per-row readings. Displays three voices
   (untouched base, your edit, selectable control edit) beside `<Rubric>` explanations, a responsive two-batch-class
   paired metrics table, and a model-free ledger replay table (handling live readings, Phase 3 claim verdicts, and Phase 5
-  `trial_of_record` entries, displaying unavailable batteries explicitly as `not run` rather than `passed`, and shipping
+  trials: a `trial_of_record` shows its verdict, a `trial_dry_run` and a `trial_rerun` show “dry run: …” and “re-run: …”
+  and take no verdict’s colour; displaying unavailable batteries explicitly as `not run` rather than `passed`, and shipping
   the recorded 19 Nov 2026 31B Phase 3 verdict cards offline via `compareRecorded.ts`, made by
   `scripts/level_recorded_cards.py` from `verify_claim_book.jsonl`).
 
-**Phase 5: Of Record, and Out** (`backend/level_trial.py`, `backend/level_export.py`, `backend/level_rerun.py` and
-owner-only CLIs `scripts/levelling_trial.py`, `scripts/levelling_export.py`, `scripts/levelling_rerun.py`):
-- **Trial of Record (`backend/level_trial.py`, `scripts/levelling_trial.py`)**: builds a hash-verified `prereg/` folder
-  (`brief.json`, `bar_set.json`, `edit_recipe.json`, `plan.json`, `rules.md`, optional `reworded_ref.json`,
-  `SHA256SUMS`; refuses any `*.safetensors` or `*.gguf` file and warns when an edit's provenance is `"carried"`). Runs
-  in a fresh process with an uncached live `base_checksum` across every linear before and after, draws fresh
-  `os.urandom(32)` items after registration, evaluates both batch classes (`small` & `large`) with `folded="always"`
-  cross-checking per-row against real folded weights, runs an owner-written `RewordedSet` (capped at 5 uses across
-  books and checked against brief overlap and `n_target / 2` minimums), logs `trial_registration` and `trial_of_record`
-  into the append-only ledger (replayable on the Vault compare tab via `verify_trial`), and writes a bounded
-  `TRIAL_SHEET.md` (`passed`, `failed`, or `void`).
-- **Owner-only Export (`backend/level_export.py`, `scripts/levelling_export.py`)**: exports a supported edit as a
-  llama.cpp LoRA `.gguf` plus companion `.manifest.json` outside every checkout and tool directory
-  (`$THEODOLITE_EXPORT_DIR`, else `~/.local/share/theodolite/exports`), never exposed on MCP, `LevelSession`,
-  `level_routes`, or `scientist_tools`. Supports cross-base recompilation against a target `--gguf` (via `TargetBase`
-  reading GGUF tensors directly) or checkpoint, tags Apache-2.0 licence/origin metadata via `export_lora.write_lora`,
-  marks `ffn_gate`/`ffn_up` tensors `unverified_llama_cpp_tensors` until checked live in llama.cpp, runs
-  `implant_check` and exact delta reconstruction verification (`max_abs_err`), and optionally re-measures through a
-  local `llama-server`.
-- **Volunteer Re-run Kit & Defensive Intake (`backend/level_rerun.py`, `scripts/levelling_rerun.py`)**: packages a
-  self-contained kit (refusing `"carried"` edits so zero Gemma weights ever ship; `*.safetensors`/`*.gguf` are also
-  gitignored repo-wide), runs the trial on a volunteer's local model into an allowlisted `.tar` bundle, and validates
-  returned archives defensively (rejecting symlinks, hard links, devices, `..`/absolute paths, unknown members, and
-  oversize entries before extraction) into an intake judgement (`accepted`, `disagreed`, or `rejected`, distinguishing
-  `same_bits` from `other_card_match`).
+**Phase 5: of record, and out** (`backend/level_trial.py`, `backend/level_export.py`, `backend/level_rerun.py` and
+the owner's command lines `scripts/levelling_trial.py`, `scripts/levelling_export.py`, `scripts/levelling_rerun.py`;
+none of them is imported by the MCP server, the session, the page's routes or the scientist's tools):
+- **The trial of record.** A trial is a fresh reading of a brief's kept-back frames, so before it is registered it is
+  asked what a claim is asked (`level_claim.fresh_reading_gate`: kept-back wording practised in the book, a brief
+  changed under its name, frames read under another brief, bars that no calibration reading in the book produced or
+  that were calibrated on other weights, the brief's budget `m`); it spends one of the brief's `m`; an edit has one
+  trial and nothing is read of it on that brief after; and every later sheet of the brief, a claim's or a trial's,
+  lists it. Its registration folder holds exactly `trial.json`, `brief.json`, `bars.json`, `edit_manifest.json`,
+  `reworded.json`, `RULES.md`, `repo_commit`, `registered_at` and `SHA256SUMS` (manifests and hashes; a weight file,
+  a folder or a link in it is refused, and `SHA256SUMS` is read only byte for byte as a registration writes it), and
+  `register_trial` refuses, before it writes anything, a trial that could not be read: a written brief, an edit with
+  no folded form on the model, no reworded set, a design that cannot reach the level, sham controls that are not the
+  edit's shape, bars not calibrated in the book it will be read in. It reads the edit in both batch classes against
+  matched other-site and same-site control edits (and sham-target ones for a declared rule), with the folded form
+  beside the per-row form on every item, then a reworded set (items written outside the brief's generator; an item is
+  read at most 5 times in a book, counted by its wording; a set read in practice in the book is refused), the three
+  gating batteries and the brief's prompt arms, with `base_checksum` over every stored weight before and after.
+  Verdicts: `passed`, `failed`, `void` (`judge_readings`; the folded form's mean within one floor or 5% of the
+  per-row form's and never more than half the house bar).
+  A trial is **of record** only when its process had read nothing before it (`levelling.asked_in_process`), the
+  checkout is clean, its folder is committed as it stands, and the runner and reader are the files hashed at
+  registration (`record_conditions`). Otherwise `run_trial_of_record` refuses, in words that name each reason, or,
+  with `dry_run=True` (`--dry-run`), reads it as a **dry run**: judged and counted as a trial is, entered in the book
+  as `trial_dry_run`, with no sentence. Only a trial of record that passed has a sentence: the fresh reading's own
+  (as the claim gate writes it) with the trial's conditions as found, the folded form, the reworded set and where
+  its items stand, and the claim reading it follows. What a `passed` does not show: the fresh items are new
+  fillings of the frames a claim has already read, so the frames are not new to the edit; the reworded set is what
+  stands outside them, and the starter set in the source is published. `rejudge_trial` judges a trial again from
+  the lines its note names.
+- **The owner's export.** `export_lora_adapter` writes a llama.cpp LoRA `.gguf` and a `.manifest.json` to
+  `$THEODOLITE_EXPORT_DIR`, else `~/.local/share/theodolite/exports`, or to a path given; any path inside a git
+  checkout, `atlas_data/`, a registration folder or a session's folder is refused (it cannot know every folder a tool
+  can write to). A term that scales or silences is compiled from the weights of the base served (`TargetBase`: a
+  Gemma 4 GGUF, a checkpoint folder or this machine's cached checkpoint, the loaded model); terms that carry vectors
+  and low-rank terms say when the base is not the edit's own. The licence and origin keys are the house's
+  (`export_lora.write_lora`); `theodolite.levelling.*` say what was checked: a trial's verdict only for that edit at
+  that dose, with its kind, the book line looked up and whether the base read is the base served; the implant label
+  (`weight_edits.implant_shape`, which looks at column and low-rank writes in the last tenth of the layers) as
+  `true`, `false`, `not checked` or `nothing in reach of the check`, worked at export when the model is at hand and
+  otherwise taken from the trial's registration; and of each tensor which half holds the change. Off the model an
+  edit is rebuilt from a registration or a saved edit and kept to its id (`edit_from_registration`,
+  `edit_from_saved`); a bare recipe is taken only where a model can gate it. `verify_exported_lora` sets a file beside
+  the edit's own arithmetic on the target (`term_change`), which does not go through the compiler that wrote it.
+  `ffn_gate` and `ffn_up` adapters are marked unverified in llama.cpp. `llama_server_smoke` is a smoke test (one
+  prompt, the adapter off and on), not a measurement.
+- **A volunteer's re-run and its intake.** `make_rerun_kit` packs a registration that has been read at home (rebuilt
+  edits only) with the home folder's sums and the seed of the home draw, so that `run_volunteer_rerun` reads the home
+  trial's own items, into a book of its own, as a re-run and never of record. The kit carries the brief and the
+  reworded set in clear. `intake_rerun_bundle` unpacks a plain tar of exactly four plain files, each under its cap and
+  checked before any is read, and judges the returned **book**, not the bundle's account of itself: it must be whole
+  and hold a re-run of this registration, its readings must be the registered edit on the registered base with the
+  home's control seeds and items, its note and its summary must be what its readings give under the home's code, and
+  its items are set beside the home's one by one. Outcomes: `rejected`, `disagreed`, `accepted` (`same_figures` or
+  `within_tolerance`). What it cannot show, and writes into its verdict: that the book was written by a run on the
+  model it names.
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
@@ -2294,9 +2327,10 @@ a written reading whose cache would pass 6 GiB.
 a packed bf16 one) holds the kernel to the spec across 16 sections (1,032/1,032 checks passing).
 `scripts/check_level_door.py` (CPU stand-ins + live `bwrap` sandbox) verifies the no-card weights reader, extended
 sampled/thinking-on written readings and loop/cut-off detectors, `stack(doses=...)` and in-memory `_plant` repair,
-`bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts (including matched `estimate`/`read`
-costs and `lower="whole"` parity between planted and canary sessions), stdio MCP protocol, CLI subcommands, and zero
-kept-out words (138/138 checks passing in 23 s).
+`bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts (a planted session and a canary are
+priced alike, run with `lower="whole"`, scale their null rows at the edit's layer, are shown nothing measured of a
+reading's cost and are charged its price, and see their own lines of the book alone), stdio MCP protocol, CLI
+subcommands, and zero kept-out words (143/143 checks passing in 22 s).
 `scripts/check_level_claim.py` (CPU stand-ins) verifies Phase 3 briefs, canonical hashing/tamper checks, policy
 refusals, `FrameGenerator` disjointness/half balancing/anti-leakage, `house_bar`/`frame_statistics`/`control_standing`
 /`written_strata_summary`/`price_written_reading`, all planted-failure verdicts, 200 planted nulls calibration (0/200
@@ -2308,16 +2342,19 @@ builders/validators/1-to-0 layer conversion and `batteryOutcome` (`not run` for 
 `/api/level/{status,estimate,compare,book}` routes, live & recorded `edit_linears` + rebuildable edit recipes, HTTP 409
 vault-overlay isolation, model-free replay of live, `verify_claim`, and `verify_trial` books, foreign-origin &
 path-traversal guards, Lexicon/Vault wiring, offline recorded card parity (`scripts/level_recorded_cards.py`), and zero
-kept-out words (86/86 checks passing in 1.7 s; `scripts/check_interface_defaults.py`: 291/291 passing;
+kept-out words, and that a book with a damaged line still replays its whole lines (89/89 checks passing in 2 s; `scripts/check_interface_defaults.py`: 291/291 passing;
 `scripts/check_lora_export.py`: 76/76 passing; `npm run build`: clean).
-`scripts/check_level_trial.py` (CPU packed bf16 stand-in + synthetic Gemma 4 GGUF) verifies Phase 5 across 8 sections:
-edit provenance & live `base_checksum`, `RewordedSet` validation & 5-use cap, `prereg/` registration & `SHA256SUMS`
-tamper/weight-file refusals, full `run_trial` (`passed`/`failed`/`void`, `folded="always"` verification, reworded
-execution, `TRIAL_SHEET.md`), owner-only LoRA GGUF export (isolated destination, cross-base `--gguf` recompilation,
-`ffn_gate`/`ffn_up` unverified flag, `implant_check`, exact delta verification, zero exposure on MCP/session/routes/
-scientist tools), volunteer re-run kit & defensive tar intake (symlink, `..`, unknown member, oversize, and carried-edit
-rejections; `accepted` / `disagreed` / `rejected`), CLI smoke tests, and zero kept-out words across all 21 Levelling
-files (84/84 checks passing in 3.9 s).
+`scripts/check_level_trial.py` (CPU: the packed bf16 stand-in, the float32 one, and a small Gemma 4 GGUF written
+for the purpose) holds Phase 5 to the above in 8 sections: the kernel's additions (`base_checksum` must notice a
+changed packed word, scale, embedding entry and plain weight; `implant_shape`); reworded sets (uses by wording, where
+the items stand); what registration refuses before it writes and what verification refuses (eleven ways a folder can
+be wrong); the judgement by planted cases (the folded tolerance and its cap, every `void`, the sentence's words); a
+trial read on the stand-in (refused when it would not be of record, a dry run, read once, counted beside claims, the
+claim gate's refusals, judged again from its book, and a trial of record read in a process and a repository of its
+own); the export (where it may go, every kind of term against the kernel's own change, a compiler that writes the
+wrong thing, what the keys say, an edit rebuilt off the model, no agent's reach); the re-run (the home items, and an
+intake faced with a bundle typed by hand, the home book handed back, a summary that is not its book's, another
+card's figures, odd JSON and unsafe tars); and zero kept-out words (189/189 checks passing in 23 s).
 On the 31B card (RTX 5090):
 - `scripts/verify_levelling.py` (1a, 16 November 2026, `verify_1a.json`): 142 of 145 standing lines passed in 13 min.
 - `scripts/verify_levelling_1b.py` (1b, 18 November 2026, `verify_1b.json`): 68 of 68 checks passed in 86.2 s, peak
@@ -2342,16 +2379,25 @@ On the 31B card (RTX 5090):
   table ran in 4.64 s (`small` odds `-1.853`, `large` odds `-1.817`, `0/3` matched controls, untouched rows identical,
   `base_after = True`), live Vault `DELETE` -> HTTP 409 -> `ROLLBACK` isolation verified, and model-free replay of both
   the live book and `verify_claim` confirmed.
-- `scripts/verify_level_trial.py` (Phase 5 Trial of Record + Owner Export + Volunteer Re-run on live 31B, 19 November
-  2026, `verify_trial.json` & `verify_trial_book.jsonl`): 15 of 15 checks passed in 221.59 s, peak 18.314 GiB, 0
-  unpacker fallbacks, ledger whole (12 entries): live uncached `base_checksum` matched across all 410 linears
-  (`32e77191eca8e5ec`) before and after; full `C = 39` Trial of Record with `folded="always"` and an 8-item `RewordedSet`
-  (`C = 19`, use `1/5`) on E6 layer-50 `'she'` ten achieved `0.0000` max folded-vs-per-row gap (`16/16` same-bits in
-  both batch classes; fresh `small = -1.4057`, `large = -1.4229`, `0/39` matched & same-site; reworded
-  `small = -1.9538`, `large = -1.9373`) and returned **`failed`** (`works but harms`, `near_misses = 0.9014`, matching
-  Row 20); owner-only 31B LoRA `.gguf` export succeeded in 1.11 s (`1,079,680` bytes, `max_abs_err = 0.0`,
-  `implant_flagged = False`); volunteer re-run kit -> run -> defensive intake completed in 87.16 s with judgement
-  **`accepted`** (`same_bits`).
+- `scripts/verify_level_trial.py` (Phase 5 on the 31B, 19 November 2026, `verify_trial.json` and
+  `verify_trial_book.jsonl`): 26 of 26 checks passed in 230.48 s, peak 18.542 GiB (the largest any reading recorded),
+  0 unpacker fallbacks, the book whole (12 entries). It is a **dry run** and says so: the script calibrates before
+  it reads and registers into a temporary folder, so the trial is refused as it stands (both reasons recorded) and
+  read with `dry_run=True`. No trial of record has been read on the 31B. On the E6 layer-50 'she' ten (39 control
+  edits a family, 16 fresh items, the starter reworded set with 19): `base_checksum` unchanged over 410 linears and
+  1,652 tensors (`acb0b5e917feb6d4`); fresh mean `-1.1297` (small) and `-1.1562` (large), 0 of 39 matched and 0 of
+  39 same-site control edits moving as much; the folded form the same bits on 16 of 16 items in both classes; the
+  reworded set `-1.9538` and `-1.9373`, 0 of 19; verdict **`failed`**, the fresh reading reading `kept the base` on
+  this draw (the small class's floor 0.2005, over a quarter of the least effect 0.75) with the near-miss harm there
+  too (0.92). The same edit read `works but harms` in the record this one replaces: the verdict turns on the draw
+  (ROADMAP §viii). Judged again from its book the trial gives its note's verdict; it is read once; the same edit
+  registered again is refused; bars made by hand are refused at registration. The export: an adapter of 1,080,000
+  bytes that is the edit on the loaded model (largest difference 0.0), the same numbers again off the model from the
+  cached checkpoint (shown to be the edit's base by its pins), keys `trial_kind: a dry run`, `implant_flagged:
+  nothing in reach of the check` (the edit is at layer 50; the check looks from layer 54). The re-run: this same card
+  re-running its own kit in the same process was `accepted`, `same_figures` (16 fresh and 8 reworded items a class,
+  largest difference 0.0), which shows that the kit carries the home items and that the intake reads books, and is
+  not another card's reading; a bundle typed by hand was `rejected`. No kit has been run on another card.
 
 **Not built:** attention, embedding and norm edits; a folded form for low-rank terms; Phase 6 driver evals; gradients.
 Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.

@@ -2252,56 +2252,105 @@ in order:
     card, or with too little of it free. The page server and the command line take no lock.
     And one the first review missed: the compare tab’s `scale` and `scale_rows` sent a recipe key the kernel
     refuses and answered HTTP 400; they work now.
-    Left open after that pass, now closed (19 November 2026): (a) blinded-session timing/estimate parity —
-    `levelling.py` no longer merges hidden `_plant` layers into `est_facts`, null-row `L0`, or `L_high`, and
-    `level_session.py` applies identical blinded plan normalization (`folded="never"`, `lower="whole"`) to both
-    `estimate()` and `read()` so predicted seconds, parts, and forward depth match identically between planted and
-    canary sessions (`scripts/check_level_door.py` 138/138); (b) live replay `edit_linears` — `level_routes.py` now
-    recovers touched linears from `edit.terms`, note bodies, or book lookup (and `level_claim.py` writes `edit_linears`
-    and `edit_provenance` directly into claim notes, while `/api/level/compare` preserves the rebuildable recipe in
-    `plan.edit`); (c) unavailable batteries on the Vault `compare` tab — `batteryOutcome` in `compare.ts` /
-    `ComparePanel.tsx` renders unavailable batteries (`available === false`, e.g. `habitat`) as `not run` instead of
-    `passed` (`scripts/check_level_page.py` 86/86, `scripts/check_interface_defaults.py` 291/291, `npm run build` clean).
-    `.gitignore` also now ignores `*.safetensors` and `*.gguf` (`arbiter.md` Row 32; existing tracked records stay
+    Left open after that pass, and taken up with pull request 4 (19 November 2026):
+    (a) A blinded session. A plant’s layers no longer enter the price (`est_facts`), a blinded session runs every
+    paired reading with `folded="never"` and `lower="whole"`, and `estimate` and a reading quote the same seconds, so
+    a planted session and a canary are priced alike. That was not the whole of it: a planted reading still scaled
+    its null rows at the plant’s layer when the plant sat below the edit, and its measured seconds, which the driver
+    was shown, ran about 0.6% over a canary’s (on the 31B, 12 readings each taken in turn: medians 0.9443 s against
+    0.9387 s with the plant at layer 40 and 0.9478 s against 0.9415 s at layer 55, the planted the slower in 12 of
+    12, the ranges apart). Now the null rows are scaled at the layer the null program names, the edit’s; a blinded
+    session is shown nothing measured of a reading’s cost (seconds, their ratio to the price, the peak of memory),
+    is charged the price of a reading or a capture and not its measured seconds, and sees its own lines of the book
+    and no other session’s (`scripts/check_level_door.py` 143). The book keeps the measured figures. Not answered: a
+    driver that times its own calls.
+    (b) A live replay shows its linears: `level_routes.py` takes them from the edit’s terms, the note or the book
+    (and no longer fails on a book with one damaged line, which that scan first did), claim notes carry
+    `edit_linears` and the edit’s recipe, and the compare route keeps the recipe in the plan.
+    (c) A battery that was not run reads `not run`, on the compare tab (`batteryOutcome`) and on the claim sheet
+    (`scripts/check_level_page.py` 89, `scripts/check_interface_defaults.py` 291, `npm run build` clean).
+    `.gitignore` also ignores `*.safetensors` and `*.gguf` (`arbiter.md` row 32; the eleven tracked records stay
     tracked).
-- **Phase 5 (Of record, and out). Built and card-checked** (19 November 2026; ARCHITECTURE §7).
-  - `backend/level_trial.py` + `scripts/levelling_trial.py` (`reworded`, `register`, `verify`, `run`): hash-verified
-    house registration folders (`prereg/` with `trial.json`, `brief.json`, `bars.json`, `edit_manifest.json` marking
-    every term `"rebuilt"` with its pure-JSON recipe or `"carried"` with sha256 hashes only — strictly forbidding
-    `*.safetensors` / `*.gguf` inside `prereg/`, optional `reworded.json`, `RULES.md`, `repo_commit`, `registered_at`,
-    and `SHA256SUMS`); owner-written `RewordedSet` balanced across independent halves, wording-disjoint from practice,
-    kept-back, and battery frames, and capped at `MAX_REWORDED_USES = 5` before rotation (with
-    `starter_reworded_pronoun_pull`); fresh-process `run_trial_of_record` checking `SHA256SUMS`, read-once, uncached
-    live `weight_edits.base_checksum` across all linears before and after, `trial_registration` logged before
-    `os.urandom(32)` draws, dual-batch-class paired readings with `folded="always"` on both fresh kept-back and
-    reworded items, retention batteries, author prompt arms, 0 unpacker fallbacks, verdicts strictly in
-    `("passed", "failed", "void")`, `TRIAL_SHEET.md`, and `trial_of_record` ledger replay in `level_routes.py` /
-    `ComparePanel.tsx`.
-  - `backend/level_export.py` + `scripts/levelling_export.py` (`lora`, `verify`, `show`, `remeasure`): owner-only LoRA
-    GGUF adapter exporter (never exposed on MCP, session, or HTTP surfaces), isolated to `$THEODOLITE_EXPORT_DIR`
-    (default `~/.local/share/theodolite/exports`, refusing checkout, `atlas_data/`, `prereg/`, and session folders, and
-    refusing overwrites without `--force`), recompiling `"rebuilt"` column/row scale & silence terms directly against
-    the served `--gguf` (or checkpoint) via `TargetBase`, carrying Apache-2.0 licence & origin keys (`export_lora.write_lora`)
-    plus `theodolite.levelling.*` provenance, flagging `ffn_gate`/`ffn_up` as unverified in llama.cpp, running an
-    `implant_check` diagnostic, writing a companion `.manifest.json`, verifying headers/hashes/exact `(W + B @ A) @ x`
-    delta equivalence, and providing an optional `llama-server` live re-measurement harness.
-  - `backend/level_rerun.py` + `scripts/levelling_rerun.py` (`pack`, `verify-kit`, `run`, `intake`): volunteer re-run
-    kit packager (strictly refusing `"carried"` weight payloads), volunteer runner producing allowlisted `.tar` return
-    bundles, and defensive tar intake & judgement (`accepted` / `disagreed` / `rejected`, `same_bits` vs
-    `other_card_match`, rejecting path traversal, symlinks, unexpected files, tampered hashes, broken books, and dirty
-    checkouts).
-  - All 84 CPU checks in `scripts/check_level_trial.py` pass in 3.9 s (including packed bf16 folded trials, synthetic
-    GGUF cross-base recompilation, defensive tar attacks, and zero kept-out words across all 21 Levelling files), plus
-    `scripts/check_levelling.py` 1,032/1,032, `check_level_door.py` 138/138, `check_level_claim.py` 302/302,
-    `check_level_page.py` 86/86, and `check_lora_export.py` 76/76. On the 31B RTX 5090 card,
-    `scripts/verify_level_trial.py` passed 15 of 15 checks (`experiments/results/levelling/verify_trial.json`,
-    `verify_trial_book.jsonl`, 221.59 s, peak 18.314 GiB, 0 unpacker fallbacks, ledger whole with 12 entries):
-    live `base_checksum` unchanged across all 410 linears; E6 layer-50 `'she'` ten (`C = 39`, `n_target = 16`, 8
-    reworded items at `C = 19`, `folded="always"`) achieved `16/16` bit-identical folded agreement in both `small`
-    (`-1.4057`) and `large` (`-1.4229`) classes and replicated on the reworded set (`small -1.9538`, `large -1.9373`,
-    `0.0000` folded gap), returning **`failed`** on male near-miss bleed (`|effect| = 0.9014`, matching `arbiter.md`
-    Row 20); 31B LoRA GGUF export verified at `max_abs_err = 0.0` (`1,079,680` bytes, `1.11 s`); and volunteer re-run
-    kit + bundle + defensive intake returned `accepted` (`same_bits`, `87.16 s`).
+- **Phase 5 (of record, and out). Built, mended in review, and card-checked as a dry run** (19 November 2026;
+  ARCHITECTURE §7). It came as pull request 4 from the agent that built phases 1b to 4; what follows is what it does
+  after the review’s mends.
+  - **The trial** (`backend/level_trial.py`, `scripts/levelling_trial.py`: `reworded`, `register`, `verify`, `run`).
+    A trial is a fresh reading: asked what a claim is asked before it is registered, counted in the brief’s budget,
+    one to an edit, listed on every later sheet. Its folder holds manifests and hashes; registration refuses what
+    could not be read. It reads both batch classes against two control families (three for a declared rule), the
+    folded form beside the per-row form on every item, a reworded set, the batteries and the prompt arms, with a
+    checksum of every stored weight before and after. It is of record only when its process had read nothing
+    before it, the checkout is clean, its folder is committed and the runner and reader are as registered;
+    otherwise it is refused, or read as a dry run when asked. Verdicts `passed`, `failed`, `void`.
+  - **The export** (`backend/level_export.py`, `scripts/levelling_export.py`: `lora`, `verify`, `show`, `smoke`): the
+    owner’s command, on the CPU, to a folder outside every git checkout; compiled against the base served; keys that
+    say what was checked; a file shown to be the edit by arithmetic that does not go through its compiler.
+  - **The re-run** (`backend/level_rerun.py`, `scripts/levelling_rerun.py`: `pack`, `verify-kit`, `run`, `intake`): a
+    kit asks a volunteer’s card for the home trial’s own items; the intake judges the returned book against the
+    home book, both judged again by the home’s code.
+  - **Checks.** `scripts/check_level_trial.py` 189, `check_levelling.py` 1,032, `check_level_door.py` 143,
+    `check_level_claim.py` 302, `check_level_page.py` 89, `check_lora_export.py` 76, `check_interface_defaults.py` 291,
+    `check_local_only.py` 1,310. On the card, `scripts/verify_level_trial.py` passed 26 of 26 (230.48 s, peak
+    18.542 GiB, 0 unpacker fallbacks, the book whole at 12 entries): a **dry run** of the E6 layer-50 ‘she’ ten
+    (refused as it stood, for a process that had already read and a folder in no commit), `failed`, its fresh
+    reading `kept the base` on that draw (the small class’s floor 0.2005 against a least effect of 0.75; fresh mean
+    −1.13 and −1.16, 0 of 39 control edits of either family moving as much; near-miss harm 0.92), the folded form
+    the same bits on 16 of 16 items in both classes, the reworded set −1.95 and −1.94 with 0 of 19; the checksum
+    unchanged over 410 linears and 1,652 tensors; an adapter of 1,080,000 bytes that is the edit on the model and,
+    off the model, on the cached checkpoint; and the same card re-running its own kit `accepted` with the same
+    figures on 16 fresh and 8 reworded items a class. The other card checks ran again on this code: 68, 37, 16, and
+    the page’s 11 against the committed book. **No trial of record has been read on the 31B, and no kit has been run
+    on another card.**
+  - **Mended in review** (the review of pull request 4, 19 November 2026: ten findings, each shown by a probe, and
+    what two independent readers added). As it arrived:
+    (1) a trial took any bar set unless a flag was given: the committed trial book’s own readings, judged again,
+    read `failed` under the recorded bars and `passed` under bars typed by hand. Bars now come from a calibration
+    in the book the trial is registered against and read in, on the same weights, always.
+    (2) Trials were in no count: after a claim spent a brief’s budget, trial after trial of one edit ran, each a
+    fresh draw, and no sheet listed an earlier one (row 25 asks for that list); the claim gate’s refusals did not
+    apply; a newline added to `SHA256SUMS` let one registration be read twice. A trial is now a fresh reading in
+    every count, by the owner’s ruling, and shares the claim gate’s one function.
+    (3) The intake compared what a bundle said of itself: one typed by hand, with a one-line book and no reading
+    taken, was `accepted`, `same_bits`. It now judges the returned book.
+    (4) A volunteer’s run drew its own items (the home seed was kept nowhere), so a re-run was compared with the
+    home trial across two draws, and the recorded `accepted (same_bits)` was one process with one forced seed. By
+    the owner’s ruling a re-run repeats the home items; the seed is kept in the home result and carried in the kit.
+    (5) The sentence of a passed trial said “fresh-process”, “verified in folded weights” and “owner-written”
+    whatever the run did, “no author prompt arm matched it” when none ran, and no dose. The conditions are now
+    checked and a trial that does not meet them is not of record; the waiver of the folded form is gone; the
+    sentence is the fresh reading’s own with the trial’s parts.
+    (6) An adapter took the verdict of any trial result handed to it (the check itself gave one edit’s to
+    another’s) and said `implant_flagged: false` when the check had not run, which was every export from the
+    command line; the check looked at column terms alone.
+    (7) Off the model the command line built edits by hand: a recipe the kernel refuses (a neuron named twice) was
+    exported with that column turned to minus itself, a payload changed after saving was taken, and the plain form
+    with no base named raised a `TypeError`.
+    (8) A written brief’s trial was void after every reading, or, with the folded form waived, was judged with
+    neither the folded form nor its registered reworded set, one of whose five uses was counted all the same. A
+    written brief now has no trial, and registration says so.
+    (9) `base_checksum` tested a kind its classifier never returns, hashed nothing on plain linears and did not see
+    a weight written in place.
+    (10) The blinded session, as under (a) above.
+    Also mended: the folded tolerance (three floors, 0.46 against a house bar of 0.34 on the card’s figures) is one
+    floor and never over half the bar; a reworded set’s uses are counted by each item’s wording (a note changed
+    gave a set a new count); the intake takes a plain tar only and rejects odd JSON in words; the delta check of an
+    adapter compared the compiler with itself; a registration folder is exactly its files; ARCHITECTURE named files
+    and rules the code did not have.
+  - **Left open, and known.**
+    The fresh items of a trial are new fillings of the brief’s kept-back frames (8 for the pronoun brief), the
+    frames the claim that made the edit a lead has read: the frames are not new to the edit. The reworded set is
+    what stands outside them, and the one set written so far is the starter set in the source, which anyone can
+    read; a trial of record wants a set of the owner’s own, kept in a file, and a kit sends even that out in clear.
+    The harness cannot see another book: a budget, a reworded item’s uses and “read once” are a book’s.
+    A returned book is a volunteer’s word: a hash chain holds no secret. The intake shows it is whole, is this
+    trial, and agrees or not with the home’s figures.
+    The implant label looks only at writes in the last tenth of the layers, and has not been set against the
+    ruling’s known positive (the vault’s own example, row 37).
+    `ffn_gate` and `ffn_up` adapters are unread through llama.cpp, no adapter of this exporter has been served
+    there, and compiling against a quantised GGUF was checked on a small F32 file only.
+    The page’s new words (trial of record, dry run, re-run, folded form, reworded set, not run) have no Lexicon
+    entry yet.
+    The trial’s command line takes the card’s lock; the page server still takes none.
   - **The known answer’s verdict depends on the draw** (measured on the card, 19 November 2026: the committed
     record and four further runs of `scripts/verify_level_claim.py` that day, each a fresh draw of 8 items; one
     reading each, their reports not kept). Four read the E6 ‘she’ ten as `works but harms`, its mean over frames in
@@ -2315,7 +2364,23 @@ in order:
     `scripts/verify_level_page.py`, which replays line 10 of the book that script rewrites and expects
     `works but harms`, fails one check when run straight after such a run (10 of 11); against the committed book
     it passes.
-- **What waits on the owner.** The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
+    Later the same day, in the review of pull request 4 and the mends that followed (one reading each, their
+    reports not kept but for the trial’s): two more runs of that script read `kept the base` (the large class’s
+    floor 0.225, over a quarter of the least effect 0.75, with a mean of −1.70 and 0 of 39 control edits moving as
+    much) and `did not replicate` (half 0 at −0.12 and −0.16 against half 1 at +1.70 and +1.72 in directed terms);
+    and of three readings of the same edit as a trial (16 items, two a frame), two read `works but harms` (means
+    −1.41 and −1.42; −1.36 and −1.34) and the third, the dry run now on record, `kept the base` (the small class’s
+    floor 0.2005). So this edit has read three ways in ten draws. The floor is the largest thing a null row did on
+    any item, so it does not fall as items are added, and on this brief it sits near a quarter of the least effect:
+    whether the brief’s least effect, the floor’s rule or the number of items should change is the owner’s.
+- **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
+  trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the
+  builders there and the owner’s to change: `passed` stands when the fresh reading is a lead matched by a cheaper
+  knob (the sentence says so); 99 control edits a family by default and 19 for the reworded set, which is judged
+  alone at the level; 16 fresh items (the proposal spoke of 256); the folded tolerance; five uses of a reworded
+  item; the tolerances of an intake (an item within one home floor or 5% of the home effect, never under 0.02; the
+  same figures to 1e-6); that an adapter may be exported with no trial behind it, saying so; that the compare tab
+  replays a trial at all. The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
   posture (5); budgets, and how many fresh readings a brief takes (6); the name and the words, “Levelling” and “level
