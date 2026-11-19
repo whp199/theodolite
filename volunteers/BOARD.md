@@ -1,12 +1,12 @@
 # The census: which layer is whose
 
-Kit 6 (census-kit-6). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and none of this kit's push strengths has passed a trial there.
+Kit 7 (census-kit-7). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and none of this kit's push strengths has passed a trial there.
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
 | 0–28 | 1–29 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
 | 29 | 30 | not taken |  |  |  | its trial failed, 18 November 2026 (match_things): not taken |
-| 30 | 31 | running | anon 6413bb68 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 1%, ends ~2026-11-20T01:38Z |  |
+| 30 | 31 | running | anon 6413bb68 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 36%, ends ~2026-11-20T03:16Z |  |
 | 31 | 32 | done | anon eda6b586 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 18 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole |
 | 32 | 33 | done | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 17-18 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 33 | 34 | done | anon 280c6dc2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
@@ -29,8 +29,8 @@ Kit 6 (census-kit-6). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 50 | 51 | done | anon b153da82 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 10-11 Nov 2026, its own card class, spot-checked; passed layer 45's gates |
 | 51 | 52 | done | eigentactics 6d708804 | NVIDIA GeForce RTX 3090 24 GB |  | 14-15 Nov 2026, its own card class, the first 24 GB card, spot-checked; passed its trial's three gates, read whole |
 | 52 | 53 | done | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
-| 53 | 54 | not taken |  |  |  | soft_ceil's trial failed, 16 November 2026; match_things's passed, 18 November; no kit carries it yet: not taken |
-| 54 | 55 | not taken |  |  |  | its trial passed, 19 November 2026 (match_things); no kit carries it yet: not taken |
+| 53 | 54 | OPEN |  |  |  | match_things; its trial passed, 18 November 2026; twice the answers, about 30 hours on a 5090 |
+| 54 | 55 | OPEN |  |  |  | match_things; its trial passed, 19 November 2026; twice the answers, about 30 hours on a 5090 |
 | 55 | 56 | not taken |  |  |  | its trial failed, 19 November 2026 (match_things): not taken |
 | 56–59 | 57–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
 
@@ -53,4 +53,4 @@ Judged:
 - L38 anon 3853d507: accepted (home bits (NVIDIA GeForce RTX 5090), spot-checked)
 - L31 anon eda6b586: accepted (own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-19T04:42Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-19T15:11Z.

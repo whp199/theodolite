@@ -1080,7 +1080,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
        trialled. The lead came in over its forecast at 53 (0.62 to 0.72) and just under it at 29 (0.58 to 0.64). The
        home card’s display watchdog (Xid 8) stopped trials three times; each was continued row for row, with no answer
        written twice. 53 and 54 may be offered under a kit that carries `match_things` there once their other card
-       classes’ bars are registered; that kit, and widening `DOSES_CALIBRATED`, are the owner’s word. Twelve layers
+       classes’ bars are registered; that kit, and widening `DOSES_CALIBRATED`, are the owner’s word (kit 7 carries
+       them since 19 November, below). Twelve layers
        outside 39–51 now pass a trial: 30, 53 and 54 with `match_things`, 31 with `match_wide`, 32 to 37 with
        `match_ceil`, 38 and 52 with `soft_ceil`.
     4. *Cheaper than any of these: the steer lens, all sixty layers in a night* (10.1–10.8 hours, above). It gives every
@@ -1622,6 +1623,34 @@ layers, the determinism run and the sampled push on 29 October). In this section
       the 4,007 neurons above 95 in 100 controls, 0.017 shuffled; 38: 0.328 of 8,104, 0.034 shuffled).
     - **The board**: twenty-two layers done, 31–52, sixteen of them by volunteers; 30 running under kit 6 (anon,
       6413bb68, an RTX PRO 6000); none open. 53 and 54 passed the `match_things` walk, but no kit carries them yet.
+  - **Kit 7: kit 6 with layers 53 and 54 added** (cut 19 November 2026, tag `census-kit-7`; the owner’s words:
+    “Register the bars for 53 and 54”, “Push it and run the bars measurement”, “You can start it up now” and “Cut kit
+    7”, 19 November). Layers 53 and 54 are taken with `match_things`, on layer 30’s twelve questions at each layer’s
+    own two counts (±2.24 and ±2.42 ceilings at 53, ±2.18 and ±2.34 at 54), whose walk passed there on 18 and 19
+    November (above): 48 answers a unit, 1,130,508 a layer, about 28 and 30 hours on the home 5090 at the trials’
+    pace. Their doses are not counted calibrated there: `DOSES_CALIBRATED` is not widened without the owner’s word.
+    Every other layer is taken as under kit 6.
+    - **The answers.** Kit 6’s seventeen home canaries still in the kit, taken again under kit 7, are the ones kept;
+      53’s and 54’s are new (`dfb5ef2`). Nothing that writes an answer changed after that. A 24 GB card still fits:
+      the longest batch (walk’s) leaves 321 MiB at 53 and 632 MiB at 54 of the 23,900 MiB `census.sh check` asks for.
+    - **Their unpushed answers** are layer 30’s (`census_volunteer.DESIGN_BASELINES`): no push enters them, and the
+      walk’s trials at 53 and 54 wrote the same twelve bit for bit.
+    - **Their bars for another card class**, registered and pushed before anything was measured
+      ([`census_other_card_bars/kit7/prereg/RULES.md`](experiments/results/census_other_card_bars/kit7/prereg/RULES.md),
+      `00acf12`, pushed at 05:06Z). A first start refused at once, with nothing measured, as another job held the
+      card; measured 06:15Z–08:45Z (`c28ea70`). At each layer the control’s twelve unpushed answers are the walk
+      trial’s bit for bit, and the near-tie bar stands at 0.6: 24 of 132 arithmetic-only answers parted, the surest at
+      a piece written at 0.52, as at 30. On the kit’s own chunk 0 of both layers, 768 answers a layer pooled, the home
+      card’s arithmetic moves the median to 0.0037 and the 99th percentile to 0.114; the bars are 0.0091 (built to
+      catch a push 5% off) and 0.26 (10% off), and 0.90 of first word-pieces. Neither layer’s own floor reaches the
+      group’s bars. A push 10% off still keeps 0.98 of first word-pieces there (0.83 at 30), so at 53 and 54 the
+      log-probability bars are what catch it.
+    - **Read whole** by the walk’s reader and two gates, the whole reading and the neurons the controls cover
+      (`census_scaled_design/read_whole.sh`, which gives each walk trial’s verdict back gate for gate on its run).
+    - **A layer begun under kit 6** is finished on kit 6 and checked by kit 6’s own file, read from its tag
+      (`census_volunteer.earlier_kit`); at the cut that is 30 (anon, 6413bb68, 36% on 19 November).
+    - **The board** is kit 7’s with 53 and 54 open; 30 running under kit 6. *Not shown yet:* a whole layer of
+      `match_things`. The thread post is the owner’s.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
