@@ -271,6 +271,15 @@ def check_written_extended(Pb: Any, hP: lv.Handle, items: Dict[str, lv.Item], tm
          [4100 + i for i in range(30)], "- Mercury\n2) mercury\n(3)   MERCURY\n* Mercury", True, (False, False, True)),
         ("three entries alike (one short of a soft loop)",
          [4200 + i for i in range(30)], "1. Mercury\n2. Mercury\n3. Mercury\n4. Venus", True, (False, False, False)),
+        ("four doses that differ only before the point (a decimal's whole part is no list marker)",
+         [4300 + i for i in range(30)], "0.5 mg\n1.5 mg\n2.5 mg\n3.5 mg", True, (False, False, False)),
+        ("four meetings at different hours (an hour is no list marker)",
+         [4400 + i for i in range(30)], "8:30 - Meeting\n9:30 - Meeting\n10:30 - Meeting\n11:30 - Meeting", True,
+         (False, False, False)),
+        ("a collapse written with other markers (\"Item 4: X\"): NEITHER rule finds it, and the sheet says such a "
+         "form counts as no loop",
+         ids_of_list(12, [600, 601, 602]), "\n".join(f"Item {i}: Slapstick" for i in range(4, 16)), False,
+         (False, False, False)),
     ]
     for label, pcs, text, ended, (want_own, want_tight, want_soft) in shapes:
         own = lv.detect_loop(pcs)
@@ -732,6 +741,13 @@ def check_mcp(hP: lv.Handle, p_dir: Path, items: Dict[str, lv.Item], tmp: Path) 
         again = lmcp.hold_card(lock_p)
         again.close()
         check(True, "6: the card's lock is free again once its holder ends")
+        (tmp / "afile").write_text("not a folder", encoding="utf-8")
+        plain_refusal = False
+        try:
+            lmcp.hold_card(tmp / "afile" / "gpu.lock")
+        except SystemExit as exc:
+            plain_refusal = "cannot be opened" in str(exc)
+        check(plain_refusal, "6: a lock file that cannot be opened is a plain refusal, not a traceback")
 
         os.environ[lmcp.POD_ROOT_ENV] = str(tmp / "pod")
         on_pod = lmcp.card_lock_path()

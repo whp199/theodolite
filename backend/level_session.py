@@ -251,8 +251,10 @@ class LevelSession:
         # bound brief.
         self._kept_back = lbr.KeptBack(
             list(lbr.starter_briefs(handle.tokenizer if handle is not None else None).values())
-            + ([brief] if brief is not None else [])
+            + ([brief] if brief is not None else []),
+            batteries=True,  # the harm batteries' own questions too: they are few, fixed and published
         )
+        self.gate_refusals: int = 0
         self._practice_reads: int = 0
 
         # In-memory-only plant / canary state: NEVER written to session.json, work/, or transcript.jsonl.
@@ -377,20 +379,39 @@ class LevelSession:
             }
             if has_claim:
                 # how a fresh reading here is taken: fixed when the session was made, shown and not the driver's to set
-                card["claim_design"] = {"set_by": "the session's owner, before it began",
-                                        **{k: self._claim_design[k] for k in sorted(self._claim_design)}}
+                d = self._claim_design
+                card["claim_design"] = {
+                    "set_by": "the gate, and the session's owner before it began; not the driver",
+                    "n_target": int(d.get("n_target", lcl.DESIGN_DEFAULTS["n_target"])),
+                    "n_neutral": int(d.get("n_neutral", lcl.DESIGN_DEFAULTS["n_neutral"])),
+                    "n_near": int(d.get("n_near", lcl.DESIGN_DEFAULTS["n_near"])),
+                    "n_panel": int(d.get("n_panel", lcl.DESIGN_DEFAULTS["n_panel"])),
+                    "rows": dict(d.get("rows") or {"small": lv.ROWS_SMALL, "large": lv.ROWS_LARGE}),
+                    "written_rows": int(d.get("written_rows", lcl.DESIGN_DEFAULTS["written_rows"])),
+                    "controls_per_family": int(d["controls_override"] if d.get("controls_override") is not None
+                                               else self._brief.default_controls),
+                    "match_tolerance": float(d.get("match_tolerance", lv.DEFAULT_MATCH_TOL)),
+                    "prompt_arms": "always compared",
+                }
         return card
 
-    def _refuse_kept_back(self, items: Sequence[lv.Item]) -> None:
-        """Refuse a practice reading or capture on an item that holds a rendering of a kept-back frame, in its
-        question, its system turn or its answer (`level_briefs.KeptBack`). Nothing is run and nothing is entered."""
+    def _refuse_kept_back(self, items: Sequence[lv.Item], tool: str) -> None:
+        """Refuse a practice reading or capture on an item that holds a kept-back frame's wording, or a near wording
+        of one, or a question of the retention batteries (`level_briefs.KeptBack`): in its system turn, its question
+        or its answer, or across them. Nothing is run and nothing is entered in the book; the refusal is written to
+        the session's transcript (which frame, never the item's text) and counted, so asking the gate which
+        questions are kept back leaves a trace."""
         for it in items:
-            got = self._kept_back.hit(it.question, it.system, it.answer)
+            got = self._kept_back.hit(it.system, it.question, it.answer)
             if got is not None:
+                self.gate_refusals += 1
+                self._log("refused", {"tool": tool, "why": "kept_back", "whose": got["brief"], "frame": got["frame"],
+                                      "how": got["how"], "item_name": it.name})
+                whose = (f'of {got["brief"]}' if got["brief"] == lbr.BATTERIES else f'of brief "{got["brief"]}"')
                 raise SessionRefused(
-                    f'Item "{it.name}" holds a kept-back frame of brief "{got["brief"]}". Kept-back frames are read '
-                    "by a fresh claim reading alone, never in practice: draw practice items from the brief "
-                    "(draw_practice) or write your own on other frames."
+                    f'Item "{it.name}" holds the {got["how"]} of a kept-back frame {whose}. Those frames are for '
+                    "fresh claim readings, not practice: draw practice items from the brief (draw_practice) or write "
+                    "your own on other frames."
                 )
 
     def _wall_seconds(self) -> float:
@@ -410,6 +431,7 @@ class LevelSession:
             "gpu_seconds": round(self.gpu_seconds_used, 3),
             "forwards": int(self.forwards_used),
             "claim_forwards": int(self.claim_forwards_used),
+            "gate_refusals": int(self.gate_refusals),
             "cells": int(self.cells_used),
             "cell_seconds": round(self.cell_seconds_used, 3),
             "wall_seconds": self._wall_seconds(),
@@ -529,7 +551,7 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         a_items = _as_item_list(items_a, self._handle.tokenizer, "items_a")
         b_items = _as_item_list(items_b, self._handle.tokenizer, "items_b")
-        self._refuse_kept_back(a_items + b_items)
+        self._refuse_kept_back(a_items + b_items, "capture")
         n_fwd = len(a_items) + len(b_items)
         est_s = sum(lv.whole(1, len(it.ids)) for it in a_items + b_items)
         self._check_gpu_budget(n_fwd, est_s)
@@ -592,7 +614,8 @@ class LevelSession:
         rem = self._remaining()
         return {
             "estimate": est,
-            "fits_budget": bool(est["forwards"] <= rem["forwards"] and est["seconds"] <= rem["gpu_seconds"]),
+            "fits_budget": bool(est["forwards"] <= rem["forwards"] and est["seconds"] <= rem["gpu_seconds"]
+                                and est["seconds"] <= rem["wall_seconds"]),
             "remaining": rem,
         }
 
@@ -614,6 +637,12 @@ class LevelSession:
         if kind != expected_kind:
             raise SessionRefused(f'This gate takes kind "{expected_kind}", not {kind!r}.')
         p["kind"] = expected_kind
+        if str(p.get("name") or "").startswith(lcl.RESERVED_NAMES):
+            raise SessionRefused(
+                f'A practice reading cannot be named {p.get("name")!r}: names beginning '
+                f'{", ".join(lcl.RESERVED_NAMES)} are the harness\'s own readings (a calibration\'s, a claim\'s), '
+                "and the book tells practice from them by name."
+            )
 
         # Gate enforces control edits (driver cannot disable them below min_controls).
         min_ctl = int(self.budget.min_controls if expected_kind == "paired" else self.budget.min_written_controls)
@@ -640,7 +669,7 @@ class LevelSession:
 
         h = self._handle
         item_map = _as_item_map(items, h.tokenizer)
-        self._refuse_kept_back(list(item_map.values()))
+        self._refuse_kept_back(list(item_map.values()), expected_kind)
 
         # Budget preflight using normalise + estimate (before touching the GPU).
         try:
@@ -767,6 +796,7 @@ class LevelSession:
         forecast: Optional[Mapping[str, Any]] = None,
         selection_mode: str = "free_pick",
         sham_recipes: Optional[Sequence[Mapping[str, Any]]] = None,
+        declared_rule: Optional[str] = None,
         practice_best: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Run one registered Phase 3 fresh claim reading on the bound brief and return ONLY the redacted
@@ -785,6 +815,11 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         if self.gpu_seconds_used >= float(self.budget.max_gpu_seconds):
             raise SessionRefused("GPU-second budget exhausted before claim reading.")
+        if selection_mode == "declared_rule" and not (isinstance(declared_rule, str) and declared_rule.strip()):
+            raise SessionRefused(
+                'A claim with selection_mode "declared_rule" states its rule (declared_rule: the rule the site was '
+                "chosen by, in a sentence or two): it is registered with the sham edits, for a person to read them by."
+            )
         # Priced before anything is registered: a claim the session cannot afford is refused here and spends none of
         # the brief's fresh readings, where it used to start whatever it cost.
         try:
@@ -798,25 +833,28 @@ class LevelSession:
         self._check_gpu_budget(0, float(est["seconds"]))  # its seconds are budgeted; its forwards are not practice
 
         t0 = time.perf_counter()
-        with self._hold_model() as mh:
-            res = lcl.run_fresh_claim(
-                mh,
-                self._brief,
-                self._bars,
-                edit,
-                base_dir=self.work_dir,
-                main_dose=float(main_dose),
-                forecast=forecast,
-                selection_mode=selection_mode,
-                sham_recipes=sham_recipes,
-                practice_count=self._practice_reads,
-                practice_best=practice_best,
-                run_prompt_arms=True,
-                book_path=self.book_path,
-                **self._claim_design,
-            )
-        elapsed = time.perf_counter() - t0
-        self.gpu_seconds_used += elapsed
+        try:
+            with self._hold_model() as mh:
+                res = lcl.run_fresh_claim(
+                    mh,
+                    self._brief,
+                    self._bars,
+                    edit,
+                    base_dir=self.work_dir,
+                    main_dose=float(main_dose),
+                    forecast=forecast,
+                    selection_mode=selection_mode,
+                    sham_recipes=sham_recipes,
+                    declared_rule=declared_rule,
+                    practice_count=self._practice_reads,
+                    practice_best=practice_best,
+                    run_prompt_arms=True,
+                    book_path=self.book_path,
+                    **self._claim_design,
+                )
+        finally:
+            elapsed = time.perf_counter() - t0
+            self.gpu_seconds_used += elapsed  # the card's time is charged however the reading ended
         self.claim_forwards_used += int(res["cost"]["forwards"])
         self._book_seqs.extend(res["book"]["all_seqs"])
         drv = dict(res["driver_record"])

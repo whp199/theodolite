@@ -476,12 +476,14 @@ def detect_loop(
 LOOP_RULE_OWN = "theodolite-loop-1"
 LOOP_RULE_PUBLISHED = "arXiv:2606.13705v2 sec. 4, as worded"
 LOOP_RULES = ("instrument", "published", "either")
-_LIST_MARKER_RE = re.compile(r"^\s*(?:[-*+\u2022\u2013\u2014]+|\(?\d+[.):\]]\)?)\s*")
+_LIST_MARKER_RE = re.compile(r"^\s*(?:[-*+\u2022\u2013\u2014]+|\(?\d+[.):\]]\)?)(?:\s+|$)")
 
 
 def _list_line(line: str) -> str:
     """A line as the published soft-loop rule compares lines: its list markers stripped (bullets, "12.", "12)",
-    "(12)", up to two of them, as in "- 12. ..."), lower case, whitespace as single spaces."""
+    "(12)", up to two of them, as in "- 12. ..."), lower case, whitespace as single spaces. A marker is followed by
+    a space or ends the line, so "1.5 km", "8:30 - Meeting" and "-5 degrees" open with none. What counts as a list
+    marker is this module's reading: the paper does not say."""
     s = str(line)
     for _ in range(2):
         s2 = _LIST_MARKER_RE.sub("", s, count=1)
@@ -498,9 +500,11 @@ def published_loop(pieces: Sequence[int], text: str, *, ended: bool = False) -> 
     stripping list markers, lowercasing, and normalizing whitespace." (read on the paper's own page, 19 November 2026.)
 
     `pieces` are the written word-piece ids and `text` the same row as text; `ended` says the row closed with its
-    end mark, which is then left out of the tail. Two choices here are this module's, not the paper's: a line with
-    no content once its markers are stripped is passed over (the paper's own audit lays four of its detector's five
-    false positives to such lines), and so are blank lines between entries. The paper reports its detector at
+    end mark, which is then left out of the tail. Three choices here are this module's, not the paper's: what
+    counts as a list marker (`_list_line`); a line with no content once its markers are stripped is passed over (the
+    paper's own audit lays four of its detector's five false positives to such lines); and so are blank lines
+    between entries. A collapse written with other markers ("Item 4: X", a table's rows) or as two answers taking
+    turns is not found by this rule, nor by `detect_loop`. The paper reports its detector at
     precision 0.878 and recall 0.818 against people's reading of 81 outputs of the bf16 release; nothing of that
     carries to this implementation or this checkpoint, where neither rule has been checked against a person.
 
@@ -1159,7 +1163,9 @@ def estimate(plan: dict, pieces: Sequence[Tuple[int, int]], *, n_layers: int, fa
 def forwards_taken(result: Mapping[str, Any]) -> int:
     """How many forwards a reading took, counted from its result the way `estimate` counts them beforehand: each
     class's forwards of each item (and its folded twin when one was taken), a written reading's one a sample an
-    item, and the matched controls' one-row pre-pass an item. 0 for a reading that was refused."""
+    item, and the matched controls' one-row pre-pass an item. 0 for a reading that was refused. Two things it does
+    not count, both small: the one-row capture of `lower: "one_row"`, and the pre-pass of a reading that ended void
+    before any of its items was entered."""
     if result.get("status") == "refused":
         return 0
     items = result.get("items") or []

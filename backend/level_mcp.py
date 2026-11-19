@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Stdio MCP server for the Phase 2 Agent's Door (`backend/level_mcp.py`), practice only.
+"""Stdio MCP server for the Agent's Door (`backend/level_mcp.py`): practice, and with a brief and its calibrated
+bars bound, the claim tool.
 
 Exposes the small, driver-neutral Levelling contract over line-delimited JSON-RPC on stdin/stdout:
 - `status`: harness card, declared reach, allowed tools, and remaining GPU-second / forward / cell / wall budgets.
@@ -42,6 +43,7 @@ _CARD_LOCK: Any = None  # the open file that holds the card's lock, kept until t
 SERVER_PORT = 8765  # where the Theodolite server answers; it holds the model when it runs
 MIN_FREE_GIB = 22.0  # what scripts/levelling.py asks of the card before it loads the model (the load peaks at 21.2)
 POD_ROOT_ENV = "THEODOLITE_POD_ROOT"
+POD_DEFAULT_ROOT = Path("/workspace")  # scripts/pod/common.sh DEFAULT_ROOT: where a pod's jobs lock when no root is set
 
 
 def card_lock_path() -> Path:
@@ -52,6 +54,8 @@ def card_lock_path() -> Path:
     root = os.environ.get(POD_ROOT_ENV, "").strip()
     if root:
         return Path(root).expanduser() / "logs" / "gpu.lock"
+    if (POD_DEFAULT_ROOT / "logs").is_dir():  # a pod whose scripts run with no root exported lock there
+        return POD_DEFAULT_ROOT / "logs" / "gpu.lock"
     from backend import level_book as lb
 
     return lb.default_book_path().parent / "gpu.lock"
@@ -61,8 +65,12 @@ def hold_card(path: Optional[Path] = None) -> Any:
     """Take the card's lock without waiting and return the open file that holds it (keep it for the life of the
     process: the lock goes when the file is closed). `SystemExit`, in plain words, when another job holds it."""
     p = Path(path) if path is not None else card_lock_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    f = open(p, "w")
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        f = open(p, "a")  # never emptied: another job's lock file is left as it is
+    except OSError as exc:
+        raise SystemExit(f"The card's lock file {p} cannot be opened ({exc.strerror or exc}): the session is not "
+                         "started without it.") from None
     try:
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
@@ -76,7 +84,10 @@ def _cuda_now() -> Tuple[bool, int]:
 
     if not torch.cuda.is_available():
         return False, 0
-    free, _total = torch.cuda.mem_get_info()
+    try:
+        free, _total = torch.cuda.mem_get_info()
+    except RuntimeError:  # a card too full to answer is a card with nothing free
+        return True, 0
     return True, int(free)
 
 
@@ -228,7 +239,8 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
             "Consumes one of `m` fixed fresh readings, enforces read-once per edit, and returns the redacted verdict, "
             "bounded claim sentence, and Claim Sheet only. How the reading is taken (item counts, rows, control "
             "edits a family, matching tolerance) is fixed by the gate and the session's owner: see `claim_design` on "
-            "the harness card. `sham_recipes` (for selection_mode declared_rule) must each have the edit's shape."
+            "the harness card. `sham_recipes` (for selection_mode declared_rule, with `declared_rule`) must each "
+            "have the edit's shape; one that does not move the stream as the edit does counts against the edit."
         ),
         "inputSchema": {
             "type": "object",
@@ -238,6 +250,9 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
                 "forecast": {"type": "object"},
                 "selection_mode": {"type": "string", "enum": ["free_pick", "declared_rule"], "default": "free_pick"},
                 "sham_recipes": {"type": "array", "items": {"type": "object"}},
+                "declared_rule": {"type": "string", "description": (
+                    "With selection_mode declared_rule: the rule the site was chosen by, in a sentence or two. "
+                    "It is registered and printed with the sham edits.")},
                 "practice_best": {"type": "number"},
             },
             "required": ["edit"],
@@ -295,6 +310,7 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             forecast=a.get("forecast"),
             selection_mode=str(a.get("selection_mode", "free_pick")),
             sham_recipes=a.get("sham_recipes"),
+            declared_rule=a.get("declared_rule"),
             practice_best=a.get("practice_best"),
         )
     raise lses.SessionRefused(f'Unknown tool "{name}".')

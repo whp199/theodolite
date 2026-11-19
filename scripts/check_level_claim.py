@@ -22,6 +22,7 @@ Run:
 """
 from __future__ import annotations
 
+import inspect
 import json
 import math
 import os
@@ -284,12 +285,106 @@ def run_section_1(tok: Any, tmp: Path) -> None:
           and f_a.template_id in lbr.published_template_ids(tok),
           "a frame's template_id is one for a template under other ids, slot names, case and spacing")
     f_short = lbr.Frame("s", "kept_back", 0, "{a} or {b}?", "x")
-    check(f_short.rendered_in("Tea or coffee?") and not f_short.rendered_in("Would you like tea or coffee? Say which."),
-          "a template with few fixed words must be the whole text to count as rendered")
+    long_around = ("I went out early and bought bread and milk and then, would you believe it, tea or coffee was all "
+                   "they had left in the whole shop that morning, so I took both of them home with me.")
+    check(f_short.rendered_in("Tea or coffee?") and not f_short.rendered_in(long_around),
+          "a template with few fixed words must be the whole text, each slot a few words, to count as rendered")
+
+    # What the guard goes by: words. Punctuation, case, spacing and characters that print nothing do not hide a
+    # frame, nor does moving part of it into another field; a near wording of a frame with long fixed runs is found.
+    spider_q = "State the leg count of a typical wolf spider living near a shed."
+    dodges = {
+        "its comma and full stop dropped": spider_q.replace(".", ""),
+        "a zero-width space inside a word": spider_q[:8] + "\u200b" + spider_q[8:],
+        "a soft hyphen and a NUL": spider_q[:14] + "\u00ad" + spider_q[14:] + "\x00",
+        "fullwidth letters": spider_q.replace("State", "\uff33\uff54\uff41\uff54\uff45"),
+        "other case and spacing": "  STATE the   leg COUNT of a typical wolf spider\nliving near a shed  ",
+    }
+    for how, text in dodges.items():
+        got = guard.hit(text)
+        check(got is not None and got["brief"] == "spider_legs_bleed" and got["how"] == "wording",
+              f"a kept-back frame is found with {how} ({got})")
+    got_split = guard.hit("State the leg count of", "a typical wolf spider living near a shed.", "It typically walks on")
+    check(got_split is not None and got_split["how"] == "wording",
+          "a kept-back frame split between the system turn and the question is found in the two run together")
+    for how, text in {
+        "one word changed": "State the leg number of a typical wolf spider living near a shed.",
+        "its opening words dropped": "the leg count of a typical wolf spider living near a shed, please",
+    }.items():
+        got = guard.hit(text)
+        check(got is not None and got["how"] == "near wording", f"a kept-back frame with {how} is found as a near wording ({got})")
+    check(guard.hit("How many legs would you say a wolf spider near a shed walks on?") is None
+          and guard.hit(spider_q.replace("a", "\u0430")) is None,
+          "what the guard does not find, and says it does not: a question put in other words, and look-alike letters")
+    check(guard.hit("Why do hikers pack extra water when crossing ridges?") is None
+          and lbr.KeptBack(starters.values(), batteries=True).hit("why do hikers pack extra water when crossing ridges")
+          == {"brief": lbr.BATTERIES, "frame": "neu_05", "how": "wording"}
+          and lbr.KeptBack(starters.values(), batteries=True).hit("Compute 12 + 30. Reply with the number.") is not None
+          and lbr.KeptBack(starters.values(), batteries=True).hit("What is the capital of France") is not None,
+          "with batteries, the guard finds the retention batteries' own questions too")
+    slow = lbr.Frame("slow", "kept_back", 0, "{a} {b} {c} every single morning before work.", "x")
+    long_text = " ".join(f"word{i}" for i in range(4000))
+    t_guard = time.perf_counter()
+    slow_hit = slow.rendered_in(long_text) or slow.near_in(long_text)
+    check(not slow_hit and time.perf_counter() - t_guard < 1.0,
+          f"a template opening with slots is looked for in a 4,000-word text in well under a second "
+          f"({time.perf_counter() - t_guard:.3f} s)")
+    f_braces = lbr.Frame("j", "kept_back", 0, 'Fill in this record: {{"city": "{city}", "country": ""}} and say why.', "x")
+    check(f_braces.rendered_in(f_braces.question_tpl.format(city="Oslo")),
+          "a template with literal braces finds its own rendering")
+    common = lbr.Frame("c", "kept_back", 0, "the {x} and a {y} in the {z}", "x")
+    check(not common.rendered_in("The committee met in March. " + "Nothing was decided that week. " * 20
+                                 + "Then came rain and a flood, and nobody stayed in the valley.", slot_words=6),
+          "a template of common words is not found across a long text: a slot stands for a few words, not a paragraph")
+
+    # One question template is one frame everywhere: in a generator's two splits and between a brief's practice
+    # frames and its near-miss frames, whatever the answer after it and whatever its slots are called
+    check_raises(
+        lbr.BriefError,
+        lambda: lbr.FrameGenerator("g", [
+            lbr.Frame("p1", "practice", 0, "Name the capital of {city}.", "It is"),
+            lbr.Frame("k1", "kept_back", 0, "Name the capital of {town}.", "The capital is"),
+            lbr.Frame("k2", "kept_back", 1, "Which river runs through {town}?", "It is"),
+        ], {"city": ["Oslo"], "town": ["Bergen"]}),
+        "a generator is refused a question template in both splits, under other slot names and another answer",
+        match="shares a frame template",
+    )
+    pp = starters["pronoun_pull"]
+    prac0 = pp.generator.frames_for("practice")[0].to_dict()  # the same question, its {name} slot called {mname}
+    nm_clash = lbr.FrameGenerator.from_dict({**pp.near_miss_generator.to_dict(), "frames": [
+        *pp.near_miss_generator.to_dict()["frames"],
+        {**prac0, "id": "nm_k99", "split": "kept_back",
+         "question_tpl": prac0["question_tpl"].replace("{name}", "{mname}"),
+         "answer_tpl": prac0["answer_tpl"].replace("{name}", "{mname}")}]})
+    check_raises(
+        lbr.BriefError,
+        lambda: lbr.Brief.from_dict({**pp.to_dict(), "near_miss_generator": nm_clash.to_dict()}),
+        "a brief is refused a practice frame whose question is one of its near-miss frames'",
+        match="practice gates would refuse the brief's own practice items",
+    )
+    check_raises(lbr.BriefError, lambda: lbr.Brief.from_dict({**pp.to_dict(), "name": "pronoun_pull "}),
+                 "a brief is refused a name with a space at its end", match="no space before or after")
 
 
 def run_section_2() -> None:
     print("Section 2: Statistics (house_bar, frame_statistics, control_standing, written strata, pricing)", flush=True)
+    # the strata count loops by the reading's own rule, so they and the verdict speak of the same loops
+    by_rule_res = {"summary": {
+        "base": {"n": 8, "ended": 6, "cut_off": 2, "looped": 0, "looped_published": 3, "looped_either": 3,
+                 "loop_rules_differ": 3},
+        "arms": {"edit:1.0": {"n": 8, "ended": 7, "cut_off": 1, "looped": 0, "looped_published": 1,
+                              "looped_either": 1, "loop_rules_differ": 1}}}}
+    st_either = lcl.written_strata_summary(by_rule_res, rule="either")
+    st_own = lcl.written_strata_summary(by_rule_res, rule="instrument")
+    check(st_either["loop_rule"] == "either" and st_either["strata"]["looped"]["base_count"] == 3
+          and st_either["strata"]["looped"]["edit_count"] == 1 and st_own["strata"]["looped"]["base_count"] == 0,
+          "the looped stratum is counted by the reading's loop rule, not always by the instrument's")
+    check(lcl._written_rows(5, 3) == (8, 1) and lcl._written_rows(12, 3) == (12, 5) and lcl._written_rows(99, 2)[0] == lv.WRITTEN_ROWS_MAX,
+          "a written claim's batch has room for the base, the untouched row, the nulls, each dose and a control, whatever rows were asked")
+    sig = inspect.signature(lcl.run_fresh_claim).parameters
+    check(all(sig[k].default == v for k, v in lcl.DESIGN_DEFAULTS.items())
+          and all(inspect.signature(lcl.estimate_claim).parameters[k].default == v for k, v in lcl.DESIGN_DEFAULTS.items()),
+          "DESIGN_DEFAULTS, which a session shows on its card, are run_fresh_claim's and estimate_claim's own defaults")
     # which book is the default one: $XDG_DATA_HOME places it, $THEODOLITE_LEVEL_BOOK moves the book but not the default
     kept_env = {k: os.environ.get(k) for k in ("XDG_DATA_HOME", lb.BOOK_ENV)}
     try:
@@ -422,8 +517,9 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     sh_decl = lcl.render_sheet(brief, bars, j_decl, meta, s_decl)
     SHEETS_COLLECTED.extend([sh_decl, s_decl or ""])
     check(j_decl["verdict"] == "lead" and "sham-target" in (s_decl or ""), "declared_rule with passing sham -> lead")
-    check("sham-target control edits, supplied with the claim and checked for shape only, moved as much" in (s_decl or ""),
-          "the sentence of a declared-rule lead says its sham edits were supplied with the claim")
+    check("sham-target control edits, supplied with the claim and checked for shape and for moving the stream as "
+          "the edit does, moved as much" in (s_decl or ""),
+          "the sentence of a declared-rule lead says its sham edits were supplied with the claim, and what was checked of them")
     meta_d = {**meta, "design": {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4,
                                  "rows": {"small": 12, "large": 32}, "controls_per_family": 39,
                                  "match_tolerance": 4.0},
@@ -451,7 +547,8 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     check(f'on brief "{brief.name}", taken in a side book and not the default level book)' in (s_side or "")
           and "book: check_book.jsonl (a side book, not the default level book" in sh_side,
           "the sentence and the sheet of a reading taken in a side book say so")
-    check("side book" not in (s_home or "") and "book: level_book.jsonl (the default level book)" in sh_home,
+    check("side book" not in (s_home or "")
+          and "book: level_book.jsonl (the default level book of the environment this ran in)" in sh_home,
           "a reading taken in the default level book is not called a side-book reading")
     check("fresh readings already taken on other briefs in this book: another_brief 2" in sh_side,
           "a sheet lists the fresh readings other briefs have taken in its book")
@@ -459,8 +556,18 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     s_priv = lcl.claim_sentence(brief, j_decl, meta_p)
     sh_priv = lcl.render_sheet(brief, bars, j_decl, meta_p, s_priv)
     SHEETS_COLLECTED.extend([sh_priv, s_priv or ""])
-    check("published" not in (s_priv or "") and "none of the brief's 8 templates is a published starter template" in sh_priv,
+    check("published" not in (s_priv or "") and "None of the brief's 8 templates is a published starter template" in sh_priv
+          and "a question put in other words is not found by either" in sh_priv
+          and "retention batteries: their questions are few, fixed and in the instrument's source" in sh_priv,
           "a brief with no published template is not called published, and the sheet says what the harness cannot know")
+    meta_rule = {**meta_d, "declared_rule": "the ten neurons that write she hardest at layer 51",
+                 "bars_calibration_seq": 3, "bars_calibrations_in_book": 2}
+    sh_rule = lcl.render_sheet(brief, bars, j_decl, meta_rule, s_tol)
+    SHEETS_COLLECTED.append(sh_rule)
+    check('declared rule, in the words given with the claim: "the ten neurons that write she hardest at layer 51"' in sh_rule
+          and "(one of 2 calibrations of this brief in the book)" in sh_rule
+          and "it cannot check that they follow the declared rule" in sh_rule,
+          "the sheet prints the declared rule as the claimant's words, and how many calibrations the book holds")
 
     # 2b. declared_rule missing sham_target -> fails controls
     j_nosh = lcl.judge_claim(brief=brief, bars=bars, classes=good_classes, batteries=_clean_batteries(),
@@ -832,7 +939,22 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     by_new_name = lcl.brief_history(renamed.id, bk, name=renamed.name)
     check(by_new_name["registrations"] == [] and by_new_name["other_ids"] == []
           and by_new_name["book_fresh_readings"] == {brief.name: 2},
-          "a changed brief under a name of its own starts its own count, with the book's other readings in view")
+          "a changed brief under a name of its own has no readings of its own, with the book's other readings in view")
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, renamed, lcl.make_bar_set(renamed.id), edit3, **small_args),
+        "a renamed brief is refused the kept-back frames another brief already read here: a new name is not a new budget",
+        match="already read in this book under brief",
+    )
+    recased = lbr.Brief.from_dict({**brief.to_dict(), "name": brief.name.upper()})
+    check(len(lcl.brief_history(recased.id, bk, name=recased.name)["registrations"]) == 2,
+          "a brief's name is its budget's whatever its case")
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, recased, lcl.make_bar_set(recased.id), edit3, **small_args),
+        "the same brief under its name in capitals is the changed brief, not a new one",
+        match="has changed since its first fresh reading",
+    )
 
     # 7c. A frame drawn in practice is known by its template: moved into a later brief's kept-back split under a
     # new id and a new brief name, it is still refused
@@ -938,8 +1060,24 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
         "a claim refuses, before it registers, fewer fresh items than two frames a half need",
         match="n_target",
     )
+    for kwargs, why, words in (
+        (dict(main_dose=0.0), "a dose of nought", "not registered"),
+        (dict(controls_override=10 ** 6), "more control edits than a reading takes", "not registered"),
+        (dict(sham_recipes=[{"terms": [{"layer": 2, "silence": [4, 5]}]}]), "sham edits with a free pick",
+         "Sham edits are read only for a site chosen by a declared rule"),
+        (dict(selection_mode="declared_rule", sham_recipes=[{"terms": [{"layer": 2, "silence": [4, 5]}]}],
+              declared_rule="   "), "a declared rule of no words", "declared_rule is the rule"),
+    ):
+        check_raises(lcl.ClaimRefused, lambda kwargs=kwargs: lcl.run_fresh_claim(h, brief, sbars, s_edit, **{**small, **kwargs}),
+                     f"a claim is refused, before it registers, {why}", match=words)
+    check_raises(lcl.ClaimRefused, lambda: lcl.run_fresh_claim(h, brief, sbars, ["not", "a recipe"], **small),
+                 "a claim is refused an edit that is no recipe, in plain words", match="An edit is a recipe")
+    check_raises(lbr.BriefError,
+                 lambda: lcl.estimate_claim(h, lbr.canary_null_brief(h.tokenizer), s_edit, n_near=14),
+                 "pricing a claim makes its draws: more near misses than the brief can give are refused there, "
+                 "before any registration", match="could not draw")
     check(len(lcl.brief_history(brief.id, sbk)["registrations"]) == 0,
-          "none of the claims refused for their shams or design registered anything")
+          "none of the claims refused for their shams, dose or design registered anything")
     shams = [{"terms": [{"layer": 2, "silence": [a, a + 1]}]} for a in (4, 6, 8, 10)]
     sres = lcl.run_fresh_claim(h, brief, sbars, s_edit, selection_mode="declared_rule", sham_recipes=shams, **small)
     SHEETS_COLLECTED.append(sres["sheet"])
@@ -955,11 +1093,79 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     dl = (sres["judged"]["classes"].get("small") or {}).get("delivered") or {}
     check(all((dl.get(f) or {}).get("controls_read") == 4 for f in ("other_sites_matched", "same_site", "sham_target"))
           and (dl["sham_target"]["edit"] or 0.0) > 0.0
-          and "delivered (stream change at the highest edited layer; gates nothing): edit" in sres["sheet"]
+          and "delivered (stream change at the highest edited layer): edit" in sres["sheet"]
           and "sham-target controls: 4 supplied with the claim" in sres["sheet"],
           "the sheet prints how much the edit and each family's control edits changed the stream")
     check(lb.verify(sbk)["ok"], "level book whole after the declared-rule claim")
     we.assert_base(h.lm, h.hooks_at_load)
+
+    # 10. Sham edits that hardly move the stream are no controls: they count against the edit, never for it
+    from backend.gguf_weights import dense_cols
+    vec_dir = tmp / "sham_vectors"
+    vec_dir.mkdir()
+    down = h.lm.get_submodule(we.linear_name(2, "down_proj"))
+    cols01 = dense_cols(down, torch.tensor([0, 1])).float().cpu().numpy()
+    np.save(vec_dir / "big.npy", (-0.5 * cols01).astype(np.float32))
+    np.save(vec_dir / "tiny.npy", (1e-6 * cols01).astype(np.float32))
+    add_edit = {"terms": [{"layer": 2, "add": [0, 1], "vectors": "big.npy"}]}
+    quiet = [{"terms": [{"layer": 2, "add": [a, a + 1], "vectors": "tiny.npy"}]} for a in (4, 6, 8, 10)]
+    qres = lcl.run_fresh_claim(h, brief, sbars, add_edit, base_dir=vec_dir, selection_mode="declared_rule",
+                               sham_recipes=quiet, declared_rule="two columns chosen by hand, for this check", **small)
+    SHEETS_COLLECTED.append(qres["sheet"])
+    q_small = (qres["judged"]["classes"].get("small") or {})
+    q_sh, q_dv = (q_small.get("controls") or {}).get("sham_target") or {}, (q_small.get("delivered") or {}).get("sham_target") or {}
+    check(qres["verdict"] not in ("lead", "lead, matched by a cheaper knob", "void")
+          and q_dv.get("not_comparable") == 4 and q_sh.get("at_least") == 4 and q_sh.get("passes_alpha") is False
+          and "outside the matching tolerance of the edit's, and counted as moving as much" in qres["sheet"]
+          and 'declared rule, in the words given with the claim: "two columns chosen by hand, for this check"' in qres["sheet"],
+          f"four sham edits a millionth of the edit's size count against it, and the sheet says so "
+          f"(verdict {qres['verdict']}, delivered {q_dv}, standing {q_sh})")
+    qreg = next(lb.entries(sbk, start=qres["book"]["registration_seq"], limit=1))["body"]
+    check(qreg.get("declared_rule") == "two columns chosen by hand, for this check"
+          and qreg.get("priced", {}).get("forwards", 0) > 0 and qreg.get("practice_readings_in_book") == 0
+          and qreg.get("bars_calibrations_in_book") == 1,
+          "the registration keeps the declared rule, the reading's price and the book's count of practice readings")
+
+    # 11. A fresh draw refused after the registration ends the reading void, with its verdict in the book
+    vbk = tmp / "void_book.jsonl"
+    vbars = lcl.calibrate_bars(
+        h, brief, layer=2, n_cols=2, n_controls=2, n_neutral=2, n_near=2, n_panel=2,
+        rows={"small": 12, "large": 16}, seed=7, book_path=vbk,
+    )
+    v_seed = bytes([7]) * 32
+    will_draw = brief.generator.draw("kept_back", 4, seed_bytes=v_seed + b":target", tokenizer=h.tokenizer,
+                                     system_override=(brief.chat_settings or {}).get("system"), name_prefix="fresh_1")
+    vres = lcl.run_fresh_claim(h, brief, vbars, s_edit, practice_item_ids=[will_draw[0].item.id], _seed_override=v_seed,
+                               **{**small, "book_path": vbk})
+    v_hist = lcl.brief_history(brief.id, vbk, name=brief.name)
+    check(vres["verdict"] == "void" and "The fresh draw was refused" in " ".join(vres["judged"]["reasons"])
+          and len(v_hist["registrations"]) == 1 and len(v_hist["verdicts"]) == 1 and vres["cost"]["forwards"] == 0,
+          f"a fresh item that was seen in practice voids the registered reading, with a verdict note and no forward "
+          f"({vres['verdict']}: {vres['judged']['reasons']})")
+
+    # 12. Kept-back wording read in practice, by any door, ends a claim on the brief in that book
+    pbk = tmp / "practised_book.jsonl"
+    kb_seen = brief.generator.draw("kept_back", 2, seed_bytes=b"practised-kept-back", tokenizer=h.tokenizer)[0].item
+    env_was = os.environ.get(lb.BOOK_ENV)
+    os.environ[lb.BOOK_ENV] = str(pbk)
+    try:
+        r_own = lv.read(h, {"name": "owner_practice", "kind": "paired", "edit": s_edit,
+                            "controls": {"count": 2, "seed": 0}, "rows": {"small": 12, "large": 16}}, {"kb": kb_seen})
+    finally:
+        if env_was is None:
+            os.environ.pop(lb.BOOK_ENV, None)
+        else:
+            os.environ[lb.BOOK_ENV] = env_was
+    p_hist = lcl.brief_history(brief.id, pbk, name=brief.name, guard=lbr.KeptBack([brief]))
+    check(r_own["status"] == "ok" and p_hist["practice_readings"] == 1
+          and p_hist["kept_back_practised"] == [int(r_own["book"]["seq"])],
+          "the book's practice readings are counted, and one that holds a kept-back frame's wording is found")
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, brief, lcl.make_bar_set(brief.id), s_edit, **{**small, "book_path": pbk}),
+        "a claim is refused on a brief whose kept-back frames were read in practice in its book, whatever door read them",
+        match="were read in practice in this book",
+    )
 
 
 def run_section_6(h: lv.Handle, tmp: Path) -> None:
@@ -1016,8 +1222,17 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
         book_path=bk, brief=brief, bars=bars, claim_design=ses_design,
     )
     check(ses.harness_card().get("claim_design", {}).get("match_tolerance") == 20.0
-          and ses.harness_card()["claim_design"]["n_target"] == 4,
+          and ses.harness_card()["claim_design"]["n_target"] == 4
+          and ses.harness_card()["claim_design"]["controls_per_family"] == 4,
           "the harness card shows the driver the design its fresh readings will be taken under")
+    ses_plain = lses.LevelSession(h, tmp / "ses_plain", reach="tools_only", backend="local",
+                                  book_path=bk, brief=brief, bars=bars)
+    plain_design = ses_plain.harness_card()["claim_design"]
+    check(plain_design["n_target"] == 8 and plain_design["n_near"] == 4 and plain_design["match_tolerance"] == lv.DEFAULT_MATCH_TOL
+          and plain_design["controls_per_family"] == brief.default_controls
+          and plain_design["rows"] == {"small": lv.ROWS_SMALL, "large": lv.ROWS_LARGE},
+          "with nothing set by its owner, a session's card still shows the whole design: the gate's own")
+    ses_plain.close()
     check(set(["brief_info", "draw_practice", "claim"]).issubset(ses.allowed_tools()),
           "bound session exposes brief_info, draw_practice, claim")
     check(not ses.harness_card()["practice_only"], "harness_card sets practice_only=False when claim gate is bound")
@@ -1057,6 +1272,25 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
                      f"the door refuses {what}", match="kept-back frame")
     check(lb.verify(bk)["entries"] == lines_before and ses.forwards_used == fwd_before,
           "the refused practice calls ran nothing and entered nothing in the book")
+    transcript = (tmp / "ses_claim" / "transcript.jsonl").read_text(encoding="utf-8")
+    check(ses.status()["usage"]["gate_refusals"] == 4 and transcript.count('"why": "kept_back"') == 4
+          and "Finish the story" not in transcript and "Write the next words" not in transcript,
+          "each refusal for a kept-back frame is counted and written to the transcript, without the item's text")
+    check_raises(lses.SessionRefused,
+                 lambda: lmcp.dispatch_tool(ses, "read", {"plan": {**plan_kb, "name": "claim_pronoun_pull_1_matched"},
+                                                          "items": {"q": {"question": "An ordinary question about rivers?",
+                                                                          "answer": "They run to the sea."}}}),
+                 "a practice reading may not take a name the harness keeps for its own readings",
+                 match="are the harness's own readings")
+    check_raises(lses.SessionRefused,
+                 lambda: lmcp.dispatch_tool(ses, "read", {"plan": plan_kb, "items": {
+                     "q": {"question": "What is the capital of France?", "answer": "Paris"}}}),
+                 "the door refuses a question of the retention batteries", match="the gate's retention batteries")
+    check_raises(lses.SessionRefused,
+                 lambda: lmcp.dispatch_tool(ses, "claim", {
+                     "edit": {"terms": [{"layer": 2, "silence": [0, 1]}]}, "selection_mode": "declared_rule",
+                     "sham_recipes": [{"terms": [{"layer": 2, "silence": [4, 5]}]}]}),
+                 "through the door a claim by a declared rule must state the rule", match="states its rule")
     ses_free = lses.LevelSession(h, tmp / "ses_free", reach="tools_only", backend="local", book_path=bk)
     spider = lbr.starter_briefs(h.tokenizer)["spider_legs_bleed"].generator.draw(
         "kept_back", 2, seed_bytes=b"door-spider", tokenizer=h.tokenizer)[0].item
@@ -1084,8 +1318,9 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
 
     # ... and none for how the reading is taken: the tolerance, the counts and the controls are not the driver's
     claim_props = set(lmcp.TOOL_SPECS["claim"]["inputSchema"]["properties"])
-    check(claim_props == {"edit", "main_dose", "forecast", "selection_mode", "sham_recipes", "practice_best"},
-          f"the MCP claim tool takes the edit, its dose, a forecast, the selection and its shams, nothing else ({sorted(claim_props)})")
+    check(claim_props == {"edit", "main_dose", "forecast", "selection_mode", "sham_recipes", "declared_rule",
+                          "practice_best"},
+          f"the MCP claim tool takes the edit, its dose, a forecast, the selection, its shams and their rule, nothing else ({sorted(claim_props)})")
     for arg, val in (("match_tolerance", 1e9), ("controls_override", 1), ("n_target", 2)):
         check_raises(
             lses.SessionRefused,
@@ -1113,7 +1348,8 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     check(r_claim["forwards_charged"] == r_claim["estimated"]["forwards"] == use_now["claim_forwards"] > 0
           and use_now["forwards"] == fwd_before,
           "a claim's forwards are counted beside the practice forwards, as priced, and not against the practice budget")
-    check(reg_mcp.get("kept_back") == {"frames": 8, "published": 8}
+    check((reg_mcp.get("kept_back") or {}).get("frames") == 8 and reg_mcp["kept_back"]["published"] == 8
+          and len(reg_mcp["kept_back"]["template_ids"]) == 8
           and "8 of the brief's 8 templates are published in the instrument's source" in r_claim["sheet"],
           "a starter brief's claim registers, and prints, that its kept-back templates are published")
     check(r_claim["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_RUN
@@ -1152,6 +1388,11 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
         s_b.close()
     check(len(lcl.brief_history(brief.id, bk, name=brief.name)["registrations"]) == n_reg,
           "a claim refused for its price is not registered and spends none of the brief's fresh readings")
+    s_wall = lses.LevelSession(h, tmp / "ses_wall", reach="tools_only", backend="local", book_path=bk,
+                               budget=lses.SessionBudget(max_gpu_seconds=1e6, max_wall_seconds=0.5))
+    check(s_wall.estimate(plan_b, item_b)["fits_budget"] is False,
+          "the estimate tool says a call does not fit when the gate would refuse it for the wall clock")
+    s_wall.close()
     s_bad = lses.LevelSession(h, tmp / "ses_badedit", reach="tools_only", backend="local",
                               book_path=bk, brief=brief, bars=bars, claim_design=ses_design)
     check_raises(lses.SessionRefused, lambda: s_bad.claim({"terms": [{"layer": 999, "silence": [0]}]}),
@@ -1233,7 +1474,7 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
 
     card_design = told(2).get("harness_card", {}).get("claim_design", {})
     check(p_mcp.returncode == 0 and card_design.get("match_tolerance") == 20.0 and card_design.get("n_target") == 4
-          and card_design.get("controls_override") == 4,
+          and card_design.get("controls_per_family") == 4 and card_design.get("rows") == {"small": 12, "large": 32},
           f"the MCP server's --claim-* flags fix the design, and its harness card shows it (rc={p_mcp.returncode}, "
           f"err={p_mcp.stderr[-200:]!r})")
     check(answers.get(3, {}).get("isError") is True

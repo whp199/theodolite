@@ -53,6 +53,29 @@ PROMPT_ARMS_RUN = "run"
 PROMPT_ARMS_NONE = "none in the brief"
 PROMPT_ARMS_OFF = "switched off for this reading"
 
+# How a fresh reading is taken when its caller says nothing (`run_fresh_claim`'s own defaults; a session shows them
+# on its harness card, `scripts/check_level_claim.py` checks the two agree).
+DESIGN_DEFAULTS = {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4, "written_rows": 12}
+
+# A reading whose name begins with one of these is the harness's own (a calibration's, a claim's, a settings audit's,
+# a pricing's); a session's practice gates refuse such a name, so in a book every other reading is practice.
+RESERVED_NAMES = ("cal_", "claim_", "settings_audit_", "sizing_")
+_LOOP_COUNT_KEY = {"instrument": "looped", "published": "looped_published", "either": "looped_either"}
+
+
+def _name_key(name: Any) -> str:
+    """A brief's name as its budget goes by it: spaces at its ends and case set aside, so "Pronoun_pull " is not a
+    second brief with a budget of its own."""
+    return str(name).strip().casefold() if name is not None else ""
+
+
+def _written_rows(written_rows: int, n_doses: int) -> Tuple[int, int]:
+    """(the rows of one written batch of a claim, how many control edits fit in it): the base row, the untouched last
+    row, the null rows, a row a dose and at least one control edit. Fewer rows asked than that are raised to it."""
+    need = 2 + len(lv.NULL_E_WRITTEN) + int(n_doses) + 1
+    rows = min(max(int(written_rows), lv.WRITTEN_ROWS_MIN, need), lv.WRITTEN_ROWS_MAX)
+    return rows, max(1, rows - 2 - len(lv.NULL_E_WRITTEN) - int(n_doses))
+
 VERDICTS = (
     "lead",
     "lead, matched by a cheaper knob",
@@ -380,13 +403,17 @@ def written_strata_summary(
     *,
     main_dose: float = 1.0,
     alpha: float = DEFAULT_ALPHA,
+    rule: str = "instrument",
 ) -> Dict[str, Any]:
     """Arbiter Row 21 strata summary for long written readings.
 
     Checks whether >= 90% of base generations finished under `max_new`, reports per-stratum counts
     (`ended`, `cut_off`, `looped`), marks any stratum with base count < 20 as `"too few to read"`, and prints
-    the least gain each stratum could have seen.
+    the least gain each stratum could have seen. `rule` is the loop rule the reading counts by
+    (`levelling.loop_flag`): the `looped` stratum is counted by it, so the strata and the verdict speak of the same
+    loops.
     """
+    loop_key = _LOOP_COUNT_KEY[rule]
     sm = written_result.get("summary") or {}
     base = sm.get("base") or {}
     n_tot = int(base.get("n") or 0)
@@ -396,8 +423,9 @@ def written_strata_summary(
     edit_arm = (sm.get("arms") or {}).get(arm_key) or {}
     strata: Dict[str, Any] = {}
     for sname in ("ended", "cut_off", "looped"):
-        b_cnt = int(base.get(sname) or 0)
-        e_cnt = int(edit_arm.get(sname) or 0)
+        key = loop_key if sname == "looped" and loop_key in base else sname  # an older row has the first rule only
+        b_cnt = int(base.get(key) or 0)
+        e_cnt = int(edit_arm.get(key) or 0)
         rate_b = (b_cnt / float(n_tot)) if n_tot > 0 else None
         rate_e = (e_cnt / float(n_tot)) if n_tot > 0 else None
         strata[sname] = {
@@ -417,6 +445,7 @@ def written_strata_summary(
 
     return {
         "total_generations": n_tot,
+        "loop_rule": rule,
         # how many generations each loop rule calls looped, base and edit (levelling.detect_loop, published_loop)
         "loop_rules": {"base": _counts(base), "edit": _counts(edit_arm),
                        "names": dict((sm.get("loop_rules") or {}))},
@@ -627,7 +656,8 @@ def judge_claim(
                 if fam in req_families and not cs["passes_alpha"]:
                     any_ctl_fail = True
                     lost = (
-                        f"; {cs['non_finite']} of them gave no finite reading and are counted as moving as much"
+                        f"; {cs['non_finite']} of them gave no finite reading, or (a sham edit) did not move the "
+                        "stream as the edit did, and are counted as moving as much"
                         if cs["non_finite"] else ""
                     )
                     reasons.append(
@@ -809,7 +839,8 @@ def record_practice_draw(
     return lb.append("note", body, path=book_path)
 
 
-def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Optional[str] = None) -> Dict[str, Any]:
+def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Optional[str] = None,
+                  guard: Optional[lbr.KeptBack] = None) -> Dict[str, Any]:
     """Scan the level book for what bears on a brief.
 
     By the brief's hash (`brief_id`): its `calibrations` (a bar set is one version's).
@@ -821,8 +852,16 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     `other_ids`).
 
     Of the whole book, whatever the brief: `practice_templates`, the template ids of every frame drawn in practice
-    here (so a practice frame moved into another brief's kept-back split is still known), and `book_fresh_readings`,
-    the count of fresh readings registered under each brief name (so a sheet can list them all)."""
+    here (so a practice frame moved into another brief's kept-back split is still known); `book_fresh_readings`,
+    the count of fresh readings registered under each brief name (so a sheet can list them all); `frames_read`,
+    for each kept-back template a registration recorded, the `[name, hash]` of every brief it was read under;
+    `practice_readings`, how many readings in the book are not the harness's own (`RESERVED_NAMES`); and, when a
+    `guard` is given, `kept_back_practised`: the lines of practice readings holding an item the guard finds
+    (`level_briefs.KeptBack.hit`), whichever door they came in by (a session, the command line, the page).
+
+    A brief's name is compared with spaces at its ends and case set aside (`_name_key`). Notes written before
+    19 November 2026 carry no template ids and no name on a practice draw: those are found by the brief's hash
+    alone."""
     calibrations: List[Dict[str, Any]] = []
     registrations: List[Dict[str, Any]] = []
     verdicts: List[Dict[str, Any]] = []
@@ -831,22 +870,36 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     practice_frame_ids: set = set()
     practice_templates: set = set()
     book_fresh: Dict[str, int] = {}
+    frames_read: Dict[str, set] = {}
+    practice_readings = 0
+    kept_back_practised: List[int] = []
     empty = {
         "calibrations": [], "registrations": [], "verdicts": [], "seen_edit_ids": [], "other_ids": [],
         "practice_item_ids": [], "practice_frame_ids": [], "practice_templates": [], "book_fresh_readings": {},
+        "frames_read": {}, "practice_readings": 0, "kept_back_practised": [],
     }
+    want_name = _name_key(name) if name is not None else None
     p = book_path if book_path is not None else lb.book_path()
     if not Path(p).exists():
         return empty
 
     def mine(body: Mapping[str, Any]) -> bool:
-        return body.get("brief_id") == brief_id or (name is not None and body.get("brief_name") == name)
+        return body.get("brief_id") == brief_id or (
+            want_name is not None and body.get("brief_name") is not None and _name_key(body["brief_name"]) == want_name)
 
     for entry in lb.entries(p):
-        if entry.get("kind") != "note":
-            continue
         body = entry.get("body")
         if not isinstance(body, Mapping):
+            continue
+        if entry.get("kind") != "note":
+            if entry.get("kind") in ("paired", "written") and not str(body.get("name") or "").startswith(RESERVED_NAMES):
+                practice_readings += 1
+                if guard is not None:
+                    for it in body.get("items") or ():
+                        blk = (it.get("item") or {}) if isinstance(it, Mapping) else {}
+                        if guard.hit(blk.get("system"), blk.get("question"), blk.get("answer")) is not None:
+                            kept_back_practised.append(int(entry["seq"]))
+                            break
             continue
         nt = body.get("note_type")
         if nt == "brief_calibration":
@@ -863,6 +916,8 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         elif nt == "claim_registration":
             if isinstance(body.get("brief_name"), str):
                 book_fresh[body["brief_name"]] = book_fresh.get(body["brief_name"], 0) + 1
+            for tid in ((body.get("kept_back") or {}).get("template_ids") or ()):
+                frames_read.setdefault(str(tid), set()).add((str(body.get("brief_name")), str(body.get("brief_id"))))
             if mine(body):
                 registrations.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
                 eid = body.get("edit_id")
@@ -881,6 +936,9 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         "practice_frame_ids": sorted(practice_frame_ids),
         "practice_templates": sorted(practice_templates),
         "book_fresh_readings": dict(sorted(book_fresh.items())),
+        "frames_read": {tid: sorted([n, i] for n, i in who) for tid, who in sorted(frames_read.items())},
+        "practice_readings": practice_readings,
+        "kept_back_practised": kept_back_practised,
     }
 
 
@@ -982,6 +1040,7 @@ def _delivered_of(
         "controls_min": min(means) if means else None,
         "controls_max": max(means) if means else None,
         "controls_read": len(means),
+        "per_control": [float(np.mean(xs)) if xs else None for xs in ctl_vals],
     }
 
 
@@ -1205,6 +1264,8 @@ def calibrate_bars(
             "bars": bars.to_dict(),
             "bars_sha256": bars.id,
             "book_seqs": list(cal_seqs),
+            "model_id": h.model_id,  # bars are one model's: a claim on other weights is refused them
+            "weights_id": h.weights_id,
             # what the calibration was asked for: a bar is `mult` times the largest figure its probe and control
             # edits gave (never under the registered floor), so `mult` and the probe belong beside the bars
             "settings": {
@@ -1330,11 +1391,7 @@ def _run_written_target_claims(
     }
     thinking = bool((brief.chat_settings or {}).get("thinking", False))
     target_items = {d.item.name: d.item for d in target_drawn}
-    R = min(max(int(written_rows), lv.WRITTEN_ROWS_MIN), lv.WRITTEN_ROWS_MAX)
-    max_c_chunk = max(1, R - 2 - len(lv.NULL_E_WRITTEN) - len(doses))
-    if max_c_chunk < 1:
-        R = min(lv.WRITTEN_ROWS_MAX, 2 + len(lv.NULL_E_WRITTEN) + len(doses) + 1)
-        max_c_chunk = max(1, R - 2 - len(lv.NULL_E_WRITTEN) - len(doses))
+    R, max_c_chunk = _written_rows(written_rows, len(doses))
 
     book_seqs: List[int] = []
     unpacker_mode: Optional[str] = None
@@ -1409,9 +1466,8 @@ def _run_written_target_claims(
             "controls": ctls_all,
         }
     }
-    strata = written_strata_summary(first_result or {}, main_dose=main_dose) if first_result is not None else None
-    if strata is not None:
-        strata["loop_rule"] = loop_rule  # the one this reading's loop rates are counted by
+    strata = (written_strata_summary(first_result or {}, main_dose=main_dose, rule=loop_rule)
+              if first_result is not None else None)
     return None, classes_payload, book_seqs, strata, unpacker_mode
 
 
@@ -1436,6 +1492,7 @@ def compare_settings_audit(
         "seed": int((wcfg.get("seeds") or [1])[0]),
     }
     items = {d.item.name: d.item for d in sample_drawn[: min(4, len(sample_drawn))]}
+    audit_key = _LOOP_COUNT_KEY[lbr.loop_rule_of(brief)]  # the audit counts loops by the brief's own rule
     out: Dict[str, Any] = {}
     book_seqs: List[int] = []
     for label, th in (("thinking_off", False), ("thinking_on", True)):
@@ -1462,7 +1519,7 @@ def compare_settings_audit(
         book_seqs.append(int(res["book"]["seq"]))
         base_sm = ((res.get("summary") or {}).get("base") or {}) if res.get("status") == "ok" else {}
         n_b = int(base_sm.get("n") or 0)
-        n_loop = int(base_sm.get("looped") or 0)
+        n_loop = int(base_sm.get(audit_key if audit_key in base_sm else "looped") or 0)
         out[label] = {
             "status": res.get("status"),
             "n": n_b,
@@ -1482,7 +1539,7 @@ def compare_settings_audit(
             else f"base looped under thinking_off ({off_loops}) and thinking_on ({on_loops})"
         )
     )
-    return {**out, "note": note, "book_seqs": book_seqs}
+    return {**out, "note": note, "loop_rule": lbr.loop_rule_of(brief), "book_seqs": book_seqs}
 
 
 def estimate_claim(
@@ -1512,10 +1569,18 @@ def estimate_claim(
     selection declares a rule (or the chunked written readings of a `written_loop` brief, and its settings audit),
     the three battery readings, and the one-row forwards of the brief's prompt arms. The fresh items are not drawn
     until the claim is registered, so their lengths are taken from a sizing draw of the same frames (a fixed seed of
-    the brief's own; nothing of it is returned or kept): the price is close, not exact, in seconds, and exact in
-    forwards. `scripts/check_level_claim.py` checks it against the forwards a claim then takes, so a change to what a
-    claim reads that is not made here too is caught. Raises what `levelling.normalise`, `levelling.estimate` and
-    `weight_edits.recipe_facts` raise for a plan they refuse."""
+    the brief's own; nothing of it is returned or kept): the price is close, not exact, in seconds. Its forwards
+    are the forwards the readings take when each runs whole: a reading that ends void takes fewer, and so does one
+    whose folded twin is priced and then cannot be taken (the stand-ins cannot fold an added column).
+    `scripts/check_level_claim.py` checks the forwards against those a claim takes for silencing edits, with and
+    without prompt arms, written, and with shams, so a change to what a claim reads that is not made here too is
+    caught. Raises `ClaimRefused` for an edit or a sham that is not a recipe, and what `levelling.normalise`,
+    `levelling.estimate`, `weight_edits.recipe_facts` and the generators raise for a plan or a draw they refuse."""
+    if not isinstance(edit_or_recipe, (we.Edit, Mapping)) or (isinstance(edit_or_recipe, Mapping) and not edit_or_recipe):
+        raise ClaimRefused('An edit is a recipe ({"terms": [...]} or {"saved": "<id or folder>"}) or a built edit.')
+    if sham_recipes is not None and (not isinstance(sham_recipes, Sequence) or isinstance(sham_recipes, (str, bytes))
+                                     or not all(isinstance(s, Mapping) and s for s in sham_recipes)):
+        raise ClaimRefused("sham_recipes is a list of edit recipes.")
     facts = (we.edit_facts(edit_or_recipe) if isinstance(edit_or_recipe, we.Edit)
              else we.recipe_facts(dict(edit_or_recipe), Path(base_dir)))
     declared = selection_mode == "declared_rule" and bool(sham_recipes)
@@ -1567,8 +1632,7 @@ def estimate_claim(
                    "top_p": float(wcfg.get("top_p", 0.95)), "presence_penalty": float(wcfg.get("presence_penalty", 0.0)),
                    "seed": int(seeds[0]) if seeds else 1}
         thinking = bool((brief.chat_settings or {}).get("thinking", False))
-        R = min(max(int(written_rows), lv.WRITTEN_ROWS_MIN), lv.WRITTEN_ROWS_MAX)
-        per_chunk = max(1, R - 2 - len(lv.NULL_E_WRITTEN) - len(doses))
+        R, per_chunk = _written_rows(written_rows, len(doses))
         families = [("other_sites_matched", C), ("same_site", C)] + ([("sham_target", len(sham_recipes or ()))] if declared else [])
         for fam, count in families:
             done, chunk = 0, 0
@@ -1637,6 +1701,7 @@ def run_fresh_claim(
     forecast: Optional[Mapping[str, Any]] = None,
     selection_mode: str = "free_pick",
     sham_recipes: Optional[Sequence[Mapping[str, Any]]] = None,
+    declared_rule: Optional[str] = None,
     practice_item_ids: Optional[Iterable[str]] = None,
     practice_frame_ids: Optional[Iterable[str]] = None,
     practice_count: int = 0,
@@ -1672,6 +1737,13 @@ def run_fresh_claim(
         raise ClaimRefused(f'selection_mode must be "free_pick" or "declared_rule"; got {selection_mode!r}.')
     if selection_mode == "declared_rule" and not sham_recipes:
         raise ClaimRefused('selection_mode="declared_rule" requires sham_recipes for the sham_target control family.')
+    if selection_mode == "free_pick" and sham_recipes:
+        raise ClaimRefused('Sham edits are read only for a site chosen by a declared rule (selection_mode='
+                           '"declared_rule"): with a free pick they would be registered and printed, and never read.')
+    if declared_rule is not None and (not isinstance(declared_rule, str) or not declared_rule.strip()):
+        raise ClaimRefused("declared_rule is the rule the site was chosen by, in a sentence or two.")
+    if not isinstance(edit_or_recipe, (we.Edit, Mapping)) or (isinstance(edit_or_recipe, Mapping) and not edit_or_recipe):
+        raise ClaimRefused('An edit is a recipe ({"terms": [...]} or {"saved": "<id or folder>"}) or a built edit.')
 
     we.assert_base(h.lm, h.hooks_at_load)
     if isinstance(edit_or_recipe, we.Edit):
@@ -1686,7 +1758,15 @@ def run_fresh_claim(
 
     # Check read-once, fixed `m` budget, and ledger-recorded practice items/frames
     bk = Path(book_path) if book_path is not None else lb.book_path()
-    hist = brief_history(brief.id, bk, name=brief.name)
+    hist = brief_history(brief.id, bk, name=brief.name, guard=lbr.KeptBack([brief]))
+    if hist["kept_back_practised"]:
+        at = ", ".join(str(s) for s in hist["kept_back_practised"][:8])
+        raise ClaimRefused(
+            f'Kept-back frames of brief "{brief.name}" were read in practice in this book (line'
+            f'{"s" if len(hist["kept_back_practised"]) > 1 else ""} {at}'
+            f'{", ..." if len(hist["kept_back_practised"]) > 8 else ""}): their wording, or a near wording, stands in a '
+            "reading that is not a fresh claim reading, so a claim on them here would not be on fresh frames."
+        )
     if hist["other_ids"]:
         raise ClaimRefused(
             f'Brief "{brief.name}" has changed since its first fresh reading in this book (it was '
@@ -1704,12 +1784,25 @@ def run_fresh_claim(
             f"Frame leakage refused before registration: kept-back frame(s) {sorted(leaked_frames)} "
             "were already seen in practice in this book (by their id under this brief, or by their template under any)."
         )
+    kb_tids = sorted(fr.template_id for fr in kb_now)
+    elsewhere = sorted({(n, i) for tid in kb_tids for n, i in hist["frames_read"].get(tid, ()) if i != brief.id})
+    if elsewhere:
+        raise ClaimRefused(
+            f'Kept-back frames of this brief were already read in this book under brief "{elsewhere[0][0]}" '
+            f"({elsewhere[0][1][:12]}): a kept-back frame is read under one brief, with that brief's budget of fresh "
+            "readings, whatever a later brief that holds it is called."
+        )
     cal_note = next((c for c in reversed(hist["calibrations"]) if c.get("bars_sha256") == bars.id), None)
     if cal_note is None:
         raise ClaimRefused(
             f'Bar set {bars.short()} is not from a calibration reading recorded in this level book for brief '
             f'"{brief.name}" ({brief.short()}): a claim takes the bars calibrate_bars wrote into the same book '
             "(scripts/levelling.py calibrate), and no others."
+        )
+    if cal_note.get("weights_id") not in (None, h.weights_id):
+        raise ClaimRefused(
+            f"Bar set {bars.short()} was calibrated on other weights ({str(cal_note.get('weights_id'))[:16]}) than "
+            f"this model's ({str(h.weights_id)[:16]}): calibrate on the model the claim is read on."
         )
     k_prior = len(hist["registrations"])
     if edit.id in hist["seen_edit_ids"]:
@@ -1750,10 +1843,41 @@ def run_fresh_claim(
     }
     if brief.metric == "written_loop":
         design["loop_rule"] = lbr.loop_rule_of(brief)
+    # The registration spends one of the brief's fresh readings and marks the edit read, so whatever is certain to
+    # end the reading is asked first: a dose the edit cannot be read at (the reading's own test,
+    # `weight_edits.dose_refusal`), an edit the matched controls cannot be drawn for, and every plan and draw the
+    # reading will make (`estimate_claim` builds and prices them all, with no forward). What can still end a
+    # registered reading void is what only the card or the draw can tell: too few matched sites, a fresh item that
+    # was seen in practice, a forward that fails.
+    for d in doses:
+        words = we.dose_refusal(edit, d, h.dtype)
+        if words:
+            raise ClaimRefused(f"The edit cannot be read at dose {d:g}, so the reading is not registered: {words}")
+    for i, se in enumerate(shams_built):
+        words = we.dose_refusal(se, float(main_dose), h.dtype)
+        if words:
+            raise ClaimRefused(f"Sham control {i} cannot be read at dose {float(main_dose):g}: {words}")
+    if not any(t.kind in ("cols", "rows") for t in edit.terms):
+        raise ClaimRefused(
+            "A fresh reading sets the edit beside other sites matched on what they deliver, and those are drawn for "
+            "column and row terms: an edit of low-rank terms alone has no such controls, and cannot be claimed yet."
+        )
+    try:
+        priced = estimate_claim(
+            h, brief, edit, base_dir=Path(base_dir), main_dose=float(main_dose), selection_mode=selection_mode,
+            sham_recipes=sham_recipes, n_target=int(n_target), n_neutral=int(n_neutral), n_near=int(n_near),
+            n_panel=int(n_panel), rows=rows_cfg, written_rows=int(written_rows), controls_override=C,
+            match_tolerance=tol, run_prompt_arms=bool(run_prompt_arms),
+        )
+    except (lv.Refused, we.Refused, lbr.BriefError) as exc:
+        raise ClaimRefused(f"This reading cannot be taken as asked, so it is not registered: {exc}") from None
+    practice_total = max(int(practice_count), int(hist["practice_readings"]))
+
     kb_frames = brief.generator.frames_for("kept_back")
     published = lbr.published_template_ids(h.tokenizer)
     kept_back_note = {"frames": len(kb_frames),
-                      "published": sum(1 for fr in kb_frames if fr.template_id in published)}
+                      "published": sum(1 for fr in kb_frames if fr.template_id in published),
+                      "template_ids": kb_tids}
     shams_note = None
     if shams_built:
         sham_ids = [s.id for s in shams_built]
@@ -1778,10 +1902,16 @@ def run_fresh_claim(
             "rule_version": RULE_VERSION,
             "bars_sha256": bars.id,
             "bars_calibration_seq": int(cal_note["seq"]),
+            "bars_calibrations_in_book": len(hist["calibrations"]),
             "selection_mode": selection_mode,
-            "practice_count": int(practice_count),
+            "declared_rule": " ".join(declared_rule.split())[:600] if declared_rule else None,
+            # practice readings: those in this book that are not the harness's own, or more if the caller counts more
+            "practice_count": practice_total,
+            "practice_count_given": int(practice_count),
+            "practice_readings_in_book": int(hist["practice_readings"]),
             "practice_best": _clean_float(practice_best),
             "forecast": dict(forecast or {}),
+            "priced": {"forwards": int(priced["forwards"]), "seconds": round(float(priced["seconds"]), 2)},
             "design": design,
             "shams": shams_note,
             "kept_back": kept_back_note,
@@ -1800,22 +1930,29 @@ def run_fresh_claim(
         seed_sha = hashlib.sha256(seed_bytes).hexdigest()
         seed_u32 = int.from_bytes(seed_bytes[:4], "little") & 0x7FFFFFFF
 
-        target_drawn = brief.generator.draw(
-            "kept_back", n_target, seed_bytes=seed_bytes + b":target",
-            tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"),
-            forbid_item_ids=all_forbid_items, forbid_frame_ids=all_forbid_frames,
-            name_prefix=f"fresh_{reading_index}",
-        )
-        near_drawn = brief.near_miss_generator.draw(
-            "kept_back", n_near, seed_bytes=seed_bytes + b":near",
-            tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"),
-            name_prefix=f"near_{reading_index}",
-        )
-        neu_drawn = lbr.neutral_chat_generator().draw(
-            "kept_back", n_neutral, seed_bytes=seed_bytes + b":neutral",
-            tokenizer=h.tokenizer, name_prefix=f"neu_{reading_index}",
-        )
-        panel = lbr.draw_labelled_sanity_panel(n_panel, seed_bytes=seed_bytes + b":panel", tokenizer=h.tokenizer)
+        draw_refused: Optional[str] = None
+        try:
+            target_drawn = brief.generator.draw(
+                "kept_back", n_target, seed_bytes=seed_bytes + b":target",
+                tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"),
+                forbid_item_ids=all_forbid_items, forbid_frame_ids=all_forbid_frames,
+                name_prefix=f"fresh_{reading_index}",
+            )
+            near_drawn = brief.near_miss_generator.draw(
+                "kept_back", n_near, seed_bytes=seed_bytes + b":near",
+                tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"),
+                name_prefix=f"near_{reading_index}",
+            )
+            neu_drawn = lbr.neutral_chat_generator().draw(
+                "kept_back", n_neutral, seed_bytes=seed_bytes + b":neutral",
+                tokenizer=h.tokenizer, name_prefix=f"neu_{reading_index}",
+            )
+            panel = lbr.draw_labelled_sanity_panel(n_panel, seed_bytes=seed_bytes + b":panel", tokenizer=h.tokenizer)
+        except lbr.BriefError as exc:
+            # the one draw refusal that cannot be asked before registering: a fresh item that was seen in practice.
+            # The reading is void and says why; it is not left registered with no verdict.
+            draw_refused = str(exc)
+            target_drawn, near_drawn, neu_drawn, panel = [], [], [], []
 
         target_items = {d.item.name: d.item for d in target_drawn}
         near_items = {d.item.name: d.item for d in near_drawn}
@@ -1824,13 +1961,15 @@ def run_fresh_claim(
 
         # Step 4: Target readings with control families (paired or written_loop)
         book_seqs: List[int] = [int(reg_entry["seq"])]
-        void_reason: Optional[str] = None
+        void_reason: Optional[str] = f"The fresh draw was refused: {draw_refused}" if draw_refused else None
         classes_payload: Dict[str, Dict[str, Any]] = {}
         written_strata: Optional[Dict[str, Any]] = None
         settings_audit: Optional[Dict[str, Any]] = None
         unpacker_mode: Optional[str] = None
 
-        if brief.metric == "written_loop":
+        if void_reason is not None:
+            pass
+        elif brief.metric == "written_loop":
             void_reason, classes_payload, w_seqs, written_strata, unpacker_mode = _run_written_target_claims(
                 h, brief, edit, target_drawn, base_dir=Path(base_dir), main_dose=main_dose, doses=doses,
                 C=C, seed_u32=seed_u32, reading_index=reading_index, selection_mode=selection_mode,
@@ -1894,8 +2033,23 @@ def run_fresh_claim(
                     }
                     if r_sham is not None:
                         _, _, _, ctl_sh = _extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
+                        dv_sh = _delivered_of(r_sham, target_drawn, cls_name, main_dose)
+                        if dv_sh is not None:
+                            # A sham edit is the caller's own, checked only for shape before it is read. One that
+                            # does not move the stream within the matching tolerance of what the edit moves it is no
+                            # control for the edit, and is counted as moving as much: quiet shams cannot help a claim.
+                            e_d, apart = dv_sh.get("edit"), 0
+                            if e_d is not None and e_d > 0.0:
+                                for c, d_c in enumerate(dv_sh.get("per_control") or []):
+                                    if c < len(ctl_sh) and (d_c is None or not e_d / tol <= d_c <= e_d * tol):
+                                        ctl_sh[c] = None
+                                        apart += 1
+                            dv_sh["not_comparable"] = apart
                         ctls_cls["sham_target"] = ctl_sh
-                        deliv_cls["sham_target"] = _delivered_of(r_sham, target_drawn, cls_name, main_dose)
+                        deliv_cls["sham_target"] = dv_sh
+                    for dv in deliv_cls.values():
+                        if isinstance(dv, dict):
+                            dv.pop("per_control", None)  # each control's own figure stays in its reading's entry
                     classes_payload[cls_name] = {
                         "item_effects": it_effs,
                         "floor": fl_both,
@@ -1989,7 +2143,7 @@ def run_fresh_claim(
         judged = judge_claim(
             brief=brief, bars=bars, classes=classes_payload, batteries=bat_payload,
             cheaper_knobs=cheaper_knobs, selection_mode=selection_mode,
-            practice_count=practice_count, practice_best=practice_best,
+            practice_count=practice_total, practice_best=practice_best,
             void_reason=void_reason,
         )
 
@@ -2006,6 +2160,8 @@ def run_fresh_claim(
             "brief_name": brief.name,
             "bars_sha256": bars.id,
             "bars_calibration_seq": int(cal_note["seq"]),
+            "bars_calibrations_in_book": len(hist["calibrations"]),
+            "declared_rule": reg_body["declared_rule"],
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
             "draw_seed_sha256": seed_sha,
@@ -2139,7 +2295,9 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     sh = ctls.get("sham_target") or {}
     sham_part = (
         f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits, supplied with the claim and checked "
-        f"for shape only, moved as much (p_fw {_fmt(sh.get('p_fw'), 3)})"
+        + ("for shape only" if brief.metric == "written_loop" else
+           "for shape and for moving the stream as the edit does")
+        + f", moved as much (p_fw {_fmt(sh.get('p_fw'), 3)})"
         if sh.get("count")
         else f"; selection not matched, {judged.get('practice_count', 0)} read in practice"
     )
@@ -2209,6 +2367,8 @@ def render_sheet(
         f"base: {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}, unpacker {meta.get('unpacker')})",
         f"rule: {RULE_PRESET} v{RULE_VERSION} | bars {bars.short()}"
         + (f" from the calibration at book line {meta['bars_calibration_seq']}"
+           + (f" (one of {meta['bars_calibrations_in_book']} calibrations of this brief in the book)"
+              if (meta.get("bars_calibrations_in_book") or 0) > 1 else "")
            if meta.get("bars_calibration_seq") is not None else "")
         + f" (alpha={bars.alpha:g}, least_effect M={brief.least_effect:g})",
         f"chat settings: {json.dumps(meta.get('chat_settings') or {}, sort_keys=True)} | driver prompt named site: {bool(meta.get('prompt_named_site'))}",
@@ -2227,7 +2387,7 @@ def render_sheet(
     if isinstance(bz, Mapping):
         lines.append(
             f"book: {bz.get('name')} ("
-            + ("the default level book" if bz.get("default") else
+            + ("the default level book of the environment this ran in" if bz.get("default") else
                "a side book, not the default level book: this reading is counted here and nowhere else")
             + ")"
         )
@@ -2235,19 +2395,29 @@ def render_sheet(
     if isinstance(kz, Mapping):
         n_pub, n_kb = int(kz.get("published") or 0), int(kz.get("frames") or 0)
         lines.append(
-            "kept-back frames: read by fresh claim readings alone (the practice gates refuse them); "
+            "kept-back frames: no practice reading in this book holds their wording or a near wording (looked for "
+            "before this reading was registered), and a session's practice gates refuse both; a question put in other "
+            "words is not found by either. "
             + (f"{n_pub} of the brief's {n_kb} templates are published in the instrument's source (a starter brief's), "
                "so they are not hidden from a driver that has read it"
                if n_pub else
-               f"none of the brief's {n_kb} templates is a published starter template; the harness cannot say who "
+               f"None of the brief's {n_kb} templates is a published starter template; the harness cannot say who "
                "has read the brief's own file")
+        )
+        lines.append(
+            "retention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's "
+            "frames, the panel's facts and sums); a session's practice gates refuse their wording"
         )
     sz = meta.get("shams")
     if isinstance(sz, Mapping):
         lines.append(
             f"sham-target controls: {sz.get('count')} supplied with the claim [{str(sz.get('sha256'))[:12]}]; the "
-            "harness did not make them and checked only that each has the edit's shape"
+            "harness did not make them. It checked that each has the edit's shape and, in a paired reading, counts "
+            "one that does not move the stream as the edit does as no control (as moving as much); it cannot check "
+            "that they follow the declared rule"
         )
+    if meta.get("declared_rule"):
+        lines.append(f"declared rule, in the words given with the claim: \"{meta['declared_rule']}\"")
     if judged.get("reasons"):
         lines.append("gate notes:")
         for r in judged["reasons"]:
@@ -2282,9 +2452,11 @@ def render_sheet(
             dv = (ce.get("delivered") or {}).get(fam)
             if isinstance(dv, Mapping) and dv.get("controls_read"):
                 lines.append(
-                    f"      delivered (stream change at the highest edited layer; gates nothing): edit "
+                    f"      delivered (stream change at the highest edited layer): edit "
                     f"{_fmt(dv.get('edit'))}, these controls median {_fmt(dv.get('controls_median'))} "
                     f"({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})"
+                    + (f"; {dv['not_comparable']} of them outside the matching tolerance of the edit's, and counted "
+                       "as moving as much" if dv.get("not_comparable") else "")
                 )
     ws = meta.get("written_strata")
     if isinstance(ws, Mapping):
@@ -2297,7 +2469,8 @@ def render_sheet(
                 f"base's and {le_.get('instrument')} of the edit's looped, the published rule (arXiv 2606.13705, as "
                 f"worded) {lb_.get('published')} and {le_.get('published')}, either {lb_.get('either')} and "
                 f"{le_.get('either')}; the two part on {lb_.get('rules_differ')} of the base's. Neither rule is "
-                "checked against a person's reading of this checkpoint's answers."
+                "checked against a person's reading of this checkpoint's answers, and a loop in a form neither finds "
+                "counts as none: read the ended and cut-off counts below beside these."
             )
         lines.append(f"written strata ({ws.get('cap_note')}):")
         for sname, sd in (ws.get("strata") or {}).items():

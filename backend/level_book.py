@@ -92,7 +92,9 @@ class BookBroken(RuntimeError):
 def default_book_path() -> Path:
     """Where the book lives when `$THEODOLITE_LEVEL_BOOK` does not move it: the one book a reading is counted in
     unless someone pointed it elsewhere. A book at any other path is a side book (a check's, a dry run's), and a
-    fresh claim reading taken in one says so (`level_claim.run_fresh_claim`)."""
+    fresh claim reading taken in one says so (`level_claim.run_fresh_claim`). `$XDG_DATA_HOME` places it, so it is
+    the default of the environment a process was started in: that environment is the owner's, and a reading says
+    which book it used by its file name, not by where the file is."""
     base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
     return Path(base).expanduser() / "theodolite" / "level_book.jsonl"
 
