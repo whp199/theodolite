@@ -278,6 +278,22 @@ def run_section_1(tok: Any, tmp: Path) -> None:
 
 def run_section_2() -> None:
     print("Section 2: Statistics (house_bar, frame_statistics, control_standing, written strata, pricing)", flush=True)
+    # which book is the default one: $XDG_DATA_HOME places it, $THEODOLITE_LEVEL_BOOK moves the book but not the default
+    kept_env = {k: os.environ.get(k) for k in ("XDG_DATA_HOME", lb.BOOK_ENV)}
+    try:
+        os.environ["XDG_DATA_HOME"] = "/nowhere/xdg"
+        os.environ[lb.BOOK_ENV] = "/nowhere/elsewhere.jsonl"
+        check(lb.default_book_path() == Path("/nowhere/xdg/theodolite/level_book.jsonl")
+              and lb.book_path() == Path("/nowhere/elsewhere.jsonl"),
+              "default_book_path is where the book lives when nothing moves it; book_path still follows the environment")
+        os.environ.pop(lb.BOOK_ENV)
+        check(lb.book_path() == lb.default_book_path(), "with nothing moving it, the book is the default book")
+    finally:
+        for k, v in kept_env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
     # house_bar (arbiter.md Row 4)
     hb1 = lcl.house_bar(0.01, 0.5)
     check(not hb1["floor_too_loud"] and math.isclose(hb1["bar"], math.sqrt(0.005), rel_tol=1e-9), "house_bar = sqrt(F*M)")
@@ -412,6 +428,21 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     check("kept-back frames, whose templates are published in the instrument's source, drawn from" in (s_tol or "")
           and "8 of the brief's 8 templates are published in the instrument's source" in sh_tol,
           "the sentence and the sheet of a starter brief's lead say its kept-back templates are published")
+    meta_side = {**meta, "book": {"name": "check_book.jsonl", "default": False},
+                 "book_fresh_readings": {brief.name: 1, "another_brief": 2}}
+    s_side = lcl.claim_sentence(brief, j_decl, meta_side)
+    sh_side = lcl.render_sheet(brief, bars, j_decl, meta_side, s_side)
+    meta_home = {**meta, "book": {"name": "level_book.jsonl", "default": True}}
+    s_home = lcl.claim_sentence(brief, j_decl, meta_home)
+    sh_home = lcl.render_sheet(brief, bars, j_decl, meta_home, s_home)
+    SHEETS_COLLECTED.extend([sh_side, s_side or "", sh_home, s_home or ""])
+    check(f'on brief "{brief.name}", taken in a side book and not the default level book)' in (s_side or "")
+          and "book: check_book.jsonl (a side book, not the default level book" in sh_side,
+          "the sentence and the sheet of a reading taken in a side book say so")
+    check("side book" not in (s_home or "") and "book: level_book.jsonl (the default level book)" in sh_home,
+          "a reading taken in the default level book is not called a side-book reading")
+    check("fresh readings already taken on other briefs in this book: another_brief 2" in sh_side,
+          "a sheet lists the fresh readings other briefs have taken in its book")
     meta_p = {**meta, "kept_back": {"frames": 8, "published": 0}}
     s_priv = lcl.claim_sentence(brief, j_decl, meta_p)
     sh_priv = lcl.render_sheet(brief, bars, j_decl, meta_p, s_priv)
@@ -651,6 +682,9 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(reg1.get("bars_calibration_seq") == cal0["seq"]
           and f"bars {bars.short()} from the calibration at book line {cal0['seq']}" in res1["sheet"],
           "fresh claim #1 registers, and prints on its sheet, the calibration its bars came from")
+    check(reg1.get("book") == {"name": "claim_book.jsonl", "default": False}
+          and "book: claim_book.jsonl (a side book, not the default level book" in res1["sheet"],
+          "a reading taken outside the default level book is registered and printed as a side-book reading")
     check(res1["verdict"] in lcl.VERDICTS and res1["verdict"] != "void",
           f"fresh claim #1 completed cleanly (verdict={res1['verdict']}, reasons={res1['judged']['reasons']})")
     reg_s = res1["book"]["registration_seq"]
@@ -709,6 +743,50 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
         "run_fresh_claim refuses reading m+1 once brief budget m=2 is spent",
         match="already spent all 2",
     )
+
+    # 7b. The budget is the brief's name's: one character changed in a brief does not start a new count
+    d_changed = {**brief.to_dict(), "driver_text": brief.driver_text + " "}
+    changed = lbr.Brief.from_dict(d_changed)
+    by_hash = lcl.brief_history(changed.id, bk)
+    by_name = lcl.brief_history(changed.id, bk, name=changed.name)
+    check(changed.id != brief.id and changed.name == brief.name
+          and len(by_hash["registrations"]) == 0 and len(by_name["registrations"]) == 2
+          and by_name["other_ids"] == [brief.id] and len(by_name["verdicts"]) == 2
+          and by_name["book_fresh_readings"] == {brief.name: 2},
+          "a brief changed by one character has no history by its hash and both fresh readings by its name")
+    small_args = dict(rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
+                      controls_override=4, match_tolerance=20.0, book_path=bk)
+    n_lines = lb.verify(bk)["entries"]
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, changed, lcl.make_bar_set(changed.id), edit3, **small_args),
+        "run_fresh_claim refuses a brief changed since its first fresh reading: no third reading under a new hash",
+        match="has changed since its first fresh reading",
+    )
+    renamed = lbr.Brief.from_dict({**d_changed, "name": "pronoun_pull_b"})
+    by_new_name = lcl.brief_history(renamed.id, bk, name=renamed.name)
+    check(by_new_name["registrations"] == [] and by_new_name["other_ids"] == []
+          and by_new_name["book_fresh_readings"] == {brief.name: 2},
+          "a changed brief under a name of its own starts its own count, with the book's other readings in view")
+
+    # 7c. A frame drawn in practice is known by its template: moved into a later brief's kept-back split under a
+    # new id and a new brief name, it is still refused
+    gen_d = brief.generator.to_dict()
+    practised_ids = set(hist_p["practice_frame_ids"])
+    moved_id = next(f["id"] for f in gen_d["frames"] if f["split"] == "practice" and f["id"] in practised_ids)
+    gen_d["frames"] = [({**f, "id": "pr_k99", "split": "kept_back"} if f["id"] == moved_id else f)
+                       for f in gen_d["frames"]]
+    moved = lbr.Brief.from_dict({**brief.to_dict(), "name": "pronoun_pull_moved", "generator": gen_d})
+    check(len(lcl.brief_history(moved.id, bk, name=moved.name)["practice_frame_ids"]) == 0
+          and len(lcl.brief_history(moved.id, bk, name=moved.name)["practice_templates"]) >= 1,
+          "the book remembers practised templates whatever brief they were drawn under")
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, moved, lcl.make_bar_set(moved.id), edit3, **small_args),
+        "run_fresh_claim refuses a kept-back frame whose template was drawn in practice under another brief and id",
+        match="frame leakage refused",
+    )
+    check(lb.verify(bk)["entries"] == n_lines, "the claims refused for a changed brief or a moved frame entered nothing")
 
     # 8. Live written_loop claim with chunked controls + written_strata + settings_audit
     wbrief_base = lbr.enumeration_loop_brief(h.tokenizer, max_fresh_readings=2, controls_per_family=4)

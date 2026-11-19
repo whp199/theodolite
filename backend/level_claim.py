@@ -784,60 +784,96 @@ def record_practice_draw(
     drawn: Sequence[lbr.DrawnItem],
     *,
     book_path: Optional[Path] = None,
+    brief_name: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Record item ids and frame ids shown in practice so future fresh draws automatically refuse any collision."""
-    body = {
+    """Record what was shown in practice so a later fresh draw refuses any of it: the items' ids, the frames' ids, and
+    the frames' template ids (`Frame.template_id`), which name a frame whatever a later version of the brief calls
+    it. `brief_name` files the draw under the brief's name as well as its hash."""
+    body: Dict[str, Any] = {
         "note_type": "practice_draw",
         "brief_id": str(brief_id),
         "item_ids": sorted({d.item.id for d in drawn}),
         "frame_ids": sorted({d.frame_id for d in drawn}),
+        "template_ids": sorted({d.template_id for d in drawn if getattr(d, "template_id", "")}),
         "count": len(drawn),
     }
+    if brief_name is not None:
+        body["brief_name"] = str(brief_name)
     return lb.append("note", body, path=book_path)
 
 
-def brief_history(brief_id: str, book_path: Optional[Path] = None) -> Dict[str, Any]:
-    """Scan the level book for calibrations, practice draws, claim registrations, and verdicts on `brief_id`."""
+def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Optional[str] = None) -> Dict[str, Any]:
+    """Scan the level book for what bears on a brief.
+
+    By the brief's hash (`brief_id`): its `calibrations` (a bar set is one version's).
+
+    By the brief's NAME when `name` is given, else by its hash: the fresh readings registered (`registrations`,
+    `verdicts`, `seen_edit_ids`) and the practice draws (`practice_item_ids`, `practice_frame_ids`). A brief's
+    budget of fresh readings is its name's: changing a word of the brief does not start a new count
+    (`run_fresh_claim` asks by name and refuses a brief whose hash is not the one its name was first read under,
+    `other_ids`).
+
+    Of the whole book, whatever the brief: `practice_templates`, the template ids of every frame drawn in practice
+    here (so a practice frame moved into another brief's kept-back split is still known), and `book_fresh_readings`,
+    the count of fresh readings registered under each brief name (so a sheet can list them all)."""
     calibrations: List[Dict[str, Any]] = []
     registrations: List[Dict[str, Any]] = []
     verdicts: List[Dict[str, Any]] = []
     seen_edit_ids: List[str] = []
     practice_item_ids: set = set()
     practice_frame_ids: set = set()
+    practice_templates: set = set()
+    book_fresh: Dict[str, int] = {}
+    empty = {
+        "calibrations": [], "registrations": [], "verdicts": [], "seen_edit_ids": [], "other_ids": [],
+        "practice_item_ids": [], "practice_frame_ids": [], "practice_templates": [], "book_fresh_readings": {},
+    }
     p = book_path if book_path is not None else lb.book_path()
     if not Path(p).exists():
-        return {
-            "calibrations": [], "registrations": [], "verdicts": [], "seen_edit_ids": [],
-            "practice_item_ids": [], "practice_frame_ids": [],
-        }
+        return empty
+
+    def mine(body: Mapping[str, Any]) -> bool:
+        return body.get("brief_id") == brief_id or (name is not None and body.get("brief_name") == name)
+
     for entry in lb.entries(p):
         if entry.get("kind") != "note":
             continue
         body = entry.get("body")
-        if not isinstance(body, Mapping) or body.get("brief_id") != brief_id:
+        if not isinstance(body, Mapping):
             continue
         nt = body.get("note_type")
         if nt == "brief_calibration":
-            calibrations.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
+            if body.get("brief_id") == brief_id:
+                calibrations.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
         elif nt == "practice_draw":
-            for x in body.get("item_ids") or ():
-                practice_item_ids.add(str(x))
-            for x in body.get("frame_ids") or ():
-                practice_frame_ids.add(str(x))
+            for x in body.get("template_ids") or ():
+                practice_templates.add(str(x))
+            if mine(body):
+                for x in body.get("item_ids") or ():
+                    practice_item_ids.add(str(x))
+                for x in body.get("frame_ids") or ():
+                    practice_frame_ids.add(str(x))
         elif nt == "claim_registration":
-            registrations.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
-            eid = body.get("edit_id")
-            if isinstance(eid, str):
-                seen_edit_ids.append(eid)
+            if isinstance(body.get("brief_name"), str):
+                book_fresh[body["brief_name"]] = book_fresh.get(body["brief_name"], 0) + 1
+            if mine(body):
+                registrations.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
+                eid = body.get("edit_id")
+                if isinstance(eid, str):
+                    seen_edit_ids.append(eid)
         elif nt == "claim_verdict":
-            verdicts.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
+            if mine(body):
+                verdicts.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
     return {
         "calibrations": calibrations,
         "registrations": registrations,
         "verdicts": verdicts,
         "seen_edit_ids": seen_edit_ids,
+        "other_ids": sorted({str(r.get("brief_id")) for r in registrations if r.get("brief_id") != brief_id}),
         "practice_item_ids": sorted(practice_item_ids),
         "practice_frame_ids": sorted(practice_frame_ids),
+        "practice_templates": sorted(practice_templates),
+        "book_fresh_readings": dict(sorted(book_fresh.items())),
     }
 
 
@@ -1496,7 +1532,24 @@ def run_fresh_claim(
 
     # Check read-once, fixed `m` budget, and ledger-recorded practice items/frames
     bk = Path(book_path) if book_path is not None else lb.book_path()
-    hist = brief_history(brief.id, bk)
+    hist = brief_history(brief.id, bk, name=brief.name)
+    if hist["other_ids"]:
+        raise ClaimRefused(
+            f'Brief "{brief.name}" has changed since its first fresh reading in this book (it was '
+            f'{hist["other_ids"][0][:12]} then, it is {brief.short()} now). A brief and its budget of fresh readings '
+            "are fixed before the first one: read the brief as it was, or give the changed brief a name of its own "
+            "(every sheet lists the fresh readings of every brief in its book)."
+        )
+    all_forbid_items = set(hist["practice_item_ids"]) | set(practice_item_ids or ())
+    all_forbid_frames = set(hist["practice_frame_ids"]) | set(practice_frame_ids or ())
+    kb_now = brief.generator.frames_for("kept_back")
+    practised = set(hist["practice_templates"])
+    leaked_frames = ({fr.id for fr in kb_now} & all_forbid_frames) | {fr.id for fr in kb_now if fr.template_id in practised}
+    if leaked_frames:
+        raise ClaimRefused(
+            f"Frame leakage refused before registration: kept-back frame(s) {sorted(leaked_frames)} "
+            "were already seen in practice in this book (by their id under this brief, or by their template under any)."
+        )
     cal_note = next((c for c in reversed(hist["calibrations"]) if c.get("bars_sha256") == bars.id), None)
     if cal_note is None:
         raise ClaimRefused(
@@ -1513,16 +1566,11 @@ def run_fresh_claim(
         raise ClaimRefused(
             f'Brief "{brief.name}" has already spent all {brief.max_fresh_readings} of its fresh readings.'
         )
-    all_forbid_items = set(hist["practice_item_ids"]) | set(practice_item_ids or ())
-    all_forbid_frames = set(hist["practice_frame_ids"]) | set(practice_frame_ids or ())
-    kb_frame_ids = {fr.id for fr in brief.generator.frames_for("kept_back")}
-    leaked_frames = kb_frame_ids & all_forbid_frames
-    if leaked_frames:
-        raise ClaimRefused(
-            f"Frame leakage refused before registration: kept-back frame(s) {sorted(leaked_frames)} "
-            "were already seen in practice."
-        )
     reading_index = k_prior + 1
+    bk_resolved = Path(bk).expanduser().resolve()
+    # which book this is: a fresh reading is counted in the book it is taken in and nowhere else, so one taken in a
+    # side book (a check's, a dry run's) says so, in its registration, on its sheet and in its sentence
+    book_note = {"name": bk_resolved.name, "default": bk_resolved == lb.default_book_path().resolve()}
 
     C = int(controls_override if controls_override is not None else brief.default_controls)
     rows_cfg = dict(rows or {"small": lv.ROWS_SMALL, "large": lv.ROWS_LARGE})
@@ -1581,9 +1629,11 @@ def run_fresh_claim(
             "design": design,
             "shams": shams_note,
             "kept_back": kept_back_note,
+            "book": book_note,
+            "book_fresh_readings": dict(hist["book_fresh_readings"]),
             "prior_verdicts": [
                 {"seq": v["seq"], "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
-                 "reading_index": v.get("reading_index")}
+                 "reading_index": v.get("reading_index"), "brief_id": v.get("brief_id")}
                 for v in hist["verdicts"]
             ],
         }
@@ -1813,6 +1863,8 @@ def run_fresh_claim(
             "design": design,
             "shams": shams_note,
             "kept_back": kept_back_note,
+            "book": book_note,
+            "book_fresh_readings": dict(hist["book_fresh_readings"]),
             "written_strata": written_strata,
             "settings_audit": settings_audit,
         }
@@ -1927,6 +1979,9 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         pub_part = f", {n_pub} of the brief's {n_kb} templates published in the instrument's source,"
     else:
         pub_part = ""
+    bkn = meta.get("book")
+    side_part = (", taken in a side book and not the default level book"
+                 if isinstance(bkn, Mapping) and not bkn.get("default") else "")
     tol_now = _clean_float((meta.get("design") or {}).get("match_tolerance"))
     tol_part = f"within a factor of {tol_now:g}, " if tol_now is not None else ""
     knobs = judged.get("cheaper_knobs") or {}
@@ -1954,7 +2009,7 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         f"{osm.get('at_least')} of {osm.get('count')} matched other-site ({tol_part}p_fw {_fmt(osm.get('p_fw'), 3)}) and "
         f"{ss.get('at_least')} of {ss.get('count')} same-site (p_fw {_fmt(ss.get('p_fw'), 3)}) control edits moved as much"
         f"{sham_part} (fresh reading {meta.get('reading_index')} of {meta.get('max_fresh_readings')} on brief "
-        f'"{brief.name}"); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
+        f'"{brief.name}"{side_part}); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
         f"gating batteries passed against hashed bar set {str(meta.get('bars_sha256'))[:12]}{bars_from}{knob_part} "
         f"(no search over cheaper knobs; not compared with a trained adapter). "
         f"Driver prompt {named} a suspected site. This is a lead, not a finding of record."
@@ -1989,6 +2044,14 @@ def render_sheet(
             f"{dz.get('n_neutral')} neutral, {dz.get('n_panel')} panel; rows {rz.get('small')} and {rz.get('large')}; "
             f"{dz.get('controls_per_family')} control edits a family; other sites matched within a factor of "
             f"{float(dz.get('match_tolerance')):g} on delivered"
+        )
+    bz = meta.get("book")
+    if isinstance(bz, Mapping):
+        lines.append(
+            f"book: {bz.get('name')} ("
+            + ("the default level book" if bz.get("default") else
+               "a side book, not the default level book: this reading is counted here and nowhere else")
+            + ")"
         )
     kz = meta.get("kept_back")
     if isinstance(kz, Mapping):
@@ -2075,6 +2138,10 @@ def render_sheet(
     for pa in ck.get("prompt_arms") or []:
         lines.append(f"  prompt arm {pa['index']} [{pa['prompt_sha256']}]: directed_effect={_fmt(pa.get('directed_effect'))}, near_miss_abs={_fmt(pa.get('near_miss_abs'))}")
     prior = meta.get("prior_verdicts") or []
+    others = {k: v for k, v in (meta.get("book_fresh_readings") or {}).items() if k != brief.name}
+    if others:
+        lines.append("fresh readings already taken on other briefs in this book: "
+                     + ", ".join(f"{k} {v}" for k, v in sorted(others.items())))
     lines.append(f"earlier fresh readings on this brief ({len(prior)}):")
     if not prior:
         lines.append("  none")

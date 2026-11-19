@@ -699,7 +699,7 @@ class LevelSession:
         self._check_open_and_wall()
         if self._brief is None:
             raise SessionRefused("No brief is bound to this session.")
-        hist = lcl.brief_history(self._brief.id, self.book_path)
+        hist = lcl.brief_history(self._brief.id, self.book_path, name=self._brief.name)
         used = len(hist["registrations"])
         return {
             "name": self._brief.name,
@@ -743,7 +743,8 @@ class LevelSession:
             system_override=(self._brief.chat_settings or {}).get("system"),
             name_prefix=f"prac_{int(seed)}",
         )
-        note = lcl.record_practice_draw(self._brief.id, drawn, book_path=self.book_path)
+        note = lcl.record_practice_draw(self._brief.id, drawn, book_path=self.book_path,
+                                        brief_name=self._brief.name)
         self._book_seqs.append(int(note["seq"]))
         items_out = {
             d.item.name: {

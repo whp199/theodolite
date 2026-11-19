@@ -78,6 +78,7 @@ class DrawnItem:
     split: str
     half: int
     slots: Dict[str, str]
+    template_id: str = ""  # its frame's `Frame.template_id`: what leakage is judged by, whatever the frame is called
 
 
 @dataclass(frozen=True)
@@ -301,7 +302,8 @@ class FrameGenerator:
                         "in practice."
                     )
                 seen_renders.add(render_key)
-                picked_item = DrawnItem(item=it, frame_id=fr.id, split=split, half=fr.half, slots=chosen_slots)
+                picked_item = DrawnItem(item=it, frame_id=fr.id, split=split, half=fr.half, slots=chosen_slots,
+                                        template_id=fr.template_id)
                 break
             if picked_item is None:
                 raise BriefError(
