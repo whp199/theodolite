@@ -14,6 +14,7 @@ No kept-out words appear in code, messages, or generated text. Layers count from
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -39,6 +40,29 @@ _FORBIDDEN_BRIEF_RE = re.compile(
     re.I,
 )
 _SLOT_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+# A frame's question is looked for inside a longer text only when its fixed words are at least this many characters;
+# a shorter template must be the whole text (it would otherwise be found in almost anything).
+MIN_TEMPLATE_WORDS = 16
+
+
+def _norm_text(text: Any) -> str:
+    """A text as leakage is judged: runs of whitespace as one space, case folded."""
+    return " ".join(str(text).split()).casefold()
+
+
+def _template_key(question_tpl: str) -> str:
+    """A frame's question template with its slots' names dropped (`{}`), whitespace and case folded: two frames that
+    differ only in what a slot is called, or in spacing, are one template."""
+    return _norm_text(_SLOT_RE.sub("{}", str(question_tpl)))
+
+
+@functools.lru_cache(maxsize=4096)
+def _template_regex(question_tpl: str) -> Tuple[Any, int]:
+    """(a pattern every rendering of the template matches, the count of its fixed characters): each slot stands for
+    any words at all, so a slot value the generator does not list is a rendering too."""
+    parts = _template_key(question_tpl).split("{}")
+    fixed = sum(len(p.strip()) for p in parts)
+    return re.compile("(.+?)".join(re.escape(p) for p in parts), re.S), fixed
 
 
 class BriefError(ValueError):
@@ -76,6 +100,22 @@ class Frame:
             "answer_tpl": self.answer_tpl,
             "system": self.system,
         }
+
+    @property
+    def template_id(self) -> str:
+        """The frame's question template by hash, as leakage is judged (`_template_key`): the same under another
+        frame id, other slot names or other spacing, which a frame's `id` is not."""
+        return hashlib.sha256(_template_key(self.question_tpl).encode("utf-8")).hexdigest()
+
+    def rendered_in(self, text: Any) -> bool:
+        """Whether `text` holds a rendering of this frame's question: the whole text, or (for a template with
+        `MIN_TEMPLATE_WORDS` fixed characters or more) any part of it, whitespace and case set aside. A reworded
+        question is not a rendering: this finds the frame, not what the frame is about."""
+        if text is None:
+            return False
+        rx, fixed = _template_regex(self.question_tpl)
+        t = _norm_text(text)
+        return bool(rx.search(t) if fixed >= MIN_TEMPLATE_WORDS else rx.fullmatch(t))
 
 
 def _check_policy(name: str, behavior: str, driver_text: str) -> None:
@@ -795,3 +835,49 @@ def starter_briefs(
         enumeration_loop_brief(tokenizer, max_fresh_readings=max_fresh_readings, controls_per_family=controls_per_family),
     ]
     return {b.name: b for b in bs}
+
+
+# ------------------------------------------------------------------------------------- kept-back frames at the door
+
+
+class KeptBack:
+    """The kept-back frames of a set of briefs (each brief's target generator and its near-miss generator), as a
+    practice gate asks of a text: does it hold a rendering of one of them (`Frame.rendered_in`)?
+
+    What it is for: "kept back" is enforced where the model is reached. A brief's kept-back frames are read by a
+    fresh claim reading alone; a practice reading or a capture on one is refused, whoever wrote the item and
+    wherever its text was learned. The four starter briefs' frames are in the instrument's published source, so for
+    them this refusal, and not secrecy, is what keeps an edit from being tuned on the frames it is judged on."""
+
+    def __init__(self, briefs: Iterable[Brief]) -> None:
+        self._frames: List[Tuple[str, Frame]] = []
+        seen: Set[str] = set()
+        for b in briefs:
+            for gen in (b.generator, b.near_miss_generator):
+                for fr in gen.frames_for("kept_back"):
+                    if fr.template_id not in seen:
+                        seen.add(fr.template_id)
+                        self._frames.append((b.name, fr))
+
+    def __len__(self) -> int:
+        return len(self._frames)
+
+    def template_ids(self) -> Set[str]:
+        return {fr.template_id for _name, fr in self._frames}
+
+    def hit(self, *texts: Any) -> Optional[Dict[str, str]]:
+        """`{"brief": its name, "frame": the frame's id}` for the first kept-back frame one of `texts` holds a
+        rendering of, or None."""
+        for text in texts:
+            if text is None:
+                continue
+            for name, fr in self._frames:
+                if fr.rendered_in(text):
+                    return {"brief": name, "frame": fr.id}
+        return None
+
+
+def published_template_ids(tokenizer: Any = None) -> Set[str]:
+    """The template ids of every kept-back frame the starter briefs carry: frames anyone who reads the instrument's
+    source has read. A claim's sheet says so of a brief that uses them (`level_claim.run_fresh_claim`)."""
+    return KeptBack(starter_briefs(tokenizer).values()).template_ids()

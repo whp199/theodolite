@@ -1546,6 +1546,10 @@ def run_fresh_claim(
         "controls_per_family": C, "battery_controls": min(C, 3), "match_tolerance": tol,
         "doses": [float(d) for d in doses], "prompt_arms": bool(run_prompt_arms),
     }
+    kb_frames = brief.generator.frames_for("kept_back")
+    published = lbr.published_template_ids(h.tokenizer)
+    kept_back_note = {"frames": len(kb_frames),
+                      "published": sum(1 for fr in kb_frames if fr.template_id in published)}
     shams_note = None
     if shams_built:
         sham_ids = [s.id for s in shams_built]
@@ -1576,6 +1580,7 @@ def run_fresh_claim(
             "forecast": dict(forecast or {}),
             "design": design,
             "shams": shams_note,
+            "kept_back": kept_back_note,
             "prior_verdicts": [
                 {"seq": v["seq"], "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
                  "reading_index": v.get("reading_index")}
@@ -1807,6 +1812,7 @@ def run_fresh_claim(
             "forecast": dict(forecast or {}),
             "design": design,
             "shams": shams_note,
+            "kept_back": kept_back_note,
             "written_strata": written_strata,
             "settings_audit": settings_audit,
         }
@@ -1913,6 +1919,14 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         if sh.get("count")
         else f"; selection not matched, {judged.get('practice_count', 0)} read in practice"
     )
+    kbn = meta.get("kept_back") or {}
+    n_pub, n_kb = int(kbn.get("published") or 0), int(kbn.get("frames") or 0)
+    if n_pub and n_pub == n_kb:
+        pub_part = ", whose templates are published in the instrument's source,"
+    elif n_pub:
+        pub_part = f", {n_pub} of the brief's {n_kb} templates published in the instrument's source,"
+    else:
+        pub_part = ""
     tol_now = _clean_float((meta.get("design") or {}).get("match_tolerance"))
     tol_part = f"within a factor of {tol_now:g}, " if tol_now is not None else ""
     knobs = judged.get("cheaper_knobs") or {}
@@ -1933,8 +1947,8 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         f"On {meta.get('date')}, model {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}), "
         f"unpacker {meta.get('unpacker')}, per-row form: edit {str(meta.get('edit_id'))[:12]} at dose "
         f"{meta.get('main_dose'):g} to {', '.join(meta.get('edit_linears') or [])} moved {brief.metric} on "
-        f"{fr.get('n_items')} fresh items ({fr.get('n_frames')} kept-back frames drawn from {brief.generator.name} "
-        f"after freeze) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
+        f"{fr.get('n_items')} fresh items ({fr.get('n_frames')} kept-back frames{pub_part} drawn from "
+        f"{brief.generator.name} after freeze) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
         f"half 0 {_fmt((fr.get('half_0') or {}).get('mean'))}, half 1 {_fmt((fr.get('half_1') or {}).get('mean'))}); "
         f"floor {_fmt(hb.get('floor'))}, house bar {_fmt(hb.get('bar'))}; "
         f"{osm.get('at_least')} of {osm.get('count')} matched other-site ({tol_part}p_fw {_fmt(osm.get('p_fw'), 3)}) and "
@@ -1975,6 +1989,17 @@ def render_sheet(
             f"{dz.get('n_neutral')} neutral, {dz.get('n_panel')} panel; rows {rz.get('small')} and {rz.get('large')}; "
             f"{dz.get('controls_per_family')} control edits a family; other sites matched within a factor of "
             f"{float(dz.get('match_tolerance')):g} on delivered"
+        )
+    kz = meta.get("kept_back")
+    if isinstance(kz, Mapping):
+        n_pub, n_kb = int(kz.get("published") or 0), int(kz.get("frames") or 0)
+        lines.append(
+            "kept-back frames: read by fresh claim readings alone (the practice gates refuse them); "
+            + (f"{n_pub} of the brief's {n_kb} templates are published in the instrument's source (a starter brief's), "
+               "so they are not hidden from a driver that has read it"
+               if n_pub else
+               f"none of the brief's {n_kb} templates is a published starter template; the harness cannot say who "
+               "has read the brief's own file")
         )
     sz = meta.get("shams")
     if isinstance(sz, Mapping):

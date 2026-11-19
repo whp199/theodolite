@@ -240,6 +240,13 @@ class LevelSession:
         self._brief: Optional[lbr.Brief] = brief
         self._bars: Optional[lcl.BarSet] = bars
         self._claim_design: Dict[str, Any] = {k: v for k, v in design.items() if v is not None}
+        # Kept-back frames are kept from practice here, at the gates to the model: those of every starter brief (their
+        # text is in the published source, and a session with no brief bound may be practising for one) and of the
+        # bound brief.
+        self._kept_back = lbr.KeptBack(
+            list(lbr.starter_briefs(handle.tokenizer if handle is not None else None).values())
+            + ([brief] if brief is not None else [])
+        )
         self._practice_reads: int = 0
 
         # In-memory-only plant / canary state: NEVER written to session.json, work/, or transcript.jsonl.
@@ -366,6 +373,18 @@ class LevelSession:
                 card["claim_design"] = {"set_by": "the session's owner, before it began",
                                         **{k: self._claim_design[k] for k in sorted(self._claim_design)}}
         return card
+
+    def _refuse_kept_back(self, items: Sequence[lv.Item]) -> None:
+        """Refuse a practice reading or capture on an item that holds a rendering of a kept-back frame, in its
+        question, its system turn or its answer (`level_briefs.KeptBack`). Nothing is run and nothing is entered."""
+        for it in items:
+            got = self._kept_back.hit(it.question, it.system, it.answer)
+            if got is not None:
+                raise SessionRefused(
+                    f'Item "{it.name}" holds a kept-back frame of brief "{got["brief"]}". Kept-back frames are read '
+                    "by a fresh claim reading alone, never in practice: draw practice items from the brief "
+                    "(draw_practice) or write your own on other frames."
+                )
 
     def _wall_seconds(self) -> float:
         return round(time.monotonic() - self._t_start, 3)
@@ -495,6 +514,7 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         a_items = _as_item_list(items_a, self._handle.tokenizer, "items_a")
         b_items = _as_item_list(items_b, self._handle.tokenizer, "items_b")
+        self._refuse_kept_back(a_items + b_items)
         n_fwd = len(a_items) + len(b_items)
         est_s = sum(lv.whole(1, len(it.ids)) for it in a_items + b_items)
         self._check_gpu_budget(n_fwd, est_s)
@@ -605,6 +625,7 @@ class LevelSession:
 
         h = self._handle
         item_map = _as_item_map(items, h.tokenizer)
+        self._refuse_kept_back(list(item_map.values()))
 
         # Budget preflight using normalise + estimate (before touching the GPU).
         try:

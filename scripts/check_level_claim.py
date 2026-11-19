@@ -241,6 +241,40 @@ def run_section_1(tok: Any, tmp: Path) -> None:
     check(len(neu) == 4 and all(isinstance(d.item, lv.Item) for d in neu), "neutral_chat_generator draws valid Items")
     check(len(pan) == 4 and all(isinstance(p["item"], lv.Item) for p in pan), "draw_labelled_sanity_panel draws valid Items")
 
+    # Kept-back frames at the door (KeptBack): every rendering of a kept-back frame is found, no practice one is
+    guard = lbr.KeptBack(starters.values())
+    kb_missed: List[str] = []
+    prac_caught: List[str] = []
+    for b in starters.values():
+        for gen in (b.generator, b.near_miss_generator):
+            n_kb = len(gen.frames_for("kept_back"))
+            for d in gen.draw("kept_back", 2 * n_kb, seed_bytes=b"kept-back-check", tokenizer=tok):
+                if guard.hit(d.item.question) is None:
+                    kb_missed.append(f"{b.name}/{d.frame_id}")
+            if gen.frames_for("practice"):
+                for d in gen.draw("practice", 12, seed_bytes=b"practice-check", tokenizer=tok):
+                    if guard.hit(d.item.question, d.item.system, d.item.answer) is not None:
+                        prac_caught.append(f"{b.name}/{d.frame_id}")
+    check(len(guard) >= 24 and not kb_missed,
+          f"every rendering of every starter brief's kept-back and near-miss frames is found (missed: {kb_missed})")
+    check(not prac_caught, f"no rendering of a practice frame is taken for a kept-back one (caught: {prac_caught})")
+    kq = starters["pronoun_pull"].generator.draw("kept_back", 2, seed_bytes=b"wrapped-check", tokenizer=tok)[0].item.question
+    got_plain = guard.hit(kq)
+    check(got_plain is not None and got_plain["brief"] == "pronoun_pull"
+          and guard.hit("Please do this.   " + kq.upper() + "\n\nThank you.") == got_plain
+          and guard.hit(None, "An ordinary question about rivers?", kq) == got_plain,
+          "a kept-back frame is found inside a longer text, in any of an item's texts, whatever its case and spacing")
+    check(guard.hit("An ordinary question about rivers?", None, " she") is None,
+          "an ordinary item is not taken for a kept-back frame")
+    f_a = lbr.Frame("a", "kept_back", 0, "State the  leg count of a typical {kind} living near {place}.", "x")
+    f_b = lbr.Frame("b", "practice", 1, "state the leg count of a typical {animal} living near {where}.", "y")
+    check(f_a.template_id == f_b.template_id and f_a.id != f_b.id
+          and f_a.template_id in lbr.published_template_ids(tok),
+          "a frame's template_id is one for a template under other ids, slot names, case and spacing")
+    f_short = lbr.Frame("s", "kept_back", 0, "{a} or {b}?", "x")
+    check(f_short.rendered_in("Tea or coffee?") and not f_short.rendered_in("Would you like tea or coffee? Say which."),
+          "a template with few fixed words must be the whole text to count as rendered")
+
 
 def run_section_2() -> None:
     print("Section 2: Statistics (house_bar, frame_statistics, control_standing, written strata, pricing)", flush=True)
@@ -365,7 +399,8 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     meta_d = {**meta, "design": {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4,
                                  "rows": {"small": 12, "large": 32}, "controls_per_family": 39,
                                  "match_tolerance": 4.0},
-              "shams": {"count": 39, "sha256": "f" * 64}}
+              "shams": {"count": 39, "sha256": "f" * 64},
+              "kept_back": {"frames": 8, "published": 8}}
     s_tol = lcl.claim_sentence(brief, j_decl, meta_d)
     sh_tol = lcl.render_sheet(brief, bars, j_decl, meta_d, s_tol)
     SHEETS_COLLECTED.extend([sh_tol, s_tol or ""])
@@ -374,6 +409,15 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     check("other sites matched within a factor of 4 on delivered" in sh_tol
           and "sham-target controls: 39 supplied with the claim" in sh_tol,
           "the sheet prints the registered design and that the shams were supplied, not made by the harness")
+    check("kept-back frames, whose templates are published in the instrument's source, drawn from" in (s_tol or "")
+          and "8 of the brief's 8 templates are published in the instrument's source" in sh_tol,
+          "the sentence and the sheet of a starter brief's lead say its kept-back templates are published")
+    meta_p = {**meta, "kept_back": {"frames": 8, "published": 0}}
+    s_priv = lcl.claim_sentence(brief, j_decl, meta_p)
+    sh_priv = lcl.render_sheet(brief, bars, j_decl, meta_p, s_priv)
+    SHEETS_COLLECTED.extend([sh_priv, s_priv or ""])
+    check("published" not in (s_priv or "") and "none of the brief's 8 templates is a published starter template" in sh_priv,
+          "a brief with no published template is not called published, and the sheet says what the harness cannot know")
 
     # 2b. declared_rule missing sham_target -> fails controls
     j_nosh = lcl.judge_claim(brief=brief, bars=bars, classes=good_classes, batteries=_clean_batteries(),
@@ -824,6 +868,41 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     r_prac = lmcp.dispatch_tool(ses, "draw_practice", {"n": 2, "seed": 3})
     check(r_prac["count"] == 2 and len(lcl.brief_history(brief.id, bk)["practice_item_ids"]) == 2,
           "MCP draw_practice returns items and records them in ledger")
+    check(all(ses._kept_back.hit(v["question"], v["system"], v["answer"]) is None for v in r_prac["items"].values()),
+          "the practice items the door hands out pass its own kept-back guard")
+
+    # Kept-back frames are held out at the gates to the model, whoever wrote the item and with a brief bound or not
+    kb_item = brief.generator.draw("kept_back", 2, seed_bytes=b"door-kept-back", tokenizer=h.tokenizer)[0].item
+    nm_item = brief.near_miss_generator.draw("kept_back", 2, seed_bytes=b"door-near-miss", tokenizer=h.tokenizer)[0].item
+    plan_kb = {"name": "kb_try", "kind": "paired", "edit": {"terms": [{"layer": 2, "silence": [0, 1]}]},
+               "controls": {"count": 3, "seed": 0}, "rows": {"small": 8, "large": 16}}
+    lines_before, fwd_before = lb.verify(bk)["entries"], ses.forwards_used
+    for tool, args, what in (
+        ("read", {"plan": plan_kb, "items": {"kb": {"question": kb_item.question, "answer": kb_item.answer}}},
+         "a paired reading on a kept-back frame"),
+        ("read", {"plan": plan_kb, "items": {"nm": {"question": nm_item.question, "answer": nm_item.answer}}},
+         "a paired reading on a kept-back near-miss frame"),
+        ("write", {"plan": {**plan_kb, "kind": "written", "rows": 8, "max_new": 4},
+                   "items": {"kb": {"question": "Before you start: " + kb_item.question.upper(), "answer": "x"}}},
+         "a written reading on a kept-back frame inside a longer question"),
+        ("capture", {"items_a": [{"question": "Say it.", "system": kb_item.question, "answer": "a"}],
+                     "items_b": [{"question": "An ordinary question about rivers?", "answer": "b"}], "layer": 2},
+         "a capture with a kept-back frame in the system turn"),
+    ):
+        check_raises(lses.SessionRefused, lambda tool=tool, args=args: lmcp.dispatch_tool(ses, tool, args),
+                     f"the door refuses {what}", match="kept-back frame")
+    check(lb.verify(bk)["entries"] == lines_before and ses.forwards_used == fwd_before,
+          "the refused practice calls ran nothing and entered nothing in the book")
+    ses_free = lses.LevelSession(h, tmp / "ses_free", reach="tools_only", backend="local", book_path=bk)
+    spider = lbr.starter_briefs(h.tokenizer)["spider_legs_bleed"].generator.draw(
+        "kept_back", 2, seed_bytes=b"door-spider", tokenizer=h.tokenizer)[0].item
+    check_raises(
+        lses.SessionRefused,
+        lambda: ses_free.read(plan_kb, {"sp": {"question": spider.question, "answer": spider.answer}}),
+        "a session with no brief bound refuses a starter brief's kept-back frame all the same",
+        match='kept-back frame of brief "spider_legs_bleed"',
+    )
+    ses_free.close()
 
     # The door has no switch for the comparison that can mark a lead "matched by a cheaper knob"
     check("run_prompt_arms" not in lmcp.TOOL_SPECS["claim"]["inputSchema"]["properties"],
@@ -866,6 +945,9 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
     check("other sites matched within a factor of 20 on delivered" in r_claim["sheet"],
           "the sheet prints the tolerance the matched controls were matched within")
+    check(reg_mcp.get("kept_back") == {"frames": 8, "published": 8}
+          and "8 of the brief's 8 templates are published in the instrument's source" in r_claim["sheet"],
+          "a starter brief's claim registers, and prints, that its kept-back templates are published")
     check(r_claim["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_RUN
           and len(r_claim["cheaper_knobs"]["prompt_arms"]) == len(brief.prompt_arms) > 0,
           "a claim through the door always compares the brief's author prompt arms")
