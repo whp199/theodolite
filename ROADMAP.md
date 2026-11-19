@@ -2150,7 +2150,7 @@ in order:
     `codex`), GPU-second/forward/cell/wall budgets, gated `capture`/`read`/`write`/`book_view` returning redacted
     `driver_view` aggregates only (no word past a rank), transcript copy on `close()`, and blinded in-memory planted
     fault & canary sessions leaving `assert_base` clean after every call.
-  - All 1,032 checks in `scripts/check_levelling.py` and all 108 CPU/sandbox checks in `scripts/check_level_door.py`
+  - All 1,032 checks in `scripts/check_levelling.py` and all 137 CPU/sandbox checks in `scripts/check_level_door.py`
     pass; `scripts/verify_level_door.py` passed 37 of 37 checks on the 31B RTX 5090 card (101.0 s, peak 20.54 GiB,
     0 unpacker fallbacks, `experiments/results/levelling/verify_door.json`).
 - **Phase 3 (The Claim Gate). Built and card-checked** (19 November 2026; ARCHITECTURE §7).
@@ -2169,7 +2169,7 @@ in order:
     (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`, `works but harms`, `did not replicate`,
     `kept the base`, `void`). Wired into `level_session.py`, `level_mcp.py` (`brief_info`, `draw_practice`, `claim`
     returning redacted `driver_record` only), and `scripts/levelling.py` (`brief`, `calibrate`, `claim`).
-  - All 164 CPU checks in `scripts/check_level_claim.py` pass (including all planted-failure verdicts, 200 planted nulls
+  - All 302 CPU checks in `scripts/check_level_claim.py` pass (including all planted-failure verdicts, 200 planted nulls
     calibration with 0/200 false leads at `m = 2, C = 39`, live paired and chunked `written_loop` stand-in claims, MCP
     & CLI tests, and zero kept-out words across all 10 Levelling files and rendered sheets). On the 31B RTX 5090 card,
     `scripts/verify_level_claim.py` passed 16 of 16 checks (`experiments/results/levelling/verify_claim.json`, 138.6 s,
@@ -2191,7 +2191,7 @@ in order:
     replay (with offline recorded 19 Nov 2026 31B verdicts). `Lexicon.tsx` addresses “An edit stays until you undo it”
     and adds one new Lexicon term (`a control edit`, `id="control-edit"`, beside the single new Vault tab word
     `compare`).
-  - All 79 checks in `scripts/check_level_page.py` (esbuild/node + FastAPI `TestClient` + 409 guard + replay + zero
+  - All 83 checks in `scripts/check_level_page.py` (esbuild/node + FastAPI `TestClient` + 409 guard + replay + zero
     kept-out words) and all 291 checks in `scripts/check_interface_defaults.py` pass, and `npm run build` succeeds
     cleanly. On the 31B RTX 5090 card, `scripts/verify_level_page.py` passed 11 of 11 checks
     (`experiments/results/levelling/verify_page.json`, 17.43 s, peak 18.37 GiB, 0 unpacker fallbacks, ledger whole):
@@ -2209,6 +2209,67 @@ in order:
     `cheaper_knobs["prompt_arms_state"]` now records whether they were compared, the sentence and the sheet say when
     they were not and why, and the agent’s door no longer has the switch (`level_mcp.py` refuses any argument a tool’s
     schema does not name; the owner’s `--no-prompt-arms` stays). The review’s other findings are not mended here.
+  - **Mended after the merge: the review’s other seven findings, one it missed, and what two reviews of the mends
+    then found** (19 November 2026).
+    (1) Bars. A claim took any bar set made for its brief. It now takes only one whose hash is in a calibration note
+    of its own book, made on the same weights; `load_bars` refuses a file with no hash; the calibration note
+    records its settings (`mult` among them); the sheet names the calibration’s line and how many the book holds.
+    (2) Design. The driver’s claim tool set the matching tolerance (unbounded), the item counts, the controls and
+    its own sham edits, none of it registered. The tool now takes the edit, its dose, a forecast, the selection, its
+    shams and the rule it declares for them; the rest is the gate’s or the session owner’s (`claim_design`), shown
+    on the harness card and written whole into the registration. Shams are built first and must have the edit’s
+    shape; in a paired reading one that does not move the stream within the matching tolerance of the edit’s counts
+    against the edit (four shams a millionth of an edit’s size had passed the shape check and would have printed
+    “0 of 4 moved as much”); the sheet prints how far the edit and each family’s controls moved the stream.
+    (3) Kept-back frames. The four starter briefs’ are in this repository. A session’s practice gates now refuse an
+    item that holds a kept-back frame’s wording, a near wording, or a retention battery’s question, and a claim is
+    refused when a practice reading already in its book, entered by any door, holds one. What this is: a guard on
+    wording, by words in order, with punctuation, case, spacing, invisible characters and the split between an
+    item’s fields set aside. What it is not: a question put in other words passes, and so do look-alike letters;
+    the sheet says so. (The review said a driver “at the folder reach” could read the frames; for Claude Code that
+    was wrong, it reads only its own work folder there. They are open to Codex, to an attended session and to any
+    reader of the repository.)
+    (4) Budget. `m`, read-once and the memory of practised frames went by the brief’s hash and the book’s path.
+    They now go by the brief’s name (case and end spaces aside); a brief changed after its first fresh reading is
+    refused; a kept-back frame is read under one brief only, so a new name on the same frames is refused too;
+    practised frames are known by template under any brief or id; and a reading taken outside the default level
+    book is registered, printed and worded as a side-book reading. The harness still cannot see another book, and
+    a new brief on new frames is a new budget: both are said, not solved.
+    (5) Loops. The instrument’s loop rule was measured on written text: it calls a song’s refrain and a JSON
+    schema’s boilerplate loops and misses a list collapsing to one answer under rising numbers (the “soft loop” of
+    arXiv 2606.13705). That paper’s rule, written from the wording of its section 4, is now read beside it in every
+    diagnosed row; a written brief names the rule it counts by, and the strata, the settings audit and the verdict
+    all count by that one; the sheet prints both counts and the sentence of a written lead says a rule counted its
+    loops. Neither rule has been checked against a person’s reading of this checkpoint’s answers; a loop in a form
+    neither finds (“Item 4: X”, two answers taking turns) counts as none, so an edit that changes how a list is
+    written can look like a cure; and the enumeration brief says its fault has not been seen here.
+    (6) Cost. The first call of a session was never refused for its price, and a claim was not priced at all. Every
+    call is now priced; a claim is priced before it is registered, and nothing certain to be refused (a dose the
+    edit cannot be read at, an edit with no column or row term, a plan or a draw the reading cannot make) is
+    registered at all, through the door or from the command line. A claim’s forwards are counted beside the
+    practice forwards.
+    (7) The card. The MCP server takes the card’s lock and refuses to start while the page server answers, with no
+    card, or with too little of it free. The page server and the command line take no lock.
+    And one the first review missed: the compare tab’s `scale` and `scale_rows` sent a recipe key the kernel
+    refuses and answered HTTP 400; they work now.
+    Left open, and known: a blinded session’s plant can be told from a canary by a reading’s predicted seconds
+    (the plant’s layers are priced in; the `estimate` tool prices without them); a live replay of a reading shows
+    no linears; the page calls an unavailable battery “passed”. `scripts/check_level_claim.py` 302,
+    `check_level_door.py` 137, `check_level_page.py` 83; the four card checks ran again on this code (68, 37 and 16;
+    the page’s 11 against the committed book), their reports not kept.
+  - **The known answer’s verdict depends on the draw** (measured on the card, 19 November 2026: the committed
+    record and four further runs of `scripts/verify_level_claim.py` that day, each a fresh draw of 8 items; one
+    reading each, their reports not kept). Four read the E6 ‘she’ ten as `works but harms`, its mean over frames in
+    the small and the large class −1.65 and −1.68 (the committed record; its halves −1.82 and −1.47, −1.84 and
+    −1.51), −1.56 and −1.54, −1.29 and −1.29, −1.27 and −1.24 (halves −1.10 and −1.44 in the small class). The
+    fifth read `did not replicate`: half 0’s four frames moved −0.13 and −0.06 in the two classes against half
+    1’s −2.17 and −2.13 (mean −1.15, frame interval −2.85 to +0.56), with the near-miss harm still there (0.95). So
+    with four frames a half and one item a frame, the half-replication gate turns on which names and roles are
+    drawn. Not looked into further: which frames or slot values were weak. It bears on how many items a claim
+    should read (`claim_design`, the owner’s) and on reading any single verdict of this brief. It also means
+    `scripts/verify_level_page.py`, which replays line 10 of the book that script rewrites and expects
+    `works but harms`, fails one check when run straight after such a run (10 of 11); against the committed book
+    it passes.
 - **What waits on the owner.** The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public

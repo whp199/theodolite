@@ -2123,7 +2123,9 @@ gap before that. It is taken at one row count and is not a two-row-count reading
 optional `sampler` (`temperature`, `top_k`, `top_p`, `presence_penalty`, `seed` in `backend/sampler_request.py`'s
 vocabulary, sharing one exponential race per sample across all rows of the batch so untouched and dose-0 rows remain
 bit-identical), `samples` (1 to 32), `thinking` (`enable_thinking=True`), `max_new` up to `MAX_NEW_LONG` (2,048,
-still bounded by `MAX_WRITTEN_GIB = 6.0`), and `diagnose=True` (loop detection via `detect_loop`, cut-off detection,
+still bounded by `MAX_WRITTEN_GIB = 6.0`), and `diagnose=True` (loop detection by two rules read side by side, the
+instrument's `detect_loop` and `published_loop`, the rule of arXiv 2606.13705 as its section 4 words it, neither
+checked against a person's reading of this checkpoint's answers; `loop_flag` says which a reading counts by; cut-off detection,
 Gemma 4 thought-channel splitting via `split_thinking`, and top-level aggregate `summary` counts of ended, cut-off,
 looped, rescued, and regressed generations preserved through `level_book.driver_view`).
 
@@ -2150,6 +2152,26 @@ CUDA: JSON header parsing opens the 23.26 GB 31B checkpoint in ~4 ms (`0.0039 s`
   returns `level_book.driver_view` aggregates only (no word past a rank in practice), copies the transcript to
   `<book_dir>/transcripts/` on `close()`, and supports in-memory-only planted faults and blinded canaries with
   identical harness cards and `folded="never"` (zero disk/transcript leakage, nothing left on the model).
+  Three things the gates enforce since 19 November 2026. Kept-back frames: a practice reading, a written reading or
+  a capture on an item that holds the wording of any starter brief's or the bound brief's kept-back frame (target
+  or near-miss), a near wording of one (most of its pairs of neighbouring fixed words), or a question of the
+  retention batteries is refused, nothing run and nothing entered; the refusal is counted and written to the
+  transcript without the item's text (`level_briefs.KeptBack`). Wording is judged by words in order, across an
+  item's system turn, question and answer, with punctuation, case, spacing and characters that print nothing set
+  aside, in time that grows with the text and no faster. A question put in other words, or written with look-alike
+  letters, is not found: the guard narrows the way to the frames and does not close it. A practice reading may not
+  take a name the harness keeps for its own readings (`level_claim.RESERVED_NAMES`). The budget: every call is asked its price
+  before it runs, the session's first among them, against what is left of the GPU seconds and of the wall clock; a
+  claim is priced by `level_claim.estimate_claim` before it is registered and refused, with no fresh reading spent,
+  when the session cannot afford it; its forwards are counted beside the practice forwards (`claim_forwards`), not
+  against `max_forwards`. The claim's design: the claim tool takes the edit, its dose, a forecast, the selection
+  mode, its sham edits with the rule they were chosen by, and a reported practice best; the item counts, rows,
+  controls a family and matching tolerance are the gate's own or what the session's owner fixed at its start
+  (`claim_design`, `--claim-*`), all shown on the harness card. The MCP server loads the model itself, so it first
+  takes the card's lock for the life of the process (`hold_card`: the pod's `logs/gpu.lock` on a pod, a file beside
+  the level book at home) and refuses to start while the page server answers on its port, no CUDA device answers,
+  or under 22 GiB of the card is free (`card_refusal`). The page server and the command line take no lock: nothing
+  stops either from starting after a session has.
 
 **Phase 3: The Claim Gate** (`backend/level_briefs.py`, `backend/level_claim.py`, wired into `level_session.py`,
 `level_mcp.py`, and `scripts/levelling.py` `brief`/`calibrate`/`claim`): separates practice exploration from registered
@@ -2163,8 +2185,25 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
   `spider_legs_bleed`, `canary_null`, `enumeration_loop`).
 - **Registered bars, post-freeze draws & verdict engine (`level_claim.py`)**: `calibrate_bars` runs control edits on
   the retention batteries, hashes `BarSet` (linking its calibration reading book seqs) into a `brief_calibration` note
-  with tamper-checked `save_bars`/`load_bars`. `run_fresh_claim` enforces allowed tensors/layers, read-once per
-  `(brief_id, edit_id)`, fixed `m`, and ledger-persisted practice-draw blocking (`record_practice_draw`), writes
+  with tamper-checked `save_bars`/`load_bars` (a file with no `bars_sha256` is refused). `run_fresh_claim` takes
+  only bars whose hash is in a `brief_calibration` note of the same book for the same brief and the same weights,
+  enforces allowed tensors/layers, read-once per edit and fixed `m` under the brief's NAME (`brief_history(...,
+  name=)`, case and end spaces aside; a brief whose hash is not the one its name was first read under in the book is
+  refused, and so is a brief, whatever it is called, whose kept-back frames another brief already read there), and
+  practice blocking three ways: by frame id, by template (`record_practice_draw`, `Frame.template_id`: a frame
+  drawn in practice under any brief or id is refused as a kept-back frame), and by the book itself (a practice
+  reading in the book, entered by any door, that holds a kept-back frame's wording ends claims on the brief there).
+  Whatever is certain to end a reading is asked before the registration, which spends a fresh reading: the dose,
+  an edit with no column or row term, and every plan and draw the reading will make (`estimate_claim` builds and
+  prices them); a fresh draw refused after it ends the reading void, with its verdict note. The design is written
+  whole into `claim_registration` (item counts, rows, controls a family, matching tolerance, doses, prompt arms, the
+  loop rule of a written reading, the price), with the sham edits' ids and hash and the rule declared for them
+  (each sham is built first and must have the edit's shape; in a paired reading one that does not move the stream
+  within the matching tolerance of the edit's is counted as moving as much), the brief's kept-back template ids and
+  how many are published starter templates, how many practice readings the book holds, and which book it is
+  (`level_book.default_book_path`, or a side book whose readings are counted there and nowhere else); the sheet
+  prints all of it, and each family's line of a paired reading is followed by how much the edit and that family's
+  control edits changed the stream (`delivered`). It writes
   `claim_registration` to the level book **before** drawing fresh kept-back items with `os.urandom(32)`, evaluates both
   batch classes (`small` & `large`, or chunked written batches for `written_loop`) against `other_sites_matched`,
   `same_site`, and optional `sham_target` controls (`p_fw = min(1, m * (1 + at_least) / (C + 1)) <= alpha`; a
@@ -2217,19 +2256,19 @@ a packed bf16 one) holds the kernel to the spec across 16 sections (1,032/1,032 
 `scripts/check_level_door.py` (CPU stand-ins + live `bwrap` sandbox) verifies the no-card weights reader, extended
 sampled/thinking-on written readings and loop/cut-off detectors, `stack(doses=...)` and in-memory `_plant` repair,
 `bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts, stdio MCP protocol, CLI subcommands,
-and zero kept-out words (108/108 checks passing in 19.9 s).
+and zero kept-out words (137/137 checks passing in 24 s).
 `scripts/check_level_claim.py` (CPU stand-ins) verifies Phase 3 briefs, canonical hashing/tamper checks, policy
 refusals, `FrameGenerator` disjointness/half balancing/anti-leakage, `house_bar`/`frame_statistics`/`control_standing`
 /`written_strata_summary`/`price_written_reading`, all planted-failure verdicts, 200 planted nulls calibration (0/200
 false leads under both joint-gate and worst-case exchangeable nulls at `m = 2, C = 39`), live stand-in paired and
 chunked `written_loop` claims, `LevelSession`/MCP/CLI claim integration, and zero kept-out words across all 10
-Levelling files and every rendered Claim Sheet (164/164 checks passing).
+Levelling files and every rendered Claim Sheet (302/302 checks passing).
 `scripts/check_level_page.py` (CPU stand-ins + `esbuild`/node + FastAPI `TestClient`) verifies `compare.ts` request
 builders/validators/1-to-0 layer conversion, `/api/level/{status,estimate,compare,book}` routes, HTTP 409 vault-overlay
 isolation, model-free replay of both live and verified 31B books, foreign-origin & path-traversal guards, Lexicon/Vault
 wiring, that the offline replay cards are the committed book's own lines (`scripts/level_recorded_cards.py` makes
 `compareRecorded.ts` from `verify_claim_book.jsonl`), and zero kept-out words across all 12 backend/CLI files and 3
-Phase 4 frontend files (79/79 checks passing in 1.4 s; `scripts/check_interface_defaults.py`: 291/291 passing; `npm run build`: clean).
+Phase 4 frontend files (83/83 checks passing in 1.4 s; `scripts/check_interface_defaults.py`: 291/291 passing; `npm run build`: clean).
 On the 31B card (RTX 5090):
 - `scripts/verify_levelling.py` (1a, 16 November 2026, `verify_1a.json`): 142 of 145 standing lines passed in 13 min.
 - `scripts/verify_levelling_1b.py` (1b, 18 November 2026, `verify_1b.json`): 68 of 68 checks passed in 86.2 s, peak

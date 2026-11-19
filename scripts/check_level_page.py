@@ -225,6 +225,12 @@ def run_section_2(tmp: Path) -> None:
         est = r_est.json()
         check(est["total_forwards"] > 0 and est["total_seconds"] > 0 and est["paired"] is not None,
               f"estimate prices both written & paired: {est['total_forwards']} fwds")
+        # every operation the form offers reaches the kernel as a recipe it takes (a scale's factor is "factor")
+        for op, linear, factor in (("scale", "down_proj", 0.5), ("silence_rows", "up_proj", 0.0),
+                                   ("scale_rows", "gate_proj", 2.0)):
+            r_op = client.post("/api/level/estimate", json={**req_body, "op": op, "linear": linear, "factor": factor})
+            check(r_op.status_code == 200 and r_op.json()["total_forwards"] > 0,
+                  f"POST /api/level/estimate takes op {op} on {linear} (got {r_op.status_code}: {r_op.text[:160]})")
         check(not bk.exists(), "estimate writes nothing to the level book")
 
         # 3. POST /api/level/compare (written + paired side by side)
@@ -278,6 +284,9 @@ def run_section_2(tmp: Path) -> None:
         bk_d = r_bk.json()
         check(bk_d["verify"]["ok"] and len(bk_d["entries"]) == 3,
               f"live book replay returns 3 verified entries (got {len(bk_d['entries'])})")
+        r_sc = client.post("/api/level/compare", json={**req_body, "op": "scale", "factor": 0.5, "include_paired": False})
+        check(r_sc.status_code == 200 and r_sc.json()["status"] == "ok" and r_sc.json()["edit"]["op"] == "scale",
+              f"POST /api/level/compare runs a scale by 0.5 (got {r_sc.status_code}: {r_sc.text[:160]})")
         r_ent0 = client.get("/api/level/book/0?book=live")
         check(r_ent0.status_code == 200 and r_ent0.json()["card"]["voices"] is not None,
               "replay of seq 0 returns full three-voice card")

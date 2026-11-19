@@ -14,10 +14,13 @@ No kept-out words appear in code, messages, or generated text. Layers count from
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
 import re
+import string
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
@@ -39,6 +42,76 @@ _FORBIDDEN_BRIEF_RE = re.compile(
     re.I,
 )
 _SLOT_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+# A frame's question is looked for inside a longer text only when it has at least this many fixed words; a template
+# with fewer must be the whole text (it would otherwise be found in almost anything).
+MIN_TEMPLATE_WORDS = 4
+# A text is a near wording of a frame when it holds at least NEAR_SHARE of the frame's pairs of neighbouring fixed
+# words; asked only of a frame with NEAR_MIN_RUNS such pairs or more. Measured on renderings of the four starter
+# briefs (19 November 2026): no practice rendering of any of them, and no neutral-battery question, holds more than
+# 0.38 of any kept-back frame's pairs; with one fixed word of a kept-back rendering changed, 557 of 579 are still
+# at 0.6 or more (with runs of three words at a half, 365 of 419, and two frames too short to ask).
+NEAR_MIN_RUNS = 4
+NEAR_SHARE = 0.6
+_WORD_RE = re.compile(r"\w+")
+
+
+def _norm_text(text: Any) -> str:
+    """A text as leakage is judged: compatibility forms folded together (a fullwidth colon is a colon), characters
+    that print nothing dropped (zero-width and other format characters, controls, variation selectors), case folded,
+    runs of whitespace as one space. Look-alike letters of another script are not folded: that is not attempted."""
+    s = unicodedata.normalize("NFKC", str(text))
+    kept = []
+    for ch in s:
+        if ch.isspace():
+            kept.append(" ")
+        elif unicodedata.category(ch) in ("Cf", "Cc") or 0xFE00 <= ord(ch) <= 0xFE0F or 0xE0100 <= ord(ch) <= 0xE01EF:
+            continue
+        else:
+            kept.append(ch)
+    return " ".join("".join(kept).split()).casefold()
+
+
+def _words(text: Any) -> List[str]:
+    """A text's words in order, as leakage is judged: `_norm_text`, then letters and digits only, so punctuation,
+    quotes and spacing do not tell two wordings apart."""
+    return _WORD_RE.findall(_norm_text(text))
+
+
+@functools.lru_cache(maxsize=4096)
+def _template_parts(question_tpl: str) -> Tuple[Tuple[Tuple[str, ...], ...], Tuple[int, ...]]:
+    """A question template as `(runs, slots)`: its runs of fixed words in order, and how many slots stand before the
+    first run, between each two runs, and after the last (`len(slots) == len(runs) + 1`; every count between two
+    runs is 1 or more). Doubled braces are literal braces, as `str.format` reads them, and fixed text that holds no
+    word (punctuation between two slots) joins the slots on either side of it."""
+    segments: List[List[str]] = [[]]
+    for literal, field, _spec, _conv in string.Formatter().parse(str(question_tpl)):
+        segments[-1].extend(_words(literal))
+        if field is not None:
+            segments.append([])
+    runs: List[Tuple[str, ...]] = []
+    slots: List[int] = [0]
+    for i, seg in enumerate(segments):
+        if i > 0:
+            slots[-1] += 1  # the slot that stood before this stretch of fixed text
+        if seg:
+            runs.append(tuple(seg))
+            slots.append(0)
+    return tuple(runs), tuple(slots)
+
+
+def _template_key(question_tpl: str) -> str:
+    """A frame's question template as leakage is judged: its fixed words with `{}` for each slot or run of slots,
+    whatever the slots are called and whatever the punctuation, case and spacing. Two frames with one key are one
+    template."""
+    runs, slots = _template_parts(question_tpl)
+    return (("{} " if slots[0] else "") + " {} ".join(" ".join(r) for r in runs) + (" {}" if slots[-1] and runs else "")
+            if runs else "{}")
+
+
+def _run_starts(words: Sequence[str], run: Sequence[str]) -> List[int]:
+    """Every place `run` stands in `words`, ascending. Plain scanning: no pattern, nothing to backtrack."""
+    k, first, run = len(run), run[0], tuple(run)
+    return [i for i in range(len(words) - k + 1) if words[i] == first and tuple(words[i:i + k]) == run]
 
 
 class BriefError(ValueError):
@@ -54,6 +127,7 @@ class DrawnItem:
     split: str
     half: int
     slots: Dict[str, str]
+    template_id: str = ""  # its frame's `Frame.template_id`: what leakage is judged by, whatever the frame is called
 
 
 @dataclass(frozen=True)
@@ -76,6 +150,80 @@ class Frame:
             "answer_tpl": self.answer_tpl,
             "system": self.system,
         }
+
+    @property
+    def template_id(self) -> str:
+        """The frame's question template by hash, as leakage is judged (`_template_key`): the same under another
+        frame id, other slot names, other punctuation or other spacing, which a frame's `id` is not."""
+        return hashlib.sha256(_template_key(self.question_tpl).encode("utf-8")).hexdigest()
+
+    def rendered_in(self, text: Any, *, slot_words: int = 12) -> bool:
+        """Whether `text` holds this frame's question in its own words: its runs of fixed words, in order, with at
+        least one word and at most `slot_words` where each slot stands (a slot is a few words, not a paragraph: with
+        no bound a template of common words would be found in any long text). The whole text must be the question
+        unless the template has `MIN_TEMPLATE_WORDS` fixed words or more, when it is looked for anywhere in the
+        text. Punctuation, case, spacing and characters that print nothing are set aside (`_words`). Every place a
+        run could stand is followed, so no rendering is missed, and the work grows with the text's length times the
+        template's, no faster."""
+        if text is None:
+            return False
+        runs, slots = _template_parts(self.question_tpl)
+        if not runs:
+            return False
+        words = _words(text)
+        n = len(words)
+        anywhere = sum(len(r) for r in runs) >= MIN_TEMPLATE_WORDS
+        reach = max(1, int(slot_words))
+        ends: List[int] = []  # where the run just placed can end (one past its last word), ascending
+        for i, run in enumerate(runs):
+            gap = slots[i]
+            now: List[int] = []
+            for start in _run_starts(words, run):
+                if i == 0:
+                    if gap == 0:
+                        ok = anywhere or start == 0
+                    else:
+                        ok = start >= 1 and (anywhere or start <= gap * reach)
+                else:  # some earlier end e with e + 1 <= start <= e + gap * reach
+                    lo, hi = start - gap * reach, start - 1
+                    j = _first_at_least(ends, lo)
+                    ok = j < len(ends) and ends[j] <= hi
+                if ok:
+                    now.append(start + len(run))
+            if not now:
+                return False
+            ends = now
+        tail = slots[-1]
+        if tail == 0:
+            return anywhere or n in ends
+        return any(1 <= n - e and (anywhere or n - e <= tail * reach) for e in ends)
+
+    def near_in(self, text: Any) -> bool:
+        """Whether `text` is a near wording of this frame's question: it holds `NEAR_SHARE` or more of the frame's
+        pairs of neighbouring fixed words. Asked only of a frame with `NEAR_MIN_RUNS` such pairs or more (a shorter
+        one has too little to go by). A word changed or the opening dropped usually leaves a question near; one put
+        in other words is not near, and is not found."""
+        if text is None:
+            return False
+        runs, _slots = _template_parts(self.question_tpl)
+        mine = {run[i:i + 2] for run in runs for i in range(len(run) - 1)}
+        if len(mine) < NEAR_MIN_RUNS:
+            return False
+        words = _words(text)
+        theirs = {tuple(words[i:i + 2]) for i in range(len(words) - 1)}
+        return len(mine & theirs) >= NEAR_SHARE * len(mine)
+
+
+def _first_at_least(sorted_values: Sequence[int], x: int) -> int:
+    """The index of the first of `sorted_values` that is `x` or more (their count when none is)."""
+    lo, hi = 0, len(sorted_values)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if sorted_values[mid] < x:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
 
 
 def _check_policy(name: str, behavior: str, driver_text: str) -> None:
@@ -113,8 +261,8 @@ class FrameGenerator:
             self.slots[k] = v_tup
 
         seen_ids: Set[str] = set()
-        prac_tpls: Set[Tuple[str, str]] = set()
-        kb_tpls: Set[Tuple[str, str]] = set()
+        prac_tpls: Dict[str, str] = {}
+        kb_tpls: Dict[str, str] = {}
         for fr in self.frames:
             if fr.id in seen_ids:
                 raise BriefError(f'Generator "{name}" reuses frame id "{fr.id}".')
@@ -126,16 +274,14 @@ class FrameGenerator:
             for ph in _SLOT_RE.findall(fr.question_tpl) + _SLOT_RE.findall(fr.answer_tpl):
                 if ph not in self.slots:
                     raise BriefError(f'Frame "{fr.id}" uses slot {{{ph}}}, which is missing from slots.')
-            pair = (fr.question_tpl.strip(), fr.answer_tpl.strip())
-            if fr.split == "practice":
-                prac_tpls.add(pair)
-            else:
-                kb_tpls.add(pair)
-        overlap = prac_tpls & kb_tpls
+            # one question template is one frame, whatever answer follows it and whatever its slots are called:
+            # the same sameness the practice gates and the leak check go by (`Frame.template_id`)
+            (prac_tpls if fr.split == "practice" else kb_tpls)[fr.template_id] = fr.question_tpl
+        overlap = set(prac_tpls) & set(kb_tpls)
         if overlap:
             raise BriefError(
                 f'Generator "{name}" shares a frame template between practice and kept_back splits: '
-                f"{next(iter(overlap))[0]!r}."
+                f"{prac_tpls[next(iter(overlap))]!r}."
             )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -261,7 +407,8 @@ class FrameGenerator:
                         "in practice."
                     )
                 seen_renders.add(render_key)
-                picked_item = DrawnItem(item=it, frame_id=fr.id, split=split, half=fr.half, slots=chosen_slots)
+                picked_item = DrawnItem(item=it, frame_id=fr.id, split=split, half=fr.half, slots=chosen_slots,
+                                        template_id=fr.template_id)
                 break
             if picked_item is None:
                 raise BriefError(
@@ -327,8 +474,21 @@ class Brief:
             )
         if not self.near_miss_generator.frames_for("kept_back"):
             raise BriefError(f'Brief "{self.name}" near_miss_generator requires at least one kept_back frame.')
+        kept = {fr.template_id for g in (self.generator, self.near_miss_generator) for fr in g.frames_for("kept_back")}
+        for fr in self.generator.frames_for("practice"):
+            if fr.template_id in kept:
+                raise BriefError(
+                    f'Brief "{self.name}" has practice frame "{fr.id}" with the question template of one of its '
+                    "kept-back or near-miss frames: the practice gates would refuse the brief's own practice items."
+                )
+        if self.name != self.name.strip():
+            raise BriefError(f"A brief's name has no space before or after it; {self.name!r} has.")
         if self.chat_settings is None:
             object.__setattr__(self, "chat_settings", {"thinking": False, "system": None})
+        if self.written_config is not None and "loop_rule" in self.written_config \
+                and self.written_config["loop_rule"] not in lv.LOOP_RULES:
+            raise BriefError(f"written_config loop_rule must be one of {', '.join(lv.LOOP_RULES)}; "
+                             f"{self.written_config['loop_rule']!r} is not.")
         _check_policy(self.name, self.behavior, self.driver_text)
 
     @property
@@ -399,6 +559,13 @@ class Brief:
         )
 
 
+def loop_rule_of(brief: Brief) -> str:
+    """Which loop rule a `written_loop` brief counts a generation as looped by (`levelling.loop_flag`): its
+    `written_config["loop_rule"]`, or "instrument" when it names none (a brief written before the published rule
+    was read beside the instrument's own keeps the meaning it had)."""
+    return str((brief.written_config or {}).get("loop_rule", "instrument"))
+
+
 def save_brief(brief: Brief, path: Path) -> str:
     """Save `brief` as canonical JSON with its embedded `brief_id` and return `brief.id`."""
     p = Path(path)
@@ -466,6 +633,32 @@ def neutral_chat_generator() -> FrameGenerator:
     return FrameGenerator("neutral_chat_battery", frames, slots)
 
 
+# The labelled panel's facts and the two forms its sums take (`draw_labelled_sanity_panel`): fixed, few, and in the
+# published source, like the neutral battery's frames. `battery_frames` hands them to the practice gates' guard.
+PANEL_FACTS = (
+    ("What is the capital of France?", "Paris"),
+    ("What is the capital of Japan?", "Tokyo"),
+    ("What is the chemical symbol for water?", "H2O"),
+    ("How many days are in a week?", "7"),
+    ("What planet is closest to the Sun?", "Mercury"),
+    ("What is the boiling point of water in Celsius at sea level?", "100"),
+    ("How many continents are there on Earth?", "7"),
+    ("What gas do plants absorb during photosynthesis?", "Carbon dioxide"),
+)
+PANEL_SUMS = ("Compute {a} + {b}. Reply with the number.", "Compute {a} * {b}. Reply with the number.")
+
+
+def battery_frames() -> List[Frame]:
+    """The retention batteries' own questions as frames: the neutral battery's and the labelled panel's (its facts,
+    word for word, and the two forms of its sums). A claim's harm gate reads these and nothing else, so the practice
+    gates refuse their wording too: an edit is not to be rehearsed against the very probes that judge its harm."""
+    frames = list(neutral_chat_generator().frames_for("kept_back"))
+    frames += [Frame(f"panel_fact_{i:02d}", "kept_back", 0, q.replace("{", "{{").replace("}", "}}"), "")
+               for i, (q, _a) in enumerate(PANEL_FACTS)]
+    frames += [Frame(f"panel_sum_{i:02d}", "kept_back", 0, tpl, "") for i, tpl in enumerate(PANEL_SUMS)]
+    return frames
+
+
 def draw_labelled_sanity_panel(
     n: int,
     *,
@@ -482,16 +675,7 @@ def draw_labelled_sanity_panel(
         raise BriefError("labelled sanity panel requires n >= 1.")
     seed_u64 = int.from_bytes(hashlib.sha256(bytes(seed_bytes) + b":panel").digest()[:8], "little")
     rng = np.random.default_rng(seed_u64)
-    facts = [
-        ("What is the capital of France?", "Paris"),
-        ("What is the capital of Japan?", "Tokyo"),
-        ("What is the chemical symbol for water?", "H2O"),
-        ("How many days are in a week?", "7"),
-        ("What planet is closest to the Sun?", "Mercury"),
-        ("What is the boiling point of water in Celsius at sea level?", "100"),
-        ("How many continents are there on Earth?", "7"),
-        ("What gas do plants absorb during photosynthesis?", "Carbon dioxide"),
-    ]
+    facts = list(PANEL_FACTS)
     out: List[Dict[str, Any]] = []
     seen_q: Set[str] = set()
     for i in range(n):
@@ -733,7 +917,19 @@ def enumeration_loop_brief(
     controls_per_family: Optional[int] = None,
 ) -> Brief:
     """Starter brief (written mode): reduce repetition loops on long thinking-on enumerations without harming
-    ordinary writing (`compare_settings=True` records base loop rate with thinking off beside thinking on)."""
+    ordinary writing (`compare_settings=True` records base loop rate with thinking off beside thinking on).
+
+    The fault is published for the bf16 release of this model (arXiv 2606.13705) and has NOT been seen on this
+    checkpoint: in the one audit so far (19 November 2026, on the card, at a cap of 64 new pieces, far short of
+    the paper's 1,536) none of 4 base answers looped under either rule, and both thinking-on answers were cut off
+    at the cap before they could. Nor are these the paper's prompts or settings (its lists are long factual ones,
+    at temperature 0.7). So this brief is a place to look for the fault, not a known one; a reading on a base that
+    does not loop can only say "kept the base". A generation counts as looped by either loop rule (`loop_rule`:
+    the instrument's own, which misses a list collapsing to one answer under rising numbers, or the paper's, which
+    misses periods over 40 pieces), so a loop that only moves from a form one rule finds to a form the other finds
+    is still a loop. A loop in a form neither finds (a collapse written "Item 4: X", two answers taking turns) is
+    counted as none: an edit that changes how a list is written can look like a cure, and nothing here checks that
+    the list still has its entries. Read the ended and cut-off counts beside the loop counts."""
     slots = {
         "n": ["18", "22", "25", "30", "35", "40"],
         "topic": ["world rivers", "musical instruments", "chemical elements", "European capitals",
@@ -762,7 +958,9 @@ def enumeration_loop_brief(
     ]
     return Brief(
         name="enumeration_loop",
-        behavior="Reduce repetition-loop rate during thinking-on long enumerations while preserving short factual writing.",
+        behavior=("Reduce repetition-loop rate during thinking-on long enumerations while preserving short factual "
+                  "writing. The fault is published for the bf16 release (arXiv 2606.13705); it has not been seen on "
+                  "this checkpoint yet."),
         metric="written_loop",
         direction=-1,
         least_effect=0.20,
@@ -776,7 +974,8 @@ def enumeration_loop_brief(
         chat_settings={"thinking": True, "system": None},
         compare_settings=True,
         prompt_named_site=False,
-        written_config={"max_new_tokens": 512, "temperature": 1.0, "top_p": 0.95, "seeds": [1, 2]},
+        written_config={"max_new_tokens": 512, "temperature": 1.0, "top_p": 0.95, "seeds": [1, 2],
+                        "loop_rule": "either"},
         driver_text="Target: reduce loop incidence in thinking-on long enumerations without degrading short answers.",
     )
 
@@ -795,3 +994,75 @@ def starter_briefs(
         enumeration_loop_brief(tokenizer, max_fresh_readings=max_fresh_readings, controls_per_family=controls_per_family),
     ]
     return {b.name: b for b in bs}
+
+
+# ------------------------------------------------------------------------------------- kept-back frames at the door
+
+
+BATTERIES = "the gate's retention batteries"
+
+
+class KeptBack:
+    """The kept-back frames of a set of briefs (each brief's target generator and its near-miss generator), and with
+    `batteries` the retention batteries' own questions, as a practice gate asks of an item: does it hold one of them?
+
+    What it is for, and what it is not. A practice reading or a capture on a kept-back frame's own wording is
+    refused, whoever wrote the item and wherever its text was learned: for the four starter briefs, whose frames are
+    in the instrument's published source, this refusal and not secrecy is what stands between an edit and being
+    tuned on the frames it is judged on. It goes by wording: a frame's fixed words in order (`Frame.rendered_in`),
+    or most of its pairs of neighbouring fixed words (`Frame.near_in`, brief frames only), looked for in each text
+    of an item and in the item's texts run together, with punctuation, case, spacing and characters that print
+    nothing set aside. A question put in other words is not found, nor one written with look-alike letters. It
+    narrows the way to the frames; it does not close it."""
+
+    def __init__(self, briefs: Iterable[Brief], *, batteries: bool = False) -> None:
+        # (whose it is, the frame, whether near wordings count, the most words one of its slots may stand for)
+        self._frames: List[Tuple[str, Frame, bool, int]] = []
+        seen: Set[str] = set()
+
+        def reach_of(gen: FrameGenerator) -> int:
+            longest = max((len(_words(v)) for values in gen.slots.values() for v in values), default=1)
+            return max(6, longest + 2)  # the generator's longest slot value, and a little room
+
+        for b in briefs:
+            for gen in (b.generator, b.near_miss_generator):
+                for fr in gen.frames_for("kept_back"):
+                    if fr.template_id not in seen:
+                        seen.add(fr.template_id)
+                        self._frames.append((b.name, fr, True, reach_of(gen)))
+        self._brief_frames = len(self._frames)
+        if batteries:
+            for fr in battery_frames():
+                if fr.template_id not in seen:
+                    seen.add(fr.template_id)
+                    self._frames.append((BATTERIES, fr, False, 6))
+
+    def __len__(self) -> int:
+        return len(self._frames)
+
+    def template_ids(self) -> Set[str]:
+        """The template ids of the briefs' kept-back frames (the batteries' are not among them)."""
+        return {fr.template_id for _name, fr, _near, _reach in self._frames[:self._brief_frames]}
+
+    def hit(self, *texts: Any) -> Optional[Dict[str, str]]:
+        """`{"brief": whose frame, "frame": its id, "how": "wording" | "near wording"}` for the first frame that one
+        of `texts`, or all of them run together in the order given, holds; or None. Give an item's texts in the
+        order the model reads them (system turn, question, answer)."""
+        given = [str(t) for t in texts if t is not None]
+        if not given:
+            return None
+        tried = given + ([" ".join(given)] if len(given) > 1 else [])
+        for name, fr, _near, reach in self._frames:
+            if any(fr.rendered_in(t, slot_words=reach) for t in tried):
+                return {"brief": name, "frame": fr.id, "how": "wording"}
+        whole = tried[-1]
+        for name, fr, near, _reach in self._frames:
+            if near and fr.near_in(whole):
+                return {"brief": name, "frame": fr.id, "how": "near wording"}
+        return None
+
+
+def published_template_ids(tokenizer: Any = None) -> Set[str]:
+    """The template ids of every kept-back frame the starter briefs carry: frames anyone who reads the instrument's
+    source has read. A claim's sheet says so of a brief that uses them (`level_claim.run_fresh_claim`)."""
+    return KeptBack(starter_briefs(tokenizer).values()).template_ids()

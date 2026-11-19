@@ -89,14 +89,23 @@ class BookBroken(RuntimeError):
     """The book cannot be read on from here, or cannot take a line: its words say which line and what to look at."""
 
 
+def default_book_path() -> Path:
+    """Where the book lives when `$THEODOLITE_LEVEL_BOOK` does not move it: the one book a reading is counted in
+    unless someone pointed it elsewhere. A book at any other path is a side book (a check's, a dry run's), and a
+    fresh claim reading taken in one says so (`level_claim.run_fresh_claim`). `$XDG_DATA_HOME` places it, so it is
+    the default of the environment a process was started in: that environment is the owner's, and a reading says
+    which book it used by its file name, not by where the file is."""
+    base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
+    return Path(base).expanduser() / "theodolite" / "level_book.jsonl"
+
+
 def book_path() -> Path:
     """Where the book lives, read from the environment at every call (so a check or a dry run can point it elsewhere
     after this module is imported)."""
     env = os.environ.get(BOOK_ENV)
     if env:
         return Path(env).expanduser()
-    base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
-    return Path(base).expanduser() / "theodolite" / "level_book.jsonl"
+    return default_book_path()
 
 
 def canonical(obj: Any) -> bytes:

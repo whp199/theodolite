@@ -176,6 +176,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -389,11 +390,20 @@ def detect_loop(
     ngram: int = 16,
     min_ngram_hits: int = 4,
 ) -> Dict[str, Any]:
-    """Detect cyclic repetition or repeated n-gram enumeration loops in written token-id sequences.
+    """Detect cyclic repetition or repeated n-gram enumeration loops in written token-id sequences: the
+    instrument's own loop rule (`LOOP_RULE_OWN`).
 
     Checks (1) exact consecutive periodic cycles (period `min_period..max_period`, at least `min_repeats` repeats
     covering at least `min_periodic_span` pieces, tail first then anywhere), and (2) non-overlapping repeated
-    `ngram`-tuples appearing at least `min_ngram_hits` times (catching near-periodic enumeration loops)."""
+    `ngram`-tuples appearing at least `min_ngram_hits` times (catching near-periodic enumeration loops).
+
+    It is a rule on word-piece ids and has not been checked against a person's reading of this checkpoint's answers.
+    What was measured of it, on text written for the purpose and split by the 31B's own tokenizer (19 November 2026,
+    no model): clause 2 calls a song with its chorus four times and a JSON schema's repeated boilerplate loops, and
+    clause 1 a run of 400 "=" (period 1); and a numbered list whose entries collapse to one answer under rising
+    numbers ("4. X", "5. X", ...), which is one of the two forms of the loop arXiv 2606.13705 describes (its "soft
+    loop"), is not found at all, nor is a list restarted three times. `published_loop` is that paper's rule, read beside this one in every diagnosed
+    row; `scripts/check_level_door.py` pins both on these shapes."""
     seq = [int(t) for t in pieces]
     n = len(seq)
     if n < max(min_periodic_span, min_repeats * min_period):
@@ -460,6 +470,83 @@ def detect_loop(
                     return {"looped": True, "kind": "ngram", "period": None, "repeats": len(hits),
                             "start": hits[0], "span": hits[-1] + ng - hits[0]}
     return {"looped": False, "kind": None, "period": None, "repeats": 0, "start": None, "span": 0}
+
+
+# The two loop rules a diagnosed written row is read under, and what a reading may count as "looped" (`loop_flag`).
+LOOP_RULE_OWN = "theodolite-loop-1"
+LOOP_RULE_PUBLISHED = "arXiv:2606.13705v2 sec. 4, as worded"
+LOOP_RULES = ("instrument", "published", "either")
+_LIST_MARKER_RE = re.compile(r"^\s*(?:[-*+\u2022\u2013\u2014]+|\(?\d+[.):\]]\)?)(?:\s+|$)")
+
+
+def _list_line(line: str) -> str:
+    """A line as the published soft-loop rule compares lines: its list markers stripped (bullets, "12.", "12)",
+    "(12)", up to two of them, as in "- 12. ..."), lower case, whitespace as single spaces. A marker is followed by
+    a space or ends the line, so "1.5 km", "8:30 - Meeting" and "-5 degrees" open with none. What counts as a list
+    marker is this module's reading: the paper does not say."""
+    s = str(line)
+    for _ in range(2):
+        s2 = _LIST_MARKER_RE.sub("", s, count=1)
+        if s2 == s:
+            break
+        s = s2
+    return " ".join(s.split()).casefold()
+
+
+def published_loop(pieces: Sequence[int], text: str, *, ended: bool = False) -> Dict[str, Any]:
+    """The loop rule of Lazaridis and others (arXiv 2606.13705 v2, section 4), written from its wording and not from
+    its code, which was not read: "A tight loop requires an exact 5--40-token period repeated at least three times at
+    the generation tail. A soft loop requires at least four consecutive lines with identical normalized content after
+    stripping list markers, lowercasing, and normalizing whitespace." (read on the paper's own page, 19 November 2026.)
+
+    `pieces` are the written word-piece ids and `text` the same row as text; `ended` says the row closed with its
+    end mark, which is then left out of the tail. Three choices here are this module's, not the paper's: what
+    counts as a list marker (`_list_line`); a line with no content once its markers are stripped is passed over (the
+    paper's own audit lays four of its detector's five false positives to such lines); and so are blank lines
+    between entries. A collapse written with other markers ("Item 4: X", a table's rows) or as two answers taking
+    turns is not found by this rule, nor by `detect_loop`. The paper reports its detector at
+    precision 0.878 and recall 0.818 against people's reading of 81 outputs of the bf16 release; nothing of that
+    carries to this implementation or this checkpoint, where neither rule has been checked against a person.
+
+    {"looped", "tight", "soft", "period", "repeats", "lines", "rule"}: `period` and `repeats` are the tight loop's,
+    `lines` the longest run of identical entries (4 or more makes a soft loop)."""
+    seq = [int(t) for t in pieces]
+    if ended and seq:
+        seq = seq[:-1]
+    n = len(seq)
+    tight, period, repeats = False, None, None
+    for p in range(5, 41):
+        if n < 3 * p:
+            break
+        block = seq[n - p:]
+        r, pos = 1, n - 2 * p
+        while pos >= 0 and seq[pos:pos + p] == block:
+            r, pos = r + 1, pos - p
+        if r >= 3:
+            tight, period, repeats = True, p, r
+            break
+    longest, run, prev = 0, 0, None
+    for line in str(text).splitlines():
+        content = _list_line(line)
+        if not content:
+            continue
+        run = run + 1 if content == prev else 1
+        prev = content
+        longest = max(longest, run)
+    soft = longest >= 4
+    return {"looped": bool(tight or soft), "tight": tight, "soft": soft, "period": period, "repeats": repeats,
+            "lines": longest, "rule": LOOP_RULE_PUBLISHED}
+
+
+def loop_flag(row: Mapping[str, Any], rule: str = "instrument") -> bool:
+    """Whether a diagnosed written row counts as looped under `rule`: "instrument" (`detect_loop`, `row["loop"]`),
+    "published" (`published_loop`, `row["loop_published"]`) or "either". A row diagnosed before the published rule
+    was read beside the other carries only the first, and counts by it."""
+    if rule not in LOOP_RULES:
+        raise Refused(f"A loop rule is one of {', '.join(LOOP_RULES)}; {rule!r} is not.")
+    own = bool((row.get("loop") or {}).get("looped"))
+    pub = bool((row.get("loop_published") or {}).get("looped"))
+    return {"instrument": own, "published": pub, "either": own or pub}[rule]
 
 
 def split_thinking(pieces: Sequence[int], tokenizer: Any) -> Dict[str, Any]:
@@ -1071,6 +1158,30 @@ def estimate(plan: dict, pieces: Sequence[Tuple[int, int]], *, n_layers: int, fa
             gib = max(gib, COST["mib_row_position"] * n / 1024 + 0.5)
     return {"seconds": sum(parts.values()), "parts": parts, "forwards": forwards, "row_positions": row_positions,
             "gib_above_model": gib}
+
+
+def forwards_taken(result: Mapping[str, Any]) -> int:
+    """How many forwards a reading took, counted from its result the way `estimate` counts them beforehand: each
+    class's forwards of each item (and its folded twin when one was taken), a written reading's one a sample an
+    item, and the matched controls' one-row pre-pass an item. 0 for a reading that was refused. Two things it does
+    not count, both small: the one-row capture of `lower: "one_row"`, and the pre-pass of a reading that ended void
+    before any of its items was entered."""
+    if result.get("status") == "refused":
+        return 0
+    items = result.get("items") or []
+    n = 0
+    if result.get("kind") == "written":
+        for it in items:
+            n += len(it.get("samples") or [1])
+    else:
+        for it in items:
+            for c in ("small", "large"):
+                cb = (it.get("classes") or {}).get(c)
+                if cb:
+                    n += int(cb.get("forwards") or 0) + (1 if (cb.get("folded") or {}).get("taken") else 0)
+    if (result.get("controls") or {}).get("family") == "other_sites_matched":
+        n += len(items)
+    return n
 
 
 # ----------------------------------------------------------------------------------------------------- the handle
@@ -1976,9 +2087,10 @@ def _written_batch(
 
     def _diag(row_data: Mapping[str, Any]) -> Dict[str, Any]:
         lp = detect_loop(row_data["pieces"])
+        lp_pub = published_loop(row_data["pieces"], _text(h.tokenizer, row_data), ended=bool(row_data["ended"]))
         co = (not bool(row_data["ended"])) and (len(row_data["pieces"]) >= max_new)
         th = split_thinking(row_data["pieces"], h.tokenizer)
-        return {"loop": lp, "cut_off": co, "thinking": th,
+        return {"loop": lp, "loop_published": lp_pub, "cut_off": co, "thinking": th,
                 "stratum": written_stratum(bool(row_data["ended"]), bool(lp["looped"]), co)}
 
     base_entry: Dict[str, Any] = {
@@ -2074,6 +2186,9 @@ def _written_summary(plan: Mapping[str, Any], entries: Sequence[Mapping[str, Any
     base_ended = sum(1 for s in all_samples if s["base"]["ended"])
     base_cut = sum(1 for s in all_samples if s["base"].get("cut_off"))
     base_loop = sum(1 for s in all_samples if (s["base"].get("loop") or {}).get("looped"))
+    base_pub = sum(1 for s in all_samples if loop_flag(s["base"], "published"))
+    base_either = sum(1 for s in all_samples if loop_flag(s["base"], "either"))
+    base_differ = sum(1 for s in all_samples if loop_flag(s["base"], "instrument") != loop_flag(s["base"], "published"))
     base_lens = [len(s["base"]["pieces"]) for s in all_samples]
     base_th = [(s["base"].get("thinking") or {}).get("thought_pieces", 0) for s in all_samples]
     base_th_closed = sum(1 for s in all_samples if (s["base"].get("thinking") or {}).get("thought_closed"))
@@ -2092,6 +2207,10 @@ def _written_summary(plan: Mapping[str, Any], entries: Sequence[Mapping[str, Any
                 "ended": sum(1 for _b, a in rows_k if a["ended"]),
                 "cut_off": sum(1 for _b, a in rows_k if a.get("cut_off")),
                 "looped": sum(1 for _b, a in rows_k if (a.get("loop") or {}).get("looped")),
+                "looped_published": sum(1 for _b, a in rows_k if loop_flag(a, "published")),
+                "looped_either": sum(1 for _b, a in rows_k if loop_flag(a, "either")),
+                "loop_rules_differ": sum(1 for _b, a in rows_k
+                                         if loop_flag(a, "instrument") != loop_flag(a, "published")),
                 "changed_from_base": sum(1 for _b, a in rows_k if not a["same_as_base"]),
                 "rescued_from_loop": sum(1 for b, a in rows_k
                                          if (b.get("loop") or {}).get("looped") and not (a.get("loop") or {}).get("looped")),
@@ -2121,8 +2240,12 @@ def _written_summary(plan: Mapping[str, Any], entries: Sequence[Mapping[str, Any
         "total_generations": n_tot,
         "thinking": bool(plan.get("thinking", False)),
         "sampler": dict(plan["sampler"]),
+        "loop_rules": {"looped": LOOP_RULE_OWN, "looped_published": LOOP_RULE_PUBLISHED,
+                       "note": "rules on the written pieces and lines; neither is checked against a person's reading "
+                               "of this checkpoint's answers"},
         "base": {
             "n": n_tot, "ended": base_ended, "cut_off": base_cut, "looped": base_loop,
+            "looped_published": base_pub, "looped_either": base_either, "loop_rules_differ": base_differ,
             "mean_pieces": sum(base_lens) / n_tot if n_tot else None,
             "max_pieces": max(base_lens) if base_lens else None,
             "mean_thought_pieces": sum(base_th) / n_tot if n_tot else None,
@@ -2899,6 +3022,16 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
     return out
 
 
+def _loop_tag(row: Mapping[str, Any]) -> str:
+    """A written row's mark in the printed lines: looped by the instrument's rule, by the published one alone, or
+    cut off."""
+    if loop_flag(row, "instrument"):
+        return " [LOOPED]"
+    if loop_flag(row, "published"):
+        return " [LOOPED by the published rule alone]"
+    return " [CUT OFF]" if row.get("cut_off") else ""
+
+
 def _written_lines(result: Mapping[str, Any]) -> List[str]:
     plan = result["plan"]
     scfg = plan.get("sampler")
@@ -2931,7 +3064,7 @@ def _written_lines(result: Mapping[str, Any]) -> List[str]:
         for sm_i in sample_list:
             b_row = sm_i["base"]
             pref = f"    [sample {sm_i['sample']}, seed {sm_i['seed']}] " if len(sample_list) > 1 else "    "
-            lp_tag = " [LOOPED]" if (b_row.get("loop") or {}).get("looped") else (" [CUT OFF]" if b_row.get("cut_off") else "")
+            lp_tag = _loop_tag(b_row)
             b_text = b_row["text"]
             shown_b = (b_text[:200] + "...") if len(b_text) > 200 else b_text
             out.append(f"{pref}base row, {len(b_row['pieces'])} pieces, {'ended' if b_row['ended'] else 'did not end'}{lp_tag}: "
@@ -2943,7 +3076,7 @@ def _written_lines(result: Mapping[str, Any]) -> List[str]:
                 gap = arm["logprob_gap"]
                 before = (f"largest log-probability gap before that {_n(gap['max_abs'], 4)} (mean {_n(gap['mean_abs'], 4)}, "
                           f"{gap['n']} piece{'' if gap['n'] == 1 else 's'})" if gap["n"] else "no piece before that to compare")
-                a_lp = " [LOOPED]" if (arm.get("loop") or {}).get("looped") else (" [CUT OFF]" if arm.get("cut_off") else "")
+                a_lp = _loop_tag(arm)
                 if arm["same_as_base"]:
                     out.append(f"{pref}{who}: this row wrote the base row's pieces with its log-probabilities, exactly")
                 elif arm["parts_at"] is None:
@@ -2959,6 +3092,10 @@ def _written_lines(result: Mapping[str, Any]) -> List[str]:
         out.append(f"  written summary over {sm['total_generations']} generation"
                    f"{'' if sm['total_generations'] == 1 else 's'}: base ended {b['ended']}/{b['n']}, "
                    f"cut off {b['cut_off']}/{b['n']}, looped {b['looped']}/{b['n']}")
+        if "looped_published" in b:
+            out.append(f"    by the published rule ({LOOP_RULE_PUBLISHED}) the base looped {b['looped_published']}/{b['n']}; "
+                       f"the two rules part on {b['loop_rules_differ']}. Neither is checked against a person's reading "
+                       "of this checkpoint's answers.")
         for key, per in (sm.get("arms") or {}).items():
             if not key.startswith("edit:"):
                 continue
