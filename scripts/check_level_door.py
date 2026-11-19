@@ -223,6 +223,79 @@ def check_written_extended(Pb: Any, hP: lv.Handle, items: Dict[str, lv.Item], tm
     d_short = lv.detect_loop([1, 2, 3] * 3)
     check(d_short["looped"] is False, "2: detect_loop ignores short <24-piece repeat")
 
+    # The two loop rules on labelled shapes (pieces are made-up ids, the text is what a reader would see). Each line:
+    # the shape, its pieces, its text, whether it closed with an end mark, and what each rule must say:
+    # (the instrument's, the published rule's tight loop, its soft loop). Where the two part, the label says who errs.
+    def numbered(entries: List[str], first: int = 1, gap: str = "\n") -> str:
+        return gap.join(f"{first + i}. {e}" for i, e in enumerate(entries))
+
+    def ids_of_list(n_lines: int, body: List[int]) -> List[int]:
+        out: List[int] = []
+        for i in range(n_lines):
+            out.extend([2000 + i] + body)  # a counter piece that rises, then the entry's pieces
+        return out
+
+    wire = ["Season 1 Episode 1: The Target", "Season 1 Episode 2: The Detail", "Season 1 Episode 3: The Buys"]
+    collapsed = wire + ["Season 3 Episode 9: Slapstick"] * 12
+    chorus_ids = list(range(700, 720))
+    song_ids: List[int] = []
+    for v in range(4):
+        song_ids.extend(list(range(800 + 20 * v, 812 + 20 * v)) + chorus_ids)
+    song_text = "".join(f"Verse {v}: the river bends by mill number {v}.\nAnd we will walk the long road home tonight.\n"
+                        for v in range(4))
+    shapes = [
+        ("a sentence repeated to the end (a tight loop)",
+         list(range(1, 8)) * 30, "The answer is forty-two. " * 30, False, (True, True, False)),
+        ("five pieces repeated three times at the end (the published rule's least loop; under the instrument's 24 pieces)",
+         list(range(300, 320)) + [1, 2, 3, 4, 5] * 3, "x", False, (False, True, False)),
+        ("a repeat inside an answer that then goes on and ends (the instrument finds it; the published rule reads tails)",
+         [99] * 5 + [7, 8, 9, 10] * 7 + [50, 51, 52], "x", False, (True, False, False)),
+        ("sixty pieces repeated three times (over the published rule's 40: its own stated miss)",
+         list(range(100, 160)) * 3, "x", False, (True, False, False)),
+        ("a numbered list collapsing to one answer under rising numbers (the published fault's soft loop; the "
+         "instrument's rule MISSES it)",
+         ids_of_list(15, [500, 501, 502, 503, 504]), numbered(collapsed), False, (False, False, True)),
+        ("the same list with a blank line between entries",
+         ids_of_list(15, [500, 501, 502, 503, 504]), numbered(collapsed, gap="\n\n"), False, (False, False, True)),
+        ("a song whose chorus comes four times (NOT a loop; the instrument's n-gram clause calls it one)",
+         song_ids, song_text, True, (True, False, False)),
+        ("a run of one piece, as a 400-character rule of '=' is (both rules call it a loop; the paper's readers "
+         "called theirs another kind of failure)",
+         [9] * 4 + [61] * 30, "Here is the table.\n" + "=" * 400, False, (True, True, False)),
+        ("an honest numbered list of forty different entries",
+         [3000 + i for i in range(200)], numbered([f"Entry {i} of the list" for i in range(40)]),
+         True, (False, False, False)),
+        ("list lines with nothing after their markers (passed over: the published detector's own false positives)",
+         [4000 + i for i in range(40)], "- \n- \n* \n3.\n- \n(5)\n", True, (False, False, False)),
+        ("four entries alike but for their markers, case and spacing",
+         [4100 + i for i in range(30)], "- Mercury\n2) mercury\n(3)   MERCURY\n* Mercury", True, (False, False, True)),
+        ("three entries alike (one short of a soft loop)",
+         [4200 + i for i in range(30)], "1. Mercury\n2. Mercury\n3. Mercury\n4. Venus", True, (False, False, False)),
+    ]
+    for label, pcs, text, ended, (want_own, want_tight, want_soft) in shapes:
+        own = lv.detect_loop(pcs)
+        pub = lv.published_loop(pcs, text, ended=ended)
+        check(bool(own["looped"]) is want_own and pub["tight"] is want_tight and pub["soft"] is want_soft
+              and pub["looped"] is (want_tight or want_soft) and pub["rule"] == lv.LOOP_RULE_PUBLISHED,
+              f"2: loop rules on {label}: instrument {own['looped']} (want {want_own}), published tight "
+              f"{pub['tight']} (want {want_tight}), soft {pub['soft']} (want {want_soft})")
+    tail_then_end = list(range(1, 8)) * 5 + [999]
+    check(lv.published_loop(tail_then_end, "x", ended=True)["tight"] is True
+          and lv.published_loop(tail_then_end, "x", ended=False)["tight"] is False,
+          "2: published_loop leaves a row's end mark out of the tail it reads")
+    row_both = {"loop": {"looped": False}, "loop_published": {"looped": True}}
+    row_old = {"loop": {"looped": True}}
+    check(lv.loop_flag(row_both, "instrument") is False and lv.loop_flag(row_both, "published") is True
+          and lv.loop_flag(row_both, "either") is True and lv.loop_flag(row_old, "published") is False
+          and lv.loop_flag(row_old, "either") is True,
+          "2: loop_flag counts a row by the instrument's rule, the published one, or either")
+    got_rule = False
+    try:
+        lv.loop_flag(row_both, "a person")
+    except lv.Refused:
+        got_rule = True
+    check(got_rule, "2: loop_flag refuses a rule it does not have")
+
     class _FakeTok:
         unk_token_id = 0
         def convert_tokens_to_ids(self, tok: str) -> int:
@@ -273,6 +346,15 @@ def check_written_extended(Pb: Any, hP: lv.Handle, items: Dict[str, lv.Item], tm
     check(r["status"] == "ok" and r["base_after"] is True and r["summary"] is not None,
           f"2: sampled written reading ok with summary ({r['status']}: {r['why']})")
     sm = r["summary"]
+    rows_seen = [s["base"] for it in r["items"] for s in it["samples"]] + [a for it in r["items"] for s in it["samples"] for a in s["arms"]]
+    check(all(row.get("loop_published", {}).get("rule") == lv.LOOP_RULE_PUBLISHED and "soft" in row["loop_published"]
+              for row in rows_seen)
+          and sm["loop_rules"]["looped_published"] == lv.LOOP_RULE_PUBLISHED
+          and {"looped_published", "looped_either", "loop_rules_differ"} <= set(sm["base"])
+          and {"looped_published", "looped_either", "loop_rules_differ"} <= set(sm["arms"]["edit:1.0"])
+          and any("by the published rule" in ln and "Neither is checked against a person's reading" in ln
+                  for ln in lv.lines(r)),
+          "2: every diagnosed row is read under both loop rules, and the summary and its printed lines count both")
     check(sm["total_generations"] == 2 and sm["samples_per_item"] == 2 and sm["base"]["n"] == 2
           and "edit:1.0" in sm["arms"] and "edit:0.0" in sm["arms"] and sm["controls_range"] is not None,
           f"2: written summary aggregates 2 samples and controls_range ({sm})")

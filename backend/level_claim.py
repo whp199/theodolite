@@ -411,8 +411,15 @@ def written_strata_summary(
             "note": "too few to read" if b_cnt < 20 else "ok",
             "least_gain_detectable": _min_detectable_gain(n_tot, rate_b if rate_b is not None else 0.5, alpha=alpha),
         }
+    def _counts(block: Mapping[str, Any]) -> Dict[str, Any]:
+        return {"instrument": block.get("looped"), "published": block.get("looped_published"),
+                "either": block.get("looped_either"), "rules_differ": block.get("loop_rules_differ")}
+
     return {
         "total_generations": n_tot,
+        # how many generations each loop rule calls looped, base and edit (levelling.detect_loop, published_loop)
+        "loop_rules": {"base": _counts(base), "edit": _counts(edit_arm),
+                       "names": dict((sm.get("loop_rules") or {}))},
         "base_finish_rate": finish_rate,
         "cap_adequate_90pct": finish_rate >= 0.90 if n_tot > 0 else False,
         "cap_note": (
@@ -1233,9 +1240,12 @@ def _extract_written_effects(
     result: Mapping[str, Any],
     drawn: Sequence[lbr.DrawnItem],
     dose: float,
+    rule: str = "instrument",
 ) -> Tuple[List[Dict[str, Any]], Optional[float], List[Optional[float]]]:
     """Extract per-item loop-rate deltas (`edit_loop_rate - base_loop_rate`), reversed mean, and per-control deltas
-    from an extended `lv.read(kind="written")` result."""
+    from an extended `lv.read(kind="written")` result. `rule` says which loop rule counts a generation as looped
+    (`levelling.loop_flag`: the instrument's own, the published one, or either); it is the brief's
+    `written_config["loop_rule"]`."""
     by_name = {d.item.name: d for d in drawn}
     arm_key = f"edit:{repr(float(dose))}"
     rev_key = f"edit:{repr(float(-dose))}"
@@ -1256,18 +1266,18 @@ def _extract_written_effects(
         r_deltas: List[float] = []
         c_deltas: List[List[float]] = [[] for _ in range(C)]
         for s in samples:
-            b_loop = 1.0 if ((s.get("base") or {}).get("loop") or {}).get("looped") else 0.0
+            b_loop = 1.0 if lv.loop_flag(s.get("base") or {}, rule) else 0.0
             arms_by_k = {a["key"]: a for a in (s.get("arms") or [])}
             if arm_key in arms_by_k:
-                a_loop = 1.0 if ((arms_by_k[arm_key].get("loop") or {}).get("looped")) else 0.0
+                a_loop = 1.0 if lv.loop_flag(arms_by_k[arm_key], rule) else 0.0
                 e_deltas.append(a_loop - b_loop)
             if rev_key in arms_by_k:
-                r_loop = 1.0 if ((arms_by_k[rev_key].get("loop") or {}).get("looped")) else 0.0
+                r_loop = 1.0 if lv.loop_flag(arms_by_k[rev_key], rule) else 0.0
                 r_deltas.append(r_loop - b_loop)
             for c in range(C):
                 ck = f"control:{c}"
                 if ck in arms_by_k:
-                    c_loop = 1.0 if ((arms_by_k[ck].get("loop") or {}).get("looped")) else 0.0
+                    c_loop = 1.0 if lv.loop_flag(arms_by_k[ck], rule) else 0.0
                     c_deltas[c].append(c_loop - b_loop)
         if e_deltas:
             item_effects.append({
@@ -1306,6 +1316,7 @@ def _run_written_target_claims(
 ) -> Tuple[Optional[str], Dict[str, Any], List[int], Optional[Dict[str, Any]], Optional[str]]:
     """Run chunked written claim readings for `other_sites_matched`, `same_site`, and optional `sham_target`."""
     wcfg = dict(brief.written_config or {})
+    loop_rule = lbr.loop_rule_of(brief)
     max_new = int(wcfg.get("max_new_tokens", 128))
     seeds = list(wcfg.get("seeds") or [1, 2])
     n_samples = max(1, len(seeds))
@@ -1370,7 +1381,7 @@ def _run_written_target_claims(
                 unpacker_mode = (res.get("runtime") or {}).get("unpacker", {}).get("mode")
             if res.get("status") != "ok":
                 return f'Written target reading ({fam} chunk {chunk_idx}) ended with status "{res.get("status")}": {res.get("why")}'
-            effs, rev_m, ctl_m = _extract_written_effects(res, target_drawn, main_dose)
+            effs, rev_m, ctl_m = _extract_written_effects(res, target_drawn, main_dose, loop_rule)
             if first_result is None:
                 first_result = res
                 first_effects = effs
@@ -1399,6 +1410,8 @@ def _run_written_target_claims(
         }
     }
     strata = written_strata_summary(first_result or {}, main_dose=main_dose) if first_result is not None else None
+    if strata is not None:
+        strata["loop_rule"] = loop_rule  # the one this reading's loop rates are counted by
     return None, classes_payload, book_seqs, strata, unpacker_mode
 
 
@@ -1594,6 +1607,8 @@ def run_fresh_claim(
         "controls_per_family": C, "battery_controls": min(C, 3), "match_tolerance": tol,
         "doses": [float(d) for d in doses], "prompt_arms": bool(run_prompt_arms),
     }
+    if brief.metric == "written_loop":
+        design["loop_rule"] = lbr.loop_rule_of(brief)
     kb_frames = brief.generator.frames_for("kept_back")
     published = lbr.published_template_ids(h.tokenizer)
     kept_back_note = {"frames": len(kb_frames),
@@ -1996,6 +2011,12 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
             f" ({why})" if why and why != PROMPT_ARMS_RUN else ""
         )
     named = "named" if meta.get("prompt_named_site") else "did not name"
+    if brief.metric == "written_loop":
+        rule_now = (meta.get("design") or {}).get("loop_rule") or lbr.loop_rule_of(brief)
+        loop_part = (f' Loops were counted by rule ("{rule_now}": levelling.detect_loop and published_loop), which '
+                     "no person's reading of this checkpoint's answers has checked.")
+    else:
+        loop_part = ""
     cal_seq = meta.get("bars_calibration_seq")
     bars_from = f" (calibrated at book line {cal_seq})" if cal_seq is not None else ""
     return (
@@ -2012,7 +2033,7 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         f'"{brief.name}"{side_part}); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
         f"gating batteries passed against hashed bar set {str(meta.get('bars_sha256'))[:12]}{bars_from}{knob_part} "
         f"(no search over cheaper knobs; not compared with a trained adapter). "
-        f"Driver prompt {named} a suspected site. This is a lead, not a finding of record."
+        f"Driver prompt {named} a suspected site.{loop_part} This is a lead, not a finding of record."
     )
 
 
@@ -2110,6 +2131,17 @@ def render_sheet(
                 )
     ws = meta.get("written_strata")
     if isinstance(ws, Mapping):
+        lr = ws.get("loop_rules") or {}
+        if (lr.get("base") or {}).get("published") is not None:
+            lb_, le_ = lr.get("base") or {}, lr.get("edit") or {}
+            lines.append(
+                f"loops, counted by the rule \"{ws.get('loop_rule', 'instrument')}\" for this reading: of "
+                f"{ws.get('total_generations')} generations the instrument's rule calls {lb_.get('instrument')} of the "
+                f"base's and {le_.get('instrument')} of the edit's looped, the published rule (arXiv 2606.13705, as "
+                f"worded) {lb_.get('published')} and {le_.get('published')}, either {lb_.get('either')} and "
+                f"{le_.get('either')}; the two part on {lb_.get('rules_differ')} of the base's. Neither rule is "
+                "checked against a person's reading of this checkpoint's answers."
+            )
         lines.append(f"written strata ({ws.get('cap_note')}):")
         for sname, sd in (ws.get("strata") or {}).items():
             lines.append(

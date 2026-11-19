@@ -371,6 +371,10 @@ class Brief:
             raise BriefError(f'Brief "{self.name}" near_miss_generator requires at least one kept_back frame.')
         if self.chat_settings is None:
             object.__setattr__(self, "chat_settings", {"thinking": False, "system": None})
+        if self.written_config is not None and "loop_rule" in self.written_config \
+                and self.written_config["loop_rule"] not in lv.LOOP_RULES:
+            raise BriefError(f"written_config loop_rule must be one of {', '.join(lv.LOOP_RULES)}; "
+                             f"{self.written_config['loop_rule']!r} is not.")
         _check_policy(self.name, self.behavior, self.driver_text)
 
     @property
@@ -439,6 +443,13 @@ class Brief:
             written_config=dict(raw["written_config"]) if raw.get("written_config") is not None else None,
             version=BRIEF_VERSION,
         )
+
+
+def loop_rule_of(brief: Brief) -> str:
+    """Which loop rule a `written_loop` brief counts a generation as looped by (`levelling.loop_flag`): its
+    `written_config["loop_rule"]`, or "instrument" when it names none (a brief written before the published rule
+    was read beside the instrument's own keeps the meaning it had)."""
+    return str((brief.written_config or {}).get("loop_rule", "instrument"))
 
 
 def save_brief(brief: Brief, path: Path) -> str:
@@ -775,7 +786,16 @@ def enumeration_loop_brief(
     controls_per_family: Optional[int] = None,
 ) -> Brief:
     """Starter brief (written mode): reduce repetition loops on long thinking-on enumerations without harming
-    ordinary writing (`compare_settings=True` records base loop rate with thinking off beside thinking on)."""
+    ordinary writing (`compare_settings=True` records base loop rate with thinking off beside thinking on).
+
+    The fault is published for the bf16 release of this model (arXiv 2606.13705) and has NOT been seen on this
+    checkpoint: in the one audit so far (19 November 2026, on the card) none of 4 base answers looped, and both
+    thinking-on answers were cut off at the cap before they could. Nor are these the paper's prompts or settings
+    (its lists are long factual ones, at temperature 0.7 and 1,536 new pieces). So this brief is a place to look
+    for the fault, not a known one; a reading on a base that does not loop can only say "kept the base". A
+    generation counts as looped by either loop rule (`loop_rule`: the instrument's own, which misses a list
+    collapsing to one answer under rising numbers, or the paper's, which misses periods over 40 pieces): a change
+    in the form of a loop is then not read as its cure."""
     slots = {
         "n": ["18", "22", "25", "30", "35", "40"],
         "topic": ["world rivers", "musical instruments", "chemical elements", "European capitals",
@@ -804,7 +824,9 @@ def enumeration_loop_brief(
     ]
     return Brief(
         name="enumeration_loop",
-        behavior="Reduce repetition-loop rate during thinking-on long enumerations while preserving short factual writing.",
+        behavior=("Reduce repetition-loop rate during thinking-on long enumerations while preserving short factual "
+                  "writing. The fault is published for the bf16 release (arXiv 2606.13705); it has not been seen on "
+                  "this checkpoint yet."),
         metric="written_loop",
         direction=-1,
         least_effect=0.20,
@@ -818,7 +840,8 @@ def enumeration_loop_brief(
         chat_settings={"thinking": True, "system": None},
         compare_settings=True,
         prompt_named_site=False,
-        written_config={"max_new_tokens": 512, "temperature": 1.0, "top_p": 0.95, "seeds": [1, 2]},
+        written_config={"max_new_tokens": 512, "temperature": 1.0, "top_p": 0.95, "seeds": [1, 2],
+                        "loop_rule": "either"},
         driver_text="Target: reduce loop incidence in thinking-on long enumerations without degrading short answers.",
     )
 

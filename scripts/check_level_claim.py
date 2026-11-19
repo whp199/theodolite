@@ -241,6 +241,18 @@ def run_section_1(tok: Any, tmp: Path) -> None:
     check(len(neu) == 4 and all(isinstance(d.item, lv.Item) for d in neu), "neutral_chat_generator draws valid Items")
     check(len(pan) == 4 and all(isinstance(p["item"], lv.Item) for p in pan), "draw_labelled_sanity_panel draws valid Items")
 
+    # A written brief names the loop rule its loops are counted by; one that names none keeps the instrument's own
+    enum = starters["enumeration_loop"]
+    check(lbr.loop_rule_of(enum) == "either" and lbr.loop_rule_of(starters["pronoun_pull"]) == "instrument"
+          and "has not been seen on this checkpoint" in enum.behavior,
+          "the enumeration brief counts loops by either rule and says its fault has not been seen on this checkpoint")
+    check_raises(
+        lbr.BriefError,
+        lambda: lbr.Brief.from_dict({**enum.to_dict(), "written_config": {**enum.written_config, "loop_rule": "a person"}}),
+        "a brief is refused a loop rule the kernel does not have",
+        match="loop_rule must be one of",
+    )
+
     # Kept-back frames at the door (KeptBack): every rendering of a kept-back frame is found, no practice one is
     guard = lbr.KeptBack(starters.values())
     kb_missed: List[str] = []
@@ -547,6 +559,43 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     check(j_ran["verdict"] == "lead" and s_ran is not None and "no author prompt arm matched it" in s_ran,
           "a prompt arm that ran and fell short is reported as not matching")
 
+    # 9d. A written reading's loop rates are counted by the brief's rule, and a written lead says a rule counted them
+    wb = lbr.enumeration_loop_brief(tok)
+    w_drawn = wb.generator.draw("kept_back", 4, seed_bytes=b"written-rule-check", tokenizer=tok)
+
+    def w_row(own: bool, pub: bool) -> Dict[str, Any]:
+        return {"loop": {"looped": own}, "loop_published": {"looped": pub}}
+
+    w_result = {"plan": {"controls": {"count": 1}}, "items": [
+        {"item": {"name": d.item.name}, "samples": [{
+            "base": w_row(False, True),  # a list collapse: the published rule's alone
+            "arms": [{"key": "edit:1.0", **w_row(False, False)}, {"key": "control:0", **w_row(False, True)}],
+        }]} for d in w_drawn]}
+    by_rule = {r: lcl._extract_written_effects(w_result, w_drawn, 1.0, r) for r in ("instrument", "published", "either")}
+    check([e["value"] for e in by_rule["instrument"][0]] == [0.0] * 4
+          and [e["value"] for e in by_rule["published"][0]] == [-1.0] * 4
+          and [e["value"] for e in by_rule["either"][0]] == [-1.0] * 4
+          and by_rule["published"][2] == [0.0] and by_rule["instrument"][2] == [0.0],
+          "a loop only the published rule finds moves a written reading counted by it or by either, not by the instrument's")
+    wbars_pure = lcl.make_bar_set(wb.id)
+    w_cls = _synth_class(h0_vals=[-0.5, -0.5], h1_vals=[-0.5, -0.5], floor=None, reversed_mean=0.0)
+    j_w = lcl.judge_claim(brief=wb, bars=wbars_pure, classes={"written": w_cls}, batteries=_clean_batteries())
+    meta_w = {**_meta_stub(wb, wbars_pure), "design": {"match_tolerance": 2.0, "loop_rule": "either"},
+              "written_strata": {"total_generations": 16, "loop_rule": "either", "cap_note": "ok", "strata": {},
+                                 "loop_rules": {"base": {"instrument": 1, "published": 5, "either": 5, "rules_differ": 4},
+                                                "edit": {"instrument": 0, "published": 1, "either": 1, "rules_differ": 1}}}}
+    s_w = lcl.claim_sentence(wb, j_w, meta_w)
+    sh_w = lcl.render_sheet(wb, wbars_pure, j_w, meta_w, s_w)
+    SHEETS_COLLECTED.extend([sh_w, s_w or ""])
+    check(j_w["verdict"] == "lead" and s_w is not None
+          and 'Loops were counted by rule ("either"' in s_w and "no person's reading of this checkpoint's answers has checked" in s_w,
+          f"the sentence of a written-loop lead says a rule, not a person, counted its loops (verdict {j_w['verdict']})")
+    check('loops, counted by the rule "either" for this reading' in sh_w
+          and "the instrument's rule calls 1 of the base's and 0 of the edit's looped, the published rule" in sh_w
+          and "Neither rule is checked against a person's reading" in sh_w,
+          "the sheet of a written reading prints what each loop rule counted, and that neither is checked by a person")
+    check("Loops were counted" not in (s_lead or ""), "a paired lead's sentence says nothing of loop rules")
+
     # 10. Void on missing class or too few kept-back frames
     j_void1 = lcl.judge_claim(brief=brief, bars=bars, classes={"large": good_cls}, batteries=_clean_batteries())
     check(j_void1["verdict"] == "void", "missing small batch class -> void")
@@ -792,7 +841,8 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     wbrief_base = lbr.enumeration_loop_brief(h.tokenizer, max_fresh_readings=2, controls_per_family=4)
     wbrief = lbr.Brief.from_dict({
         **wbrief_base.to_dict(),
-        "written_config": {"max_new_tokens": 12, "temperature": 1.0, "top_p": 0.95, "seeds": [1]},
+        "written_config": {"max_new_tokens": 12, "temperature": 1.0, "top_p": 0.95, "seeds": [1],
+                           "loop_rule": "either"},
     })
     wbars = lcl.calibrate_bars(
         h, wbrief, layer=2, n_cols=2, n_controls=2, n_neutral=2, n_near=2, n_panel=2,
@@ -808,6 +858,12 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(wres["verdict"] in lcl.VERDICTS and wres["verdict"] != "void",
           f"written_loop fresh claim completed cleanly (verdict={wres['verdict']}, reasons={wres['judged']['reasons']})")
     check(wres["meta"]["written_strata"] is not None, "written_loop populates written_strata")
+    wreg = next(lb.entries(bk, start=wres["book"]["registration_seq"], limit=1))["body"]
+    ws_now = wres["meta"]["written_strata"]
+    check(wreg["design"].get("loop_rule") == "either" and ws_now.get("loop_rule") == "either"
+          and ws_now["loop_rules"]["base"]["published"] is not None
+          and 'loops, counted by the rule "either" for this reading' in wres["sheet"],
+          "a written-loop claim registers its loop rule and prints what each rule counted")
     sa_cpu = wres["meta"]["settings_audit"]
     check(
         sa_cpu is not None
