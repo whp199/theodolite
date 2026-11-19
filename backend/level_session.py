@@ -768,7 +768,7 @@ class LevelSession:
         if self._brief is None:
             raise SessionRefused("No brief is bound to this session.")
         hist = lcl.brief_history(self._brief.id, self.book_path, name=self._brief.name)
-        used = len(hist["registrations"])
+        used = int(hist["fresh_count"])  # claims and trials together
         return {
             "name": self._brief.name,
             "brief_id": self._brief.id,

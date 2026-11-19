@@ -174,6 +174,8 @@ export interface ReplayCard {
   folded_summary?: Record<string, unknown> | null;
   reworded_summary?: Record<string, unknown> | null;
   trial_sha256?: string | null;
+  of_record?: boolean | null;
+  not_of_record?: string[] | null;
   recorded_tag?: string | null;
 }
 

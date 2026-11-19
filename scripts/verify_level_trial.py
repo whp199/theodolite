@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
-"""Real RTX 5090 31B W4A16 card verification for Levelling Phase 5: Of record, and out (`scripts/verify_level_trial.py`).
+"""Card check of Levelling Phase 5 on the 31B (`scripts/verify_level_trial.py`): a trial read as a DRY RUN, an export,
+and a re-run of the kit by this same card.
 
-Measures end to end on `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens freed, server stopped):
-1. Calibrates `BarSet` for `pronoun_pull` on layer 50 (10 cols, 3 controls) and builds `starter_reworded_pronoun_pull`
-   (8 owner-written out-of-template narratives, 4 half-0 and 4 half-1).
-2. Creates and verifies a hash-checked registration folder (`prereg/` with `SHA256SUMS`, zero weight payloads) for
-   E6 layer-50 `'she'` ten (`[5313, 8801, 266, 121, 11503, 11724, 21151, 4165, 549, 2070]`), `C = 39` controls/family,
-   `n_target = 16` fresh kept-back items (2 per frame), `reworded_controls = 19`, and `folded_required = True`.
-3. Executes the fresh-process Trial of Record:
-   - Uncached live `we.base_checksum` over all 410+ linears before and after (asserts bit-identical base weights),
-   - Dual-batch-class (`small = 12`, `large = 32`) fresh kept-back reading WITH `folded="always"` on every item,
-   - Dual-batch-class owner-written reworded reading WITH `folded="always"` on every reworded item,
-   - Full gating retention batteries (`neutral_text`, `near_misses`, `labelled_panel`) + author prompt arm,
-   - Verifies exact bit-identity between folded weights and per-row hooks (`same_bits == 100%`), reworded shift,
-     honest verdict (`failed` because E6 `'she'` ten bleeds into male near misses, matching `arbiter.md` Row 20),
-     read-once refusal, 0 unpacker fallbacks, and whole ledger chain.
-4. Exports the edit as a llama.cpp LoRA `.gguf` + `.manifest.json` into an isolated outside-checkout temp directory
-   against the live 31B weights and verifies Apache-2.0 licence/origin keys + exact `(W + B @ A) @ x` equivalence.
-5. Packs a volunteer re-run kit (`make_rerun_kit`), executes a volunteer re-run `.tar` bundle on a compact check kit,
-   and verifies defensive tar intake & judgement (`intake_rerun_bundle` -> `accepted`, `same_bits`).
+What it is not: a trial of record. A trial of record is read first in a process of its own, from a clean checkout
+that holds its registration folder committed; this script calibrates before it reads, and registers into a temporary
+folder. So it asks for a dry run, and first shows that the trial is refused without that word. No trial of record
+has been read on the 31B by this script, whatever its dry run comes to.
 
-Outputs:
+On `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens freed, server stopped), in this order:
+1. `calibrate_bars` for `pronoun_pull` into a book of this run's own.
+2. `register_trial` of the E6 layer-50 'she' ten (`[5313, 8801, 266, 121, 11503, 11724, 21151, 4165, 549, 2070]`, a
+   silence; 39 control edits a family, 16 fresh items, the starter reworded set with 19 control edits).
+3. `run_trial_of_record`: refused as it stands (the reasons are recorded), then read with `dry_run=True`. Checked: it
+   is not void; the base checksum is unchanged over every stored weight; the folded form is the per-row form to the
+   bit on every item in both classes (a silence is exact); the reworded set was read, with its folded form; the sheet
+   says dry run and why; judged again from its book it gives its note's verdict; it is read once; the same edit
+   registered again is refused; the brief's history counts it as a fresh reading. Its verdict is recorded, not asked
+   for: this brief's known answer has read more than one way across draws (ROADMAP §viii).
+4. The export: the adapter of the trial's edit against the loaded model and, off the model, against this machine's
+   cached checkpoint; each shown to be the edit on its base (`verify_exported_lora`), with what its keys say.
+5. The re-run: a kit of the dry run, read by this same card in this same process, and its intake from the two books.
+   Equal figures here show that the kit carries the home items and that the intake reads books; they are not another
+   card's. A bundle typed by hand is rejected.
+
+Outputs (written at the end, so the checkout is not changed while the trial reads):
 - `experiments/results/levelling/verify_trial.json`
 - `experiments/results/levelling/verify_trial_book.jsonl`
 """
@@ -28,10 +31,14 @@ from __future__ import annotations
 
 import datetime
 import gc
+import hashlib
+import json
 import os
 import re
+import shutil
 import socket
 import sys
+import tarfile
 import tempfile
 import time
 from pathlib import Path
@@ -44,10 +51,12 @@ for _p in (ROOT_DIR, ROOT_DIR / "scripts"):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
+import numpy as np  # noqa: E402
 import torch  # noqa: E402
 
 torch.set_grad_enabled(False)
 
+import export_lora as el  # noqa: E402
 from backend import engine_runtime  # noqa: E402
 from backend import level_book as lb  # noqa: E402
 from backend import level_briefs as lbr  # noqa: E402
@@ -93,10 +102,6 @@ def main() -> int:
         print(f"ERROR: Only {free_gib:.2f} GiB free; need >= 22.0 GiB.", file=sys.stderr)
         return 2
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    if OUT_BOOK.exists():
-        OUT_BOOK.unlink()
-
     checks: List[Dict[str, Any]] = []
 
     def check(name: str, ok: bool, detail: Any = None) -> None:
@@ -118,182 +123,277 @@ def main() -> int:
     load_s = round(time.perf_counter() - t_load, 2)
     print(f"Loaded {h.model_id} in {load_s} s (weights {h.weights_id[:16]}).", flush=True)
     we.assert_base(h.lm, h.hooks_at_load)
-    torch.cuda.reset_peak_memory_stats()
 
     with tempfile.TemporaryDirectory(prefix="verify-level-trial-31b-") as td:
         tmp = Path(td)
+        book = tmp / "verify_trial_book.jsonl"
+        prev_edits, prev_exp = os.environ.get(we.EDITS_ENV), os.environ.get(lex.EXPORT_ENV)
+        os.environ[we.EDITS_ENV] = str(tmp / "saved_edits")
+        os.environ[lex.EXPORT_ENV] = str(tmp / "exports")
 
-        # 1. Calibrate bars + starter reworded set
+        # 1. the bars, from a calibration reading in this run's own book
         brief = lbr.pronoun_pull_brief(h.tokenizer, max_fresh_readings=2)
         rset = lt.starter_reworded_pronoun_pull(brief)
         print("\nStep 1: calibrate_bars on pronoun_pull (layer 50, 10 cols, 3 controls)...", flush=True)
         t_cal = time.perf_counter()
         bars = lcl.calibrate_bars(
             h, brief, layer=50, n_cols=10, n_controls=3, n_neutral=4, n_near=4, n_panel=4,
-            seed=2026, book_path=OUT_BOOK,
+            seed=2026, book_path=book,
         )
         cal_s = round(time.perf_counter() - t_cal, 2)
-        check("bars_calibrated", lcl.calibration_note(bars, OUT_BOOK) is not None,
+        check("bars_calibrated", lcl.calibration_note(bars, book) is not None,
               {"seconds": cal_s, "bars_sha256": bars.short()})
 
-        # 2. Register Trial of Record prereg/ folder
+        # 2. the registration
         edit = we.build(h.lm, [we.silence(50, E6_L50_SHE10)], model_id=h.model_id, weights_id=h.weights_id,
                         note="E6 layer-50 she ten")
         prereg_dir = tmp / "prereg_she10"
-        reg = lt.register_trial(
-            prereg_dir, brief, bars, edit,
-            trial_name="e6_l50_she10_31b",
-            reworded=rset,
-            controls_per_family=39,
-            reworded_controls=19,
-            n_target=16,
-            n_neutral=4,
-            n_near=4,
-            n_panel=4,
-            folded_required=True,
-        )
+        reg_kw: Dict[str, Any] = dict(reworded=rset, book_path=book, controls_per_family=39, reworded_controls=19,
+                                      n_target=16, n_neutral=4, n_near=4, n_panel=4)
+        reg = lt.register_trial(prereg_dir, h, brief, bars, edit, trial_name="e6_l50_she10_31b", **reg_kw)
         v_reg = lt.verify_registration(prereg_dir)
-        check("registration_verified", v_reg["ok"] and v_reg["trial"]["edit_provenance"] == "rebuilt",
-              {"trial_sha256": reg["trial_sha256"][:16], "files": reg["files"]})
+        check("registration_verified",
+              v_reg["ok"] and v_reg["trial"]["edit_provenance"] == "rebuilt" and v_reg["trial_sha256"] == reg["trial_sha256"],
+              {"trial_sha256": reg["trial_sha256"][:16], "files": reg["files"],
+               "reworded": reg["trial"]["reworded_origin"], "implant_check": reg["trial"]["implant_check"]})
+        hand = lcl.make_bar_set(brief.id, near_miss_abs_max=2.0, near_miss_ratio_max=1.0)
+        got_hand = None
+        try:
+            lt.register_trial(tmp / "prereg_hand_bars", h, brief, hand, edit, trial_name="hand", **reg_kw)
+        except lt.TrialRefused as exc:
+            got_hand = str(exc)
+        check("bars_made_by_hand_refused", got_hand is not None and "calibration reading" in got_hand, (got_hand or "")[:160])
 
-        # 3. Execute Trial of Record on 31B (includes full live base_checksum, folded="always", reworded set!)
-        print("\nStep 2: Running Trial of Record (16 fresh items + 8 reworded + folded='always' + C=39 controls)...", flush=True)
+        # 3. the trial: refused as it stands, then read as a dry run
+        why_not = None
+        n_before = lb.verify(book)["entries"]
+        try:
+            lt.run_trial_of_record(h, prereg_dir, out_dir=tmp / "trial_refused", book_path=book)
+        except lt.TrialRefused as exc:
+            why_not = str(exc)
+        check("refused_when_not_of_record",
+              why_not is not None and "would not be of record" in why_not and lb.verify(book)["entries"] == n_before,
+              (why_not or "")[:400])
+
+        print("\nStep 2: the trial, as a dry run (16 fresh items, the reworded set, the folded form, 39 control edits a family)...",
+              flush=True)
         t_tr = time.perf_counter()
-        t_res = lt.run_trial_of_record(
-            h, prereg_dir, out_dir=tmp / "trial_out", book_path=OUT_BOOK, require_book_calibration=True,
-        )
+        t_res = lt.run_trial_of_record(h, prereg_dir, out_dir=tmp / "trial_out", book_path=book, dry_run=True)
         tr_s = round(time.perf_counter() - t_tr, 2)
         print("\n" + t_res["sheet"] + "\n", flush=True)
-        fl_sm = t_res["folded"]["classes"]["small"]
-        fl_lg = t_res["folded"]["classes"]["large"]
-        rw_sm = t_res["reworded"]["classes"]["small"]["frames"]["mean"]
-        rw_lg = t_res["reworded"]["classes"]["large"]["frames"]["mean"]
+        meta = t_res["meta"]
         check("trial_not_void", t_res["verdict"] in ("passed", "failed"),
               {"verdict": t_res["verdict"], "fresh_verdict": t_res["fresh_verdict"], "seconds": tr_s})
+        check("it_is_a_dry_run_and_says_so",
+              t_res["of_record"] is False and t_res["claim_sentence"] is None
+              and t_res["sheet"].startswith("=== DRY RUN OF A TRIAL (not of record)") and len(t_res["not_of_record"]) >= 1,
+              {"not_of_record": t_res["not_of_record"]})
         check("base_checksum_unchanged_31b",
-              t_res["meta"]["base_checksum_unchanged"] is True and t_res["meta"]["base_linears_checked"] >= 400,
-              {"linears_checked": t_res["meta"]["base_linears_checked"],
-               "sha256": str(t_res["meta"]["base_checksum_before"])[:16]})
-        check("folded_exact_bit_identity_31b",
-              t_res["folded"]["ok"] is True
-              and fl_sm["same_bits_count"] == fl_sm["taken_count"] == 16
-              and fl_lg["same_bits_count"] == fl_lg["taken_count"] == 16,
-              {"small_same_bits": f"{fl_sm['same_bits_count']}/{fl_sm['taken_count']}",
-               "large_same_bits": f"{fl_lg['same_bits_count']}/{fl_lg['taken_count']}",
-               "small_mean": fl_sm["frames"]["mean"], "large_mean": fl_lg["frames"]["mean"]})
-        check("reworded_set_verified_31b",
-              t_res["reworded"]["ok"] is True and t_res["reworded"]["folded"]["ok"] is True,
-              {"small_mean": rw_sm, "large_mean": rw_lg})
-        check("trial_sheet_no_kept_out_words",
+              meta["base_checksum_unchanged"] is True and meta["base_linears_checked"] >= 400
+              and meta["base_tensors_checked"] > meta["base_linears_checked"],
+              {"linears_checked": meta["base_linears_checked"], "tensors_checked": meta["base_tensors_checked"],
+               "sha256": str(meta["base_checksum_before"])[:16]})
+        fl = t_res["folded"]["classes"] if t_res["folded"].get("classes") else {}
+        fl_sm, fl_lg = fl.get("small") or {}, fl.get("large") or {}
+        check("folded_same_bits_31b",
+              t_res["folded"]["available"] is True
+              and fl_sm.get("same_bits_count") == fl_sm.get("taken_count") == 16
+              and fl_lg.get("same_bits_count") == fl_lg.get("taken_count") == 16,
+              {"small_same_bits": f"{fl_sm.get('same_bits_count')}/{fl_sm.get('taken_count')}",
+               "large_same_bits": f"{fl_lg.get('same_bits_count')}/{fl_lg.get('taken_count')}",
+               "small_mean": (fl_sm.get("frames") or {}).get("mean"), "large_mean": (fl_lg.get("frames") or {}).get("mean"),
+               "tolerance": [fl_sm.get("tolerance"), fl_lg.get("tolerance")], "folded_ok": t_res["folded"]["ok"]})
+        rw = t_res["reworded"] or {}
+        rw_cls = rw.get("classes") or {}
+        check("reworded_set_read_31b",
+              bool(rw) and (rw.get("folded") or {}).get("available") is True and set(rw_cls) == {"small", "large"},
+              {"ok": rw.get("ok"), "small_mean": ((rw_cls.get("small") or {}).get("frames") or {}).get("mean"),
+               "large_mean": ((rw_cls.get("large") or {}).get("frames") or {}).get("mean"),
+               "controls_small": ((rw_cls.get("small") or {}).get("controls") or {}).get("other_sites_matched")})
+        check("sheet_and_rules_no_kept_out_words",
               KEPT_OUT_RE.search(t_res["sheet"]) is None
               and KEPT_OUT_RE.search((prereg_dir / "RULES.md").read_text()) is None,
-              "0 kept-out words in Trial Sheet and RULES.md")
+              "0 kept-out words in the sheet and RULES.md")
+        rj = lt.rejudge_trial(book, t_res["trial_sha256"], v_reg)
+        check("judged_again_from_its_book", rj["as_noted"] and rj["verdict"] == t_res["verdict"],
+              {"verdict": rj["verdict"], "noted": rj["noted_verdict"], "items": len(rj["items"]["target"].get("large", {}))})
+        check("seed_in_the_result_not_in_the_book",
+              len(t_res["seed_hex"]) == 64 and t_res["seed_hex"] not in book.read_text(), None)
 
-        # Read-once refusal
-        got_ro = False
-        try:
-            lt.run_trial_of_record(h, prereg_dir, out_dir=tmp / "trial_out_dup", book_path=OUT_BOOK)
-        except lt.TrialRefused:
-            got_ro = True
-        check("trial_read_once_refused", got_ro, "duplicate trial_sha256 refused")
+        def refused(fn: Any) -> str:
+            try:
+                fn()
+            except (lt.TrialRefused, lcl.ClaimRefused) as exc:
+                return str(exc)
+            return ""
 
-        # Replay card verification
-        v_ent = next(lb.entries(OUT_BOOK, start=t_res["book"]["verdict_seq"], limit=1))
+        ro = refused(lambda: lt.run_trial_of_record(h, prereg_dir, out_dir=tmp / "trial_out_dup", book_path=book, dry_run=True))
+        check("trial_read_once_refused", "read once" in ro.lower(), ro[:120])
+        again = tmp / "prereg_again"
+        lt.register_trial(again, h, brief, bars, edit, trial_name="e6_l50_she10_again", **reg_kw)
+        ro2 = refused(lambda: lt.run_trial_of_record(h, again, out_dir=tmp / "trial_out_again", book_path=book, dry_run=True))
+        check("same_edit_registered_again_refused", "already had a trial" in ro2, ro2[:160])
+        hist = lcl.brief_history(brief.id, book, name=brief.name)
+        check("trial_counted_as_a_fresh_reading",
+              hist["fresh_count"] == 1 and len(hist["trials"]) == 1 and meta["reading_index"] == 1,
+              {"fresh_count": hist["fresh_count"], "of": brief.max_fresh_readings, "trials": lcl.prior_trials(hist)})
+
+        v_ent = next(lb.entries(book, start=t_res["book"]["verdict_seq"], limit=1))
         card = lroutes.build_replay_card(v_ent)
-        check("trial_replay_card_ok",
-              card["note_type"] == "trial_of_record" and card["edit_linears"] == ["layers.50.mlp.down_proj"],
-              {"seq": card["seq"], "verdict": card["verdict"], "edit_linears": card["edit_linears"]})
+        check("trial_replay_card_says_dry_run",
+              card["note_type"] == lt.NOTE_DRY_RUN and card["status"] == f"dry run: {t_res['verdict']}"
+              and card["edit_linears"] == ["layers.50.mlp.down_proj"],
+              {"seq": card["seq"], "status": card["status"], "edit_linears": card["edit_linears"]})
 
-        # 4. Owner-only export & verification against 31B weights
-        print("\nStep 3: Owner-only LoRA GGUF export & exact delta verification on 31B...", flush=True)
+        # 4. the export: against the loaded model, and off the model against the cached checkpoint
+        print("\nStep 3: the export, against the loaded model and against the cached checkpoint...", flush=True)
         t_exp = time.perf_counter()
         target_31b = lex.TargetBase(lm=h.lm, label=f"{h.model_id} ({h.weights_id[:16]})")
-        exp_gguf = tmp / "exports" / "e6_l50_she10_31b.gguf"
         exp_out = lex.export_lora_adapter(
-            edit, target_31b, out_path=exp_gguf, dose=1.0,
-            trial_result=t_res, prior_attempts=1,
+            edit, target_31b, out_path=tmp / "exports" / "e6_l50_she10_31b.gguf", dose=1.0, trial_result=t_res,
             lm_for_implant=h.lm, W_U_for_implant=h.W_U,
         )
-        ver_exp = lex.verify_exported_lora(exp_gguf, edit=edit, target=target_31b, dose=1.0)
+        ver_exp = lex.verify_exported_lora(Path(exp_out["gguf_path"]), edit=edit, target=target_31b, dose=1.0)
+        keys = el.read_lora(Path(exp_out["gguf_path"]))[1]
+        said = {k.split("levelling.")[1]: keys[k] for k in sorted(keys) if k.startswith("theodolite.levelling.")
+                and any(s in k for s in ("trial_verdict", "trial_kind", "applies_to", "implant", "served_base_is", ".book"))}
         exp_s = round(time.perf_counter() - t_exp, 2)
-        check("export_lora_verified_31b",
-              ver_exp["ok"] and (ver_exp["max_abs_err"] or 0.0) < 1e-4 and exp_out["recompiled_from_recipe"] is True,
-              {"seconds": exp_s, "gguf_bytes": exp_out["gguf_bytes"], "max_abs_err": ver_exp["max_abs_err"],
-               "implant_flagged": exp_out["implant_check"]["flagged"]})
+        check("export_is_the_edit_on_the_model",
+              ver_exp["ok"] and (ver_exp["max_abs_err"] or 0.0) < 1e-4 and exp_out["recompiled_from_recipe"] is True
+              and exp_out["served_base_is_edit_base"] is True,
+              {"seconds": exp_s, "gguf_bytes": exp_out["gguf_bytes"], "max_abs_err": ver_exp["max_abs_err"]})
+        check("export_keys_say_what_was_checked",
+              said.get("trial_verdict") == t_res["verdict"] and said.get("trial_kind") == "a dry run"
+              and str(said.get("trial_applies_to_served_base", "")).startswith("yes")
+              and said.get("implant_flagged") in ("true", "false", "nothing in reach of the check"), said)
+        wrong = ""
+        try:
+            lex.export_lora_adapter(
+                we.build(h.lm, [we.silence(50, E6_L50_SHE10[:5])], model_id=h.model_id, weights_id=h.weights_id), target_31b,
+                out_path=tmp / "exports" / "another_edit.gguf", trial_result=t_res)
+        except lex.ExportRefused as exc:
+            wrong = str(exc)
+        check("another_edit_does_not_take_this_trials_verdict", "not of the edit exported" in wrong, wrong[:140])
+        off = {"ran": False}
+        try:
+            t_off = time.perf_counter()
+            target_ck = lex.TargetBase.default_checkpoint()
+            edit_off = lex.edit_from_registration(v_reg["edit_manifest"])
+            out_off = lex.export_lora_adapter(edit_off, target_ck, out_path=tmp / "exports" / "e6_l50_she10_checkpoint.gguf",
+                                              trial_result=t_res, implant_at_registration=v_reg["trial"]["implant_check"])
+            ver_off = lex.verify_exported_lora(Path(out_off["gguf_path"]), edit=edit_off, target=target_ck)
+            t_a, t_b = el.read_lora(Path(out_off["gguf_path"]))[0], el.read_lora(Path(exp_out["gguf_path"]))[0]
+            same_file = set(t_a) == set(t_b) and all(
+                np.array_equal(t_a[k][0], t_b[k][0]) and np.array_equal(t_a[k][1], t_b[k][1]) for k in t_a)
+            off = {"ran": True, "ok": ver_off["ok"], "max_abs_err": ver_off["max_abs_err"], "edit_id_kept": edit_off.id == edit.id,
+                   "base_is_edit_base": out_off["served_base_is_edit_base"], "implant": out_off["implant_check"].get("checked_at"),
+                   "same_numbers_as_the_model_export": same_file, "seconds": round(time.perf_counter() - t_off, 2)}
+        except lex.ExportRefused as exc:
+            off = {"ran": False, "why": str(exc)[:200]}
+        check("export_off_the_model_from_the_cached_checkpoint",
+              off.get("ran") and off.get("ok") and off.get("edit_id_kept") and off.get("base_is_edit_base") is True, off)
 
-        # 5. Volunteer re-run kit + run + defensive intake on compact 31B trial (C=3, n_target=8)
-        print("\nStep 4: Volunteer re-run kit, run, and defensive intake on 31B...", flush=True)
+        # 5. a kit of the dry run, read by this same card, and its intake from the two books
+        print("\nStep 4: the kit, read by this same card, and the intake from the two books...", flush=True)
         t_rr = time.perf_counter()
-        prereg_rr = tmp / "prereg_rr"
-        lt.register_trial(
-            prereg_rr, brief, bars, edit,
-            trial_name="e6_l50_she10_rerun_check",
-            controls_per_family=3, n_target=8, n_neutral=2, n_near=2, n_panel=2, folded_required=True,
-        )
-        home_rr = lt.run_trial_of_record(
-            h, prereg_rr, out_dir=tmp / "home_rr_out", book_path=tmp / "home_rr_book.jsonl",
-            _seed_override=b"verify-31b-rerun-seed-32bytes-01",
-        )
         kit_dir = tmp / "kit_31b"
-        lr.make_rerun_kit(prereg_rr, kit_dir, home_result=home_rr)
+        lr.make_rerun_kit(prereg_dir, kit_dir, t_res)
         vol_tar = tmp / "vol_31b.tar"
-        lr.run_volunteer_rerun(
-            h, kit_dir, vol_tar, volunteer_name="home_selfcheck",
-            _seed_override=b"verify-31b-rerun-seed-32bytes-01",
-        )
-        intake_res = lr.intake_rerun_bundle(vol_tar, prereg_rr, home_rr, tmp / "intake_stage", allow_dirty=True)
+        vol = lr.run_volunteer_rerun(h, kit_dir, vol_tar, volunteer_name="the_home_card_itself", work_dir=tmp / "vol_work")
+        intake_res = lr.intake_rerun_bundle(vol_tar, prereg_dir, book, tmp / "intake_stage", allow_dirty=True)
         rr_s = round(time.perf_counter() - t_rr, 2)
-        check("volunteer_rerun_intake_31b",
-              intake_res["outcome"] == "accepted" and intake_res["match_class"] == "same_bits",
-              {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"]})
+        check("same_card_rerun_reads_the_home_items",
+              intake_res["outcome"] == "accepted" and intake_res["match_class"] == "same_figures"
+              and intake_res["class_diffs"]["target:large"]["items"] == 16
+              and intake_res["class_diffs"]["reworded:large"]["items"] == 8,
+              {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
+               "verdict": vol["verdict"], "class_diffs": intake_res["class_diffs"],
+               "what_this_is": "this card re-running its own kit in this process: not another card",
+               "reject_reasons": intake_res["reject_reasons"][:3], "disagree_reasons": intake_res["disagree_reasons"][:3]})
+        typed = tmp / "typed"
+        typed.mkdir()
+        lb.append("note", {"note_type": "hello", "text": "no reading was taken"}, path=typed / "volunteer_book.jsonl")
+        (typed / "return.json").write_text(json.dumps({"v": 1, "volunteer": "nobody", "verdict": t_res["verdict"]}))
+        (typed / "TRIAL_SHEET.md").write_text("no sheet\n")
+        (typed / "manifest.json").write_text(json.dumps({"v": 1, "files": {
+            n: {"sha256": hashlib.sha256((typed / n).read_bytes()).hexdigest()}
+            for n in ("return.json", "volunteer_book.jsonl", "TRIAL_SHEET.md")}}))
+        with tarfile.open(tmp / "typed.tar", "w") as tf:
+            for n in lr.PACKED_FILES:
+                tf.add(typed / n, arcname=n)
+        iv_typed = lr.intake_rerun_bundle(tmp / "typed.tar", prereg_dir, book, tmp / "intake_typed", allow_dirty=True)
+        check("bundle_typed_by_hand_rejected", iv_typed["outcome"] == "rejected", iv_typed["reject_reasons"][:1])
 
-    # 6. Final invariants
-    we.assert_base(h.lm, h.hooks_at_load)
-    check("assert_base_final", True, "model clean at base")
-    fb1 = int(getattr(engine_runtime.dequantize_w4a16_full, "fell_back", 0) or 0)
-    fb = fb1 - fb0
-    check("zero_unpacker_fallbacks", fb == 0, {"fallback_count": fb})
-    bv = lb.verify(OUT_BOOK)
-    check("ledger_whole", bv["ok"], {"entries": bv["entries"], "head": bv["head"][:16]})
-    peak_gib = round(torch.cuda.max_memory_allocated() / 2**30, 3)
-    total_s = round(time.perf_counter() - t_all, 2)
-    check("peak_memory_recorded", peak_gib > 0.0, {"peak_gib": peak_gib, "total_seconds": total_s})
+        # 6. the base, the unpacker, the book
+        base_ok = True
+        try:
+            we.assert_base(h.lm, h.hooks_at_load)
+        except Exception as exc:  # noqa: BLE001
+            base_ok = False
+            print(f"  assert_base: {exc}", file=sys.stderr)
+        check("assert_base_final", base_ok, "the model is the base again")
+        fb1 = int(getattr(engine_runtime.dequantize_w4a16_full, "fell_back", 0) or 0)
+        fb = fb1 - fb0
+        check("zero_unpacker_fallbacks", fb == 0, {"fallback_count": fb})
+        bv = lb.verify(book)
+        check("ledger_whole", bv["ok"], {"entries": bv["entries"], "head": bv["head"][:16]})
+        peaks = [float(e["body"]["peak_gib"]) for e in lb.entries(book)
+                 if e["kind"] == "paired" and isinstance(e["body"].get("peak_gib"), (int, float))]
+        peak_gib = round(max(peaks), 3) if peaks else None
+        total_s = round(time.perf_counter() - t_all, 2)
+        check("peak_memory_recorded", peak_gib is not None and peak_gib > 0.0,
+              {"peak_gib": peak_gib, "of": "the largest peak any reading in the book recorded", "total_seconds": total_s})
 
-    n_ok = sum(1 for c in checks if c["ok"])
-    n_fail = len(checks) - n_ok
-    report = {
-        "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "environment": "measured on the 31B card",
-        "gpu": torch.cuda.get_device_name(0),
-        "model_id": h.model_id,
-        "weights_id": h.weights_id,
-        "load_seconds": load_s,
-        "total_seconds": total_s,
-        "peak_gib": peak_gib,
-        "fallback_count": fb,
-        "passed": n_ok,
-        "failed": n_fail,
-        "checks": checks,
-        "trial_e6_she10": {
-            "seconds": tr_s,
-            "verdict": t_res["verdict"],
-            "fresh_verdict": t_res["fresh_verdict"],
-            "reasons": t_res["reasons"],
-            "sheet": t_res["sheet"],
-            "folded": t_res["folded"],
-            "reworded": t_res["reworded"],
-            "meta": t_res["meta"],
-            "book": t_res["book"],
-        },
-        "export_check": {"seconds": exp_s, "max_abs_err": ver_exp["max_abs_err"],
-                         "gguf_bytes": exp_out["gguf_bytes"], "implant_check": exp_out["implant_check"]},
-        "rerun_intake": {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
-                         "class_diffs": intake_res["class_diffs"]},
-        "ledger": bv,
-    }
-    write_json_atomic(OUT_JSON, report)
-    print(f"\nPhase 5 31B card verification complete in {total_s} s (peak {peak_gib:.3f} GiB): "
-          f"{n_ok}/{len(checks)} passed, {n_fail} failed [measured on the 31B card].", flush=True)
+        n_ok = sum(1 for c in checks if c["ok"])
+        n_fail = len(checks) - n_ok
+        report = {
+            "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "environment": "measured on the 31B card",
+            "what_this_is": ("a DRY RUN of a trial, an export, and a re-run of the kit by this same card in this same "
+                             "process. No trial of record has been read by this script, and no other card has run a kit."),
+            "gpu": torch.cuda.get_device_name(0),
+            "model_id": h.model_id,
+            "weights_id": h.weights_id,
+            "load_seconds": load_s,
+            "total_seconds": total_s,
+            "peak_gib": peak_gib,
+            "fallback_count": fb,
+            "passed": n_ok,
+            "failed": n_fail,
+            "checks": checks,
+            "trial_e6_she10": {
+                "seconds": tr_s,
+                "of_record": t_res["of_record"],
+                "not_of_record": t_res["not_of_record"],
+                "verdict": t_res["verdict"],
+                "fresh_verdict": t_res["fresh_verdict"],
+                "reasons": t_res["reasons"],
+                "sheet": t_res["sheet"],
+                "folded": t_res["folded"],
+                "reworded": t_res["reworded"],
+                "meta": meta,
+                "book": {k: v for k, v in t_res["book"].items() if k != "path"},
+            },
+            "export_check": {"seconds": exp_s, "max_abs_err": ver_exp["max_abs_err"], "gguf_bytes": exp_out["gguf_bytes"],
+                             "implant_check": exp_out["implant_check"], "keys": said, "off_the_model": off},
+            "rerun_intake": {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
+                             "class_diffs": intake_res["class_diffs"],
+                             "what_this_is": "this card re-running its own kit in this process: not another card"},
+            "ledger": bv,
+        }
+        # written last, so the checkout is as it was while the trial read
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(book, OUT_BOOK)
+        write_json_atomic(OUT_JSON, report)
+        for k, prev in ((we.EDITS_ENV, prev_edits), (lex.EXPORT_ENV, prev_exp)):
+            if prev is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = prev
+
+    print(f"\nPhase 5 card check complete in {total_s} s (peak {peak_gib} GiB): "
+          f"{n_ok}/{len(checks)} passed, {n_fail} failed [measured on the 31B card; a dry run, not a trial of record].",
+          flush=True)
     return 0 if n_fail == 0 else 1
 
 

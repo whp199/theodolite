@@ -330,16 +330,27 @@ def run_section_2(tmp: Path) -> None:
               and r_v17["card"]["edit_linears"] == ["layers.50.mlp.down_proj"],
               f"replay of 31B seq 17 shows 'kept the base' and edit_linears ({r_v17['card']['edit_linears']})")
 
-        # 7b. Model-free Replay: real 31B card Phase 5 Trial of Record book!
+        # 7b. Model-free replay of the recorded 31B trial book: the card of its trial is the book's own note, and a
+        #     dry run is shown as a dry run (the book is rewritten by scripts/verify_level_trial.py; what it holds
+        #     is read here, not assumed)
         r_vt = client.get("/api/level/book?book=verify_trial&tail=50")
         check(r_vt.status_code == 200 and r_vt.json()["verify"]["ok"], "GET /api/level/book?book=verify_trial -> 200 whole")
-        r_vt11 = client.get("/api/level/book/11?book=verify_trial").json()
-        check(r_vt11["card"]["note_type"] == "trial_of_record"
-              and r_vt11["card"]["verdict"] == "failed"
-              and r_vt11["card"]["edit_linears"] == ["layers.50.mlp.down_proj"]
-              and (r_vt11["card"].get("folded_summary") or {}).get("ok") is True
-              and (r_vt11["card"].get("reworded_summary") or {}).get("ok") is True,
-              f"replay of 31B Phase 5 trial seq 11 shows trial_of_record, edit_linears, folded & reworded ({r_vt11['card'].get('verdict')})")
+        trial_book = ROOT_DIR / "experiments" / "results" / "levelling" / "verify_trial_book.jsonl"
+        kinds = {"trial_of_record": "", "trial_dry_run": "dry run: ", "trial_rerun": "re-run: "}
+        t_notes = [e for e in lb.entries(trial_book) if e["kind"] == "note" and e["body"].get("note_type") in kinds]
+        check(len(t_notes) >= 1, "the recorded trial book holds a trial's verdict note")
+        t_note = t_notes[0]
+        r_vtn = client.get(f"/api/level/book/{t_note['seq']}?book=verify_trial").json()
+        t_card, t_body = r_vtn["card"], t_note["body"]
+        check(t_card["note_type"] == t_body["note_type"]
+              and t_card["status"] == kinds[t_body["note_type"]] + str(t_body["verdict"])
+              and t_card["verdict"] == t_body["verdict"]
+              and t_card["of_record"] == (t_body["note_type"] == "trial_of_record" and bool(t_body.get("of_record")))
+              and t_card["edit_linears"] == ["layers.50.mlp.down_proj"]
+              and (t_card.get("folded_summary") or {}).get("ok") == (t_body.get("folded") or {}).get("ok")
+              and (t_card.get("reworded_summary") or {}).get("ok") == (t_body.get("reworded") or {}).get("ok"),
+              f"replay of the recorded 31B trial (line {t_note['seq']}) is its note: {t_card['status']!r}, of record "
+              f"{t_card.get('of_record')}, with its linears and its folded and reworded standing")
 
         # 8. Path traversal & foreign-origin guards
         r_bad_bk = client.get("/api/level/book?book=../../etc/passwd")

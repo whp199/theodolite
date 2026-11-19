@@ -110,7 +110,7 @@ def _book_catalog() -> Dict[str, Dict[str, Any]]:
         }
     }
     candidates = [
-        ("verify_trial", "31B trial of record check (Phase 5)", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
+        ("verify_trial", "31B trial dry run check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
         ("verify_claim", "31B claim gate check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_claim_book.jsonl"),
         ("verify_door", "31B agent door check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
         ("verify_1b", "31B slice 1b check (18 Nov 2026)", RECORDED_BOOKS_DIR / "verify_1b_book.jsonl"),
@@ -506,10 +506,17 @@ def build_replay_card(
             base_card["cheaper_knobs"] = body.get("cheaper_knobs")
             base_card["bars_sha256"] = body.get("bars_sha256")
             base_card["book_seqs"] = body.get("book_seqs")
-        elif nt == "trial_of_record":
-            base_card["status"] = body.get("verdict")
-            base_card["name"] = f'trial of record · {body.get("trial_name") or body.get("brief_name")}'
+        elif nt in ("trial_of_record", "trial_dry_run", "trial_rerun"):
+            # only a trial of record shows its verdict as a verdict: a dry run's and a re-run's is prefixed, and so
+            # takes no verdict colour on the page
+            kind = {"trial_of_record": "trial of record", "trial_dry_run": "dry run of a trial",
+                    "trial_rerun": "re-run of a trial"}[nt]
+            lead = {"trial_of_record": "", "trial_dry_run": "dry run: ", "trial_rerun": "re-run: "}[nt]
+            base_card["status"] = f'{lead}{body.get("verdict")}'
+            base_card["name"] = f'{kind} · {body.get("trial_name") or body.get("brief_name")}'
             base_card["verdict"] = body.get("verdict")
+            base_card["of_record"] = bool(body.get("of_record")) and nt == "trial_of_record"
+            base_card["not_of_record"] = list(body.get("not_of_record") or [])
             base_card["reasons"] = body.get("reasons") or []
             base_card["claim_sentence"] = body.get("claim_sentence")
             base_card["summary"] = body.get("summary")
@@ -523,6 +530,8 @@ def build_replay_card(
         elif nt == "trial_registration":
             base_card["status"] = "registered"
             base_card["name"] = f'register trial · {body.get("trial_name") or body.get("brief_name")}'
+            base_card["of_record"] = bool(body.get("of_record"))
+            base_card["not_of_record"] = list(body.get("not_of_record") or [])
             base_card["selection_mode"] = body.get("selection_mode")
             base_card["controls_per_family"] = body.get("controls_per_family")
             base_card["bars_sha256"] = body.get("bars_sha256")

@@ -2863,6 +2863,69 @@ def edit_provenance(edit: Edit, *, saved_dir: Optional[Path] = None) -> Dict[str
     }
 
 
+IMPLANT_COSINE = 0.85  # a write this close to one unembedding row is called the shape of a single-piece implant
+
+
+def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float = 1.0) -> Dict[str, Any]:
+    """Whether `edit` has the shape of a last-block, single-word-piece implant (`design/synthesis.md` §viii: "a
+    last-block neuron whose write is dominated by one word-piece's unembedding"): a label, not a judgement of what
+    the edit is for.
+
+    Looked at: every direction the edit writes into the stream in the last tenth of the layers, as the stream takes
+    it (times the layer's `post_feedforward_layernorm` weight): the change to each edited `down_proj` column, and
+    each column of a low-rank term's `B` on `down_proj`. A direction whose cosine with one unembedding row is
+    `IMPLANT_COSINE` or more in size is a hit. Not looked at, and named in `not_examined`: row terms on `gate_proj`
+    and `up_proj` (they change what a neuron reads, and write nothing to the stream themselves) and any term below
+    the last tenth. `examined` counts the directions looked at: `flagged` False with `examined` 0 says nothing was
+    in reach, not that the edit is clear."""
+    n_layers = len(lm.layers)
+    late_cut = max(0, int(math.floor(0.9 * n_layers)))
+    wu = W_U.detach().float().cpu()  # [V, D]
+    wu_norms = torch.linalg.norm(wu, dim=1).clamp_min(1e-8)
+    d = float(dose)
+    hits: List[Dict[str, Any]] = []
+    not_examined: List[str] = []
+    examined = 0
+    for t in edit.terms:
+        if t.which != "down_proj":
+            not_examined.append(f"{t.linear} ({t.kind}): a row term changes what a neuron reads and writes nothing "
+                                "to the stream itself")
+            continue
+        if t.layer < late_cut:
+            not_examined.append(f"{t.linear} ({t.kind}): below the last tenth of the layers")
+            continue
+        w_post = _w_post(lm, t.layer)
+        if t.kind == "cols":
+            mod = lm.get_submodule(t.linear)
+            with torch.no_grad():
+                Wc = dense_cols(mod, torch.from_numpy(np.array(t.idx, dtype=np.int64))).float().cpu().numpy()
+            delta = (_asked(t, d)[:, None] - 1.0) * Wc  # [K, D]
+            if t.vectors is not None:
+                m = t.op != 0
+                delta[m] = delta[m] + d * t.vectors[m]
+            names = [f"neuron {int(n)}" for n in t.idx]
+        else:  # low-rank: each column of B is a direction written
+            delta = (d * t.B).T.astype(np.float64)  # [r, D]
+            names = [f"low-rank direction {k}" for k in range(delta.shape[0])]
+        dS = torch.from_numpy((delta * w_post[None, :]).astype(np.float32))
+        for j in range(dS.shape[0]):
+            v = dS[j]
+            vn = float(torch.linalg.norm(v))
+            if vn <= 1e-8:
+                continue
+            examined += 1
+            dots = (wu @ v) / (wu_norms * vn)
+            top = torch.topk(dots.abs(), k=min(2, int(dots.shape[0])))
+            top_idx = int(top.indices[0])
+            top_cos = float(dots[top_idx])
+            if abs(top_cos) >= IMPLANT_COSINE:
+                hits.append({"layer": int(t.layer), "page_layer": int(t.layer) + 1, "what": names[j],
+                             "top_piece_id": top_idx, "top_cosine": round(top_cos, 4),
+                             "next_cosine": round(float(top.values[1]), 4) if int(top.values.shape[0]) > 1 else None})
+    return {"checked": True, "flagged": bool(hits), "late_layer_cutoff": late_cut, "cosine_bar": IMPLANT_COSINE,
+            "examined": examined, "not_examined": not_examined, "hits": hits[:16]}
+
+
 def base_checksum(
     lm: nn.Module,
     *,

@@ -1,14 +1,31 @@
 #!/usr/bin/env python3
-"""Owner-only CLI for Levelling Phase 5: Adapter Export & Verification (`scripts/levelling_export.py`).
+"""The owner's command line for exporting an edit (`scripts/levelling_export.py`; `backend/level_export.py`).
 
-Exports a Levelling edit as a llama.cpp LoRA `.gguf` adapter with Apache-2.0 licence & origin keys and a companion
-`.manifest.json`, recompiled against the served base (`--gguf` or checkpoint), into an owner-controlled directory
-outside the checkout and outside tool-writable folders. Never exposed to agents.
+Writes an edit as a llama.cpp LoRA `.gguf` adapter with a `.manifest.json` beside it, outside every git checkout
+and never through an agent's tools. It runs on the CPU and loads no model.
 
-    .venv/bin/python -I scripts/levelling_export.py lora --edit edit.json --gguf MODEL.gguf -o /tmp/exports/out.gguf
-    .venv/bin/python -I scripts/levelling_export.py lora --trial /tmp/trial/prereg --weights-dir /path/to/w4a16
-    .venv/bin/python -I scripts/levelling_export.py verify /tmp/exports/out.gguf
-    .venv/bin/python -I scripts/levelling_export.py show /tmp/exports/out.gguf
+    .venv/bin/python -I scripts/levelling_export.py lora --trial PREREG --trial-result RESULT/trial_result.json
+    .venv/bin/python -I scripts/levelling_export.py lora --trial PREREG --gguf MODEL.gguf -o ~/exports/she_ten.gguf
+    .venv/bin/python -I scripts/levelling_export.py lora --saved EDIT_ID_OR_FOLDER --weights-dir CHECKPOINT
+    .venv/bin/python -I scripts/levelling_export.py verify ADAPTER.gguf --trial PREREG --gguf MODEL.gguf
+    .venv/bin/python -I scripts/levelling_export.py show ADAPTER.gguf
+    .venv/bin/python -I scripts/levelling_export.py smoke ADAPTER.gguf --gguf MODEL.gguf --llama-server BIN --prompt "..."
+
+The edit: a trial's registration folder (`--trial`, with `--payload FOLDER` when it carries arrays) or a saved edit
+(`--saved`), each rebuilt as the kernel built and hashed it and kept to that id. A bare recipe file (`--edit`) is
+taken only with `--stand-in`, where there is a model to build it on: off the model nothing would gate it.
+
+The base the adapter is compiled against: `--gguf FILE` (the GGUF it will be served over), `--weights-dir FOLDER` (a
+checkpoint), or, with neither, this machine's cached W4A16 checkpoint.
+
+`--trial-result FILE` puts a trial's verdict into the adapter: it must be the trial of this edit at this dose, and the
+file says whether it was of record, a dry run or a re-run, and whether the base it read is the base served. The
+implant label is the one worked at the trial's registration (the model was at hand then); an export with no
+registration says "not checked".
+
+`verify` reads an adapter back; with the edit and the base it also shows the file is that edit on that base. `smoke`
+loads it in a local llama-server and writes one prompt with it off and on: that llama.cpp takes the file, and no
+measurement.
 """
 from __future__ import annotations
 
@@ -17,7 +34,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Optional, Sequence, Tuple
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -28,7 +45,20 @@ for _p in (ROOT_DIR, ROOT_DIR / "scripts"):
         sys.path.insert(0, str(_p))
 
 
-def _load_edit_and_target(a: argparse.Namespace) -> Any:
+def _refusals() -> Tuple[type, ...]:
+    from backend import level_book as lb
+    from backend import level_export as lex
+    from backend import level_trial as lt
+    from backend import levelling as lv
+    from backend import weight_edits as we
+
+    return (lex.ExportRefused, lt.TrialRefused, we.Refused, lv.Refused, lb.BookBroken, OSError, ValueError, TypeError,
+            KeyError)
+
+
+def _load_edit_and_target(a: argparse.Namespace) -> Tuple[Any, Any, Optional[Path], Any, Any, Any]:
+    """`(edit, target, saved_dir, lm, W_U, registration)`: the edit as the kernel hashed it, the base to compile
+    against, and, with `--stand-in`, the stand-in model (for the implant label)."""
     import torch
 
     torch.set_num_threads(1)
@@ -37,23 +67,14 @@ def _load_edit_and_target(a: argparse.Namespace) -> Any:
     from backend import levelling as lv
     from backend import weight_edits as we
 
-    lm_ref = None
-    W_U_ref = None
-    saved_dir = None
-
+    lm_ref = W_U_ref = h = None
     if a.stand_in:
         from atlas_stand_in import stand_in as make_stand_in
 
         rt, _vault = make_stand_in()
         h = lv.handle(rt)
         lm_ref, W_U_ref = h.lm, h.W_U
-        model_id, weights_id = h.model_id, h.weights_id
-    else:
-        lm_ref = None
-        model_id = "google/gemma-4-31B-it-qat-w4a16-ct"
-        weights_id = None
 
-    # Build the TargetBase for recompilation (GGUF > weights-dir > stand-in module)
     if a.gguf:
         target = lex.TargetBase(gguf_path=Path(a.gguf))
     elif a.weights_dir:
@@ -61,152 +82,59 @@ def _load_edit_and_target(a: argparse.Namespace) -> Any:
     elif lm_ref is not None:
         target = lex.TargetBase(lm=lm_ref, label="stand-in")
     else:
-        from backend.census import cached_checkpoint
+        target = lex.TargetBase.default_checkpoint()
 
-        snap = cached_checkpoint()
-        target = lex.TargetBase(weights_dir=Path(snap))
-
-    # Load Edit (from --trial prereg, --saved dir, or --edit recipe)
+    given = [x for x in (a.trial, a.saved, a.edit) if x]
+    if len(given) != 1:
+        raise lex.ExportRefused("Give one of --trial PREREG, --saved EDIT, or (with --stand-in) --edit RECIPE.")
+    payload = Path(a.payload) if getattr(a, "payload", None) else None
     if a.trial:
         reg = lt.verify_registration(Path(a.trial))
-        man = reg["edit_manifest"]
-        if lm_ref is not None:
-            edit = lt.load_registered_edit(lv.handle(rt), man, payload_dir=Path(a.payload) if a.payload else None)
+        if h is not None:
+            edit = lt.load_registered_edit(h, reg["edit_manifest"], payload_dir=payload)
         else:
-            # Off-GPU build from manifest without loading full GPU model: use lightweight Edit built from TargetBase
-            edit = _edit_from_manifest_cpu(man, target, payload_dir=Path(a.payload) if a.payload else None)
-        return edit, target, saved_dir, lm_ref, W_U_ref
-
+            edit = lex.edit_from_registration(reg["edit_manifest"], payload_dir=payload)
+        saved_dir = we._find_saved(payload if payload is not None else edit.id) if not reg["edit_manifest"].get("all_rebuilt") else None
+        return edit, target, saved_dir, lm_ref, W_U_ref, reg
     if a.saved:
         saved_dir = we._find_saved(a.saved)
-        if lm_ref is not None:
-            edit = we.load(saved_dir, lm_ref, model_id=model_id, weights_id=weights_id)
-        else:
-            man = json.loads((saved_dir / "manifest.json").read_text(encoding="utf-8"))
-            edit = _edit_from_saved_cpu(saved_dir, man)
-        return edit, target, saved_dir, lm_ref, W_U_ref
-
-    if a.edit:
-        ep = Path(a.edit)
-        recipe = json.loads(ep.read_text(encoding="utf-8"))
-        if lm_ref is not None:
-            got = we.from_recipe(recipe, ep.parent)
-            edit = (we.load(got, lm_ref, model_id=model_id, weights_id=weights_id)
-                    if isinstance(got, (str, Path))
-                    else we.build(lm_ref, got, model_id=model_id, weights_id=weights_id))
-        else:
-            edit = _edit_from_recipe_cpu(recipe, ep.parent, target)
-        return edit, target, saved_dir, lm_ref, W_U_ref
-
-    raise lex.ExportRefused("Give one of --trial, --saved, or --edit.")
-
-
-def _edit_from_saved_cpu(folder: Path, man: dict) -> Any:
-    """Reconstruct a `weight_edits.Edit` on CPU from a saved edit folder without loading the full model."""
-    import numpy as np
-    from backend import weight_edits as we
-
-    payload = {}
-    if (folder / "payload.safetensors").is_file():
-        from safetensors.numpy import load_file
-
-        payload = load_file(str(folder / "payload.safetensors"))
-    terms = []
-    for t in man["terms"]:
-        layer, which = we._parse(t["linear"])
-        if t["kind"] in ("cols", "rows"):
-            idx_key = "columns" if t["kind"] == "cols" else "rows"
-            idx = we._ro([int(n) for n in t[idx_key]], np.int64)
-            op = we._ro([we.OPS.index(o) for o in t["ops"]], np.uint8)
-            fac = we._ro([float(f) for f in t["factors"]], np.float32)
-            vec = we._ro(payload[t["vectors"]], np.float32) if t.get("vectors") else None
-            terms.append(we.Term(t["linear"], t["kind"], layer, which, idx=idx, op=op, factor=fac, vectors=vec))
-        else:
-            A = we._ro(payload[t["A"]], np.float32)
-            B = we._ro(payload[t["B"]], np.float32)
-            terms.append(we.Term(t["linear"], "lowrank", layer, which, A=A, B=B))
-    return we.Edit(man["id"], tuple(terms), man["base"], str(man.get("note") or ""), dict(man.get("report") or {}))
-
-
-def _edit_from_manifest_cpu(man: dict, target: Any, *, payload_dir: Optional[Path] = None) -> Any:
-    from backend import level_export as lex
-    from backend import weight_edits as we
-
-    if not man.get("all_rebuilt"):
-        where = payload_dir if payload_dir is not None else we._find_saved(man["edit_id"])
-        saved = we._find_saved(where)
-        raw = json.loads((saved / "manifest.json").read_text(encoding="utf-8"))
-        return _edit_from_saved_cpu(saved, raw)
-    recipe = man.get("rebuilt_recipe")
-    if not isinstance(recipe, dict):
-        raise lex.ExportRefused("edit_manifest lacks rebuilt_recipe.")
-    return _edit_from_recipe_cpu(recipe, Path("."), target, edit_id=man["edit_id"], base=man.get("base"))
-
-
-def _edit_from_recipe_cpu(
-    recipe: dict,
-    base_dir: Path,
-    target: Any,
-    *,
-    edit_id: Optional[str] = None,
-    base: Optional[dict] = None,
-) -> Any:
-    import numpy as np
-    from backend import weight_edits as we
-
-    got = we.from_recipe(recipe, base_dir)
-    if isinstance(got, (str, Path)):
-        saved = we._find_saved(got)
-        return _edit_from_saved_cpu(saved, json.loads((saved / "manifest.json").read_text(encoding="utf-8")))
-    terms = []
-    for s in got:
-        lname = we.linear_name(int(s.layer), s.which)
-        if s.kind in ("cols", "rows"):
-            idx = we._ro([int(n) for n in s.neurons], np.int64)
-            order = np.argsort(idx, kind="stable")
-            idx = we._ro(idx[order], np.int64)
-            op = we._ro([we.OPS.index(s.op)] * len(idx), np.uint8)
-            if s.op == "scale":
-                f = s.factor
-                fac = np.asarray([float(f)] * len(idx) if not isinstance(f, (list, tuple)) else [float(x) for x in f], dtype=np.float32)[order]
-                vec = None
-            else:
-                fac = np.ones(len(idx), dtype=np.float32)
-                vec = we._ro(np.asarray(s.vectors, dtype=np.float32)[order], np.float32)
-            terms.append(we.Term(lname, s.kind, int(s.layer), s.which, idx=idx, op=op, factor=we._ro(fac, np.float32), vectors=vec))
-        elif s.kind == "lowrank":
-            terms.append(we.Term(lname, "lowrank", int(s.layer), s.which, A=we._ro(s.A, np.float32), B=we._ro(s.B, np.float32)))
-        else:
-            raise we.Refused(f'CPU off-model export does not lower "{s.kind}" directly; save the built edit first.')
-    base_d = dict(base or {"model": "google/gemma-4-31B-it-qat-w4a16-ct", "weights_id": target.record, "tensors": {}})
-    eid = edit_id or we._edit_id(base_d, terms)
-    return we.Edit(eid, tuple(terms), base_d, str(recipe.get("note") or ""), {})
+        edit = (we.load(saved_dir, lm_ref, model_id=h.model_id, weights_id=h.weights_id) if h is not None
+                else lex.edit_from_saved(saved_dir))
+        return edit, target, saved_dir, lm_ref, W_U_ref, None
+    if h is None:
+        raise lex.ExportRefused(
+            "A bare recipe is built, and gated, on a model: off the model give the trial's registration (--trial) or a "
+            "saved edit (--saved), which the kernel built and hashed. (--edit is taken with --stand-in.)"
+        )
+    ep = Path(a.edit)
+    got = we.from_recipe(json.loads(ep.read_text(encoding="utf-8")), ep.parent)
+    edit = (we.load(got, lm_ref, model_id=h.model_id, weights_id=h.weights_id) if isinstance(got, (str, Path))
+            else we.build(lm_ref, got, model_id=h.model_id, weights_id=h.weights_id))
+    return edit, target, None, lm_ref, W_U_ref, None
 
 
 def cmd_lora(a: argparse.Namespace) -> int:
     from backend import level_export as lex
-    from backend import level_trial as lt
-    from backend import weight_edits as we
 
     try:
-        edit, target, saved_dir, lm_ref, W_U_ref = _load_edit_and_target(a)
+        edit, target, saved_dir, lm_ref, W_U_ref, reg = _load_edit_and_target(a)
         trial_res = json.loads(Path(a.trial_result).read_text(encoding="utf-8")) if a.trial_result else None
+        dose = float(a.dose) if a.dose is not None else float(reg["trial"]["main_dose"]) if reg is not None else 1.0
         out = lex.export_lora_adapter(
             edit, target,
             out_path=Path(a.out) if a.out else None,
-            dose=float(a.dose),
+            dose=dose,
             overwrite=bool(a.force),
-            book_seq=a.book_seq,
-            book_hash=a.book_hash,
             trial_result=trial_res,
-            prior_attempts=a.prior_attempts,
+            book_path=Path(a.book).expanduser() if a.book else None,
             saved_edit_dir=saved_dir,
             lm_for_implant=lm_ref,
             W_U_for_implant=W_U_ref,
+            implant_at_registration=(reg["trial"].get("implant_check") if reg is not None else None),
         )
         print(json.dumps({k: v for k, v in out.items() if k != "manifest"}, indent=2))
         return 0
-    except (lex.ExportRefused, lt.TrialRefused, we.Refused, OSError, ValueError) as exc:
+    except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)
         return 2
 
@@ -217,11 +145,14 @@ def cmd_verify(a: argparse.Namespace) -> int:
     try:
         edit = target = None
         if a.edit or a.saved or a.trial:
-            edit, target, _, _, _ = _load_edit_and_target(a)
+            edit, target, _, _, _, _ = _load_edit_and_target(a)
         res = lex.verify_exported_lora(Path(a.adapter), edit=edit, target=target, dose=a.dose)
         print(json.dumps({k: v for k, v in res.items() if k != "meta_summary"}, indent=2))
+        if edit is None:
+            print("note: keys and manifest only. Give the edit (--trial or --saved) and the base (--gguf or "
+                  "--weights-dir) to show the file is that edit on that base.", file=sys.stderr)
         return 0 if res["ok"] else 1
-    except (lex.ExportRefused, OSError, ValueError) as exc:
+    except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)
         return 2
 
@@ -233,72 +164,69 @@ def cmd_show(a: argparse.Namespace) -> int:
         res = lex.verify_exported_lora(Path(a.adapter))
         print(json.dumps({"tensors": res["tensors"], "meta": res["meta_summary"]}, indent=2, default=str))
         return 0
-    except (lex.ExportRefused, OSError, ValueError) as exc:
+    except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)
         return 2
 
 
-def cmd_remeasure(a: argparse.Namespace) -> int:
+def cmd_smoke(a: argparse.Namespace) -> int:
     from backend import level_export as lex
 
     try:
-        res = lex.remeasure_with_llama_server(
+        res = lex.llama_server_smoke(
             Path(a.llama_server), Path(a.gguf), Path(a.adapter), str(a.prompt),
-            scale=float(a.scale), n_predict=int(a.n_predict), port=int(a.port),
+            scale=float(a.scale), n_predict=int(a.n_predict), port=int(a.port), timeout_s=float(a.load_timeout),
         )
         print(json.dumps(res, indent=2))
         return 0
-    except (lex.ExportRefused, OSError, ValueError) as exc:
+    except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)
         return 2
 
 
+def _edit_and_base_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--trial", default=None, help="a trial's registration folder")
+    p.add_argument("--saved", default=None, help="a saved edit: its id or its folder")
+    p.add_argument("--edit", default=None, help="an edit recipe JSON path (only with --stand-in)")
+    p.add_argument("--payload", default=None, help="the saved edit folder of a registered edit that carries arrays")
+    p.add_argument("--gguf", default=None, help="the Gemma 4 GGUF the adapter will be served over")
+    p.add_argument("--weights-dir", default=None, help="a W4A16 or dense checkpoint folder")
+    p.add_argument("--stand-in", action="store_true")
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    ap = argparse.ArgumentParser(prog="levelling_export.py", description="Owner-only Phase 5 LoRA adapter export and verification.")
+    ap = argparse.ArgumentParser(prog="levelling_export.py", description="Export an edit as a llama.cpp LoRA adapter.")
     sub = ap.add_subparsers(dest="command", required=True)
 
-    lo = sub.add_parser("lora", help="export an edit to a llama.cpp LoRA .gguf + .manifest.json")
-    lo.add_argument("--trial", default=None, help="Phase 5 prereg/ registration folder")
-    lo.add_argument("--saved", default=None, help="saved edit id or folder")
-    lo.add_argument("--edit", default=None, help="edit recipe JSON path")
-    lo.add_argument("--payload", default=None, help="saved edit folder for carried terms")
-    lo.add_argument("--gguf", default=None, help="served Gemma 4 GGUF to recompile rebuilt terms against")
-    lo.add_argument("--weights-dir", default=None, help="W4A16/dense checkpoint folder")
-    lo.add_argument("--stand-in", action="store_true")
-    lo.add_argument("--dose", type=float, default=1.0)
-    lo.add_argument("-o", "--out", default=None, help="output .gguf path (outside checkout/tool folders)")
-    lo.add_argument("--trial-result", default=None, help="optional trial_result.json to embed verdict & book hash")
-    lo.add_argument("--book-seq", type=int, default=None)
-    lo.add_argument("--book-hash", default=None)
-    lo.add_argument("--prior-attempts", type=int, default=None)
-    lo.add_argument("--force", action="store_true", help="overwrite an existing export file")
+    lo = sub.add_parser("lora", help="write an edit as a llama.cpp LoRA .gguf with its .manifest.json")
+    _edit_and_base_flags(lo)
+    lo.add_argument("--dose", type=float, default=None, help="the dose (a registration's own when not given, else 1)")
+    lo.add_argument("-o", "--out", default=None, help="the adapter file to write (outside every git checkout)")
+    lo.add_argument("--trial-result", default=None, help="the trial_result.json of this edit's trial at this dose")
+    lo.add_argument("--book", default=None, help="the book that trial was read in (the path in the result when not given)")
+    lo.add_argument("--force", action="store_true", help="write over an adapter and manifest already there")
     lo.set_defaults(fn=cmd_lora)
 
-    vf = sub.add_parser("verify", help="verify headers, licence keys, manifest sha256, and optional math equivalence")
-    vf.add_argument("adapter", help="exported .gguf adapter path")
-    vf.add_argument("--trial", default=None)
-    vf.add_argument("--saved", default=None)
-    vf.add_argument("--edit", default=None)
-    vf.add_argument("--payload", default=None)
-    vf.add_argument("--gguf", default=None)
-    vf.add_argument("--weights-dir", default=None)
-    vf.add_argument("--stand-in", action="store_true")
+    vf = sub.add_parser("verify", help="read an adapter back; with the edit and the base, show it is that edit there")
+    vf.add_argument("adapter", help="the .gguf adapter")
+    _edit_and_base_flags(vf)
     vf.add_argument("--dose", type=float, default=None)
     vf.set_defaults(fn=cmd_verify)
 
-    sh = sub.add_parser("show", help="print all general.* and theodolite.* keys of an exported adapter")
-    sh.add_argument("adapter", help="exported .gguf adapter path")
+    sh = sub.add_parser("show", help="print an adapter's general.* and theodolite.* keys")
+    sh.add_argument("adapter", help="the .gguf adapter")
     sh.set_defaults(fn=cmd_show)
 
-    rm = sub.add_parser("remeasure", help="live re-measurement via llama-server --lora-init-without-apply")
-    rm.add_argument("adapter", help="exported .gguf adapter path")
-    rm.add_argument("--gguf", required=True, help="served Gemma 4 GGUF model path")
-    rm.add_argument("--llama-server", required=True, help="path to llama-server binary")
-    rm.add_argument("--prompt", required=True, help="prompt text to compare scale 0 vs scale")
-    rm.add_argument("--scale", type=float, default=1.0)
-    rm.add_argument("--n-predict", type=int, default=16)
-    rm.add_argument("--port", type=int, default=18089)
-    rm.set_defaults(fn=cmd_remeasure)
+    sm = sub.add_parser("smoke", help="a smoke test in a local llama-server: one prompt with the adapter off and on")
+    sm.add_argument("adapter", help="the .gguf adapter")
+    sm.add_argument("--gguf", required=True, help="the Gemma 4 GGUF to serve")
+    sm.add_argument("--llama-server", required=True, help="path to the llama-server binary")
+    sm.add_argument("--prompt", required=True, help="the prompt to write with the adapter at 0 and at --scale")
+    sm.add_argument("--scale", type=float, default=1.0)
+    sm.add_argument("--n-predict", type=int, default=16)
+    sm.add_argument("--port", type=int, default=18089)
+    sm.add_argument("--load-timeout", type=float, default=600.0, help="seconds to wait for the server to load the model")
+    sm.set_defaults(fn=cmd_smoke)
 
     args = ap.parse_args(argv)
     return int(args.fn(args))

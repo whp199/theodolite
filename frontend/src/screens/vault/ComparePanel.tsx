@@ -265,6 +265,8 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
   const capId = useId();
   const sum = card.summary as Record<string, Record<string, unknown>> | null | undefined;
   const bats = card.batteries as Record<string, Record<string, unknown>> | null | undefined;
+  const isTrialNote =
+    card.note_type === "trial_of_record" || card.note_type === "trial_dry_run" || card.note_type === "trial_rerun";
   return (
     <div
       style={{
@@ -306,8 +308,15 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
       {card.voices ? <ThreeVoices voices={card.voices} label="recorded three voices (replayed without a model)" /> : null}
       {card.paired ? <PairedMetricsTable paired={card.paired} captionId={capId} /> : null}
 
-      {card.note_type === "claim_verdict" || card.note_type === "trial_of_record" ? (
+      {card.note_type === "claim_verdict" || isTrialNote ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {isTrialNote && card.note_type !== "trial_of_record" ? (
+            <p style={{ margin: 0, fontSize: 15, fontStyle: "italic" }}>
+              {card.note_type === "trial_rerun" ? "A volunteer’s re-run of a trial" : "A dry run of a trial"}: not a
+              verdict of record
+              {card.not_of_record && card.not_of_record.length ? ` (${card.not_of_record.join("; ")})` : ""}.
+            </p>
+          ) : null}
           {card.claim_sentence ? (
             <blockquote
               style={{
@@ -417,7 +426,7 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
               })}
             </div>
           ) : null}
-          {card.note_type === "trial_of_record" && (card.folded_summary || card.reworded_summary) ? (
+          {isTrialNote && (card.folded_summary || card.reworded_summary) ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 22px", fontSize: 15 }}>
               {card.folded_summary ? (
                 <span className="num">

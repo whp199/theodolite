@@ -1,24 +1,34 @@
-"""Levelling Phase 5: Owner-Only Export ("and out", `backend/level_export.py`).
+"""Levelling Phase 5: the owner's export of an edit (`backend/level_export.py`).
 
-Exports a Levelling `Edit` (columns on `down_proj`, rows on `gate_proj` / `up_proj`, or low-rank terms on
-`down_proj`) as a llama.cpp LoRA adapter GGUF with Apache-2.0 licence & origin metadata, a companion provenance
-manifest marking every term `"rebuilt"` or `"carried"`, and exact mathematical + optional live `llama-server`
-re-measurement verification (`verify/arbiter.md` §4 row 32, §8, §9 decision 5).
+Writes an edit (column terms on `down_proj`, row terms on `gate_proj` and `up_proj`, low-rank terms on `down_proj`)
+as a llama.cpp LoRA adapter GGUF with a manifest beside it (`verify/arbiter.md` §4 row 32, §8, §9 decision 5).
 
-Safety & containment invariants:
-- Owner-only command line / library: NEVER imported by or exposed through `level_mcp.py`, `level_session.py`,
-  `level_routes.py`, or `scientist_tools.py`.
-- Exports go ONLY to an owner-controlled directory (`$THEODOLITE_EXPORT_DIR`, default
-  `${XDG_DATA_HOME:-~/.local/share}/theodolite/exports`), strictly refusing the repository checkout, `atlas_data/`,
-  any registration folder (`prereg/` or folder with `SHA256SUMS` + `trial.json`), and any agent session folder.
-- Never overwrites an existing adapter or manifest unless `overwrite=True` (`--force` on the CLI).
-- Recompiles `"rebuilt"` terms (column/row `silence` and `scale`) directly against the weights of the served base
-  (a `--gguf` file when exporting for llama.cpp, or the W4A16 checkpoint), and states clearly when `"carried"` terms
-  (set/add/lowrank) come from a different quantised base and must be re-measured on the served GGUF.
-- Marks `ffn_gate` and `ffn_up` tensors as unverified in llama.cpp's Gemma 4 graph (only `ffn_down` and `attn_output`
-  have been verified there so far).
+What holds, and where:
+- It is the owner's command and nothing an agent can reach: `level_mcp.py`, `level_session.py`, `level_routes.py` and
+  `scientist_tools.py` do not import it (`scripts/check_level_trial.py` looks).
+- An export goes to `$THEODOLITE_EXPORT_DIR`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/exports`, or to a path
+  given. Refused: any path inside a git checkout (this one or another), `atlas_data/`, a registration folder and an
+  agent session's folder. Nothing stops the owner naming some other folder a tool can write to.
+- An adapter and its manifest are not written over unless asked (`overwrite=True`, `--force`).
+- A term that only scales or silences is compiled from the weights of the base the adapter will be served over (a
+  GGUF, a checkpoint folder, the loaded model): that is what "recompiled" means here. A term that sets or adds
+  vectors, and a low-rank one, carries numbers worked on the edit's own base; over another base the file says so.
+- `ffn_gate` and `ffn_up` adapters are marked unverified: only `ffn_down` (and `attn_output`) have been read back
+  through llama.cpp's Gemma 4 graph.
 
-No kept-out words appear in code, keys, manifests, or messages. Layers count from 0.
+What the adapter's keys say is what was checked, and no more:
+- a trial's verdict goes into the file only for a trial of THIS edit at THIS dose, with whether it was of record, a
+  dry run or a re-run, and whether the base it read is the base the adapter is compiled against;
+- the implant label is "true", "false", "not checked" or "nothing in reach of the check", with where it was checked
+  (at export, with the model at hand; or at the trial's registration);
+- where the file's numbers came from is said term by term.
+
+`verify_exported_lora` reads an adapter back and sets its numbers beside the edit's own arithmetic on the target,
+worked without the compiler that made the file. It shows the file is the edit; it does not show what the edit does.
+`llama_server_smoke` loads an adapter in a local `llama-server` and writes one prompt with it off and on: a check
+that llama.cpp takes the file, not a measurement.
+
+Layers count from 0.
 """
 from __future__ import annotations
 
@@ -27,12 +37,14 @@ import hashlib
 import json
 import math
 import os
+import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -44,20 +56,17 @@ from backend.census import write_json_atomic
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SCRIPTS_DIR = ROOT_DIR / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
 
 EXPORT_VERSION = 1
 EXPORT_ENV = "THEODOLITE_EXPORT_DIR"
 LARGE_RANK_WARN = 256
-IMPLANT_TOP1_SHARE_BAR = 0.25  # top-1 unembedding share above which a last-block write is flagged
 
 GGUF_TENSOR_MAP = {
     "down_proj": "blk.{}.ffn_down.weight",
     "gate_proj": "blk.{}.ffn_gate.weight",
     "up_proj": "blk.{}.ffn_up.weight",
 }
-VERIFIED_LLAMA_CPP_WHICH = ("down_proj",)  # ffn_down (and attn_output) read/verified in llama.cpp gemma4.cpp
+VERIFIED_LLAMA_CPP_WHICH = ("down_proj",)  # ffn_down (and attn_output) read back through llama.cpp's gemma4.cpp
 
 PROVENANCE_NOTICE = (
     "Weights modified from Gemma 4 (Apache License 2.0) by Theodolite Levelling. "
@@ -67,7 +76,7 @@ PROVENANCE_NOTICE = (
 
 
 class ExportRefused(ValueError):
-    """Plain-word refusal of an unsafe export path, overwrite, missing base, or invalid adapter."""
+    """Plain-word refusal of an export that would go somewhere it should not, or say something it cannot."""
 
 
 def _utc_now() -> str:
@@ -85,9 +94,21 @@ def _sha_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _writers() -> Tuple[Any, Any]:
+    """`scripts/export_control_vector.py` and `scripts/export_lora.py`, whose writer and keys an adapter shares. The
+    scripts folder goes at the END of the path, and only when an export is asked for: importing this module moves
+    nothing."""
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.append(str(SCRIPTS_DIR))
+    import export_control_vector as ecv
+    import export_lora as el
+
+    return ecv, el
+
+
 def exports_dir() -> Path:
-    """Owner-controlled export folder outside the checkout and outside tool-writable folders:
-    `$THEODOLITE_EXPORT_DIR`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/exports`."""
+    """Where an export goes when no path is given: `$THEODOLITE_EXPORT_DIR`, else
+    `${XDG_DATA_HOME:-~/.local/share}/theodolite/exports`."""
     given = os.environ.get(EXPORT_ENV)
     if given:
         return Path(given).expanduser()
@@ -96,8 +117,9 @@ def exports_dir() -> Path:
 
 
 def refuse_unsafe_export_path(path: Path) -> Path:
-    """Refuse writing an exported adapter or manifest inside the checkout, `atlas_data/`, a registration folder,
-    or an agent session folder (`arbiter.md` row 32)."""
+    """Refuse an adapter or manifest path inside a git checkout (this one or any other: a folder with `.git` above
+    it), `atlas_data/`, a registration folder, or an agent session's folder (`arbiter.md` row 32). Returns the path
+    resolved. It cannot know every folder a tool can write to: it refuses the ones the instrument has."""
     resolved = Path(path).expanduser().resolve()
     root_res = ROOT_DIR.resolve()
     if resolved == root_res or root_res in resolved.parents:
@@ -119,6 +141,11 @@ def refuse_unsafe_export_path(path: Path) -> Path:
         pass
 
     for anc in (resolved, *resolved.parents):
+        if (anc / ".git").exists():
+            raise ExportRefused(
+                f"Exports never go into a git checkout ({anc} is one): a file of numbers taken from the model's "
+                "weights is kept out of every repository."
+            )
         if anc.name == "prereg" or ((anc / "SHA256SUMS").is_file() and (anc / "trial.json").is_file()):
             raise ExportRefused(
                 f"Exports never go into a registration folder ({anc}): registration folders hold manifests and hashes only."
@@ -130,12 +157,12 @@ def refuse_unsafe_export_path(path: Path) -> Path:
     return resolved
 
 
-# --------------------------------------------------------------------------------------------- target weight base
+# --------------------------------------------------------------------------------------------- the base served over
 
 
 class TargetBase:
-    """Unified CPU weight reader for recompiling LoRA adapters against a served GGUF, a safetensors checkpoint,
-    or a live `nn.Module` text model."""
+    """The weights an adapter is compiled against, read on the CPU: a GGUF file, a checkpoint folder (or this
+    machine's cached W4A16 checkpoint, `TargetBase.default_checkpoint()`), or a loaded model."""
 
     def __init__(
         self,
@@ -143,11 +170,12 @@ class TargetBase:
         gguf_path: Optional[Path] = None,
         weights_dir: Optional[Path] = None,
         lm: Optional[nn.Module] = None,
+        reader: Any = None,
         label: Optional[str] = None,
     ) -> None:
-        chosen = sum(x is not None for x in (gguf_path, weights_dir, lm))
+        chosen = sum(x is not None for x in (gguf_path, weights_dir, lm, reader))
         if chosen != 1:
-            raise ExportRefused("TargetBase requires exactly one of gguf_path, weights_dir, or lm.")
+            raise ExportRefused("TargetBase requires exactly one of gguf_path, weights_dir, reader, or lm.")
         self.kind: str
         self.record: str
         self.gguf_path: Optional[Path] = None
@@ -167,19 +195,68 @@ class TargetBase:
             self.gguf_path = p
             self.gguf_sha256 = _sha_file(p)
             self._gguf_reader = gm.open_gguf(p)
+            arch = gm.read_metadata(self._gguf_reader).get("general.architecture")
+            if arch != "gemma4":
+                raise ExportRefused(
+                    f"{p.name} is a GGUF of architecture {arch!r}: an adapter of a Gemma 4 edit is compiled against "
+                    "a Gemma 4 file."
+                )
             self._gguf_tensors = {t.name: t for t in self._gguf_reader.tensors}
             self.record = label or f"gguf {p.name} (sha256:{self.gguf_sha256[:16]})"
-        elif weights_dir is not None:
-            from backend.weight_reader import WeightReader
+        elif weights_dir is not None or reader is not None:
+            from backend.weight_reader import WeightReader, WeightReadError
 
-            p = Path(weights_dir).expanduser().resolve()
             self.kind = "checkpoint"
-            self._weight_reader = WeightReader(p)
-            self.record = label or f"checkpoint {p.name}"
+            if reader is not None:
+                self._weight_reader = reader
+            else:
+                p = Path(weights_dir).expanduser().resolve()
+                try:
+                    self._weight_reader = WeightReader(p)
+                except (WeightReadError, OSError, ValueError) as exc:
+                    raise ExportRefused(f"{p} cannot be read as a checkpoint folder: {exc}") from None
+            wid = getattr(self._weight_reader, "weights_id", None)
+            self.record = label or (f"checkpoint {Path(self._weight_reader.root).name}"
+                                    + (f" (weights {str(wid)[:16]})" if wid else ""))
         else:
             self.kind = "module"
             self._lm = lm
             self.record = label or "loaded module"
+
+    @classmethod
+    def default_checkpoint(cls) -> "TargetBase":
+        """This machine's cached W4A16 checkpoint, read from disk with no model loaded."""
+        from backend.weight_reader import WeightReader, WeightReadError
+
+        try:
+            return cls(reader=WeightReader.from_default())
+        except (WeightReadError, OSError, ValueError) as exc:
+            raise ExportRefused(f"The W4A16 checkpoint is not in this machine's cache ({exc}): give --gguf FILE or "
+                                "--weights-dir FOLDER.") from None
+
+    def pin(self, layer: int, which: str) -> Optional[str]:
+        """The pin an edit names this linear's weights by (`weight_edits.tensor_pin`), where this base has one: a
+        checkpoint and a loaded model do, a GGUF is another object and has none."""
+        name = we.linear_name(int(layer), which)
+        try:
+            if self.kind == "checkpoint":
+                return str(self._weight_reader.tensor_pin(name))
+            if self.kind == "module":
+                return str(we.tensor_pin(self._lm.get_submodule(name)))
+        except (we.Refused, ValueError, AttributeError, KeyError):
+            return None
+        return None
+
+    def is_base_of(self, edit: we.Edit) -> Optional[bool]:
+        """Whether every linear the edit touches has, on this base, the weights the edit was built on (by pin). None
+        for a GGUF: its numbers are another quantisation's, and no pin says how they relate."""
+        if self.kind == "gguf":
+            return None
+        pins = (edit.base or {}).get("tensors") or {}
+        for t in edit.terms:
+            if not pins.get(t.linear) or self.pin(t.layer, t.which) != pins.get(t.linear):
+                return False
+        return True
 
     def shape(self, layer: int, which: str) -> Tuple[int, int]:
         """Return `(out_features, in_features)` of `layers.<layer>.mlp.<which>` on this target base."""
@@ -204,15 +281,22 @@ class TargetBase:
 
         out_f, in_f = gm.logical_shape(t)
         ix = torch.tensor([int(i) for i in idx], dtype=torch.long)
-        bs = GGML_TYPES[type_code(t.tensor_type)][1] if type_code(t.tensor_type) in GGML_TYPES else 1
-        if bs > 1:
-            lin = GGUFLinear(
-                gm._blocks(t, torch.device("cpu")), t.tensor_type, int(in_f), int(out_f),
-                dtype=torch.float32, gguf_name=t.name,
-            )
-            got = lin.unpacked_cols(ix) if axis == "cols" else lin.unpacked_rows(ix)
-            return got.float().cpu().numpy()
-        dense = gm._dense(t, torch.device("cpu"), torch.float32)  # [out, in]
+        try:
+            code = type_code(t.tensor_type)
+        except (ValueError, KeyError):
+            code = None  # a type this module's own unpacker does not know: read whole, through gguf-py
+        bs = GGML_TYPES[code][1] if code in GGML_TYPES else 1
+        try:
+            if bs > 1:
+                lin = GGUFLinear(
+                    gm._blocks(t, torch.device("cpu")), t.tensor_type, int(in_f), int(out_f),
+                    dtype=torch.float32, gguf_name=t.name,
+                )
+                got = lin.unpacked_cols(ix) if axis == "cols" else lin.unpacked_rows(ix)
+                return got.float().cpu().numpy()
+            dense = gm._dense(t, torch.device("cpu"), torch.float32)  # [out, in]
+        except (ValueError, KeyError, RuntimeError) as exc:
+            raise ExportRefused(f"{t.name} of the target GGUF cannot be read ({exc}).") from None
         if axis == "cols":
             return dense[:, ix].T.contiguous().cpu().numpy()
         return dense.index_select(0, ix).contiguous().cpu().numpy()
@@ -246,7 +330,7 @@ class TargetBase:
         return we.dense_rows(mod, torch.tensor([int(i) for i in idx], dtype=torch.long)).float().cpu().numpy()
 
 
-# --------------------------------------------------------------------------------------------- implant shape flag
+# --------------------------------------------------------------------------------------------- the implant label
 
 
 def implant_check(
@@ -256,60 +340,147 @@ def implant_check(
     *,
     dose: float = 1.0,
 ) -> Dict[str, Any]:
-    """Check whether `edit` has the shape of a last-block single-word-piece implant (`synthesis.md` §viii):
-    a column edit in the last 10% of layers whose write delta concentrates heavily onto one unembedding row.
-    Purely a transparent diagnostic recorded in export metadata."""
+    """The kernel's implant-shape label (`weight_edits.implant_shape`) when the model and its unembedding are at
+    hand; otherwise `{"checked": False}`, which an adapter writes as "not checked" and never as "false"."""
     if lm is None or W_U is None:
-        return {"checked": False, "flagged": False, "note": "unembedding matrix not supplied"}
-    n_layers = len(lm.layers)
-    late_cut = max(0, int(math.floor(0.9 * n_layers)))
-    wu = W_U.detach().float().cpu()  # [V, D]
-    wu_norms = torch.linalg.norm(wu, dim=1).clamp_min(1e-8)
-    hits: List[Dict[str, Any]] = []
-    d = float(dose)
-
-    for t in edit.terms:
-        if t.kind != "cols" or t.layer < late_cut:
-            continue
-        mod = lm.get_submodule(t.linear)
-        with torch.no_grad():
-            Wc = we.dense_cols(mod, torch.from_numpy(np.array(t.idx, dtype=np.int64))).float().cpu().numpy()
-        g = we._asked(t, d)
-        delta = (g[:, None] - 1.0) * Wc  # [K, D]
-        if t.vectors is not None:
-            m = t.op != 0
-            delta[m] = delta[m] + d * t.vectors[m]
-        w_post = we._w_post(lm, t.layer)
-        dS = torch.from_numpy((delta * w_post[None, :]).astype(np.float32))  # [K, D]
-        for j in range(dS.shape[0]):
-            v = dS[j]
-            vn = float(torch.linalg.norm(v))
-            if vn <= 1e-8:
-                continue
-            dots = (wu @ v) / (wu_norms * vn)
-            cos2 = dots * dots
-            total = float(cos2.sum())
-            top_idx = int(torch.argmax(dots.abs()))
-            top_cos = float(dots[top_idx])
-            share = float(cos2[top_idx] / total) if total > 0.0 else 0.0
-            if share >= IMPLANT_TOP1_SHARE_BAR or abs(top_cos) >= 0.85:
-                hits.append({
-                    "layer": int(t.layer),
-                    "page_layer": int(t.layer) + 1,
-                    "neuron": int(t.idx[j]),
-                    "top_piece_id": top_idx,
-                    "top_cosine": round(top_cos, 4),
-                    "top1_energy_share": round(share, 4),
-                })
-    return {
-        "checked": True,
-        "flagged": bool(hits),
-        "late_layer_cutoff": late_cut,
-        "hits": hits[:16],
-    }
+        return {"checked": False, "flagged": False, "note": "the model and its unembedding were not at hand"}
+    return we.implant_shape(edit, lm, W_U, dose=dose)
 
 
-# --------------------------------------------------------------------------------------------- LoRA tensor compilation
+def implant_words(imp: Mapping[str, Any]) -> str:
+    """The implant label as an adapter's key says it: "true", "false", "not checked" (the model was not at hand), or
+    "nothing in reach of the check" (it ran and the edit writes nothing to the stream in the last tenth of the
+    layers, which is all it looks at: not a finding that the edit is clear)."""
+    if not imp.get("checked"):
+        return "not checked"
+    if imp.get("flagged"):
+        return "true"
+    return "false" if int(imp.get("examined") or 0) > 0 else "nothing in reach of the check"
+
+
+# --------------------------------------------------------------------------------------------- an edit, off the model
+
+
+def _kept_to_id(terms: List[we.Term], base: Mapping[str, Any], want_id: str, what: str, note: str = "") -> we.Edit:
+    terms = sorted(terms, key=lambda t: (t.linear, t.kind))
+    got = we._edit_id(dict(base), terms)
+    if got != want_id:
+        raise ExportRefused(
+            f"{what} does not rebuild the edit it names: its terms hash to {got[:12]}, and it says {str(want_id)[:12]}. "
+            "An edit is exported as the kernel built and hashed it, or not at all."
+        )
+    return we.Edit(want_id, tuple(terms), dict(base), note, {})
+
+
+def edit_from_saved(folder: Path) -> we.Edit:
+    """A saved edit (`weight_edits.save`: `manifest.json` and, for carried arrays, `payload.safetensors`) rebuilt
+    with no model loaded, and kept to its id: the id hashes the base's pins and every term's arrays, so a payload or
+    a manifest changed since the kernel saved it is refused."""
+    folder = Path(folder)
+    try:
+        man = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ExportRefused(f"{folder} is not a saved edit ({exc}).") from None
+    if not isinstance(man, dict) or man.get("format") != we.FORMAT or man.get("version") != we.VERSION:
+        raise ExportRefused(f"{folder / 'manifest.json'} is not a saved edit of this kernel's format.")
+    payload: Dict[str, np.ndarray] = {}
+    if (folder / "payload.safetensors").is_file():
+        from safetensors.numpy import load_file
+
+        payload = load_file(str(folder / "payload.safetensors"))
+    terms: List[we.Term] = []
+    try:
+        for t in man["terms"]:
+            layer, which = we._parse(t["linear"])
+            if t["kind"] in ("cols", "rows"):
+                idx_key = "columns" if t["kind"] == "cols" else "rows"
+                idx = we._ro([int(n) for n in t[idx_key]], np.int64)
+                op = we._ro([we.OPS.index(o) for o in t["ops"]], np.uint8)
+                fac = we._ro([float(f) for f in t["factors"]], np.float32)
+                vec = we._ro(payload[t["vectors"]], np.float32) if t.get("vectors") else None
+                terms.append(we.Term(t["linear"], t["kind"], layer, which, idx=idx, op=op, factor=fac, vectors=vec))
+            else:
+                terms.append(we.Term(t["linear"], "lowrank", layer, which, A=we._ro(payload[t["A"]], np.float32),
+                                     B=we._ro(payload[t["B"]], np.float32)))
+    except (KeyError, TypeError, ValueError, we.Refused) as exc:
+        raise ExportRefused(f"{folder} cannot be read as a saved edit ({type(exc).__name__}: {exc}).") from None
+    return _kept_to_id(terms, man.get("base") or {}, str(man.get("id")), f"The saved edit in {folder}",
+                       str(man.get("note") or ""))
+
+
+def edit_from_registration(edit_manifest: Mapping[str, Any], *, payload_dir: Optional[Path] = None) -> we.Edit:
+    """A registered edit (`edit_manifest.json` of a trial's folder) rebuilt with no model loaded, and kept to the
+    id the registration names. Every term rebuilt: from the manifest's recipe (scales and silences alone, which is
+    all a rebuilt recipe holds). A carried term: from the saved edit in `payload_dir` (or the saved edits folder, by
+    id), which must be the registered edit by id and, where the registration recorded it, by its payload's sha256."""
+    want_id = str(edit_manifest.get("edit_id"))
+    base = edit_manifest.get("base") or {}
+    if not edit_manifest.get("all_rebuilt"):
+        try:
+            saved = we._find_saved(Path(payload_dir) if payload_dir is not None else want_id)
+        except (we.Refused, OSError, ValueError) as exc:
+            raise ExportRefused(f"The registered edit carries arrays, and its saved edit was not found ({exc}): give "
+                                "--payload FOLDER.") from None
+        got = edit_from_saved(saved)
+        if got.id != want_id:
+            raise ExportRefused(f"The saved edit in {saved} is {got.short()}, not the registered edit {want_id[:12]}.")
+        want_p, pfile = edit_manifest.get("payload_sha256"), saved / "payload.safetensors"
+        if want_p and pfile.is_file() and _sha_file(pfile) != want_p \
+                and we.edit_provenance(got)["payload_sha256"] != want_p:
+            raise ExportRefused(f"Payload {pfile} is not the one registered (payload_sha256 {str(want_p)[:12]}).")
+        return got
+    recipe = edit_manifest.get("rebuilt_recipe")
+    if not isinstance(recipe, Mapping):
+        raise ExportRefused("The registration's edit manifest says every term is rebuilt and holds no recipe.")
+    try:
+        specs = we.from_recipe(dict(recipe), Path("."))
+    except (we.Refused, ValueError) as exc:
+        raise ExportRefused(f"The registered recipe cannot be read: {exc}") from None
+    if isinstance(specs, (str, Path)):
+        raise ExportRefused("A registered recipe is terms, not a pointer to a saved edit.")
+    terms: List[we.Term] = []
+    for s in specs:
+        if s.kind not in ("cols", "rows") or s.op != "scale":
+            raise ExportRefused('A rebuilt recipe holds scales and silences alone; this one holds a '
+                                f'"{s.op or s.kind}" term.')
+        neurons = [int(n) for n in s.neurons]
+        f = s.factor
+        fac = [float(f)] * len(neurons) if not isinstance(f, (list, tuple)) else [float(x) for x in f]
+        if len(fac) != len(neurons) or len(set(neurons)) != len(neurons):
+            raise ExportRefused("A recipe term gives one factor a neuron, and names no neuron twice.")
+        order = np.argsort(np.asarray(neurons, dtype=np.int64), kind="stable")
+        terms.append(we.Term(we.linear_name(int(s.layer), s.which), s.kind, int(s.layer), s.which,
+                             idx=we._ro(np.asarray(neurons, dtype=np.int64)[order], np.int64),
+                             op=we._ro(np.zeros(len(neurons), dtype=np.uint8), np.uint8),
+                             factor=we._ro(np.asarray(fac, dtype=np.float32)[order] + np.float32(0.0), np.float32)))
+    return _kept_to_id(terms, base, want_id, "The registration's recipe", str(edit_manifest.get("note") or ""))
+
+
+# --------------------------------------------------------------------------------------------- compiling an adapter
+
+
+def term_change(t: we.Term, target: TargetBase, dose: float) -> np.ndarray:
+    """What one column or row term adds to the target's weights at `dose`, from the term's own arithmetic on the
+    target's own numbers (float64 [K, width]): a scaled entry `d (f - 1)` times the target's slice, a set entry
+    `d (v - slice)`, an added entry `d v`. It is `weight_edits._term_delta_f64` with the slices read from the target,
+    and takes nothing from `build_lora_tensors`."""
+    idx = [int(n) for n in t.idx]
+    W = (target.dense_rows(t.layer, t.which, idx) if t.kind == "rows"
+         else target.dense_cols(t.layer, t.which, idx)).astype(np.float64)
+    dW = np.zeros_like(W)
+    is_scale = t.op == 0
+    if is_scale.any():
+        dW[is_scale] = (t.factor[is_scale].astype(np.float64) - 1.0)[:, None] * W[is_scale]
+    if t.vectors is not None:
+        V = t.vectors.astype(np.float64)
+        if V.shape != W.shape:
+            raise ExportRefused(f"{t.linear}: the edit's vectors are {list(V.shape)} and the target's slices {list(W.shape)}.")
+        is_set, is_add = t.op == 1, t.op == 2
+        if is_set.any():
+            dW[is_set] = V[is_set] - W[is_set]
+        if is_add.any():
+            dW[is_add] = V[is_add]
+    return float(dose) * dW
 
 
 def build_lora_tensors(
@@ -318,103 +489,88 @@ def build_lora_tensors(
     *,
     dose: float = 1.0,
 ) -> Dict[str, Any]:
-    """Compile `edit` at `dose` into llama.cpp LoRA `(A [r, n_in], B [n_out, r])` float32 pairs against `target`.
+    """Compile `edit` at `dose` into llama.cpp LoRA pairs `(A [r, n_in], B [n_out, r])`, float32, against `target`.
 
-    - `"rebuilt"` terms (`cols`/`rows` with `op == 0`, scale/silence) read their columns/rows directly from `target`,
-      so exporting against `--gguf FILE` recompiles the silence/scale against that GGUF's own weights.
-    - `"carried"` terms (`set`/`add`/`lowrank`) carry their deltas into `target` and record explicit warnings whenever
-      `target` is a GGUF (different quantised object than the W4A16 checkpoint).
-    - `gate_proj` and `up_proj` row edits are recorded in `unverified_tensors` until verified in llama.cpp's Gemma 4 graph.
-    """
+    A column or row term that only scales reads its slices from `target`, so over a GGUF the adapter scales that
+    file's own numbers. A term with vectors (set, add) and a low-rank term carry numbers worked on the edit's own
+    base; whenever `target` is not that base (a GGUF, or a checkpoint whose pins differ) a warning says so. `gate_proj`
+    and `up_proj` adapters are listed as unverified in llama.cpp."""
     d = float(dose)
     if not math.isfinite(d) or d == 0.0:
         raise ExportRefused(f"Export dose must be finite and non-zero; got {dose!r}.")
+    same_base = target.is_base_of(edit)
 
-    # Group contributions per GGUF tensor name so multiple terms on one tensor concatenate cleanly
     parts_a: Dict[str, List[np.ndarray]] = {}
     parts_b: Dict[str, List[np.ndarray]] = {}
     warnings: List[str] = []
     unverified: List[str] = []
+    made_of: List[str] = []
     recompiled_all = True
+    seen: Dict[Tuple[str, str], set] = {}
+
+    def carried_note(tname: str, what: str) -> None:
+        if same_base is not True:
+            warnings.append(
+                f"{tname}: {what} worked on {edit.base.get('model')} "
+                f"{'are' if what.endswith('s') else 'is'} applied onto {target.record}"
+                + (", another quantisation" if target.kind == "gguf" else ", whose weights are not the edit's base")
+                + "; re-measure there."
+            )
 
     for t in edit.terms:
+        if t.which not in GGUF_TENSOR_MAP:
+            raise ExportRefused(f"{t.linear} has no llama.cpp adapter tensor this exporter writes.")
         tname = GGUF_TENSOR_MAP[t.which].format(int(t.layer))
         if t.which not in VERIFIED_LLAMA_CPP_WHICH and tname not in unverified:
             unverified.append(tname)
         n_out, n_in = target.shape(t.layer, t.which)
 
-        if t.kind == "cols":
+        if t.kind in ("cols", "rows"):
+            width = n_in if t.kind == "cols" else n_out
             idx = [int(n) for n in t.idx]
-            if max(idx) >= n_in:
-                raise ExportRefused(f"{tname} has {n_in} inputs on {target.record}; edit touches column {max(idx)}.")
-            W_cols = target.dense_cols(t.layer, t.which, idx)  # [K, n_out]
-            g = we._asked(t, d)  # [K]
-            delta = (g[:, None] - 1.0) * W_cols  # [K, n_out]
+            if min(idx) < 0 or max(idx) >= width:
+                raise ExportRefused(f"{tname} has {width} {'inputs' if t.kind == 'cols' else 'outputs'} on "
+                                    f"{target.record}; the edit names {max(idx)}.")
+            was = seen.setdefault((tname, t.kind), set())
+            if len(set(idx)) != len(idx) or was & set(idx):
+                raise ExportRefused(f"{tname}: a {'column' if t.kind == 'cols' else 'row'} is named twice in this "
+                                    "edit: one change a column, as the kernel builds an edit.")
+            was |= set(idx)
+            delta = term_change(t, target, d).astype(np.float32)
             if t.vectors is not None:
                 recompiled_all = False
-                if t.vectors.shape[1] != n_out:
-                    raise ExportRefused(f"{tname} has out={n_out} on {target.record}, edit vectors have {t.vectors.shape[1]}.")
-                mask_vec = t.op != 0
-                delta[mask_vec] = delta[mask_vec] + d * t.vectors[mask_vec]
-                if target.kind == "gguf":
-                    warnings.append(
-                        f"{tname}: carried column vectors (set/add) computed on {edit.base.get('model')} "
-                        f"are applied onto {target.record}; re-measure on that GGUF."
-                    )
+                carried_note(tname, f"carried {'column' if t.kind == 'cols' else 'row'} vectors")
             keep = np.max(np.abs(delta), axis=1) > 0.0
             if not keep.any():
                 continue
             kept_idx = [idx[i] for i in range(len(idx)) if keep[i]]
-            B_part = np.ascontiguousarray(delta[keep].T, dtype=np.float32)  # [n_out, r]
-            A_part = np.zeros((len(kept_idx), n_in), dtype=np.float32)
-            A_part[np.arange(len(kept_idx)), kept_idx] = 1.0
+            if t.kind == "cols":
+                # column n of the change: B[:, k] is the change, A[k, :] picks input n
+                B_part = np.ascontiguousarray(delta[keep].T, dtype=np.float32)  # [n_out, r]
+                A_part = np.zeros((len(kept_idx), n_in), dtype=np.float32)
+                A_part[np.arange(len(kept_idx)), kept_idx] = 1.0
+                made_of.append(f"{tname}: lora_b holds the change to {len(kept_idx)} column(s), lora_a ones and "
+                               "noughts that pick the inputs")
+            else:
+                # row n of the change: A[k, :] is the change, B[:, k] picks output n
+                A_part = np.ascontiguousarray(delta[keep], dtype=np.float32)  # [r, n_in]
+                B_part = np.zeros((n_out, len(kept_idx)), dtype=np.float32)
+                B_part[kept_idx, np.arange(len(kept_idx))] = 1.0
+                made_of.append(f"{tname}: lora_a holds the change to {len(kept_idx)} row(s), lora_b ones and "
+                               "noughts that pick the outputs")
             parts_a.setdefault(tname, []).append(A_part)
             parts_b.setdefault(tname, []).append(B_part)
-
-        elif t.kind == "rows":
-            idx = [int(n) for n in t.idx]
-            if max(idx) >= n_out:
-                raise ExportRefused(f"{tname} has {n_out} outputs on {target.record}; edit touches row {max(idx)}.")
-            W_rows = target.dense_rows(t.layer, t.which, idx)  # [K, n_in]
-            g = we._asked(t, d)
-            delta = (g[:, None] - 1.0) * W_rows  # [K, n_in]
-            if t.vectors is not None:
-                recompiled_all = False
-                if t.vectors.shape[1] != n_in:
-                    raise ExportRefused(f"{tname} has in={n_in} on {target.record}, edit vectors have {t.vectors.shape[1]}.")
-                mask_vec = t.op != 0
-                delta[mask_vec] = delta[mask_vec] + d * t.vectors[mask_vec]
-                if target.kind == "gguf":
-                    warnings.append(
-                        f"{tname}: carried row vectors (set/add) computed on {edit.base.get('model')} "
-                        f"are applied onto {target.record}; re-measure on that GGUF."
-                    )
-            keep = np.max(np.abs(delta), axis=1) > 0.0
-            if not keep.any():
-                continue
-            kept_idx = [idx[i] for i in range(len(idx)) if keep[i]]
-            # For row n with delta row dW_n [1, n_in]: B[:, k] = e_n, A[k, :] = dW_n -> (B @ A)[n, :] = dW_n
-            A_part = np.ascontiguousarray(delta[keep], dtype=np.float32)  # [r, n_in]
-            B_part = np.zeros((n_out, len(kept_idx)), dtype=np.float32)
-            B_part[kept_idx, np.arange(len(kept_idx))] = 1.0
-            parts_a.setdefault(tname, []).append(A_part)
-            parts_b.setdefault(tname, []).append(B_part)
-
-        else:  # lowrank on down_proj
+        else:  # low-rank
             recompiled_all = False
             if t.A.shape[1] != n_in or t.B.shape[0] != n_out:
                 raise ExportRefused(
                     f"{tname} is [{n_out}, {n_in}] on {target.record}, low-rank edit has A={list(t.A.shape)}, B={list(t.B.shape)}."
                 )
-            A_part = np.ascontiguousarray(t.A, dtype=np.float32)
-            B_part = np.ascontiguousarray(d * t.B, dtype=np.float32)
-            parts_a.setdefault(tname, []).append(A_part)
-            parts_b.setdefault(tname, []).append(B_part)
-            if target.kind == "gguf":
-                warnings.append(
-                    f"{tname}: carried low-rank term (rank {t.A.shape[0]}) computed on {edit.base.get('model')} "
-                    f"is applied onto {target.record}; re-measure on that GGUF."
-                )
+            parts_a.setdefault(tname, []).append(np.ascontiguousarray(t.A, dtype=np.float32))
+            parts_b.setdefault(tname, []).append(np.ascontiguousarray(d * t.B, dtype=np.float32))
+            made_of.append(f"{tname}: lora_a and lora_b are the edit's own low-rank pair (rank {t.A.shape[0]}), "
+                           "lora_b times the dose")
+            carried_note(tname, f"a carried low-rank term (rank {t.A.shape[0]})")
 
     tensors: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
     ranks: Dict[str, int] = {}
@@ -440,12 +596,78 @@ def build_lora_tensors(
         "tensors": tensors,
         "ranks": ranks,
         "recompiled_all": recompiled_all,
+        "served_base_is_edit_base": same_base,
         "unverified_tensors": sorted(unverified),
+        "made_of": made_of,
         "warnings": warnings,
     }
 
 
-# --------------------------------------------------------------------------------------------- GGUF + manifest writer
+# --------------------------------------------------------------------------------------------- what a trial lends
+
+
+def trial_standing(edit: we.Edit, dose: float, target: TargetBase, same_base: Optional[bool],
+                   trial_result: Optional[Mapping[str, Any]], book_path: Optional[Path]) -> Dict[str, Any]:
+    """What an adapter may say of a trial: nothing when none is given; otherwise the trial must be of this edit at
+    this dose (refused if not), and the words say what kind it was (of record, a dry run, a volunteer's re-run),
+    whether the book it names holds its verdict line, and whether the base it read is the base served."""
+    if trial_result is None:
+        return {"verdict": "none given", "kind": "none", "trial_sha256": "none", "book_seq": None, "book_hash": None,
+                "book": "no trial given", "applies_to_served_base": "no trial given", "book_before_it": "not given"}
+    if not isinstance(trial_result, Mapping):
+        raise ExportRefused("A trial result is the trial's own trial_result.json.")
+    cfg = trial_result.get("trial_config") if isinstance(trial_result.get("trial_config"), Mapping) else {}
+    if cfg.get("edit_id") != edit.id:
+        raise ExportRefused(
+            f"The trial result given is of edit {str(cfg.get('edit_id'))[:12]}, not of the edit exported "
+            f"({edit.short()}): an adapter carries the verdict of its own edit's trial or of none."
+        )
+    try:
+        t_dose = float(cfg.get("main_dose"))
+    except (TypeError, ValueError):
+        t_dose = float("nan")
+    if not math.isfinite(t_dose) or t_dose != float(dose):
+        raise ExportRefused(
+            f"The trial read the edit at dose {cfg.get('main_dose')!r}; the adapter is asked at dose {float(dose):g}. "
+            "A trial's verdict goes with the dose it read."
+        )
+    verdict = str(trial_result.get("verdict"))
+    if trial_result.get("rerun_of"):
+        kind = "a volunteer's re-run"
+    elif trial_result.get("of_record"):
+        kind = "of record"
+    else:
+        kind = "a dry run"
+    bk = trial_result.get("book") if isinstance(trial_result.get("book"), Mapping) else {}
+    seq, vhash = bk.get("verdict_seq"), bk.get("verdict_hash")
+    book = Path(book_path) if book_path is not None else (Path(str(bk.get("path"))) if bk.get("path") else None)
+    if book is None or not book.is_file() or not isinstance(seq, int):
+        book_words = "not looked up: the trial's book was not at hand"
+    else:
+        ent = next(lb.entries(book, start=int(seq), limit=1), None)
+        if ent is None or ent.get("hash") != vhash:
+            raise ExportRefused(
+                f"The trial result names line {seq} of {book.name} as its verdict, and that line is not it: the "
+                "result and the book do not belong together."
+            )
+        book_words = f"line {seq} of {book.name} is the trial's verdict"
+    meta = trial_result.get("meta") if isinstance(trial_result.get("meta"), Mapping) else {}
+    read_on = str(meta.get("weights_id") or "unknown")
+    if same_base is True and target.kind != "gguf":
+        applies = "yes: the adapter is compiled against the base the trial read"
+    else:
+        applies = (f"no: the trial read {read_on[:16]}, and the adapter is compiled against {target.record}"
+                   + (", another quantisation" if target.kind == "gguf" else ""))
+    fj = trial_result.get("fresh_judged") if isinstance(trial_result.get("fresh_judged"), Mapping) else {}
+    before = (f"practice readings {fj.get('practice_count', 'unknown')}, earlier fresh readings "
+              f"{len(meta.get('prior_verdicts') or [])}, earlier trials {len(meta.get('prior_trials') or [])}, as the "
+              "trial's book had them")
+    return {"verdict": verdict, "kind": kind, "trial_sha256": str(trial_result.get("trial_sha256") or "none"),
+            "book_seq": seq, "book_hash": vhash, "book": book_words, "applies_to_served_base": applies,
+            "book_before_it": before}
+
+
+# --------------------------------------------------------------------------------------------- writing an adapter
 
 
 def export_lora_adapter(
@@ -455,31 +677,33 @@ def export_lora_adapter(
     out_path: Optional[Path] = None,
     dose: float = 1.0,
     overwrite: bool = False,
-    book_seq: Optional[int] = None,
-    book_hash: Optional[str] = None,
     trial_result: Optional[Mapping[str, Any]] = None,
-    prior_attempts: Optional[int] = None,
+    book_path: Optional[Path] = None,
     saved_edit_dir: Optional[Path] = None,
     lm_for_implant: Optional[nn.Module] = None,
     W_U_for_implant: Optional[torch.Tensor] = None,
+    implant_at_registration: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Write a llama.cpp LoRA `.gguf` adapter and companion `.manifest.json` into an owner-controlled export folder.
+    """Write a llama.cpp LoRA `.gguf` adapter and its `.manifest.json`.
 
-    Carries Apache-2.0 licence & origin keys (`general.license`, `general.license.link`, `general.base_model.*`,
-    `theodolite.derived_from`) via `scripts/export_lora.write_lora`, plus full Levelling provenance keys.
-    Refuses unsafe export paths and refuses overwriting unless `overwrite=True`.
-    """
-    import export_control_vector as ecv
-    import export_lora as el
+    The licence and origin keys are the house's (`scripts/export_lora.write_lora`: `general.license`,
+    `general.license.link`, `general.base_model.*`, `theodolite.derived_from`), with `theodolite.levelling.*` beside
+    them. `trial_result`: the `trial_result.json` of a trial of this edit at this dose (refused otherwise,
+    `trial_standing`). The implant label is worked here when `lm_for_implant` and `W_U_for_implant` are given, else
+    taken from `implant_at_registration` (what the trial's registration recorded), else "not checked"."""
+    ecv, el = _writers()
 
     if out_path is None:
         base_dir = exports_dir()
         fname = f"theodolite-levelling-{edit.short()}-d{float(dose):g}-derived-from-gemma.gguf"
         dst = refuse_unsafe_export_path(base_dir / fname)
     else:
-        dst = refuse_unsafe_export_path(Path(out_path))
+        dst = Path(out_path).expanduser()
+        if dst.is_dir():
+            raise ExportRefused(f"{dst} is a folder: name the adapter file to write (FOLDER/NAME.gguf).")
         if dst.suffix.lower() != ".gguf":
             dst = dst.with_suffix(".gguf")
+        dst = refuse_unsafe_export_path(dst)
 
     manifest_path = dst.with_name(dst.stem + ".manifest.json")
     if not overwrite:
@@ -490,14 +714,15 @@ def export_lora_adapter(
 
     compiled = build_lora_tensors(edit, target, dose=dose)
     prov = we.edit_provenance(edit, saved_dir=saved_edit_dir)
-    imp = implant_check(edit, lm_for_implant, W_U_for_implant, dose=dose)
-
-    trial_verdict = trial_result.get("verdict") if isinstance(trial_result, Mapping) else None
-    trial_sha = trial_result.get("trial_sha256") if isinstance(trial_result, Mapping) else None
-    if book_seq is None and isinstance(trial_result, Mapping):
-        book_seq = (trial_result.get("book") or {}).get("verdict_seq")
-    if book_hash is None and isinstance(trial_result, Mapping):
-        book_hash = (trial_result.get("book") or {}).get("verdict_hash")
+    if lm_for_implant is not None and W_U_for_implant is not None:
+        imp = {**implant_check(edit, lm_for_implant, W_U_for_implant, dose=dose), "checked_at": "export"}
+    elif isinstance(implant_at_registration, Mapping) and implant_at_registration.get("checked"):
+        imp = {**dict(implant_at_registration), "checked_at": "the trial's registration"}
+    else:
+        imp = {**implant_check(edit), "checked_at": "never"}
+    trial = trial_standing(edit, dose, target, compiled["served_base_is_edit_base"], trial_result, book_path)
+    same = compiled["served_base_is_edit_base"]
+    same_words = {True: "yes", False: "no", None: "another object (a GGUF)"}[same]
 
     adapter_name = f"theodolite-levelling-{edit.short()}-derived-from-gemma"
     record: Dict[str, Any] = {
@@ -521,20 +746,27 @@ def export_lora_adapter(
         "levelling.base_weights_id": str(edit.base.get("weights_id") or "none"),
         "levelling.served_base": target.record,
         "levelling.served_gguf_sha256": str(target.gguf_sha256 or "none"),
+        "levelling.served_base_is_edit_base": same_words,
         "levelling.provenance": prov["provenance"],
         "levelling.recompiled_from_recipe": "true" if compiled["recompiled_all"] else "false",
         "levelling.unverified_tensors": json.dumps(compiled["unverified_tensors"]),
-        "levelling.book_seq": str(book_seq) if book_seq is not None else "none",
-        "levelling.book_hash": str(book_hash or "none"),
-        "levelling.trial_sha256": str(trial_sha or "none"),
-        "levelling.trial_verdict": str(trial_verdict or "unverified_practice_or_claim"),
-        "levelling.prior_attempts": str(prior_attempts) if prior_attempts is not None else "unknown",
-        "levelling.implant_flagged": "true" if imp.get("flagged") else "false",
+        "levelling.trial_verdict": trial["verdict"],
+        "levelling.trial_kind": trial["kind"],
+        "levelling.trial_sha256": trial["trial_sha256"],
+        "levelling.trial_applies_to_served_base": trial["applies_to_served_base"],
+        "levelling.book_seq": str(trial["book_seq"]) if trial["book_seq"] is not None else "none",
+        "levelling.book_hash": str(trial["book_hash"] or "none"),
+        "levelling.book": trial["book"],
+        "levelling.book_before_it": trial["book_before_it"],
+        "levelling.implant_flagged": implant_words(imp),
+        "levelling.implant_checked_at": str(imp["checked_at"]),
         "levelling.warnings": json.dumps(compiled["warnings"]),
     }
+    derived = (f"this file's tensors are derived from the weights of {ecv.ORIGIN} by a Theodolite Levelling edit: "
+               + "; ".join(compiled["made_of"]) + ". The weights read are named under theodolite.weights")
 
     dst.parent.mkdir(parents=True, exist_ok=True)
-    el.write_lora(dst, compiled["tensors"], record)
+    el.write_lora(dst, compiled["tensors"], record, derived=derived)
     gguf_sha = _sha_file(dst)
     gguf_bytes = dst.stat().st_size
 
@@ -550,20 +782,16 @@ def export_lora_adapter(
             "kind": target.kind,
             "record": target.record,
             "gguf_sha256": target.gguf_sha256,
+            "is_edit_base": same,
         },
         "recompiled_from_recipe": bool(compiled["recompiled_all"]),
         "ranks": compiled["ranks"],
+        "made_of": compiled["made_of"],
         "unverified_llama_cpp_tensors": compiled["unverified_tensors"],
         "warnings": compiled["warnings"],
         "implant_check": imp,
         "edit_provenance": prov,
-        "ledger": {
-            "book_seq": book_seq,
-            "book_hash": book_hash,
-            "trial_sha256": trial_sha,
-            "trial_verdict": trial_verdict,
-            "prior_attempts": prior_attempts,
-        },
+        "trial": trial,
         "license": {
             "name": "Apache-2.0",
             "url": "https://ai.google.dev/gemma/docs/gemma_4_license",
@@ -583,14 +811,16 @@ def export_lora_adapter(
         "gguf_bytes": gguf_bytes,
         "ranks": compiled["ranks"],
         "recompiled_from_recipe": bool(compiled["recompiled_all"]),
+        "served_base_is_edit_base": same,
         "unverified_llama_cpp_tensors": compiled["unverified_tensors"],
         "warnings": compiled["warnings"],
         "implant_check": imp,
+        "trial": trial,
         "manifest": companion,
     }
 
 
-# --------------------------------------------------------------------------------------------- verification & re-measure
+# --------------------------------------------------------------------------------------------- reading one back
 
 
 REQUIRED_GGUF_KEYS = (
@@ -613,12 +843,18 @@ def verify_exported_lora(
     dose: Optional[float] = None,
     tol: float = 1e-4,
 ) -> Dict[str, Any]:
-    """Verify an exported LoRA `.gguf`:
-    1. All required llama.cpp adapter keys, Apache-2.0 licence & origin keys, and Levelling provenance keys.
-    2. Companion `.manifest.json` (when present) matches the `.gguf` sha256 byte for byte.
-    3. When `edit` and `target` are supplied, checks mathematical equivalence of `(W + B @ A) @ x` against the
-       edit's exact arithmetic on `target` (proving recompilation matches the served base)."""
-    import export_lora as el
+    """Read an adapter back and check it.
+
+    Always: the keys llama.cpp and the house ask of an adapter are there (type, architecture, licence, origin,
+    `theodolite.levelling.edit_id`), and the manifest beside it, when there is one, names this file's sha256 and
+    this edit.
+
+    With `edit` and `target`: the file IS the edit on that target. Its `lora_b @ lora_a`, multiplied out, is set
+    beside the edit's own arithmetic on the target's numbers (`term_change`, and a low-rank term's own pair), which
+    does not go through the compiler that wrote the file: every touched column and row, the columns and rows the
+    edit does not touch (which must be nought), and what the whole does to a few random vectors. `max_abs_err` is
+    the largest difference found. This shows the file is the edit; what the edit does is a reading's to show."""
+    _ecv, el = _writers()
 
     p = Path(gguf_path).expanduser().resolve()
     if not p.is_file():
@@ -658,21 +894,66 @@ def verify_exported_lora(
 
     max_err: Optional[float] = None
     if edit is not None and target is not None:
+        _rec("file_names_this_edit", meta.get("theodolite.levelling.edit_id") == edit.id,
+             {"file": str(meta.get("theodolite.levelling.edit_id"))[:12], "edit": edit.short()})
         d = float(dose if dose is not None else float(meta.get("theodolite.levelling.dose", "1.0")))
-        expected = build_lora_tensors(edit, target, dose=d)["tensors"]
-        _rec("tensor_names_match", set(tensors) == set(expected), {"got": sorted(tensors), "want": sorted(expected)})
+        by_tensor: Dict[str, List[we.Term]] = {}
+        for t in edit.terms:
+            by_tensor.setdefault(GGUF_TENSOR_MAP[t.which].format(int(t.layer)), []).append(t)
+        _rec("tensor_names_match", set(tensors) <= set(by_tensor),
+             {"got": sorted(tensors), "edit touches": sorted(by_tensor)})
         worst = 0.0
         rng = np.random.default_rng(2026)
-        for tname in sorted(set(tensors) & set(expected)):
-            Ag, Bg = tensors[tname]
-            Aw, Bw = expected[tname]
-            x = rng.standard_normal((4, Aw.shape[1])).astype(np.float32)
-            yg = (x @ Ag.T) @ Bg.T
-            yw = (x @ Aw.T) @ Bw.T
-            err = float(np.max(np.abs(yg - yw)))
-            worst = max(worst, err)
+        for tname, terms in sorted(by_tensor.items()):
+            n_out, n_in = target.shape(terms[0].layer, terms[0].which)
+            A, B = tensors.get(tname, (np.zeros((0, n_in), np.float32), np.zeros((n_out, 0), np.float32)))
+            A64, B64 = A.astype(np.float64), B.astype(np.float64)
+            changes = [(t, None if t.kind == "lowrank" else term_change(t, target, d)) for t in terms]
+            cols_touched = sorted({int(i) for t in terms if t.kind == "cols" for i in t.idx})
+            rows_touched = sorted({int(i) for t in terms if t.kind == "rows" for i in t.idx})
+            lowrank = any(t.kind == "lowrank" for t in terms)
+
+            def want_of(x: np.ndarray) -> np.ndarray:
+                """What the edit's change does to inputs `x` ([m, n_in]), term by term, from the terms themselves."""
+                out = np.zeros((x.shape[0], n_out))
+                for t, delta in changes:
+                    ix = [int(i) for i in t.idx] if t.kind != "lowrank" else []
+                    if t.kind == "cols":
+                        out += x[:, ix] @ delta  # delta [K, n_out]
+                    elif t.kind == "rows":
+                        out[:, ix] += x @ delta.T  # delta [K, n_in]
+                    else:
+                        out += (x @ t.A.astype(np.float64).T) @ (d * t.B.astype(np.float64)).T
+                return out
+
+            def gap(x: np.ndarray) -> float:
+                return float(np.max(np.abs((x @ A64.T) @ B64.T - want_of(x)))) if x.size else 0.0
+
+            worst = max(worst, gap(rng.standard_normal((6, n_in))))
+            # every touched input on its own: column n of the file's change is the edit's change to column n
+            for at in range(0, len(cols_touched), 64):
+                part = cols_touched[at:at + 64]
+                one_hot = np.zeros((len(part), n_in))
+                one_hot[np.arange(len(part)), part] = 1.0
+                worst = max(worst, gap(one_hot))
+            # every touched output on its own: row n of the file's change is the edit's change to row n
+            for t, delta in changes:
+                if t.kind == "rows":
+                    for k, n in enumerate(int(i) for i in t.idx):
+                        worst = max(worst, float(np.max(np.abs(B64[n, :] @ A64 - delta[k]))))
+            if not lowrank and A64.size and B64.size:
+                # nothing the edit does not touch is changed: with column terms alone lora_a is nought off the touched
+                # inputs; with row terms alone lora_b is nought off the touched outputs
+                if cols_touched and not rows_touched:
+                    off = np.ones(n_in, dtype=bool)
+                    off[cols_touched] = False
+                    worst = max(worst, float(np.max(np.abs(A64[:, off]))) if off.any() else 0.0)
+                if rows_touched and not cols_touched:
+                    off = np.ones(n_out, dtype=bool)
+                    off[rows_touched] = False
+                    worst = max(worst, float(np.max(np.abs(B64[off, :]))) if off.any() else 0.0)
         max_err = worst
-        _rec("delta_action_matches_target", worst <= tol, {"max_abs_err": worst, "tol": tol})
+        _rec("file_is_the_edit_on_the_target", worst <= tol, {"max_abs_err": worst, "tol": tol})
 
     ok_all = all(c["ok"] for c in checks)
     return {
@@ -685,7 +966,7 @@ def verify_exported_lora(
     }
 
 
-def remeasure_with_llama_server(
+def llama_server_smoke(
     llama_server_bin: Path,
     model_gguf: Path,
     adapter_gguf: Path,
@@ -694,26 +975,35 @@ def remeasure_with_llama_server(
     scale: float = 1.0,
     n_predict: int = 16,
     port: int = 18089,
-    timeout_s: float = 60.0,
+    timeout_s: float = 600.0,
+    request_timeout_s: float = 300.0,
 ) -> Dict[str, Any]:
-    """Optional live re-measurement through `llama-server --lora-init-without-apply`: compares scale 0 (base)
-    against `scale` on `prompt` over `model_gguf` and returns both outputs + adapter table from `/lora-adapters`."""
+    """A smoke test that llama.cpp takes an adapter: start a local `llama-server --lora-init-without-apply` over
+    `model_gguf`, write `prompt` greedily with the adapter at scale 0 and at `scale`, and say whether the two texts
+    differ. It is not a measurement of anything a brief names: one prompt, a few pieces, no control. Refused when
+    something already answers on the port (it would be another server's text). The server's own output goes to a
+    file, so that it cannot stall on an unread pipe."""
     exe = Path(llama_server_bin)
     if not exe.is_file():
         raise ExportRefused(f"llama-server binary not found: {exe}")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        if s.connect_ex(("127.0.0.1", int(port))) == 0:
+            raise ExportRefused(f"Something already answers on :{int(port)}: its text would be taken for this server's.")
     cmd = [
         str(exe), "-m", str(model_gguf), "--lora", str(adapter_gguf), "--lora-init-without-apply",
         "--host", "127.0.0.1", "--port", str(int(port)), "-ngl", "0", "-c", "512",
     ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    log = tempfile.NamedTemporaryFile(prefix="llama-server-", suffix=".log", delete=False)
+    proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
     base_url = f"http://127.0.0.1:{int(port)}"
     try:
         deadline = time.monotonic() + float(timeout_s)
         ready = False
         while time.monotonic() < deadline:
             if proc.poll() is not None:
-                err = (proc.stderr.read() if proc.stderr else b"").decode("utf-8", errors="replace")[-600:]
-                raise ExportRefused(f"llama-server exited early ({proc.returncode}): {err}")
+                tail = Path(log.name).read_text(encoding="utf-8", errors="replace")[-600:]
+                raise ExportRefused(f"llama-server exited early ({proc.returncode}): {tail}")
             try:
                 with urllib.request.urlopen(f"{base_url}/health", timeout=1.0) as r:
                     if r.status == 200:
@@ -722,7 +1012,7 @@ def remeasure_with_llama_server(
             except Exception:
                 time.sleep(0.25)
         if not ready:
-            raise ExportRefused(f"llama-server did not become ready within {timeout_s:g} s.")
+            raise ExportRefused(f"llama-server did not become ready within {timeout_s:g} s (its output: {log.name}).")
         with urllib.request.urlopen(f"{base_url}/lora-adapters", timeout=10.0) as r:
             adapters = json.loads(r.read().decode("utf-8"))
 
@@ -734,17 +1024,19 @@ def remeasure_with_llama_server(
                 "lora": [{"id": 0, "scale": float(sc)}],
             }).encode("utf-8")
             req = urllib.request.Request(f"{base_url}/completion", data=body, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=30.0) as r:
+            with urllib.request.urlopen(req, timeout=float(request_timeout_s)) as r:
                 return json.loads(r.read().decode("utf-8"))
 
         out_base = _complete(0.0)
         out_edit = _complete(float(scale))
         return {
             "ok": True,
+            "what": "a smoke test that llama.cpp takes the adapter: one prompt, not a measurement",
             "adapters": adapters,
             "base_content": out_base.get("content", ""),
             "edited_content": out_edit.get("content", ""),
             "changed": out_base.get("content", "") != out_edit.get("content", ""),
+            "server_log": log.name,
         }
     finally:
         proc.terminate()
@@ -752,3 +1044,4 @@ def remeasure_with_llama_server(
             proc.wait(timeout=5.0)
         except subprocess.TimeoutExpired:
             proc.kill()
+        log.close()
