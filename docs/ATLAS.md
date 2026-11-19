@@ -73,8 +73,12 @@ the gentler push's lead on the new questions alone, 0.566 against a bar of 0.56 
 deviations out, where at 35–38 even the fifth stood 7.2 or more. On 18 November layer 33 (32 on the board) came
 home from the RTX PRO 6000 that took 34–36, and passes all three: the whole lead is 0.714 (0.699 in its trial), and
 the words carry by 0.626 both ways. It says much of single neurons: 2,946 have q ≤ 0.05 and 1,245 beat all 2,048,
-and its strongest random direction stands 6.1 of their deviations out, writing English, not another language. Layers
-32 and 39 (31 and 38 on the board) are being taken, and layer 31 (30) is open. Every figure is in ROADMAP §vi.
+and its strongest random direction stands 6.1 of their deviations out, writing English, not another language. On 19
+November layers 39 and 32 (38 and 31 on the board) came home and pass their trials read whole. 39, from the RTX 5090
+that took 38 and 40, bit for bit, leads by 0.694 (0.675 in its trial) and says much of single neurons: 7,003 have q
+≤ 0.05, though its strongest random direction stands 19.1 deviations out, writing Portuguese. 32, from the RTX PRO
+6000 that took 33–36, asked twelve questions at one push, leads by 0.641 (0.630), its words carrying by 0.584 and
+0.586, and 1,893 have q ≤ 0.05. Layer 31 (30) is being taken, and none is open. Every figure is in ROADMAP §vi.
 
 <table>
   <tr>

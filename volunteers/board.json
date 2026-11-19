@@ -1077,7 +1077,7 @@
    "kit": "5",
    "via": "github",
    "at": "2026-11-17T22:31Z",
-   "state": "submitted",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-17T22:31Z",
@@ -1096,6 +1096,18 @@
      "via": "github",
      "what": "claim=3853d507 sha256=8083ab5921c6b42b size=522MB link=https://github.com/Zlorthishen/theodolite/releases/download/L38-soft_ceil-3853d507/L38-soft_ceil-3853d507.tar",
      "verb": "DONE"
+    },
+    {
+     "at": "2026-11-19T03:45Z",
+     "what": "set checking: on paper whole; home bits; spot-check next"
+    },
+    {
+     "at": "2026-11-19T03:53Z",
+     "what": "set checking: spot-checked: bit for bit on the spot chunks; accept next"
+    },
+    {
+     "at": "2026-11-19T04:03Z",
+     "what": "set accepted: home bits (NVIDIA GeForce RTX 5090), spot-checked"
     }
    ],
    "started_at": "2026-11-17T22:31Z",
@@ -1103,7 +1115,8 @@
    "submitted_at": "2026-11-18T22:16Z",
    "bundle_sha256": "8083ab5921c6b42b",
    "size": "522MB",
-   "link": "https://github.com/Zlorthishen/theodolite/releases/download/L38-soft_ceil-3853d507/L38-soft_ceil-3853d507.tar"
+   "link": "https://github.com/Zlorthishen/theodolite/releases/download/L38-soft_ceil-3853d507/L38-soft_ceil-3853d507.tar",
+   "note": "home bits (NVIDIA GeForce RTX 5090), spot-checked"
   },
   {
    "code": "eda6b586",
@@ -1113,7 +1126,7 @@
    "kit": "5",
    "via": "github",
    "at": "2026-11-18T04:02Z",
-   "state": "submitted",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-18T04:02Z",
@@ -1138,6 +1151,18 @@
      "via": "github",
      "what": "claim=eda6b586 sha256=65204726f5fbc77c size=556MB link=https://github.com/Asynonymous/theodolite/releases/download/L31-match_wide-eda6b586/L31-match_wide-eda6b586.tar",
      "verb": "DONE"
+    },
+    {
+     "at": "2026-11-19T03:44Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-19T04:00Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-19T04:06Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
     }
    ],
    "started_at": "2026-11-18T04:02Z",
@@ -1147,7 +1172,8 @@
    "submitted_at": "2026-11-18T22:25Z",
    "bundle_sha256": "65204726f5fbc77c",
    "size": "556MB",
-   "link": "https://github.com/Asynonymous/theodolite/releases/download/L31-match_wide-eda6b586/L31-match_wide-eda6b586.tar"
+   "link": "https://github.com/Asynonymous/theodolite/releases/download/L31-match_wide-eda6b586/L31-match_wide-eda6b586.tar",
+   "note": "own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
   },
   {
    "code": "6413bb68",
@@ -1376,8 +1402,10 @@
    "note": "match_things; its trial passed, 18 November 2026; twice the answers, about 33 hours on a 5090"
   },
   "31": {
-   "state": "open",
-   "note": "match_wide; its trial passed, 16 November 2026"
+   "state": "done",
+   "by": "anon eda6b586",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "18 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole"
   },
   "32": {
    "state": "done",
@@ -1416,8 +1444,10 @@
    "note": "15-16 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
   },
   "38": {
-   "state": "open",
-   "note": "soft_ceil; its trial passed, 13 November 2026"
+   "state": "done",
+   "by": "anon 3853d507",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "17-18 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's three gates, read whole"
   },
   "39": {
    "state": "done",
@@ -1466,5 +1496,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-19T03:12Z"
+ "updated_at": "2026-11-19T04:42Z"
 }

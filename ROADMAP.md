@@ -1581,6 +1581,47 @@ layers, the determinism run and the sampled push on 29 October). In this section
       (`census_volunteer.earlier_kit`); at the cut those are 31 (anon, eda6b586) and 38 (Zlorthishen, 3853d507).
     - **The board** is kit 6’s with layer 30 open; 31 and 38 running under kit 5. *Not shown yet:* a whole layer of
       `match_things`. The thread post is the owner’s.
+  - **Layers 31 and 38 read whole, the last two begun under kit 5** (19 November 2026; the owner approved the downloads:
+    “Yes, take both in”). Each was taken with kit 5 at its tag (`3943703`), from a clean tree, and kit 6 was cut while
+    it ran, so each was checked by kit 5’s own file, read from its tag (`census_volunteer.earlier_kit`). Both bundles’
+    sha256 matched their DONE lines.
+    - **Layer 38**, taken with `soft_ceil` by Zlorthishen (anon, 3853d507), who took 39 and 37, on an RTX 5090 with the
+      home card’s bits. Begun 17 November at 22:36Z by the run’s record; DONE 18 November at 22:16Z, as a GitHub
+      release. Its spot chunks (9, 22, 324, 382 and 423 of 737): 3,840 of 3,840 answers identical bit for bit.
+    - **Layer 31**, taken with `match_wide` by anon (Asynonymous, eda6b586), who took 32 to 35, on the same RTX PRO 6000
+      Blackwell card class. Begun 18 November at 03:41Z; DONE that day at 22:25Z, as a GitHub release. Its spot chunks
+      (47, 121, 328, 340 and 541 of 737): the first word-piece the home card’s in 0.988 of answers (bar 0.90),
+      log-probabilities apart by a median 0.0051 (0.013) and 0.117 at the 99th percentile (0.26).
+
+    Each was read whole by its trial’s registered reader ([`census_L38_whole/`](experiments/results/census_L38_whole/),
+    `census/trials/soft/prereg`, hashed 12 November at 22:34Z;
+    [`census_L31_whole/`](experiments/results/census_L31_whole/), `census/trials/wide/prereg`, hashed 16 November at
+    15:22Z):
+
+    | layer, design, doses | every answer | the lower dose alone | the neurons the controls cover | its trial, every answer |
+    |---|---|---|---|---|
+    | 38, `soft_ceil`, ±1.6 and ±2.3 ceilings | 0.694, 0.727, 0.657 and 0.657, 0.670 | 0.653, 0.681, 0.612 and 0.589, 0.616 | 85 in 100; 0.661, 0.704, 0.618 and 0.619, 0.638 | 0.675, 0.712, 0.637 and 0.630, 0.643 |
+    | 31, `match_wide`, ±2.58 ceilings | 0.641, 0.646, 0.584 and 0.586, 0.636 | one dose | 96 in 100; 0.642, 0.642, 0.584 and 0.585, 0.636 | 0.630, 0.645, 0.583 and 0.581, 0.608 |
+
+    - Both pass every gate of their trials: 38 all three, 31 both of its two (`match_wide` has one dose, so no N2). 38’s
+      least margin is 0.019, the lower dose’s words carrying from half B to half A (0.589). 31’s is 0.014, its words
+      carrying from half A to half B (0.584); in its trial they carried 0.583 and 0.581. Each whole lead is over its
+      trial’s, by 0.019 and 0.011.
+    - Reported beside them, gating nothing: 38’s upper dose alone reads 0.664, 0.702, 0.654 and 0.630, 0.653. 31’s two
+      readings on three questions a half lead by 0.623 and 0.620, and their words carry 0.546 to 0.556, under the bar.
+      By the length rule 38 would take 32 word-pieces (its lead falls 0.004); 31 would not (its words carry 0.563 and
+      0.568 at 32). Every kit has kept 48.
+    - The text: at 38 the neurons lose 0.007 of their distinct 4-grams at the lower dose and 0.034 at the upper, the
+      controls 0.001 and 0.004; at 31 both lose 0.002 to 0.003. 96.5 to 98.9 in 100 answers run to the 48-piece cut.
+    - Per neuron 38 says much: 358 above all 2,048 controls (10.5 by chance), 7,003 with q ≤ 0.05 (7,047 with the five
+      strongest controls set aside), 4,248 more than five control SDs over the controls’ median. Its strongest control
+      stands 19.1 of those SDs out and the fifth 9.4; the five write Portuguese, Indonesian, Spanish and French. 31 says
+      less: 250 above all controls, 1,893 with q ≤ 0.05 (2,151), 1,258 more than five SDs over; its strongest control
+      stands 9.1 out, writing Spanish, and the fifth 4.2, writing English.
+    - The steer check, run again with them: both still weak, now against whole layers (31: a word shared with 0.056 of
+      the 4,007 neurons above 95 in 100 controls, 0.017 shuffled; 38: 0.328 of 8,104, 0.034 shuffled).
+    - **The board**: twenty-two layers done, 31–52, sixteen of them by volunteers; 30 running under kit 6 (anon,
+      6413bb68, an RTX PRO 6000); none open. 53 and 54 passed the `match_things` walk, but no kit carries them yet.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

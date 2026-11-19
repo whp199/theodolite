@@ -1,9 +1,9 @@
 >mapping what every MLP neuron of Gemma-4-31B writes
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
->20 layers done (32-37, 39-52), 14 by volunteers. thanks to all who ran one
+>22 layers done (31-52), 16 by volunteers. thanks to all who ran one
 >kit 6 adds layer 30 (12 questions, 2 pushes; ~33 h on a 5090)
 >a layer outside 40-50 gets a 70-min trial on our card first
->12 passed; open: 30 (31, 38 running)
+>14 passed; none open now (30 running)
 
 what you get when the atlas is published:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side
