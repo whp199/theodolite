@@ -360,6 +360,20 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     sh_decl = lcl.render_sheet(brief, bars, j_decl, meta, s_decl)
     SHEETS_COLLECTED.extend([sh_decl, s_decl or ""])
     check(j_decl["verdict"] == "lead" and "sham-target" in (s_decl or ""), "declared_rule with passing sham -> lead")
+    check("sham-target control edits, supplied with the claim and checked for shape only, moved as much" in (s_decl or ""),
+          "the sentence of a declared-rule lead says its sham edits were supplied with the claim")
+    meta_d = {**meta, "design": {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4,
+                                 "rows": {"small": 12, "large": 32}, "controls_per_family": 39,
+                                 "match_tolerance": 4.0},
+              "shams": {"count": 39, "sha256": "f" * 64}}
+    s_tol = lcl.claim_sentence(brief, j_decl, meta_d)
+    sh_tol = lcl.render_sheet(brief, bars, j_decl, meta_d, s_tol)
+    SHEETS_COLLECTED.extend([sh_tol, s_tol or ""])
+    check("matched other-site (within a factor of 4, p_fw" in (s_tol or ""),
+          "the sentence names the tolerance the matched controls were matched within")
+    check("other sites matched within a factor of 4 on delivered" in sh_tol
+          and "sham-target controls: 39 supplied with the claim" in sh_tol,
+          "the sheet prints the registered design and that the shams were supplied, not made by the harness")
 
     # 2b. declared_rule missing sham_target -> fails controls
     j_nosh = lcl.judge_claim(brief=brief, bars=bars, classes=good_classes, batteries=_clean_batteries(),
@@ -684,6 +698,61 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(lb.verify(bk)["ok"], "level book whole after written_loop claim")
     we.assert_base(h.lm, h.hooks_at_load)
 
+    # 9. Sham-target controls are built and checked before anything is registered; a good set is registered by hash
+    sbk = tmp / "sham_book.jsonl"
+    sbars = lcl.calibrate_bars(
+        h, brief, layer=2, n_cols=2, n_controls=2, n_neutral=2, n_near=2, n_panel=2,
+        rows={"small": 12, "large": 16}, seed=7, book_path=sbk,
+    )
+    s_edit = {"terms": [{"layer": 2, "silence": [0, 1]}]}
+    small = dict(rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
+                 controls_override=4, match_tolerance=20.0, run_prompt_arms=False, book_path=sbk)
+    for bad, why, words in (
+        ([{"terms": [{"layer": 2, "silence": [4, 5, 6]}]}], "three columns for the edit's two", "not the claimed edit's shape"),
+        ([{"terms": [{"layer": 2, "scale": [4, 5], "factor": 0.5}]}], "a scale for the edit's silencing", "not the claimed edit's shape"),
+        ([{"terms": [{"layer": 2, "silence": [0, 1]}]}], "the claimed edit itself", "is the claimed edit itself"),
+        ([{"terms": [{"layer": 2, "silence": [4, 5]}]}, {"terms": [{"layer": 2, "silence": [5, 4]}]}],
+         "the same sham twice", "is the same edit as sham control 0"),
+        ([{"terms": [{"layer": 2, "silence": [4, 5]}]}, {"terms": []}], "a recipe with no terms", "Sham control 1"),
+    ):
+        check_raises(
+            lcl.ClaimRefused,
+            lambda bad=bad: lcl.run_fresh_claim(h, brief, sbars, s_edit, selection_mode="declared_rule",
+                                                sham_recipes=bad, **small),
+            f"a declared-rule claim refuses a sham that is {why}",
+            match=words,
+        )
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, brief, sbars, s_edit, **{**small, "match_tolerance": 0.5}),
+        "a claim refuses a matching tolerance under 1",
+        match="finite factor of 1 or more",
+    )
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(h, brief, sbars, s_edit, **{**small, "n_target": 2}),
+        "a claim refuses, before it registers, fewer fresh items than two frames a half need",
+        match="n_target",
+    )
+    check(len(lcl.brief_history(brief.id, sbk)["registrations"]) == 0,
+          "none of the claims refused for their shams or design registered anything")
+    shams = [{"terms": [{"layer": 2, "silence": [a, a + 1]}]} for a in (4, 6, 8, 10)]
+    sres = lcl.run_fresh_claim(h, brief, sbars, s_edit, selection_mode="declared_rule", sham_recipes=shams, **small)
+    SHEETS_COLLECTED.append(sres["sheet"])
+    sreg = next(lb.entries(sbk, start=sres["book"]["registration_seq"], limit=1))["body"]
+    check(sres["verdict"] in lcl.VERDICTS and sres["verdict"] != "void"
+          and (sreg.get("shams") or {}).get("count") == 4 and len(sreg["shams"]["edit_ids"]) == 4
+          and len(sreg["shams"]["sha256"]) == 64 and sreg["design"]["match_tolerance"] == 20.0,
+          f"a declared-rule claim registers its sham edits by id and hash before the draw (verdict={sres['verdict']})")
+    dl = (sres["judged"]["classes"].get("small") or {}).get("delivered") or {}
+    check(all((dl.get(f) or {}).get("controls_read") == 4 for f in ("other_sites_matched", "same_site", "sham_target"))
+          and (dl["sham_target"]["edit"] or 0.0) > 0.0
+          and "delivered (stream change at the highest edited layer; gates nothing): edit" in sres["sheet"]
+          and "sham-target controls: 4 supplied with the claim" in sres["sheet"],
+          "the sheet prints how much the edit and each family's control edits changed the stream")
+    check(lb.verify(sbk)["ok"], "level book whole after the declared-rule claim")
+    we.assert_base(h.lm, h.hooks_at_load)
+
 
 def run_section_6(h: lv.Handle, tmp: Path) -> None:
     print("Section 6: LevelSession + MCP claim gate & CLI subcommands", flush=True)
@@ -722,11 +791,25 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     check("claim" not in ses_blind.allowed_tools(), "blinded canary session hides claim tool")
     ses_blind.close()
 
-    # Bound brief + bars session via MCP dispatch
+    # Bound brief + bars session via MCP dispatch; the stand-in's small design is the owner's, set at the start
+    ses_design = {"n_target": 4, "n_neutral": 2, "n_near": 2, "n_panel": 2, "controls_override": 4,
+                  "match_tolerance": 20.0}
+    check_raises(
+        lses.SessionRefused,
+        lambda: lses.LevelSession(
+            h, tmp / "ses_baddesign", reach="tools_only", backend="local",
+            book_path=bk, brief=brief, bars=bars, claim_design={"run_prompt_arms": False},
+        ),
+        "a session's claim_design takes only the settings named for it",
+        match="claim_design takes",
+    )
     ses = lses.LevelSession(
         h, tmp / "ses_claim", reach="tools_only", backend="local",
-        book_path=bk, brief=brief, bars=bars,
+        book_path=bk, brief=brief, bars=bars, claim_design=ses_design,
     )
+    check(ses.harness_card().get("claim_design", {}).get("match_tolerance") == 20.0
+          and ses.harness_card()["claim_design"]["n_target"] == 4,
+          "the harness card shows the driver the design its fresh readings will be taken under")
     check(set(["brief_info", "draw_practice", "claim"]).issubset(ses.allowed_tools()),
           "bound session exposes brief_info, draw_practice, claim")
     check(not ses.harness_card()["practice_only"], "harness_card sets practice_only=False when claim gate is bound")
@@ -756,12 +839,33 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     check(len(lcl.brief_history(brief.id, bk)["registrations"]) == 0,
           "the refused MCP claim call registered nothing and spent no fresh reading")
 
+    # ... and none for how the reading is taken: the tolerance, the counts and the controls are not the driver's
+    claim_props = set(lmcp.TOOL_SPECS["claim"]["inputSchema"]["properties"])
+    check(claim_props == {"edit", "main_dose", "forecast", "selection_mode", "sham_recipes", "practice_best"},
+          f"the MCP claim tool takes the edit, its dose, a forecast, the selection and its shams, nothing else ({sorted(claim_props)})")
+    for arg, val in (("match_tolerance", 1e9), ("controls_override", 1), ("n_target", 2)):
+        check_raises(
+            lses.SessionRefused,
+            lambda arg=arg, val=val: lmcp.dispatch_tool(ses, "claim", {
+                "edit": {"terms": [{"layer": 2, "silence": [0, 1]}]}, arg: val,
+            }),
+            f"MCP claim refuses the driver's {arg}",
+            match=f"takes no argument named {arg}",
+        )
+    check(len(lcl.brief_history(brief.id, bk)["registrations"]) == 0,
+          "the refused MCP claim calls registered nothing")
+
     r_claim = lmcp.dispatch_tool(ses, "claim", {
         "edit": {"terms": [{"layer": 2, "silence": [0, 1]}]},
-        "n_target": 4, "n_neutral": 2, "n_near": 2, "n_panel": 2,
-        "controls_override": 4, "match_tolerance": 20.0,
     })
     SHEETS_COLLECTED.append(r_claim["sheet"])
+    reg_mcp = next(lb.entries(bk, start=r_claim["book"]["registration_seq"], limit=1))["body"]
+    check(reg_mcp.get("design", {}).get("match_tolerance") == 20.0 and reg_mcp["design"]["n_target"] == 4
+          and reg_mcp["design"]["controls_per_family"] == 4 and reg_mcp["design"]["prompt_arms"] is True
+          and reg_mcp.get("shams") is None,
+          "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
+    check("other sites matched within a factor of 20 on delivered" in r_claim["sheet"],
+          "the sheet prints the tolerance the matched controls were matched within")
     check(r_claim["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_RUN
           and len(r_claim["cheaper_knobs"]["prompt_arms"]) == len(brief.prompt_arms) > 0,
           "a claim through the door always compares the brief's author prompt arms")

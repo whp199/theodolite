@@ -159,7 +159,9 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
         "description": (
             "Submit an edit for one registered Phase 3 fresh claim reading on the bound brief's kept-back frames. "
             "Consumes one of `m` fixed fresh readings, enforces read-once per edit, and returns the redacted verdict, "
-            "bounded claim sentence, and Claim Sheet only."
+            "bounded claim sentence, and Claim Sheet only. How the reading is taken (item counts, rows, control "
+            "edits a family, matching tolerance) is fixed by the gate and the session's owner: see `claim_design` on "
+            "the harness card. `sham_recipes` (for selection_mode declared_rule) must each have the edit's shape."
         ),
         "inputSchema": {
             "type": "object",
@@ -170,12 +172,6 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
                 "selection_mode": {"type": "string", "enum": ["free_pick", "declared_rule"], "default": "free_pick"},
                 "sham_recipes": {"type": "array", "items": {"type": "object"}},
                 "practice_best": {"type": "number"},
-                "n_target": {"type": "integer", "minimum": 4, "default": 8},
-                "n_neutral": {"type": "integer", "minimum": 1, "default": 4},
-                "n_near": {"type": "integer", "minimum": 1, "default": 4},
-                "n_panel": {"type": "integer", "minimum": 1, "default": 4},
-                "controls_override": {"type": "integer", "minimum": 1},
-                "match_tolerance": {"type": "number", "minimum": 1.0},
             },
             "required": ["edit"],
             "additionalProperties": False,
@@ -233,12 +229,6 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             selection_mode=str(a.get("selection_mode", "free_pick")),
             sham_recipes=a.get("sham_recipes"),
             practice_best=a.get("practice_best"),
-            n_target=int(a.get("n_target", 8)),
-            n_neutral=int(a.get("n_neutral", 4)),
-            n_near=int(a.get("n_near", 4)),
-            n_panel=int(a.get("n_panel", 4)),
-            controls_override=a.get("controls_override"),
-            match_tolerance=a.get("match_tolerance"),
         )
     raise lses.SessionRefused(f'Unknown tool "{name}".')
 
@@ -319,6 +309,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--max-cell-mem-gib", type=float, default=4.0)
     ap.add_argument("--brief", type=str, default=None, help="Optional brief JSON path or built-in starter brief name.")
     ap.add_argument("--bars", type=Path, default=None, help="Optional registered BarSet JSON path (enables claim tool).")
+    ap.add_argument("--claim-n-target", type=int, default=None, help="Fresh target items a claim reads (the gate's own: 8).")
+    ap.add_argument("--claim-n-neutral", type=int, default=None, help="Neutral battery items a claim reads (4).")
+    ap.add_argument("--claim-n-near", type=int, default=None, help="Near-miss battery items a claim reads (4).")
+    ap.add_argument("--claim-n-panel", type=int, default=None, help="Labelled panel items a claim reads (4).")
+    ap.add_argument("--claim-controls", type=int, default=None,
+                    help="Control edits a family for a claim (the brief's own 20m - 1 when not given).")
+    ap.add_argument("--claim-match-tolerance", type=float, default=None,
+                    help="Factor the matched other-site controls are matched within on delivered (the kernel's own: 2).")
     ap.add_argument("--stand-in", action="store_true", help="Use CPU stand-in runtime (no GPU).")
     ap.add_argument("--no-model", action="store_true", help="Off-card sandbox cells and book_view only.")
     ap.add_argument("--no-probe", action="store_true", help="Skip startup sandbox probe (for tests only).")
@@ -388,6 +386,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         probe_on_start=not args.no_probe,
         brief=brief_obj,
         bars=bars_obj,
+        claim_design={k: v for k, v in {
+            "n_target": args.claim_n_target, "n_neutral": args.claim_n_neutral, "n_near": args.claim_n_near,
+            "n_panel": args.claim_n_panel, "controls_override": args.claim_controls,
+            "match_tolerance": args.claim_match_tolerance,
+        }.items() if v is not None} or None,
     )
     return serve_stdio(session)
 

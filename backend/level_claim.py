@@ -648,6 +648,7 @@ def judge_claim(
             "reversed_mean": rev_raw,
             "reversed_ok": rev_ok,
             "controls": ctl_eval,
+            "delivered": cdata.get("delivered"),  # printed, gates nothing
         }
 
     # Target magnitude for near-miss ratio check (conservative: min across required classes)
@@ -897,6 +898,106 @@ def _extract_item_effects(
     rev_mean = float(np.mean(rev_vals)) if rev_vals else None
     ctl_means = [float(np.mean(xs)) if (xs and len(xs) == n_read) else None for xs in ctl_per_item]
     return item_effects, floor_max, rev_mean, ctl_means
+
+
+def _delivered_of(
+    result: Mapping[str, Any],
+    drawn: Sequence[lbr.DrawnItem],
+    cls_name: str,
+    dose: float,
+) -> Optional[Dict[str, Any]]:
+    """How much the edit and this reading's control edits each changed the stream, over the items read in `cls_name`:
+    the mean over items of an arm's `delivered` (`levelling._delivered_hook`: the relative change of the stream at
+    the highest layer this reading edits, against the base row). `{"edit", "controls_median", "controls_min",
+    "controls_max", "controls_read"}`, or None when the reading recorded none. It gates nothing: it is printed so
+    that control edits which hardly touch the stream (a wide matching tolerance, sham edits on quiet sites) show."""
+    by_name = {d.item.name: d for d in drawn}
+    arm_key = f"edit:{repr(float(dose))}"
+    C = int((result.get("controls") or {}).get("count") or 0)
+    edit_vals: List[float] = []
+    ctl_vals: List[List[float]] = [[] for _ in range(C)]
+    for it_ent in result.get("items") or []:
+        if it_ent.get("status") != "ok" or (it_ent.get("item") or {}).get("name") not in by_name:
+            continue
+        cb = (it_ent.get("classes") or {}).get(cls_name)
+        if not cb:
+            continue
+        arms_by_k = {a["key"]: a for a in (cb.get("arms") or [])}
+        ev = _clean_float((arms_by_k.get(arm_key) or {}).get("delivered"))
+        if ev is not None:
+            edit_vals.append(ev)
+        for c in range(C):
+            cv = _clean_float((arms_by_k.get(f"control:{c}") or {}).get("delivered"))
+            if cv is not None:
+                ctl_vals[c].append(cv)
+    means = [float(np.mean(xs)) for xs in ctl_vals if xs]
+    if not edit_vals and not means:
+        return None
+    return {
+        "edit": float(np.mean(edit_vals)) if edit_vals else None,
+        "controls_median": float(np.median(means)) if means else None,
+        "controls_min": min(means) if means else None,
+        "controls_max": max(means) if means else None,
+        "controls_read": len(means),
+    }
+
+
+def _edit_shape(edit: we.Edit) -> List[Tuple[Any, ...]]:
+    """What a sham-target control edit must share with the claimed edit: for each term, the projection it changes,
+    whether by columns, rows or a low-rank term, how many of them, and how (silenced, scaled by what, set, added
+    to). Not the layer and not the sites: "the same rule on another target" lands elsewhere."""
+    shape: List[Tuple[Any, ...]] = []
+    for t in edit.terms:
+        if t.kind == "lowrank":
+            shape.append((t.which, t.kind, int(t.A.shape[0])))
+        else:
+            how = sorted((int(o), round(float(f), 6) if int(o) == 0 else 1.0) for o, f in zip(t.op, t.factor))
+            shape.append((t.which, t.kind, int(t.idx.shape[0]), tuple(how)))
+    return sorted(shape, key=repr)
+
+
+def _check_shams(
+    h: lv.Handle,
+    brief: lbr.Brief,
+    edit: we.Edit,
+    sham_recipes: Sequence[Mapping[str, Any]],
+    base_dir: Path,
+) -> List[we.Edit]:
+    """Build every sham-target recipe before anything is registered and refuse, in plain words, one that cannot be
+    read as a control for `edit`: not buildable on this base, outside the brief's tensors or layers, the claimed
+    edit itself, a repeat of another sham, or not the edit's shape (`_edit_shape`). The harness cannot check that
+    the shams follow the caller's declared rule; it checks what it can, and the sheet says who supplied them."""
+    if not isinstance(sham_recipes, Sequence) or isinstance(sham_recipes, (str, bytes)):
+        raise ClaimRefused("sham_recipes is a list of edit recipes.")
+    want = _edit_shape(edit)
+    built: List[we.Edit] = []
+    seen: Dict[str, int] = {}
+    for i, rec in enumerate(sham_recipes):
+        if not isinstance(rec, Mapping) or not rec:
+            raise ClaimRefused(f"Sham control {i} is not an edit recipe.")
+        try:
+            got = we.from_recipe(dict(rec), Path(base_dir))
+            se = (we.load(got, h.lm, model_id=h.model_id, weights_id=h.weights_id)
+                  if isinstance(got, (str, Path))
+                  else we.build(h.lm, got, model_id=h.model_id, weights_id=h.weights_id))
+        except (we.Refused, lv.Refused, OSError, ValueError) as exc:
+            raise ClaimRefused(f"Sham control {i}: {exc}") from None
+        try:
+            _check_edit_allowed_by_brief(se, brief)
+        except ClaimRefused as exc:
+            raise ClaimRefused(f"Sham control {i}: {exc}") from None
+        if se.id == edit.id:
+            raise ClaimRefused(f"Sham control {i} is the claimed edit itself.")
+        if se.id in seen:
+            raise ClaimRefused(f"Sham control {i} is the same edit as sham control {seen[se.id]}.")
+        if _edit_shape(se) != want:
+            raise ClaimRefused(
+                f"Sham control {i} is not the claimed edit's shape: a sham-target control is the same rule on another "
+                "target, so it changes as many columns or rows of the same projections, in the same way."
+            )
+        seen[se.id] = i
+        built.append(se)
+    return built
 
 
 def _mean_metric_from_read(
@@ -1427,6 +1528,31 @@ def run_fresh_claim(
     rows_cfg = dict(rows or {"small": lv.ROWS_SMALL, "large": lv.ROWS_LARGE})
     doses = [float(main_dose), float(-main_dose), 0.0] if brief.direction != 0 else [float(main_dose), 0.0]
 
+    # The reading's design: everything about how it is taken that the caller may set, checked here and written into
+    # the registration before the draw, so no choice of tolerance, counts or shams is made (or can be denied) after
+    # the fresh items are known. Through the agent's door none of it is the driver's (level_session.claim).
+    tol = lv.DEFAULT_MATCH_TOL if match_tolerance is None else match_tolerance
+    if isinstance(tol, bool) or not isinstance(tol, (int, float)) or not math.isfinite(float(tol)) or float(tol) < 1.0:
+        raise ClaimRefused(f"The matched controls' tolerance is a finite factor of 1 or more; {match_tolerance!r} was given.")
+    tol = float(tol)
+    for what, n, least in (("n_target", n_target, 2 * int(bars.min_frames_per_half)), ("n_neutral", n_neutral, 1),
+                           ("n_near", n_near, 1), ("n_panel", n_panel, 1), ("controls a family", C, 1)):
+        if isinstance(n, bool) or not isinstance(n, int) or n < least:
+            raise ClaimRefused(f"A fresh reading takes {what} as a whole number of {least} or more; {n!r} was given.")
+    shams_built = _check_shams(h, brief, edit, sham_recipes, Path(base_dir)) if sham_recipes else []
+    design = {
+        "n_target": int(n_target), "n_neutral": int(n_neutral), "n_near": int(n_near), "n_panel": int(n_panel),
+        "rows": {k: int(v) for k, v in rows_cfg.items()}, "written_rows": int(written_rows),
+        "controls_per_family": C, "battery_controls": min(C, 3), "match_tolerance": tol,
+        "doses": [float(d) for d in doses], "prompt_arms": bool(run_prompt_arms),
+    }
+    shams_note = None
+    if shams_built:
+        sham_ids = [s.id for s in shams_built]
+        shams_note = {"count": len(sham_ids), "edit_ids": sham_ids,
+                      "sha256": hashlib.sha256(lb.canonical(sham_ids)).hexdigest(),
+                      "from": "supplied with the claim; checked for shape only"}
+
     # Step 2: Register BEFORE drawing fresh items!
     prev_bk = os.environ.get(lb.BOOK_ENV)
     os.environ[lb.BOOK_ENV] = str(bk)
@@ -1448,6 +1574,8 @@ def run_fresh_claim(
             "practice_count": int(practice_count),
             "practice_best": _clean_float(practice_best),
             "forecast": dict(forecast or {}),
+            "design": design,
+            "shams": shams_note,
             "prior_verdicts": [
                 {"seq": v["seq"], "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
                  "reading_index": v.get("reading_index")}
@@ -1495,7 +1623,7 @@ def run_fresh_claim(
             void_reason, classes_payload, w_seqs, written_strata, unpacker_mode = _run_written_target_claims(
                 h, brief, edit, target_drawn, base_dir=Path(base_dir), main_dose=main_dose, doses=doses,
                 C=C, seed_u32=seed_u32, reading_index=reading_index, selection_mode=selection_mode,
-                sham_recipes=sham_recipes, match_tolerance=match_tolerance, written_rows=written_rows,
+                sham_recipes=sham_recipes, match_tolerance=tol, written_rows=written_rows,
             )
             book_seqs.extend(w_seqs)
             if void_reason is None and brief.compare_settings:
@@ -1512,9 +1640,8 @@ def run_fresh_claim(
                 "rank_by": brief.metric,
                 "folded": "auto",
             }
-            matched_ctl: Dict[str, Any] = {"family": "other_sites_matched", "count": C, "seed": seed_u32}
-            if match_tolerance is not None:
-                matched_ctl["tolerance"] = float(match_tolerance)
+            matched_ctl: Dict[str, Any] = {"family": "other_sites_matched", "count": C, "seed": seed_u32,
+                                           "tolerance": tol}
             r_matched = lv.read(
                 h, {**base_target_plan, "name": f"claim_{brief.name}_{reading_index}_matched",
                     "controls": matched_ctl},
@@ -1550,14 +1677,20 @@ def run_fresh_claim(
                     _, fl_s, _, ctl_s = _extract_item_effects(r_same, target_drawn, cls_name, brief.metric, main_dose)
                     fl_both = max([x for x in (fl_m, fl_s) if x is not None], default=None)
                     ctls_cls: Dict[str, Any] = {"other_sites_matched": ctl_m, "same_site": ctl_s}
+                    deliv_cls: Dict[str, Any] = {
+                        "other_sites_matched": _delivered_of(r_matched, target_drawn, cls_name, main_dose),
+                        "same_site": _delivered_of(r_same, target_drawn, cls_name, main_dose),
+                    }
                     if r_sham is not None:
                         _, _, _, ctl_sh = _extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
                         ctls_cls["sham_target"] = ctl_sh
+                        deliv_cls["sham_target"] = _delivered_of(r_sham, target_drawn, cls_name, main_dose)
                     classes_payload[cls_name] = {
                         "item_effects": it_effs,
                         "floor": fl_both,
                         "reversed_mean": rev_m,
                         "controls": ctls_cls,
+                        "delivered": deliv_cls,
                     }
 
         # Gating retention batteries (always teacher-forced paired in both batch classes)
@@ -1672,6 +1805,8 @@ def run_fresh_claim(
             "prompt_named_site": brief.prompt_named_site,
             "chat_settings": dict(brief.chat_settings),
             "forecast": dict(forecast or {}),
+            "design": design,
+            "shams": shams_note,
             "written_strata": written_strata,
             "settings_audit": settings_audit,
         }
@@ -1702,6 +1837,7 @@ def run_fresh_claim(
                     "half_1": judged["classes"][cls]["frames"]["half_1"],
                     "house_bar": judged["classes"][cls]["house_bar"],
                     "controls": judged["classes"][cls]["controls"],
+                    "delivered": judged["classes"][cls].get("delivered"),
                 }
                 for cls in judged.get("classes") or {}
             },
@@ -1772,10 +1908,13 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     ss = ctls.get("same_site") or {}
     sh = ctls.get("sham_target") or {}
     sham_part = (
-        f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits moved as much (p_fw {_fmt(sh.get('p_fw'), 3)})"
+        f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits, supplied with the claim and checked "
+        f"for shape only, moved as much (p_fw {_fmt(sh.get('p_fw'), 3)})"
         if sh.get("count")
         else f"; selection not matched, {judged.get('practice_count', 0)} read in practice"
     )
+    tol_now = _clean_float((meta.get("design") or {}).get("match_tolerance"))
+    tol_part = f"within a factor of {tol_now:g}, " if tol_now is not None else ""
     knobs = judged.get("cheaper_knobs") or {}
     arms_run = knobs.get("prompt_arms") or []
     if verdict == "lead, matched by a cheaper knob":
@@ -1798,7 +1937,7 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         f"after freeze) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
         f"half 0 {_fmt((fr.get('half_0') or {}).get('mean'))}, half 1 {_fmt((fr.get('half_1') or {}).get('mean'))}); "
         f"floor {_fmt(hb.get('floor'))}, house bar {_fmt(hb.get('bar'))}; "
-        f"{osm.get('at_least')} of {osm.get('count')} matched other-site (p_fw {_fmt(osm.get('p_fw'), 3)}) and "
+        f"{osm.get('at_least')} of {osm.get('count')} matched other-site ({tol_part}p_fw {_fmt(osm.get('p_fw'), 3)}) and "
         f"{ss.get('at_least')} of {ss.get('count')} same-site (p_fw {_fmt(ss.get('p_fw'), 3)}) control edits moved as much"
         f"{sham_part} (fresh reading {meta.get('reading_index')} of {meta.get('max_fresh_readings')} on brief "
         f'"{brief.name}"); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
@@ -1826,8 +1965,23 @@ def render_sheet(
            if meta.get("bars_calibration_seq") is not None else "")
         + f" (alpha={bars.alpha:g}, least_effect M={brief.least_effect:g})",
         f"chat settings: {json.dumps(meta.get('chat_settings') or {}, sort_keys=True)} | driver prompt named site: {bool(meta.get('prompt_named_site'))}",
-        f"selection: {judged.get('selection_mode')} | practice reads: {judged.get('practice_count', 0)} | practice best: {_fmt(judged.get('practice_best'))}",
+        f"selection: {judged.get('selection_mode')} | practice reads: {judged.get('practice_count', 0)} | practice best, as reported with the claim: {_fmt(judged.get('practice_best'))}",
     ]
+    dz = meta.get("design")
+    if isinstance(dz, Mapping):
+        rz = dz.get("rows") or {}
+        lines.append(
+            f"design, registered before the draw: {dz.get('n_target')} fresh items, {dz.get('n_near')} near misses, "
+            f"{dz.get('n_neutral')} neutral, {dz.get('n_panel')} panel; rows {rz.get('small')} and {rz.get('large')}; "
+            f"{dz.get('controls_per_family')} control edits a family; other sites matched within a factor of "
+            f"{float(dz.get('match_tolerance')):g} on delivered"
+        )
+    sz = meta.get("shams")
+    if isinstance(sz, Mapping):
+        lines.append(
+            f"sham-target controls: {sz.get('count')} supplied with the claim [{str(sz.get('sha256'))[:12]}]; the "
+            "harness did not make them and checked only that each has the edit's shape"
+        )
     if judged.get("reasons"):
         lines.append("gate notes:")
         for r in judged["reasons"]:
@@ -1859,6 +2013,13 @@ def render_sheet(
                 )
             elif cs.get("note"):
                 lines.append(f"    controls[{fam}]: {cs['note']}")
+            dv = (ce.get("delivered") or {}).get(fam)
+            if isinstance(dv, Mapping) and dv.get("controls_read"):
+                lines.append(
+                    f"      delivered (stream change at the highest edited layer; gates nothing): edit "
+                    f"{_fmt(dv.get('edit'))}, these controls median {_fmt(dv.get('controls_median'))} "
+                    f"({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})"
+                )
     ws = meta.get("written_strata")
     if isinstance(ws, Mapping):
         lines.append(f"written strata ({ws.get('cap_note')}):")

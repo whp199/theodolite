@@ -46,6 +46,10 @@ SESSION_VERSION = 1
 REACH_ENV = "THEODOLITE_SCIENTIST_REACH"
 VALID_REACHES = ("sandbox", "sandbox_no_weights", "tools_only", "attended")
 VALID_BACKENDS = ("claude", "openai", "local", "script", "codex")
+# What the owner may fix about a session's fresh readings when the session is made (`claim_design`); the names are
+# `level_claim.run_fresh_claim`'s own. Nothing here is the driver's to set: the claim tool takes none of them.
+CLAIM_DESIGN_KEYS = ("n_target", "n_neutral", "n_near", "n_panel", "rows", "written_rows", "controls_override",
+                     "match_tolerance")
 PRACTICE_NOTE = "Practice door only: returns aggregates and ranks against control edits, no word past a rank."
 
 
@@ -194,9 +198,16 @@ class LevelSession:
         canary: bool = False,
         brief: Optional[lbr.Brief] = None,
         bars: Optional[lcl.BarSet] = None,
+        claim_design: Optional[Mapping[str, Any]] = None,
         session_id: Optional[str] = None,
     ) -> None:
         _check_reach_and_backend(reach, backend, codex_probed=codex_probed, ignore_reach_env=ignore_reach_env)
+        design = dict(claim_design or {})
+        unknown = sorted(k for k in design if k not in CLAIM_DESIGN_KEYS)
+        if unknown:
+            raise SessionRefused(f"claim_design takes {', '.join(CLAIM_DESIGN_KEYS)}; not {', '.join(unknown)}.")
+        if design and (brief is None or bars is None):
+            raise SessionRefused("claim_design is for a session with a bound brief and bar set.")
         if plant is not None and canary:
             raise SessionRefused("A session cannot be both planted and a canary at the same time.")
         if bars is not None and brief is None:
@@ -228,6 +239,7 @@ class LevelSession:
         self._closed = False
         self._brief: Optional[lbr.Brief] = brief
         self._bars: Optional[lcl.BarSet] = bars
+        self._claim_design: Dict[str, Any] = {k: v for k, v in design.items() if v is not None}
         self._practice_reads: int = 0
 
         # In-memory-only plant / canary state: NEVER written to session.json, work/, or transcript.jsonl.
@@ -349,6 +361,10 @@ class LevelSession:
                 "controls_per_family": self._brief.default_controls,
                 "driver_text": self._brief.driver_text,
             }
+            if has_claim:
+                # how a fresh reading here is taken: fixed when the session was made, shown and not the driver's to set
+                card["claim_design"] = {"set_by": "the session's owner, before it began",
+                                        **{k: self._claim_design[k] for k in sorted(self._claim_design)}}
         return card
 
     def _wall_seconds(self) -> float:
@@ -729,19 +745,14 @@ class LevelSession:
         selection_mode: str = "free_pick",
         sham_recipes: Optional[Sequence[Mapping[str, Any]]] = None,
         practice_best: Optional[float] = None,
-        n_target: int = 8,
-        n_neutral: int = 4,
-        n_near: int = 4,
-        n_panel: int = 4,
-        rows: Optional[Mapping[str, int]] = None,
-        written_rows: int = 12,
-        controls_override: Optional[int] = None,
-        match_tolerance: Optional[float] = None,
     ) -> Dict[str, Any]:
         """Run one registered Phase 3 fresh claim reading on the bound brief and return ONLY the redacted
         `driver_record` (verdict, bounded claim sentence, Claim Sheet, aggregate summary — never fresh item text).
-        The brief's author prompt arms are always compared with the edit here: whether to skip the comparison that
-        can mark a lead "matched by a cheaper knob" is not the driver's to choose (the owner's command line can)."""
+        The driver brings the edit, its dose, a forecast, and (for a site that came from a declared rule) its sham
+        edits. How the reading is taken is not the driver's: the counts of fresh items, the rows, the control edits a
+        family and the tolerance the matched ones are matched within are the gate's own, or what the session's owner
+        fixed when the session was made (`claim_design`), and the brief's author prompt arms are always compared (the
+        owner's command line can set these; this door cannot)."""
         self._check_open_and_wall()
         if self._brief is None or self._bars is None:
             raise SessionRefused("Claim gate is not enabled on this session (requires both a bound brief and bar set).")
@@ -766,16 +777,9 @@ class LevelSession:
                 sham_recipes=sham_recipes,
                 practice_count=self._practice_reads,
                 practice_best=practice_best,
-                n_target=int(n_target),
-                n_neutral=int(n_neutral),
-                n_near=int(n_near),
-                n_panel=int(n_panel),
-                rows=rows,
-                written_rows=int(written_rows),
-                controls_override=controls_override,
-                match_tolerance=match_tolerance,
                 run_prompt_arms=True,
                 book_path=self.book_path,
+                **self._claim_design,
             )
         elapsed = time.perf_counter() - t0
         self.gpu_seconds_used += elapsed
