@@ -694,6 +694,73 @@ def check_mcp(hP: lv.Handle, p_dir: Path, items: Dict[str, lv.Item], tmp: Path) 
     finally:
         sess.close()
 
+    # The card: the server takes its lock and refuses to load the model beside another holder
+    import socket
+    import subprocess
+
+    gib = 2 ** 30
+    busy = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    busy.bind(("127.0.0.1", 0))
+    busy.listen(1)
+    busy_port = busy.getsockname()[1]
+    spare = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    spare.bind(("127.0.0.1", 0))
+    free_port = spare.getsockname()[1]
+    spare.close()
+    pod_was = os.environ.get(lmcp.POD_ROOT_ENV)
+    try:
+        why_port = lmcp.card_refusal(busy_port, cuda=lambda: (True, 30 * gib))
+        check(why_port is not None and f"Something answers on :{busy_port}" in why_port,
+              f"6: the card is refused while something answers on the page server's port ({why_port})")
+        why_none = lmcp.card_refusal(free_port, cuda=lambda: (False, 0))
+        check(why_none is not None and "No CUDA device" in why_none, "6: the card is refused when no CUDA device answers")
+        why_full = lmcp.card_refusal(free_port, cuda=lambda: (True, 10 * gib))
+        check(why_full is not None and "Only 10.0 GiB of the card is free (22 are asked" in why_full,
+              f"6: the card is refused when a census or anything else has taken its memory ({why_full})")
+        check(lmcp.card_refusal(free_port, cuda=lambda: (True, 30 * gib)) is None,
+              "6: a free card with no server on the port is not refused")
+
+        lock_p = tmp / "card" / "gpu.lock"
+        first = lmcp.hold_card(lock_p)
+        second_refused = False
+        try:
+            lmcp.hold_card(lock_p)
+        except SystemExit as exc:
+            second_refused = "one at a time" in str(exc)
+        check(second_refused, "6: a second holder of the card's lock is refused in plain words, without waiting")
+        first.close()
+        again = lmcp.hold_card(lock_p)
+        again.close()
+        check(True, "6: the card's lock is free again once its holder ends")
+
+        os.environ[lmcp.POD_ROOT_ENV] = str(tmp / "pod")
+        on_pod = lmcp.card_lock_path()
+        os.environ.pop(lmcp.POD_ROOT_ENV)
+        at_home = lmcp.card_lock_path()
+        check(on_pod == tmp / "pod" / "logs" / "gpu.lock" and at_home == lb.default_book_path().parent / "gpu.lock",
+              "6: the card's lock is the pod's own logs/gpu.lock on a pod, and beside the level book at home")
+
+        # the real start, with no stand-in: refused at the port before anything is loaded, the lock taken and let go
+        env = {**os.environ, lmcp.POD_ROOT_ENV: str(tmp / "pod"), "HF_HUB_OFFLINE": "1"}
+        p_srv = subprocess.run(
+            [sys.executable, "-I", str(ROOT_DIR / "backend" / "level_mcp.py"), "--session-dir", str(tmp / "sess_card"),
+             "--book", str(tmp / "card_book.jsonl"), "--reach", "tools_only", "--no-probe", "--port", str(busy_port)],
+            cwd=str(ROOT_DIR), env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120,
+        )
+        check(p_srv.returncode != 0 and f"Something answers on :{busy_port}" in p_srv.stderr
+              and (tmp / "pod" / "logs" / "gpu.lock").exists() and not (tmp / "sess_card").exists(),
+              f"6: the server started with no stand-in stops at the busy port before loading anything "
+              f"(rc={p_srv.returncode}, err={p_srv.stderr[-200:]!r})")
+        after = lmcp.hold_card(tmp / "pod" / "logs" / "gpu.lock")
+        after.close()
+        check(True, "6: the refused server let the card's lock go")
+    finally:
+        busy.close()
+        if pod_was is None:
+            os.environ.pop(lmcp.POD_ROOT_ENV, None)
+        else:
+            os.environ[lmcp.POD_ROOT_ENV] = pod_was
+
 
 # ----------------------------------------------------------------------- 7. CLI & kept-out words audit
 

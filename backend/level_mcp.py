@@ -14,21 +14,88 @@ Exposes the small, driver-neutral Levelling contract over line-delimited JSON-RP
 Every levelling tool is refused at the `"home"` reach (`$THEODOLITE_SCIENTIST_REACH=home`), and `"codex"` is refused
 until its real sandbox has been probed and `torch.compile`'s cache moved out of `/tmp`. Closing stdin or terminating
 the server closes the session and copies its transcript into `<book_dir>/transcripts/`.
+
+The card. This server loads the model itself and keeps it for the session, so before it loads anything on the card
+it takes the card's lock for the life of the process (`hold_card`) and refuses, in plain words, to start beside
+another holder (`card_refusal`): the page server answering on its port, no CUDA device, or less of the card free than
+the load needs. `--stand-in` and `--no-model` touch no card and take no lock.
 """
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
+import os
 import signal
+import socket
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from backend import level_session as lses  # noqa: E402
+
+_CARD_LOCK: Any = None  # the open file that holds the card's lock, kept until the process ends (`main`)
+SERVER_PORT = 8765  # where the Theodolite server answers; it holds the model when it runs
+MIN_FREE_GIB = 22.0  # what scripts/levelling.py asks of the card before it loads the model (the load peaks at 21.2)
+POD_ROOT_ENV = "THEODOLITE_POD_ROOT"
+
+
+def card_lock_path() -> Path:
+    """The card's lock file. On a pod it is the one a census shard, the pilot and the self-test take
+    (`<pod root>/logs/gpu.lock`, scripts/pod/common.sh `hold_card`), so a session and those jobs keep each other off
+    the card. On the home machine nothing else takes a lock yet (the page server does not): the file sits beside the
+    level book, outside every checkout, and keeps two sessions from loading the model at once."""
+    root = os.environ.get(POD_ROOT_ENV, "").strip()
+    if root:
+        return Path(root).expanduser() / "logs" / "gpu.lock"
+    from backend import level_book as lb
+
+    return lb.default_book_path().parent / "gpu.lock"
+
+
+def hold_card(path: Optional[Path] = None) -> Any:
+    """Take the card's lock without waiting and return the open file that holds it (keep it for the life of the
+    process: the lock goes when the file is closed). `SystemExit`, in plain words, when another job holds it."""
+    p = Path(path) if path is not None else card_lock_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    f = open(p, "w")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        raise SystemExit(f"Another GPU job holds this machine's card ({p}): one at a time.") from None
+    return f
+
+
+def _cuda_now() -> Tuple[bool, int]:
+    import torch
+
+    if not torch.cuda.is_available():
+        return False, 0
+    free, _total = torch.cuda.mem_get_info()
+    return True, int(free)
+
+
+def card_refusal(port: int = SERVER_PORT, *, cuda: Optional[Callable[[], Tuple[bool, int]]] = None) -> Optional[str]:
+    """Why the model cannot be loaded for a session now, or None. Asked before anything is loaded: something answers
+    on the page server's port (it holds the model), no CUDA device answers, or less of the card is free than the load
+    needs (a census run, or anything else, is on it). `cuda` stands in for the card in a check."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        if s.connect_ex(("127.0.0.1", int(port))) == 0:
+            return f"Something answers on :{port}: stop the Theodolite server first (this loads the model itself)."
+    available, free = (cuda or _cuda_now)()
+    if not available:
+        return "No CUDA device answers in this process: a levelling session on the model needs the card (or --stand-in)."
+    if free < MIN_FREE_GIB * 2 ** 30:
+        return (f"Only {free / 2 ** 30:.1f} GiB of the card is free ({MIN_FREE_GIB:g} are asked: the load peaks at "
+                f"21.2): stop the :{port} server and any census first.")
+    return None
+
 
 TOOL_SPECS: Dict[str, Dict[str, Any]] = {
     "status": {
@@ -320,6 +387,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--stand-in", action="store_true", help="Use CPU stand-in runtime (no GPU).")
     ap.add_argument("--no-model", action="store_true", help="Off-card sandbox cells and book_view only.")
     ap.add_argument("--no-probe", action="store_true", help="Skip startup sandbox probe (for tests only).")
+    ap.add_argument("--port", type=int, default=SERVER_PORT,
+                    help="The port the Theodolite server would answer on; the session is refused while it does.")
     args = ap.parse_args(argv)
 
     h = None
@@ -339,6 +408,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             if weights_dir is None and args.reach == "sandbox":
                 weights_dir = export_stand_in_safetensors(h.lm, args.session_dir / "_stand_in_weights", model_id=h.model_id)
         else:
+            # the card is taken, and found free, before anything is loaded on it
+            global _CARD_LOCK
+            _CARD_LOCK = hold_card()
+            why_not = card_refusal(int(args.port))
+            if why_not:
+                _CARD_LOCK.close()
+                _CARD_LOCK = None
+                raise SystemExit(why_not)
+
             from backend import w4a16_fast
             from backend.runtime_factory import checkpoint_snapshot, make_runtime
 
@@ -360,21 +438,32 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     brief_obj = None
     bars_obj = None
-    if args.brief:
-        from backend import level_briefs as lbr
-        p_br = Path(args.brief)
-        if p_br.exists():
-            brief_obj = lbr.load_brief(p_br)
-        else:
-            starters = lbr.starter_briefs(h.tokenizer if h is not None else None)
-            if args.brief not in starters:
-                raise SystemExit(f"Unknown brief {args.brief!r}; pass a JSON file or one of: {', '.join(sorted(starters))}")
-            brief_obj = starters[args.brief]
-    if args.bars:
-        from backend import level_claim as lcl
-        bars_obj = lcl.load_bars(args.bars)
+    try:
+        if args.brief:
+            from backend import level_briefs as lbr
+            p_br = Path(args.brief)
+            if p_br.exists():
+                brief_obj = lbr.load_brief(p_br)
+            else:
+                starters = lbr.starter_briefs(h.tokenizer if h is not None else None)
+                if args.brief not in starters:
+                    raise SystemExit(f"Unknown brief {args.brief!r}; pass a JSON file or one of: {', '.join(sorted(starters))}")
+                brief_obj = starters[args.brief]
+        if args.bars:
+            from backend import level_claim as lcl
+            bars_obj = lcl.load_bars(args.bars)
+    except ValueError as exc:  # a brief or a bar set refused in plain words (BriefError, ClaimRefused)
+        raise SystemExit(str(exc)) from None
 
-    session = lses.LevelSession(
+    try:
+        session = _make_session(h, args, budget, weights_dir, brief_obj, bars_obj)
+    except lses.SessionRefused as exc:
+        raise SystemExit(str(exc)) from None
+    return serve_stdio(session)
+
+
+def _make_session(h: Any, args: Any, budget: Any, weights_dir: Any, brief_obj: Any, bars_obj: Any) -> lses.LevelSession:
+    return lses.LevelSession(
         h,
         args.session_dir,
         reach=args.reach,
@@ -392,7 +481,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             "match_tolerance": args.claim_match_tolerance,
         }.items() if v is not None} or None,
     )
-    return serve_stdio(session)
 
 
 if __name__ == "__main__":
