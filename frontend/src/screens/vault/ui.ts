@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { type VoicePayload, useTheodoliteStore } from "../../store/useTheodoliteStore";
+import { type CompareFormState, DEFAULT_COMPARE_FORM } from "./compare";
 import { EXAMPLE_EDIT, EXAMPLE_QUESTION, nearestStatement } from "./lql";
 import { num } from "./live";
 
@@ -8,7 +9,7 @@ import { num } from "./live";
  * The vault itself lives in the store: executeLarql / larqlLog / activeEdits / larqlQuery.
  * Opening values are the approved board's.
  */
-export type VaultTab = "find" | "edit" | "history" | "lql";
+export type VaultTab = "find" | "edit" | "compare" | "history" | "lql";
 
 interface Asked {
   word: string;
@@ -54,6 +55,8 @@ interface VaultUi {
    * statement run was sent with (null: none) */
   conHear: boolean;
   conVoice: VoicePayload | null;
+  // compare (side-by-side base / edit / control edit + ledger replay)
+  compareForm: CompareFormState;
   set: (p: Partial<Omit<VaultUi, "set">>) => void;
 }
 
@@ -84,6 +87,7 @@ export const useVaultUi = create<VaultUi>((set) => ({
   conRunAt: null,
   conHear: true,
   conVoice: null,
+  compareForm: DEFAULT_COMPARE_FORM,
   set: (p) => set(p),
 }));
 

@@ -1,0 +1,742 @@
+{
+ "date": "2026-11-19T15:51:02Z",
+ "environment": "measured on the 31B card",
+ "gpu": "NVIDIA GeForce RTX 5090",
+ "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "load_seconds": 12.32,
+ "total_seconds": 17.43,
+ "peak_gib": 18.369,
+ "fallback_count": 0,
+ "passed": 11,
+ "failed": 0,
+ "checks": [
+  {
+   "name": "status_31b_ready",
+   "ok": true,
+   "detail": {
+    "n_layers": 60,
+    "d_ff": 21504,
+    "books": [
+     "live",
+     "verify_claim",
+     "verify_door",
+     "verify_1b"
+    ]
+   }
+  },
+  {
+   "name": "estimate_31b_ok",
+   "ok": true,
+   "detail": {
+    "forwards": 5,
+    "est_seconds": 3.63,
+    "peak_gib": 0.697
+   }
+  },
+  {
+   "name": "compare_31b_ok",
+   "ok": true,
+   "detail": {
+    "seconds": 4.64,
+    "small_odds": -1.8532142639160156,
+    "large_odds": -1.8172292709350586,
+    "large_at_least": 0
+   }
+  },
+  {
+   "name": "compare_31b_voices_present",
+   "ok": true,
+   "detail": {
+    "base_text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a ",
+    "edit_text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a ",
+    "edit_parts_at": null,
+    "ctl0_text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a "
+   }
+  },
+  {
+   "name": "compare_31b_both_batch_classes",
+   "ok": true,
+   "detail": {
+    "book": {
+     "written_seq": 0,
+     "paired_seq": 1,
+     "entries": 2,
+     "head": "23c97d7f90d52799"
+    }
+   }
+  },
+  {
+   "name": "vault_overlay_409_guard",
+   "ok": true,
+   "detail": {
+    "dirty_status": 1,
+    "compare_code": 409,
+    "restored_base": true
+   }
+  },
+  {
+   "name": "replay_live_and_recorded_ok",
+   "ok": true,
+   "detail": {
+    "live_entries": 2,
+    "verify_claim_10": "works but harms"
+   }
+  },
+  {
+   "name": "assert_base_final",
+   "ok": true,
+   "detail": "model clean at base"
+  },
+  {
+   "name": "zero_unpacker_fallbacks",
+   "ok": true,
+   "detail": {
+    "fallback_count": 0
+   }
+  },
+  {
+   "name": "ledger_whole",
+   "ok": true,
+   "detail": {
+    "entries": 2,
+    "head": "23c97d7f90d52799"
+   }
+  },
+  {
+   "name": "peak_memory_recorded",
+   "ok": true,
+   "detail": {
+    "peak_gib": 18.369,
+    "total_seconds": 17.43
+   }
+  }
+ ],
+ "estimate": {
+  "written": {
+   "seconds": 2.6517900000000005,
+   "parts": {
+    "forwards": 0.145179,
+    "readout": 0.0,
+    "folded": 0.0,
+    "writing": 2.5066110000000004
+   },
+   "forwards": 2,
+   "row_positions": 486,
+   "gib_above_model": 0.3419816493988037
+  },
+  "paired": {
+   "seconds": 0.9754050000000001,
+   "parts": {
+    "forwards": 0.9648450000000001,
+    "readout": 0.01056,
+    "folded": 0.0,
+    "writing": 0.0
+   },
+   "forwards": 3,
+   "row_positions": 1485,
+   "gib_above_model": 0.69696875
+  },
+  "total_seconds": 3.63,
+  "total_forwards": 5,
+  "peak_gib_above_model": 0.697
+ },
+ "compare": {
+  "v": 1,
+  "status": "ok",
+  "why": null,
+  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "weights_id": "e0a93173c31ed2ec",
+  "edit": {
+   "id": "be4328fdb60d05f8ad95d31326f3ae2b3482add121488206db2998e38b60312a",
+   "short": "be4328fdb60d",
+   "linears": [
+    "layers.50.mlp.down_proj"
+   ],
+   "layer": 50,
+   "page_layer": 51,
+   "op": "silence",
+   "neurons": [
+    5313,
+    8801,
+    266,
+    121,
+    11503,
+    11724,
+    21151,
+    4165,
+    549,
+    2070
+   ],
+   "dose": 1.0
+  },
+  "voices": {
+   "question": "Continue naturally: Claire was an experienced architect. Before leaving the gallery,",
+   "answer": "Claire picked up the notebook and",
+   "system": null,
+   "max_new": 24,
+   "thinking": false,
+   "sampler": {
+    "temperature": 0.0,
+    "top_k": 64,
+    "top_p": 0.95,
+    "presence_penalty": 0.0,
+    "seed": 1
+   },
+   "untouched_rows_identical": true,
+   "controls_family": "other_sites_matched",
+   "controls_count": 3,
+   "controls_seed": 0,
+   "base": {
+    "text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her",
+    "pieces_count": 24,
+    "ended": false,
+    "loop": {
+     "looped": false,
+     "kind": null,
+     "period": null,
+     "repeats": 0,
+     "start": null,
+     "span": 0
+    },
+    "cut_off": true,
+    "stratum": "cut_off",
+    "thinking": {
+     "has_thought": false,
+     "thought_closed": false,
+     "thought_pieces": 0,
+     "answer_pieces": 24
+    }
+   },
+   "edit": {
+    "key": "edit:1.0",
+    "dose": 1.0,
+    "text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her",
+    "pieces_count": 24,
+    "ended": false,
+    "same_as_base": false,
+    "parts_at": null,
+    "logprob_gap": {
+     "max_abs": 0.003501109778881073,
+     "mean_abs": 0.00043391190995597145,
+     "n": 24
+    },
+    "loop": {
+     "looped": false,
+     "kind": null,
+     "period": null,
+     "repeats": 0,
+     "start": null,
+     "span": 0
+    },
+    "cut_off": true,
+    "stratum": "cut_off",
+    "thinking": {
+     "has_thought": false,
+     "thought_closed": false,
+     "thought_pieces": 0,
+     "answer_pieces": 24
+    }
+   },
+   "controls": [
+    {
+     "key": "control:0",
+     "index": null,
+     "text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her",
+     "pieces_count": 24,
+     "ended": false,
+     "same_as_base": false,
+     "parts_at": null,
+     "logprob_gap": {
+      "max_abs": 0.04072919487953186,
+      "mean_abs": 0.0020717086371320192,
+      "n": 24
+     },
+     "loop": {
+      "looped": false,
+      "kind": null,
+      "period": null,
+      "repeats": 0,
+      "start": null,
+      "span": 0
+     },
+     "cut_off": true,
+     "stratum": "cut_off",
+     "thinking": {
+      "has_thought": false,
+      "thought_closed": false,
+      "thought_pieces": 0,
+      "answer_pieces": 24
+     }
+    },
+    {
+     "key": "control:1",
+     "index": null,
+     "text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her",
+     "pieces_count": 24,
+     "ended": false,
+     "same_as_base": false,
+     "parts_at": null,
+     "logprob_gap": {
+      "max_abs": 0.04319235682487488,
+      "mean_abs": 0.0022343476411208485,
+      "n": 24
+     },
+     "loop": {
+      "looped": false,
+      "kind": null,
+      "period": null,
+      "repeats": 0,
+      "start": null,
+      "span": 0
+     },
+     "cut_off": true,
+     "stratum": "cut_off",
+     "thinking": {
+      "has_thought": false,
+      "thought_closed": false,
+      "thought_pieces": 0,
+      "answer_pieces": 24
+     }
+    },
+    {
+     "key": "control:2",
+     "index": null,
+     "text": "Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her",
+     "pieces_count": 24,
+     "ended": false,
+     "same_as_base": false,
+     "parts_at": null,
+     "logprob_gap": {
+      "max_abs": 0.04351156949996948,
+      "mean_abs": 0.004907848171451216,
+      "n": 24
+     },
+     "loop": {
+      "looped": false,
+      "kind": null,
+      "period": null,
+      "repeats": 0,
+      "start": null,
+      "span": 0
+     },
+     "cut_off": true,
+     "stratum": "cut_off",
+     "thinking": {
+      "has_thought": false,
+      "thought_closed": false,
+      "thought_pieces": 0,
+      "answer_pieces": 24
+     }
+    }
+   ],
+   "summary": {
+    "items": 1,
+    "samples_per_item": 1,
+    "total_generations": 1,
+    "thinking": false,
+    "sampler": {
+     "temperature": 0.0,
+     "top_k": 64,
+     "top_p": 0.95,
+     "presence_penalty": 0.0,
+     "seed": 1
+    },
+    "base": {
+     "n": 1,
+     "ended": 0,
+     "cut_off": 1,
+     "looped": 0,
+     "mean_pieces": 24.0,
+     "max_pieces": 24,
+     "mean_thought_pieces": 0.0,
+     "thought_closed": 0
+    },
+    "arms": {
+     "null:0.125": {
+      "what": "null",
+      "dose": null,
+      "e": 0.125,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 1,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     },
+     "null:-0.125": {
+      "what": "null",
+      "dose": null,
+      "e": -0.125,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 1,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     },
+     "edit:1.0": {
+      "what": "edit",
+      "dose": 1.0,
+      "e": null,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 1,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     },
+     "edit:0.0": {
+      "what": "edit",
+      "dose": 0.0,
+      "e": null,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 0,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     },
+     "control:0": {
+      "what": "control",
+      "dose": 1.0,
+      "e": null,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 1,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     },
+     "control:1": {
+      "what": "control",
+      "dose": 1.0,
+      "e": null,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 1,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     },
+     "control:2": {
+      "what": "control",
+      "dose": 1.0,
+      "e": null,
+      "n": 1,
+      "ended": 0,
+      "cut_off": 1,
+      "looped": 0,
+      "changed_from_base": 1,
+      "rescued_from_loop": 0,
+      "rescued_from_cutoff": 0,
+      "regressed_to_loop": 0,
+      "regressed_to_cutoff": 0,
+      "mean_pieces": 24.0,
+      "max_pieces": 24,
+      "mean_thought_pieces": 0.0
+     }
+    },
+    "controls_range": {
+     "count": 3,
+     "looped_min": 0,
+     "looped_max": 0,
+     "cut_off_min": 1,
+     "cut_off_max": 1,
+     "changed_min": 1,
+     "changed_max": 1
+    }
+   }
+  },
+  "paired": {
+   "rank_by": "odds",
+   "main_dose": 1.0,
+   "controls": {
+    "family": "other_sites_matched",
+    "count": 3,
+    "seed": 0,
+    "tolerance": 2.0
+   },
+   "items_summary": {
+    "asked": 1,
+    "kept": 1,
+    "refused": 0,
+    "unstable": 0,
+    "one_arithmetic": 0,
+    "under_bar": 1
+   },
+   "classes": {
+    "small": {
+     "rows": 12,
+     "metrics": {
+      "kl": {
+       "mean_over_items": 0.0038111789617687464,
+       "median_over_items": 0.0038111789617687464,
+       "median_of_medians": 9.692134335637093e-05,
+       "above_1_total": 0
+      },
+      "own": {
+       "mean_over_items": 0.14705602824687958,
+       "median_over_items": 0.14705602824687958,
+       "median_of_medians": 0.003982050344347954,
+       "above_1_total": 0
+      },
+      "odds": {
+       "mean_over_items": -1.8532142639160156,
+       "median_over_items": -1.8532142639160156,
+       "median_of_medians": -1.8532142639160156,
+       "above_1_total": 1
+      }
+     },
+     "delivered": 0.017990700900554657,
+     "floor": {
+      "kl": {
+       "mean_abs": 3.7005320336902514e-05,
+       "median_abs": 3.7111026358616073e-06,
+       "above_1": 0,
+       "from": "null:0.125",
+       "of": 4
+      },
+      "own": {
+       "mean_abs": 0.014454890973865986,
+       "median_abs": 0.008451461791992188,
+       "above_1": 0,
+       "from": "null:-0.125",
+       "of": 4
+      },
+      "odds": {
+       "mean_abs": 0.18765878677368164,
+       "median_abs": 0.18765878677368164,
+       "above_1": 0,
+       "from": "null:-0.125",
+       "of": 4
+      }
+     },
+     "folded": {
+      "taken": false,
+      "why": "a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 (16 November 2026)",
+      "dose": null,
+      "base_from": null,
+      "restart": null,
+      "rows_identical": null,
+      "metrics": null,
+      "per_row": null,
+      "gap": null,
+      "between_kl_mean": null,
+      "same_bits": null,
+      "seconds": null
+     },
+     "rank": {
+      "metric": "odds",
+      "dose": 1.0,
+      "value": 1.8532142639160156,
+      "at_least": 0,
+      "non_finite": 0,
+      "of": 4,
+      "rank": 1,
+      "over_floor": 9.875446259550907,
+      "controls_over_floor": 0
+     },
+     "controls_count": 3,
+     "at_least": 0,
+     "control_abs_max": 0.10867452621459961,
+     "control_abs_median": 0.021129608154296875
+    },
+    "large": {
+     "rows": 32,
+     "metrics": {
+      "kl": {
+       "mean_over_items": 0.0036671648267656565,
+       "median_over_items": 0.0036671648267656565,
+       "median_of_medians": 0.00011572532821446657,
+       "above_1_total": 0
+      },
+      "own": {
+       "mean_over_items": 0.11515618115663528,
+       "median_over_items": 0.11515618115663528,
+       "median_of_medians": 0.005414886400103569,
+       "above_1_total": 0
+      },
+      "odds": {
+       "mean_over_items": -1.8172292709350586,
+       "median_over_items": -1.8172292709350586,
+       "median_of_medians": -1.8172292709350586,
+       "above_1_total": 1
+      }
+     },
+     "delivered": 0.017989762127399445,
+     "floor": {
+      "kl": {
+       "mean_abs": 2.6971414627041668e-05,
+       "median_abs": 6.684986146865413e-06,
+       "above_1": 0,
+       "from": "null:-0.03125",
+       "of": 4
+      },
+      "own": {
+       "mean_abs": 0.011167746037244797,
+       "median_abs": 0.00017041340470314026,
+       "above_1": 0,
+       "from": "null:-0.125",
+       "of": 4
+      },
+      "odds": {
+       "mean_abs": 0.0987095832824707,
+       "median_abs": 0.0987095832824707,
+       "above_1": 0,
+       "from": "null:-0.125",
+       "of": 4
+      }
+     },
+     "folded": {
+      "taken": false,
+      "why": "a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 (16 November 2026)",
+      "dose": null,
+      "base_from": null,
+      "restart": null,
+      "rows_identical": null,
+      "metrics": null,
+      "per_row": null,
+      "gap": null,
+      "between_kl_mean": null,
+      "same_bits": null,
+      "seconds": null
+     },
+     "rank": {
+      "metric": "odds",
+      "dose": 1.0,
+      "value": 1.8172292709350586,
+      "at_least": 0,
+      "non_finite": 0,
+      "of": 4,
+      "rank": 1,
+      "over_floor": 18.409856576284124,
+      "controls_over_floor": 0
+     },
+     "controls_count": 3,
+     "at_least": 0,
+     "control_abs_max": 0.04249858856201172,
+     "control_abs_median": 0.010928153991699219
+    }
+   }
+  },
+  "written_lines": [
+   "reading \"page_31b_e6_she10_written\" (written): ok",
+   "  edit be4328fdb60d: 10 columns of layer 50 (page 51) silenced",
+   "  base model google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec)",
+   "  a written reading, greedy: every row writes its likeliest piece at each step, up to 24 new pieces, in one batch of 9 rows. It is taken at one row count and is not a two-row-count reading. Its log-probabilities are the writer's own, from the model's dtype, not the fp32 measure of a paired reading. Nothing gates the item: the model writes its own answer.",
+   "  Control edits are other sites of the same layer and size, drawn from seed 0 and matched within factor 2 on expected delivered magnitude from the base pre-pass on these items.",
+   "  item audition [cdae8add6c9e] (27 prompt pieces); 0.115 s a step",
+   "    base row, 24 pieces, did not end [CUT OFF]: 'Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her'",
+   "    null row e = 0.125: the base row's pieces, every one; largest log-probability gap 0.0432 (mean 0.0037, 24 pieces) [CUT OFF]",
+   "    null row e = -0.125: the base row's pieces, every one; largest log-probability gap 0.0435 (mean 0.0048, 24 pieces) [CUT OFF]",
+   "    the edit at dose 1: the base row's pieces, every one; largest log-probability gap 0.0035 (mean 0.000434, 24 pieces) [CUT OFF]",
+   "    the edit at dose 0: this row wrote the base row's pieces with its log-probabilities, exactly",
+   "    control edit 0: the base row's pieces, every one; largest log-probability gap 0.0407 (mean 0.0021, 24 pieces) [CUT OFF]",
+   "    control edit 1: the base row's pieces, every one; largest log-probability gap 0.0432 (mean 0.0022, 24 pieces) [CUT OFF]",
+   "    control edit 2: the base row's pieces, every one; largest log-probability gap 0.0435 (mean 0.0049, 24 pieces) [CUT OFF]",
+   "  written summary over 1 generation: base ended 0/1, cut off 1/1, looped 0/1",
+   "    the edit at dose 1: ended 0/1, cut off 1/1, looped 0/1, changed 1/1 (rescued loop 0, regressed loop 0)",
+   "    the edit at dose 0: ended 0/1, cut off 1/1, looped 0/1, changed 0/1 (rescued loop 0, regressed loop 0)",
+   "    3 control edits: looped 0..0, cut off 1..1, changed 1..1",
+   "  3.4 s (predicted 2.7 s)"
+  ],
+  "paired_lines": [
+   "reading \"page_31b_e6_she10_paired\" (paired): ok, 1 of 1 item kept",
+   "  edit be4328fdb60d: 10 columns of layer 50 (page 51) silenced",
+   "  base model google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec)",
+   "  rows 12 and 32; doses 1, 0 (the control edits, the ranks and any twin at dose 1); 4 null rows a forward (e = 0.03125, -0.03125, 0.125, -0.125); 3 control edits",
+   "  read-outs: KL, the text's own log-probability, log-odds of the named pieces; ranks by log-odds of the named pieces",
+   "  log-odds toward pieces [1304] against [668], read at the one position after the answer, not piece by piece",
+   "  Control edits are other sites of the same layer and size, drawn from seed 0 and matched within factor 2 on expected delivered magnitude from the base pre-pass on these items.",
+   "  Every item was read at 12 rows and at 32 rows. Agreement at these two row counts does not show that another row count would agree: on 14 November 2026 batches of 2, 3 and 4 rows each read differently.",
+   "  These figures are read along the answer given, piece by piece. They do not say what the edited model would write.",
+   "  The floor is the largest of 4 null rows, not a bound: on 14 November 2026 a single neuron silenced at random read above its forward's floor in 26 of 72 readings, up to 2.25 times it.",
+   "  item audition [cdae8add6c9e] (33 pieces, 6 scored): ok; the base gives -9.57 at 12 rows, -9.50 at 32 rows in nats a piece (bar -6.00)",
+   "    The base model gives this item's answer -9.57 at 12 rows and -9.50 at 32, in nats a piece on average: under the item gate's bar of -6.00 at both row counts. The bar is a caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and the base's log-probability did not separate the 3 on which the edit's two row counts disagreed (-3.09, -4.13 and -9.64 nats a piece) from the 48 on which they agreed (the lowest -12.13). The item is read, and its two row counts carry the weight.",
+   "    12 rows, 1 forward:",
+   "      the edit at dose 1: KL mean 0.00381, median 9.69e-05, 0 positions above a nat of 6; the text's own log-probability mean 0.14706, median 0.00398, 0 positions above a nat of 6; log-odds of the named pieces -1.85321 at the one position read; delivered 0.01799",
+   "      the edit at dose 0: this row is the base row by bits",
+   "      floor of KL: 3.7e-05 (the null row e = 0.125, the largest of 4; a null row's largest median 3.71e-06, most positions above a nat 0)",
+   "      floor of the text's own log-probability: 0.01445 (the null row e = -0.125, the largest of 4; a null row's largest median 0.00845, most positions above a nat 0)",
+   "      floor of log-odds of the named pieces: 0.18766 (the null row e = -0.125, the largest of 4; a null row's largest median 0.18766, most positions above a nat 0)",
+   "      on log-odds of the named pieces at dose 1: 0 of 3 matched control edits read as much (rank 1 of 4); 0 of 3 control edits read above the floor at all; the edit reads 9.88 times the floor",
+   "      no twin taken: a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 (16 November 2026)",
+   "    32 rows, 1 forward:",
+   "      the edit at dose 1: KL mean 0.00367, median 0.000116, 0 positions above a nat of 6; the text's own log-probability mean 0.11516, median 0.00541, 0 positions above a nat of 6; log-odds of the named pieces -1.81723 at the one position read; delivered 0.01799",
+   "      the edit at dose 0: this row is the base row by bits",
+   "      floor of KL: 2.7e-05 (the null row e = -0.03125, the largest of 4; a null row's largest median 6.68e-06, most positions above a nat 0)",
+   "      floor of the text's own log-probability: 0.01117 (the null row e = -0.125, the largest of 4; a null row's largest median 0.00017, most positions above a nat 0)",
+   "      floor of log-odds of the named pieces: 0.09871 (the null row e = -0.125, the largest of 4; a null row's largest median 0.09871, most positions above a nat 0)",
+   "      on log-odds of the named pieces at dose 1: 0 of 3 matched control edits read as much (rank 1 of 4); 0 of 3 control edits read above the floor at all; the edit reads 18.41 times the floor",
+   "      no twin taken: a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 (16 November 2026)",
+   "    12 and 32 rows agree on KL for the edit's arms (largest ratio 1.04, bar 3.00); this does not show another row count would agree",
+   "    the control edits' ratios on KL between 12 and 32 rows, printed and not judged (the rule reads the edit's arms alone), from control edit 0: 1.18, 1.28, 1.06; none over the bar",
+   "    12 and 32 rows agree on the text's own log-probability for the edit's arms (largest ratio 1.28, bar 3.00); this does not show another row count would agree",
+   "    the control edits' ratios on the text's own log-probability between 12 and 32 rows, printed and not judged (the rule reads the edit's arms alone), from control edit 0: 1.98, 2.92, 1.48; none over the bar",
+   "    12 and 32 rows agree on log-odds of the named pieces for the edit's arms (largest ratio 1.02, bar 3.00); this does not show another row count would agree",
+   "    the control edits' ratios on log-odds of the named pieces between 12 and 32 rows, printed and not judged (the rule reads the edit's arms alone), from control edit 0: 0.23, 0.58, 0.06; none over the bar",
+   "  over 1 item kept of 1 (0 refused, 0 unstable, 0 read in one arithmetic, 1 under the item gate's bar and read with its caution):",
+   "    at 12 rows, the edit at dose 1: KL mean over items 0.00381, median over items 0.00381, median of medians 9.69e-05, 0 positions above a nat; the text's own log-probability mean over items 0.14706, median over items 0.14706, median of medians 0.00398, 0 positions above a nat; log-odds of the named pieces mean over items -1.85321, median over items -1.85321, median of medians -1.85321, 1 positions above a nat",
+   "    at 12 rows, the edit at dose 0: KL mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat; the text's own log-probability mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat; log-odds of the named pieces mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat",
+   "    at 12 rows, the largest floor: KL 3.7e-05, the text's own log-probability 0.01445, log-odds of the named pieces 0.18766",
+   "    at 12 rows, on log-odds of the named pieces over items: 0 of 3 matched control edits read as much (rank 1 of 4)",
+   "    at 32 rows, the edit at dose 1: KL mean over items 0.00367, median over items 0.00367, median of medians 0.000116, 0 positions above a nat; the text's own log-probability mean over items 0.11516, median over items 0.11516, median of medians 0.00541, 0 positions above a nat; log-odds of the named pieces mean over items -1.81723, median over items -1.81723, median of medians -1.81723, 1 positions above a nat",
+   "    at 32 rows, the edit at dose 0: KL mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat; the text's own log-probability mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat; log-odds of the named pieces mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat",
+   "    at 32 rows, the largest floor: KL 2.7e-05, the text's own log-probability 0.01117, log-odds of the named pieces 0.09871",
+   "    at 32 rows, on log-odds of the named pieces over items: 0 of 3 matched control edits read as much (rank 1 of 4)",
+   "  1.1 s (predicted 1.0 s)"
+  ],
+  "seconds": 4.562,
+  "base_after": true,
+  "book": {
+   "written_seq": 0,
+   "paired_seq": 1,
+   "entries": 2,
+   "head": "23c97d7f90d52799"
+  },
+  "note": "This side-by-side reading is for exploration and learning; nothing remains on the model after it ends. A rank against control edits says only that this edit moved more than those random edits on this question."
+ },
+ "ledger": {
+  "ok": true,
+  "entries": 2,
+  "head": "23c97d7f90d52799ad7ae786bf097e7830129069421e9889a85a17b4105f4b1f",
+  "first_bad": null,
+  "why": null
+ }
+}

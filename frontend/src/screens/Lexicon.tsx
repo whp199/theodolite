@@ -1429,7 +1429,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
     <LexSection id="acts-head" title="iv · acts of the reader">
       <Lede cap="S">
         ix things you can do here. The first three only look. The last three change the model: a test only for the one
-        reading it takes, a nudge only while it is on, an edit until you undo it.
+        reading it takes, a nudge only while it is on, and an edit either until you undo it (on the vault’s edit tab)
+        or for a single side-by-side reading alone (on the vault’s compare tab, which always leaves the base untouched).
       </Lede>
       <EntryGrid>
         <Entry id="sighting" head="a sighting" tech="sweep · all sixty layers" figure={<FigSighting />}>
@@ -1581,12 +1582,17 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </EntryApparatus>
         </Entry>
 
-        <Entry id="edit" head="an edit" tech=".patch · a one-neuron column edit, not MEMIT" figure={<FigEdit />}>
+        <Entry id="edit" head="an edit" tech=".patch · vault overlay or per-row reading" figure={<FigEdit />}>
           <Body>
-            Change what one neuron writes, in the model’s own weights, and see what follows. An edit stays until you
-            undo it; one command undoes them all:
+            Change what one or more neurons write (or read), in the model’s own weights, and see what follows. A vault
+            edit made on the edit tab stays in memory until you undo it with one command:
           </Body>
           <Query>ROLLBACK</Query>
+          <Note>
+            A side-by-side reading on the vault’s compare tab works differently: the edit is passed as a frozen value
+            for that single forward beside the untouched base and control edits, recorded in the append-only level book,
+            and never left on the model.
+          </Note>
           <Note>
             The study tested the vault’s top ten “she” neurons at layer 51 this way, deleting them and rolling back: the
             pull toward “she” in passages about women fell by 1.80 log-odds, while ten random neurons moved it by 0.04
@@ -1612,6 +1618,30 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             both with the KL between the two at the first word-piece. The vault page asks for it, 12 word-pieces long;
             the console and the MCP tool make an edit unheard. The study tested only <M>DELETE</M> causally
             (E6 §2.3).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="control-edit" head="a control edit" tech="other_sites_matched · same_site · sham_target" figure={<FigEdit />}>
+          <Body>
+            An equal-sized weight edit run alongside your edit in the same forward batch so you can see how much any
+            comparable perturbation moves the model on the same text.
+          </Body>
+          <Note>
+            On the vault’s compare tab you can hear the untouched base, your edit, and a control edit side by side. Three
+            families are available: other sites of the same layer and size (unmatched, or matched on delivered stream
+            change), random masked directions at the same sites, and declared sham-target edits for formal claim
+            readings.
+          </Note>
+          <Note>
+            Outranking control edits on one question says only that your edit moved more than those random edits on that
+            text—not what it did, and never a finding of record.
+          </Note>
+          <Onward to={href.vault()}>compare side by side in the vault →</Onward>
+          <EntryApparatus title="a control edit">
+            Served by <M>POST /api/level/compare</M> (<M>backend/level_routes.py</M>) over <M>backend/levelling.py</M>,
+            and gated at family-wise level <M>p_fw = min(1, m · (1 + at_least) / (C + 1)) ≤ 0.05</M> in Phase 3 claim
+            readings (<M>backend/level_claim.py</M>). Replayable from the append-only level book via{" "}
+            <M>GET /api/level/book</M> with no model loaded.
           </EntryApparatus>
         </Entry>
       </EntryGrid>

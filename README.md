@@ -280,20 +280,41 @@ weights and reading what the change does. The question behind it is whether the 
 environment where a model, today’s or the next, forms a hypothesis about Gemma-4-31B’s weights, makes the edit,
 tests it quickly and tries again.
 
-Its first slice (1a) was built on 16 November 2026, and it is deliberately narrow:
+Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 standing checks passed on the 31B),
+slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,032/1,032 CPU checks and 68/68 31B card
+checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (108/108 CPU/sandbox checks
+in `scripts/check_level_door.py`, 37/37 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
+(164/164 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`), and
+Phase 4’s Person’s Page (79/79 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
+`scripts/verify_level_page.py`) were built and card-checked:
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
-  projection, or add a low-rank term there. Its id is a hash of the edit and of every tensor it touches, so it is
-  refused on any other weights.
+  projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by
+  `post_feedforward_layernorm`), scale, silence, set or add to a row of `gate_proj` or `up_proj` (edited coordinates
+  recomputed, never added to), add a low-rank term on `down_proj`, or compose edits additively (`stack`). Its id is a
+  hash of the edit and of every tensor it touches, so it is refused on any other weights. `backend/weight_reader.py`
+  reads the checkpoint’s weights, quiet masks, norms, and top writers directly from disk on CPU with no GPU.
 - **It is read against the untouched model in the same forward.** The edited model runs in one row of a batch and the
-  base in another, beside null rows and control edits, at two row counts. The model is never left edited.
+  base in another, beside null rows and control edits (`other_sites`, `other_sites_matched`, `same_site`, or
+  `sham_target`), at two row counts, reporting `delivered` stream change alongside next-piece metrics — or across
+  greedy, sampled, and thinking-on written generations with loop and cut-off detectors. The model is never left edited.
 - **Nothing is lost.** Every reading, refused and void ones too, goes into an append-only ledger. Each line carries
-  the hash of the line before it.
-- **It gives numbers, not verdicts.** It prints differences, ranks against control edits, floors, and “void” or
-  “unstable”. It names no edit.
+  the hash of the line before it (`level_book.driver_view` / `book --driver-view` provides a redacted aggregate view).
+- **Agent’s Door (`level_sandbox.py`, `level_session.py`, `level_mcp.py`).** Off-card CPU Python cells run inside a
+  `bwrap` sandbox (no network, no GPU, no `$HOME`, read-only weights, single writable `/work`, memory and wall-clock
+  caps) beside budgeted model gates (`capture`, `read`, `write`, `book_view`) returning redacted `driver_view`
+  aggregates and ranks in practice, plus blinded in-memory planted-fault and canary sessions.
+- **Claim Gate (`level_briefs.py`, `level_claim.py`).** Versioned briefs separate `practice` and `kept_back` frames
+  (two independent halves), register every fresh claim in the ledger **before** post-freeze `os.urandom(32)` draws,
+  enforce read-once per `(brief_id, edit_id)` and fixed budget `m` (`20m - 1` controls per family across both batch
+  classes), gate retention batteries against calibrated hashed bars, compare author prompt arms, and issue bounded
+  harness-authored Claim Sheets (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`,
+  `works but harms`, `did not replicate`, `kept the base`, `void`).
 
-For now it is a command line for the owner at the terminal, run with the server stopped. No page, route or agent’s
-tool reaches it yet. Its first run on the 31B held 142 of its 145 standing checks. The next slices (direction
-removal, row edits, matched controls, then a door for an agent) wait on decisions that are the owner’s.
+- **Person’s Page (`backend/level_routes.py`, Vault `compare` tab).** Base, edit, and 1–19 control edits heard side by
+  side in one batched forward beneath red-italic rubrics, with a two-batch-class paired read-out table, HTTP 409
+  refusal while any vault overlay is in force, and model-free replay from the append-only level book.
+
+Later phases (Phase 5 trials of record and exports, Phase 6 driver evaluations) wait on decisions that are the owner’s.
 
 “Levelling” is a working name: as a surveyor levels heights against a benchmark, it reads each edit against the
 untouched model. More is in [ARCHITECTURE §7](ARCHITECTURE.md) and [ROADMAP §viii](ROADMAP.md#viii--a-weight-edit-read-against-the-base), and the exploration

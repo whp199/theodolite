@@ -29,6 +29,7 @@ export const INDEX: IndexItem[] = [
   { label: "bearing and elevation", id: "bearing", section: "iii" },
   { label: "causal spot-check", see: "a test of a label", id: "test", section: "iv" },
   { label: "census, the", id: "census", section: "iii" },
+  { label: "control edit, a", id: "control-edit", section: "iv" },
   { label: "double-negative regime", id: "double-negative", section: "ii" },
   { label: "edit, an", id: "edit", section: "iv" },
   { label: "gathering", id: "gathering", section: "ii" },

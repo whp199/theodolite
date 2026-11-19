@@ -1,0 +1,740 @@
+{
+ "v": 1,
+ "what": "scripts/verify_levelling_1b.py: the card's check of 1b",
+ "sections": {
+  "1": {
+   "lines": [
+    {
+     "ok": true,
+     "what": "60 layers, 21,504 FFN width, 5,376 hidden size (got 60, 21504, 5376)"
+    },
+    {
+     "ok": true,
+     "what": "no overlays in force at startup"
+    },
+    {
+     "ok": true,
+     "what": "quiet_mask includes at least the 181 persistent quiet dims at layers 5, 20, 44, 50 ({'5': 251, '20': 344, '44': 306, '50': 261})"
+    }
+   ],
+   "figures": {
+    "quiet_mask_counts": {
+     "5": 251,
+     "20": 344,
+     "44": 306,
+     "50": 261
+    }
+   },
+   "seconds": 0.02
+  },
+  "2": {
+   "lines": [
+    {
+     "ok": true,
+     "what": "L5 gate_proj sil R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj sil R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj sil R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj sil R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj x2 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj x2 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj x2 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj x2 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj xm05 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj xm05 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj xm05 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 gate_proj xm05 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj sil R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj sil R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj sil R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj sil R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj x2 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj x2 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj x2 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj x2 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj xm05 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj xm05 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj xm05 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L5 up_proj xm05 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj sil R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj sil R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj sil R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj sil R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj x2 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj x2 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj x2 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj x2 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj xm05 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj xm05 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj xm05 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj xm05 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj sil R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj sil R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj sil R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj sil R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj x2 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj x2 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj x2 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj x2 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj xm05 R=12: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj xm05 R=12: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj xm05 R=32: dose 0 and untouched equal base by bits"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj xm05 R=32: per_row equals folded _memit_row_overlays by bits (max_diff=0.000e+00)"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj scale1.5: paired reading + folded _memit_row_overlays twin ok"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj set: paired reading + folded _memit_row_overlays twin ok"
+    },
+    {
+     "ok": true,
+     "what": "L20 gate_proj add: paired reading + folded _memit_row_overlays twin ok"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj scale1.5: paired reading + folded _memit_row_overlays twin ok"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj set: paired reading + folded _memit_row_overlays twin ok"
+    },
+    {
+     "ok": true,
+     "what": "L20 up_proj add: paired reading + folded _memit_row_overlays twin ok"
+    },
+    {
+     "ok": true,
+     "what": "written reading under recomputed row edit ok (ok: None)"
+    }
+   ],
+   "figures": {
+    "exact_row_edits": {
+     "L5_gate_proj_sil_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_gate_proj_sil_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_gate_proj_x2_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_gate_proj_x2_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_gate_proj_xm05_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_gate_proj_xm05_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_up_proj_sil_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_up_proj_sil_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_up_proj_x2_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_up_proj_x2_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_up_proj_xm05_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L5_up_proj_xm05_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_gate_proj_sil_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_gate_proj_sil_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_gate_proj_x2_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_gate_proj_x2_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_gate_proj_xm05_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_gate_proj_xm05_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_up_proj_sil_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_up_proj_sil_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_up_proj_x2_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_up_proj_x2_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_up_proj_xm05_R12": {
+      "same_bits": true,
+      "max_diff": 0.0
+     },
+     "L20_up_proj_xm05_R32": {
+      "same_bits": true,
+      "max_diff": 0.0
+     }
+    },
+    "recomp_row_edits": {
+     "gate_proj_scale1.5": {
+      "small_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "small_between_kl": 0.0,
+      "large_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "large_between_kl": 0.0
+     },
+     "gate_proj_set": {
+      "small_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "small_between_kl": 0.0,
+      "large_kl_gap": {
+       "abs": 0.0005587139166891575,
+       "rel": 0.7694870918181042
+      },
+      "large_between_kl": 0.0008615710539743304
+     },
+     "gate_proj_add": {
+      "small_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "small_between_kl": 0.0,
+      "large_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "large_between_kl": 0.0
+     },
+     "up_proj_scale1.5": {
+      "small_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "small_between_kl": 0.0,
+      "large_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "large_between_kl": 0.0
+     },
+     "up_proj_set": {
+      "small_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "small_between_kl": 0.0,
+      "large_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "large_between_kl": 0.0
+     },
+     "up_proj_add": {
+      "small_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "small_between_kl": 0.0,
+      "large_kl_gap": {
+       "abs": 0.0,
+       "rel": 0.0
+      },
+      "large_between_kl": 0.0
+     }
+    }
+   },
+   "seconds": 43.43
+  },
+  "3": {
+   "lines": [
+    {
+     "ok": true,
+     "what": "L20 remove_direction: zero delta on quiet_mask and stream orthogonality max=7.21e-10"
+    },
+    {
+     "ok": true,
+     "what": "L20 remove_direction paired reading + same_site controls + folded twin ok (ok: None)"
+    }
+   ],
+   "figures": {
+    "captured_dir_L20_quiet_share": 0.138852956309738,
+    "remove_direction_report": [
+     {
+      "linear": "layers.20.mlp.down_proj",
+      "layer": 20,
+      "page_layer": 21,
+      "neurons": 16,
+      "quiet_share": 0.138852956309738,
+      "max_quiet_share": 0.25,
+      "masked_dims": 344,
+      "total_dims": 5376,
+      "raw_norm": {
+       "max": 0.11934808332234126,
+       "median": 0.05681294965506234,
+       "total": 0.2534650652449983
+      },
+      "stream_norm": {
+       "max": 0.06714257395046529,
+       "median": 0.0319617005843353,
+       "total": 0.14259380218147433
+      },
+      "stream_rel_change": {
+       "max": 0.2657888207386471,
+       "median": 0.13916212504614306
+      }
+     }
+    ],
+    "remove_direction_diag": {
+     "edit_id": "52146294b99e297fab3721d98c52757986d69e3f583ee0f39a3f5054c5cbc171",
+     "dose": 1.0,
+     "dtype": "bfloat16",
+     "terms": [
+      {
+       "linear": "layers.20.mlp.down_proj",
+       "kind": "cols",
+       "layer": 20,
+       "page_layer": 21,
+       "count": 16,
+       "raw_rel_change": {
+        "max": 0.2333559516272952,
+        "median": 0.1204001779854446
+       },
+       "dtype_changed_share": 0.9177362322807312,
+       "stream_rel_change": {
+        "max": 0.2657888238410649,
+        "median": 0.13916212547077056
+       },
+       "quiet_mask_energy_share": {
+        "raw": 0.0,
+        "stream": 0.0
+       },
+       "write_ceilings": {
+        "min": 30.516849117164675,
+        "median": 32.291991752004144,
+        "max": 34.2711128993441
+       }
+      }
+     ]
+    }
+   },
+   "seconds": 6.39
+  },
+  "4": {
+   "lines": [
+    {
+     "ok": true,
+     "what": "L20 other_sites_matched ok (ok: None)"
+    },
+    {
+     "ok": true,
+     "what": "delivered is 0.0 at dose 0 and >0 at dose 1 (0.00015527292271144688)"
+    },
+    {
+     "ok": true,
+     "what": "sham_target ok and lowered restart_from to 18 (ok, restart_from=18)"
+    },
+    {
+     "ok": true,
+     "what": "other_sites_matched voids cleanly on tight tolerance (void, {'code': 'insufficient_matched_controls', 'item': None, 'class': None, 'forward': None})"
+    }
+   ],
+   "figures": {
+    "matched_controls": {
+     "status": "ok",
+     "coverage": {
+      "tolerance": 2.0,
+      "requested": 10,
+      "found": 10,
+      "sufficient": true,
+      "terms": [
+       {
+        "linear": "layers.20.mlp.down_proj",
+        "count": 2,
+        "min_eligible": 486,
+        "median_eligible": 7474.5,
+        "union_eligible": 14949,
+        "drawn": 10,
+        "edit_scores": {
+         "min": 0.01863937558162021,
+         "median": 0.12492046257753947,
+         "max": 0.23120154957345873
+        }
+       }
+      ]
+     },
+     "seconds": {
+      "predicted": 3.709385,
+      "actual": 3.57669257701491,
+      "ratio": 0.9642279183786288,
+      "parts": {
+       "forwards": 3.487625,
+       "readout": 0.22175999999999998,
+       "folded": 0.0,
+       "writing": 0.0
+      }
+     }
+    },
+    "delivered_sample": {
+     "dose1": 0.00015527292271144688,
+     "dose0": 0.0
+    },
+    "matched_void_coverage": {
+     "tolerance": 1.000001,
+     "requested": 40,
+     "found": 0,
+     "sufficient": false,
+     "terms": [
+      {
+       "linear": "layers.20.mlp.down_proj",
+       "count": 2,
+       "min_eligible": 0,
+       "median_eligible": 0.0,
+       "union_eligible": 0,
+       "drawn": 0,
+       "edit_scores": {
+        "min": 0.00917427023532836,
+        "median": 0.010036281977983764,
+        "max": 0.010898293720639168
+       }
+      }
+     ]
+    }
+   },
+   "seconds": 4.88
+  },
+  "5": {
+   "lines": [
+    {
+     "ok": true,
+     "what": "stacked col+row edit paired reading + folded twin ok (ok: None)"
+    }
+   ],
+   "figures": {
+    "stack_diagnostics": {
+     "edit_id": "960c30c2643637843888a13925097c0eecfb0e27047a389ffbcb96396e8aaf3b",
+     "dose": 1.0,
+     "dtype": "bfloat16",
+     "terms": [
+      {
+       "linear": "layers.20.mlp.down_proj",
+       "kind": "cols",
+       "layer": 20,
+       "page_layer": 21,
+       "count": 1,
+       "raw_rel_change": {
+        "max": 1.0,
+        "median": 1.0
+       },
+       "dtype_changed_share": 0.8939732313156128,
+       "stream_rel_change": {
+        "max": 1.0,
+        "median": 1.0
+       },
+       "quiet_mask_energy_share": {
+        "raw": 0.06442962482850835,
+        "stream": 0.010532621603427647
+       },
+       "write_ceilings": {
+        "min": 0.0,
+        "median": 0.0,
+        "max": 0.0
+       }
+      },
+      {
+       "linear": "layers.20.mlp.gate_proj",
+       "kind": "rows",
+       "layer": 20,
+       "page_layer": 21,
+       "count": 1,
+       "raw_rel_change": {
+        "max": 1.0,
+        "median": 1.0
+       },
+       "dtype_changed_share": 0.8805803656578064
+      }
+     ]
+    }
+   },
+   "seconds": 2.42
+  },
+  "6": {
+   "lines": [
+    {
+     "ok": true,
+     "what": "model is the base after all 1b readings"
+    },
+    {
+     "ok": true,
+     "what": "compiled unpacker fell_back unchanged (0 == 0)"
+    },
+    {
+     "ok": true,
+     "what": "verify_1b ledger chain is whole ({'ok': True, 'entries': 12, 'head': '175c65f765cde546011bf57f84e2363be6600e03d824bf8e40fabc6b02403ef8', 'first_bad': None, 'why': None})"
+    }
+   ],
+   "figures": {
+    "max_allocated_gib": 18.611
+   },
+   "seconds": 0.01
+  }
+ },
+ "readings": [
+  {
+   "name": "verify_1b: row gate_proj scale1.5",
+   "status": "ok",
+   "seq": 0
+  },
+  {
+   "name": "verify_1b: row gate_proj set",
+   "status": "ok",
+   "seq": 1
+  },
+  {
+   "name": "verify_1b: row gate_proj add",
+   "status": "ok",
+   "seq": 2
+  },
+  {
+   "name": "verify_1b: row up_proj scale1.5",
+   "status": "ok",
+   "seq": 3
+  },
+  {
+   "name": "verify_1b: row up_proj set",
+   "status": "ok",
+   "seq": 4
+  },
+  {
+   "name": "verify_1b: row up_proj add",
+   "status": "ok",
+   "seq": 5
+  },
+  {
+   "name": "verify_1b: written row edit",
+   "status": "ok",
+   "seq": 6
+  },
+  {
+   "name": "verify_1b: remove_direction + same_site",
+   "status": "ok",
+   "seq": 7
+  },
+  {
+   "name": "verify_1b: other_sites_matched",
+   "status": "ok",
+   "seq": 8
+  },
+  {
+   "name": "verify_1b: sham_target",
+   "status": "ok",
+   "seq": 9,
+   "peak_gib": 18.361
+  },
+  {
+   "name": "verify_1b: matched coverage void",
+   "status": "void",
+   "seq": 10
+  },
+  {
+   "name": "verify_1b: stacked col+row",
+   "status": "ok",
+   "seq": 11
+  }
+ ],
+ "runtime": {
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "transformers": "5.20.0",
+  "interp_engine": "1.14.0",
+  "compressed_tensors": "0.19.0",
+  "git": "7f558a7c36d5eef6d25a9900ac38bbffb1d23896",
+  "git_clean": false,
+  "act_scale_sha256": null
+ },
+ "load_s": 29.02,
+ "total_s": 86.2,
+ "passed": 68,
+ "failed": 0
+}

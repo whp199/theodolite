@@ -204,6 +204,13 @@ def price(lv: Any, we: Any, reading: Mapping[str, Any], items: Mapping[str, Any]
     recipe = reading.get("edit") if isinstance(reading, Mapping) else None
     facts = we.recipe_facts(recipe, base_dir) if isinstance(recipe, dict) else None
     plan = lv.normalise(reading, n_layers=n_layers, tokenizer=tokenizer, facts=facts, dtype=dtype)
+    if facts is not None and plan["controls"].get("family") == "sham_target":
+        all_layers = set(facts["layers"])
+        for sh in plan["controls"].get("shams") or []:
+            sf = we.recipe_facts(sh, base_dir)
+            all_layers.update(sf["layers"])
+        facts = {**facts, "layers": sorted(all_layers), "lowest_layer": int(min(all_layers))}
+        plan = lv.normalise(reading, n_layers=n_layers, tokenizer=tokenizer, facts=facts, dtype=dtype)
     names = list(items) if plan["items"] == "all" else list(plan["items"])
     pieces = [(len(items[n].ids), len(items[n].prompt_ids)) for n in names]
     est = lv.estimate(plan, pieces, n_layers=n_layers, facts=facts, twin=False if stand_in else None)
@@ -419,8 +426,7 @@ def cmd_run(a: argparse.Namespace) -> int:
         for line in printed:
             say(line)
         book = result.get("book") or {}
-        if not any("book line" in line for line in printed):
-            say(f"  book line {book.get('seq')}")
+        say(f"  book line {book.get('seq')}")
         if result.get("status") != "ok":
             not_ok += 1
         if not result.get("base_after", False):
@@ -485,7 +491,8 @@ def cmd_book(a: argparse.Namespace) -> int:
                         + (f"its lines are 0 to {count - 1}" if count else "it has no line yet") + f" ({path}).")
                     code = 2
                 else:
-                    say(json.dumps(entry, indent=1, ensure_ascii=False))
+                    shown = lb.driver_view(entry) if getattr(a, "driver_view", False) else entry
+                    say(json.dumps(shown, indent=1, ensure_ascii=False))
         except lb.BookBroken as exc:
             say(str(exc))
             code = 2
@@ -499,6 +506,277 @@ def cmd_book(a: argparse.Namespace) -> int:
                 f"line{' before it is' if v['entries'] == 1 else 's before it are'} whole (head {v['head'][:12]}). Look at {path}.")
             code = max(code, 1)
     return code
+
+
+# ------------------------------------------------------------------------------------------------ weights & probe
+
+def cmd_weights(a: argparse.Namespace) -> int:
+    hide_the_card()
+    from backend.weight_reader import WeightReadError, WeightReader
+
+    try:
+        wr = WeightReader(a.path) if a.path else WeightReader.from_default()
+    except (WeightReadError, OSError) as exc:
+        say(str(exc))
+        return 2
+    try:
+        if a.action == "info":
+            say(json.dumps(wr.info(), indent=2, ensure_ascii=False))
+        elif a.action == "pin":
+            if not a.linear:
+                say("weights pin requires --linear (e.g. layers.20.mlp.down_proj).")
+                return 2
+            say(json.dumps({"linear": a.linear, "shape": list(wr.linear_shape(a.linear)),
+                            "kind": wr.linear_kind(a.linear), "pin": wr.tensor_pin(a.linear)}, indent=2))
+        elif a.action == "quiet":
+            if a.layer is None:
+                say("weights quiet requires --layer L (0-based).")
+                return 2
+            qm = wr.quiet_mask(a.layer)
+            say(json.dumps({"layer": a.layer, "page_layer": a.layer + 1, "dim": int(qm.shape[0]),
+                            "quiet_count": int(qm.sum()), "quiet_share": float(qm.mean())}, indent=2))
+        elif a.action == "norms":
+            if a.layer is None:
+                say("weights norms requires --layer L (0-based).")
+                return 2
+            import numpy as np
+
+            norms = wr.down_stream_norms(a.layer)
+            top_idx = np.argsort(-norms)[: int(a.top)]
+            say(json.dumps({
+                "layer": a.layer, "page_layer": a.layer + 1, "neurons": int(norms.shape[0]),
+                "mean": float(norms.mean()), "median": float(np.median(norms)), "max": float(norms.max()),
+                "top": [[int(i), float(norms[i])] for i in top_idx],
+            }, indent=2))
+        elif a.action == "writers":
+            if a.layer is None or not a.direction:
+                say("weights writers requires --layer L and --direction FILE.npy.")
+                return 2
+            import numpy as np
+
+            u = np.load(a.direction, allow_pickle=False)
+            top = wr.writers(a.layer, u, k=int(a.top), cosine=bool(a.cosine))
+            say(json.dumps({"layer": a.layer, "page_layer": a.layer + 1, "cosine": bool(a.cosine),
+                            "writers": [[int(i), float(s)] for i, s in top]}, indent=2))
+    except (WeightReadError, OSError, ValueError) as exc:
+        say(str(exc))
+        return 2
+    finally:
+        wr.close()
+    return 0
+
+
+def cmd_sandbox_probe(a: argparse.Namespace) -> int:
+    hide_the_card()
+    from backend import level_sandbox as ls
+
+    weights_dir = Path(a.weights_dir) if a.weights_dir else None
+    if a.default_weights and weights_dir is None:
+        from backend.runtime_factory import checkpoint_snapshot
+
+        weights_dir = checkpoint_snapshot("google/gemma-4-31B-it-qat-w4a16-ct")
+    res = ls.probe_sandbox(weights_dir=weights_dir, max_mem_gib=float(a.max_mem_gib))
+    say(json.dumps(res, indent=2, ensure_ascii=False))
+    return 0 if res.get("ok") else 2
+
+
+# ---------------------------------------------------------------------------------------------------- Phase 3 CLI
+
+def _resolve_tokenizer(stand_in: bool) -> Any:
+    if stand_in:
+        from atlas_stand_in import stand_in_tokenizer
+
+        return stand_in_tokenizer()
+    from transformers import AutoTokenizer
+    from backend.engine_runtime import DEFAULT_W4A16_MODEL_ID
+
+    return AutoTokenizer.from_pretrained(DEFAULT_W4A16_MODEL_ID, local_files_only=True)
+
+
+def _resolve_brief(spec: str, tokenizer: Any) -> Any:
+    from backend import level_briefs as lbr
+
+    p = Path(spec)
+    if p.exists():
+        return lbr.load_brief(p)
+    starters = lbr.starter_briefs(tokenizer)
+    if spec in starters:
+        return starters[spec]
+    raise lbr.BriefError(f"Unknown brief {spec!r}; pass a brief JSON path or one of: {', '.join(sorted(starters))}.")
+
+
+def _open_claim_handle(stand_in: bool, port: int) -> Tuple[Optional[Any], int]:
+    if stand_in:
+        hide_the_card()
+        say(stand_in_places())
+    else:
+        device = os.environ.get(DEVICE_ENV, "").strip().lower()
+        if os.environ.get(GGUF_ENV, "").strip():
+            say(f"{ONLY_THE_CARD} {GGUF_ENV} is set.")
+            return None, 2
+        if device not in ("", "cuda", "cuda:0"):
+            say(f"{ONLY_THE_CARD} {DEVICE_ENV} is {device}.")
+            return None, 2
+        if server_answers(port):
+            say(f"Something answers on :{port}: stop the Theodolite server first (this loads the model itself).")
+            return None, 2
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
+    import torch
+    import backend.levelling as lv
+    import backend.weight_edits as we
+
+    if stand_in:
+        torch.set_num_threads(1)
+        if we.EDITS_ENV != EDITS_ENV:
+            os.environ.setdefault(we.EDITS_ENV, os.environ[EDITS_ENV])
+        from atlas_stand_in import stand_in as make_stand_in, use_stand_in_atlas
+
+        use_stand_in_atlas()
+        rt, _vault = make_stand_in()
+    else:
+        if not torch.cuda.is_available():
+            say(f"No CUDA device answers in this process. {ONLY_THE_CARD}")
+            return None, 2
+        free, _total = torch.cuda.mem_get_info()
+        if free < MIN_FREE_GIB * 2**30:
+            say(f"Only {free / 2**30:.1f} GiB of the card is free ({MIN_FREE_GIB:g} asked).")
+            return None, 2
+        from backend import w4a16_fast
+        from backend.runtime_factory import make_runtime
+
+        rt = make_runtime(load_jlens=False).load()
+        if getattr(rt, "jpp_lenses", None):
+            rt.jpp_lenses.clear()
+        gc.collect()
+        torch.cuda.empty_cache()
+        try:
+            w4a16_fast.install(rt, "compiled", log=say)
+        except w4a16_fast.Refused as exc:
+            say(str(exc))
+            return None, 2
+    try:
+        return lv.handle(rt), 0
+    except we.NotBase as exc:
+        say(str(exc))
+        return None, 2
+
+
+def cmd_brief(a: argparse.Namespace) -> int:
+    hide_the_card()
+    from backend import level_briefs as lbr
+
+    try:
+        tok = _resolve_tokenizer(bool(a.stand_in))
+    except OSError as exc:
+        say(f"Cannot load tokenizer locally ({str(exc).splitlines()[0]}); try --stand-in.")
+        return 2
+    try:
+        if a.action == "list":
+            starters = lbr.starter_briefs(tok)
+            rows = [
+                {
+                    "name": b.name,
+                    "brief_id": b.id,
+                    "metric": b.metric,
+                    "direction": b.direction,
+                    "least_effect": b.least_effect,
+                    "max_fresh_readings": b.max_fresh_readings,
+                    "controls_per_family": b.default_controls,
+                    "practice_frames": len(b.generator.frames_for("practice")),
+                    "kept_back_frames": len(b.generator.frames_for("kept_back")),
+                }
+                for b in starters.values()
+            ]
+            say(json.dumps(rows, indent=2, ensure_ascii=False))
+            return 0
+        if not a.target:
+            say(f"brief {a.action} requires a brief name or JSON file path.")
+            return 2
+        b = _resolve_brief(a.target, tok)
+        if a.action == "show":
+            say(json.dumps({
+                "name": b.name, "brief_id": b.id, "behavior": b.behavior, "metric": b.metric,
+                "direction": b.direction, "least_effect": b.least_effect,
+                "allowed_tensors": list(b.allowed_tensors), "allowed_layers": b.allowed_layers,
+                "max_fresh_readings": b.max_fresh_readings, "controls_per_family": b.default_controls,
+                "chat_settings": b.chat_settings, "compare_settings": b.compare_settings,
+                "practice_frames": len(b.generator.frames_for("practice")),
+                "kept_back_half0": len(b.generator.frames_for("kept_back", half=0)),
+                "kept_back_half1": len(b.generator.frames_for("kept_back", half=1)),
+            }, indent=2, ensure_ascii=False))
+            return 0
+        if a.action == "export":
+            if not a.out:
+                say("brief export requires --out FILE.json.")
+                return 2
+            bid = lbr.save_brief(b, Path(a.out))
+            say(f'exported brief "{b.name}" [{bid[:12]}] to {a.out}')
+            return 0
+    except (lbr.BriefError, OSError) as exc:
+        say(str(exc))
+        return 2
+    return 0
+
+
+def cmd_calibrate(a: argparse.Namespace) -> int:
+    from backend import level_briefs as lbr
+    from backend import level_claim as lcl
+
+    h, rc = _open_claim_handle(bool(a.stand_in), int(a.port))
+    if rc != 0 or h is None:
+        return rc
+    try:
+        brief = _resolve_brief(a.brief, h.tokenizer)
+        bars = lcl.calibrate_bars(
+            h, brief, layer=int(a.layer), n_cols=int(a.n_cols), n_controls=int(a.n_controls),
+            n_neutral=int(a.n_neutral), n_near=int(a.n_near), n_panel=int(a.n_panel),
+            seed=int(a.seed), mult=float(a.mult),
+        )
+        if a.out:
+            lcl.save_bars(bars, Path(a.out))
+        say(json.dumps({**bars.to_dict(), "bars_sha256": bars.id}, indent=2, ensure_ascii=False))
+        return 0
+    except (lbr.BriefError, lcl.ClaimRefused, OSError, ValueError) as exc:
+        say(str(exc))
+        return 2
+
+
+def cmd_claim(a: argparse.Namespace) -> int:
+    from backend import level_briefs as lbr
+    from backend import level_claim as lcl
+    from backend.census import write_json_atomic
+
+    h, rc = _open_claim_handle(bool(a.stand_in), int(a.port))
+    if rc != 0 or h is None:
+        return rc
+    try:
+        brief = _resolve_brief(a.brief, h.tokenizer)
+        bars = lcl.load_bars(Path(a.bars))
+        edit_path = Path(a.edit)
+        edit_recipe = json.loads(edit_path.read_text(encoding="utf-8"))
+        shams = json.loads(Path(a.shams).read_text(encoding="utf-8")) if a.shams else None
+        res = lcl.run_fresh_claim(
+            h, brief, bars, edit_recipe,
+            base_dir=edit_path.parent,
+            main_dose=float(a.dose),
+            selection_mode=str(a.selection_mode),
+            sham_recipes=shams,
+            n_target=int(a.n_target),
+            n_neutral=int(a.n_neutral),
+            n_near=int(a.n_near),
+            n_panel=int(a.n_panel),
+            controls_override=a.controls,
+            match_tolerance=a.match_tolerance,
+            run_prompt_arms=not bool(a.no_prompt_arms),
+        )
+        say(res["sheet"])
+        if a.out:
+            write_json_atomic(Path(a.out), res)
+        return 0 if res["verdict"] != "void" else 1
+    except (lbr.BriefError, lcl.ClaimRefused, OSError, ValueError) as exc:
+        say(str(exc))
+        return 2
 
 
 # ----------------------------------------------------------------------------------------------------------- main
@@ -526,8 +804,66 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     b = sub.add_parser("book", help="no model: the book's last lines, one line whole, or the chain walked")
     b.add_argument("--tail", metavar="N", type=int, default=None, help="the last N entries, one line each (20)")
     b.add_argument("--seq", metavar="K", type=int, default=None, help="line K (counting from 0), as indented JSON")
+    b.add_argument("--driver-view", action="store_true", help="with --seq, redact item text, token ids and per-item rows")
     b.add_argument("--verify", action="store_true", help="walk every line of the chain")
     b.set_defaults(fn=cmd_book)
+
+    w = sub.add_parser("weights", help="no card: inspect W4A16 or dense checkpoint weights directly from disk on CPU")
+    w.add_argument("action", choices=["info", "pin", "quiet", "norms", "writers"])
+    w.add_argument("--path", default=None, help="safetensors folder or file (default: local W4A16 cache snapshot)")
+    w.add_argument("--linear", default=None, help="linear path for pin (e.g. layers.20.mlp.down_proj)")
+    w.add_argument("--layer", type=int, default=None, help="0-based layer index for quiet, norms, or writers")
+    w.add_argument("--direction", default=None, help="float32 .npy direction vector for writers")
+    w.add_argument("--top", type=int, default=16, help="number of top neurons to report")
+    w.add_argument("--cosine", action="store_true", help="rank writers by cosine similarity instead of dot product")
+    w.set_defaults(fn=cmd_weights)
+
+    sp = sub.add_parser("sandbox-probe", help="probe all off-card bwrap sandbox containment boundaries")
+    sp.add_argument("--weights-dir", default=None, help="safetensors folder to mount read-only at /weights")
+    sp.add_argument("--default-weights", action="store_true", help="mount the local 31B W4A16 snapshot read-only")
+    sp.add_argument("--max-mem-gib", type=float, default=2.0, help="working memory cap for probe (GiB)")
+    sp.set_defaults(fn=cmd_sandbox_probe)
+
+    br = sub.add_parser("brief", help="list, inspect, or export versioned Phase 3 briefs")
+    br.add_argument("action", choices=["list", "show", "export"])
+    br.add_argument("target", nargs="?", default=None, help="starter brief name or JSON file path")
+    br.add_argument("--out", default=None, help="output JSON path for brief export")
+    br.add_argument("--stand-in", action="store_true", help="use stand-in tokenizer (no GPU)")
+    br.set_defaults(fn=cmd_brief)
+
+    cal = sub.add_parser("calibrate", help="calibrate and hash retention bars for a brief")
+    cal.add_argument("brief", help="starter brief name or JSON file path")
+    cal.add_argument("--layer", type=int, required=True, help="0-based probe layer for control calibration")
+    cal.add_argument("--out", default=None, help="output JSON path for the hashed BarSet")
+    cal.add_argument("--n-cols", type=int, default=8)
+    cal.add_argument("--n-controls", type=int, default=3)
+    cal.add_argument("--n-neutral", type=int, default=4)
+    cal.add_argument("--n-near", type=int, default=4)
+    cal.add_argument("--n-panel", type=int, default=4)
+    cal.add_argument("--seed", type=int, default=0)
+    cal.add_argument("--mult", type=float, default=2.0)
+    cal.add_argument("--stand-in", action="store_true", help="run on CPU stand-in")
+    cal.add_argument("--port", type=int, default=PORT)
+    cal.set_defaults(fn=cmd_calibrate)
+
+    cl = sub.add_parser("claim", help="run one registered Phase 3 fresh claim reading on kept-back frames")
+    cl.add_argument("brief", help="starter brief name or JSON file path")
+    cl.add_argument("--bars", required=True, help="registered hashed BarSet JSON path")
+    cl.add_argument("--edit", required=True, help="edit recipe JSON path")
+    cl.add_argument("--dose", type=float, default=1.0)
+    cl.add_argument("--selection-mode", default="free_pick", choices=["free_pick", "declared_rule"])
+    cl.add_argument("--shams", default=None, help="JSON list of sham edit recipes for declared_rule")
+    cl.add_argument("--n-target", type=int, default=8)
+    cl.add_argument("--n-neutral", type=int, default=4)
+    cl.add_argument("--n-near", type=int, default=4)
+    cl.add_argument("--n-panel", type=int, default=4)
+    cl.add_argument("--controls", type=int, default=None, help="override controls_per_family")
+    cl.add_argument("--match-tolerance", type=float, default=None)
+    cl.add_argument("--no-prompt-arms", action="store_true")
+    cl.add_argument("--out", default=None, help="write full claim result JSON")
+    cl.add_argument("--stand-in", action="store_true", help="run on CPU stand-in")
+    cl.add_argument("--port", type=int, default=PORT)
+    cl.set_defaults(fn=cmd_claim)
 
     a = ap.parse_args(argv)
     return int(a.fn(a))

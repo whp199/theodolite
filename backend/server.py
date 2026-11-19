@@ -44,6 +44,7 @@ from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, NormScaledAddS
 from pydantic import BaseModel, Field, StrictInt, ValidationError
 
 from backend import atlas as atlas_routes
+from backend import level_routes
 from backend import scientist_chat
 from backend import w4a16_fast
 from backend import causal_check as cc
@@ -1664,6 +1665,8 @@ async def ws_theodolite(websocket: WebSocket) -> None:
 app.include_router(saved_prompts_router)
 atlas_routes.bind(get_app_state, _GPU_LOCK)
 app.include_router(atlas_routes.router)
+level_routes.bind(get_app_state, _GPU_LOCK)
+app.include_router(level_routes.router)
 # the atlas's scientist chat (backend/scientist_chat.py): an OpenAI-compatible model's tool calls come back through
 # this app's own routes
 scientist_chat.bind(app)

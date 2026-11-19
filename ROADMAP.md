@@ -2117,6 +2117,98 @@ in order:
   off the same-shape reading by more than the floor at layers 40 and 44. The bars set from it, each by a rule written
   before the run, are in the spec’s section 12 (“The card check”); the run in full is the last section of
   `experiments/results/weight_space_exploration/pilot/RESULTS.md`.
+- **1b, completing the Phase 1 weight-edit kernel. Built and card-checked** (18 November 2026; ARCHITECTURE §7). Adds row
+  edits on `gate_proj` and `up_proj` (exact zero/power-of-two scaling, recomputed `F.linear` on edited coordinates for
+  set/add/non-exact scales to avoid cancellation, folded through `_memit_row_overlays`), masked direction removal on
+  `down_proj` (`quiet_mask`, `writers`, `capture_direction`, `remove_direction` projected off the quiet mask before
+  dividing by `post_feedforward_layernorm`’s weight, reporting both raw and stream-side norms), per-arm `delivered`
+  stream change, three new control families (`other_sites_matched` via 1-row base pre-pass with coverage-void on
+  failure, `same_site` random masked directions matched in stream-side delta length and rank-1 coherence, and
+  `sham_target` declared sham edits), additive delta composition (`stack`), structural diagnostics
+  (`edit_diagnostics`), ledger `driver_view` redaction (`--driver-view`), and 1a review fixes (cumulative recipe file-size
+  preflight checked unread, low-rank `-0.0` merge-order fix, atomic edit-folder staging, single-pass row-0 read-out,
+  `_edit_words` without dose 1.0, and signed control sign-flip reporting). All 1,032 CPU checks pass
+  (`scripts/check_levelling.py`), and `scripts/verify_levelling_1b.py` passed 68 of 68 checks on the 31B card on 18
+  November 2026 (`experiments/results/levelling/verify_1b.json`, 86.2 s, peak 18.61 GiB, 0 unpacker fallbacks): 24/24
+  exact row edits and 11/12 recomputed row-edit class readings matched folded `_memit_row_overlays` by bits (the 12th
+  0.00086 nats), `remove_direction` hit 7.21e−10 stream orthogonality with zero quiet-mask delta, and all 10 completed
+  paired readings fell within 0.908–1.005 of the refit cost model’s prediction.
+- **Phase 1 completion (no-card CPU weights reader + long sampled/thinking-on written readings) and Phase 2 (the
+  agent’s door, practice only). Built and card-checked** (19 November 2026; ARCHITECTURE §7).
+  - `backend/weight_reader.py` reads W4A16 or dense safetensors checkpoints directly from disk on CPU without touching
+    CUDA (opens the 23.26 GB 31B checkpoint in 3.9 ms; 9/9 `tensor_pin` and 9/9 `dense_cols`/`dense_rows` bit-identical
+    to the live GPU model; `down_stream_norms` within `5.55e−17` in 0.435 s; `writers` exact top-16 order in 0.289 s).
+  - `backend/levelling.py` adds long sampled and thinking-on written readings (`sampler`, `samples` up to 32 sharing one
+    exponential race per sample across rows, `thinking=True`, `max_new` up to 2,048 under the 6 GiB cache guard,
+    `detect_loop`, `split_thinking`, cut-off detection, and aggregate written `summary` preserved in `driver_view`). On
+    the 31B card, a 2×192 thinking-on sampled reading ran in 14.5 s (peak 18.76 GiB, exact dose-0/untouched bit
+    identity) and a 512-piece thinking-on pilot ran in 56.8 s (0.1105 s/step, peak 20.54 GiB, +2.57 GiB above rest).
+  - `backend/level_sandbox.py`, `backend/level_session.py`, and `backend/level_mcp.py` deliver Phase 2’s practice-only
+    Agent’s Door: `bwrap` off-card CPU cells (no network, no GPU, no `$HOME`, `--remount-ro` on code and resolved
+    `/weights/*`, single writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap + wall-clock kill; 9/9 active
+    containment probes pass with the 23.26 GB 31B checkpoint), reach/backend enforcement (refuses `home` and unprobed
+    `codex`), GPU-second/forward/cell/wall budgets, gated `capture`/`read`/`write`/`book_view` returning redacted
+    `driver_view` aggregates only (no word past a rank), transcript copy on `close()`, and blinded in-memory planted
+    fault & canary sessions leaving `assert_base` clean after every call.
+  - All 1,032 checks in `scripts/check_levelling.py` and all 108 CPU/sandbox checks in `scripts/check_level_door.py`
+    pass; `scripts/verify_level_door.py` passed 37 of 37 checks on the 31B RTX 5090 card (101.0 s, peak 20.54 GiB,
+    0 unpacker fallbacks, `experiments/results/levelling/verify_door.json`).
+- **Phase 3 (The Claim Gate). Built and card-checked** (19 November 2026; ARCHITECTURE §7).
+  - `backend/level_briefs.py` adds versioned, canonical-hashed briefs with tamper-checked `save_brief`/`load_brief`,
+    policy refusal on safeguard-removal or hidden-trigger briefs, disjoint `practice` vs `kept_back` frame generators
+    balanced across `half = 0` and `half = 1` (`>= 2` frames/half), fixed fresh-reading budgets `m` (`20m - 1`
+    controls/family), chat-formatted retention batteries (`neutral_chat_generator`, `draw_labelled_sanity_panel`), and
+    four starter briefs (`pronoun_pull`, `spider_legs_bleed`, `canary_null`, `enumeration_loop`).
+  - `backend/level_claim.py` implements control-calibrated hashed `BarSet`s (`calibrate_bars`, `save_bars`/`load_bars`),
+    ledger-persisted practice-draw blocking (`record_practice_draw`), post-freeze `os.urandom(32)` draws registered in
+    the level book before sampling, read-once per `(brief_id, edit_id)` and fixed-`m` enforcement, dual batch classes
+    (`small`/`large`, plus chunked written execution for `written_loop`), three control families (`other_sites_matched`,
+    `same_site`, optional `sham_target`) gated by `p_fw <= alpha`, `house_bar` (`sqrt(F * M)`, dropped when `M < 4F`),
+    frame-level 95% CIs and half-split replication, reversed-dose checks, gating retention batteries, author prompt arms,
+    Row 21 `written_strata_summary`, `price_written_reading`, `compare_settings_audit`, and harness-authored Claim Sheets
+    (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`, `works but harms`, `did not replicate`,
+    `kept the base`, `void`). Wired into `level_session.py`, `level_mcp.py` (`brief_info`, `draw_practice`, `claim`
+    returning redacted `driver_record` only), and `scripts/levelling.py` (`brief`, `calibrate`, `claim`).
+  - All 164 CPU checks in `scripts/check_level_claim.py` pass (including all planted-failure verdicts, 200 planted nulls
+    calibration with 0/200 false leads at `m = 2, C = 39`, live paired and chunked `written_loop` stand-in claims, MCP
+    & CLI tests, and zero kept-out words across all 10 Levelling files and rendered sheets). On the 31B RTX 5090 card,
+    `scripts/verify_level_claim.py` passed 16 of 16 checks (`experiments/results/levelling/verify_claim.json`, 138.6 s,
+    peak 18.71 GiB, 0 unpacker fallbacks, ledger whole with 20 entries): `pronoun_pull` calibration in 10.3 s; full
+    `C = 39` fresh claim #1 on E6 layer-50 top-10 `'she'` neurons (44.8 s, `small = -1.647`, `large = -1.678`, `0/39`
+    controls, `near_misses = 0.801`) returned **`works but harms`** (matching `arbiter.md` Row 20); full `C = 39`
+    fresh claim #2 on the 7 `'she'`-only neurons (45.1 s, `small = -0.031`, `large = -0.011`, Row 24 negative control)
+    returned **`kept the base`** with reading #1 printed on its Claim Sheet; read-once and `m = 2` refusals verified
+    live; `compare_settings_audit` (`max_new=64`, 28.4 s) priced a full `C = 39` written claim at 26.8 min.
+- **Phase 4 (The Person's Page). Built and card-checked** (19 November 2026; ARCHITECTURE §7).
+  - `backend/level_routes.py` (bound into `backend/server.py` at `/api/level/*` under `local_pages_only` and `_GPU_LOCK`)
+    exposes `/status`, `/estimate`, `/compare` (base, edit, and 1–19 control edits heard side by side in one forward
+    plus optional two-batch-class paired next-piece table; refuses with HTTP 409 while any vault overlay is in force;
+    asserts `assert_base` before and after), and `/book` + `/book/{seq}` for model-free ledger replay (live book and
+    allowlisted verified 31B books).
+  - `frontend/src/screens/vault/ComparePanel.tsx` (+ `compare.ts`, `compareRecorded.ts`) adds a `compare` tab to the
+    Vault page (`#/vault`) with three side-by-side voices (untouched base, edit, selectable control edit), red-italic
+    rubrics, a responsive two-batch-class paired metrics table, accessible form validation, and model-free ledger
+    replay (with offline recorded 19 Nov 2026 31B verdicts). `Lexicon.tsx` addresses “An edit stays until you undo it”
+    and adds one new Lexicon term (`a control edit`, `id="control-edit"`, beside the single new Vault tab word
+    `compare`).
+  - All 79 checks in `scripts/check_level_page.py` (esbuild/node + FastAPI `TestClient` + 409 guard + replay + zero
+    kept-out words) and all 291 checks in `scripts/check_interface_defaults.py` pass, and `npm run build` succeeds
+    cleanly. On the 31B RTX 5090 card, `scripts/verify_level_page.py` passed 11 of 11 checks
+    (`experiments/results/levelling/verify_page.json`, 17.43 s, peak 18.37 GiB, 0 unpacker fallbacks, ledger whole):
+    live `POST /api/level/compare` on E6 layer-51 `'she'` ten ran in 4.64 s (`small` odds `-1.853`, `large` odds
+    `-1.817`, `0/3` matched controls, untouched rows identical, `base_after = True`), live Vault `DELETE` -> HTTP 409
+    -> `ROLLBACK` isolation passed, and live + recorded replay verified.
+  - **Mended in review, before the merge** (19 November 2026). (1) The compare tab’s offline cards carried times and
+    hashes that were not their book lines’ (one card had another line’s hash), reworded gate notes and one wrong
+    figure: `compareRecorded.ts` is now made from the committed `verify_claim_book.jsonl` by
+    `scripts/level_recorded_cards.py`, and `scripts/check_level_page.py` checks every card against its line. (2) A
+    control edit whose reading was missing or not finite stayed in the count of control edits and out of `at_least`,
+    so it counted as one the edit topped and a family with every control missing passed at `p_fw = 0.05`: it now
+    counts in `at_least`, a control’s mean needs a finite reading on every item read, and the gate note says how many
+    gave none. (3) A claim run with its prompt arms switched off still printed “no author prompt arm matched it”:
+    `cheaper_knobs["prompt_arms_state"]` now records whether they were compared, the sentence and the sheet say when
+    they were not and why, and the agent’s door no longer has the switch (`level_mcp.py` refuses any argument a tool’s
+    schema does not name; the owner’s `--no-prompt-arms` stays). The review’s other findings are not mended here.
 - **What waits on the owner.** The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
@@ -2131,10 +2223,6 @@ in order:
   them, as open point 5 said it would if control arms at the floor tripped it, which three did, all on items under
   the bar; on the raw recipe cut with no start mark two controls clear of the floor read 31.1 and 6.4 times apart,
   and that item now reads “ok”); and,
-  from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved,
-  that a recipe’s files are read before their sizes are added up, and that the ledger keeps the items’ text and
-  every per-item row, which must be reopened before any agent is given a way to read it.
-- **Not built** (the spec’s section 8, with what would bring each in): direction removal; row edits on the gate and up
-  projections; attention, embedding and norm edits; a folded form for low-rank terms; control edits matched on firing
-  or on what an edit delivers, and sham-target controls; long sampled written readings; any page, route or agent’s
-  door; gradients; exports.
+  from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved.
+- **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
+  terms; Phase 5 trial of record and exports; Phase 6 driver evals; gradients.
