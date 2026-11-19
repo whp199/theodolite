@@ -282,10 +282,10 @@ tests it quickly and tries again.
 
 Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 standing checks passed on the 31B),
 slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,032/1,032 CPU checks and 68/68 31B card
-checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (108/108 CPU/sandbox checks
+checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (137/137 CPU/sandbox checks
 in `scripts/check_level_door.py`, 37/37 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
-(164/164 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`), and
-Phase 4’s Person’s Page (79/79 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
+(302/302 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`), and
+Phase 4’s Person’s Page (83/83 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
 `scripts/verify_level_page.py`) were built and card-checked:
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
   projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by
@@ -302,13 +302,25 @@ Phase 4’s Person’s Page (79/79 CPU/interface checks in `scripts/check_level_
 - **Agent’s Door (`level_sandbox.py`, `level_session.py`, `level_mcp.py`).** Off-card CPU Python cells run inside a
   `bwrap` sandbox (no network, no GPU, no `$HOME`, read-only weights, single writable `/work`, memory and wall-clock
   caps) beside budgeted model gates (`capture`, `read`, `write`, `book_view`) returning redacted `driver_view`
-  aggregates and ranks in practice, plus blinded in-memory planted-fault and canary sessions.
+  aggregates and ranks in practice, plus blinded in-memory planted-fault and canary sessions. The gates refuse an
+  item that holds the wording, or a near wording, of a brief’s kept-back frame or of a retention battery’s question
+  (a question put in other words passes); every call is priced against the session’s budget before it runs, a
+  claim before it is registered; and the MCP server takes the card’s lock and refuses to start while the page
+  server answers or the card lacks the memory to load the model (it cannot stop either from starting after it).
 - **Claim Gate (`level_briefs.py`, `level_claim.py`).** Versioned briefs separate `practice` and `kept_back` frames
   (two independent halves), register every fresh claim in the ledger **before** post-freeze `os.urandom(32)` draws,
-  enforce read-once per `(brief_id, edit_id)` and fixed budget `m` (`20m - 1` controls per family across both batch
-  classes), gate retention batteries against calibrated hashed bars, compare author prompt arms, and issue bounded
-  harness-authored Claim Sheets (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`,
-  `works but harms`, `did not replicate`, `kept the base`, `void`).
+  enforce read-once per edit and a fixed budget `m` under the brief’s name (`20m - 1` controls per family across both
+  batch classes; a brief changed after its first reading is refused, and a kept-back frame is read under one brief
+  only, whatever a later brief is called), take only the bars a calibration reading wrote into the same book,
+  register nothing that is certain to be refused, write the reading’s design (counts, rows, controls, matching
+  tolerance) into the registration with none of it the driver’s to set, compare author prompt arms, and issue
+  bounded harness-authored Claim Sheets (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`,
+  `works but harms`, `did not replicate`, `kept the base`, `void`). Sham edits are the driver’s own: they are
+  registered by hash with the rule it declares, checked for shape, and counted against the edit when they do not
+  move the stream as it does. A sheet says what a reader needs to weigh it: which book the reading was taken in,
+  whether the brief’s kept-back frames are published (the four starter briefs’ are, in this repository) and that
+  only their wording is guarded, who supplied the sham edits, how far the control edits of a paired reading moved
+  the stream, and, for a written reading, that its loops were counted by rule and not by a person.
 
 - **Person’s Page (`backend/level_routes.py`, Vault `compare` tab).** Base, edit, and 1–19 control edits heard side by
   side in one batched forward beneath red-italic rubrics, with a two-batch-class paired read-out table, HTTP 409
