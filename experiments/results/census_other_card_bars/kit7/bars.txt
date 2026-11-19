@@ -1,0 +1,25 @@
+census bars, measured 20261119T072446Z on NVIDIA GeForce RTX 5090, kit 7, layers 53 54
+
+match_things (the push in the ceiling unit), layers 53 54
+variant              answers  same  first prefix pieces  median     p99     max
+control                 1536  1536 1.0000 48.0000  55970  0.0000  0.0000  0.0000
+batch16                  384     0 1.0000 48.0000  11134  0.0037  0.1141  0.8408
+batch32                  768     0 0.9961 48.0000  23802  0.0035  0.1094  0.7398
+batch48                 1152   288 0.9965 48.0000  37440  0.0010  0.1014  0.6881
+batch64-full-sums       1536     0 0.9961 48.0000  47505  0.0035  0.1062  0.8481
+push+1%                 1536    24 0.9954 48.0000  46744  0.0065  0.1247  0.6466
+push-1%                 1536    24 0.9961 48.0000  46742  0.0060  0.1229  0.4994
+push+2%                 1536    24 0.9922 48.0000  41004  0.0133  0.2107  0.9109
+push-2%                 1536    24 0.9922 48.0000  41674  0.0112  0.1952  0.9421
+push+5%                 1536    24 0.9850 25.0000  29128  0.0340  0.4524  1.4162
+push-5%                 1536    24 0.9857 33.0000  32283  0.0224  0.3879  1.6661
+push+10%                1536    24 0.9629 11.0000  16717  0.0739  0.8055  1.8174
+push-10%                1536    24 0.9805 21.0000  24126  0.0328  0.5768  1.9352
+lp_median: floor 0.0037 (batch16); near misses 1% 0.0060, 2% 0.0112, 5% 0.0224 ok, 10% 0.0328 ok -> by the rule 0.0091, built to catch a push 5% off
+lp_p99: floor 0.1141 (batch16); near misses 1% 0.1229, 2% 0.1952, 5% 0.3879, 10% 0.5768 ok -> by the rule 0.26, built to catch a push 10% off
+first piece: the arithmetic-only variants keep at least 0.9961; the near misses at most 1% 0.9961, 2% 0.9922, 5% 0.9857, 10% 0.9805 -> 0.9 (stands)
+  layer 53 alone: lp_median floor 0.0044, by the rule 0.01; lp_p99 floor 0.1186, by the rule 0.27
+  layer 54 alone: lp_median floor 0.0032, by the rule 0.0082; lp_p99 floor 0.1081, by the rule 0.24
+
+what census_volunteer.OTHER_CLASS_BARS takes (a layer's own entry stands before its group's):
+  match_things at 53 54: first piece 0.9, lp_median 0.0091, lp_p99 0.26 (the group's own bars by the rule)

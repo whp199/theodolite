@@ -1,0 +1,20 @@
+census unpushed ties, measured 20261119T061535Z on NVIDIA GeForce RTX 5090, layer 53
+
+variant                   bicycle         walk        chair       kettle        sleep         lamp        clock         rice         vase         lock        money      blanket
+control                      same         same         same         same         same         same         same         same         same         same         same         same
+batch1                   48/48 lp     48/48 lp     46 @0.32     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch2                   48/48 lp     48/48 lp     27 @0.50     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch4                   48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch8                   48/48 lp     48/48 lp     20 @0.38     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     37 @0.46     48/48 lp
+batch16                  48/48 lp     48/48 lp     27 @0.50     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch24                  48/48 lp     48/48 lp     20 @0.38     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch32                  48/48 lp     48/48 lp     13 @0.44     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch40                  48/48 lp     48/48 lp     13 @0.44     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch48                      same     24 @0.52     27 @0.50         same     48/48 lp     48/48 lp         same     48/48 lp     48/48 lp     48/48 lp     38 @0.49     48/48 lp
+batch56                  48/48 lp     48/48 lp     13 @0.44     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp         same     37 @0.46     48/48 lp
+batch64-full-sums        48/48 lp     24 @0.52     27 @0.50     48/48 lp     48/48 lp     48/48 lp     48/48 lp     48/48 lp     27 @0.50     48/48 lp     38 @0.49     48/48 lp
+
+(same: bit for bit; k/n lp: every piece alike, a log-probability not; k @p: parts at piece k, a piece the home card wrote with probability p)
+
+24 of 132 arithmetic-only answers part from the home card's; the surest parting at 0.5194
+bar: 0.6 (the rule's 0.6 stands)
