@@ -179,11 +179,11 @@ def _recipe_from_request(req: CompareRequest) -> Dict[str, Any]:
     if req.op == "silence":
         term: Dict[str, Any] = {"layer": L, "silence": idxs}
     elif req.op == "scale":
-        term = {"layer": L, "scale": idxs, "by": float(req.factor)}
+        term = {"layer": L, "scale": idxs, "factor": float(req.factor)}
     elif req.op == "silence_rows":
         term = {"layer": L, "which": req.linear, "silence_rows": idxs}
     else:
-        term = {"layer": L, "which": req.linear, "scale_rows": idxs, "by": float(req.factor)}
+        term = {"layer": L, "which": req.linear, "scale_rows": idxs, "factor": float(req.factor)}
     return {"terms": [term]}
 
 
