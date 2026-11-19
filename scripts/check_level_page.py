@@ -34,6 +34,7 @@ torch.set_num_threads(1)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+import level_recorded_cards as recorded_cards  # noqa: E402
 from atlas_stand_in import bind_server, stand_in, use_stand_in_atlas  # noqa: E402
 from backend import level_book as lb  # noqa: E402
 from backend import level_routes  # noqa: E402
@@ -112,6 +113,7 @@ const out = {
   },
   recordedCount: RECORDED_REPLAY_CARDS.length,
   recordedVerdicts: RECORDED_REPLAY_CARDS.map((c) => c.verdict),
+  recorded: RECORDED_REPLAY_CARDS,
 };
 console.log(JSON.stringify(out));
 """
@@ -155,6 +157,29 @@ def run_section_1(tmp: Path) -> None:
     check(data["tones"] == {"lead": "good", "harms": "bad", "kept": "warn", "ok": "neutral"}, "statusTone mapping ok")
     check(data["recordedCount"] == 2 and data["recordedVerdicts"] == ["works but harms", "kept the base"],
           "offline recorded 31B replay fixture has both verified 19 Nov 2026 verdicts")
+
+    # The offline cards name lines of the committed book by number, time and hash: every figure on them is that
+    # line's. Checked twice: against the script that makes them, and (without that script) against the book's lines.
+    made = json.loads(json.dumps(recorded_cards.cards()))
+    check(data["recorded"] == made,
+          "compareRecorded.ts holds exactly the cards scripts/level_recorded_cards.py makes from the committed book "
+          "(if not: .venv/bin/python -I scripts/level_recorded_cards.py --write)")
+    check((recorded_cards.OUT).read_text(encoding="utf-8") == recorded_cards.render(),
+          "compareRecorded.ts is the script's own text, with no edit by hand")
+    lines = {int(e["seq"]): e for e in lb.entries(recorded_cards.BOOK)}
+    for card in data["recorded"]:
+        entry = lines.get(int(card["seq"]))
+        body = entry["body"] if entry is not None else {}
+        check(entry is not None and entry["hash"].startswith(card["hash"]) and len(card["hash"]) == 16
+              and entry["at"] == card["at"] and entry["kind"] == card["kind"],
+              f"recorded card {card['seq']} carries its book line's own hash and time "
+              f"({card['hash']} at {card['at']})")
+        check(body.get("note_type") == "claim_verdict" and body.get("verdict") == card["verdict"] == card["status"]
+              and body.get("reasons") == card["reasons"] and body.get("claim_sentence") == card["claim_sentence"]
+              and body.get("summary") == card["summary"] and body.get("batteries") == card["batteries"]
+              and body.get("cheaper_knobs") == card["cheaper_knobs"]
+              and body.get("edit_id") == card["edit_id"] and body.get("bars_sha256") == card["bars_sha256"],
+              f"recorded card {card['seq']} gives its book line's verdict, gate notes and figures word for word")
 
 
 def run_section_2(tmp: Path) -> None:
@@ -308,12 +333,12 @@ def run_section_3() -> None:
           "Lexicon addresses 'An edit stays until you undo it' for transient compare readings")
     check(lex_txt.count('id="control-edit"') == 1, "Lexicon has exactly one control-edit entry (no duplicates)")
 
-    # Zero kept-out words across ALL 11 Levelling backend/CLI files AND all 3 new Phase 4 frontend files
+    # Zero kept-out words across ALL 12 Levelling backend/CLI files AND all 3 new Phase 4 frontend files
     audit_files = [
         "backend/level_book.py", "backend/weight_edits.py", "backend/levelling.py",
         "backend/weight_reader.py", "backend/level_sandbox.py", "backend/level_session.py",
         "backend/level_mcp.py", "backend/level_briefs.py", "backend/level_claim.py",
-        "backend/level_routes.py", "scripts/levelling.py",
+        "backend/level_routes.py", "scripts/levelling.py", "scripts/level_recorded_cards.py",
         "frontend/src/screens/vault/compare.ts",
         "frontend/src/screens/vault/compareRecorded.ts",
         "frontend/src/screens/vault/ComparePanel.tsx",

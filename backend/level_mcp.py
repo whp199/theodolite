@@ -176,7 +176,6 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
                 "n_panel": {"type": "integer", "minimum": 1, "default": 4},
                 "controls_override": {"type": "integer", "minimum": 1},
                 "match_tolerance": {"type": "number", "minimum": 1.0},
-                "run_prompt_arms": {"type": "boolean", "default": True},
             },
             "required": ["edit"],
             "additionalProperties": False,
@@ -195,6 +194,14 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
     if name not in session.allowed_tools():
         raise lses.SessionRefused(f'Tool "{name}" is not available in this session (allowed: {", ".join(session.allowed_tools())}).')
     a = dict(args or {})
+    # Each tool's schema says additionalProperties: false, and the door holds to it: an argument the schema does not
+    # name is refused, never passed on or dropped in silence (a driver has no switch the tool list does not show).
+    known = set(TOOL_SPECS[name]["inputSchema"].get("properties") or {}) if name in TOOL_SPECS else set(a)
+    extra = sorted(k for k in a if k not in known)
+    if extra:
+        raise lses.SessionRefused(
+            f'Tool "{name}" takes no argument named {", ".join(extra)} (it takes: {", ".join(sorted(known)) or "none"}).'
+        )
     if name == "status":
         return session.status()
     if name == "cell":
@@ -232,7 +239,6 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             n_panel=int(a.get("n_panel", 4)),
             controls_override=a.get("controls_override"),
             match_tolerance=a.get("match_tolerance"),
-            run_prompt_arms=bool(a.get("run_prompt_arms", True)),
         )
     raise lses.SessionRefused(f'Unknown tool "{name}".')
 

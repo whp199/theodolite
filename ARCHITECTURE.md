@@ -2167,11 +2167,14 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
   `(brief_id, edit_id)`, fixed `m`, and ledger-persisted practice-draw blocking (`record_practice_draw`), writes
   `claim_registration` to the level book **before** drawing fresh kept-back items with `os.urandom(32)`, evaluates both
   batch classes (`small` & `large`, or chunked written batches for `written_loop`) against `other_sites_matched`,
-  `same_site`, and optional `sham_target` controls (`p_fw = min(1, m * (1 + at_least) / (C + 1)) <= alpha`;
+  `same_site`, and optional `sham_target` controls (`p_fw = min(1, m * (1 + at_least) / (C + 1)) <= alpha`; a
+  control edit whose reading is missing or not finite counts in `at_least`, never as one the edit topped;
   `"tops_every_control"` reported descriptively and never gates alone), applies the house bar `sqrt(F * M)` (dropped
   when `M < 4 * F`), frame-level 95% Student-t CIs and exact sign-flip p-values, half-0/half-1 replication, reversed
   dose check, gating retention batteries (`neutral_text`, `near_misses`, `labelled_panel`, optional `habitat`), author
-  prompt arms, `written_strata_summary` (Row 21), `price_written_reading` (§8), and `compare_settings_audit` (base
+  prompt arms (`cheaper_knobs["prompt_arms_state"]` records whether they were compared; when they were not, the
+  sentence and the sheet say so and why, and the agent's door has no switch for the comparison),
+  `written_strata_summary` (Row 21), `price_written_reading` (§8), and `compare_settings_audit` (base
   under `thinking=False` and `thinking=True`), logs `claim_verdict`, and returns a redacted `driver_record` plus a
   harness-authored bounded Claim Sheet (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`,
   `works but harms`, `did not replicate`, `kept the base`, `void`) listing all earlier fresh readings on the brief.
@@ -2189,8 +2192,9 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
   on the Vault page and one Lexicon entry (`a control edit`, `id="control-edit"`), updating the Lexicon's `"an edit"`
   entry to distinguish persistent vault patches (`ROLLBACK`) from transient per-row readings. Displays three voices
   (untouched base, your edit, selectable control edit) beside `<Rubric>` explanations, a responsive two-batch-class
-  paired metrics table, and a model-free ledger replay table (with exact recorded 19 Nov 2026 31B Phase 3 verdict cards
-  available offline).
+  paired metrics table, and a model-free ledger replay table (with the recorded 19 Nov 2026 31B Phase 3 verdict cards
+  available offline: `compareRecorded.ts`, made by `scripts/level_recorded_cards.py` from the committed
+  `verify_claim_book.jsonl`, each card the server's own replay card for the line it names by number, time and hash).
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
@@ -2219,12 +2223,13 @@ refusals, `FrameGenerator` disjointness/half balancing/anti-leakage, `house_bar`
 /`written_strata_summary`/`price_written_reading`, all planted-failure verdicts, 200 planted nulls calibration (0/200
 false leads under both joint-gate and worst-case exchangeable nulls at `m = 2, C = 39`), live stand-in paired and
 chunked `written_loop` claims, `LevelSession`/MCP/CLI claim integration, and zero kept-out words across all 10
-Levelling files and every rendered Claim Sheet (140/140 checks passing).
+Levelling files and every rendered Claim Sheet (164/164 checks passing).
 `scripts/check_level_page.py` (CPU stand-ins + `esbuild`/node + FastAPI `TestClient`) verifies `compare.ts` request
 builders/validators/1-to-0 layer conversion, `/api/level/{status,estimate,compare,book}` routes, HTTP 409 vault-overlay
 isolation, model-free replay of both live and verified 31B books, foreign-origin & path-traversal guards, Lexicon/Vault
-wiring, and zero kept-out words across all 11 backend/CLI files and 3 Phase 4 frontend files (72/72 checks passing in
-1.2 s; `scripts/check_interface_defaults.py`: 291/291 passing; `npm run build`: clean).
+wiring, that the offline replay cards are the committed book's own lines (`scripts/level_recorded_cards.py` makes
+`compareRecorded.ts` from `verify_claim_book.jsonl`), and zero kept-out words across all 12 backend/CLI files and 3
+Phase 4 frontend files (79/79 checks passing in 1.4 s; `scripts/check_interface_defaults.py`: 291/291 passing; `npm run build`: clean).
 On the 31B card (RTX 5090):
 - `scripts/verify_levelling.py` (1a, 16 November 2026, `verify_1a.json`): 142 of 145 standing lines passed in 13 min.
 - `scripts/verify_levelling_1b.py` (1b, 18 November 2026, `verify_1b.json`): 68 of 68 checks passed in 86.2 s, peak

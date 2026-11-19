@@ -2089,7 +2089,7 @@ in order:
     (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`, `works but harms`, `did not replicate`,
     `kept the base`, `void`). Wired into `level_session.py`, `level_mcp.py` (`brief_info`, `draw_practice`, `claim`
     returning redacted `driver_record` only), and `scripts/levelling.py` (`brief`, `calibrate`, `claim`).
-  - All 140 CPU checks in `scripts/check_level_claim.py` pass (including all planted-failure verdicts, 200 planted nulls
+  - All 164 CPU checks in `scripts/check_level_claim.py` pass (including all planted-failure verdicts, 200 planted nulls
     calibration with 0/200 false leads at `m = 2, C = 39`, live paired and chunked `written_loop` stand-in claims, MCP
     & CLI tests, and zero kept-out words across all 10 Levelling files and rendered sheets). On the 31B RTX 5090 card,
     `scripts/verify_level_claim.py` passed 16 of 16 checks (`experiments/results/levelling/verify_claim.json`, 138.6 s,
@@ -2111,13 +2111,24 @@ in order:
     replay (with offline recorded 19 Nov 2026 31B verdicts). `Lexicon.tsx` addresses “An edit stays until you undo it”
     and adds one new Lexicon term (`a control edit`, `id="control-edit"`, beside the single new Vault tab word
     `compare`).
-  - All 72 checks in `scripts/check_level_page.py` (esbuild/node + FastAPI `TestClient` + 409 guard + replay + zero
+  - All 79 checks in `scripts/check_level_page.py` (esbuild/node + FastAPI `TestClient` + 409 guard + replay + zero
     kept-out words) and all 291 checks in `scripts/check_interface_defaults.py` pass, and `npm run build` succeeds
     cleanly. On the 31B RTX 5090 card, `scripts/verify_level_page.py` passed 11 of 11 checks
     (`experiments/results/levelling/verify_page.json`, 17.43 s, peak 18.37 GiB, 0 unpacker fallbacks, ledger whole):
     live `POST /api/level/compare` on E6 layer-51 `'she'` ten ran in 4.64 s (`small` odds `-1.853`, `large` odds
     `-1.817`, `0/3` matched controls, untouched rows identical, `base_after = True`), live Vault `DELETE` -> HTTP 409
     -> `ROLLBACK` isolation passed, and live + recorded replay verified.
+  - **Mended in review, before the merge** (19 November 2026). (1) The compare tab’s offline cards carried times and
+    hashes that were not their book lines’ (one card had another line’s hash), reworded gate notes and one wrong
+    figure: `compareRecorded.ts` is now made from the committed `verify_claim_book.jsonl` by
+    `scripts/level_recorded_cards.py`, and `scripts/check_level_page.py` checks every card against its line. (2) A
+    control edit whose reading was missing or not finite stayed in the count of control edits and out of `at_least`,
+    so it counted as one the edit topped and a family with every control missing passed at `p_fw = 0.05`: it now
+    counts in `at_least`, a control’s mean needs a finite reading on every item read, and the gate note says how many
+    gave none. (3) A claim run with its prompt arms switched off still printed “no author prompt arm matched it”:
+    `cheaper_knobs["prompt_arms_state"]` now records whether they were compared, the sentence and the sheet say when
+    they were not and why, and the agent’s door no longer has the switch (`level_mcp.py` refuses any argument a tool’s
+    schema does not name; the owner’s `--no-prompt-arms` stays). The review’s other findings are not mended here.
 - **What waits on the owner.** The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public

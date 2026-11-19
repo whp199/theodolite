@@ -47,6 +47,12 @@ MIN_FRAMES_PER_HALF = 2
 HALF_BAR_FRACTION = 0.5
 KNOBS_MATCH_FRACTION = 0.95
 
+# whether a reading compared the brief's author prompt arms with the edit (`cheaper_knobs["prompt_arms_state"]`);
+# any other value is the reason they were not run, in plain words
+PROMPT_ARMS_RUN = "run"
+PROMPT_ARMS_NONE = "none in the brief"
+PROMPT_ARMS_OFF = "switched off for this reading"
+
 VERDICTS = (
     "lead",
     "lead, matched by a cheaper knob",
@@ -312,7 +318,9 @@ def control_standing(
     alpha: float,
 ) -> Dict[str, Any]:
     """Empirical rank and family-wise bound `p_fw = min(1, m * (1 + at_least) / (C + 1))` against one control family.
-    Uses magnitude `|x|` (conservative two-sided comparison against exchangeability)."""
+    Uses magnitude `|x|` (conservative two-sided comparison against exchangeability). A control edit whose reading is
+    missing or not finite counts in `at_least`: it was run, and nothing shows the edit moved more than it did, so it
+    may not sit in the denominator as one the edit topped (`non_finite` says how many there were)."""
     C = len(control_values)
     ev = _clean_float(edit_value)
     valid = [abs(v) for v in (_clean_float(c) for c in control_values) if v is not None]
@@ -323,7 +331,7 @@ def control_standing(
             "tops_every_control": False, "passes_alpha": False,
         }
     ae = abs(ev)
-    at_least = sum(1 for v in valid if v >= ae)
+    at_least = sum(1 for v in valid if v >= ae) + non_fin
     p_emp = (1 + at_least) / float(C + 1)
     p_fw = min(1.0, float(max_fresh_readings) * p_emp)
     return {
@@ -332,7 +340,7 @@ def control_standing(
         "at_least": at_least,
         "p_emp": p_emp,
         "p_fw": p_fw,
-        "tops_every_control": (at_least == 0 and non_fin == 0),
+        "tops_every_control": at_least == 0,
         "passes_alpha": bool(p_fw <= float(alpha) + 1e-12),
     }
 
@@ -592,9 +600,13 @@ def judge_claim(
                 ctl_eval[fam] = cs
                 if fam in req_families and not cs["passes_alpha"]:
                     any_ctl_fail = True
+                    lost = (
+                        f"; {cs['non_finite']} of them gave no finite reading and are counted as moving as much"
+                        if cs["non_finite"] else ""
+                    )
                     reasons.append(
                         f'{cls_name} class failed "{fam}" controls (at_least={cs["at_least"]}/{cs["count"]}, '
-                        f'p_fw={cs["p_fw"]}, alpha={bars.alpha}).'
+                        f'p_fw={cs["p_fw"]}, alpha={bars.alpha}{lost}).'
                     )
             elif fam in req_families:
                 ctl_eval[fam] = {
@@ -819,7 +831,10 @@ def _extract_item_effects(
     metric: str,
     dose: float,
 ) -> Tuple[List[Dict[str, Any]], Optional[float], Optional[float], List[Optional[float]]]:
-    """Extract per-item target effects, class floor, reversed-dose mean, and per-control means from a `lv.read` result."""
+    """Extract per-item target effects, class floor, reversed-dose mean, and per-control means from a `lv.read` result.
+    A control edit's mean is None unless it has a finite reading on every item read in this class: a mean over the
+    items where it happened to give a number is not that control's reading (`control_standing` counts a None against
+    the edit)."""
     by_name = {d.item.name: d for d in drawn}
     arm_key = f"edit:{repr(float(dose))}"
     rev_key = f"edit:{repr(float(-dose))}"
@@ -828,6 +843,7 @@ def _extract_item_effects(
     rev_vals: List[float] = []
     C = int((result.get("controls") or {}).get("count") or 0)
     ctl_per_item: List[List[float]] = [[] for _ in range(C)]
+    n_read = 0
 
     for it_ent in result.get("items") or []:
         if it_ent.get("status") != "ok":
@@ -839,6 +855,7 @@ def _extract_item_effects(
         cb = (it_ent.get("classes") or {}).get(cls_name)
         if not cb:
             continue
+        n_read += 1
         fl = _clean_float(((cb.get("floor") or {}).get(metric) or {}).get("mean_abs"))
         if fl is not None:
             floors.append(fl)
@@ -859,7 +876,7 @@ def _extract_item_effects(
 
     floor_max = max(floors) if floors else None
     rev_mean = float(np.mean(rev_vals)) if rev_vals else None
-    ctl_means = [float(np.mean(xs)) if xs else None for xs in ctl_per_item]
+    ctl_means = [float(np.mean(xs)) if (xs and len(xs) == n_read) else None for xs in ctl_per_item]
     return item_effects, floor_max, rev_mean, ctl_means
 
 
@@ -1566,10 +1583,22 @@ def run_fresh_claim(
                 }
                 bat_payload["habitat"] = {"available": False, "note": "no atlas passages index mounted"}
 
-        # Step 5: Cheaper-knob arms
+        # Step 5: Cheaper-knob arms. `prompt_arms_state` says whether the brief's prompt arms were compared with the
+        # edit at all, so the sentence and the sheet never report "none matched" of arms that were not run.
         prompt_arm_res = _prompt_arm_eval(h, brief, target_drawn, near_drawn) if (void_reason is None and run_prompt_arms) else []
+        if not brief.prompt_arms:
+            arms_state = PROMPT_ARMS_NONE
+        elif not run_prompt_arms:
+            arms_state = PROMPT_ARMS_OFF
+        elif brief.metric not in ("odds", "own"):
+            arms_state = f'no prompt read-out for metric "{brief.metric}"'
+        elif void_reason is not None:
+            arms_state = "the reading is void"
+        else:
+            arms_state = PROMPT_ARMS_RUN
         cheaper_knobs = {
             "prompt_arms": prompt_arm_res,
+            "prompt_arms_state": arms_state,
             "decoding_bias": {"available": brief.metric == "odds", "gating": False,
                               "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"},
             "activation_twin": {
@@ -1711,11 +1740,17 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         if sh.get("count")
         else f"; selection not matched, {judged.get('practice_count', 0)} read in practice"
     )
-    knob_part = (
-        f"; matched by {judged['cheaper_knobs']['matched_by']}"
-        if verdict == "lead, matched by a cheaper knob"
-        else "; no author prompt arm matched it"
-    )
+    knobs = judged.get("cheaper_knobs") or {}
+    arms_run = knobs.get("prompt_arms") or []
+    if verdict == "lead, matched by a cheaper knob":
+        knob_part = f"; matched by {knobs['matched_by']}"
+    elif arms_run:
+        knob_part = "; no author prompt arm matched it"
+    else:  # none was run: say so, and why, and never that none matched
+        why = knobs.get("prompt_arms_state")
+        knob_part = "; no author prompt arm was compared with it" + (
+            f" ({why})" if why and why != PROMPT_ARMS_RUN else ""
+        )
     named = "named" if meta.get("prompt_named_site") else "did not name"
     return (
         f"On {meta.get('date')}, model {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}), "
@@ -1806,6 +1841,10 @@ def render_sheet(
     lines.append("cheaper knobs (no search over cheaper knobs; not compared with a trained adapter):")
     ck = judged.get("cheaper_knobs") or {}
     lines.append(f"  matched_by: {ck.get('matched_by') or 'none'}")
+    if ck.get("prompt_arms_state"):
+        lines.append(f"  author prompt arms: {ck['prompt_arms_state']}")
+    elif not ck.get("prompt_arms"):
+        lines.append("  author prompt arms: not compared")
     for pa in ck.get("prompt_arms") or []:
         lines.append(f"  prompt arm {pa['index']} [{pa['prompt_sha256']}]: directed_effect={_fmt(pa.get('directed_effect'))}, near_miss_abs={_fmt(pa.get('near_miss_abs'))}")
     prior = meta.get("prior_verdicts") or []

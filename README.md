@@ -283,8 +283,8 @@ Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 
 slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,032/1,032 CPU checks and 68/68 31B card
 checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (108/108 CPU/sandbox checks
 in `scripts/check_level_door.py`, 37/37 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
-(140/140 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`), and
-Phase 4’s Person’s Page (72/72 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
+(164/164 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`), and
+Phase 4’s Person’s Page (79/79 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
 `scripts/verify_level_page.py`) were built and card-checked:
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
   projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by

@@ -280,6 +280,15 @@ def run_section_2() -> None:
     cs_short = lcl.control_standing(-1.0, [0.2] * 38, max_fresh_readings=2, alpha=0.05)
     check(cs_short["tops_every_control"] and not cs_short["passes_alpha"],
           "m=2, C=38, tops_every_control=True STILL fails p_fw=2/39 > 0.05 (tops_every never gates alone)")
+    # a control edit with no finite reading is counted against the edit, never as one it topped
+    cs_none = lcl.control_standing(-1.0, [None] * 39, max_fresh_readings=2, alpha=0.05)
+    check(cs_none["non_finite"] == 39 and cs_none["at_least"] == 39 and not cs_none["passes_alpha"]
+          and not cs_none["tops_every_control"],
+          "m=2, C=39, every control reading missing -> at_least=39 and the family fails")
+    cs_nan = lcl.control_standing(-1.0, [float("nan")] + [0.2] * 38, max_fresh_readings=2, alpha=0.05)
+    check(cs_nan["non_finite"] == 1 and cs_nan["at_least"] == 1 and math.isclose(cs_nan["p_fw"], 0.10)
+          and not cs_nan["passes_alpha"],
+          "m=2, C=39, one NaN control -> counted as moving as much, p_fw=0.10 fails")
 
     # written_strata_summary (Row 21) & price_written_reading (§8)
     mock_w = {
@@ -406,6 +415,42 @@ def run_section_3(tok: Any, tmp: Path) -> None:
           f"cheaper-knob prompt match -> lead, matched by a cheaper knob (got {j_knob['verdict']})")
     check(s_knob is not None and "matched by prompt arm 0" in s_knob, "claim_sentence names matching prompt arm")
 
+    # 9b. A control with no finite reading in a required family is no lead, and the gate notes say why
+    nan_cls = _synth_class(h0_vals=[-1.2, -1.0], h1_vals=[-1.1, -0.9], floor=0.01, reversed_mean=0.8,
+                           ss_ctls=[float("nan")] + [0.05] * 38)
+    j_nan = lcl.judge_claim(brief=brief, bars=bars, classes={"small": nan_cls, "large": nan_cls},
+                            batteries=_clean_batteries())
+    check(j_nan["verdict"] == "no better than control edits"
+          and any("gave no finite reading" in r for r in j_nan["reasons"]),
+          f"one NaN same-site control -> no better than control edits, said in the gate notes (got {j_nan['verdict']})")
+
+    # 9c. The sentence never says "none matched" of prompt arms that were not run, and the sheet says why not
+    arm_short = {"index": 0, "prompt_sha256": "abc123456789", "directed_effect": 0.1, "near_miss_abs": 0.04}
+    for state, want in (
+        (lcl.PROMPT_ARMS_OFF, "no author prompt arm was compared with it (switched off for this reading)"),
+        (lcl.PROMPT_ARMS_NONE, "no author prompt arm was compared with it (none in the brief)"),
+        (None, "no author prompt arm was compared with it"),
+    ):
+        ck_off: Dict[str, Any] = {"prompt_arms": []}
+        if state is not None:
+            ck_off["prompt_arms_state"] = state
+        j_off = lcl.judge_claim(brief=brief, bars=bars, classes=good_classes, batteries=_clean_batteries(),
+                                cheaper_knobs=ck_off)
+        s_off = lcl.claim_sentence(brief, j_off, meta)
+        sh_off = lcl.render_sheet(brief, bars, j_off, meta, s_off)
+        SHEETS_COLLECTED.extend([sh_off, s_off or ""])
+        check(j_off["verdict"] == "lead" and s_off is not None and want in s_off
+              and "no author prompt arm matched it" not in s_off,
+              f"prompt arms not run ({state}) -> the sentence says none was compared, not that none matched")
+        check(f"author prompt arms: {state or 'not compared'}" in sh_off,
+              f"prompt arms not run ({state}) -> the sheet says so under cheaper knobs")
+    j_ran = lcl.judge_claim(brief=brief, bars=bars, classes=good_classes, batteries=_clean_batteries(),
+                            cheaper_knobs={"prompt_arms": [arm_short], "prompt_arms_state": lcl.PROMPT_ARMS_RUN})
+    s_ran = lcl.claim_sentence(brief, j_ran, meta)
+    SHEETS_COLLECTED.extend([lcl.render_sheet(brief, bars, j_ran, meta, s_ran), s_ran or ""])
+    check(j_ran["verdict"] == "lead" and s_ran is not None and "no author prompt arm matched it" in s_ran,
+          "a prompt arm that ran and fell short is reported as not matching")
+
     # 10. Void on missing class or too few kept-back frames
     j_void1 = lcl.judge_claim(brief=brief, bars=bars, classes={"large": good_cls}, batteries=_clean_batteries())
     check(j_void1["verdict"] == "void", "missing small batch class -> void")
@@ -512,6 +557,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
         controls_override=4, match_tolerance=20.0, book_path=bk,
     )
     SHEETS_COLLECTED.append(res1["sheet"])
+    check(res1["judged"]["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_RUN
+          and len(res1["judged"]["cheaper_knobs"]["prompt_arms"]) == len(brief.prompt_arms) > 0
+          and "author prompt arms: run" in res1["sheet"],
+          "fresh claim #1 compared the brief's author prompt arms and its sheet says they ran")
     check(res1["verdict"] in lcl.VERDICTS and res1["verdict"] != "void",
           f"fresh claim #1 completed cleanly (verdict={res1['verdict']}, reasons={res1['judged']['reasons']})")
     reg_s = res1["book"]["registration_seq"]
@@ -547,6 +596,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
         controls_override=4, match_tolerance=20.0, run_prompt_arms=False, book_path=bk,
     )
     SHEETS_COLLECTED.append(res2["sheet"])
+    check(res2["judged"]["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_OFF
+          and res2["judged"]["cheaper_knobs"]["prompt_arms"] == []
+          and "author prompt arms: switched off for this reading" in res2["sheet"],
+          "a claim run with run_prompt_arms=False records and prints that its prompt arms were switched off")
     check(res2["verdict"] in lcl.VERDICTS and res2["verdict"] != "void",
           f"fresh claim #2 completed cleanly (verdict={res2['verdict']})")
     check("earlier fresh readings on this brief (1):" in res2["sheet"],
@@ -631,12 +684,29 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     check(r_prac["count"] == 2 and len(lcl.brief_history(brief.id, bk)["practice_item_ids"]) == 2,
           "MCP draw_practice returns items and records them in ledger")
 
+    # The door has no switch for the comparison that can mark a lead "matched by a cheaper knob"
+    check("run_prompt_arms" not in lmcp.TOOL_SPECS["claim"]["inputSchema"]["properties"],
+          "the MCP claim tool lists no run_prompt_arms argument")
+    check_raises(
+        lses.SessionRefused,
+        lambda: lmcp.dispatch_tool(ses, "claim", {
+            "edit": {"terms": [{"layer": 2, "silence": [0, 1]}]}, "run_prompt_arms": False,
+        }),
+        "MCP claim refuses an argument its schema does not name",
+        match="takes no argument named run_prompt_arms",
+    )
+    check(len(lcl.brief_history(brief.id, bk)["registrations"]) == 0,
+          "the refused MCP claim call registered nothing and spent no fresh reading")
+
     r_claim = lmcp.dispatch_tool(ses, "claim", {
         "edit": {"terms": [{"layer": 2, "silence": [0, 1]}]},
         "n_target": 4, "n_neutral": 2, "n_near": 2, "n_panel": 2,
-        "controls_override": 4, "match_tolerance": 20.0, "run_prompt_arms": False,
+        "controls_override": 4, "match_tolerance": 20.0,
     })
     SHEETS_COLLECTED.append(r_claim["sheet"])
+    check(r_claim["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_RUN
+          and len(r_claim["cheaper_knobs"]["prompt_arms"]) == len(brief.prompt_arms) > 0,
+          "a claim through the door always compares the brief's author prompt arms")
     check(r_claim["verdict"] in lcl.VERDICTS and r_claim["reading_index"] == 1, "MCP claim returns redacted verdict record")
     check("Finish the story:" not in json.dumps(r_claim), "MCP claim leaks zero fresh kept-back text")
 

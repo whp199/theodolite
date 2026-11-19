@@ -729,10 +729,11 @@ class LevelSession:
         written_rows: int = 12,
         controls_override: Optional[int] = None,
         match_tolerance: Optional[float] = None,
-        run_prompt_arms: bool = True,
     ) -> Dict[str, Any]:
         """Run one registered Phase 3 fresh claim reading on the bound brief and return ONLY the redacted
-        `driver_record` (verdict, bounded claim sentence, Claim Sheet, aggregate summary — never fresh item text)."""
+        `driver_record` (verdict, bounded claim sentence, Claim Sheet, aggregate summary — never fresh item text).
+        The brief's author prompt arms are always compared with the edit here: whether to skip the comparison that
+        can mark a lead "matched by a cheaper knob" is not the driver's to choose (the owner's command line can)."""
         self._check_open_and_wall()
         if self._brief is None or self._bars is None:
             raise SessionRefused("Claim gate is not enabled on this session (requires both a bound brief and bar set).")
@@ -765,7 +766,7 @@ class LevelSession:
                 written_rows=int(written_rows),
                 controls_override=controls_override,
                 match_tolerance=match_tolerance,
-                run_prompt_arms=bool(run_prompt_arms),
+                run_prompt_arms=True,
                 book_path=self.book_path,
             )
         elapsed = time.perf_counter() - t0
