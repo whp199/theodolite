@@ -596,6 +596,17 @@ class LevelSession:
         self._log("capture", {k: v for k, v in out.items() if k != "remaining"})
         return out
 
+    def _apply_blinded_plan(self, plan: Mapping[str, Any], expected_kind: Optional[str] = None) -> Dict[str, Any]:
+        """In blinded (planted or canary) sessions, enforce identical paired-plan execution settings (`folded="never"`,
+        `lower="whole"`) for both `estimate()` and `read()` so neither predicted seconds nor restart-layer wall time
+        can distinguish a planted session from a canary."""
+        p = dict(plan)
+        kind = expected_kind or p.get("kind") or "paired"
+        if self._blinded and kind == "paired":
+            p["folded"] = "never"
+            p["lower"] = "whole"
+        return p
+
     def estimate(self, plan: Mapping[str, Any], items: Mapping[str, Any]) -> Dict[str, Any]:
         """Estimate GPU-seconds, forwards, and memory for a plan without touching the GPU."""
         self._check_open_and_wall()
@@ -603,7 +614,7 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         h = self._handle
         item_map = _as_item_map(items, h.tokenizer)
-        norm_plan = lv.normalise(dict(plan), n_layers=h.n_layers, tokenizer=h.tokenizer, dtype=h.dtype)
+        norm_plan = lv.normalise(self._apply_blinded_plan(plan), n_layers=h.n_layers, tokenizer=h.tokenizer, dtype=h.dtype)
         names = list(item_map) if norm_plan["items"] == "all" else norm_plan["items"]
         for nm in names:
             if nm not in item_map:
@@ -663,9 +674,9 @@ class LevelSession:
         if expected_kind == "written":
             p.setdefault("diagnose", True)
 
-        # In blinded (planted or canary) sessions, always run per-row form only so neither leaks state via twin.
-        if expected_kind == "paired" and self._blinded:
-            p["folded"] = "never"
+        # In blinded (planted or canary) sessions, always run per-row whole forwards so neither twin nor restart layer
+        # leaks state between planted and canary sessions.
+        p = self._apply_blinded_plan(p, expected_kind)
 
         h = self._handle
         item_map = _as_item_map(items, h.tokenizer)

@@ -2032,18 +2032,30 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 .venv/bin/python -I scripts/levelling.py weights info                      # no card: inspect W4A16 checkpoint on CPU
 .venv/bin/python -I scripts/levelling.py sandbox-probe --default-weights   # active bwrap containment probe
 .venv/bin/python -I backend/level_mcp.py --session-dir /tmp/lvl --stand-in # Phase 2 practice-only stdio MCP server
+.venv/bin/python -I scripts/levelling_trial.py verify prereg/              # Phase 5 registration SHA256SUMS check
+.venv/bin/python -I scripts/levelling_export.py verify adapter.gguf        # Phase 5 owner-only LoRA export verify
+.venv/bin/python -I scripts/levelling_rerun.py verify-kit kit/             # Phase 5 volunteer re-run kit verify
 ```
 
 | module | what |
 |---|---|
-| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, control edits, `stack`, `edit_diagnostics`, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
+| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, `rebuilt_recipe`, `edit_provenance`, `base_checksum`, control edits, `stack`, `edit_diagnostics`, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
 | `backend/weight_reader.py` | no-card CPU W4A16 / dense safetensors reader (`WeightReader`: `info`, `tensor_pin`, `dense_cols`, `dense_rows`, `quiet_mask`, `down_stream_norms`, `writers`, `save_array`), also mounted read-only inside the off-card sandbox |
 | `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading (short greedy or long sampled / thinking-on with loop & cut-off detectors), `capture_direction`, the read-outs, what a person reads (`lines`) |
 | `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before, plus `driver_view` redaction |
 | `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights` and `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`) |
-| `backend/level_session.py` | Phase 2 practice-only Agent's Door (`LevelSession`: reach/backend enforcement, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`estimate`/`read`/`write`/`book_view` gates, blinded in-memory planted & canary sessions, transcript copy on close) |
+| `backend/level_session.py` | Phase 2 practice-only Agent's Door (`LevelSession`: reach/backend enforcement, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`estimate`/`read`/`write`/`book_view` gates, blinded in-memory planted & canary sessions with matched `estimate`/`read` normalization, transcript copy on close) |
 | `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver |
-| `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe` |
+| `backend/level_briefs.py` | Phase 3 versioned briefs, policy guard, disjoint practice/kept-back frame generators, wording-overlap `KeptBack`, retention battery generators, 4 starter briefs |
+| `backend/level_claim.py` | Phase 3 calibrated hashed `BarSet`s, post-freeze `os.urandom(32)` claim execution, dual-batch-class control/battery/knob judgement, bounded Claim Sheets |
+| `backend/level_routes.py` | Phase 4 FastAPI `/api/level/*` routes (status, estimate, compare with 409 vault-overlay guard, model-free live & recorded ledger replay) |
+| `backend/level_trial.py` | Phase 5 Trial of Record: `RewordedSet` (5-use rotation cap), `prereg/` registration folders with `SHA256SUMS` (no weight payloads), live `base_checksum`, `folded="always"` verification, `passed`/`failed`/`void` verdict engine, Trial Sheet |
+| `backend/level_export.py` | Phase 5 owner-only LoRA GGUF exporter (isolated export directory, cross-base `--gguf` recompilation via `TargetBase`, Apache-2.0 keys, `implant_check`, companion `.manifest.json`, delta verification, optional `llama-server` re-measure) |
+| `backend/level_rerun.py` | Phase 5 volunteer re-run kit packager (rebuilt edits only), volunteer runner packing allowlisted `.tar` bundles, and defensive tar intake & judgement |
+| `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
+| `scripts/levelling_trial.py` | `reworded`, `register`, `verify`, `run` (owner Trial of Record CLI) |
+| `scripts/levelling_export.py` | `lora`, `verify`, `show`, `remeasure` (owner-only export CLI) |
+| `scripts/levelling_rerun.py` | `pack`, `verify-kit`, `run`, `intake` (volunteer re-run & intake CLI) |
 
 **The edit.** A list of terms, each an additive difference from one feed-forward linear's shipped tensor, at dose d
 the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Four forms are built (slices 1a and 1b): a column term on
@@ -2231,9 +2243,36 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
   on the Vault page and one Lexicon entry (`a control edit`, `id="control-edit"`), updating the Lexicon's `"an edit"`
   entry to distinguish persistent vault patches (`ROLLBACK`) from transient per-row readings. Displays three voices
   (untouched base, your edit, selectable control edit) beside `<Rubric>` explanations, a responsive two-batch-class
-  paired metrics table, and a model-free ledger replay table (with the recorded 19 Nov 2026 31B Phase 3 verdict cards
-  available offline: `compareRecorded.ts`, made by `scripts/level_recorded_cards.py` from the committed
-  `verify_claim_book.jsonl`, each card the server's own replay card for the line it names by number, time and hash).
+  paired metrics table, and a model-free ledger replay table (handling live readings, Phase 3 claim verdicts, and Phase 5
+  `trial_of_record` entries, displaying unavailable batteries explicitly as `not run` rather than `passed`, and shipping
+  the recorded 19 Nov 2026 31B Phase 3 verdict cards offline via `compareRecorded.ts`, made by
+  `scripts/level_recorded_cards.py` from `verify_claim_book.jsonl`).
+
+**Phase 5: Of Record, and Out** (`backend/level_trial.py`, `backend/level_export.py`, `backend/level_rerun.py` and
+owner-only CLIs `scripts/levelling_trial.py`, `scripts/levelling_export.py`, `scripts/levelling_rerun.py`):
+- **Trial of Record (`backend/level_trial.py`, `scripts/levelling_trial.py`)**: builds a hash-verified `prereg/` folder
+  (`brief.json`, `bar_set.json`, `edit_recipe.json`, `plan.json`, `rules.md`, optional `reworded_ref.json`,
+  `SHA256SUMS`; refuses any `*.safetensors` or `*.gguf` file and warns when an edit's provenance is `"carried"`). Runs
+  in a fresh process with an uncached live `base_checksum` across every linear before and after, draws fresh
+  `os.urandom(32)` items after registration, evaluates both batch classes (`small` & `large`) with `folded="always"`
+  cross-checking per-row against real folded weights, runs an owner-written `RewordedSet` (capped at 5 uses across
+  books and checked against brief overlap and `n_target / 2` minimums), logs `trial_registration` and `trial_of_record`
+  into the append-only ledger (replayable on the Vault compare tab via `verify_trial`), and writes a bounded
+  `TRIAL_SHEET.md` (`passed`, `failed`, or `void`).
+- **Owner-only Export (`backend/level_export.py`, `scripts/levelling_export.py`)**: exports a supported edit as a
+  llama.cpp LoRA `.gguf` plus companion `.manifest.json` outside every checkout and tool directory
+  (`$THEODOLITE_EXPORT_DIR`, else `~/.local/share/theodolite/exports`), never exposed on MCP, `LevelSession`,
+  `level_routes`, or `scientist_tools`. Supports cross-base recompilation against a target `--gguf` (via `TargetBase`
+  reading GGUF tensors directly) or checkpoint, tags Apache-2.0 licence/origin metadata via `export_lora.write_lora`,
+  marks `ffn_gate`/`ffn_up` tensors `unverified_llama_cpp_tensors` until checked live in llama.cpp, runs
+  `implant_check` and exact delta reconstruction verification (`max_abs_err`), and optionally re-measures through a
+  local `llama-server`.
+- **Volunteer Re-run Kit & Defensive Intake (`backend/level_rerun.py`, `scripts/levelling_rerun.py`)**: packages a
+  self-contained kit (refusing `"carried"` edits so zero Gemma weights ever ship; `*.safetensors`/`*.gguf` are also
+  gitignored repo-wide), runs the trial on a volunteer's local model into an allowlisted `.tar` bundle, and validates
+  returned archives defensively (rejecting symlinks, hard links, devices, `..`/absolute paths, unknown members, and
+  oversize entries before extraction) into an intake judgement (`accepted`, `disagreed`, or `rejected`, distinguishing
+  `same_bits` from `other_card_match`).
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
@@ -2255,20 +2294,30 @@ a written reading whose cache would pass 6 GiB.
 a packed bf16 one) holds the kernel to the spec across 16 sections (1,032/1,032 checks passing).
 `scripts/check_level_door.py` (CPU stand-ins + live `bwrap` sandbox) verifies the no-card weights reader, extended
 sampled/thinking-on written readings and loop/cut-off detectors, `stack(doses=...)` and in-memory `_plant` repair,
-`bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts, stdio MCP protocol, CLI subcommands,
-and zero kept-out words (137/137 checks passing in 24 s).
+`bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts (including matched `estimate`/`read`
+costs and `lower="whole"` parity between planted and canary sessions), stdio MCP protocol, CLI subcommands, and zero
+kept-out words (138/138 checks passing in 23 s).
 `scripts/check_level_claim.py` (CPU stand-ins) verifies Phase 3 briefs, canonical hashing/tamper checks, policy
 refusals, `FrameGenerator` disjointness/half balancing/anti-leakage, `house_bar`/`frame_statistics`/`control_standing`
 /`written_strata_summary`/`price_written_reading`, all planted-failure verdicts, 200 planted nulls calibration (0/200
 false leads under both joint-gate and worst-case exchangeable nulls at `m = 2, C = 39`), live stand-in paired and
-chunked `written_loop` claims, `LevelSession`/MCP/CLI claim integration, and zero kept-out words across all 10
-Levelling files and every rendered Claim Sheet (302/302 checks passing).
+chunked `written_loop` claims, `LevelSession`/MCP/CLI claim integration, and zero kept-out words across all Levelling
+files and every rendered Claim Sheet (302/302 checks passing).
 `scripts/check_level_page.py` (CPU stand-ins + `esbuild`/node + FastAPI `TestClient`) verifies `compare.ts` request
-builders/validators/1-to-0 layer conversion, `/api/level/{status,estimate,compare,book}` routes, HTTP 409 vault-overlay
-isolation, model-free replay of both live and verified 31B books, foreign-origin & path-traversal guards, Lexicon/Vault
-wiring, that the offline replay cards are the committed book's own lines (`scripts/level_recorded_cards.py` makes
-`compareRecorded.ts` from `verify_claim_book.jsonl`), and zero kept-out words across all 12 backend/CLI files and 3
-Phase 4 frontend files (83/83 checks passing in 1.4 s; `scripts/check_interface_defaults.py`: 291/291 passing; `npm run build`: clean).
+builders/validators/1-to-0 layer conversion and `batteryOutcome` (`not run` for unavailable batteries),
+`/api/level/{status,estimate,compare,book}` routes, live & recorded `edit_linears` + rebuildable edit recipes, HTTP 409
+vault-overlay isolation, model-free replay of live, `verify_claim`, and `verify_trial` books, foreign-origin &
+path-traversal guards, Lexicon/Vault wiring, offline recorded card parity (`scripts/level_recorded_cards.py`), and zero
+kept-out words (86/86 checks passing in 1.7 s; `scripts/check_interface_defaults.py`: 291/291 passing;
+`scripts/check_lora_export.py`: 76/76 passing; `npm run build`: clean).
+`scripts/check_level_trial.py` (CPU packed bf16 stand-in + synthetic Gemma 4 GGUF) verifies Phase 5 across 8 sections:
+edit provenance & live `base_checksum`, `RewordedSet` validation & 5-use cap, `prereg/` registration & `SHA256SUMS`
+tamper/weight-file refusals, full `run_trial` (`passed`/`failed`/`void`, `folded="always"` verification, reworded
+execution, `TRIAL_SHEET.md`), owner-only LoRA GGUF export (isolated destination, cross-base `--gguf` recompilation,
+`ffn_gate`/`ffn_up` unverified flag, `implant_check`, exact delta verification, zero exposure on MCP/session/routes/
+scientist tools), volunteer re-run kit & defensive tar intake (symlink, `..`, unknown member, oversize, and carried-edit
+rejections; `accepted` / `disagreed` / `rejected`), CLI smoke tests, and zero kept-out words across all 21 Levelling
+files (84/84 checks passing in 3.9 s).
 On the 31B card (RTX 5090):
 - `scripts/verify_levelling.py` (1a, 16 November 2026, `verify_1a.json`): 142 of 145 standing lines passed in 13 min.
 - `scripts/verify_levelling_1b.py` (1b, 18 November 2026, `verify_1b.json`): 68 of 68 checks passed in 86.2 s, peak
@@ -2293,6 +2342,16 @@ On the 31B card (RTX 5090):
   table ran in 4.64 s (`small` odds `-1.853`, `large` odds `-1.817`, `0/3` matched controls, untouched rows identical,
   `base_after = True`), live Vault `DELETE` -> HTTP 409 -> `ROLLBACK` isolation verified, and model-free replay of both
   the live book and `verify_claim` confirmed.
+- `scripts/verify_level_trial.py` (Phase 5 Trial of Record + Owner Export + Volunteer Re-run on live 31B, 19 November
+  2026, `verify_trial.json` & `verify_trial_book.jsonl`): 15 of 15 checks passed in 221.59 s, peak 18.314 GiB, 0
+  unpacker fallbacks, ledger whole (12 entries): live uncached `base_checksum` matched across all 410 linears
+  (`32e77191eca8e5ec`) before and after; full `C = 39` Trial of Record with `folded="always"` and an 8-item `RewordedSet`
+  (`C = 19`, use `1/5`) on E6 layer-50 `'she'` ten achieved `0.0000` max folded-vs-per-row gap (`16/16` same-bits in
+  both batch classes; fresh `small = -1.4057`, `large = -1.4229`, `0/39` matched & same-site; reworded
+  `small = -1.9538`, `large = -1.9373`) and returned **`failed`** (`works but harms`, `near_misses = 0.9014`, matching
+  Row 20); owner-only 31B LoRA `.gguf` export succeeded in 1.11 s (`1,079,680` bytes, `max_abs_err = 0.0`,
+  `implant_flagged = False`); volunteer re-run kit -> run -> defensive intake completed in 87.16 s with judgement
+  **`accepted`** (`same_bits`).
 
-**Not built:** attention, embedding and norm edits; a folded form for low-rank terms; Phase 5 trial of record and
-exports; Phase 6 driver evals; gradients. Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.
+**Not built:** attention, embedding and norm edits; a folded form for low-rank terms; Phase 6 driver evals; gradients.
+Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.

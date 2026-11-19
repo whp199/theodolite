@@ -282,11 +282,12 @@ tests it quickly and tries again.
 
 Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 standing checks passed on the 31B),
 slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,032/1,032 CPU checks and 68/68 31B card
-checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (137/137 CPU/sandbox checks
+checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (138/138 CPU/sandbox checks
 in `scripts/check_level_door.py`, 37/37 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
-(302/302 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`), and
-Phase 4’s Person’s Page (83/83 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
-`scripts/verify_level_page.py`) were built and card-checked:
+(302/302 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`),
+Phase 4’s Person’s Page (86/86 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
+`scripts/verify_level_page.py`), and Phase 5’s Trial of Record, Owner Export, and Volunteer Re-run (84/84 CPU checks in
+`scripts/check_level_trial.py`, 15/15 31B card checks in `scripts/verify_level_trial.py`) were built and card-checked:
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
   projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by
   `post_feedforward_layernorm`), scale, silence, set or add to a row of `gate_proj` or `up_proj` (edited coordinates
@@ -324,9 +325,16 @@ Phase 4’s Person’s Page (83/83 CPU/interface checks in `scripts/check_level_
 
 - **Person’s Page (`backend/level_routes.py`, Vault `compare` tab).** Base, edit, and 1–19 control edits heard side by
   side in one batched forward beneath red-italic rubrics, with a two-batch-class paired read-out table, HTTP 409
-  refusal while any vault overlay is in force, and model-free replay from the append-only level book.
+  refusal while any vault overlay is in force, and model-free replay from the append-only level book (including live
+  readings, Phase 3 claim verdicts, and Phase 5 trials of record).
+- **Of Record, and Out (`backend/level_trial.py`, `backend/level_export.py`, `backend/level_rerun.py`).** Owner-only
+  CLIs for hash-verified `prereg/` registration folders (`SHA256SUMS`, zero weight files), fresh-process Trials of
+  Record with uncached live `base_checksum`, `folded="always"` verification across both batch classes, and 5-use
+  owner-written `RewordedSet`s; isolated llama.cpp LoRA `.gguf` export (cross-base `--gguf` recompilation, Apache-2.0
+  metadata, `implant_check`, exact delta check, never exposed to agents or web routes); and volunteer re-run kits
+  (rebuilt edits only) with defensive `.tar` intake.
 
-Later phases (Phase 5 trials of record and exports, Phase 6 driver evaluations) wait on decisions that are the owner’s.
+Later work (Phase 6 driver evaluations) waits on decisions that are the owner’s.
 
 “Levelling” is a working name: as a surveyor levels heights against a benchmark, it reads each edit against the
 untouched model. More is in [ARCHITECTURE §7](ARCHITECTURE.md) and [ROADMAP §viii](ROADMAP.md#viii--a-weight-edit-read-against-the-base), and the exploration

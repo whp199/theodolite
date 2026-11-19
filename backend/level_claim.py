@@ -57,9 +57,9 @@ PROMPT_ARMS_OFF = "switched off for this reading"
 # on its harness card, `scripts/check_level_claim.py` checks the two agree).
 DESIGN_DEFAULTS = {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4, "written_rows": 12}
 
-# A reading whose name begins with one of these is the harness's own (a calibration's, a claim's, a settings audit's,
-# a pricing's); a session's practice gates refuse such a name, so in a book every other reading is practice.
-RESERVED_NAMES = ("cal_", "claim_", "settings_audit_", "sizing_")
+# A reading whose name begins with one of these is the harness's own (a calibration's, a claim's, a trial of record's,
+# a settings audit's, a pricing's); a session's practice gates refuse such a name, so in a book every other reading is practice.
+RESERVED_NAMES = ("cal_", "claim_", "trial_", "settings_audit_", "sizing_")
 _LOOP_COUNT_KEY = {"instrument": "looped", "published": "looped_published", "either": "looped_either"}
 
 
@@ -1894,6 +1894,8 @@ def run_fresh_claim(
             "brief_id": brief.id,
             "brief_name": brief.name,
             "edit_id": edit.id,
+            "edit_linears": edit.linears(),
+            "edit_provenance": we.edit_provenance(edit),
             "main_dose": float(main_dose),
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
@@ -2188,6 +2190,7 @@ def run_fresh_claim(
             "brief_id": brief.id,
             "brief_name": brief.name,
             "edit_id": edit.id,
+            "edit_linears": edit.linears(),
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
             "verdict": judged["verdict"],

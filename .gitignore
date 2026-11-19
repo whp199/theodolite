@@ -75,3 +75,8 @@ atlas_data/
 experiments/results/pattern_tests_pilot/fit/
 experiments/results/pattern_tests_pilot/readers/sheet*[ab].txt
 experiments/results/pattern_tests_pilot/readers_near/sheet*[ab].txt
+
+# model weight payloads and exported adapters: kept outside the checkout (arbiter.md row 32).
+# Historical records already tracked under experiments/results/{control_vector,lora_export}_L45/ are unaffected.
+*.safetensors
+*.gguf

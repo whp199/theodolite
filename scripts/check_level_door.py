@@ -630,8 +630,8 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     check(got_fwd_cap, "5: forward budget cap refuses over-budget capture")
     sess_tiny.close()
 
-    # Planted vs Canary blinding check (arbiter.md row 33)
-    plant = we.build(hP.lm, [we.silence(3, [4, 9])], model_id=hP.model_id, weights_id=hP.weights_id)
+    # Planted vs Canary blinding check (arbiter.md row 33 + review leftover: predicted seconds & lower="whole")
+    plant = we.build(hP.lm, [we.silence(0, [4, 9])], model_id=hP.model_id, weights_id=hP.weights_id)
     s_plant = lses.LevelSession(
         hP, tmp / "sess_planted", reach="sandbox_no_weights", backend="claude",
         budget=lses.SessionBudget(min_controls=1), book_path=book, probe_on_start=False, plant=plant,
@@ -644,14 +644,15 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     c_c = {k: v for k, v in s_canary.harness_card().items() if k != "session_id"}
     check(c_p == c_c and c_p["with_healthy_reference"] is False,
           "5: planted and canary sessions present identical blinded harness cards (sandbox_no_weights)")
-    rp_blind = s_plant.read({
-        "name": "blind_read", "kind": "paired", "edit": {"terms": [{"layer": 3, "scale": [4, 9], "factor": 2.0}]},
-        "items": ["alpha"], "controls": {"count": 1, "seed": 0}, "rows": {"small": 8, "large": 16},
-    }, items)
-    rc_blind = s_canary.read({
-        "name": "blind_read", "kind": "paired", "edit": {"terms": [{"layer": 3, "scale": [4, 9], "factor": 2.0}]},
-        "items": ["alpha"], "controls": {"count": 1, "seed": 0}, "rows": {"small": 8, "large": 16},
-    }, items)
+    # Edit at layer 4 while hidden plant is at layer 0, with multi-forward controls so restart-layer leak would show
+    blind_plan = {
+        "name": "blind_read", "kind": "paired", "edit": {"terms": [{"layer": 4, "scale": [4, 9], "factor": 2.0}]},
+        "items": ["alpha"], "controls": {"count": 6, "seed": 0}, "rows": {"small": 8, "large": 16},
+    }
+    ep_blind = s_plant.estimate(blind_plan, items)
+    ec_blind = s_canary.estimate(blind_plan, items)
+    rp_blind = s_plant.read(blind_plan, items)
+    rc_blind = s_canary.read(blind_plan, items)
     we.assert_base(hP.lm, hP.hooks_at_load)
     s_plant.close()
     s_canary.close()
@@ -665,8 +666,17 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     check(plant.id[:12] not in disk_dump and "canary" not in disk_dump and "plant" not in disk_dump,
           "5: planted/canary state stays strictly in memory (zero leakage to session.json, transcript, or driver_view)")
     check(rp_blind["driver_view"]["body"]["plan"]["folded"] == "never"
-          and rc_blind["driver_view"]["body"]["plan"]["folded"] == "never",
-          "5: both planted and canary sessions enforce folded=never (no twin side-channel)")
+          and rc_blind["driver_view"]["body"]["plan"]["folded"] == "never"
+          and rp_blind["driver_view"]["body"]["plan"]["lower"] == "whole"
+          and rc_blind["driver_view"]["body"]["plan"]["lower"] == "whole",
+          "5: both planted and canary sessions enforce folded=never and lower=whole (no twin or restart side-channel)")
+    p_pred = rp_blind["driver_view"]["body"]["seconds"]["predicted"]
+    c_pred = rc_blind["driver_view"]["body"]["seconds"]["predicted"]
+    p_parts = rp_blind["driver_view"]["body"]["seconds"]["parts"]
+    c_parts = rc_blind["driver_view"]["body"]["seconds"]["parts"]
+    check(ep_blind["estimate"]["seconds"] == ec_blind["estimate"]["seconds"] == p_pred == c_pred
+          and ep_blind["estimate"]["parts"] == ec_blind["estimate"]["parts"] == p_parts == c_parts,
+          f"5: blinded estimate and reading predicted seconds/parts match identically across plant & canary ({p_pred} vs {c_pred})")
 
 
 # ------------------------------------------------------------------------------- 6. MCP stdio protocol

@@ -17,6 +17,7 @@ import {
   type ValidationErrors,
   type VoiceRow,
   type VoicesPayload,
+  batteryOutcome,
   buildComparePayload,
   controlsFamilyGloss,
   fmtMetric,
@@ -305,7 +306,7 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
       {card.voices ? <ThreeVoices voices={card.voices} label="recorded three voices (replayed without a model)" /> : null}
       {card.paired ? <PairedMetricsTable paired={card.paired} captionId={capId} /> : null}
 
-      {card.note_type === "claim_verdict" ? (
+      {card.note_type === "claim_verdict" || card.note_type === "trial_of_record" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {card.claim_sentence ? (
             <blockquote
@@ -400,13 +401,13 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
           {bats ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 22px", fontSize: 15 }}>
               {Object.entries(bats).map(([bname, bv]) => {
-                const passed = Boolean(bv?.passed);
+                const outcome = batteryOutcome(bv);
                 const gating = Boolean(bv?.gating);
                 return (
                   <span key={bname} className="num">
                     <span style={smallCaps(13)}>{bname}</span>{" "}
-                    <span style={{ color: passed ? "var(--lapis)" : "var(--rubric)" }}>
-                      {passed ? "passed" : "failed"}
+                    <span style={{ color: badgeColor(outcome.tone) }}>
+                      {outcome.label}
                     </span>
                     {gating ? " (gating)" : " (info)"}
                     {typeof bv?.mean_kl === "number" ? ` · KL ${bv.mean_kl.toExponential(1)}` : ""}
@@ -414,6 +415,26 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
                   </span>
                 );
               })}
+            </div>
+          ) : null}
+          {card.note_type === "trial_of_record" && (card.folded_summary || card.reworded_summary) ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 22px", fontSize: 15 }}>
+              {card.folded_summary ? (
+                <span className="num">
+                  <span style={smallCaps(13)}>folded form</span>{" "}
+                  <span style={{ color: badgeColor((card.folded_summary as { ok?: boolean }).ok ? "good" : "bad") }}>
+                    {(card.folded_summary as { status?: string }).status ?? ((card.folded_summary as { ok?: boolean }).ok ? "ok" : "failed")}
+                  </span>
+                </span>
+              ) : null}
+              {card.reworded_summary ? (
+                <span className="num">
+                  <span style={smallCaps(13)}>reworded set</span>{" "}
+                  <span style={{ color: badgeColor((card.reworded_summary as { ok?: boolean }).ok ? "good" : "bad") }}>
+                    {(card.reworded_summary as { status?: string }).status ?? ((card.reworded_summary as { ok?: boolean }).ok ? "ok" : "failed")}
+                  </span>
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>

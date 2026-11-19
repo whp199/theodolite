@@ -171,6 +171,9 @@ export interface ReplayCard {
   book_seqs?: number[] | null;
   selection_mode?: string | null;
   controls_per_family?: number | null;
+  folded_summary?: Record<string, unknown> | null;
+  reworded_summary?: Record<string, unknown> | null;
+  trial_sha256?: string | null;
   recorded_tag?: string | null;
 }
 
@@ -493,11 +496,30 @@ export function controlsFamilyGloss(fam: string | null | undefined): string {
 /** Label for a ledger replay row's verdict / status badge. */
 export function statusTone(status: string | null | undefined): "good" | "warn" | "bad" | "neutral" {
   const s = (status || "").toLowerCase();
-  if (s === "lead") return "good";
+  if (s === "lead" || s === "passed") return "good";
   if (s === "ok" || s === "calibrated" || s === "registered") return "neutral";
   if (s === "lead, matched by a cheaper knob" || s === "kept the base" || s === "unstable") return "warn";
-  if (s === "works but harms" || s === "no better than control edits" || s === "did not replicate" || s === "void" || s === "refused") {
+  if (
+    s === "failed" ||
+    s === "works but harms" ||
+    s === "no better than control edits" ||
+    s === "did not replicate" ||
+    s === "void" ||
+    s === "refused"
+  ) {
     return "bad";
   }
   return "neutral";
+}
+
+/** Label and tone for a retention battery chip (never calls an unavailable battery "passed"). */
+export function batteryOutcome(
+  bv: Record<string, unknown> | null | undefined,
+): { label: "passed" | "failed" | "not run"; tone: "good" | "bad" | "neutral" } {
+  const available = bv?.available !== false;
+  const gating = Boolean(bv?.gating);
+  if (!available) {
+    return { label: "not run", tone: gating ? "bad" : "neutral" };
+  }
+  return Boolean(bv?.passed) ? { label: "passed", tone: "good" } : { label: "failed", tone: "bad" };
 }

@@ -104,6 +104,7 @@ Layers count from 0 here and in every file; a message a person reads says both (
 
 from __future__ import annotations
 
+import copy
 import datetime
 import hashlib
 import io
@@ -2739,3 +2740,166 @@ def folded(lm: nn.Module, edit: Edit, dose: float = 1.0, *,
             od.clear()
             od.update(before)
         assert_base(lm, hooks_at_load)
+
+
+# ------------------------------------------------------------------------ Phase 5 provenance & base integrity
+
+
+def rebuilt_recipe(edit: Edit) -> Optional[Dict[str, Any]]:
+    """Return a pure-JSON `{"terms": [...]}` recipe when every term of `edit` can be rebuilt from the public base
+    weights with no carried payload arrays (column or row `silence` / `scale`), else `None`."""
+    terms_out: List[Dict[str, Any]] = []
+    for t in edit.terms:
+        if t.kind not in ("cols", "rows") or t.vectors is not None:
+            return None
+        if int(t.op.max(initial=0)) != 0:
+            return None
+        idx = [int(n) for n in t.idx]
+        fac = [float(f) for f in t.factor]
+        all_zero = all(f == 0.0 for f in fac)
+        all_same = all(f == fac[0] for f in fac)
+        if t.kind == "cols":
+            if all_zero:
+                terms_out.append({"layer": int(t.layer), "silence": idx})
+            elif all_same:
+                terms_out.append({"layer": int(t.layer), "scale": idx, "factor": float(fac[0])})
+            else:
+                terms_out.append({"layer": int(t.layer), "scale": idx, "factors": fac})
+        else:
+            if all_zero:
+                terms_out.append({"layer": int(t.layer), "which": t.which, "silence_rows": idx})
+            elif all_same:
+                terms_out.append({"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factor": float(fac[0])})
+            else:
+                terms_out.append({"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factors": fac})
+    out: Dict[str, Any] = {"terms": terms_out}
+    if edit.note:
+        out["note"] = edit.note
+    return out
+
+
+def edit_provenance(edit: Edit, *, saved_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Phase 5 provenance manifest: marks each term `"rebuilt"` (reconstructible from the public base with its pure-JSON
+    recipe) or `"carried"` (requires external array payload, naming sha256 hashes only and never embedding weights)."""
+    man = edit.manifest()
+    terms_prov: List[Dict[str, Any]] = []
+    any_carried = False
+    for t, mt in zip(edit.terms, man["terms"]):
+        is_carried = bool(mt.get("carried"))
+        if is_carried:
+            any_carried = True
+            entry: Dict[str, Any] = {
+                "linear": t.linear,
+                "layer": int(t.layer),
+                "which": t.which,
+                "kind": t.kind,
+                "provenance": "carried",
+                "sha256": dict(mt.get("sha256") or {}),
+            }
+            if t.kind in ("cols", "rows"):
+                idx_key = "columns" if t.kind == "cols" else "rows"
+                entry[idx_key] = list(mt[idx_key])
+                entry["ops"] = list(mt["ops"])
+                entry["factors"] = list(mt["factors"])
+                entry["payload_key"] = mt.get("vectors")
+            else:
+                entry["rank"] = int(mt["rank"])
+                entry["payload_keys"] = {"A": mt.get("A"), "B": mt.get("B")}
+            terms_prov.append(entry)
+        else:
+            idx = [int(n) for n in t.idx]
+            fac = [float(f) for f in t.factor]
+            all_zero = all(f == 0.0 for f in fac)
+            all_same = all(f == fac[0] for f in fac)
+            if t.kind == "cols":
+                rec: Dict[str, Any] = (
+                    {"layer": int(t.layer), "silence": idx}
+                    if all_zero else
+                    ({"layer": int(t.layer), "scale": idx, "factor": float(fac[0])}
+                     if all_same else {"layer": int(t.layer), "scale": idx, "factors": fac})
+                )
+            else:
+                rec = (
+                    {"layer": int(t.layer), "which": t.which, "silence_rows": idx}
+                    if all_zero else
+                    ({"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factor": float(fac[0])}
+                     if all_same else {"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factors": fac})
+                )
+            terms_prov.append({
+                "linear": t.linear,
+                "layer": int(t.layer),
+                "which": t.which,
+                "kind": t.kind,
+                "provenance": "rebuilt",
+                "recipe_term": rec,
+                "sha256": dict(mt.get("sha256") or {}),
+            })
+
+    payload_sha256: Optional[str] = None
+    if any_carried:
+        if saved_dir is not None and (Path(saved_dir) / "payload.safetensors").is_file():
+            payload_sha256 = hashlib.sha256((Path(saved_dir) / "payload.safetensors").read_bytes()).hexdigest()
+        else:
+            # Deterministic hash of the carried array hashes so a registration folder pins payload identity even before saving
+            carried_hashes = [
+                {"linear": tp["linear"], "kind": tp["kind"], "sha256": tp["sha256"]}
+                for tp in terms_prov if tp["provenance"] == "carried"
+            ]
+            payload_sha256 = _sha({"carried_arrays": carried_hashes})
+
+    return {
+        "format": FORMAT,
+        "version": VERSION,
+        "edit_id": edit.id,
+        "base": copy.deepcopy(edit.base),
+        "linears": edit.linears(),
+        "layers": edit.layers(),
+        "all_rebuilt": not any_carried,
+        "provenance": "rebuilt" if not any_carried else "carried",
+        "rebuilt_recipe": rebuilt_recipe(edit),
+        "payload_sha256": payload_sha256,
+        "note": edit.note,
+        "terms": terms_prov,
+    }
+
+
+def base_checksum(
+    lm: nn.Module,
+    *,
+    hooks_at_load: Optional[Dict[str, List[int]]] = None,
+    names: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """Fresh, uncached sha256 over the packed words & scales (or plain weights) of the linears under `lm`, beside
+    overlay and hook checks. Used at the start and end of a Phase 5 trial of record to verify the base weights were
+    never mutated in place."""
+    assert_base(lm, hooks_at_load)
+    h_all = hashlib.sha256()
+    counted = 0
+    wanted = set(names) if names is not None else None
+    for mod_name, mod in sorted(lm.named_modules(), key=lambda kv: kv[0]):
+        if wanted is not None and mod_name not in wanted:
+            continue
+        kind = packed_kind(mod)
+        if kind == "w4a16" and not getattr(mod, "int4mm", False):
+            p, s = mod.weight_packed, mod.weight_scale
+            p0, p1, s0, s1 = (int(n) for n in (*p.shape, *s.shape))
+            hm = hashlib.sha256()
+            hm.update(f"w4a16:{p0}x{p1}:{s0}x{s1}:{s.dtype}:".encode("ascii"))
+            hm.update(_raw(p.to(torch.int32)))
+            hm.update(_raw(s))
+            h_all.update(f"{mod_name}:{hm.hexdigest()}\n".encode("ascii"))
+            counted += 1
+        elif kind == "plain":
+            w = getattr(mod, "weight", None)
+            if isinstance(w, torch.Tensor) and w.dim() == 2:
+                hm = hashlib.sha256()
+                hm.update(f"dense:{int(w.shape[0])}x{int(w.shape[1])}:{w.dtype}:".encode("ascii"))
+                hm.update(_raw(w))
+                h_all.update(f"{mod_name}:{hm.hexdigest()}\n".encode("ascii"))
+                counted += 1
+    return {
+        "sha256": h_all.hexdigest(),
+        "linears_checked": counted,
+        "overlays_in_force": len(overlays_in_force(lm)),
+        "hooks_now": sum(len(v) for v in hook_census(lm).values()),
+    }

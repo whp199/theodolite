@@ -2444,9 +2444,8 @@ class _Reading:
             all_layers = sorted(set(facts["layers"]) | {L for se in shams_built for L in se.layers()})
             est_facts = {**facts, "layers": all_layers, "lowest_layer": int(min(all_layers))}
             _fact_refusals(plan, est_facts, h.n_layers)
-        if self.plant is not None:
-            all_layers = sorted(set(est_facts["layers"]) | set(self.plant.layers()))
-            est_facts = {**est_facts, "layers": all_layers, "lowest_layer": int(min(all_layers))}
+        # Note: never fold a hidden `_plant`'s layers into `est_facts`, so `seconds.predicted` and `seconds.parts`
+        # match `estimate()` identically in blinded planted and canary sessions.
         twin, twin_why, cannot = False, None, None
         if plan["kind"] == "paired":
             if self.plant is not None:
@@ -2487,13 +2486,13 @@ class _Reading:
             self.saved = str(we.save(edit))
         layer_list = [edit.lowest_layer()] + [c.lowest_layer() for c in self.controls]
         high_list = [max(edit.layers())] + [max(c.layers()) for c in self.controls]
-        if self.plant is not None:
-            layer_list.append(self.plant.lowest_layer())
-            high_list.append(max(self.plant.layers()))
-        L0 = int(min(layer_list))
+        edit_L0 = int(min(layer_list))
         L_high = int(max(high_list))
+        L0 = int(min(edit_L0, self.plant.lowest_layer())) if self.plant is not None else edit_L0
+        # Null rows sit at `edit_L0` (the caller's edit/controls lowest layer) and `L_high` stays at the caller's
+        # highest layer, so an in-memory `_plant` never shifts null-row placement or delivered-hook depth.
         self.sit = _Sitting(h=h, plan=plan, edit=edit, controls=self.controls, L0=L0, L_high=L_high,
-                            arms=_arm_facts(plan, edit, self.controls, L0, h.dtype), twin=twin, twin_why=twin_why,
+                            arms=_arm_facts(plan, edit, self.controls, edit_L0, h.dtype), twin=twin, twin_why=twin_why,
                             where=self.where, peaks=self.peaks, plant=self.plant)
         return chosen
 
@@ -2521,7 +2520,8 @@ class _Reading:
                 )
             self.controls = list(matched)
             sit.controls = self.controls
-            sit.arms = _arm_facts(plan, self.edit, self.controls, sit.L0, h.dtype)
+            edit_L0 = int(min([self.edit.lowest_layer()] + [c.lowest_layer() for c in self.controls]))
+            sit.arms = _arm_facts(plan, self.edit, self.controls, edit_L0, h.dtype)
         for item in chosen:
             self.where.update({"item": item.name if item.name is not None else item.id[:12], "class": None,
                                "rows": None, "forward": None})

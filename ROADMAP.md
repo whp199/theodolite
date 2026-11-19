@@ -2252,11 +2252,56 @@ in order:
     card, or with too little of it free. The page server and the command line take no lock.
     And one the first review missed: the compare tab’s `scale` and `scale_rows` sent a recipe key the kernel
     refuses and answered HTTP 400; they work now.
-    Left open, and known: a blinded session’s plant can be told from a canary by a reading’s predicted seconds
-    (the plant’s layers are priced in; the `estimate` tool prices without them); a live replay of a reading shows
-    no linears; the page calls an unavailable battery “passed”. `scripts/check_level_claim.py` 302,
-    `check_level_door.py` 137, `check_level_page.py` 83; the four card checks ran again on this code (68, 37 and 16;
-    the page’s 11 against the committed book), their reports not kept.
+    Left open after that pass, now closed (19 November 2026): (a) blinded-session timing/estimate parity —
+    `levelling.py` no longer merges hidden `_plant` layers into `est_facts`, null-row `L0`, or `L_high`, and
+    `level_session.py` applies identical blinded plan normalization (`folded="never"`, `lower="whole"`) to both
+    `estimate()` and `read()` so predicted seconds, parts, and forward depth match identically between planted and
+    canary sessions (`scripts/check_level_door.py` 138/138); (b) live replay `edit_linears` — `level_routes.py` now
+    recovers touched linears from `edit.terms`, note bodies, or book lookup (and `level_claim.py` writes `edit_linears`
+    and `edit_provenance` directly into claim notes, while `/api/level/compare` preserves the rebuildable recipe in
+    `plan.edit`); (c) unavailable batteries on the Vault `compare` tab — `batteryOutcome` in `compare.ts` /
+    `ComparePanel.tsx` renders unavailable batteries (`available === false`, e.g. `habitat`) as `not run` instead of
+    `passed` (`scripts/check_level_page.py` 86/86, `scripts/check_interface_defaults.py` 291/291, `npm run build` clean).
+    `.gitignore` also now ignores `*.safetensors` and `*.gguf` (`arbiter.md` Row 32; existing tracked records stay
+    tracked).
+- **Phase 5 (Of record, and out). Built and card-checked** (19 November 2026; ARCHITECTURE §7).
+  - `backend/level_trial.py` + `scripts/levelling_trial.py` (`reworded`, `register`, `verify`, `run`): hash-verified
+    house registration folders (`prereg/` with `trial.json`, `brief.json`, `bars.json`, `edit_manifest.json` marking
+    every term `"rebuilt"` with its pure-JSON recipe or `"carried"` with sha256 hashes only — strictly forbidding
+    `*.safetensors` / `*.gguf` inside `prereg/`, optional `reworded.json`, `RULES.md`, `repo_commit`, `registered_at`,
+    and `SHA256SUMS`); owner-written `RewordedSet` balanced across independent halves, wording-disjoint from practice,
+    kept-back, and battery frames, and capped at `MAX_REWORDED_USES = 5` before rotation (with
+    `starter_reworded_pronoun_pull`); fresh-process `run_trial_of_record` checking `SHA256SUMS`, read-once, uncached
+    live `weight_edits.base_checksum` across all linears before and after, `trial_registration` logged before
+    `os.urandom(32)` draws, dual-batch-class paired readings with `folded="always"` on both fresh kept-back and
+    reworded items, retention batteries, author prompt arms, 0 unpacker fallbacks, verdicts strictly in
+    `("passed", "failed", "void")`, `TRIAL_SHEET.md`, and `trial_of_record` ledger replay in `level_routes.py` /
+    `ComparePanel.tsx`.
+  - `backend/level_export.py` + `scripts/levelling_export.py` (`lora`, `verify`, `show`, `remeasure`): owner-only LoRA
+    GGUF adapter exporter (never exposed on MCP, session, or HTTP surfaces), isolated to `$THEODOLITE_EXPORT_DIR`
+    (default `~/.local/share/theodolite/exports`, refusing checkout, `atlas_data/`, `prereg/`, and session folders, and
+    refusing overwrites without `--force`), recompiling `"rebuilt"` column/row scale & silence terms directly against
+    the served `--gguf` (or checkpoint) via `TargetBase`, carrying Apache-2.0 licence & origin keys (`export_lora.write_lora`)
+    plus `theodolite.levelling.*` provenance, flagging `ffn_gate`/`ffn_up` as unverified in llama.cpp, running an
+    `implant_check` diagnostic, writing a companion `.manifest.json`, verifying headers/hashes/exact `(W + B @ A) @ x`
+    delta equivalence, and providing an optional `llama-server` live re-measurement harness.
+  - `backend/level_rerun.py` + `scripts/levelling_rerun.py` (`pack`, `verify-kit`, `run`, `intake`): volunteer re-run
+    kit packager (strictly refusing `"carried"` weight payloads), volunteer runner producing allowlisted `.tar` return
+    bundles, and defensive tar intake & judgement (`accepted` / `disagreed` / `rejected`, `same_bits` vs
+    `other_card_match`, rejecting path traversal, symlinks, unexpected files, tampered hashes, broken books, and dirty
+    checkouts).
+  - All 84 CPU checks in `scripts/check_level_trial.py` pass in 3.9 s (including packed bf16 folded trials, synthetic
+    GGUF cross-base recompilation, defensive tar attacks, and zero kept-out words across all 21 Levelling files), plus
+    `scripts/check_levelling.py` 1,032/1,032, `check_level_door.py` 138/138, `check_level_claim.py` 302/302,
+    `check_level_page.py` 86/86, and `check_lora_export.py` 76/76. On the 31B RTX 5090 card,
+    `scripts/verify_level_trial.py` passed 15 of 15 checks (`experiments/results/levelling/verify_trial.json`,
+    `verify_trial_book.jsonl`, 221.59 s, peak 18.314 GiB, 0 unpacker fallbacks, ledger whole with 12 entries):
+    live `base_checksum` unchanged across all 410 linears; E6 layer-50 `'she'` ten (`C = 39`, `n_target = 16`, 8
+    reworded items at `C = 19`, `folded="always"`) achieved `16/16` bit-identical folded agreement in both `small`
+    (`-1.4057`) and `large` (`-1.4229`) classes and replicated on the reworded set (`small -1.9538`, `large -1.9373`,
+    `0.0000` folded gap), returning **`failed`** on male near-miss bleed (`|effect| = 0.9014`, matching `arbiter.md`
+    Row 20); 31B LoRA GGUF export verified at `max_abs_err = 0.0` (`1,079,680` bytes, `1.11 s`); and volunteer re-run
+    kit + bundle + defensive intake returned `accepted` (`same_bits`, `87.16 s`).
   - **The known answer’s verdict depends on the draw** (measured on the card, 19 November 2026: the committed
     record and four further runs of `scripts/verify_level_claim.py` that day, each a fresh draw of 8 items; one
     reading each, their reports not kept). Four read the E6 ‘she’ ten as `works but harms`, its mean over frames in
@@ -2286,4 +2331,4 @@ in order:
   and that item now reads “ok”); and,
   from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved.
 - **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
-  terms; Phase 5 trial of record and exports; Phase 6 driver evals; gradients.
+  terms; Phase 6 driver evals; gradients.
