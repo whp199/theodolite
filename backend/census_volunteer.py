@@ -110,7 +110,8 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
 # under the atlas folder's census/, beside runs/); scripts/census_ties.py checks, before a kit with it is cut, that the
 # kit's own plan writes that run's unpushed answers bit for bit. match_things (kit 6, layer 30) asks twelve others; its
 # trial's plan and a whole layer's write each unpushed answer in the same shape (nine in batches of 64, the last three in
-# batches of 61), and its trial run is the one named.
+# batches of 61), and its trial run is the one named. Kit 7 takes it at 53 and 54 too: no push enters an unpushed answer,
+# and the walk's trials there wrote the same twelve as 30's bit for bit (experiments/results/census_things_walk).
 DESIGN_BASELINES: Dict[str, str] = {"match_wide": "trials/wide/L31-match_wide-trial.jsonl",
                                     "match_things": "trials/things/L30-match_things-trial.jsonl"}
 

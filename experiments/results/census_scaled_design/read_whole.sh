@@ -17,7 +17,9 @@
 #   match_wide  layer 31      census/trials/wide/prereg     (16 November 2026; kit 5)
 #   match_things layer 30     census/trials/things/prereg   (18 November 2026; kit 6): its trial's reader,
 #               things_read.py, reads each dose alone and two readings on three questions a half itself, reported
-# A layer with no trial here (53-59, should one pass later) is read with PREREG=<its trial's folder>.
+#               layers 53, 54 census/trials/things_walk/prereg (the walk of 18 November 2026; kit 7): the same
+#               things_read.py, byte for byte
+# A layer with no trial here (55-59, should one pass later) is read with PREREG=<its trial's folder>.
 # For break_rel (39, 51, and 40-50) the reader is experiments/results/census_neighbour_trials/read_whole.sh.
 #
 #     bash read_whole.sh 36                              # atlas_data/census/runs/L36-match_ceil.jsonl
@@ -58,6 +60,7 @@ if [ -z "$P" ]; then
         soft_ceil:52)      P=$T/soft/prereg_L52 ;;
         match_wide:31)     P=$T/wide/prereg ;;
         match_things:30)   P=$T/things/prereg ;;
+        match_things:5[34]) P=$T/things_walk/prereg ;;
         break_rel:*)       echo "layer $L was taken with break_rel: read it with experiments/results/census_neighbour_trials/read_whole.sh"; exit 2 ;;
         *)                 echo "no trial of $DESIGN at layer $L is known here: give PREREG=<its trial's folder of registered files>"; exit 2 ;;
     esac
