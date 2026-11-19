@@ -163,7 +163,9 @@ class BarSet:
 
 
 def make_bar_set(brief_id: str, **kwargs: Any) -> BarSet:
-    """Construct a hashed `BarSet` directly for registered fixed bars or deterministic tests."""
+    """Construct a hashed `BarSet` directly, for the pure verdict engine (`judge_claim`) and its checks.
+    `run_fresh_claim` does not take such a set as it stands: a claim's bars are the ones a calibration reading wrote
+    into the claim's own book (`calibrate_bars`, `calibration_note`)."""
     return BarSet(brief_id=brief_id, calibrated_at=kwargs.pop("calibrated_at", _utc_now()), **kwargs)
 
 
@@ -188,10 +190,27 @@ def load_bars(path: Path) -> BarSet:
     if not isinstance(raw, dict):
         raise ClaimRefused(f"Bar set file {p} is not a JSON object.")
     wanted = raw.get("bars_sha256")
-    bars = BarSet.from_dict(raw)
-    if wanted is not None and str(wanted) != bars.id:
-        raise ClaimRefused(f"Bar set {p} claims bars_sha256 {str(wanted)[:12]} but hashes to {bars.short()}.")
+    if not isinstance(wanted, str) or not wanted:
+        raise ClaimRefused(f"Bar set {p} carries no bars_sha256: save_bars writes one with every set, and a file "
+                           "without it cannot be told from one changed by hand.")
+    try:
+        bars = BarSet.from_dict(raw)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ClaimRefused(f"Bar set {p} is not a whole bar set: {exc!r}.") from None
+    if wanted != bars.id:
+        raise ClaimRefused(f"Bar set {p} claims bars_sha256 {wanted[:12]} but hashes to {bars.short()}.")
     return bars
+
+
+def calibration_note(bars: BarSet, book_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """The `brief_calibration` note that recorded `bars` in the book (`{"seq", "at", ...its body}`), or None: the
+    newest note of the bars' own brief whose `bars_sha256` is theirs. A claim takes no other bars (arbiter.md Row 25:
+    "its bars come from a calibration reading, hashed"), and a session offers its claim tool with no other."""
+    found = None
+    for c in brief_history(bars.brief_id, book_path)["calibrations"]:
+        if c.get("bars_sha256") == bars.id:
+            found = c
+    return found
 
 
 # --------------------------------------------------------------------------------------------- statistics
@@ -1042,6 +1061,13 @@ def calibrate_bars(
             "bars": bars.to_dict(),
             "bars_sha256": bars.id,
             "book_seqs": list(cal_seqs),
+            # what the calibration was asked for: a bar is `mult` times the largest figure its probe and control
+            # edits gave (never under the registered floor), so `mult` and the probe belong beside the bars
+            "settings": {
+                "layer": int(layer), "n_cols": int(n_cols), "n_controls": int(n_controls),
+                "n_neutral": int(n_neutral), "n_near": int(n_near), "n_panel": int(n_panel),
+                "rows": {k: int(v) for k, v in rows_cfg.items()}, "seed": int(seed), "mult": float(mult),
+            },
         }
         lb.append("note", note_body, path=book_path)
         return bars
@@ -1370,6 +1396,13 @@ def run_fresh_claim(
     # Check read-once, fixed `m` budget, and ledger-recorded practice items/frames
     bk = Path(book_path) if book_path is not None else lb.book_path()
     hist = brief_history(brief.id, bk)
+    cal_note = next((c for c in reversed(hist["calibrations"]) if c.get("bars_sha256") == bars.id), None)
+    if cal_note is None:
+        raise ClaimRefused(
+            f'Bar set {bars.short()} is not from a calibration reading recorded in this level book for brief '
+            f'"{brief.name}" ({brief.short()}): a claim takes the bars calibrate_bars wrote into the same book '
+            "(scripts/levelling.py calibrate), and no others."
+        )
     k_prior = len(hist["registrations"])
     if edit.id in hist["seen_edit_ids"]:
         raise ClaimRefused(
@@ -1410,6 +1443,7 @@ def run_fresh_claim(
             "rule_preset": RULE_PRESET,
             "rule_version": RULE_VERSION,
             "bars_sha256": bars.id,
+            "bars_calibration_seq": int(cal_note["seq"]),
             "selection_mode": selection_mode,
             "practice_count": int(practice_count),
             "practice_best": _clean_float(practice_best),
@@ -1627,6 +1661,7 @@ def run_fresh_claim(
             "brief_id": brief.id,
             "brief_name": brief.name,
             "bars_sha256": bars.id,
+            "bars_calibration_seq": int(cal_note["seq"]),
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
             "draw_seed_sha256": seed_sha,
@@ -1653,6 +1688,7 @@ def run_fresh_claim(
             "verdict": judged["verdict"],
             "reasons": judged["reasons"],
             "bars_sha256": bars.id,
+            "bars_calibration_seq": int(cal_note["seq"]),
             "registration_seq": int(reg_entry["seq"]),
             "book_seqs": book_seqs,
             "claim_sentence": sentence,
@@ -1752,6 +1788,8 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
             f" ({why})" if why and why != PROMPT_ARMS_RUN else ""
         )
     named = "named" if meta.get("prompt_named_site") else "did not name"
+    cal_seq = meta.get("bars_calibration_seq")
+    bars_from = f" (calibrated at book line {cal_seq})" if cal_seq is not None else ""
     return (
         f"On {meta.get('date')}, model {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}), "
         f"unpacker {meta.get('unpacker')}, per-row form: edit {str(meta.get('edit_id'))[:12]} at dose "
@@ -1764,7 +1802,7 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         f"{ss.get('at_least')} of {ss.get('count')} same-site (p_fw {_fmt(ss.get('p_fw'), 3)}) control edits moved as much"
         f"{sham_part} (fresh reading {meta.get('reading_index')} of {meta.get('max_fresh_readings')} on brief "
         f'"{brief.name}"); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
-        f"gating batteries passed against hashed bar set {str(meta.get('bars_sha256'))[:12]}{knob_part} "
+        f"gating batteries passed against hashed bar set {str(meta.get('bars_sha256'))[:12]}{bars_from}{knob_part} "
         f"(no search over cheaper knobs; not compared with a trained adapter). "
         f"Driver prompt {named} a suspected site. This is a lead, not a finding of record."
     )
@@ -1783,7 +1821,10 @@ def render_sheet(
         f"verdict: {judged['verdict']}",
         f"edit: {str(meta.get('edit_id'))[:16]} (dose {meta.get('main_dose'):g}, linears: {', '.join(meta.get('edit_linears') or [])})",
         f"base: {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}, unpacker {meta.get('unpacker')})",
-        f"rule: {RULE_PRESET} v{RULE_VERSION} | bars {bars.short()} (alpha={bars.alpha:g}, least_effect M={brief.least_effect:g})",
+        f"rule: {RULE_PRESET} v{RULE_VERSION} | bars {bars.short()}"
+        + (f" from the calibration at book line {meta['bars_calibration_seq']}"
+           if meta.get("bars_calibration_seq") is not None else "")
+        + f" (alpha={bars.alpha:g}, least_effect M={brief.least_effect:g})",
         f"chat settings: {json.dumps(meta.get('chat_settings') or {}, sort_keys=True)} | driver prompt named site: {bool(meta.get('prompt_named_site'))}",
         f"selection: {judged.get('selection_mode')} | practice reads: {judged.get('practice_count', 0)} | practice best: {_fmt(judged.get('practice_best'))}",
     ]

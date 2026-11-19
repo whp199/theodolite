@@ -203,6 +203,14 @@ class LevelSession:
             raise SessionRefused("A BarSet requires a matching Brief to be bound to the session.")
         if brief is not None and bars is not None and bars.brief_id != brief.id:
             raise SessionRefused(f"BarSet is for brief {bars.brief_id[:12]}, not {brief.short()}.")
+        if brief is not None and bars is not None and handle is not None and plant is None and not canary:
+            # the claim tool is offered only with bars a calibration reading wrote into this session's own book
+            bk_now = Path(book_path).resolve() if book_path is not None else lb.book_path().resolve()
+            if lcl.calibration_note(bars, bk_now) is None:
+                raise SessionRefused(
+                    f"Bar set {bars.short()} is not from a calibration reading recorded in this session's level book "
+                    f'for brief "{brief.name}": calibrate on the same book first (scripts/levelling.py calibrate).'
+                )
         if plant is not None:
             if not isinstance(plant, we.Edit):
                 raise SessionRefused("plant must be a weight_edits.Edit or None.")

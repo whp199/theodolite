@@ -329,6 +329,13 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     tb = tmp / "bars_tampered.json"
     tb.write_text(json.dumps(raw_b), encoding="utf-8")
     check_raises(lcl.ClaimRefused, lambda: lcl.load_bars(tb), "load_bars refuses tampered BarSet", match="hashes to")
+    raw_nokey = {k: v for k, v in json.loads(bar_p.read_text(encoding="utf-8")).items() if k != "bars_sha256"}
+    raw_nokey["near_miss_abs_max"] = 5.0
+    nk = tmp / "bars_nokey.json"
+    nk.write_text(json.dumps(raw_nokey), encoding="utf-8")
+    check_raises(lcl.ClaimRefused, lambda: lcl.load_bars(nk),
+                 "load_bars refuses a bar set changed by hand with its bars_sha256 taken out",
+                 match="carries no bars_sha256")
 
     good_cls = _synth_class(h0_vals=[-1.2, -1.0], h1_vals=[-1.1, -0.9], floor=0.01, reversed_mean=0.8)
     good_classes = {"small": good_cls, "large": good_cls}
@@ -524,6 +531,27 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(hist0["calibrations"][0]["bars_sha256"] == bars.id,
           "logged bars_sha256 matches returned BarSet.id byte-for-byte")
     check(lb.verify(bk)["ok"], "level book whole after calibrate_bars")
+    cal0 = hist0["calibrations"][0]
+    check(cal0.get("settings", {}).get("mult") == 2.0 and cal0["settings"]["layer"] == 2
+          and cal0["settings"]["n_cols"] == 2 and cal0["settings"]["seed"] == 7
+          and cal0["settings"]["rows"] == {"small": 12, "large": 16},
+          "the calibration note records what the calibration was asked for (probe, counts, rows, seed, mult)")
+    found_cal = lcl.calibration_note(bars, bk)
+    check(found_cal is not None and found_cal["seq"] == cal0["seq"], "calibration_note finds the bars' own note")
+    loose = lcl.make_bar_set(brief.id, near_miss_abs_max=5.0, near_miss_ratio_max=5.0)
+    check(lcl.calibration_note(loose, bk) is None, "calibration_note finds nothing for a bar set made by hand")
+    check_raises(
+        lcl.ClaimRefused,
+        lambda: lcl.run_fresh_claim(
+            h, brief, loose, {"terms": [{"layer": 2, "silence": [0, 1]}]},
+            rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
+            controls_override=4, match_tolerance=20.0, book_path=bk,
+        ),
+        "run_fresh_claim refuses bars that no calibration in its book produced",
+        match="not from a calibration reading",
+    )
+    check(len(lcl.brief_history(brief.id, bk)["registrations"]) == 0,
+          "the claim refused for its bars registered nothing")
 
     # 2. Record a practice draw & verify brief_history tracks it
     prac = brief.generator.draw("practice", 4, seed_bytes=b"practice_seed_abc", tokenizer=h.tokenizer)
@@ -561,6 +589,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
           and len(res1["judged"]["cheaper_knobs"]["prompt_arms"]) == len(brief.prompt_arms) > 0
           and "author prompt arms: run" in res1["sheet"],
           "fresh claim #1 compared the brief's author prompt arms and its sheet says they ran")
+    reg1 = next(lb.entries(bk, start=res1["book"]["registration_seq"], limit=1))["body"]
+    check(reg1.get("bars_calibration_seq") == cal0["seq"]
+          and f"bars {bars.short()} from the calibration at book line {cal0['seq']}" in res1["sheet"],
+          "fresh claim #1 registers, and prints on its sheet, the calibration its bars came from")
     check(res1["verdict"] in lcl.VERDICTS and res1["verdict"] != "void",
           f"fresh claim #1 completed cleanly (verdict={res1['verdict']}, reasons={res1['judged']['reasons']})")
     reg_s = res1["book"]["registration_seq"]
@@ -626,7 +658,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
         **wbrief_base.to_dict(),
         "written_config": {"max_new_tokens": 12, "temperature": 1.0, "top_p": 0.95, "seeds": [1]},
     })
-    wbars = lcl.make_bar_set(wbrief.id, neutral_kl_max=0.5, near_miss_abs_max=0.5, panel_own_drop_max=0.5, panel_kl_max=0.5)
+    wbars = lcl.calibrate_bars(
+        h, wbrief, layer=2, n_cols=2, n_controls=2, n_neutral=2, n_near=2, n_panel=2,
+        rows={"small": 12, "large": 16}, seed=7, book_path=bk,
+    )
     wres = lcl.run_fresh_claim(
         h, wbrief, wbars, {"terms": [{"layer": 2, "silence": [6, 7]}]},
         rows={"small": 12, "large": 16}, written_rows=9,  # 9 - 2 - 2 - 3 = 2 controls/chunk -> forces 2 chunks!
@@ -653,7 +688,31 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
 def run_section_6(h: lv.Handle, tmp: Path) -> None:
     print("Section 6: LevelSession + MCP claim gate & CLI subcommands", flush=True)
     brief = lbr.pronoun_pull_brief(h.tokenizer, max_fresh_readings=2, controls_per_family=4)
-    bars = lcl.make_bar_set(brief.id, neutral_kl_max=0.5, near_miss_abs_max=0.5, panel_own_drop_max=0.5, panel_kl_max=0.5)
+    bk = tmp / "mcp_claim_book.jsonl"
+    bars = lcl.calibrate_bars(
+        h, brief, layer=2, n_cols=2, n_controls=2, n_neutral=2, n_near=2, n_panel=2,
+        rows={"small": 12, "large": 16}, seed=7, book_path=bk,
+    )
+
+    # A session is offered the claim tool only with bars a calibration in its own book produced
+    check_raises(
+        lses.SessionRefused,
+        lambda: lses.LevelSession(
+            h, tmp / "ses_uncal", reach="tools_only", backend="local",
+            book_path=bk, brief=brief, bars=lcl.make_bar_set(brief.id, near_miss_abs_max=5.0),
+        ),
+        "a session is refused at its start with bars that no calibration in its book produced",
+        match="not from a calibration reading",
+    )
+    check_raises(
+        lses.SessionRefused,
+        lambda: lses.LevelSession(
+            h, tmp / "ses_otherbook", reach="tools_only", backend="local",
+            book_path=tmp / "other_book.jsonl", brief=brief, bars=bars,
+        ),
+        "a session is refused at its start with bars calibrated in another book",
+        match="not from a calibration reading",
+    )
 
     # Blinded canary session MUST NOT expose claim tool
     ses_blind = lses.LevelSession(
@@ -664,7 +723,6 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     ses_blind.close()
 
     # Bound brief + bars session via MCP dispatch
-    bk = tmp / "mcp_claim_book.jsonl"
     ses = lses.LevelSession(
         h, tmp / "ses_claim", reach="tools_only", backend="local",
         book_path=bk, brief=brief, bars=bars,
