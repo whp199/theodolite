@@ -177,6 +177,43 @@ def main() -> int:
             ck1 = we.base_checksum(hP.lm, hooks_at_load=hP.hooks_at_load)
             check(ck0["sha256"] == ck1["sha256"] and ck0["linears_checked"] >= 18 and ck0["overlays_in_force"] == 0,
                   f"1: base_checksum deterministic over {ck0['linears_checked']} packed linears")
+            # it notices a change: one bit of a packed word, one entry of a scale, one entry of the embedding table
+            mod_ck = hP.lm.layers[2].mlp.down_proj
+            with torch.no_grad():
+                w0 = int(mod_ck.weight_packed.view(-1)[0])
+                mod_ck.weight_packed.view(-1)[0] = w0 ^ 1
+            ck_bit = we.base_checksum(hP.lm, hooks_at_load=hP.hooks_at_load)["sha256"]
+            with torch.no_grad():
+                mod_ck.weight_packed.view(-1)[0] = w0
+                s0 = mod_ck.weight_scale.view(-1)[0].clone()
+                mod_ck.weight_scale.view(-1)[0] = s0 * 2
+            ck_scale = we.base_checksum(hP.lm, hooks_at_load=hP.hooks_at_load)["sha256"]
+            with torch.no_grad():
+                mod_ck.weight_scale.view(-1)[0] = s0
+                emb = hP.lm.embed_tokens.weight
+                e0 = emb.view(-1)[0].clone()
+                emb.view(-1)[0] = e0 + 1
+            ck_emb = we.base_checksum(hP.lm, hooks_at_load=hP.hooks_at_load)["sha256"]
+            with torch.no_grad():
+                emb.view(-1)[0] = e0
+            ck_back = we.base_checksum(hP.lm, hooks_at_load=hP.hooks_at_load)["sha256"]
+            check(len({ck0["sha256"], ck_bit, ck_scale, ck_emb}) == 4 and ck_back == ck0["sha256"],
+                  "1: base_checksum changes with one bit of a packed word, one scale and one embedding entry, and comes back")
+            import atlas_stand_in as _asi
+            hF_ck = lv.handle(_asi.stand_in()[0])
+            ckf0 = we.base_checksum(hF_ck.lm, hooks_at_load=hF_ck.hooks_at_load)
+            wF = hF_ck.lm.layers[2].mlp.down_proj.weight
+            with torch.no_grad():
+                f0 = wF[0, 0].clone()
+                wF[0, 0] = f0 + 1
+            ckf1 = we.base_checksum(hF_ck.lm, hooks_at_load=hF_ck.hooks_at_load)
+            with torch.no_grad():
+                wF[0, 0] = f0
+            check(ckf0["linears_checked"] >= 18 and ckf0["tensors_checked"] > ckf0["linears_checked"]
+                  and ckf0["sha256"] != ckf1["sha256"]
+                  and ckf0["sha256"] == we.base_checksum(hF_ck.lm, hooks_at_load=hF_ck.hooks_at_load)["sha256"],
+                  f"1: base_checksum hashes plain linears too ({ckf0['linears_checked']} linears, {ckf0['tensors_checked']} "
+                  "tensors on the float stand-in) and notices a weight written in place")
 
             # ------------------------------------------------------------------ 2. RewordedSet & rotation guard
             section("2. RewordedSet validation, wording disjointness, tamper check & 5-use rotation")

@@ -2869,37 +2869,52 @@ def base_checksum(
     hooks_at_load: Optional[Dict[str, List[int]]] = None,
     names: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Fresh, uncached sha256 over the packed words & scales (or plain weights) of the linears under `lm`, beside
-    overlay and hook checks. Used at the start and end of a Phase 5 trial of record to verify the base weights were
-    never mutated in place."""
+    """A sha256, worked afresh at every call, over every weight the model under `lm` holds: each module's own
+    parameters and the buffers it would save (a norm's weight, an embedding's table, a plain linear's weight), and a
+    packed linear's words and scales as stored, whichever way it keeps them. Beside it, `assert_base`'s overlay and
+    hook checks. A trial takes it before its first reading and after its last: equal means no stored number of the
+    model changed in between.
+
+    `linears_checked` counts the linears among what was hashed (packed, or plain with a weight of two dimensions),
+    `tensors_checked` every tensor. A buffer a module does not save (a cache it may fill as it runs) is left out: it
+    is not the model. With `names`, only the modules so named."""
     assert_base(lm, hooks_at_load)
     h_all = hashlib.sha256()
-    counted = 0
+    linears = tensors = 0
     wanted = set(names) if names is not None else None
     for mod_name, mod in sorted(lm.named_modules(), key=lambda kv: kv[0]):
         if wanted is not None and mod_name not in wanted:
             continue
-        kind = packed_kind(mod)
-        if kind == "w4a16" and not getattr(mod, "int4mm", False):
-            p, s = mod.weight_packed, mod.weight_scale
-            p0, p1, s0, s1 = (int(n) for n in (*p.shape, *s.shape))
-            hm = hashlib.sha256()
-            hm.update(f"w4a16:{p0}x{p1}:{s0}x{s1}:{s.dtype}:".encode("ascii"))
-            hm.update(_raw(p.to(torch.int32)))
-            hm.update(_raw(s))
-            h_all.update(f"{mod_name}:{hm.hexdigest()}\n".encode("ascii"))
-            counted += 1
-        elif kind == "plain":
-            w = getattr(mod, "weight", None)
-            if isinstance(w, torch.Tensor) and w.dim() == 2:
-                hm = hashlib.sha256()
-                hm.update(f"dense:{int(w.shape[0])}x{int(w.shape[1])}:{w.dtype}:".encode("ascii"))
-                hm.update(_raw(w))
-                h_all.update(f"{mod_name}:{hm.hexdigest()}\n".encode("ascii"))
-                counted += 1
+        store: Dict[str, torch.Tensor] = {}
+        for key, t in mod._parameters.items():
+            if isinstance(t, torch.Tensor):
+                store[key] = t
+        unsaved = getattr(mod, "_non_persistent_buffers_set", set())
+        for key, t in mod._buffers.items():
+            if isinstance(t, torch.Tensor) and key not in unsaved:
+                store[key] = t
+        for key in ("weight_packed", "weight_scale"):  # a packed linear's own, however the module keeps them
+            t = getattr(mod, key, None)
+            if isinstance(t, torch.Tensor):
+                store[key] = t
+        if not store:
+            continue
+        packed = "weight_packed" in store and "weight_scale" in store
+        w = store.get("weight")
+        if packed or (isinstance(mod, nn.Linear) and isinstance(w, torch.Tensor) and w.dim() == 2):
+            linears += 1
+        hm = hashlib.sha256()
+        for key in sorted(store):
+            t = store[key]
+            shape = "x".join(str(int(n)) for n in t.shape)
+            hm.update(f"{key}:{shape}:{t.dtype}:".encode("ascii"))
+            hm.update(_raw(t.to(torch.int32) if key == "weight_packed" else t))
+            tensors += 1
+        h_all.update(f"{mod_name}:{hm.hexdigest()}\n".encode("ascii"))
     return {
         "sha256": h_all.hexdigest(),
-        "linears_checked": counted,
+        "linears_checked": linears,
+        "tensors_checked": tensors,
         "overlays_in_force": len(overlays_in_force(lm)),
         "hooks_now": sum(len(v) for v in hook_census(lm).values()),
     }

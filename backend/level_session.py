@@ -569,6 +569,8 @@ class LevelSession:
             vec = lv.capture_direction(h, a_items, b_items, int(layer), where=where, at=at, _plant=self._plant)
             qm = we.quiet_mask(h.lm, int(layer))
         elapsed = time.perf_counter() - t0
+        if self._blinded:  # charged and shown its price, not its measured seconds (see `_unmeasured`)
+            elapsed = float(est_s)
         self.forwards_used += n_fwd
         self.gpu_seconds_used += elapsed
 
@@ -595,6 +597,25 @@ class LevelSession:
         }
         self._log("capture", {k: v for k, v in out.items() if k != "remaining"})
         return out
+
+    @staticmethod
+    def _unmeasured(row: Dict[str, Any]) -> Dict[str, Any]:
+        """A driver's view of a reading with what was measured of its cost taken out: the seconds it took, their
+        ratio to the price, and the peak of memory. A plant rides every row and costs a little more than a canary's
+        nothing (about 0.6% of a reading's seconds on the 31B, 12 readings of 12, measured 19 November 2026), so in
+        a blinded session these would tell the two apart. The price (`seconds.predicted`, `parts`) stays."""
+        body = row.get("body") if isinstance(row.get("body"), dict) else row
+        if isinstance(body, dict):
+            sec = body.get("seconds")
+            if isinstance(sec, dict):
+                if "actual" in sec:
+                    sec["actual"] = None
+                if "ratio" in sec:
+                    sec["ratio"] = None
+                sec["measured"] = "not shown in a blinded session"
+            if "peak_gib" in body:
+                body["peak_gib"] = None
+        return row
 
     def _apply_blinded_plan(self, plan: Mapping[str, Any], expected_kind: Optional[str] = None) -> Dict[str, Any]:
         """In blinded (planted or canary) sessions, enforce identical paired-plan execution settings (`folded="never"`,
@@ -701,6 +722,12 @@ class LevelSession:
             redacted = lb.driver_view(entries[0]) if entries else {"seq": seq, "body": {}}
 
         actual_s = float((result.get("seconds") or {}).get("actual") or 0.0)
+        if self._blinded:
+            # charged the reading's price and shown nothing measured of its cost: neither the seconds nor the session's
+            # running total then differs between a planted session and a canary (a refused reading costs nothing)
+            priced_s = float((result.get("seconds") or {}).get("predicted") or 0.0)
+            actual_s = priced_s if result.get("status") != "refused" else 0.0
+            redacted = self._unmeasured(redacted)
         # Count forwards actually executed (0 on refused; estimated/counted on ok or void)
         used_fwd = lv.forwards_taken(result)
         self.gpu_seconds_used += actual_s
@@ -899,6 +926,14 @@ class LevelSession:
             n = max(1, min(int(tail), 50))
             start = max(0, total - n)
             rows = [lb.driver_view(e) for e in lb.entries(self.book_path, start=start, limit=n)]
+        if self._blinded:
+            # A blinded session sees its own lines, with nothing measured of their cost: another session's reading of
+            # the same plan in the same book (a canary's beside a plant's, a healthy model's) would be the reference
+            # such a session is run without.
+            own = set(self._book_seqs)
+            rows = [self._unmeasured(r) if r.get("seq") in own
+                    else {"seq": r.get("seq"), "kind": r.get("kind"), "redacted": "another session's line"}
+                    for r in rows]
         return {"entries": rows, "total": total, "head": v["head"], "redacted": True}
 
     def close(self) -> Dict[str, Any]:

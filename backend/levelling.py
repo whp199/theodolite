@@ -1366,6 +1366,7 @@ def capture_direction(
             raise Refused("An in-memory plant must be a weight_edits.Edit.")
         _same_base(h, _plant)
     we.assert_base(h.lm, h.hooks_at_load)
+    _ASKED["captures"] += 1
     box: Dict[str, torch.Tensor] = {}
 
     def pre(_mod: Any, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> None:
@@ -1625,6 +1626,7 @@ class _Sitting:
             return
         progs: List[Any] = []
         null_scales: List[Tuple[int, float]] = []
+        null_layer: Optional[int] = None
         dt = self.h.dtype
         for r, k in enumerate(keys):
             if k is None:
@@ -1632,13 +1634,16 @@ class _Sitting:
             elif self.arms[k]["what"] == "null":
                 progs.append(we.Arm(self.plant, 1.0))
                 null_scales.append((r, float(we.null_factor(self.arms[k]["e"], dt))))
+                # where the null program says (the lowest layer of the caller's edit and controls), which is where a
+                # reading with no plant puts it: `self.L0` is lower than that when the plant sits below the edit
+                null_layer = int(self.arms[k]["program"].layer)
             else:
                 progs.append(self._composed_for(k))
         with we.per_row(self.h.lm, progs):
             if not null_scales:
                 yield
                 return
-            mod = self.h.lm.get_submodule(we.linear_name(self.L0, "down_proj"))
+            mod = self.h.lm.get_submodule(we.linear_name(null_layer, "down_proj"))
             R_want = len(keys)
 
             def _null_post(_m: Any, _args: Tuple[Any, ...], y: torch.Tensor) -> torch.Tensor:
@@ -2307,6 +2312,15 @@ def _same_base(h: Handle, edit: Any) -> None:
                           f"loaded model's hashes to {now[:12]}.")
 
 
+_ASKED = {"readings": 0, "captures": 0}
+
+
+def asked_in_process() -> Dict[str, int]:
+    """How many readings (`read`) and captures (`capture_direction`) this process has begun: a trial of record is to
+    be the first thing its process asks of the model, and says how many came before it when it is not."""
+    return dict(_ASKED)
+
+
 def _fell_back() -> Optional[int]:
     n = getattr(backend.engine_runtime.dequantize_w4a16_full, "fell_back", None)
     return int(n) if isinstance(n, int) else None
@@ -2489,8 +2503,10 @@ class _Reading:
         edit_L0 = int(min(layer_list))
         L_high = int(max(high_list))
         L0 = int(min(edit_L0, self.plant.lowest_layer())) if self.plant is not None else edit_L0
-        # Null rows sit at `edit_L0` (the caller's edit/controls lowest layer) and `L_high` stays at the caller's
-        # highest layer, so an in-memory `_plant` never shifts null-row placement or delivered-hook depth.
+        # The null programs name `edit_L0` (the lowest layer of the caller's edit and controls) and `L_high` stays
+        # the caller's highest layer, so a plant moves neither the null rows (`_Sitting.run_hooks` scales them at the
+        # layer the program names) nor the depth `delivered` is read at. `L0`, where a restart begins, does take the
+        # plant in: the rows below it are not run again.
         self.sit = _Sitting(h=h, plan=plan, edit=edit, controls=self.controls, L0=L0, L_high=L_high,
                             arms=_arm_facts(plan, edit, self.controls, edit_L0, h.dtype), twin=twin, twin_why=twin_why,
                             where=self.where, peaks=self.peaks, plant=self.plant)
@@ -2638,6 +2654,7 @@ def read(h: Handle, reading: dict, items: Mapping[str, Item], *, base_dir: Path 
     a void ("error" or "interrupted") and then raised again. However the reading ends, `we.assert_base` runs last:
     the result's `base_after` says whether the model is the base again."""
     lb.head()
+    _ASKED["readings"] += 1
     run = _Reading(h, reading, items, Path(base_dir), edit, save_edit, plant=_plant)
     raised: Optional[BaseException] = None
     try:

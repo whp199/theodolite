@@ -653,9 +653,30 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     ec_blind = s_canary.estimate(blind_plan, items)
     rp_blind = s_plant.read(blind_plan, items)
     rc_blind = s_canary.read(blind_plan, items)
+    bv_plant = s_plant.book_view(tail=4)["entries"]
+    cap_p = s_plant.capture([items["alpha"]], [items["beta"]], 2)
+    cap_c = s_canary.capture([items["alpha"]], [items["beta"]], 2)
     we.assert_base(hP.lm, hP.hooks_at_load)
     s_plant.close()
     s_canary.close()
+    # where a planted reading scales its null rows: the layer the null program names (the edit's), plant or no plant
+    mod_names = {id(m): n for n, m in hP.lm.named_modules()}
+    null_on: List[str] = []
+    hook_was = torch.nn.Module.register_forward_hook
+
+    def _spy(self: Any, hook: Any, *a: Any, **k: Any) -> Any:
+        if getattr(hook, "__name__", "") == "_null_post":
+            null_on.append(mod_names.get(id(self), "?"))
+        return hook_was(self, hook, *a, **k)
+
+    torch.nn.Module.register_forward_hook = _spy
+    try:
+        r_low = lv.read(hP, {**blind_plan, "name": "null_place", "controls": {"count": 2, "seed": 0}, "folded": "never",
+                             "lower": "whole"}, items, _plant=plant)
+    finally:
+        torch.nn.Module.register_forward_hook = hook_was
+    check(r_low["status"] == "ok" and null_on and set(null_on) == {"layers.4.mlp.down_proj"},
+          f"5: with the plant at layer 0 and the edit at layer 4, null rows are scaled at the edit's layer ({sorted(set(null_on))})")
     # Neither session.json, transcript.jsonl, nor driver_view leaks plant/canary secrets
     disk_dump = (
         (tmp / "sess_planted" / "session.json").read_text()
@@ -677,6 +698,22 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     check(ep_blind["estimate"]["seconds"] == ec_blind["estimate"]["seconds"] == p_pred == c_pred
           and ep_blind["estimate"]["parts"] == ec_blind["estimate"]["parts"] == p_parts == c_parts,
           f"5: blinded estimate and reading predicted seconds/parts match identically across plant & canary ({p_pred} vs {c_pred})")
+    dv_p, dv_c = rp_blind["driver_view"]["body"], rc_blind["driver_view"]["body"]
+    check(all(dv["seconds"]["actual"] is None and dv["seconds"]["ratio"] is None and dv.get("peak_gib") is None
+              for dv in (dv_p, dv_c)),
+          "5: a blinded session is shown nothing measured of a reading's cost (seconds, ratio, peak)")
+    check(rp_blind["gpu_seconds_charged"] == rc_blind["gpu_seconds_charged"] == round(float(p_pred), 3)
+          and {k: v for k, v in rp_blind["remaining"].items() if "wall" not in k}
+          == {k: v for k, v in rc_blind["remaining"].items() if "wall" not in k}
+          and cap_p["seconds"] == cap_c["seconds"],
+          f"5: planted and canary sessions are charged the same price for the same calls ({rp_blind['gpu_seconds_charged']} s a reading)")
+    own_seq = rp_blind["book"]["seq"]
+    check(any(e.get("seq") == own_seq and "body" in e and e["body"]["seconds"]["actual"] is None for e in bv_plant)
+          and any(e.get("redacted") == "another session's line" for e in bv_plant)
+          and all("body" not in e for e in bv_plant if e.get("seq") != own_seq),
+          "5: a blinded session's book view shows its own lines, without measured costs, and no other session's")
+    check(next(lb.entries(book, start=own_seq, limit=1))["body"]["seconds"]["actual"] is not None,
+          "5: the book itself keeps the measured seconds of a blinded session's reading")
 
 
 # ------------------------------------------------------------------------------- 6. MCP stdio protocol

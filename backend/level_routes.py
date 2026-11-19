@@ -444,17 +444,20 @@ def _book_linears_by_edit(path: Path) -> Dict[str, List[str]]:
     """Scan a book once to map `edit_id -> sorted linears`, so note entries written without inline `edit_linears`
     (such as earlier `claim_verdict` or `claim_registration` notes) still display their linears on live replay."""
     out: Dict[str, List[str]] = {}
-    for ent in lb.entries(path):
-        body = ent.get("body")
-        if not isinstance(body, Mapping):
-            continue
-        edit_blk = body.get("edit") if isinstance(body.get("edit"), Mapping) else {}
-        eid = edit_blk.get("id") or body.get("edit_id")
-        if not isinstance(eid, str) or eid in out:
-            continue
-        lins = _extract_edit_linears(body)
-        if lins:
-            out[eid] = lins
+    try:
+        for ent in lb.entries(path):
+            body = ent.get("body")
+            if not isinstance(body, Mapping):
+                continue
+            edit_blk = body.get("edit") if isinstance(body.get("edit"), Mapping) else {}
+            eid = edit_blk.get("id") or body.get("edit_id")
+            if not isinstance(eid, str) or eid in out:
+                continue
+            lins = _extract_edit_linears(body)
+            if lins:
+                out[eid] = lins
+    except lb.BookBroken:
+        pass  # a damaged line ends the scan, not the replay: the whole lines before it are still shown, as before
     return out
 
 

@@ -346,6 +346,18 @@ def run_section_2(tmp: Path) -> None:
         check(r_bad_bk.status_code == 400, "unknown book id refused with HTTP 400")
         r_foreign = client.get("/api/level/status", headers={"Origin": "https://evil.example"})
         check(r_foreign.status_code == 403, f"foreign Origin refused with HTTP 403 (got {r_foreign.status_code})")
+
+        # 9. A live book whose last line is cut short: the whole lines before it are still replayed
+        n_whole = lb.verify(bk)["entries"]
+        with open(bk, "ab") as f:
+            f.write(b'{"seq": 9999, "kind": "note", "body": {"cut')
+        r_cut1 = client.get("/api/level/book/1?book=live")
+        r_cutl = client.get(f"/api/level/book?book=live&tail={min(n_whole, 3)}")
+        check(r_cut1.status_code == 200 and r_cut1.json()["card"]["edit_linears"] == ["layers.2.mlp.down_proj"]
+              and r_cut1.json()["verify"]["ok"] is False,
+              f"replay of a whole line of a damaged book still answers, and says the book is not whole (got {r_cut1.status_code})")
+        check(r_cutl.status_code == 200 and len(r_cutl.json()["entries"]) == min(n_whole, 3),
+              f"the replay index of a damaged book still lists the whole lines asked for (got {r_cutl.status_code})")
     finally:
         if prev_bk is None:
             os.environ.pop(lb.BOOK_ENV, None)
