@@ -1,0 +1,152 @@
+{
+  "checks": [],
+  "measurements": {
+    "load_s": 17.72,
+    "rest_gib": 17.97,
+    "weight_reader": {
+      "open_s": 0.0039,
+      "down_stream_norms_L20_s": 0.435,
+      "writers_L20_s": 0.289,
+      "norm_max_diff": 5.551115123125783e-17
+    },
+    "written_thinking_2x192": {
+      "actual_s": 14.483953400980681,
+      "predicted_s": 36.858576000000006,
+      "seconds_a_step": 0.1103204532957492,
+      "peak_gib": 18.755,
+      "summary": {
+        "items": 1,
+        "samples_per_item": 2,
+        "total_generations": 2,
+        "thinking": true,
+        "sampler": {
+          "temperature": 0.8,
+          "top_k": 64,
+          "top_p": 0.95,
+          "presence_penalty": 0.0,
+          "seed": 42
+        },
+        "base": {
+          "n": 2,
+          "ended": 2,
+          "cut_off": 0,
+          "looped": 0,
+          "mean_pieces": 64.5,
+          "max_pieces": 82,
+          "mean_thought_pieces": 57.5,
+          "thought_closed": 2
+        },
+        "arms": {
+          "null:0.125": {
+            "what": "null",
+            "dose": null,
+            "e": 0.125,
+            "n": 2,
+            "ended": 2,
+            "cut_off": 0,
+            "looped": 0,
+            "changed_from_base": 2,
+            "rescued_from_loop": 0,
+            "rescued_from_cutoff": 0,
+            "regressed_to_loop": 0,
+            "regressed_to_cutoff": 0,
+            "mean_pieces": 64.5,
+            "max_pieces": 82,
+            "mean_thought_pieces": 57.5
+          },
+          "null:-0.125": {
+            "what": "null",
+            "dose": null,
+            "e": -0.125,
+            "n": 2,
+            "ended": 2,
+            "cut_off": 0,
+            "looped": 0,
+            "changed_from_base": 2,
+            "rescued_from_loop": 0,
+            "rescued_from_cutoff": 0,
+            "regressed_to_loop": 0,
+            "regressed_to_cutoff": 0,
+            "mean_pieces": 64.5,
+            "max_pieces": 82,
+            "mean_thought_pieces": 57.5
+          },
+          "edit:1.0": {
+            "what": "edit",
+            "dose": 1.0,
+            "e": null,
+            "n": 2,
+            "ended": 2,
+            "cut_off": 0,
+            "looped": 0,
+            "changed_from_base": 2,
+            "rescued_from_loop": 0,
+            "rescued_from_cutoff": 0,
+            "regressed_to_loop": 0,
+            "regressed_to_cutoff": 0,
+            "mean_pieces": 64.5,
+            "max_pieces": 82,
+            "mean_thought_pieces": 57.5
+          },
+          "edit:0.0": {
+            "what": "edit",
+            "dose": 0.0,
+            "e": null,
+            "n": 2,
+            "ended": 2,
+            "cut_off": 0,
+            "looped": 0,
+            "changed_from_base": 0,
+            "rescued_from_loop": 0,
+            "rescued_from_cutoff": 0,
+            "regressed_to_loop": 0,
+            "regressed_to_cutoff": 0,
+            "mean_pieces": 64.5,
+            "max_pieces": 82,
+            "mean_thought_pieces": 57.5
+          }
+        },
+        "controls_range": null
+      }
+    },
+    "written_thinking_512": {
+      "actual_s": 56.7721850000089,
+      "predicted_s": 48.8504,
+      "seconds_a_step": 0.1104985025126775,
+      "peak_gib": 20.541,
+      "above_rest_gib": 2.571,
+      "base_pieces": 512,
+      "base_ended": false,
+      "base_cut_off": true,
+      "base_looped": false,
+      "base_thinking": {
+        "has_thought": true,
+        "thought_closed": false,
+        "thought_pieces": 512,
+        "answer_pieces": 0
+      }
+    },
+    "door_31b": {
+      "capture_s": 0.275,
+      "cell_s": 2.2043,
+      "paired_read_s": 0.743,
+      "paired_rank_large": {
+        "at_least": 1,
+        "dose": 1.0,
+        "metric": "kl",
+        "non_finite": 0,
+        "of": 4,
+        "rank": 2,
+        "value": 0.00010146544082090259
+      },
+      "planted_repair_kl_large": 0.00016025207878556103,
+      "canary_repair_kl_large": 0.00019936580793000758
+    },
+    "total_s": 101.0,
+    "peak_gib_all": 18.342,
+    "fell_back_delta": 0
+  },
+  "passed": 37,
+  "failed": 0,
+  "failures": []
+}

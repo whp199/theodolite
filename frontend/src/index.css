@@ -2209,3 +2209,200 @@ textarea.atlas-note-box {
   padding: 6px 10px;
   margin: 6px 0;
 }
+
+/* ---------- Vault Phase 4: single-row scrollable tablist, three-voice compare, responsive tables ---------- */
+.vault-tablist {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scroll-snap-type: inline proximity;
+  gap: 36px;
+  padding-top: 26px;
+  border-bottom: 1px solid var(--hair);
+}
+.vault-tab {
+  position: relative;
+  flex: none;
+  scroll-snap-align: start;
+  font-family: inherit;
+  background: transparent;
+  border: 0;
+  padding: 8px 2px 14px;
+  min-height: 64px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  text-align: left;
+  color: var(--muted);
+}
+.vault-tab[aria-selected="true"] {
+  color: var(--ink);
+}
+.vault-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  border-block-end: 2px solid var(--gilt);
+}
+
+.lvl-voices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+}
+.lvl-voice-card {
+  border: 1px solid var(--hair);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.lvl-voice-edit {
+  border-color: var(--gilt-rule);
+}
+.lvl-voice-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--hair-faint);
+  padding-bottom: 6px;
+}
+.lvl-voice-text {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
+.lvl-field-err {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--rubric);
+}
+:is(input, textarea, select):is(:user-invalid, [aria-invalid="true"]) {
+  border-color: var(--rubric);
+}
+
+/* Responsive data table (`responsive-table` guidance): sticky headers + @container stacked card fallback */
+.lvl-table-wrap {
+  overflow: auto;
+  max-inline-size: 100%;
+  max-block-size: min(460px, 75vh);
+  container-type: inline-size;
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}
+.lvl-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 16px;
+}
+.lvl-table thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background: var(--vellum);
+}
+.lvl-table th,
+.lvl-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--hair-soft);
+  vertical-align: baseline;
+}
+.lvl-table thead th {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.12em;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+}
+.lvl-table tbody th {
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--vellum);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+@container (width < 600px) {
+  .lvl-table,
+  .lvl-table thead,
+  .lvl-table tbody,
+  .lvl-table tr,
+  .lvl-table th,
+  .lvl-table td {
+    display: block;
+  }
+  .lvl-table thead {
+    display: none;
+  }
+  .lvl-table tr {
+    margin-block-end: 1rem;
+    border: 1px solid var(--hair);
+    padding: 6px 10px;
+  }
+  .lvl-table tbody th {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    background: var(--pressed);
+    border-bottom: 1px solid var(--hair);
+    padding: 6px 8px;
+  }
+  .lvl-table td {
+    border-bottom: 1px solid var(--hair-faint);
+    padding: 6px 8px;
+  }
+  .lvl-table td:nth-child(2)::before {
+    content: var(--label-2) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .lvl-table td:nth-child(3)::before {
+    content: var(--label-3) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .lvl-table td:nth-child(4)::before {
+    content: var(--label-4) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .lvl-table td:nth-child(5)::before {
+    content: var(--label-5) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .lvl-table td:nth-child(6)::before {
+    content: var(--label-6) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .lvl-table td:nth-child(7)::before {
+    content: var(--label-7) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .lvl-table td:nth-child(8)::before {
+    content: var(--label-8) ": ";
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+}

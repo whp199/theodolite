@@ -229,6 +229,13 @@ CONTROLS_SAY = ("Control edits are other sites of the same layer and size, drawn
                 "matched on how hard the sites fire on these items or on what the edit delivers, and the edit's own "
                 "sites were chosen where theirs were drawn, so a rank against them says only that the edit differs "
                 "from an unmatched random edit of its size.")
+CONTROL_FAMILIES = ("other_sites", "other_sites_matched", "same_site", "sham_target")
+DEFAULT_MATCH_TOL = 2.0
+CONTROLS_MATCHED_SAY = ("Control edits are other sites of the same layer and size, drawn from seed {seed} and matched "
+                        "within factor {tol:g} on expected delivered magnitude from the base pre-pass on these items.")
+CONTROLS_SAME_SITE_SAY = ("Control edits act on the same sites as the edit, with random directions projected off the "
+                          "layer's quiet mask and matched in stream-side delta length, drawn from seed {seed}.")
+CONTROLS_SHAM_SAY = "Control edits are {count} declared sham-target edits supplied in the plan."
 ROWS_SAY = ("Every item was read at {small} rows and at {large} rows. Agreement at these two row counts does not "
             "show that another row count would agree: on 14 November 2026 batches of 2, 3 and 4 rows each read "
             "differently.")
@@ -246,6 +253,7 @@ GATE_SAY = ("The bar is a caution, not a refusal: on 16 November 2026 the card r
             "and its two row counts carry the weight.")
 
 MAX_NULL_ROWS, MAX_NAMED_PIECES, MAX_NEW_MAX = 8, 16, 256
+MAX_NEW_LONG, MAX_WRITTEN_SAMPLES = 2048, 32
 WRITTEN_ROWS, WRITTEN_MAX_NEW, WRITTEN_CONTROLS = 8, 48, 3
 METRICS = ("kl", "own", "odds")
 SIGNED = {"kl": False, "own": True, "odds": True}
@@ -254,10 +262,12 @@ WHY_NO_TWIN = {"never": "the plan says folded: never",
                "exact": ("a silencing or a scale by a power of two is exact in arithmetic on the input side; on the "
                          "card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 "
                          "(16 November 2026)"),
-               "lowrank": "the edit holds a low-rank term, which has no folded form in 1a"}
+               "lowrank": "the edit holds a low-rank term, which has no folded form in 1a",
+               "per_row_only": "this session runs the per-row form only"}
 _PAIRED_KEYS = ("name", "kind", "edit", "items", "doses", "main_dose", "controls", "null_e", "rows", "readouts",
                 "rank_by", "folded", "lower", "bars")
-_WRITTEN_KEYS = ("name", "kind", "edit", "items", "doses", "main_dose", "controls", "null_e", "rows", "max_new")
+_WRITTEN_KEYS = ("name", "kind", "edit", "items", "doses", "main_dose", "controls", "null_e", "rows", "max_new",
+                 "sampler", "samples", "thinking", "diagnose")
 
 
 # ------------------------------------------------------------------------------------------------- small helpers
@@ -360,11 +370,137 @@ class Item:
         return self.prompt_ids + self.answer_ids
 
 
-def chat_ids(tokenizer: Any, question: str, system: Optional[str] = None) -> List[int]:
-    """The ids of a question in the model's own chat format, thinking off, the model's turn opened."""
+def chat_ids(tokenizer: Any, question: str, system: Optional[str] = None, *, thinking: bool = False) -> List[int]:
+    """The ids of a question in the model's own chat format (`enable_thinking=thinking`), the model's turn opened."""
     msgs = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": question}]
-    text = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+    text = tokenizer.apply_chat_template(
+        msgs, tokenize=False, add_generation_prompt=True, enable_thinking=bool(thinking)
+    )
     return [int(t) for t in tokenizer(text, add_special_tokens=False)["input_ids"]]
+
+
+def detect_loop(
+    pieces: Sequence[int],
+    *,
+    min_period: int = 1,
+    max_period: int = 128,
+    min_repeats: int = 3,
+    min_periodic_span: int = 24,
+    ngram: int = 16,
+    min_ngram_hits: int = 4,
+) -> Dict[str, Any]:
+    """Detect cyclic repetition or repeated n-gram enumeration loops in written token-id sequences.
+
+    Checks (1) exact consecutive periodic cycles (period `min_period..max_period`, at least `min_repeats` repeats
+    covering at least `min_periodic_span` pieces, tail first then anywhere), and (2) non-overlapping repeated
+    `ngram`-tuples appearing at least `min_ngram_hits` times (catching near-periodic enumeration loops)."""
+    seq = [int(t) for t in pieces]
+    n = len(seq)
+    if n < max(min_periodic_span, min_repeats * min_period):
+        return {"looped": False, "kind": None, "period": None, "repeats": 0, "start": None, "span": 0}
+    max_p = min(int(max_period), n // int(min_repeats))
+    # 1a. Tail periodic loop (fast path)
+    for p in range(max(1, int(min_period)), max_p + 1):
+        block = seq[n - p :]
+        r = 1
+        pos = n - 2 * p
+        while pos >= 0 and seq[pos : pos + p] == block:
+            r += 1
+            pos -= p
+        if r >= min_repeats and r * p >= min_periodic_span:
+            start = n - r * p
+            return {"looped": True, "kind": "periodic", "period": p, "repeats": r, "start": start, "span": r * p}
+    # 1b. Interior consecutive periodic loop (periods 1..4 direct; 5..max_p indexed by 4-gram anchors)
+    for p in range(max(1, int(min_period)), min(4, max_p) + 1):
+        i = 0
+        while i + p * min_repeats <= n:
+            block = seq[i : i + p]
+            r = 1
+            while i + (r + 1) * p <= n and seq[i + r * p : i + (r + 1) * p] == block:
+                r += 1
+            if r >= min_repeats and r * p >= min_periodic_span:
+                return {"looped": True, "kind": "periodic", "period": p, "repeats": r, "start": i, "span": r * p}
+            i += max(1, (r - 1) * p)
+    if max_p >= 5 and n >= 8:
+        seen4: Dict[Tuple[int, int, int, int], List[int]] = {}
+        for i in range(n - 3):
+            g = (seq[i], seq[i + 1], seq[i + 2], seq[i + 3])
+            prevs = seen4.get(g)
+            if prevs is not None:
+                for prev in reversed(prevs):
+                    p = i - prev
+                    if p < 5:
+                        continue
+                    if p > max_p:
+                        break
+                    block = seq[prev : prev + p]
+                    if seq[i : i + p] != block:
+                        continue
+                    r = 2
+                    while prev + (r + 1) * p <= n and seq[prev + r * p : prev + (r + 1) * p] == block:
+                        r += 1
+                    if r >= min_repeats and r * p >= min_periodic_span:
+                        return {"looped": True, "kind": "periodic", "period": p, "repeats": r,
+                                "start": prev, "span": r * p}
+                prevs.append(i)
+            else:
+                seen4[g] = [i]
+    # 2. Non-overlapping repeated n-gram (catches incrementing enumeration loops)
+    ng = int(ngram)
+    if ng > 0 and n >= ng * int(min_ngram_hits):
+        occ: Dict[Tuple[int, ...], List[int]] = {}
+        for i in range(n - ng + 1):
+            key = tuple(seq[i : i + ng])
+            hits = occ.get(key)
+            if hits is None:
+                occ[key] = [i]
+            elif i - hits[-1] >= ng:
+                hits.append(i)
+                if len(hits) >= min_ngram_hits:
+                    return {"looped": True, "kind": "ngram", "period": None, "repeats": len(hits),
+                            "start": hits[0], "span": hits[-1] + ng - hits[0]}
+    return {"looped": False, "kind": None, "period": None, "repeats": 0, "start": None, "span": 0}
+
+
+def split_thinking(pieces: Sequence[int], tokenizer: Any) -> Dict[str, Any]:
+    """Split written pieces into Gemma 4 thought-channel and answer-channel piece counts when delimiters exist."""
+    seq = [int(t) for t in pieces]
+    open_id = None
+    close_id = None
+    conv = getattr(tokenizer, "convert_tokens_to_ids", None)
+    if callable(conv):
+        try:
+            oi = conv("<|channel>")
+            ci = conv("<channel|>")
+            unk = getattr(tokenizer, "unk_token_id", None)
+            if isinstance(oi, int) and oi >= 0 and oi != unk:
+                open_id = oi
+            if isinstance(ci, int) and ci >= 0 and ci != unk:
+                close_id = ci
+        except Exception:
+            pass
+    if open_id is not None and open_id in seq:
+        i0 = seq.index(open_id)
+        if close_id is not None and close_id in seq[i0 + 1 :]:
+            i1 = seq.index(close_id, i0 + 1)
+            return {"has_thought": True, "thought_closed": True,
+                    "thought_pieces": i1 - i0 + 1, "answer_pieces": max(0, len(seq) - (i1 + 1))}
+        return {"has_thought": True, "thought_closed": False,
+                "thought_pieces": len(seq) - i0, "answer_pieces": 0}
+    if close_id is not None and close_id in seq:
+        i1 = seq.index(close_id)
+        return {"has_thought": True, "thought_closed": True,
+                "thought_pieces": i1 + 1, "answer_pieces": max(0, len(seq) - (i1 + 1))}
+    return {"has_thought": False, "thought_closed": False, "thought_pieces": 0, "answer_pieces": len(seq)}
+
+
+def written_stratum(ended: bool, looped: bool, cut_off: bool) -> str:
+    """Plain-word outcome stratum for one written generation."""
+    if looped:
+        return "looped"
+    if cut_off:
+        return "cut_off"
+    return "ended" if ended else "stopped"
 
 
 def _item(prompt_ids: Sequence[int], answer_ids: Sequence[int], name: Optional[str], question: Optional[str],
@@ -521,22 +657,59 @@ def _doses(reading: Mapping[str, Any]) -> Tuple[List[float], float]:
     return doses, float(main)
 
 
-def _controls(reading: Mapping[str, Any], default_count: int) -> Dict[str, int]:
+def _controls(reading: Mapping[str, Any], default_count: int) -> Dict[str, Any]:
     given = reading.get("controls")
     if given is None:
         given = {}
     if not isinstance(given, dict):
         raise Refused('controls is an object: {"count": how many control edits, "seed": the seed they are drawn from}.')
-    _unknown_keys(given, ("count", "seed", "family"))
-    if given.get("family", "other_sites") != "other_sites":
-        raise Refused(f'Control edits are of one family in 1a, "other_sites" (other sites of the same layer and size); '
-                      f"{given['family']!r} is not built.")
-    count, seed = _whole_number(given.get("count", default_count)), _whole_number(given.get("seed", 0))
-    if count is None or not 0 <= count <= MAX_CONTROLS:
-        raise Refused(f"A reading takes 0 to {MAX_CONTROLS} control edits; {given.get('count')!r} were asked.")
+    family = given.get("family", "other_sites")
+    if family not in CONTROL_FAMILIES:
+        raise Refused(f'Control family must be one of {", ".join(CONTROL_FAMILIES)}; {family!r} is not built.')
+    if family == "other_sites":
+        _unknown_keys(given, ("count", "seed", "family"))
+        count, seed = _whole_number(given.get("count", default_count)), _whole_number(given.get("seed", 0))
+        if count is None or not 0 <= count <= MAX_CONTROLS:
+            raise Refused(f"A reading takes 0 to {MAX_CONTROLS} control edits; {given.get('count')!r} were asked.")
+        if seed is None or seed < 0:
+            raise Refused(f"The control edits' seed is a whole number from 0 up; {given.get('seed')!r} was given.")
+        return {"count": count, "seed": seed}
+    if family == "same_site":
+        _unknown_keys(given, ("count", "seed", "family"))
+        count, seed = _whole_number(given.get("count", default_count)), _whole_number(given.get("seed", 0))
+        if count is None or not 0 <= count <= MAX_CONTROLS:
+            raise Refused(f"A reading takes 0 to {MAX_CONTROLS} control edits; {given.get('count')!r} were asked.")
+        if seed is None or seed < 0:
+            raise Refused(f"The control edits' seed is a whole number from 0 up; {given.get('seed')!r} was given.")
+        return {"family": "same_site", "count": count, "seed": seed}
+    if family == "other_sites_matched":
+        _unknown_keys(given, ("count", "seed", "family", "tolerance"))
+        count, seed = _whole_number(given.get("count", default_count)), _whole_number(given.get("seed", 0))
+        if count is None or not 0 <= count <= MAX_CONTROLS:
+            raise Refused(f"A reading takes 0 to {MAX_CONTROLS} control edits; {given.get('count')!r} were asked.")
+        if seed is None or seed < 0:
+            raise Refused(f"The control edits' seed is a whole number from 0 up; {given.get('seed')!r} was given.")
+        tol = _number(given.get("tolerance", DEFAULT_MATCH_TOL))
+        if tol is None or tol < 1.0:
+            raise Refused(f"controls.tolerance is a finite number >= 1; {given.get('tolerance')!r} was given.")
+        return {"family": "other_sites_matched", "count": count, "seed": seed, "tolerance": float(tol)}
+    # family == "sham_target"
+    _unknown_keys(given, ("count", "seed", "family", "shams"))
+    shams = given.get("shams")
+    if not isinstance(shams, list) or not 1 <= len(shams) <= MAX_CONTROLS or not all(
+        isinstance(s, dict) and s for s in shams
+    ):
+        raise Refused(f'controls.shams for "sham_target" is a list of 1 to {MAX_CONTROLS} edit recipes '
+                      '({"terms": [...]} or {"saved": "..."}).')
+    count_given = given.get("count")
+    count = len(shams) if count_given is None else _whole_number(count_given)
+    if count is None or count != len(shams):
+        raise Refused(f'controls.count for "sham_target" must match len(shams) ({len(shams)}); '
+                      f"{count_given!r} was given.")
+    seed = _whole_number(given.get("seed", 0))
     if seed is None or seed < 0:
         raise Refused(f"The control edits' seed is a whole number from 0 up; {given.get('seed')!r} was given.")
-    return {"count": count, "seed": seed}
+    return {"family": "sham_target", "count": count, "seed": seed, "shams": _clean(shams)}
 
 
 def _null_e(reading: Mapping[str, Any], default: Sequence[float], dtype: Any) -> List[float]:
@@ -669,6 +842,44 @@ def _fact_refusals(plan: Mapping[str, Any], facts: Mapping[str, Any], n_layers: 
         raise Refused("A low-rank term has no folded form yet, so this edit cannot be read folded.")
 
 
+def _is_extended_written(plan: Mapping[str, Any]) -> bool:
+    return bool(
+        plan.get("kind") == "written"
+        and (
+            plan.get("sampler") is not None
+            or int(plan.get("samples") or 1) > 1
+            or bool(plan.get("thinking"))
+            or bool(plan.get("diagnose"))
+            or int(plan.get("max_new") or 0) > MAX_NEW_MAX
+        )
+    )
+
+
+def _written_sampler(given: Any, samples: int) -> Dict[str, Any]:
+    """Validate optional sampler dict for a written reading using the instrument's one sampler vocabulary
+    (`backend/sampler_request.py`), defaulting `seed` to 0 so plans remain deterministic and hashable."""
+    from backend import sampler_request as sr
+
+    try:
+        req = sr.sampler_of(given)
+    except ValueError as exc:
+        raise Refused(str(exc)) from None
+    temp = float(req.temperature)
+    pp = float(req.presence_penalty)
+    if temp <= 0.0:
+        if pp != 0.0:
+            raise Refused("A presence penalty is taken here only with a temperature above 0: greedy is the reading, "
+                          "and a penalty would change it. Set a temperature to sample, or leave the penalty at 0.")
+        if samples > 1:
+            raise Refused(f"{samples} samples of a greedy answer would all be the same: set a temperature above 0 to "
+                          "sample, or ask for one.")
+    seed = 0 if req.seed is None else int(req.seed)
+    if seed + samples - 1 > sr.MAX_SEED:
+        raise Refused(f"Sample s is drawn with seed + s, so the seed is at most 2^53 - {samples} for {samples} samples.")
+    return {"temperature": temp, "top_k": int(req.top_k), "top_p": float(req.top_p),
+            "presence_penalty": pp, "seed": seed}
+
+
 def normalise(reading: dict, *, n_layers: int, tokenizer: Any = None, facts: Optional[dict] = None,
               dtype: Any = torch.bfloat16) -> dict:
     """The plan of one reading with its defaults filled, or `Refused` in plain words. Pure: no model, no file. The
@@ -704,11 +915,31 @@ def normalise(reading: dict, *, n_layers: int, tokenizer: Any = None, facts: Opt
             raise Refused(f"A written reading is one batch of {WRITTEN_ROWS_MIN} to {WRITTEN_ROWS_MAX} rows; "
                           f"{reading.get('rows')} were asked.")
         max_new = _whole_number(reading.get("max_new", WRITTEN_MAX_NEW))
-        if max_new is None or not 1 <= max_new <= MAX_NEW_MAX:
-            raise Refused(f"A written reading writes 1 to {MAX_NEW_MAX} new word-pieces; {reading.get('max_new')!r} "
+        if max_new is None or not 1 <= max_new <= MAX_NEW_LONG:
+            raise Refused(f"A written reading writes 1 to {MAX_NEW_LONG} new word-pieces; {reading.get('max_new')!r} "
                           "were asked.")
         out["rows"], out["max_new"] = rows, max_new
         layout(doses, out["controls"]["count"], out["null_e"], rows, one_forward=True)
+        has_ext = (
+            any(k in reading and reading[k] is not None for k in ("sampler", "samples", "thinking", "diagnose"))
+            or max_new > MAX_NEW_MAX
+        )
+        if has_ext:
+            samples = _whole_number(reading.get("samples", 1))
+            if samples is None or not 1 <= samples <= MAX_WRITTEN_SAMPLES:
+                raise Refused(f"A written reading takes 1 to {MAX_WRITTEN_SAMPLES} samples; "
+                              f"{reading.get('samples')!r} were asked.")
+            thinking = reading.get("thinking", False)
+            if not isinstance(thinking, bool):
+                raise Refused(f"thinking is true or false; {thinking!r} is neither.")
+            diagnose = reading.get("diagnose", True)
+            if not isinstance(diagnose, bool):
+                raise Refused(f"diagnose is true or false; {diagnose!r} is neither.")
+            sampler_cfg = _written_sampler(reading.get("sampler"), samples)
+            out["sampler"] = sampler_cfg
+            out["samples"] = samples
+            out["thinking"] = thinking
+            out["diagnose"] = diagnose
     else:
         out["controls"] = _controls(reading, 19)
         out["null_e"] = _null_e(reading, NULL_E, dtype)
@@ -784,13 +1015,21 @@ def estimate(plan: dict, pieces: Sequence[Tuple[int, int]], *, n_layers: int, fa
     folded twin is taken; None decides it from the plan's `folded` and `we.twin_wanted` at the main dose. Returns
     {"seconds", "parts": {"forwards", "readout", "folded", "writing"}, "forwards", "row_positions",
     "gib_above_model"}: `forwards` counts every teacher-forced forward (the twin's and a one-row capture's among
-    them; a written reading's is its prompt's, one an item), `row_positions` the rows times pieces over all of them
-    (a written reading: rows times its context). It assumes every item is read in both classes. Raises `Refused` for
+    them; a written reading's is its prompt's, one a sample per item), `row_positions` the rows times pieces over all of them
+    (a written reading: rows times its context times samples). It assumes every item is read in both classes. Raises `Refused` for
     a forward over MAX_ROW_POSITIONS and for a written reading whose cache would pass MAX_WRITTEN_GIB."""
     parts = {"forwards": 0.0, "readout": 0.0, "folded": 0.0, "writing": 0.0}
     forwards, row_positions, gib = 0, 0, 0.0
+    matched_prepass = (plan["controls"].get("family") == "other_sites_matched"
+                       and int(plan["controls"].get("count", 0)) > 0)
+    if matched_prepass:
+        for T, prompt in pieces:
+            T_pre = int(prompt) if plan["kind"] == "written" else int(T)
+            parts["forwards"] += whole(1, T_pre)
+            forwards, row_positions = forwards + 1, row_positions + T_pre
     if plan["kind"] == "written":
         R, max_new = int(plan["rows"]), int(plan["max_new"])
+        n_samples = int(plan.get("samples") or 1)
         for _T, prompt in pieces:
             n = int(prompt) + max_new
             g = COST["mb_row_piece_written"] * 1e6 * R * n / 2 ** 30
@@ -798,8 +1037,10 @@ def estimate(plan: dict, pieces: Sequence[Tuple[int, int]], *, n_layers: int, fa
                 raise Refused(f"Writing {R} rows to {n} word-pieces of context keeps about {g:.1f} GiB above the "
                               "model (0.8 MB a row a piece, measured 28 October 2026); 1a takes at most "
                               f"{MAX_WRITTEN_GIB:g}. Ask fewer rows or fewer new pieces.")
-            parts["writing"] += whole(R, int(prompt)) + COST["decode_step_s"] * max_new
-            forwards, row_positions, gib = forwards + 1, row_positions + R * n, max(gib, g)
+            parts["writing"] += n_samples * (whole(R, int(prompt)) + COST["decode_step_s"] * max_new)
+            forwards += n_samples
+            row_positions += n_samples * R * n
+            gib = max(gib, g)
     else:
         if twin is None:
             twin = plan["folded"] == "always" or (plan["folded"] == "auto"
@@ -956,6 +1197,171 @@ def _capture(layer: Any, box: Dict[str, torch.Tensor]) -> Iterator[None]:
         hook.remove()
 
 
+@contextmanager
+def _delivered_hook(layer_mod: Any, sp: "_Span", box: Dict[str, Any]) -> Iterator[None]:
+    """Read-only hook on the highest edited layer: records each row's mean relative change against row 0 over the
+    scored span (`||h_r[p] - h_0[p]|| / max(||h_0[p]||, 1e-12)` in float32), without altering any tensor."""
+
+    def post(_mod: Any, _args: Tuple[Any, ...], out: Any) -> None:
+        h_out = out[0] if isinstance(out, tuple) else out
+        h_span = h_out[:, sp.lo:sp.T - 1, :].detach()
+        hf = h_span.float()
+        h0 = hf[0]
+        denom = h0.norm(dim=-1).clamp_min(1e-12)
+        rel = ((hf - h0.unsqueeze(0)).norm(dim=-1) / denom.unsqueeze(0)).mean(dim=-1).cpu().tolist()
+        for r in range(int(h_span.shape[0])):
+            if torch.equal(h_span[r], h_span[0]):
+                rel[r] = 0.0
+        box["delivered"] = rel
+
+    hook = layer_mod.register_forward_hook(post)
+    try:
+        yield
+    finally:
+        hook.remove()
+
+
+def capture_direction(
+    h: Handle,
+    items_a: Sequence[Item],
+    items_b: Sequence[Item],
+    layer: int,
+    *,
+    where: str = "resid_post",
+    at: str = "end",
+    _plant: Optional[Any] = None,
+) -> np.ndarray:
+    """Mean residual-stream difference `mean(items_a) - mean(items_b)` at `layer`, returned as float32 [D].
+    `where` is "resid_post" (stream leaving `layer`) or "resid_pre" (stream entering `layer`).
+    `at` is "end" (last position of each item), "span_mean" (mean over scored answer positions) or "all_mean" (mean
+    over all positions). Runs 1-row forwards on the base model (or under an in-memory `_plant` edit that is removed
+    before returning) and asserts the model is the base before and after."""
+    L = _whole_number(layer)
+    if L is None or not 0 <= L < h.n_layers:
+        raise Refused(f"Layer {layer!r} does not exist: layers count from 0 to {h.n_layers - 1} here (page layers 1 "
+                      f"to {h.n_layers}).")
+    if where not in ("resid_post", "resid_pre"):
+        raise Refused(f'capture_direction where must be "resid_post" or "resid_pre"; {where!r} is neither.')
+    if at not in ("end", "span_mean", "all_mean"):
+        raise Refused(f'capture_direction at must be "end", "span_mean" or "all_mean"; {at!r} is none of them.')
+    a_list, b_list = list(items_a), list(items_b)
+    if not a_list or not b_list:
+        raise Refused("capture_direction requires at least one item in each of items_a and items_b.")
+    for it in a_list + b_list:
+        if not isinstance(it, Item):
+            raise Refused(f"capture_direction takes levelling.Item values; {type(it).__name__} is not one.")
+    if _plant is not None:
+        if not isinstance(_plant, we.Edit):
+            raise Refused("An in-memory plant must be a weight_edits.Edit.")
+        _same_base(h, _plant)
+    we.assert_base(h.lm, h.hooks_at_load)
+    box: Dict[str, torch.Tensor] = {}
+
+    def pre(_mod: Any, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> None:
+        box["h"] = (args[0] if args else kwargs["hidden_states"]).detach()
+
+    def post(_mod: Any, _args: Tuple[Any, ...], out: Any) -> None:
+        box["h"] = (out[0] if isinstance(out, tuple) else out).detach()
+
+    layer_mod = h.lm.layers[L]
+    hook = (layer_mod.register_forward_pre_hook(pre, with_kwargs=True) if where == "resid_pre"
+            else layer_mod.register_forward_hook(post))
+
+    def _mean_group(group: Sequence[Item]) -> np.ndarray:
+        acc = None
+        for it in group:
+            box.clear()
+            _whole(h, it.ids, 1)
+            hs = box["h"][0].to(torch.float64)  # [T, D]
+            if at == "end":
+                vec = hs[-1]
+            elif at == "span_mean":
+                lo = len(it.prompt_ids) - 1
+                vec = hs[lo:len(it.ids) - 1].mean(dim=0)
+            else:
+                vec = hs.mean(dim=0)
+            v_np = vec.cpu().numpy()
+            acc = v_np if acc is None else (acc + v_np)
+        return acc / float(len(group))
+
+    try:
+        with torch.no_grad():
+            if _plant is not None:
+                with we.per_row(h.lm, [we.Arm(_plant, 1.0)]):
+                    diff = _mean_group(a_list) - _mean_group(b_list)
+            else:
+                diff = _mean_group(a_list) - _mean_group(b_list)
+    finally:
+        hook.remove()
+    we.assert_base(h.lm, h.hooks_at_load)
+    return diff.astype(np.float32) + np.float32(0.0)
+
+
+def _score_sites(
+    h: Handle,
+    edit: Any,
+    chosen: Sequence[Item],
+    kind: str,
+    *,
+    plant: Optional[Any] = None,
+) -> Dict[str, np.ndarray]:
+    """1-row base pre-pass over `chosen` to score every neuron of each touched column or row linear:
+    for `down_proj` (`cols`), `rms_act * down_stream_norms`; for `gate_proj`/`up_proj` (`rows`), `rms_out`."""
+    terms = [t for t in edit.terms if t.kind in ("cols", "rows")]
+    if not terms:
+        return {}
+    sums: Dict[str, np.ndarray] = {}
+    counts: Dict[str, int] = {}
+    span_box: Dict[str, slice] = {"sl": slice(None)}
+    handles: List[Any] = []
+
+    def _acc(name: str, x: torch.Tensor) -> None:
+        sub = x[0, span_box["sl"], :].detach().float()
+        sq = sub.pow(2).sum(dim=0, dtype=torch.float64).cpu().numpy()
+        if name not in sums:
+            sums[name] = sq
+            counts[name] = int(sub.shape[0])
+        else:
+            sums[name] = sums[name] + sq
+            counts[name] += int(sub.shape[0])
+
+    try:
+        with torch.no_grad():
+            plant_cm = we.per_row(h.lm, [we.Arm(plant, 1.0)]) if plant is not None else _noop_ctx()
+            with plant_cm:
+                for t in terms:
+                    mod = h.lm.get_submodule(t.linear)
+                    if t.kind == "cols":
+                        handles.append(mod.register_forward_pre_hook(lambda _m, args, nm=t.linear: _acc(nm, args[0])))
+                    else:
+                        handles.append(mod.register_forward_hook(lambda _m, _args, out, nm=t.linear: _acc(nm, out)))
+                for it in chosen:
+                    if kind == "written":
+                        span_box["sl"] = slice(0, len(it.prompt_ids))
+                        _whole(h, it.prompt_ids, 1)
+                    else:
+                        lo = len(it.prompt_ids) - 1
+                        span_box["sl"] = slice(lo, len(it.ids) - 1)
+                        _whole(h, it.ids, 1)
+    finally:
+        for hk in handles:
+            hk.remove()
+    out: Dict[str, np.ndarray] = {}
+    for t in terms:
+        n_pos = max(counts.get(t.linear, 0), 1)
+        rms = np.sqrt(sums[t.linear] / float(n_pos))
+        if t.kind == "cols":
+            out[t.linear] = rms * we.down_stream_norms(h.lm, t.layer)
+        else:
+            out[t.linear] = rms
+    return out
+
+
+@contextmanager
+def _noop_ctx() -> Iterator[None]:
+    yield
+
+
 def _whole(h: Handle, ids: Sequence[int], rows: int) -> torch.Tensor:
     """One whole forward of the item's ids repeated to `rows` rows: no attention mask and no position ids, as every
     pilot ran it. Final-normed states [rows, pieces, D] in the model's dtype."""
@@ -1054,11 +1460,14 @@ class _Sitting:
     edit: Any
     controls: List[Any]
     L0: int
+    L_high: int
     arms: Dict[str, Dict[str, Any]]
     twin: bool
     twin_why: Optional[str]
     where: Dict[str, Any]
     peaks: List[float]
+    plant: Optional[Any] = None
+    _plant_cache: Optional[Dict[str, Any]] = None
 
     def reset_peak(self) -> None:
         if self.h.device.type == "cuda":
@@ -1073,6 +1482,67 @@ class _Sitting:
 
     def programs(self, keys: Sequence[Optional[str]]) -> List[Any]:
         return [None if k is None else self.arms[k]["program"] for k in keys]
+
+    def _composed_for(self, key: str) -> Any:
+        if self._plant_cache is None:
+            self._plant_cache = {}
+        got = self._plant_cache.get(key)
+        if got is not None:
+            return got
+        prog = self.arms[key]["program"]
+        if isinstance(prog, we.Arm):
+            if prog.dose == 0.0:
+                got = we.Arm(self.plant, 1.0)
+            else:
+                stacked = we.stack(
+                    self.h.lm, [self.plant, prog.edit],
+                    model_id=self.h.model_id, weights_id=self.h.weights_id,
+                    doses=[1.0, float(prog.dose)], caps=False,
+                )
+                got = we.Arm(stacked, 1.0)
+        else:
+            got = we.Arm(self.plant, 1.0)
+        self._plant_cache[key] = got
+        return got
+
+    @contextmanager
+    def run_hooks(self, keys: Sequence[Optional[str]]) -> Iterator[None]:
+        """Install per-row hooks for `keys`, composing an in-memory `plant` underneath every row when active."""
+        if self.plant is None:
+            with we.per_row(self.h.lm, self.programs(keys)):
+                yield
+            return
+        progs: List[Any] = []
+        null_scales: List[Tuple[int, float]] = []
+        dt = self.h.dtype
+        for r, k in enumerate(keys):
+            if k is None:
+                progs.append(we.Arm(self.plant, 1.0))
+            elif self.arms[k]["what"] == "null":
+                progs.append(we.Arm(self.plant, 1.0))
+                null_scales.append((r, float(we.null_factor(self.arms[k]["e"], dt))))
+            else:
+                progs.append(self._composed_for(k))
+        with we.per_row(self.h.lm, progs):
+            if not null_scales:
+                yield
+                return
+            mod = self.h.lm.get_submodule(we.linear_name(self.L0, "down_proj"))
+            R_want = len(keys)
+
+            def _null_post(_m: Any, _args: Tuple[Any, ...], y: torch.Tensor) -> torch.Tensor:
+                if y.dim() != 3 or int(y.shape[0]) != R_want:
+                    return y
+                out = y.clone()
+                for row_i, fac in null_scales:
+                    out[row_i] = (out[row_i] * torch.tensor(fac, dtype=out.dtype, device=out.device)).to(out.dtype)
+                return out
+
+            hk = mod.register_forward_hook(_null_post)
+            try:
+                yield
+            finally:
+                hk.remove()
 
 
 def _arm_facts(plan: Mapping[str, Any], edit: Any, controls: Sequence[Any], L0: int, dtype: Any) -> Dict[str, Dict[str, Any]]:
@@ -1122,49 +1592,48 @@ def _check_forward(sit: _Sitting, Hf: torch.Tensor, keys: Sequence[Optional[str]
 
 @dataclass
 class _Begun:
-    """A class of one item after its forward 0: the states, the stream kept for later forwards, the gate's figure."""
+    """A class of one item after its forward 0: the states, the stream kept for later forwards, and delivered."""
 
     cls: str
     R: int
     keys: List[List[Optional[str]]]
     Hf0: torch.Tensor
     kept: Optional[torch.Tensor]
-    base_raw: Dict[str, torch.Tensor]
-    gate: Dict[str, Optional[float]]
+    delivered0: Optional[List[float]]
 
 
 def _begin_class(sit: _Sitting, item: Item, sp: _Span, cls: str, one_row: Dict[str, torch.Tensor]) -> _Begun:
-    """Forward 0 of a class under its programs, its four rules, and the gate's figure from its base row."""
+    """Forward 0 of a class under its programs and its four rules."""
     h, plan = sit.h, sit.plan
     R = int(plan["rows"][cls])
     sit.where.update({"class": cls, "rows": R, "forward": 0})
     sit.reset_peak()
     keys = layout(plan["doses"], plan["controls"]["count"], plan["null_e"], R)
     lower, kept = plan["lower"], None
+    deliv: Dict[str, Any] = {}
     if lower == "one_row":
         if "stream" not in one_row:  # once an item: the layers below the edit at ONE row, with only the capture hook
             with _capture(h.lm.layers[sit.L0], one_row):
                 _whole(h, item.ids, 1)
         kept = one_row["stream"].expand(R, sp.T, one_row["stream"].shape[-1]).contiguous()
-        with we.per_row(h.lm, sit.programs(keys[0])):
+        with sit.run_hooks(keys[0]), _delivered_hook(h.lm.layers[sit.L_high], sp, deliv):
             Hf0 = _restart(h, sit.L0, kept)
     elif lower == "same_shape" and len(keys) >= 2:
         box: Dict[str, torch.Tensor] = {}
-        with we.per_row(h.lm, sit.programs(keys[0])):
+        with sit.run_hooks(keys[0]), _delivered_hook(h.lm.layers[sit.L_high], sp, deliv):
             with _capture(h.lm.layers[sit.L0], box):
                 Hf0 = _whole(h, item.ids, R)
         kept = box["stream"]
     else:
-        with we.per_row(h.lm, sit.programs(keys[0])):
+        with sit.run_hooks(keys[0]), _delivered_hook(h.lm.layers[sit.L_high], sp, deliv):
             Hf0 = _whole(h, item.ids, R)
     _check_forward(sit, Hf0, keys[0], 0, None)
-    base_raw, _ = _measure(h, {"own": True, "odds": plan["readouts"]["odds"]}, sp, Hf0[0], [])
-    return _Begun(cls=cls, R=R, keys=keys, Hf0=Hf0, kept=kept, base_raw=base_raw, gate=_gate_figures(base_raw["own"]))
+    return _Begun(cls=cls, R=R, keys=keys, Hf0=Hf0, kept=kept, delivered0=deliv.get("delivered"))
 
 
 def _read_rows(sit: _Sitting, sp: _Span, Hf: torch.Tensor, keys: Sequence[Optional[str]], f: int,
-               skip_null: bool) -> List[Dict[str, Any]]:
-    """Every null row and arm of one forward against that forward's own row 0."""
+               skip_null: bool, delivered: Optional[Sequence[float]] = None) -> Tuple[List[Dict[str, Any]], Dict[str, torch.Tensor]]:
+    """Every null row and arm of one forward against that forward's own row 0, plus row 0's raw base values."""
     on = sit.plan["readouts"]
     rows, entries = [], []
     for r, k in enumerate(keys):
@@ -1172,14 +1641,16 @@ def _read_rows(sit: _Sitting, sp: _Span, Hf: torch.Tensor, keys: Sequence[Option
             continue
         entry = _arm_entry(k, sit.arms[k])
         entry.update({"forward": f, "row": r, "non_finite": not bool(torch.isfinite(Hf[r]).all()),
-                      "same_as_base": bool(torch.equal(Hf[r], Hf[0])), "metrics": None})
+                      "same_as_base": bool(torch.equal(Hf[r], Hf[0])),
+                      "delivered": _clean(delivered[r]) if delivered is not None and r < len(delivered) else None,
+                      "metrics": None})
         entries.append(entry)
         rows.append(None if entry["non_finite"] else Hf[r])
-    _, got = _measure(sit.h, on, sp, Hf[0], rows)
+    base_raw, got = _measure(sit.h, on, sp, Hf[0], rows)
     for entry, g in zip(entries, got):
         if g is not None:
             entry["metrics"] = {m: stats(g[m]) for m in METRICS if on[m]}
-    return entries
+    return entries, base_raw
 
 
 def _floor(arms: Sequence[Mapping[str, Any]], on: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -1278,24 +1749,33 @@ def _twin(sit: _Sitting, item: Item, sp: _Span, st: _Begun, arms: Sequence[Mappi
             "between_kl_mean": between, "same_bits": bool(torch.equal(Hfold[0], st.Hf0[r_arm])), "seconds": seconds}
 
 
-def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun) -> Dict[str, Any]:
-    """A class of one item, read: forward 0's null rows and arms, the later forwards with their rules and arms, the
-    twin, the floor and the rank."""
+def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun,
+                gate_slot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """A class of one item, read: forward 0's null rows and arms (reusing row 0's full-vocab log-softmax for the item
+    gate when `kl` or `own` is on), the later forwards with their rules and arms, the twin, the floor and the rank."""
     h, plan, on = sit.h, sit.plan, sit.plan["readouts"]
     n0 = len(plan["null_e"])
-    arms = _read_rows(sit, sp, st.Hf0, st.keys[0], 0, skip_null=False)
+    arms, base_raw = _read_rows(sit, sp, st.Hf0, st.keys[0], 0, skip_null=False, delivered=st.delivered0)
+    if "own" not in base_raw:  # odds-only reading: compute the base row's own log-probability once for the item gate
+        own_raw, _ = _measure(h, {"own": True}, sp, st.Hf0[0], [])
+        base_raw["own"] = own_raw["own"]
+    gate_figs = _gate_figures(base_raw["own"])
+    if gate_slot is not None:
+        gate_slot[st.cls] = gate_figs
     first = st.Hf0[:1 + n0]
     for f in range(1, len(st.keys)):
         sit.where["forward"] = f
-        with we.per_row(h.lm, sit.programs(st.keys[f])):
+        deliv: Dict[str, Any] = {}
+        with sit.run_hooks(st.keys[f]), _delivered_hook(h.lm.layers[sit.L_high], sp, deliv):
             Hf = _restart(h, sit.L0, st.kept) if st.kept is not None else _whole(h, item.ids, st.R)
         _check_forward(sit, Hf, st.keys[f], f, first)
-        arms += _read_rows(sit, sp, Hf, st.keys[f], f, skip_null=True)  # its null rows are forward 0's by bits
+        more_arms, _ = _read_rows(sit, sp, Hf, st.keys[f], f, skip_null=True, delivered=deliv.get("delivered"))
+        arms += more_arms  # its null rows are forward 0's by bits
         del Hf
     folded = _twin(sit, item, sp, st, arms)
     floor = _floor(arms, on)
-    odds0 = st.base_raw.get("odds")
-    base = {"own": dict(st.gate), "odds": None}
+    odds0 = base_raw.get("odds")
+    base = {"own": dict(gate_figs), "odds": None}
     if odds0 is not None:
         s = stats(odds0)
         base["odds"] = {"mean": s["mean"], "median": s["median"]}
@@ -1381,14 +1861,12 @@ def _paired_item(sit: _Sitting, item: Item, entry: Dict[str, Any]) -> None:
     entry["gate"] = gate
     one_row: Dict[str, torch.Tensor] = {}
     st = _begin_class(sit, item, sp, "small", one_row)
-    gate["small"] = st.gate
     small_base = st.Hf0[0, sp.lo:sp.T].clone()  # the base row at the span and end positions, for the large class
-    entry["classes"]["small"] = _read_class(sit, item, sp, st)
+    entry["classes"]["small"] = _read_class(sit, item, sp, st, gate_slot=gate)
     del st
     st = _begin_class(sit, item, sp, "large", one_row)
-    gate["large"] = st.gate
     same_bits = bool(torch.equal(st.Hf0[0, sp.lo:sp.T], small_base))
-    entry["classes"]["large"] = _read_class(sit, item, sp, st)
+    entry["classes"]["large"] = _read_class(sit, item, sp, st, gate_slot=gate)
     del st
     gate["passed"] = not _under(gate["small"], bar) and not _under(gate["large"], bar)
     if not gate["passed"]:
@@ -1453,30 +1931,38 @@ def _summary(plan: Mapping[str, Any], entries: Sequence[Mapping[str, Any]], aske
     return out
 
 
-def _written_item(sit: _Sitting, item: Item) -> Dict[str, Any]:
-    """One item of a written reading: every row writes greedily from the item's prompt alone, under its program, in
-    one batch. Untouched rows and an arm at dose 0 must write the base row's pieces with its log-probabilities,
-    exactly. The log-probabilities are the writer's own, from the model's dtype logits: not the fp32 measure."""
+def _written_batch(
+    sit: _Sitting,
+    prompt_ids: Sequence[int],
+    keys: Sequence[Optional[str]],
+    stop_ids: Sequence[int],
+    *,
+    sampler_settings: Any = None,
+    sample_label: str = "",
+    diagnose: bool = False,
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]], Optional[float]]:
+    """Run one written batch of `R` rows (shared exponential race when `sampler_settings` is given), enforcing the
+    finite-base, untouched-row, and dose-0 invariants."""
     h, plan = sit.h, sit.plan
     R, max_new = int(plan["rows"]), int(plan["max_new"])
-    sit.where.update({"class": None, "rows": R, "forward": None})
-    sit.reset_peak()
-    keys = layout(plan["doses"], plan["controls"]["count"], plan["null_e"], R, one_forward=True)[0]
-    stop_ids = [int(t) for t in h.rt.end_of_turn_ids()]
     wrote: List[Dict[str, Any]] = [{"pieces": [], "logprobs": [], "ended": False} for _ in range(R)]
     steps: List[float] = []
     last = R
-    with we.per_row(h.lm, sit.programs(keys)):
-        for st in ao.write_rows(h.lm, h.W_U, [list(item.prompt_ids)] * R, None, max_new=max_new, stop_ids=stop_ids,
-                                bos_id=h.tokenizer.bos_token_id, softcap=h.softcap):
-            if st.row <= last:  # the rows of a step come in order, so a row not after the last one begins a step
+    samples_of = [0] * R if sampler_settings is not None else None
+    with sit.run_hooks(keys):
+        for st in ao.write_rows(
+            h.lm, h.W_U, [list(prompt_ids)] * R, None, max_new=max_new, stop_ids=stop_ids,
+            bos_id=h.tokenizer.bos_token_id, softcap=h.softcap,
+            sampler=sampler_settings, samples_of=samples_of,
+        ):
+            if st.row <= last:
                 steps.append(time.perf_counter())
             last = st.row
             wrote[st.row]["pieces"].append(int(st.token_id))
             wrote[st.row]["logprobs"].append(float(st.logprob))
             wrote[st.row]["ended"] = wrote[st.row]["ended"] or bool(st.end)
     base = wrote[0]
-    at = f"item {sit.where['item']}, {R} rows"
+    at = f"item {sit.where['item']}, {R} rows" + (f", {sample_label}" if sample_label else "")
     if not all(math.isfinite(x) for x in base["logprobs"]):
         raise _Void("non_finite_base", f"The base row wrote a piece at a log-probability that is not finite ({at}).")
 
@@ -1487,6 +1973,20 @@ def _written_item(sit: _Sitting, item: Item) -> Dict[str, Any]:
         if not same(r):
             raise _Void("untouched_rows_differ", f"Row {r}, which nothing touched, did not write the base row's "
                            f"pieces with its log-probabilities ({at}): the rows of this batch are not independent.")
+
+    def _diag(row_data: Mapping[str, Any]) -> Dict[str, Any]:
+        lp = detect_loop(row_data["pieces"])
+        co = (not bool(row_data["ended"])) and (len(row_data["pieces"]) >= max_new)
+        th = split_thinking(row_data["pieces"], h.tokenizer)
+        return {"loop": lp, "cut_off": co, "thinking": th,
+                "stratum": written_stratum(bool(row_data["ended"]), bool(lp["looped"]), co)}
+
+    base_entry: Dict[str, Any] = {
+        "pieces": base["pieces"], "text": _text(h.tokenizer, base), "logprobs": base["logprobs"],
+        "ended": base["ended"],
+    }
+    if diagnose:
+        base_entry.update(_diag(base))
     arms = []
     for r, k in enumerate(keys):
         if k is None:
@@ -1506,14 +2006,131 @@ def _written_item(sit: _Sitting, item: Item) -> Dict[str, Any]:
                       "same_as_base": same(r), "parts_at": n,
                       "logprob_gap": {"max_abs": max(gaps) if gaps else None,
                                       "mean_abs": sum(gaps) / len(gaps) if gaps else None, "n": len(gaps)}})
+        if diagnose:
+            entry.update(_diag(mine))
         arms.append(entry)
+    sec_step = (steps[-1] - steps[0]) / (len(steps) - 1) if len(steps) > 1 else None
+    return base_entry, arms, sec_step
+
+
+def _written_item(sit: _Sitting, item: Item) -> Dict[str, Any]:
+    """One item of a written reading: greedy (1a shape) or sampled / thinking-on / long with loop and cut-off
+    diagnostics. Untouched rows and an arm at dose 0 must write the base row's pieces with its log-probabilities,
+    exactly, in every sample. The log-probabilities are the writer's own, from the model's dtype logits."""
+    h, plan = sit.h, sit.plan
+    R, max_new = int(plan["rows"]), int(plan["max_new"])
+    sit.where.update({"class": None, "rows": R, "forward": None})
+    sit.reset_peak()
+    keys = layout(plan["doses"], plan["controls"]["count"], plan["null_e"], R, one_forward=True)[0]
+    stop_ids = [int(t) for t in h.rt.end_of_turn_ids()]
+    extended = _is_extended_written(plan)
+    if not extended:
+        base_entry, arms, sec_step = _written_batch(sit, item.prompt_ids, keys, stop_ids, diagnose=False)
+        sit.peak()
+        return {"item": _item_block(item), "rows": R, "max_new": max_new, "stop_ids": stop_ids,
+                "untouched_rows_identical": True, "seconds_a_step": sec_step, "base": base_entry, "arms": arms}
+
+    thinking = bool(plan.get("thinking", False))
+    prompt_ids = (chat_ids(h.tokenizer, item.question, item.system, thinking=True)
+                  if thinking else list(item.prompt_ids))
+    scfg = plan["sampler"]
+    n_samples = int(plan.get("samples", 1))
+    diagnose = bool(plan.get("diagnose", True))
+    sample_entries: List[Dict[str, Any]] = []
+    step_times: List[float] = []
+    for s in range(n_samples):
+        sit.where["forward"] = s
+        seed_s = int(scfg["seed"]) + s
+        settings = (backend.engine_runtime.SamplerSettings(
+            temperature=float(scfg["temperature"]), top_k=int(scfg["top_k"]),
+            top_p=float(scfg["top_p"]), presence_penalty=float(scfg["presence_penalty"]), seed=seed_s,
+        ) if float(scfg["temperature"]) > 0.0 else None)
+        b_ent, a_ents, sec_step = _written_batch(
+            sit, prompt_ids, keys, stop_ids, sampler_settings=settings,
+            sample_label=f"sample {s} (seed {seed_s})" if n_samples > 1 else "",
+            diagnose=diagnose,
+        )
+        if sec_step is not None:
+            step_times.append(sec_step)
+        sample_entries.append({"sample": s, "seed": seed_s if settings is not None else None,
+                               "untouched_rows_identical": True, "seconds_a_step": sec_step,
+                               "base": b_ent, "arms": a_ents})
     sit.peak()
-    return {"item": _item_block(item), "rows": R, "max_new": max_new, "stop_ids": stop_ids,
-            "untouched_rows_identical": True,
-            "seconds_a_step": (steps[-1] - steps[0]) / (len(steps) - 1) if len(steps) > 1 else None,
-            "base": {"pieces": base["pieces"], "text": _text(h.tokenizer, base), "logprobs": base["logprobs"],
-                     "ended": base["ended"]},
-            "arms": arms}
+    item_blk = _item_block(item)
+    if thinking:
+        item_blk["prompt_pieces_thinking"] = len(prompt_ids)
+    return {"item": item_blk, "rows": R, "max_new": max_new, "stop_ids": stop_ids,
+            "thinking": thinking, "sampler": dict(scfg), "untouched_rows_identical": True,
+            "seconds_a_step": sum(step_times) / len(step_times) if step_times else None,
+            "base": sample_entries[0]["base"], "arms": sample_entries[0]["arms"],
+            "samples": sample_entries}
+
+
+def _written_summary(plan: Mapping[str, Any], entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Aggregate loop, cut-off, end, thinking-span, rescue, and regression counts over all items and samples of an
+    extended written reading."""
+    all_samples = [s for e in entries for s in (e.get("samples") or [])]
+    n_tot = len(all_samples)
+    base_ended = sum(1 for s in all_samples if s["base"]["ended"])
+    base_cut = sum(1 for s in all_samples if s["base"].get("cut_off"))
+    base_loop = sum(1 for s in all_samples if (s["base"].get("loop") or {}).get("looped"))
+    base_lens = [len(s["base"]["pieces"]) for s in all_samples]
+    base_th = [(s["base"].get("thinking") or {}).get("thought_pieces", 0) for s in all_samples]
+    base_th_closed = sum(1 for s in all_samples if (s["base"].get("thinking") or {}).get("thought_closed"))
+    arms_out: Dict[str, Any] = {}
+    if all_samples:
+        for arm0 in all_samples[0]["arms"]:
+            key = arm0["key"]
+            rows_k = [(s["base"], next(a for a in s["arms"] if a["key"] == key)) for s in all_samples]
+            lens = [len(a["pieces"]) for _b, a in rows_k]
+            ths = [(a.get("thinking") or {}).get("thought_pieces", 0) for _b, a in rows_k]
+            arms_out[key] = {
+                "what": arm0["what"],
+                "dose": arm0.get("dose"),
+                "e": arm0.get("e"),
+                "n": len(rows_k),
+                "ended": sum(1 for _b, a in rows_k if a["ended"]),
+                "cut_off": sum(1 for _b, a in rows_k if a.get("cut_off")),
+                "looped": sum(1 for _b, a in rows_k if (a.get("loop") or {}).get("looped")),
+                "changed_from_base": sum(1 for _b, a in rows_k if not a["same_as_base"]),
+                "rescued_from_loop": sum(1 for b, a in rows_k
+                                         if (b.get("loop") or {}).get("looped") and not (a.get("loop") or {}).get("looped")),
+                "rescued_from_cutoff": sum(1 for b, a in rows_k if b.get("cut_off") and not a.get("cut_off")),
+                "regressed_to_loop": sum(1 for b, a in rows_k
+                                         if not (b.get("loop") or {}).get("looped") and (a.get("loop") or {}).get("looped")),
+                "regressed_to_cutoff": sum(1 for b, a in rows_k if not b.get("cut_off") and a.get("cut_off")),
+                "mean_pieces": sum(lens) / len(lens) if lens else None,
+                "max_pieces": max(lens) if lens else None,
+                "mean_thought_pieces": sum(ths) / len(ths) if ths else None,
+            }
+    ctl_vals = [v for k, v in arms_out.items() if k.startswith("control:")]
+    ctl_range = None
+    if ctl_vals:
+        ctl_range = {
+            "count": len(ctl_vals),
+            "looped_min": min(v["looped"] for v in ctl_vals),
+            "looped_max": max(v["looped"] for v in ctl_vals),
+            "cut_off_min": min(v["cut_off"] for v in ctl_vals),
+            "cut_off_max": max(v["cut_off"] for v in ctl_vals),
+            "changed_min": min(v["changed_from_base"] for v in ctl_vals),
+            "changed_max": max(v["changed_from_base"] for v in ctl_vals),
+        }
+    return {
+        "items": len(entries),
+        "samples_per_item": int(plan.get("samples", 1)),
+        "total_generations": n_tot,
+        "thinking": bool(plan.get("thinking", False)),
+        "sampler": dict(plan["sampler"]),
+        "base": {
+            "n": n_tot, "ended": base_ended, "cut_off": base_cut, "looped": base_loop,
+            "mean_pieces": sum(base_lens) / n_tot if n_tot else None,
+            "max_pieces": max(base_lens) if base_lens else None,
+            "mean_thought_pieces": sum(base_th) / n_tot if n_tot else None,
+            "thought_closed": base_th_closed,
+        },
+        "arms": arms_out,
+        "controls_range": ctl_range,
+    }
 
 
 def _text(tokenizer: Any, row: Mapping[str, Any]) -> str:
@@ -1548,11 +2165,16 @@ def _same_base(h: Handle, edit: Any) -> None:
     """An edit handed in already built must be of this model's base: the same model, the same weights, the same
     tensors. Raises `Refused` in the words a saved edit is refused with."""
     base = edit.base
+    if not isinstance(base, dict):
+        raise Refused("This edit carries no base record: build it with weight_edits.build.")
     if base.get("model") != h.model_id or base.get("weights_id") != h.weights_id:
         raise Refused(f"This edit was made on {base.get('model')} (weights {base.get('weights_id')}); the loaded "
                       f"model is {h.model_id} (weights {h.weights_id}). An edit is a difference from one base and is "
                       "not carried to another.")
-    for name, pin in (base.get("tensors") or {}).items():
+    tensors = base.get("tensors") or {}
+    if not isinstance(tensors, dict):
+        raise Refused("This edit carries an invalid base tensor record: build it with weight_edits.build.")
+    for name, pin in tensors.items():
         try:
             now = we.tensor_pin(h.lm.get_submodule(name))
         except AttributeError:
@@ -1582,8 +2204,10 @@ class _Reading:
     """One call of `read`, from the plan as given to the result: what it has reached so far is always what the result
     is built from, so that a reading stopped anywhere is still written whole."""
 
-    def __init__(self, h: Handle, reading: Any, items: Mapping[str, Item], base_dir: Path, edit: Any, save_edit: bool):
+    def __init__(self, h: Handle, reading: Any, items: Mapping[str, Item], base_dir: Path, edit: Any, save_edit: bool,
+                 plant: Optional[Any] = None):
         self.h, self.items, self.base_dir, self.given_edit, self.save_edit = h, items, base_dir, edit, save_edit
+        self.plant = plant
         self.given = dict(reading) if isinstance(reading, dict) else reading
         if edit is not None and isinstance(self.given, dict):
             self.given["edit"] = {"built": getattr(edit, "id", None) if isinstance(edit, we.Edit) else None}
@@ -1593,6 +2217,7 @@ class _Reading:
         self.status, self.why, self.void = "ok", None, None
         self.edit: Any = None
         self.controls: List[Any] = []
+        self.controls_coverage: Optional[Dict[str, Any]] = None
         self.saved: Optional[str] = None
         self.entries: List[Dict[str, Any]] = []
         self.asked = 0
@@ -1604,12 +2229,28 @@ class _Reading:
         self.t_begin = time.perf_counter()
         self.t0: Optional[float] = None
 
+    def _build_recipe(self, raw_recipe: Any, clean_recipe: Mapping[str, Any]) -> Any:
+        h = self.h
+        try:
+            got = we.from_recipe(raw_recipe, self.base_dir)
+            if isinstance(got, (str, Path)):
+                return we.load(got, h.lm, model_id=h.model_id, weights_id=h.weights_id)
+            return we.build(h.lm, got, model_id=h.model_id, weights_id=h.weights_id,
+                            note=str(clean_recipe.get("note") or ""))
+        except OSError as exc:
+            raise Refused(f"A file the edit names cannot be read ({exc.strerror or exc}).") from None
+
     # -- step 2: everything that can refuse a reading before any forward
     def prepare(self) -> List[Item]:
         h = self.h
         words = _not_base_words(h)
         if words:
             raise Refused(words)
+        if self.plant is not None:
+            if not isinstance(self.plant, we.Edit):
+                raise Refused("An in-memory plant must be a weight_edits.Edit.")
+            _same_base(h, self.plant)
+            self.plant = we.gate_again(h.lm, self.plant, model_id=h.model_id, weights_id=h.weights_id)
         self.plan = normalise(self.given, n_layers=h.n_layers, tokenizer=h.tokenizer, dtype=h.dtype)
         plan = self.plan
         names = list(self.items) if plan["items"] == "all" else plan["items"]
@@ -1620,6 +2261,11 @@ class _Reading:
             raise Refused(f"A reading takes 1 to {MAX_ITEMS} items; {len(names)} were given.")
         chosen = [self.items[n] for n in names]
         self.asked = len(chosen)
+        if plan["kind"] == "written" and plan.get("thinking"):
+            for it in chosen:
+                if it.question is None:
+                    raise Refused("Thinking-on written readings require chat items with a question text, not raw "
+                                  "id-only items.")
         if self.given_edit is not None:
             if not isinstance(self.given_edit, we.Edit):
                 raise Refused(f"An edit handed to a reading is a weight_edits.Edit; {type(self.given_edit).__name__} "
@@ -1633,17 +2279,9 @@ class _Reading:
             if "built" in recipe:
                 raise Refused(f"The plan names an edit built in Python ({str(recipe['built'])[:12]}) and none was "
                               "handed in: give the edit's recipe, or the id of a saved edit.")
-            try:
-                # the recipe as it was given: the recorded plan names an array a caller wrote into it by what it is,
-                # not by its numbers, and the gate is told what was handed in
-                got = we.from_recipe(self.given["edit"], self.base_dir)
-                if isinstance(got, (str, Path)):
-                    self.edit = we.load(got, h.lm, model_id=h.model_id, weights_id=h.weights_id)
-                else:
-                    self.edit = we.build(h.lm, got, model_id=h.model_id, weights_id=h.weights_id,
-                                         note=str(recipe.get("note") or ""))
-            except OSError as exc:
-                raise Refused(f"A file the edit names cannot be read ({exc.strerror or exc}).") from None
+            # the recipe as it was given: the recorded plan names an array a caller wrote into it by what it is,
+            # not by its numbers, and the gate is told what was handed in
+            self.edit = self._build_recipe(self.given["edit"], recipe)
         edit = self.edit
         facts = we.edit_facts(edit)
         _fact_refusals(plan, facts, h.n_layers)
@@ -1651,11 +2289,46 @@ class _Reading:
             words = we.dose_refusal(edit, d, h.dtype)
             if words:
                 raise Refused(words)
-        if plan["controls"]["count"]:
-            self.controls = list(we.control_edits(edit, h.lm, plan["controls"]["seed"], plan["controls"]["count"]))
+        ctl_cfg = plan["controls"]
+        family = ctl_cfg.get("family", "other_sites")
+        count = int(ctl_cfg["count"])
+        # Cheap upfront guards before estimate/twin checks (avoid materializing controls on refused readings)
+        if count and family == "other_sites":
+            for t in edit.terms:
+                if t.kind in ("cols", "rows"):
+                    mod = h.lm.get_submodule(t.linear)
+                    N = we.linear_shape(mod)[0] if t.kind == "rows" else we.linear_shape(mod)[1]
+                    K = int(t.idx.shape[0])
+                    if N - K < K:
+                        raise Refused(f"Layer {t.layer} (page layer {t.layer + 1}) has {N - K} neurons outside this "
+                                      f"edit: too few for a control edit of {K}.")
+        if count and family == "other_sites_matched" and not any(t.kind in ("cols", "rows") for t in edit.terms):
+            raise Refused('Control family "other_sites_matched" requires at least one column or row term; use '
+                          '"same_site" or "other_sites" for a low-rank-only edit.')
+        shams_built: List[Any] = []
+        est_facts = dict(facts)
+        if count and family == "sham_target":
+            raw_shams = (self.given.get("controls") or {}).get("shams") or ctl_cfg["shams"]
+            for i, (raw_s, clean_s) in enumerate(zip(raw_shams, ctl_cfg["shams"])):
+                try:
+                    se = self._build_recipe(raw_s, clean_s)
+                except (Refused, we.Refused) as exc:
+                    raise Refused(f"Sham control {i}: {exc}") from None
+                dw = we.dose_refusal(se, plan["main_dose"], h.dtype)
+                if dw:
+                    raise Refused(f"Sham control {i}: {dw}")
+                shams_built.append(se)
+            all_layers = sorted(set(facts["layers"]) | {L for se in shams_built for L in se.layers()})
+            est_facts = {**facts, "layers": all_layers, "lowest_layer": int(min(all_layers))}
+            _fact_refusals(plan, est_facts, h.n_layers)
+        if self.plant is not None:
+            all_layers = sorted(set(est_facts["layers"]) | set(self.plant.layers()))
+            est_facts = {**est_facts, "layers": all_layers, "lowest_layer": int(min(all_layers))}
         twin, twin_why, cannot = False, None, None
         if plan["kind"] == "paired":
-            if plan["folded"] == "never":
+            if self.plant is not None:
+                twin_why = WHY_NO_TWIN["per_row_only"]
+            elif plan["folded"] == "never":
                 twin_why = WHY_NO_TWIN["never"]
             elif plan["folded"] == "always":
                 twin, cannot = True, we.can_fold(h.lm, edit)
@@ -1666,20 +2339,39 @@ class _Reading:
             else:
                 twin_why = we.can_fold(h.lm, edit)
                 twin = twin_why is None
-        self.est = estimate(plan, [(len(it.ids), len(it.prompt_ids)) for it in chosen], n_layers=h.n_layers,
-                            facts=facts, twin=twin)
+        if plan["kind"] == "written" and plan.get("thinking"):
+            piece_pairs = [
+                (len(it.ids), len(chat_ids(h.tokenizer, it.question, it.system, thinking=True))) for it in chosen
+            ]
+        else:
+            piece_pairs = [(len(it.ids), len(it.prompt_ids)) for it in chosen]
+        self.est = estimate(plan, piece_pairs, n_layers=h.n_layers, facts=est_facts, twin=twin)
         if cannot:
             raise Refused(cannot)
         for odds in [plan["readouts"]["odds"]] if plan["kind"] == "paired" and plan["readouts"]["odds"] else []:
             for t in odds["toward"] + odds["away"]:
                 if t >= int(h.W_U.shape[0]):
                     raise Refused(f"The piece {t} is not in this model's vocabulary of {int(h.W_U.shape[0])}.")
+        if count:
+            if family == "other_sites":
+                self.controls = list(we.control_edits(edit, h.lm, ctl_cfg["seed"], count))
+            elif family == "same_site":
+                self.controls = list(we.same_site_controls(edit, h.lm, ctl_cfg["seed"], count))
+            elif family == "sham_target":
+                self.controls = shams_built
+            # family == "other_sites_matched" builds controls in forwards() after the 1-row base pre-pass
         if self.save_edit:
             self.saved = str(we.save(edit))
-        L0 = int(edit.lowest_layer())
-        self.sit = _Sitting(h=h, plan=plan, edit=edit, controls=self.controls, L0=L0,
+        layer_list = [edit.lowest_layer()] + [c.lowest_layer() for c in self.controls]
+        high_list = [max(edit.layers())] + [max(c.layers()) for c in self.controls]
+        if self.plant is not None:
+            layer_list.append(self.plant.lowest_layer())
+            high_list.append(max(self.plant.layers()))
+        L0 = int(min(layer_list))
+        L_high = int(max(high_list))
+        self.sit = _Sitting(h=h, plan=plan, edit=edit, controls=self.controls, L0=L0, L_high=L_high,
                             arms=_arm_facts(plan, edit, self.controls, L0, h.dtype), twin=twin, twin_why=twin_why,
-                            where=self.where, peaks=self.peaks)
+                            where=self.where, peaks=self.peaks, plant=self.plant)
         return chosen
 
     # -- steps 4 to 6
@@ -1689,6 +2381,24 @@ class _Reading:
         self.unpacker["fell_back_before"] = _fell_back()
         _sync(h)
         self.t0 = time.perf_counter()
+        ctl_cfg = plan["controls"]
+        if ctl_cfg.get("family") == "other_sites_matched" and int(ctl_cfg["count"]) > 0:
+            scores = _score_sites(h, self.edit, chosen, plan["kind"], plant=self.plant)
+            matched, cov = we.matched_control_edits(
+                self.edit, h.lm, scores, ctl_cfg["seed"], int(ctl_cfg["count"]),
+                tolerance=float(ctl_cfg.get("tolerance", DEFAULT_MATCH_TOL)),
+            )
+            self.controls_coverage = cov
+            if matched is None:
+                raise _Void(
+                    "insufficient_matched_controls",
+                    f"Matched controls requested {cov['requested']} distinct control sets within factor "
+                    f"{cov['tolerance']:g} of expected delivered magnitude, but only {cov['found']} were available "
+                    "on these items.",
+                )
+            self.controls = list(matched)
+            sit.controls = self.controls
+            sit.arms = _arm_facts(plan, self.edit, self.controls, sit.L0, h.dtype)
         for item in chosen:
             self.where.update({"item": item.name if item.name is not None else item.id[:12], "class": None,
                                "rows": None, "forward": None})
@@ -1731,6 +2441,7 @@ class _Reading:
         actual = time.perf_counter() - (self.t0 if self.t0 is not None else self.t_begin)
         self.unpacker["fell_back_after"] = _fell_back()
         paired = bool(plan) and plan["kind"] == "paired"
+        ext_written = bool(plan) and _is_extended_written(plan)
         edit_block = None
         if self.edit is not None:
             doses = plan["doses"] if plan else []
@@ -1739,11 +2450,32 @@ class _Reading:
                           "saved": self.saved}
         controls = None
         if plan:
-            controls = {"family": "other_sites", "matched": False, "seed": plan["controls"]["seed"],
-                        "count": plan["controls"]["count"], "ids": [c.id for c in self.controls],
-                        "says": CONTROLS_SAY.format(seed=plan["controls"]["seed"])}
+            ctl_cfg = plan["controls"]
+            family = ctl_cfg.get("family", "other_sites")
+            seed, count = ctl_cfg["seed"], ctl_cfg["count"]
+            ids = [c.id for c in self.controls]
+            if family == "other_sites":
+                controls = {"family": "other_sites", "matched": False, "seed": seed, "count": count, "ids": ids,
+                            "says": CONTROLS_SAY.format(seed=seed)}
+            elif family == "other_sites_matched":
+                tol = float(ctl_cfg.get("tolerance", DEFAULT_MATCH_TOL))
+                controls = {"family": "other_sites_matched", "matched": True, "seed": seed, "count": count,
+                            "tolerance": tol, "ids": ids, "coverage": self.controls_coverage,
+                            "says": CONTROLS_MATCHED_SAY.format(seed=seed, tol=tol)}
+            elif family == "same_site":
+                controls = {"family": "same_site", "matched": True, "seed": seed, "count": count, "ids": ids,
+                            "says": CONTROLS_SAME_SITE_SAY.format(seed=seed)}
+            else:
+                controls = {"family": "sham_target", "matched": False, "seed": seed, "count": count, "ids": ids,
+                            "says": CONTROLS_SHAM_SAY.format(count=count)}
         shown = plan if plan is not None else _clean(self.given)
         predicted = self.est["seconds"] if self.est else None
+        summary = None
+        if self.status == "ok":
+            if paired:
+                summary = _summary(plan, self.entries, self.asked)
+            elif ext_written:
+                summary = _written_summary(plan, self.entries)
         out = {
             "v": VERSION, "kind": self.kind, "name": self.name, "status": self.status, "why": self.why,
             "void": self.void, "base_after": base_after, "edit": edit_block,
@@ -1759,7 +2491,7 @@ class _Reading:
                       "says": ROWS_SAY.format(small=plan["rows"]["small"], large=plan["rows"]["large"])}
                      if paired else None),
             "controls": controls, "items": self.entries,
-            "summary": _summary(plan, self.entries, self.asked) if paired and self.status == "ok" else None,
+            "summary": summary,
             "seconds": {"predicted": predicted, "actual": actual, "ratio": actual / predicted if predicted else None,
                         "parts": dict(self.est["parts"]) if self.est else {}},
             "peak_gib": max(self.peaks) if self.peaks else None,
@@ -1768,20 +2500,22 @@ class _Reading:
 
 
 def read(h: Handle, reading: dict, items: Mapping[str, Item], *, base_dir: Path = Path("."),
-         edit: Optional[Any] = None, save_edit: bool = False) -> dict:
+         edit: Optional[Any] = None, save_edit: bool = False, _plant: Optional[Any] = None) -> dict:
     """One reading, paired or written, entered in the ledger whatever happens.
 
     `reading` is a plan as given (it is normalised here); `items` the items it may name; `base_dir` where a recipe's
     files are looked for. `edit`: an Edit already built in Python, read in place of the plan's recipe; the recorded
     plan then holds "edit": {"built": "<id>"}. `save_edit`: save the edit read (`we.save`) and name its folder in the
-    result's edit block. Returns the result with a key "book": {"seq", "hash"} added after the entry is written.
+    result's edit block. `_plant`: optional in-memory-only Edit composed underneath every row for planted-fault
+    practice sessions (never stored on disk or left on the model). Returns the result with a key
+    "book": {"seq", "hash"} added after the entry is written.
 
     A refusal or a void is a result, not an exception. `lb.BookBroken` is raised before the model is touched when the
     ledger cannot take an entry. Any other exception inside the reading, a KeyboardInterrupt included, is entered as
     a void ("error" or "interrupted") and then raised again. However the reading ends, `we.assert_base` runs last:
     the result's `base_after` says whether the model is the base again."""
     lb.head()
-    run = _Reading(h, reading, items, Path(base_dir), edit, save_edit)
+    run = _Reading(h, reading, items, Path(base_dir), edit, save_edit, plant=_plant)
     raised: Optional[BaseException] = None
     try:
         with torch.no_grad():
@@ -1840,15 +2574,45 @@ def _report_entries(report: Any) -> List[Mapping[str, Any]]:
     return [e for e in report or [] if isinstance(e, Mapping)] if isinstance(report, list) else []
 
 
+def _base_scale_factors(exact_map: Mapping[str, Any]) -> List[float]:
+    """Distinct base scale factors f recovered from `edit.exact`: directly from dose 1.0 when present, else from the
+    first non-zero dose d via f = 1 + (g - 1) / d."""
+    if not exact_map:
+        return []
+    ex1 = exact_map.get("1.0")
+    if isinstance(ex1, Mapping) and ex1.get("factors"):
+        return [float(f[0]) for f in ex1["factors"]]
+    for d_key, ex in exact_map.items():
+        try:
+            d = float(d_key)
+        except (TypeError, ValueError):
+            continue
+        if d != 0.0 and isinstance(ex, Mapping) and ex.get("factors"):
+            return sorted({round(1.0 + (float(f[0]) - 1.0) / d, 9) for f in ex["factors"]})
+    return []
+
+
+def _ctl_label(plan: Mapping[str, Any]) -> str:
+    family = (plan.get("controls") or {}).get("family", "other_sites")
+    return {
+        "other_sites": "unmatched control edits",
+        "other_sites_matched": "matched control edits",
+        "same_site": "same-site control edits",
+        "sham_target": "sham-target control edits",
+    }.get(family, "control edits")
+
+
 def _edit_words(ed: Optional[Mapping[str, Any]]) -> str:
     if not ed:
         return "no edit was built"
     parts = []
-    exact = (ed.get("exact") or {}).get("1.0") or {}
-    silenced = bool(exact.get("factors")) and all(f[0] == 0 for f in exact["factors"])
+    exact_map = ed.get("exact") or {}
+    base_factors = _base_scale_factors(exact_map)
+    silenced = bool(base_factors) and all(f == 0.0 for f in base_factors)
+    entries = _report_entries(ed.get("terms"))
     all_scales = all(not (x.get("ops") or {}).get("set") and not (x.get("ops") or {}).get("add")
-                     for x in _report_entries(ed.get("terms")) if x.get("kind") != "lowrank")
-    for e in _report_entries(ed.get("terms")):
+                     for x in entries if x.get("kind") != "lowrank")
+    for e in entries:
         layer = e.get("layer")
         where = f"layer {layer} (page {e.get('page_layer', None if layer is None else layer + 1)})"
         if e.get("kind") == "lowrank":
@@ -1861,11 +2625,28 @@ def _edit_words(ed: Optional[Mapping[str, Any]]) -> str:
         else:
             done = ", ".join(f"{ops[k]} {w}" for k, w in (("scale", "scaled"), ("set", "set"), ("add", "added to"))
                              if ops.get(k)) or "changed"
-            if only_scales and all_scales and 1 <= len(exact.get("factors") or []) <= 4:
-                done += " (by " + ", ".join(_g(f[0]) for f in exact["factors"]) + ")"  # at dose 1 a column's g is its f
+            if only_scales and all_scales and 1 <= len(base_factors) <= 4:
+                done += " (by " + ", ".join(_g(f) for f in base_factors) + ")"
         n = e.get("count")
-        parts.append(f"{n} column{'' if n == 1 else 's'} of {where} {done}" if done == "silenced"
-                     else f"{n} column{'' if n == 1 else 's'} of {where}: {done}")
+        if e.get("kind") == "rows":
+            which = str(e.get("linear") or "").split(".")[-1] or "row linear"
+            unit = f"{n} row{'' if n == 1 else 's'} of {which} at {where}"
+        else:
+            unit = f"{n} column{'' if n == 1 else 's'} of {where}"
+        parts.append(f"{unit} {done}" if done == "silenced" else f"{unit}: {done}")
+    report = ed.get("terms")
+    if isinstance(report, Mapping) and isinstance(report.get("direction_removal"), list):
+        for dr in report["direction_removal"]:
+            if not isinstance(dr, Mapping):
+                continue
+            qs = dr.get("quiet_share")
+            sn = (dr.get("stream_norm") or {}).get("max")
+            rn = (dr.get("raw_norm") or {}).get("max")
+            parts.append(
+                f"direction removal on layer {dr.get('layer')} (page {dr.get('page_layer')}): "
+                f"quiet share {100.0 * float(qs):.1f}%, stream norm max {_n(sn)}, raw norm max {_n(rn)}"
+                if qs is not None else f"direction removal on layer {dr.get('layer')}"
+            )
     note = f' ("{ed["note"]}")' if ed.get("note") else ""
     return f"edit {str(ed.get('id'))[:12]}{note}: " + ("; ".join(parts) if parts else "its terms are in the result")
 
@@ -1885,6 +2666,8 @@ def _arm_words(arm: Mapping[str, Any], on: Sequence[str], exact: Optional[Mappin
         elif s:
             got.append(f"{_METRIC_WORDS[m]} mean {_n(s['mean'])}, median {_n(s['median'])}, {s['above_1']} "
                        f"position{'' if s['above_1'] == 1 else 's'} above a nat of {s.get('n')}")
+    if arm.get("delivered") is not None:
+        got.append(f"delivered {_n(arm['delivered'])}")
     said = "; ".join(got)
     exact = exact or {}
     if exact.get("input_side") == "rounds":
@@ -1901,6 +2684,7 @@ def _arm_words(arm: Mapping[str, Any], on: Sequence[str], exact: Optional[Mappin
 def _class_lines(result: Mapping[str, Any], cb: Mapping[str, Any], on: Sequence[str]) -> List[str]:
     plan, exact = result["plan"], (result.get("edit") or {}).get("exact") or {}
     R, C, n0 = cb["rows"], plan["controls"]["count"], len(plan["null_e"])
+    ctl_words = _ctl_label(plan)
     out = [f"    {R} rows, {cb['forwards']} forward{'' if cb['forwards'] == 1 else 's'}"
            + (f", restarted from layer {cb['restart_from']} (page {cb['restart_from'] + 1})"
               if cb.get("restart_from") is not None else "") + ":"]
@@ -1930,7 +2714,7 @@ def _class_lines(result: Mapping[str, Any], cb: Mapping[str, Any], on: Sequence[
         else:
             bad = f", {rk['non_finite']} of them not finite" if rk["non_finite"] else ""
             out.append(f"      on {_METRIC_WORDS[rk['metric']]} at dose {_g(rk['dose'])}: {rk['at_least']} of {C} "
-                       f"unmatched control edits read as much{bad} (rank {rk['rank']} of {rk['of']})"
+                       f"{ctl_words} read as much{bad} (rank {rk['rank']} of {rk['of']})"
                        + ("" if no_floor else f"; {rk['controls_over_floor']} of {C} control edits read above the "
                                               "floor at all")
                        + (f"; the edit reads {_g(round(rk['over_floor'], 2))} times the floor"
@@ -1979,6 +2763,7 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
     on = [m for m in METRICS if plan["readouts"][m]]
     small, large = plan["rows"]["small"], plan["rows"]["large"]
     C = plan["controls"]["count"]
+    ctl_words = _ctl_label(plan)
     void = result.get("status") == "void"
     start_mark = (result.get("runtime") or {}).get("start_mark")
     out = [f"  rows {small} and {large}; doses {', '.join(_g(d) for d in plan['doses'])} (the control edits, the "
@@ -2050,23 +2835,37 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
                                + (" by construction, being one arithmetic" if one else "")
                                + f" ({top}, bar {_n(stab['ratio_bar'], 2)}); this does not show another row count "
                                  "would agree")
+                floor_m = max(
+                    (((e["classes"][c] or {}).get("floor") or {}).get(m, {}).get("mean_abs") or 0.0)
+                    for c in read
+                ) if read else 0.0
                 if ctl:
                     seq = sorted(ctl.items(), key=lambda ka: int(str(ka[0]).partition(":")[2]))
                     over = [k for k, a in seq if a["ratio"] is None or a["ratio"] > stab["ratio_bar"]]
+                    flipped = (
+                        [k for k, a in seq if a["small"] is not None and a["large"] is not None
+                         and a["small"] * a["large"] < 0
+                         and max(abs(a["small"]), abs(a["large"])) > stab["ratio_bar"] * floor_m]
+                        if SIGNED[m] else []
+                    )
                     out.append(f"    the control edits' ratios on {_METRIC_WORDS[m]} between {small} and {large} rows, "
                                "printed and not judged (the rule reads the edit's arms alone), from control edit "
                                f"{seq[0][0].partition(':')[2]}: " + ", ".join(_n(a["ratio"], 2) for _k, a in seq)
                                + (f"; {len(over)} not finite or over the bar ("
                                   f"{', '.join(_arm_name(k) for k in over[:6])}{' and more' if len(over) > 6 else ''})"
-                                  if over else "; none over the bar"))
-                fa, fb = (((e["classes"][c] or {}).get("floor") or {}).get(m, {}).get("mean_abs") for c in read[:2])
-                if fa and fb and max(fa, fb) / min(fa, fb) > stab["ratio_bar"]:
-                    apart = _g(round(max(fa, fb) / min(fa, fb), 1))
-                    out.append(f"    the floor of {_METRIC_WORDS[m]} itself moved between the row counts: "
-                               f"{_n(fa)} at {small} rows and {_n(fb)} at {large}, {apart} times apart. The arms "
-                               "were set against the larger of the two, so their agreement here shows less than it "
-                               "says: a null row that moves with the row count is itself a sign that the item's "
-                               "figures do")
+                                  if over else "; none over the bar")
+                               + (f"; {len(flipped)} opposite-sign ("
+                                  f"{', '.join(_arm_name(k) for k in flipped[:6])}"
+                                  f"{' and more' if len(flipped) > 6 else ''})" if flipped else ""))
+                if len(read) >= 2:
+                    fa, fb = (((e["classes"][c] or {}).get("floor") or {}).get(m, {}).get("mean_abs") for c in read[:2])
+                    if fa and fb and max(fa, fb) / min(fa, fb) > stab["ratio_bar"]:
+                        apart = _g(round(max(fa, fb) / min(fa, fb), 1))
+                        out.append(f"    the floor of {_METRIC_WORDS[m]} itself moved between the row counts: "
+                                   f"{_n(fa)} at {small} rows and {_n(fb)} at {large}, {apart} times apart. The arms "
+                                   "were set against the larger of the two, so their agreement here shows less than it "
+                                   "says: a null row that moves with the row count is itself a sign that the item's "
+                                   "figures do")
     sm = result.get("summary")
     if sm:
         n = sm["items"]
@@ -2096,13 +2895,24 @@ def _paired_lines(result: Mapping[str, Any]) -> List[str]:
             rk = cb.get("rank")
             if rk and rk["rank"] is not None:
                 out.append(f"    at {cb['rows']} rows, on {_METRIC_WORDS[rk['metric']]} over items: {rk['at_least']} "
-                           f"of {C} unmatched control edits read as much (rank {rk['rank']} of {rk['of']})")
+                           f"of {C} {ctl_words} read as much (rank {rk['rank']} of {rk['of']})")
     return out
 
 
 def _written_lines(result: Mapping[str, Any]) -> List[str]:
     plan = result["plan"]
-    out = [f"  a written reading, greedy: every row writes its likeliest piece at each step, up to {plan['max_new']} "
+    scfg = plan.get("sampler")
+    is_sampled = isinstance(scfg, Mapping) and float(scfg.get("temperature") or 0.0) > 0.0
+    n_samples = int(plan.get("samples") or 1)
+    thinking = bool(plan.get("thinking", False))
+    if is_sampled:
+        mode_desc = (f"sampled (temperature {_g(scfg.get('temperature'))}, top_p {_g(scfg.get('top_p'))}, "
+                     f"top_k {int(scfg.get('top_k') or 0)}, seed {int(scfg.get('seed') or 0)}, "
+                     f"{n_samples} sample{'' if n_samples == 1 else 's'} sharing each draw across rows)")
+    else:
+        mode_desc = "greedy: every row writes its likeliest piece at each step"
+    th_desc = "; thinking on" if thinking else ""
+    out = [f"  a written reading, {mode_desc}{th_desc}, up to {plan['max_new']} "
            f"new pieces, in one batch of {plan['rows']} rows. It is taken at one row count and is not a "
            "two-row-count reading. Its log-probabilities are the writer's own, from the model's dtype, not the fp32 "
            "measure of a paired reading. Nothing gates the item: the model writes its own answer."]
@@ -2117,22 +2927,50 @@ def _written_lines(result: Mapping[str, Any]) -> List[str]:
         mark = ("; NO start mark at its head" if start_mark is not None and (not prompt or prompt[0] != start_mark)
                 else "")
         out.append(f"  item {label} [{str(it.get('id'))[:12]}] ({it['prompt_pieces']} prompt pieces{mark}){step}")
-        out.append(f"    base row, {len(base['pieces'])} pieces, {'ended' if base['ended'] else 'did not end'}: "
-                   f"{base['text']!r}")
-        for arm in e["arms"]:
-            who = (f"null row e = {_g(arm['e'])}" if arm["what"] == "null" else
-                   f"the edit at dose {_g(arm['dose'])}" if arm["what"] == "edit" else
-                   f"control edit {arm['key'].split(':', 1)[1]}")
-            gap = arm["logprob_gap"]
-            before = (f"largest log-probability gap before that {_n(gap['max_abs'], 4)} (mean {_n(gap['mean_abs'], 4)}, "
-                      f"{gap['n']} piece{'' if gap['n'] == 1 else 's'})" if gap["n"] else "no piece before that to compare")
-            if arm["same_as_base"]:
-                out.append(f"    {who}: this row wrote the base row's pieces with its log-probabilities, exactly")
-            elif arm["parts_at"] is None:
-                out.append(f"    {who}: the base row's pieces, every one; {before.replace(' before that', '')}")
-            else:
-                out.append(f"    {who}: parts from the base row at piece {arm['parts_at']}; {before}; "
-                           f"{'ended' if arm['ended'] else 'did not end'}: {arm['text']!r}")
+        sample_list = e.get("samples") or [{"sample": 0, "seed": None, "base": base, "arms": e["arms"]}]
+        for sm_i in sample_list:
+            b_row = sm_i["base"]
+            pref = f"    [sample {sm_i['sample']}, seed {sm_i['seed']}] " if len(sample_list) > 1 else "    "
+            lp_tag = " [LOOPED]" if (b_row.get("loop") or {}).get("looped") else (" [CUT OFF]" if b_row.get("cut_off") else "")
+            b_text = b_row["text"]
+            shown_b = (b_text[:200] + "...") if len(b_text) > 200 else b_text
+            out.append(f"{pref}base row, {len(b_row['pieces'])} pieces, {'ended' if b_row['ended'] else 'did not end'}{lp_tag}: "
+                       f"{shown_b!r}")
+            for arm in sm_i["arms"]:
+                who = (f"null row e = {_g(arm['e'])}" if arm["what"] == "null" else
+                       f"the edit at dose {_g(arm['dose'])}" if arm["what"] == "edit" else
+                       f"control edit {arm['key'].split(':', 1)[1]}")
+                gap = arm["logprob_gap"]
+                before = (f"largest log-probability gap before that {_n(gap['max_abs'], 4)} (mean {_n(gap['mean_abs'], 4)}, "
+                          f"{gap['n']} piece{'' if gap['n'] == 1 else 's'})" if gap["n"] else "no piece before that to compare")
+                a_lp = " [LOOPED]" if (arm.get("loop") or {}).get("looped") else (" [CUT OFF]" if arm.get("cut_off") else "")
+                if arm["same_as_base"]:
+                    out.append(f"{pref}{who}: this row wrote the base row's pieces with its log-probabilities, exactly")
+                elif arm["parts_at"] is None:
+                    out.append(f"{pref}{who}: the base row's pieces, every one; {before.replace(' before that', '')}{a_lp}")
+                else:
+                    a_text = arm["text"]
+                    shown_a = (a_text[:200] + "...") if len(a_text) > 200 else a_text
+                    out.append(f"{pref}{who}: parts from the base row at piece {arm['parts_at']}; {before}; "
+                               f"{'ended' if arm['ended'] else 'did not end'}{a_lp}: {shown_a!r}")
+    sm = result.get("summary")
+    if isinstance(sm, Mapping) and "total_generations" in sm:
+        b = sm["base"]
+        out.append(f"  written summary over {sm['total_generations']} generation"
+                   f"{'' if sm['total_generations'] == 1 else 's'}: base ended {b['ended']}/{b['n']}, "
+                   f"cut off {b['cut_off']}/{b['n']}, looped {b['looped']}/{b['n']}")
+        for key, per in (sm.get("arms") or {}).items():
+            if not key.startswith("edit:"):
+                continue
+            out.append(f"    {_arm_name(key)}: ended {per['ended']}/{per['n']}, cut off {per['cut_off']}/{per['n']}, "
+                       f"looped {per['looped']}/{per['n']}, changed {per['changed_from_base']}/{per['n']} "
+                       f"(rescued loop {per['rescued_from_loop']}, regressed loop {per['regressed_to_loop']})")
+        cr = sm.get("controls_range")
+        if cr:
+            out.append(f"    {cr['count']} control edit{'' if cr['count'] == 1 else 's'}: "
+                       f"looped {cr['looped_min']}..{cr['looped_max']}, "
+                       f"cut off {cr['cut_off_min']}..{cr['cut_off_max']}, "
+                       f"changed {cr['changed_min']}..{cr['changed_max']}")
     return out
 
 
@@ -2143,7 +2981,7 @@ def lines(result: dict) -> List[str]:
     plan = result.get("plan") if isinstance(result.get("plan"), Mapping) else {}
     out = [f'reading "{result.get("name")}" ({result.get("kind")}): {result.get("status")}']
     counts = (result.get("summary") or {}).get("items")
-    if counts:  # a reading is "ok" when its mechanism was sound, whatever its items came to: say how many were kept
+    if isinstance(counts, Mapping) and "kept" in counts and "asked" in counts:
         out[0] += f", {counts['kept']} of {counts['asked']} item{'' if counts['asked'] == 1 else 's'} kept"
     if result.get("why"):
         out.append(f"  {result['why']}")

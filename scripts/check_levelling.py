@@ -697,9 +697,11 @@ def check_gate(Fb: Box, Pb: Box) -> None:
            we.MAX_PAYLOAD_BYTES, we.MAX_DOSE, we.EDITS_ENV) == (16, 4096, 1024, 64, 64.0, 64.0, 256 * 2**20, 4.0, EDITS_VAR),
           "the caps of 2.2 as the spec ships them")
     with part("2: the table's rows, in order"):
-        says(gate(lambda: we.rows(3, "gate_proj", [1], row_vec)), S_ROWS, "a row edit is refused as 1b's")
-        says(recipe({"layer": 3, "rows": [1]}), S_ROWS, "a recipe term with \"rows\" is refused in the same words")
-        says(recipe({"layer": 3, "remove_direction": [0.0] * D}), S_DIRECTION, "a recipe term with \"remove_direction\" is refused as 1b's")
+        check(gate(lambda: we.rows(3, "gate_proj", [1], row_vec)) is None, "a row edit on gate_proj is accepted in 1b")
+        says(gate(lambda: we.rows(3, "down_proj", [1], row_vec)),
+             "A row edit changes what a neuron reads, so it names gate_proj or up_proj; layers.3.mlp.down_proj is not one.",
+             "a row edit on down_proj is refused")
+        check(recipe({"layer": 3, "remove_direction": [1]}) is not None, "a recipe term with \"remove_direction\" missing its direction file is refused")
         got = gate(lambda: we.lowrank(3, A2, B2, which="self_attn.q_proj"))
         says(got, S_ATTENTION, "an attention linear is refused as 1b's")
         check(got is not None and "q_proj" in got, "the attention refusal names the linear")
@@ -781,7 +783,7 @@ def check_gate(Fb: Box, Pb: Box) -> None:
             for k, v in kept.items():
                 setattr(we, k, v)
     with part("2: two rules broken, the earlier row's words"):
-        says(gate(lambda: we.rows(3, "self_attn.q_proj", [1], row_vec)), S_ROWS, "a row edit on an attention linear: the row edit's words")
+        says(gate(lambda: we.rows(3, "self_attn.q_proj", [1], row_vec)), S_ATTENTION, "a row edit on an attention linear: the attention refusal's words")
         says(gate(lambda: we.silence(NL + 3, [5, 5])), f"Layer {NL + 3} does not exist: layers count from 0 to {NL - 1} here (page layers 1 to {NL}).",
              "a layer that does not exist and a neuron named twice: the layer's words")
         says(gate(lambda: we.scale(3, [N + 372], 100.0)), f"Neuron {N + 372} does not exist: layer 3 (page layer 4) has {N} (0 to {N - 1}).",
@@ -1906,7 +1908,7 @@ TOP = {"v", "kind", "name", "status", "why", "void", "base_after", "edit", "base
        "controls", "items", "summary", "seconds", "peak_gib", "book"}
 ITEM_BLOCK = {"id", "name", "question", "answer", "system", "prompt_ids", "answer_ids", "pieces", "prompt_pieces", "scored"}
 CLASS = {"rows", "forwards", "lower", "restart_from", "untouched_rows_identical", "repeats_identical", "base", "arms", "floor", "rank", "folded", "peak_gib"}
-ARM_ANY = {"key", "what", "e", "dose", "factor", "edit_id", "forward", "row", "non_finite", "same_as_base", "metrics"}
+ARM_ANY = {"key", "what", "e", "dose", "factor", "edit_id", "forward", "row", "non_finite", "same_as_base", "delivered", "metrics"}
 ARM_MUST = {"key", "what", "forward", "row", "non_finite", "same_as_base", "metrics"}
 STATS = {"mean", "median", "max_abs", "above_1", "n"}
 FOLDED = {"taken", "why", "dose", "base_from", "restart", "rows_identical", "metrics", "per_row", "gap", "between_kl_mean", "same_bits", "seconds"}
@@ -3160,7 +3162,449 @@ def check_cli() -> None:
     check(not new, "14: and no ledger, saved edit or stand-in folder of the kernel's was written anywhere under the repository, however deep" + (f" ({new[:4]})" if new else ""))
 
 
-# --------------------------------------------------------------------------------------------- 15. the words
+# ----------------------------------------------------------------------------------- 15. slice 1b and bugfixes
+
+
+def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
+    """Slice 1b features (row edits on gate_proj/up_proj, masked direction removal, quiet_mask, writers,
+    capture_direction, delivered, other_sites_matched / same_site / sham_target controls, stack, edit_diagnostics)
+    and 1a bugfixes, on both F (float32) and P (packed bf16)."""
+    items_f = items_of(Fb, (0, 1))
+    items_p = items_of(Pb, (0, 1))
+    d1b = TMP / "1b"
+    d1b.mkdir(parents=True, exist_ok=True)
+    paired_base = {"kind": "paired", "rows": {"small": 8, "large": 16}, "bars": {"item_gate": GATE},
+                   "controls": {"count": 4, "seed": 1}, "items": ["orange"]}
+
+    with part("15a: 1a bugfixes"):
+        # 1. Cumulative recipe file-size preflight refused unread before reading a second corrupt file
+        f1, f2 = d1b / "cum1.npy", d1b / "cum2.npy"
+        np.save(f1, vec(101, 200, D))  # ~51 KiB
+        f2.write_bytes(b"NOT A VALID NPY PAYLOAD" * 2400)  # ~55 KiB
+        kept_cap = we.MAX_PAYLOAD_BYTES
+        try:
+            # Make each individual file pass (size <= cap + 4096) while their sum exceeds cap + 4096 * 2
+            s1, s2 = f1.stat().st_size, f2.stat().st_size
+            we.MAX_PAYLOAD_BYTES = max(s1, s2)
+            assert s1 <= we.MAX_PAYLOAD_BYTES + 4096 and s2 <= we.MAX_PAYLOAD_BYTES + 4096
+            assert s1 + s2 > we.MAX_PAYLOAD_BYTES + 4096 * 2
+            got = words_of(lambda: we.from_recipe(
+                {"terms": [{"layer": 2, "add": list(range(200)), "vectors": "cum1.npy"},
+                           {"layer": 3, "add": [2], "vectors": "cum2.npy"}]}, d1b), we.Refused)
+            check(got is not None and "MiB of arrays" in got,
+                  f"15a: cumulative recipe file-size preflight refuses unread before opening a bad second file ({got!r})")
+        finally:
+            we.MAX_PAYLOAD_BYTES = kept_cap
+        # 2. Lowrank -0.0 merge-order invariance
+        A_p = np.zeros((1, N), dtype=np.float32)
+        A_n = np.full((1, N), -0.0, dtype=np.float32)
+        A_p[0, 3] = 0.05
+        A_n[0, 3] = 0.05
+        B_p = np.zeros((D, 1), dtype=np.float32)
+        B_n = np.full((D, 1), -0.0, dtype=np.float32)
+        B_p[4, 0] = 0.05
+        B_n[4, 0] = 0.05
+        A_q, B_q = vec(102, 1, N, size=0.05), vec(103, D, 1, size=0.05)
+        ids_lr = {
+            Fb.build(we.lowrank(2, A_p, B_p), we.lowrank(2, A_q, B_q)).id,
+            Fb.build(we.lowrank(2, A_n, B_n), we.lowrank(2, A_q, B_q)).id,
+            Fb.build(we.lowrank(2, A_q, B_q), we.lowrank(2, A_n, B_n)).id,
+            Fb.build(we.lowrank(2, A_q, B_q), we.lowrank(2, A_p, B_p)).id,
+        }
+        check(len(ids_lr) == 1, f"15a: lowrank merge order and id are invariant to -0.0 ({len(ids_lr)} distinct ids)")
+        # 3. _edit_words when 1.0 not in doses
+        r_half_sil = lv.read(hP, {**paired_base, "name": "1b half dose sil", "doses": [0.5],
+                                  "controls": {"count": 0, "seed": 0},
+                                  "edit": {"terms": [{"layer": 2, "silence": [5]}]}}, items_p)
+        printed(r_half_sil)
+        r_half_sc = lv.read(hP, {**paired_base, "name": "1b half dose scale", "doses": [0.5],
+                                 "controls": {"count": 0, "seed": 0},
+                                 "edit": {"terms": [{"layer": 2, "scale": [5], "factor": 3.0}]}}, items_p)
+        printed(r_half_sc)
+        check(r_half_sil["status"] == "ok" and "silenced" in " ".join(lv.lines(r_half_sil)),
+              f"15a: _edit_words identifies silencing when dose 1.0 is absent ({lv.lines(r_half_sil)[1]!r})")
+        check(r_half_sc["status"] == "ok" and "(by 3)" in " ".join(lv.lines(r_half_sc)),
+              f"15a: _edit_words recovers scale factor when dose 1.0 is absent ({lv.lines(r_half_sc)[1]!r})")
+        # 4. Malformed edit.base refused cleanly (no AttributeError)
+        e_ok = Pb.build(we.silence(2, [3]))
+        bad_base = we.Edit(e_ok.id, e_ok.terms, "not-a-dict", "", e_ok.report)  # type: ignore[arg-type]
+        r_bad_base = lv.read(hP, {**paired_base, "name": "1b bad edit base", "edit": {"terms": [{"layer": 2, "silence": [3]}]}},
+                             items_p, edit=bad_base)
+        check(r_bad_base["status"] == "refused" and "base" in str(r_bad_base["why"]).lower(),
+              f"15a: malformed edit.base is refused cleanly ({r_bad_base['status']}: {r_bad_base['why']!r})")
+        # 5. level_book.entries(start=-1) raises ValueError immediately
+        check(words_of(lambda: lb.entries(start=-1), ValueError) is not None,
+              "15a: level_book.entries(start=-1) raises ValueError immediately")
+        # 6. level_book.driver_view strips item text, token ids, and per-item rows
+        raw_entry = book_entry(r_half_sil["book"]["seq"])
+        dv = lb.driver_view(raw_entry)
+        dv_json = json.dumps(dv)
+        check(dv["seq"] == raw_entry["seq"] and dv["body"]["items"] == {"count": 1, "redacted": True}
+              and dv["body"]["summary"] == raw_entry["body"]["summary"]
+              and items_p["orange"].answer not in dv_json and "prompt_ids" not in dv_json,
+              "15a: driver_view strips item text, token ids and per-item rows while keeping summary and metadata")
+        # 7. CLI book --seq K --driver-view
+        cli_env = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1",
+                   BOOK_VAR: os.environ[BOOK_VAR], EDITS_VAR: os.environ[EDITS_VAR]}
+        code, out, err = run_cli(["book", "--seq", str(r_half_sil["book"]["seq"]), "--driver-view"], cli_env)
+        dv_cli = json.loads(out[out.index("{"):out.rindex("}") + 1]) if code == 0 and "{" in out else {}
+        check(code == 0 and (dv_cli.get("body") or {}).get("items", {}).get("redacted") is True
+              and items_p["orange"].answer not in out,
+              f"15a: CLI book --seq --driver-view outputs redacted entry (exit {code}: {err[-200:]})")
+        # 8. Signed control arm sign-flip reporting in lv.lines
+        r_flip = copy.deepcopy(r_half_sil)
+        r_flip["plan"]["controls"]["count"] = 1
+        r_flip["items"][0]["stability"]["metrics"]["own"]["controls"] = {
+            "control:0": {"small": 0.5, "large": -0.5, "ratio": 1.0}
+        }
+        check("opposite-sign" in " ".join(lv.lines(r_flip)),
+              "15a: lv.lines surfaces opposite-sign signed control arms clear of the floor")
+
+    with part("15b: row edits on gate_proj and up_proj"):
+        # Gate rules: gate_proj & up_proj accepted; down_proj refused; missing which in recipe refused;
+        # uniform positive scale refused on up_proj and ALLOWED on gate_proj; same neuron on gate_proj + up_proj allowed
+        check(words_of(lambda: Fb.build(we.scale_rows(2, "up_proj", list(range(N)), 2.0)), we.Refused) is not None,
+              "15b: uniform positive scale of all rows on up_proj is refused")
+        check(words_of(lambda: Fb.build(we.scale_rows(2, "gate_proj", list(range(N)), 2.0)), we.Refused) is None,
+              "15b: uniform positive scale of all rows on gate_proj is allowed (gelu is non-linear)")
+        check(words_of(lambda: Fb.build(we.silence_rows(2, "gate_proj", [4]), we.silence_rows(2, "up_proj", [4])), we.Refused) is None,
+              "15b: editing the same neuron row on both gate_proj and up_proj is allowed")
+        check(words_of(lambda: Fb.build(we.silence_rows(2, "gate_proj", [4]), we.scale_rows(2, "gate_proj", [4], 2.0)), we.Refused) is not None,
+              "15b: naming the same row twice on one linear is refused")
+        check(words_of(lambda: we.from_recipe({"terms": [{"layer": 2, "silence_rows": [4]}]}, d1b), we.Refused) is not None,
+              "15b: row recipe term missing 'which' is refused")
+        # Recipe round-trip & save/load round-trip
+        rv = vec(104, 2, D, size=0.1)
+        np.save(d1b / "rows_v.npy", rv)
+        rec_rows = {"terms": [{"layer": 2, "which": "gate_proj", "silence_rows": [3]},
+                              {"layer": 2, "which": "up_proj", "set_rows": [5, 7], "vectors": "rows_v.npy"}]}
+        rf = we.recipe_facts(rec_rows, d1b)
+        e_rows_p = Pb.build(*we.from_recipe(rec_rows, d1b))
+        check(rf == we.edit_facts(e_rows_p) and e_rows_p.has_rows() and e_rows_p.has_vectors() and we.can_fold(Pb.lm, e_rows_p) is None,
+              f"15b: recipe_facts == edit_facts for row edit, and P can fold it ({rf})")
+        saved_dir = we.save(e_rows_p)
+        loaded_rows = we.load(saved_dir, Pb.lm, model_id=Pb.model_id, weights_id=None)
+        check(loaded_rows.id == e_rows_p.id and we.gate_again(Pb.lm, e_rows_p, model_id=Pb.model_id, weights_id=None).id == e_rows_p.id,
+              "15b: row edit save/load and gate_again preserve exact id")
+        # By bits on P: silence_rows, scale_rows(2.0), scale_rows(-0.5) equal folded _memit_row_overlays at 12 and 32 rows;
+        # dose 0 equals base row by bits
+        ids_p = torch.tensor([list(items_p["orange"].ids)], dtype=torch.long)
+        for which in ("gate_proj", "up_proj"):
+            for tag, spec in (("sil", we.silence_rows(2, which, [3, 17])),
+                              ("x2", we.scale_rows(2, which, [3, 17], 2.0)),
+                              ("xm05", we.scale_rows(2, which, [3, 17], -0.5))):
+                ed = Pb.build(spec)
+                for R in (12, 32):
+                    x = ids_p.expand(R, -1)
+                    with we.per_row(Pb.lm, [None, we.Arm(ed, 1.0), we.Arm(ed, 0.0)] + [None] * (R - 3)):
+                        Hpr = Pb.lm(input_ids=x, use_cache=False).last_hidden_state
+                    with we.folded(Pb.lm, ed, 1.0):
+                        Hfo = Pb.lm(input_ids=x, use_cache=False).last_hidden_state
+                    check(torch.equal(Hpr[1], Hfo[0]) and torch.equal(Hpr[2], Hpr[0]) and torch.equal(Hpr[-1], Hpr[0]),
+                          f"15b (P): {which} {tag} at {R} rows equals folded _memit_row_overlays by bits, dose 0 and untouched equal base")
+        # Recomputed set_rows / add_to_rows / non-exact scale_rows(1.5): zero cancellation + matches folded & weight copy
+        for which in ("gate_proj", "up_proj"):
+            e_set = Pb.build(we.set_rows(2, which, [4, 9], vec(105, 2, D, size=0.05)))
+            e_add = Pb.build(we.add_to_rows(2, which, [4, 9], vec(106, 2, D, size=0.05)))
+            e_sc = Pb.build(we.scale_rows(2, which, [4, 9], 1.5))
+            x = ids_p.expand(8, -1)
+            for tag, ed in (("set", e_set), ("add", e_add), ("scale1.5", e_sc)):
+                with we.per_row(Pb.lm, [None, we.Arm(ed, 1.0), we.Arm(ed, 0.0)] + [None] * 5):
+                    Hpr = Pb.lm(input_ids=x, use_cache=False).last_hidden_state
+                with we.folded(Pb.lm, ed, 1.0):
+                    Hfo = Pb.lm(input_ids=x, use_cache=False).last_hidden_state
+                gap = float((Hpr[1].float() - Hfo[0].float()).abs().max())
+                check(torch.equal(Hpr[2], Hpr[0]) and torch.equal(Hpr[-1], Hpr[0]) and gap < 0.1,
+                      f"15b (P): recomputed {which} {tag} matches folded (max diff {gap:.4g}) and dose 0 is base by bits")
+        # Zero catastrophic cancellation test on F: set a row to tiny 1e-6 vector while base row is large (~100)
+        mod_g = Fb.lm.layers[2].mlp.gate_proj
+        orig_row = mod_g.weight.data[10].clone()
+        try:
+            mod_g.weight.data[10] = torch.full((D,), 100.0, dtype=mod_g.weight.dtype)
+            tiny = np.full((1, D), 1e-6, dtype=np.float32)
+            e_tiny = Fb.build(we.set_rows(2, "gate_proj", [10], tiny))
+            seen_g: Dict[str, torch.Tensor] = {}
+            hk_x = mod_g.register_forward_pre_hook(lambda _m, a: seen_g.__setitem__("x", a[0].detach().clone()))
+            try:
+                x_f = torch.tensor([list(items_f["orange"].ids)] * 4, dtype=torch.long)
+                with we.per_row(Fb.lm, [None, we.Arm(e_tiny, 1.0), we.Arm(e_tiny, 0.0), None]):
+                    hk_y = mod_g.register_forward_hook(lambda _m, _a, o: seen_g.__setitem__("y", o.detach().clone()))
+                    try:
+                        Fb.lm(input_ids=x_f, use_cache=False)
+                    finally:
+                        hk_y.remove()
+            finally:
+                hk_x.remove()
+            want_y = F.linear(seen_g["x"][1], torch.from_numpy(tiny))[:, 0]
+            got_y = seen_g["y"][1, :, 10]
+            err_cancel = float((got_y - want_y).abs().max())
+            check(err_cancel < 1e-10, f"15b (F): recomputed set_rows has zero catastrophic cancellation (err {err_cancel:.2e})")
+        finally:
+            mod_g.weight.data[10].copy_(orig_row)
+        # Decode step with row edits on P
+        e_rw = Pb.build(we.set_rows(2, "up_proj", [6, 12], vec(107, 2, D, size=0.1)))
+        prompt = list(items_p["orange"].prompt_ids)
+        stop = [int(t) for t in Pb.rt.end_of_turn_ids()]
+        base_w = list(ao.write_rows(Pb.lm, Pb.rt.lm_head_weight, [prompt] * 4, None, max_new=8, stop_ids=stop,
+                                    bos_id=Pb.tok.bos_token_id, softcap=ao.softcap_of(Pb.hf)))
+        with we.per_row(Pb.lm, [None, we.Arm(e_rw, 1.0), we.Arm(e_rw, 0.0), None]):
+            hook_w = list(ao.write_rows(Pb.lm, Pb.rt.lm_head_weight, [prompt] * 4, None, max_new=8, stop_ids=stop,
+                                        bos_id=Pb.tok.bos_token_id, softcap=ao.softcap_of(Pb.hf)))
+        b0 = [(s.token_id, s.logprob) for s in base_w if s.row == 0]
+        h0 = [(s.token_id, s.logprob) for s in hook_w if s.row == 0]
+        h2 = [(s.token_id, s.logprob) for s in hook_w if s.row == 2]
+        h3 = [(s.token_id, s.logprob) for s in hook_w if s.row == 3]
+        check(b0 == h0 == h2 == h3, "15b (P): decode steps under row edit leave base, dose-0 and untouched rows exact")
+        # End-to-end lv.read with row edit and folded twin on P
+        r_row = lv.read(hP, {**paired_base, "name": "1b row edit", "edit": rec_rows, "folded": "always"},
+                        items_p, base_dir=d1b)
+        printed(r_row)
+        check(r_row["status"] == "ok" and r_row["base_after"] is True
+              and r_row["items"][0]["classes"]["small"]["folded"]["taken"] is True
+              and "gate_proj" in " ".join(lv.lines(r_row)) and "up_proj" in " ".join(lv.lines(r_row)),
+              f"15b (P): end-to-end paired reading of row edit succeeds with folded twin ({r_row['status']}: {r_row['why']})")
+
+    with part("15c: quiet_mask, writers, capture_direction and masked remove_direction"):
+        # quiet_mask detects tiny w_post entries and extra_mask
+        ln2 = Fb.lm.layers[2].post_feedforward_layernorm
+        orig_wp = ln2.weight.data.clone()
+        try:
+            med_w = float(orig_wp.abs().median())
+            ln2.weight.data[:4] = 0.001 * med_w
+            qm = we.quiet_mask(Fb.lm, 2)
+            check(qm.dtype == bool and not qm.flags.writeable and list(np.nonzero(qm)[0]) == [0, 1, 2, 3],
+                  f"15c: quiet_mask masks the 4 tiny w_post entries ({list(np.nonzero(qm)[0])})")
+            extra = np.zeros(D, dtype=bool)
+            extra[10] = True
+            qm2 = we.quiet_mask(Fb.lm, 2, extra_mask=extra)
+            check(list(np.nonzero(qm2)[0]) == [0, 1, 2, 3, 10], "15c: quiet_mask unions extra_mask")
+            # Direction with >25% energy in quiet mask is refused by both writers() and remove_direction()
+            u_bad = np.zeros(D, dtype=np.float32)
+            u_bad[0] = 1.0
+            u_bad[5] = 1.0  # 50% energy in quiet dim 0 -> > 25%
+            check(words_of(lambda: we.writers(Fb.lm, 2, u_bad, 5), we.Refused) is not None,
+                  "15c: writers refuses direction with >25% quiet-mask energy")
+            check(words_of(lambda: Fb.build(we.remove_direction(2, [3, 5], u_bad)), we.Refused) is not None,
+                  "15c: remove_direction refuses direction with >25% quiet-mask energy")
+            # Valid direction with small quiet energy (<25%) is projected off quiet mask
+            u_ok = vec(108, D, size=1.0)
+            u_ok[:4] = 0.05  # tiny energy in quiet dims
+            # Check writers against brute force
+            top_w = we.writers(Fb.lm, 2, u_ok, 5)
+            wp64 = ln2.weight.detach().double().numpy()
+            u_m = u_ok.astype(np.float64).copy()
+            u_m[qm] = 0.0
+            u_m /= np.linalg.norm(u_m)
+            W_d = gw.dense(Fb.mod(2)).double().numpy()
+            bf_scores = (u_m * wp64) @ W_d
+            bf_top = sorted(range(N), key=lambda n: (-abs(float(bf_scores[n])), n))[:5]
+            check([n for n, _s in top_w] == bf_top and all(close(s, bf_scores[n], 1e-5) for n, s in top_w),
+                  f"15c: writers matches brute-force stream-side projection ({top_w[:3]})")
+            # Check remove_direction exact orthogonality & zero delta on quiet mask
+            target_ns = [n for n, _s in top_w[:3]]
+            e_dr = Fb.build(we.remove_direction(2, target_ns, u_ok))
+            t_dr = e_dr.terms[0]
+            Wc = gw.dense_cols(Fb.mod(2), torch.tensor(t_dr.idx, dtype=torch.long)).double().numpy()
+            dW = t_dr.vectors.astype(np.float64)
+            orth = ((Wc + dW) * wp64[None, :]) @ u_m
+            check(bool((dW[:, qm] == 0.0).all()) and float(np.abs(orth).max()) < 1e-5,
+                  f"15c: remove_direction leaves quiet dims identically 0 and makes (w_post*(W+dW)).u_m == 0 (max {np.abs(orth).max():.2e})")
+            dr_rep = e_dr.report.get("direction_removal")
+            check(isinstance(dr_rep, list) and len(dr_rep) == 1 and dr_rep[0]["masked_dims"] == 4
+                  and {"quiet_share", "raw_norm", "stream_norm", "stream_rel_change"} <= set(dr_rep[0]),
+                  f"15c: remove_direction report records quiet share and raw + stream norms ({dr_rep})")
+            # Save/load & gate_again round-trip
+            sd = we.save(e_dr)
+            ld = we.load(sd, Fb.lm, model_id=Fb.model_id, weights_id=None)
+            check(ld.id == e_dr.id and ld.report.get("direction_removal") == dr_rep,
+                  "15c: remove_direction edit round-trips through save/load preserving id and direction_removal report")
+        finally:
+            ln2.weight.data.copy_(orig_wp)
+        # capture_direction against manual hook capture
+        u_cap = lv.capture_direction(hF, [items_f["orange"]], [items_f["who"]], 2, where="resid_post", at="end")
+        box_m: Dict[str, torch.Tensor] = {}
+        hk_m = Fb.lm.layers[2].register_forward_hook(lambda _m, _a, o: box_m.__setitem__("h", (o[0] if isinstance(o, tuple) else o).detach().clone()))
+        try:
+            Fb.lm(input_ids=torch.tensor([list(items_f["orange"].ids)], dtype=torch.long), use_cache=False)
+            ha = box_m["h"][0, -1].double().numpy()
+            Fb.lm(input_ids=torch.tensor([list(items_f["who"].ids)], dtype=torch.long), use_cache=False)
+            hb = box_m["h"][0, -1].double().numpy()
+        finally:
+            hk_m.remove()
+        check(u_cap.shape == (D,) and u_cap.dtype == np.float32 and float(np.abs(u_cap - (ha - hb)).max()) < 1e-5
+              and words_of(lambda: we.assert_base(Fb.lm, hF.hooks_at_load), we.NotBase) is None,
+              "15c: capture_direction matches manual hook capture and leaves model base")
+        # Recipe remove_direction + end-to-end paired reading on P with folded twin
+        u_p = lv.capture_direction(hP, [items_p["orange"]], [items_p["who"]], 2, where="resid_post", at="span_mean")
+        np.save(d1b / "dir_u.npy", u_p)
+        u_sha = hashlib.sha256((d1b / "dir_u.npy").read_bytes()).hexdigest()
+        top_p = [n for n, _s in we.writers(Pb.lm, 2, u_p, 4)]
+        rec_dr = {"terms": [{"layer": 2, "remove_direction": top_p, "direction": "dir_u.npy", "sha256": u_sha}]}
+        check(words_of(lambda: we.from_recipe({"terms": [{"layer": 2, "remove_direction": [0], "direction": "../escape.npy"}]}, d1b),
+                       we.Refused) is not None, "15c: remove_direction recipe refuses path traversal")
+        r_dr = lv.read(hP, {**paired_base, "name": "1b remove_direction", "edit": rec_dr, "folded": "always"},
+                       items_p, base_dir=d1b)
+        printed(r_dr)
+        check(r_dr["status"] == "ok" and r_dr["base_after"] is True
+              and r_dr["items"][0]["classes"]["small"]["folded"]["taken"] is True
+              and "direction removal" in " ".join(lv.lines(r_dr)),
+              f"15c (P): end-to-end remove_direction reading succeeds with folded twin ({r_dr['status']}: {r_dr['why']})")
+
+    with part("15d: delivered metric against brute force"):
+        e_sil = Pb.build(we.silence(2, [3, 40]))
+        r_del = lv.read(hP, {**paired_base, "name": "1b delivered", "doses": [1.0, 0.0],
+                             "controls": {"count": 2, "seed": 0},
+                             "edit": {"terms": [{"layer": 2, "silence": [3, 40]}]}}, items_p)
+        printed(r_del)
+        it_o = items_p["orange"]
+        lo = len(it_o.prompt_ids) - 1
+        T = len(it_o.ids)
+        arm1 = next(a for a in r_del["items"][0]["classes"]["small"]["arms"] if a["key"] == "edit:1.0")
+        arm0 = next(a for a in r_del["items"][0]["classes"]["small"]["arms"] if a["key"] == "edit:0.0")
+        # Brute-force layer-2 output capture at 8 rows
+        keys8 = lv.layout([1.0, 0.0], 2, list(lv.NULL_E), 8)[0]
+        ctls = we.control_edits(e_sil, Pb.lm, 0, 2)
+        progs = [None if k is None else (we.Null(2, float(k.split(":")[1])) if k.startswith("null:")
+                                         else we.Arm(e_sil, float(k.split(":")[1])) if k.startswith("edit:")
+                                         else we.Arm(ctls[int(k.split(":")[1])], 1.0)) for k in keys8]
+        box_d: Dict[str, torch.Tensor] = {}
+        hk_d = Pb.lm.layers[2].register_forward_hook(lambda _m, _a, o: box_d.__setitem__("h", (o[0] if isinstance(o, tuple) else o).detach().clone()))
+        try:
+            with we.per_row(Pb.lm, progs):
+                Pb.lm(input_ids=torch.tensor([list(it_o.ids)] * 8, dtype=torch.long), use_cache=False)
+        finally:
+            hk_d.remove()
+        hs = box_d["h"][:, lo:T - 1, :].float()
+        bf_del = float(((hs[arm1["row"]] - hs[0]).norm(dim=-1) / hs[0].norm(dim=-1).clamp_min(1e-12)).mean())
+        check(arm0["delivered"] == 0.0 and arm1["delivered"] is not None and arm1["delivered"] > 0.0
+              and close(arm1["delivered"], bf_del, 1e-5) and "delivered" in " ".join(lv.lines(r_del)),
+              f"15d (P): delivered matches brute-force layer output ({arm1['delivered']} vs {bf_del}, dose 0 is {arm0['delivered']})")
+
+    with part("15e: control families (same_site, other_sites_matched, sham_target)"):
+        # 1. same_site on a rank-1 remove_direction edit (with quiet mask dims)
+        ln2 = Fb.lm.layers[2].post_feedforward_layernorm
+        orig_wp = ln2.weight.data.clone()
+        try:
+            ln2.weight.data[:4] = 0.001 * float(orig_wp.abs().median())
+            qm = we.quiet_mask(Fb.lm, 2)
+            u_r1 = vec(109, D, size=1.0)
+            u_r1[:4] = 0.0
+            e_r1 = Fb.build(we.remove_direction(2, [3, 7, 11, 15], u_r1))
+            ss = we.same_site_controls(e_r1, Fb.lm, seed=5, count=4)
+            wp64 = ln2.weight.detach().double().numpy()
+            dS_edit = e_r1.terms[0].vectors.astype(np.float64) * wp64[None, :]
+            enorms = np.linalg.norm(dS_edit, axis=1)
+            ok_ss = len(ss) == 4 and len({c.id for c in ss}) == 4
+            for c in ss:
+                tc = c.terms[0]
+                dW_c = tc.vectors.astype(np.float64)
+                dS_c = dW_c * wp64[None, :]
+                cnorms = np.linalg.norm(dS_c, axis=1)
+                _u, sv, _vt = np.linalg.svd(dS_c, full_matrices=False)
+                r1_share = float(sv[0] ** 2 / (sv ** 2).sum()) if float((sv ** 2).sum()) > 0 else 0.0
+                ok_ss = (ok_ss and np.array_equal(tc.idx, e_r1.terms[0].idx) and bool((dW_c[:, qm] == 0.0).all())
+                         and bool(np.allclose(cnorms, enorms, rtol=1e-4, atol=1e-6)) and r1_share >= 1.0 - 1e-5)
+            check(ok_ss, "15e: same_site controls share exact sites, have zero quiet energy, match stream norms and preserve rank-1 coherence")
+        finally:
+            ln2.weight.data.copy_(orig_wp)
+        r_ss = lv.read(hP, {**paired_base, "name": "1b same_site", "controls": {"family": "same_site", "count": 4, "seed": 2},
+                            "edit": {"terms": [{"layer": 2, "silence": [3, 40]}]}}, items_p)
+        printed(r_ss)
+        check(r_ss["status"] == "ok" and r_ss["controls"]["family"] == "same_site" and r_ss["controls"]["matched"] is True
+              and len(r_ss["controls"]["ids"]) == 4 and "same-site control edits" in " ".join(lv.lines(r_ss)),
+              f"15e (P): end-to-end same_site reading succeeds ({r_ss['status']}: {r_ss['why']})")
+        # 2. other_sites_matched: estimate prices pre-pass, reading matches scores, tight tolerance voids
+        e_m_rec = {"terms": [{"layer": 2, "silence": [3]}]}
+        pl_unm = lv.normalise({**paired_base, "name": "m1", "edit": e_m_rec, "controls": {"count": 4, "seed": 0}},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        pl_mat = lv.normalise({**paired_base, "name": "m2", "edit": e_m_rec,
+                               "controls": {"family": "other_sites_matched", "count": 4, "seed": 0, "tolerance": 3.0}},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        pieces_o = [(len(items_p["orange"].ids), len(items_p["orange"].prompt_ids))]
+        est_unm = lv.estimate(pl_unm, pieces_o, n_layers=NL, facts=we.recipe_facts(e_m_rec, d1b))
+        est_mat = lv.estimate(pl_mat, pieces_o, n_layers=NL, facts=we.recipe_facts(e_m_rec, d1b))
+        check(est_mat["forwards"] == est_unm["forwards"] + len(pieces_o)
+              and est_mat["row_positions"] == est_unm["row_positions"] + pieces_o[0][0],
+              f"15e: estimate prices the 1-row pre-pass for other_sites_matched ({est_mat['forwards']} vs {est_unm['forwards']})")
+        r_mat = lv.read(hP, {**paired_base, "name": "1b matched ok", "edit": e_m_rec,
+                             "controls": {"family": "other_sites_matched", "count": 4, "seed": 0, "tolerance": 3.0}},
+                        items_p)
+        printed(r_mat)
+        cov_ok = (r_mat.get("controls") or {}).get("coverage") or {}
+        check(r_mat["status"] == "ok" and r_mat["controls"]["family"] == "other_sites_matched"
+              and r_mat["controls"]["matched"] is True and cov_ok.get("sufficient") is True
+              and len(set(r_mat["controls"]["ids"])) == 4 and "matched control edits" in " ".join(lv.lines(r_mat)),
+              f"15e (P): other_sites_matched succeeds with sufficient distinct controls ({r_mat['status']}, {cov_ok})")
+        r_mat_void = lv.read(hP, {**paired_base, "name": "1b matched void", "edit": e_m_rec,
+                                  "controls": {"family": "other_sites_matched", "count": 20, "seed": 0, "tolerance": 1.0001}},
+                             items_p)
+        cov_bad = (r_mat_void.get("controls") or {}).get("coverage") or {}
+        check(r_mat_void["status"] == "void" and (r_mat_void.get("void") or {}).get("code") == "insufficient_matched_controls"
+              and cov_bad.get("sufficient") is False and r_mat_void["base_after"] is True,
+              f"15e (P): other_sites_matched voids cleanly when coverage fails ({r_mat_void['status']}, {r_mat_void['void']})")
+        # Lowrank-only edit refused with other_sites_matched before any forward
+        np.save(d1b / "lrA.npy", vec(110, 2, N, size=0.1))
+        np.save(d1b / "lrB.npy", vec(111, D, 2, size=0.1))
+        r_lr_mat = lv.read(hP, {**paired_base, "name": "1b lr matched refused",
+                                "edit": {"terms": [{"layer": 2, "lowrank": {"A": "lrA.npy", "B": "lrB.npy"}}]},
+                                "controls": {"family": "other_sites_matched", "count": 2, "seed": 0}},
+                           items_p, base_dir=d1b)
+        check(r_lr_mat["status"] == "refused", f"15e: lowrank-only edit refused for other_sites_matched ({r_lr_mat['status']})")
+        # 3. sham_target (including a sham at a lower layer than the main edit -> L0 lowers to 1)
+        shams = [{"terms": [{"layer": 1, "silence": [7]}]},
+                 {"terms": [{"layer": 2, "silence": [19]}]},
+                 {"terms": [{"layer": 3, "silence": [25]}]}]
+        r_sham = lv.read(hP, {**paired_base, "name": "1b sham_target",
+                              "edit": {"terms": [{"layer": 3, "silence": [5]}]},
+                              "controls": {"family": "sham_target", "shams": shams}}, items_p)
+        printed(r_sham)
+        check(r_sham["status"] == "ok" and r_sham["controls"]["family"] == "sham_target"
+              and r_sham["controls"]["count"] == 3 and len(r_sham["controls"]["ids"]) == 3
+              and r_sham["items"][0]["classes"]["small"]["restart_from"] == 1
+              and "sham-target control edits" in " ".join(lv.lines(r_sham)),
+              f"15e (P): sham_target succeeds and lowers restart_from to lowest sham layer ({r_sham['status']}, "
+              f"restart_from={r_sham['items'][0]['classes']['small']['restart_from']})")
+
+    with part("15f: stack and edit_diagnostics"):
+        e1 = Fb.build(we.scale(2, [3, 5], [2.0, 0.5]))
+        e2 = Fb.build(we.scale(2, [5, 8], [1.5, 3.0]))
+        st12 = we.stack(Fb.lm, [e1, e2], model_id=Fb.model_id, weights_id=None, note="stacked")
+        st21 = we.stack(Fb.lm, [e2, e1], model_id=Fb.model_id, weights_id=None)
+        check(st12.id == st21.id and st12.report.get("parents") == [e1.id, e2.id]
+              and list(st12.terms[0].idx) == [3, 5, 8]
+              and np.allclose(st12.terms[0].factor, [2.0, 1.0, 3.0], atol=1e-6),
+              f"15f: stack adds deltas commutatively (scale f1+f2-1: {st12.terms[0].factor.tolist()})")
+        # Overlapping set + set refused; set + add allowed; scale + add allowed
+        es1 = Fb.build(we.set_columns(2, [3], vec(112, 1, D, size=0.1)))
+        es2 = Fb.build(we.set_columns(2, [3], vec(113, 1, D, size=0.1)))
+        ea1 = Fb.build(we.add_to_columns(2, [3], vec(114, 1, D, size=0.1)))
+        check(words_of(lambda: we.stack(Fb.lm, [es1, es2], model_id=Fb.model_id, weights_id=None), we.Refused) is not None,
+              "15f: stack refuses two edits that both set the same neuron")
+        st_sa = we.stack(Fb.lm, [es1, ea1], model_id=Fb.model_id, weights_id=None)
+        check(st_sa.terms[0].op[0] == 1 and np.allclose(st_sa.terms[0].vectors[0], es1.terms[0].vectors[0] + ea1.terms[0].vectors[0], atol=1e-6),
+              "15f: stack(set, add) sums vectors as a set")
+        st_sca = we.stack(Fb.lm, [e1, ea1], model_id=Fb.model_id, weights_id=None)
+        Wc3 = gw.dense_cols(Fb.mod(2), torch.tensor([3]))[0].float().numpy()
+        check(st_sca.terms[0].op[0] == 2 and np.allclose(st_sca.terms[0].vectors[0], (2.0 - 1.0) * Wc3 + ea1.terms[0].vectors[0], atol=1e-5),
+              "15f: stack(scale, add) lowers cleanly to additive delta (f-1)*W + v")
+        # Different bases refused
+        e_p_base = Pb.build(we.silence(2, [3]))
+        check(words_of(lambda: we.stack(Fb.lm, [e1, e_p_base], model_id=Fb.model_id, weights_id=None), we.Refused) is not None,
+              "15f: stack refuses edits from different bases")
+        # edit_diagnostics
+        diag_sil = we.edit_diagnostics(Pb.lm, e_p_base, dose=1.0)
+        diag_d0 = we.edit_diagnostics(Pb.lm, e_p_base, dose=0.0)
+        t_diag = diag_sil["terms"][0]
+        check(diag_d0["terms"][0]["dtype_changed_share"] == 0.0 and t_diag["dtype_changed_share"] > 0.5
+              and {"raw_rel_change", "stream_rel_change", "quiet_mask_energy_share", "write_ceilings", "dtype_changed_share"} <= set(t_diag)
+              and t_diag["write_ceilings"]["max"] == 0.0,  # silenced column has 0 write ceiling
+              f"15f: edit_diagnostics reports changed share, stream rel change, quiet share and write ceilings ({t_diag})")
+        diag_row = we.edit_diagnostics(Pb.lm, Pb.build(we.silence_rows(2, "gate_proj", [3])), dose=1.0)
+        check(diag_row["terms"][0]["kind"] == "rows" and diag_row["terms"][0]["dtype_changed_share"] > 0.5,
+              "15f: edit_diagnostics handles row terms")
+
+
+# --------------------------------------------------------------------------------------------- 16. the words
 
 KEPT_OUT = ("proof", "held", "seal", "erratum", "sighting", "plate", "station", "field book", "chance edit")  # spec, section 1
 # each word, and what is made of it: its plural and its other endings ("proofs", "sealed", "stations", "errata",
@@ -3217,7 +3661,8 @@ def main() -> int:
     run_section(12, "the ledger", ("level_book",), check_book)
     run_section(13, "the estimate", all_three, check_estimate)
     run_section(14, "the command line", ("level_book", "scripts/levelling.py"), check_cli)
-    run_section(15, "the words", (), check_words)
+    run_section(15, "slice 1b and bugfixes", all_three, check_1b, Fb, Pb, hF, hP)
+    run_section(16, "the words", (), check_words)
     took = time.perf_counter() - t0
     print("\nby section (checks that hold, checks that fail):")
     for title, good, bad in TALLY:

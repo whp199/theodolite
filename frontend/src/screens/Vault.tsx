@@ -3,24 +3,26 @@ import { Apparatus, LensRecord, Page, ReadingThrough, Rubric } from "../componen
 import { href, type Route } from "../router";
 import { useTheodoliteStore } from "../store/useTheodoliteStore";
 import { Alidade } from "./vault/Alidade";
+import { ComparePanel } from "./vault/ComparePanel";
 import { ConsolePanel } from "./vault/ConsolePanel";
 import { EditPanel } from "./vault/EditPanel";
 import { FindPanel } from "./vault/FindPanel";
 import { HistoryPanel } from "./vault/HistoryPanel";
+import { parseNeuronList } from "./vault/compare";
 import { parseLql, statementLayerNo } from "./vault/lql";
 import { num } from "./vault/live";
 import { useVaultUi, type VaultTab } from "./vault/ui";
 
 /**
  * The Vault: the catalogue of the model's 1,290,240 feed-forward neurons (approved board Vault.dc.html, folio vi).
- * Find, edit, the ledger and a console in the vault's own query language, all sent through the store's
- * executeLarql to LarqlVaultEngine (backend/larql_vault.py). Layers are counted 1-60 on the page and converted to
- * the vault's count from nought (repo index) only in the statements.
+ * Find, edit, side-by-side compare/replay, the ledger and a console in the vault's own query language. Layers are
+ * counted 1-60 on the page and converted to 0-59 only on the wire.
  */
 
 const TABS: [VaultTab, string, string][] = [
   ["find", "find", "look a neuron up by its words"],
   ["edit", "edit", "change one neuron"],
+  ["compare", "compare", "base, edit and a control edit side by side"],
   ["history", "history", "what was asked before"],
   ["lql", "write LQL", "type a query by hand"],
 ];
@@ -38,8 +40,24 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
   const fLOk = fL !== null && fL >= 1 && fL <= 60;
   const eL = num(ui.eLayer);
   const eLOk = eL !== null && eL >= 1 && eL <= 60;
+  const cL = num(ui.compareForm.layer);
+  const cLOk = cL !== null && cL >= 1 && cL <= 60;
+  const cParsed = parseNeuronList(ui.compareForm.neurons);
   const conLayer = statementLayerNo(parseLql(larqlQuery));
-  const aliL = ui.tab === "edit" ? (eLOk ? eL : 36) : ui.tab === "lql" && conLayer !== null ? conLayer : fLOk ? fL : 51;
+  const aliL =
+    ui.tab === "edit"
+      ? eLOk
+        ? eL
+        : 36
+      : ui.tab === "compare"
+        ? cLOk
+          ? cL
+          : 51
+        : ui.tab === "lql" && conLayer !== null
+          ? conLayer
+          : fLOk
+            ? fL
+            : 51;
   const eN = num(ui.eN);
   const nTxt = eN !== null && eN >= 0 && eN <= 21503 ? String(eN) : "…";
   const aliWhat =
@@ -47,12 +65,22 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
       ? ui.eKind === "update"
         ? "editing neuron " + nTxt
         : "silencing neuron " + nTxt
-      : ui.tab === "lql"
-        ? "reading a statement written by hand"
-        : "seeking “" + (ui.fWord.trim() || "…") + "”";
+      : ui.tab === "compare"
+        ? "reading " + (cParsed.ok ? `${cParsed.neurons.length} neuron${cParsed.neurons.length === 1 ? "" : "s"}` : "…") + " side by side"
+        : ui.tab === "lql"
+          ? "reading a statement written by hand"
+          : "seeking “" + (ui.fWord.trim() || "…") + "”";
 
-  // ---------- tabs (arrow keys move between them, as tabs should)
+  // ---------- tabs (single-row horizontal tablist; arrow keys move between them and scroll selected tab into view)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const selectTab = (i: number, moveFocus: boolean) => {
+    ui.set({ tab: TABS[i][0] });
+    const el = tabRefs.current[i];
+    if (el) {
+      el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      if (moveFocus) el.focus();
+    }
+  };
   const onTabKey = (e: React.KeyboardEvent, i: number) => {
     let j = -1;
     if (e.key === "ArrowRight") j = (i + 1) % TABS.length;
@@ -61,8 +89,7 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
     else if (e.key === "End") j = TABS.length - 1;
     if (j < 0) return;
     e.preventDefault();
-    ui.set({ tab: TABS[j][0] });
-    tabRefs.current[j]?.focus();
+    selectTab(j, true);
   };
 
   return (
@@ -192,11 +219,7 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
         </span>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="What to do in the vault"
-        style={{ display: "flex", flexWrap: "wrap", gap: "4px 44px", paddingTop: 26, borderBottom: "1px solid var(--hair)" }}
-      >
+      <div role="tablist" aria-label="What to do in the vault" className="vault-tablist">
         {TABS.map(([key, label, gloss], i) => {
           const sel = ui.tab === key;
           return (
@@ -209,26 +232,10 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
               role="tab"
               id={`tab-${key}`}
               aria-selected={sel}
-              aria-controls={`panel-${key}`}
               tabIndex={sel ? 0 : -1}
-              onClick={() => ui.set({ tab: key })}
+              onClick={() => selectTab(i, false)}
               onKeyDown={(e) => onTabKey(e, i)}
-              style={{
-                fontFamily: "inherit",
-                background: "transparent",
-                border: 0,
-                borderBottom: sel ? "2px solid var(--gilt)" : "2px solid transparent",
-                marginBottom: -1,
-                padding: "8px 2px 12px",
-                minHeight: 64,
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                gap: 0,
-                textAlign: "left",
-                color: sel ? "var(--ink)" : "var(--muted)",
-              }}
+              className="vault-tab"
             >
               <span style={{ fontSize: 22, fontVariantCaps: "all-small-caps", letterSpacing: "0.2em", lineHeight: 1.2 }}>{label}</span>
               <span style={{ fontSize: 15, fontStyle: "italic", color: "var(--muted)", lineHeight: 1.3 }}>{gloss}</span>
@@ -239,6 +246,7 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
 
       {ui.tab === "find" ? <FindPanel /> : null}
       {ui.tab === "edit" ? <EditPanel /> : null}
+      {ui.tab === "compare" ? <ComparePanel /> : null}
       {ui.tab === "history" ? <HistoryPanel /> : null}
       {ui.tab === "lql" ? <ConsolePanel /> : null}
     </Page>

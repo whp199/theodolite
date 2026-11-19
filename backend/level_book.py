@@ -66,6 +66,7 @@ Standard library only. This module imports nothing of the kernel's other modules
 """
 from __future__ import annotations
 
+import copy
 import datetime
 import fcntl
 import hashlib
@@ -165,8 +166,14 @@ def append(kind: str, body: Dict[str, Any], *, path: Optional[Path] = None) -> D
 def entries(path: Optional[Path] = None, *, start: int = 0, limit: Optional[int] = None) -> Iterator[Dict[str, Any]]:
     """The book's entries in order, from line `start` (counting from 0), at most `limit` of them. It reads what was
     in the file when it began and does not walk the chain (`verify` does): a line that is not an entry at all raises
-    `BookBroken`, naming it."""
+    `BookBroken`, naming it. Raises `ValueError` if `start` is negative."""
+    if isinstance(start, bool) or not isinstance(start, int) or start < 0:
+        raise ValueError(f"start must be a whole number from 0 up; {start!r} was given.")
     p = _path(path)
+    return _iter_entries(p, start, limit)
+
+
+def _iter_entries(p: Path, start: int, limit: Optional[int]) -> Iterator[Dict[str, Any]]:
     if limit is not None and limit <= 0:
         return
     given = 0
@@ -181,6 +188,28 @@ def entries(path: Optional[Path] = None, *, start: int = 0, limit: Optional[int]
         given += 1
         if limit is not None and given >= limit:
             return
+
+
+def driver_view(entry: Dict[str, Any]) -> Dict[str, Any]:
+    """A redacted copy of a book entry (or a reading's body) with item text, token ids, written answers and per-item
+    rows stripped out, keeping aggregate summaries, edit/control metadata, hashes, timings and status. Prepared for
+    callers that should read aggregates without seeing raw prompt or kept-back text."""
+    out = copy.deepcopy(entry)
+    body = out.get("body") if isinstance(out.get("body"), dict) else out
+    if isinstance(body, dict):
+        if "items" in body:
+            raw_items = body["items"]
+            body["items"] = {"count": len(raw_items) if isinstance(raw_items, list) else 0, "redacted": True}
+        plan = body.get("plan")
+        if isinstance(plan, dict) and "items" in plan:
+            p_items = plan["items"]
+            if isinstance(p_items, list):
+                plan["items"] = {"count": len(p_items), "redacted": True}
+            elif isinstance(p_items, dict):
+                plan["items"] = {"redacted": True}
+            else:
+                plan["items"] = {"redacted": True}
+    return out
 
 
 def verify(path: Optional[Path] = None) -> Dict[str, Any]:

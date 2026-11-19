@@ -2025,27 +2025,42 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 (`pilot/RESULTS.md`) and the ruling `verify/arbiter.md`.
 
 ```bash
-.venv/bin/python -I scripts/levelling.py estimate plan.json          # no model: forwards, seconds and GiB a reading
-.venv/bin/python -I scripts/levelling.py run plan.json               # the 31B on the card, the server stopped
-.venv/bin/python -I scripts/levelling.py run plan.json --stand-in    # a dry run on the CPU stand-in
-.venv/bin/python -I scripts/levelling.py book --tail 20              # the ledger; --seq K, --verify
+.venv/bin/python -I scripts/levelling.py estimate plan.json                # no model: forwards, seconds and GiB a reading
+.venv/bin/python -I scripts/levelling.py run plan.json                     # the 31B on the card, the server stopped
+.venv/bin/python -I scripts/levelling.py run plan.json --stand-in          # a dry run on the CPU stand-in
+.venv/bin/python -I scripts/levelling.py book --tail 20                    # the ledger; --seq K [--driver-view], --verify
+.venv/bin/python -I scripts/levelling.py weights info                      # no card: inspect W4A16 checkpoint on CPU
+.venv/bin/python -I scripts/levelling.py sandbox-probe --default-weights   # active bwrap containment probe
+.venv/bin/python -I backend/level_mcp.py --session-dir /tmp/lvl --stand-in # Phase 2 practice-only stdio MCP server
 ```
 
 | module | what |
 |---|---|
-| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, control edits, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
-| `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading, the read-outs, what a person reads (`lines`) |
-| `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before |
-| `scripts/levelling.py` | `estimate`, `run`, `book` |
+| `backend/weight_edits.py` | the edit as a value: terms, their hash, the gate, save and load, control edits, `stack`, `edit_diagnostics`, the per-row hooks (`per_row`), the folded form (`folded`), the base assertion |
+| `backend/weight_reader.py` | no-card CPU W4A16 / dense safetensors reader (`WeightReader`: `info`, `tensor_pin`, `dense_cols`, `dense_rows`, `quiet_mask`, `down_stream_norms`, `writers`, `save_array`), also mounted read-only inside the off-card sandbox |
+| `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading (short greedy or long sampled / thinking-on with loop & cut-off detectors), `capture_direction`, the read-outs, what a person reads (`lines`) |
+| `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before, plus `driver_view` redaction |
+| `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights` and `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`) |
+| `backend/level_session.py` | Phase 2 practice-only Agent's Door (`LevelSession`: reach/backend enforcement, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`estimate`/`read`/`write`/`book_view` gates, blinded in-memory planted & canary sessions, transcript copy on close) |
+| `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver |
+| `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe` |
 
 **The edit.** A list of terms, each an additive difference from one feed-forward linear's shipped tensor, at dose d
-the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Two kinds are built: a column term on a `down_proj` (what
-a neuron writes: scaled, silenced, set to a vector, added to) and a low-rank term B @ A on a `down_proj`. Its id is the
-sha256 of its canonical form, the model's id, the weights card's id and a sha256 of each tensor it touches included,
-so an edit is pinned to its base and `load` refuses it on another. The gate refuses, in plain words: row edits on
-`gate_proj` and `up_proj` and low-rank terms on them, direction removal, attention linears, the embedding, norms and
-layer scalars, a GGUF's layer, an int4mm linear, and anything past a cap. Saved edits live beside the ledger,
-outside the checkout (`$THEODOLITE_EDITS_DIR`, else `~/.local/share/theodolite/edits`): a payload can carry Gemma's
+the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Four forms are built (slices 1a and 1b): a column term on
+a `down_proj` (what a neuron writes: scaled, silenced, set to a vector, added to), masked direction removal on
+`down_proj` columns (`remove_direction`, projected off the layer's `quiet_mask` before dividing by
+`post_feedforward_layernorm`'s weight and lowered to a `cols` add term; `writers` finds the top stream-side writers),
+a row term on `gate_proj` or `up_proj` (what a neuron reads: scaled, silenced, set or added to), and a low-rank term
+B @ A on a `down_proj`. `stack` composes edits on the same base by adding their deltas, and `edit_diagnostics` reports
+raw and stream-side relative changes, quiet-mask energy share, write ceilings, and the share of entries that change in
+the model's compute dtype. Its id is the sha256 of its canonical form, the model's id, the weights card's id and a
+sha256 of each tensor it touches included, so an edit is pinned to its base and `load` refuses it on another. The gate
+refuses, in plain words: low-rank terms on `gate_proj` and `up_proj`, a direction whose energy in the layer's quiet
+mask exceeds `MAX_QUIET_SHARE` (25%), a uniform positive scale of every column of a `down_proj` or every row of an
+`up_proj`, attention linears (until their facts are in the gate and a card check has passed), the embedding, norms and
+layer scalars, a GGUF's layer, an int4mm linear, and anything past a cap (cumulative recipe file sizes are checked
+unread before loading). Saved edits live beside the ledger, outside the checkout (`$THEODOLITE_EDITS_DIR`, else
+`~/.local/share/theodolite/edits`), staged atomically in a sibling temp directory when new: a payload can carry Gemma's
 columns.
 
 **The per-row forms** (`per_row`), one program a row, at every position, the start mark included, so a decode step
@@ -2055,70 +2070,185 @@ with a cache runs the same code:
 |---|---|
 | a column scaled by f, or silenced (f = 0) | the row's activation of that neuron times g = 1 + d (f − 1), on `down_proj`'s input, g cast once to the model's dtype |
 | a column set to v | g = 1 − d on the input side, and the new content a (d v) added after the product, summed in float32 and rounded once |
-| a column added to | g = 1, and the same add |
+| a column added to (or lowered `remove_direction`) | g = 1, and the same add |
+| a row scaled by 0 or a power of two (no bias) | exact zeroing or power-of-two scaling on the edited output coordinates of `gate_proj` / `up_proj` |
+| a row set, added to, or scaled by another factor | edited coordinates recomputed directly via `F.linear(x[r], W_new, b_sub)` (never added to, avoiding cancellation; skipped at dose 0) |
 | a low-rank term | (x Aᵀ) d Bᵀ added after the product, into the same float32 sum |
 | a null row (e) | the layer's feed-forward output times 1 + e, in the model's dtype, which the norm undoes but for rounding |
 
 An untouched row passes through no arithmetic that can change it (at most a multiplication by 1, which is exact). On
-the card a silencing and a scale by 2 equal the folded weight by bits (48 of 48); a scale by 1.5 or −3, a set and the
-float32 add stand off it by 0.00002 to 0.009 nats of KL (16 November 2026).
+the card (1a, 16 November 2026) a column silencing and a scale by 2 equal the folded weight by bits (48 of 48); a
+scale by 1.5 or −3, a set and the float32 add stand off it by 0.00002 to 0.009 nats of KL. On the card (1b, 18
+November 2026, `scripts/verify_levelling_1b.py`, `verify_1b.json`, 68 of 68 checks held in 86.2 s, peak 18.61 GiB,
+0 unpacker fallbacks): 24 of 24 exact row edits (silencing and scales by 2 and −0.5 on `gate_proj` and `up_proj`,
+layers 5 and 20, 12 and 32 rows) equalled folded `_memit_row_overlays` by bits; 11 of 12 recomputed row-edit class
+readings (scale 1.5, set, add on layer 20) equalled folded by bits and the 12th (`gate_proj` set at 32 rows) stood
+off by 0.00086 nats of KL; masked direction removal at layer 20 left all 344 quiet dims at zero delta with stream
+orthogonality 7.21e−10 (0.000095 to 0.00043 nats off its folded twin); and all 10 completed paired readings landed
+within 0.908 to 1.005 of the refit cost model's prediction (`other_sites_matched` pre-pass included at 0.964).
 
 **The paired reading** (`levelling.read`, `kind: "paired"`). An item is a question and an answer in the model's own
 chat format, thinking off; the figures are read along the answer given, at the positions that predict its own pieces,
-and say nothing of what the edited model would write. A forward of R rows holds the base row (row 0), its untouched
-twin (the last row), the null rows (by default e = ±1/32 and ±1/8, at the edit's lowest layer) and arms: the edit at
-each dose, then control edits (other sites of the same layer and size, drawn from a seed, NOT matched on firing).
+and say nothing of what the edited model would write. `capture_direction` computes a contrast direction between two
+item sets at a layer on the base model. A forward of R rows holds the base row (row 0), its untouched twin (the last
+row), the null rows (by default e = ±1/32 and ±1/8, at the lowest touched layer) and arms: the edit at each dose, then
+control edits. Four control families are built: `"other_sites"` (default; other sites of the same layer and size, NOT
+matched on firing), `"other_sites_matched"` (1-row base pre-pass matching per-neuron expected delivered magnitude
+within `tolerance`, voiding with `insufficient_matched_controls` when coverage fails), `"same_site"` (same sites with
+random masked directions matched in stream-side delta length, keeping rank-1 coherence for rank-1 edits), and
+`"sham_target"` (declared sham-target edits supplied in the plan).
 Every item is read twice, in a small class of 12 rows and a large one of 32, each class laid out the same way in as
-many forwards as its arms need; the layers below the edit run once a class and the later forwards restart from the
-kept stream, which every forward must show again by bits. Read-outs, fp32 and softcapped: KL(base ‖ row), the text's
-own log-probability against the base row's, and the log-odds of named pieces; each with its mean, median, largest and
-count of positions above a nat. The floor is the largest null row of that item in that class: no constant floor
-serves. An item is "unstable" when one of the edit's arms reads, at its two row counts set against the larger of the
-two floors, more than `STABLE_RATIO` (3.0) apart or, signed, on opposite sides clear of the floor; it is then left out
-of the summary. Control arms are not judged by it: each control edit's ratio is printed beside the edit's (since 16
-November 2026, by the spec's open point 5, after three control arms at the floor tripped the rule on the card). A
-folded twin (the same edit laid into the overlay dicts, one forward of the class's shape) is taken where the per-row
-form rounds. A reading is void, and stops, when the base row is not finite, an untouched row or a dose-0 row is not
-the base row by bits, a later forward's base or null rows are not forward 0's, memory runs out (a reading never
-halves its rows) or the model is not the base when it ends. The item gate: the base's mean log-probability of the
-answer's pieces, against `ITEM_GATE_BAR` (−6.0 nats a piece). Since the card check it is a printed caution, not a
-refusal: the item is read, `gate.caution` and `lines` say it stands under the bar, and the summary counts it
-(`under_bar`).
+many forwards as its arms need; the layers below the lowest touched layer run once a class and the later forwards
+restart from the kept stream, which every forward must show again by bits. Read-outs, fp32 and softcapped: KL(base ‖
+row), the text's own log-probability against the base row's, and the log-odds of named pieces; each with its mean,
+median, largest and count of positions above a nat. Each arm also records `delivered` (mean relative change of the
+residual stream leaving the highest edited layer over the scored span). The floor is the largest null row of that item
+in that class: no constant floor serves. An item is "unstable" when one of the edit's arms reads, at its two row counts
+set against the larger of the two floors, more than `STABLE_RATIO` (3.0) apart or, signed, on opposite sides clear of
+the floor; it is then left out of the summary. Control arms are not judged by it: each control edit's ratio is printed
+beside the edit's (since 16 November 2026, by the spec's open point 5, after three control arms at the floor tripped
+the rule on the card), with signed opposite-sign control arms clear of the floor noted when present. A folded twin (the
+same edit laid into the overlay dicts — `_memit_col_overlays` or `_memit_row_overlays` — one forward of the class's
+shape) is taken where the per-row form rounds. A reading is void, and stops, when the base row is not finite, an
+untouched row or a dose-0 row is not the base row by bits, a later forward's base or null rows are not forward 0's,
+matched control coverage fails, memory runs out (a reading never halves its rows) or the model is not the base when it
+ends. The item gate: the base's mean log-probability of the answer's pieces, against `ITEM_GATE_BAR` (−6.0 nats a
+piece). Since the card check it is a printed caution, not a refusal: the item is read, `gate.caution` and `lines` say
+it stands under the bar, and the summary counts it (`under_bar`).
 
 **The written reading** (`kind: "written"`): one batch (by default 8 rows and 48 new pieces) writing greedily from the
 item's prompt under `atlas_ops.write_rows` with the hooks round it; untouched and dose-0 rows must write the base's pieces
 with its log-probabilities exactly, or it is void. Each arm says where it parts from the base and the log-probability
-gap before that. It is taken at one row count and is not a two-row-count reading.
+gap before that. It is taken at one row count and is not a two-row-count reading. Extended written readings also accept
+optional `sampler` (`temperature`, `top_k`, `top_p`, `presence_penalty`, `seed` in `backend/sampler_request.py`'s
+vocabulary, sharing one exponential race per sample across all rows of the batch so untouched and dose-0 rows remain
+bit-identical), `samples` (1 to 32), `thinking` (`enable_thinking=True`), `max_new` up to `MAX_NEW_LONG` (2,048,
+still bounded by `MAX_WRITTEN_GIB = 6.0`), and `diagnose=True` (loop detection via `detect_loop`, cut-off detection,
+Gemma 4 thought-channel splitting via `split_thinking`, and top-level aggregate `summary` counts of ended, cut-off,
+looped, rescued, and regressed generations preserved through `level_book.driver_view`).
+
+**The no-card CPU weights reader** (`backend/weight_reader.py`) reads W4A16 or dense safetensors checkpoints (single
+file or sharded `model.safetensors.index.json`) directly from disk on CPU without loading the model or initialising
+CUDA: JSON header parsing opens the 23.26 GB 31B checkpoint in ~4 ms (`0.0039 s` measured on the 31B host), and
+`tensor_pin`, `dense_cols`, `dense_rows`, `quiet_mask`, `down_stream_norms` (chunked, `0.435 s` on layer 20, max diff
+`5.55e-17` vs GPU), and `writers` (`0.289 s` on layer 20, exact top-16 order) match the live GPU runtime.
+
+**Phase 2: The Agent's Door, practice only** (`backend/level_sandbox.py`, `backend/level_session.py`,
+`backend/level_mcp.py`). Separates off-card exploration from gated model reads:
+- **Off-card sandbox (`level_sandbox.py`)**: runs Python analysis cells under `bwrap` (`--unshare-all`, minimal
+  `--dev /dev` with no GPU nodes, `CUDA_VISIBLE_DEVICES=""`, `--clearenv`, no host `$HOME`, `--remount-ro` on
+  `/opt/app`, `/opt/runner`, and resolved `/weights/*`, private `--tmpfs /tmp`, and one writable `/work` scratch
+  folder). Enforces `RLIMIT_AS` relative to post-mmap `VmSize`, `RLIMIT_FSIZE`, descendant-tree `VmRSS` cap across
+  `--new-session`, and wall-clock `SIGKILL`. `probe_sandbox` actively probes every boundary (all 9 checks pass with
+  the 23.26 GB 31B checkpoint mounted read-only).
+- **Session & model gates (`level_session.py`, `level_mcp.py`)**: declares `reach` (`"sandbox"`,
+  `"sandbox_no_weights"`, `"tools_only"`, `"attended"`; refuses `"home"` and `$THEODOLITE_SCIENTIST_REACH=home`;
+  refuses `"codex"` until probed with private compile cache), enforces hard caps in GPU-seconds, forward requests,
+  cells, and wall-clock time, exposes a filtered tool list (`status`, `cell`, `capture`, `estimate`, `read`, `write`,
+  `book_view`, plus `brief_info`, `draw_practice`, and `claim` when bound to a Phase 3 brief and bar set on non-blinded
+  sessions), asserts `weight_edits.assert_base` before and after every model call, enforces minimum control counts,
+  returns `level_book.driver_view` aggregates only (no word past a rank in practice), copies the transcript to
+  `<book_dir>/transcripts/` on `close()`, and supports in-memory-only planted faults and blinded canaries with
+  identical harness cards and `folded="never"` (zero disk/transcript leakage, nothing left on the model).
+
+**Phase 3: The Claim Gate** (`backend/level_briefs.py`, `backend/level_claim.py`, wired into `level_session.py`,
+`level_mcp.py`, and `scripts/levelling.py` `brief`/`calibrate`/`claim`): separates practice exploration from registered
+fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–25, §8):
+- **Versioned briefs & frame generators (`level_briefs.py`)**: canonical sha256 `brief_id` with tamper-checked
+  `save_brief`/`load_brief`, policy guard refusing briefs asking for safeguard removal or hidden triggers, strict
+  template disjointness between `practice` and `kept_back` splits, `kept_back` split balanced across two independent
+  frame halves (`half = 0` and `half = 1`, `>= 2` kept-back frames per half), fixed fresh-reading budget `m` with
+  `20 * m - 1` controls per family (`39` for `m = 2`, `99` for `m = 5`), up to 3 author prompt arms, chat-formatted
+  battery generators (`neutral_chat_generator`, `draw_labelled_sanity_panel`), and 4 starter briefs (`pronoun_pull`,
+  `spider_legs_bleed`, `canary_null`, `enumeration_loop`).
+- **Registered bars, post-freeze draws & verdict engine (`level_claim.py`)**: `calibrate_bars` runs control edits on
+  the retention batteries, hashes `BarSet` (linking its calibration reading book seqs) into a `brief_calibration` note
+  with tamper-checked `save_bars`/`load_bars`. `run_fresh_claim` enforces allowed tensors/layers, read-once per
+  `(brief_id, edit_id)`, fixed `m`, and ledger-persisted practice-draw blocking (`record_practice_draw`), writes
+  `claim_registration` to the level book **before** drawing fresh kept-back items with `os.urandom(32)`, evaluates both
+  batch classes (`small` & `large`, or chunked written batches for `written_loop`) against `other_sites_matched`,
+  `same_site`, and optional `sham_target` controls (`p_fw = min(1, m * (1 + at_least) / (C + 1)) <= alpha`;
+  `"tops_every_control"` reported descriptively and never gates alone), applies the house bar `sqrt(F * M)` (dropped
+  when `M < 4 * F`), frame-level 95% Student-t CIs and exact sign-flip p-values, half-0/half-1 replication, reversed
+  dose check, gating retention batteries (`neutral_text`, `near_misses`, `labelled_panel`, optional `habitat`), author
+  prompt arms, `written_strata_summary` (Row 21), `price_written_reading` (§8), and `compare_settings_audit` (base
+  under `thinking=False` and `thinking=True`), logs `claim_verdict`, and returns a redacted `driver_record` plus a
+  harness-authored bounded Claim Sheet (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`,
+  `works but harms`, `did not replicate`, `kept the base`, `void`) listing all earlier fresh readings on the brief.
+
+**Phase 4: The Person's Page** (`backend/level_routes.py`, mounted by `backend/server.py` at `/api/level/*`, and
+`frontend/src/screens/vault/ComparePanel.tsx` + `compare.ts` + `compareRecorded.ts` on the Vault page `#/vault`):
+- **Server routes (`backend/level_routes.py`)**: guarded by `local_pages_only` and the shared `_GPU_LOCK`. Exposes
+  `GET /api/level/status` (base cleanliness, active vault edit count, ledger integrity, allowlisted replayable books,
+  and starter brief summaries), `POST /api/level/estimate` (off-GPU cost quote), `POST /api/level/compare` (runs
+  untouched base, edit, and 1–19 control edits side by side in one batched written forward plus optional two-batch-class
+  paired next-piece table; refuses with HTTP 409 whenever any vault overlay is in force; asserts `weight_edits.assert_base`
+  before and after), and `GET /api/level/book` + `GET /api/level/book/{seq}` (model-free replay of the live book or
+  allowlisted verified 31B card books).
+- **Vault `compare` tab & Lexicon (`ComparePanel.tsx`, `Vault.tsx`, `Lexicon.tsx`)**: adds one tab word (`compare`)
+  on the Vault page and one Lexicon entry (`a control edit`, `id="control-edit"`), updating the Lexicon's `"an edit"`
+  entry to distinguish persistent vault patches (`ROLLBACK`) from transient per-row readings. Displays three voices
+  (untouched base, your edit, selectable control edit) beside `<Rubric>` explanations, a responsive two-batch-class
+  paired metrics table, and a model-free ledger replay table (with exact recorded 19 Nov 2026 31B Phase 3 verdict cards
+  available offline).
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
 result in its body (the plan, the edit, the items' text and ids, every row's figures, how it ended), refused and void
 readings included, each line carrying the sha256 of the line before; `append` locks the file, and `verify` walks
-the chain. Nothing is signed: the chain shows a quiet change in the middle, not where the book ends.
+the chain. `driver_view` (and `scripts/levelling.py book --seq K --driver-view`) returns a redacted copy with item
+text, token ids and per-item rows stripped out (keeping paired and written summaries), used by the Phase 2 door.
+Nothing is signed: the chain shows a quiet change in the middle, not where the book ends.
 
 **The estimate** (`levelling.estimate`, no model): a forward 0.135 s + 0.377 ms a row-position, the read-out 0.088
 ms a scored row-position, memory 0.191 MiB a row-position above the model, refit on 16 November 2026 from the card
 check's own readings (a reading's cost, not a bare forward's, which pilot 1 measured at 0.08 s + 0.33 ms); writing
-0.095 s a step and 0.8 MB a row a word-piece of cache. It refuses a forward over 12,288 row-positions and a written
-reading whose cache would pass 6 GiB.
+0.095 s a step (scaled by `samples`; on the 31B card on 19 November 2026 thinking-on decoding ran at 0.110 s/step) and
+0.8 MB a row a word-piece of cache (at 5 rows × 512 thinking-on pieces, peak memory was +2.571 GiB above rest);
+`other_sites_matched` also prices its 1-row base pre-pass forwards. It refuses a forward over 12,288 row-positions and
+a written reading whose cache would pass 6 GiB.
 
 **The checks.** `scripts/check_levelling.py` (CPU, the GPU hidden, one thread, on the float32 six-layer stand-in and
-a packed bf16 one) holds the three modules to the spec line by line: hashes, the gate's every refusal, save and load,
-the hooks by bits and to rounding, a decode step, control edits, plans, the read-outs against brute force, whole
-readings and planted faults, the written reading, the ledger, the estimate, the command line, and the words the spec
-keeps out. `scripts/verify_levelling.py` is the card's: 50 items and a fifty-first, some 370 readings into a ledger
-of its own, and `experiments/results/levelling/verify_1a.json`. Its one run (16 November 2026, 13 minutes): 142 of
-145 standing lines held. Rows do not leak; a dose-0 row is the base row; input side equals folded for a silencing and
-a scale by 2; a restart under hooks is exact at layers 5, 20 and 44; writing under the hooks keeps the base's pieces;
-pilot 6's 0.72581 came back to five figures. It failed the cost model (readings with 19 control edits ran up to 1.44
-times their price; refit since) and "no null row above a nat", every such row on raw text, most of it behind the
-start mark. It found that the base's log-probability does not separate the items whose two row counts disagree
-(hence the caution), that nearly every row count is its own arithmetic (on 35, 82 and 175 pieces only 12 and 24, and
-24, 32 and 48, shared bits), and that on the two chat-formatted items it read a one-row capture stood off the
-same-shape reading by 10 to 35 times the floor in 7 of 8 readings at layers 40 and 44. The bars set from it, each by
-the spec's own rule, are in the spec's section 12; the run in full is the last section of `pilot/RESULTS.md`.
+a packed bf16 one) holds the kernel to the spec across 16 sections (1,032/1,032 checks passing).
+`scripts/check_level_door.py` (CPU stand-ins + live `bwrap` sandbox) verifies the no-card weights reader, extended
+sampled/thinking-on written readings and loop/cut-off detectors, `stack(doses=...)` and in-memory `_plant` repair,
+`bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts, stdio MCP protocol, CLI subcommands,
+and zero kept-out words (108/108 checks passing in 19.9 s).
+`scripts/check_level_claim.py` (CPU stand-ins) verifies Phase 3 briefs, canonical hashing/tamper checks, policy
+refusals, `FrameGenerator` disjointness/half balancing/anti-leakage, `house_bar`/`frame_statistics`/`control_standing`
+/`written_strata_summary`/`price_written_reading`, all planted-failure verdicts, 200 planted nulls calibration (0/200
+false leads under both joint-gate and worst-case exchangeable nulls at `m = 2, C = 39`), live stand-in paired and
+chunked `written_loop` claims, `LevelSession`/MCP/CLI claim integration, and zero kept-out words across all 10
+Levelling files and every rendered Claim Sheet (140/140 checks passing).
+`scripts/check_level_page.py` (CPU stand-ins + `esbuild`/node + FastAPI `TestClient`) verifies `compare.ts` request
+builders/validators/1-to-0 layer conversion, `/api/level/{status,estimate,compare,book}` routes, HTTP 409 vault-overlay
+isolation, model-free replay of both live and verified 31B books, foreign-origin & path-traversal guards, Lexicon/Vault
+wiring, and zero kept-out words across all 11 backend/CLI files and 3 Phase 4 frontend files (72/72 checks passing in
+1.2 s; `scripts/check_interface_defaults.py`: 291/291 passing; `npm run build`: clean).
+On the 31B card (RTX 5090):
+- `scripts/verify_levelling.py` (1a, 16 November 2026, `verify_1a.json`): 142 of 145 standing lines passed in 13 min.
+- `scripts/verify_levelling_1b.py` (1b, 18 November 2026, `verify_1b.json`): 68 of 68 checks passed in 86.2 s, peak
+  18.61 GiB, 0 unpacker fallbacks.
+- `scripts/verify_level_door.py` (no-card reader + sampled thinking-on written readings + Phase 2 door, 19 November
+  2026, `verify_door.json`): 37 of 37 checks passed in 101.0 s, peak 20.541 GiB (512-piece thinking-on pilot), 0 unpacker
+  fallbacks, ledger whole (5 entries): 9/9 CPU `tensor_pin` and 9/9 `dense_cols`/`dense_rows` checks bit-identical to
+  live GPU, 2×192 and 512-piece thinking-on sampled readings clean, full `bwrap` sandbox -> `capture` -> `cell` ->
+  gated `read` -> `driver_view` -> transcript copy verified, and blinded planted vs canary sessions clean with zero
+  leakage and `assert_base` passing throughout.
+- `scripts/verify_level_claim.py` (Phase 3 Claim Gate, 19 November 2026, `verify_claim.json`): 16 of 16 checks passed
+  in 138.6 s, peak 18.710 GiB, 0 unpacker fallbacks, ledger whole (20 entries): `calibrate_bars` on `pronoun_pull`
+  (layer 50, 10 cols, 3 controls) in 10.3 s; full `C = 39` fresh claim #1 on E6 layer-50 top-10 `'she'` neurons
+  (44.8 s, `small = -1.647`, `large = -1.678`, `0/39` matched & `0/39` same-site controls, `near_misses = 0.801` male
+  bleed) returned **`works but harms`** (matching the arbiter's Row 20 prediction); full `C = 39` fresh claim #2 on
+  the 7 `'she'`-only neurons (45.1 s, `small = -0.031`, `large = -0.011`, Row 24 negative control) returned
+  **`kept the base`** with reading #1 printed on its Claim Sheet; read-once and `m = 2` budget refusals verified live;
+  `compare_settings_audit` (`max_new=64`, 28.4 s) priced a full `C = 39` written claim at 26.8 min.
+- `scripts/verify_level_page.py` (Phase 4 Person's Page HTTP stack on live 31B, 19 November 2026, `verify_page.json`):
+  11 of 11 checks passed in 17.43 s, peak 18.369 GiB, 0 unpacker fallbacks, ledger whole (2 entries): live
+  `POST /api/level/compare` on E6 layer-51 `'she'` ten vs base vs 3 delivery-matched controls + two-batch-class paired
+  table ran in 4.64 s (`small` odds `-1.853`, `large` odds `-1.817`, `0/3` matched controls, untouched rows identical,
+  `base_after = True`), live Vault `DELETE` -> HTTP 409 -> `ROLLBACK` isolation verified, and model-free replay of both
+  the live book and `verify_claim` confirmed.
 
-**Not built:** direction removal, row edits on `gate_proj` and `up_proj`, attention, embedding and norm edits; a folded
-form for low-rank terms; control edits matched on firing or on what an edit delivers, and sham-target controls;
-long sampled written readings; any page, server route or agent's tool; gradients; exports. Each is in the spec's
-section 8 with what would bring it in.
+**Not built:** attention, embedding and norm edits; a folded form for low-rank terms; Phase 5 trial of record and
+exports; Phase 6 driver evals; gradients. Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.
