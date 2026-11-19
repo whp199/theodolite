@@ -59,7 +59,13 @@ class SessionRefused(ValueError):
 
 @dataclass(frozen=True)
 class SessionBudget:
-    """Hard caps for one agent practice session."""
+    """Hard caps for one agent practice session.
+
+    `max_forwards` counts practice forwards: the search effort a session can be quoted at beside other harnesses. A
+    fresh claim reading is the gate's own measurement, of a size the owner fixed, so its forwards are counted beside
+    them and not against them (`claim_forwards` in the session's usage); its seconds are the card's all the same, so
+    a claim is priced before it starts (`level_claim.estimate_claim`) and refused when the price is over what is left
+    of `max_gpu_seconds` or of `max_wall_seconds`. Every call is asked its price, the session's first among them."""
 
     max_gpu_seconds: float = 600.0
     max_forwards: int = 200
@@ -273,6 +279,7 @@ class LevelSession:
         # Usage counters
         self.gpu_seconds_used: float = 0.0
         self.forwards_used: int = 0
+        self.claim_forwards_used: int = 0
         self.cells_used: int = 0
         self.cell_seconds_used: float = 0.0
         self._cell_seq: int = 0
@@ -402,6 +409,7 @@ class LevelSession:
         return {
             "gpu_seconds": round(self.gpu_seconds_used, 3),
             "forwards": int(self.forwards_used),
+            "claim_forwards": int(self.claim_forwards_used),
             "cells": int(self.cells_used),
             "cell_seconds": round(self.cell_seconds_used, 3),
             "wall_seconds": self._wall_seconds(),
@@ -423,14 +431,21 @@ class LevelSession:
                 f"Forward budget exceeded: this call needs {est_forwards} forward(s), "
                 f"only {rem['forwards']} of {self.budget.max_forwards} left."
             )
-        if est_seconds > rem["gpu_seconds"] and self.gpu_seconds_used > 0.0:
+        if self.gpu_seconds_used >= float(self.budget.max_gpu_seconds):
+            raise SessionRefused(
+                f"GPU-second budget exhausted ({self.gpu_seconds_used:.1f} s >= {self.budget.max_gpu_seconds:g} s)."
+            )
+        # the estimate is asked of every call, the session's first among them: a first call priced over the whole
+        # budget is refused like any other
+        if est_seconds > rem["gpu_seconds"]:
             raise SessionRefused(
                 f"GPU-second budget exceeded: this call is estimated at {est_seconds:.1f} s, "
                 f"only {rem['gpu_seconds']:.1f} s of {self.budget.max_gpu_seconds:g} s left."
             )
-        if self.gpu_seconds_used >= float(self.budget.max_gpu_seconds):
+        if est_seconds > rem["wall_seconds"]:
             raise SessionRefused(
-                f"GPU-second budget exhausted ({self.gpu_seconds_used:.1f} s >= {self.budget.max_gpu_seconds:g} s)."
+                f"Wall-clock cap: this call is estimated at {est_seconds:.1f} s and the session has "
+                f"{rem['wall_seconds']:.1f} s of its {self.budget.max_wall_seconds:g} s left."
             )
 
     def _log(self, event: str, payload: Mapping[str, Any]) -> None:
@@ -647,21 +662,7 @@ class LevelSession:
 
         actual_s = float((result.get("seconds") or {}).get("actual") or 0.0)
         # Count forwards actually executed (0 on refused; estimated/counted on ok or void)
-        if result.get("status") == "refused":
-            used_fwd = 0
-        else:
-            used_fwd = 0
-            if expected_kind == "paired":
-                for it in result.get("items") or []:
-                    for c in ("small", "large"):
-                        cb = (it.get("classes") or {}).get(c)
-                        if cb:
-                            used_fwd += int(cb.get("forwards") or 0) + (1 if (cb.get("folded") or {}).get("taken") else 0)
-            else:
-                for it in result.get("items") or []:
-                    used_fwd += len(it.get("samples") or [1])
-            if (result.get("controls") or {}).get("family") == "other_sites_matched":
-                used_fwd += len(result.get("items") or [])
+        used_fwd = lv.forwards_taken(result)
         self.gpu_seconds_used += actual_s
         self.forwards_used += used_fwd
         if result.get("status") != "refused":
@@ -784,6 +785,17 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         if self.gpu_seconds_used >= float(self.budget.max_gpu_seconds):
             raise SessionRefused("GPU-second budget exhausted before claim reading.")
+        # Priced before anything is registered: a claim the session cannot afford is refused here and spends none of
+        # the brief's fresh readings, where it used to start whatever it cost.
+        try:
+            est = lcl.estimate_claim(
+                self._handle, self._brief, edit, base_dir=self.work_dir, main_dose=float(main_dose),
+                selection_mode=selection_mode, sham_recipes=sham_recipes, run_prompt_arms=True,
+                **self._claim_design,
+            )
+        except (lcl.ClaimRefused, lbr.BriefError, lv.Refused, we.Refused) as exc:
+            raise SessionRefused(f"The claim cannot be priced, so it is not started: {exc}") from None
+        self._check_gpu_budget(0, float(est["seconds"]))  # its seconds are budgeted; its forwards are not practice
 
         t0 = time.perf_counter()
         with self._hold_model() as mh:
@@ -805,9 +817,12 @@ class LevelSession:
             )
         elapsed = time.perf_counter() - t0
         self.gpu_seconds_used += elapsed
+        self.claim_forwards_used += int(res["cost"]["forwards"])
         self._book_seqs.extend(res["book"]["all_seqs"])
         drv = dict(res["driver_record"])
         drv["gpu_seconds_charged"] = round(elapsed, 3)
+        drv["forwards_charged"] = int(res["cost"]["forwards"])
+        drv["estimated"] = {"forwards": int(est["forwards"]), "seconds": round(float(est["seconds"]), 2)}
         drv["remaining"] = self._remaining()
         self._log("claim", {
             "brief_id": self._brief.id,

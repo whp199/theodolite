@@ -731,6 +731,15 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(reg1.get("bars_calibration_seq") == cal0["seq"]
           and f"bars {bars.short()} from the calibration at book line {cal0['seq']}" in res1["sheet"],
           "fresh claim #1 registers, and prints on its sheet, the calibration its bars came from")
+    est1 = lcl.estimate_claim(
+        h, brief, edit1, rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
+        controls_override=4, match_tolerance=20.0,
+    )
+    check(est1["forwards"] == res1["cost"]["forwards"] > 0 and est1["seconds"] > 0
+          and {r["name"] for r in est1["readings"]} == {"other_sites_matched", "same_site", "neutral", "near_misses",
+                                                        "labelled_panel", "prompt_arms"},
+          f"a paired claim is priced beforehand at exactly the forwards it then takes "
+          f"(priced {est1['forwards']}, took {res1['cost']['forwards']})")
     check(reg1.get("book") == {"name": "claim_book.jsonl", "default": False}
           and "book: claim_book.jsonl (a side book, not the default level book" in res1["sheet"],
           "a reading taken outside the default level book is registered and printed as a side-book reading")
@@ -769,6 +778,13 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
         controls_override=4, match_tolerance=20.0, run_prompt_arms=False, book_path=bk,
     )
     SHEETS_COLLECTED.append(res2["sheet"])
+    est2 = lcl.estimate_claim(
+        h, brief, edit2, rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
+        controls_override=4, match_tolerance=20.0, run_prompt_arms=False,
+    )
+    check(est2["forwards"] == res2["cost"]["forwards"] and "prompt_arms" not in {r["name"] for r in est2["readings"]},
+          f"with its prompt arms switched off a claim is priced without them (priced {est2['forwards']}, "
+          f"took {res2['cost']['forwards']})")
     check(res2["judged"]["cheaper_knobs"]["prompt_arms_state"] == lcl.PROMPT_ARMS_OFF
           and res2["judged"]["cheaper_knobs"]["prompt_arms"] == []
           and "author prompt arms: switched off for this reading" in res2["sheet"],
@@ -858,6 +874,16 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(wres["verdict"] in lcl.VERDICTS and wres["verdict"] != "void",
           f"written_loop fresh claim completed cleanly (verdict={wres['verdict']}, reasons={wres['judged']['reasons']})")
     check(wres["meta"]["written_strata"] is not None, "written_loop populates written_strata")
+    west = lcl.estimate_claim(
+        h, wbrief, {"terms": [{"layer": 2, "silence": [6, 7]}]},
+        rows={"small": 12, "large": 16}, written_rows=9, n_target=4, n_neutral=2, n_near=2, n_panel=2,
+        controls_override=4, match_tolerance=20.0, run_prompt_arms=False,
+    )
+    check(west["forwards"] == wres["cost"]["forwards"]
+          and sum(1 for r in west["readings"] if r["name"].startswith("settings_audit_")) == 2
+          and sum(1 for r in west["readings"] if r["name"].startswith("other_sites_matched_c")) == 2,
+          f"a written-loop claim is priced chunk by chunk, with its settings audit, at the forwards it takes "
+          f"(priced {west['forwards']}, took {wres['cost']['forwards']})")
     wreg = next(lb.entries(bk, start=wres["book"]["registration_seq"], limit=1))["body"]
     ws_now = wres["meta"]["written_strata"]
     check(wreg["design"].get("loop_rule") == "either" and ws_now.get("loop_rule") == "either"
@@ -917,6 +943,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     shams = [{"terms": [{"layer": 2, "silence": [a, a + 1]}]} for a in (4, 6, 8, 10)]
     sres = lcl.run_fresh_claim(h, brief, sbars, s_edit, selection_mode="declared_rule", sham_recipes=shams, **small)
     SHEETS_COLLECTED.append(sres["sheet"])
+    sest = lcl.estimate_claim(h, brief, s_edit, selection_mode="declared_rule", sham_recipes=shams,
+                              **{k: v for k, v in small.items() if k != "book_path"})
+    check(sest["forwards"] == sres["cost"]["forwards"] and "sham_target" in {r["name"] for r in sest["readings"]},
+          f"a declared-rule claim is priced with its sham reading (priced {sest['forwards']}, took {sres['cost']['forwards']})")
     sreg = next(lb.entries(sbk, start=sres["book"]["registration_seq"], limit=1))["body"]
     check(sres["verdict"] in lcl.VERDICTS and sres["verdict"] != "void"
           and (sreg.get("shams") or {}).get("count") == 4 and len(sreg["shams"]["edit_ids"]) == 4
@@ -1079,6 +1109,10 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
     check("other sites matched within a factor of 20 on delivered" in r_claim["sheet"],
           "the sheet prints the tolerance the matched controls were matched within")
+    use_now = ses.status()["usage"]
+    check(r_claim["forwards_charged"] == r_claim["estimated"]["forwards"] == use_now["claim_forwards"] > 0
+          and use_now["forwards"] == fwd_before,
+          "a claim's forwards are counted beside the practice forwards, as priced, and not against the practice budget")
     check(reg_mcp.get("kept_back") == {"frames": 8, "published": 8}
           and "8 of the brief's 8 templates are published in the instrument's source" in r_claim["sheet"],
           "a starter brief's claim registers, and prints, that its kept-back templates are published")
@@ -1093,6 +1127,36 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     check("Finish the story:" not in json.dumps(bv), "MCP book_view leaks zero fresh kept-back text")
     ses.close()
     check(lb.verify(bk)["ok"], "MCP claim session ledger whole")
+
+    # The session's budget is asked of every call: its first practice reading, and a claim before it is registered
+    n_reg = len(lcl.brief_history(brief.id, bk, name=brief.name)["registrations"])
+    edit_b = {"terms": [{"layer": 2, "silence": [2, 3]}]}
+    plan_b = {"name": "first_call", "kind": "paired", "edit": edit_b, "controls": {"count": 3, "seed": 0},
+              "rows": {"small": 8, "large": 16}}
+    item_b = {"q": {"question": "An ordinary question about rivers?", "answer": "They run to the sea."}}
+    for tag, budget, call, words in (
+        ("its first practice reading", lses.SessionBudget(max_gpu_seconds=0.001),
+         lambda s: s.read(plan_b, item_b), "GPU-second budget exceeded"),
+        ("a claim it cannot afford in seconds", lses.SessionBudget(max_gpu_seconds=0.5),
+         lambda s: s.claim(edit_b), "GPU-second budget exceeded"),
+        ("a claim that would run past its wall-clock cap", lses.SessionBudget(max_gpu_seconds=1e6, max_wall_seconds=0.5),
+         lambda s: s.claim(edit_b), "Wall-clock cap"),
+    ):
+        s_b = lses.LevelSession(h, tmp / f"ses_budget_{len(tag)}", reach="tools_only", backend="local",
+                                book_path=bk, brief=brief, bars=bars, claim_design=ses_design, budget=budget)
+        lines_b = lb.verify(bk)["entries"]
+        check_raises(lses.SessionRefused, lambda s_b=s_b, call=call: call(s_b),
+                     f"a session refuses {tag}, by its price, before anything runs", match=words)
+        check(lb.verify(bk)["entries"] == lines_b and s_b.status()["usage"]["gpu_seconds"] == 0.0,
+              f"the call refused as {tag} ran nothing and entered nothing")
+        s_b.close()
+    check(len(lcl.brief_history(brief.id, bk, name=brief.name)["registrations"]) == n_reg,
+          "a claim refused for its price is not registered and spends none of the brief's fresh readings")
+    s_bad = lses.LevelSession(h, tmp / "ses_badedit", reach="tools_only", backend="local",
+                              book_path=bk, brief=brief, bars=bars, claim_design=ses_design)
+    check_raises(lses.SessionRefused, lambda: s_bad.claim({"terms": [{"layer": 999, "silence": [0]}]}),
+                 "a claim that cannot be priced is not started", match="cannot be priced")
+    s_bad.close()
 
     # CLI brief / calibrate / claim --stand-in
     cli_dir = tmp / "cli_run"

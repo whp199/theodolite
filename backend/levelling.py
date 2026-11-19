@@ -1156,6 +1156,28 @@ def estimate(plan: dict, pieces: Sequence[Tuple[int, int]], *, n_layers: int, fa
             "gib_above_model": gib}
 
 
+def forwards_taken(result: Mapping[str, Any]) -> int:
+    """How many forwards a reading took, counted from its result the way `estimate` counts them beforehand: each
+    class's forwards of each item (and its folded twin when one was taken), a written reading's one a sample an
+    item, and the matched controls' one-row pre-pass an item. 0 for a reading that was refused."""
+    if result.get("status") == "refused":
+        return 0
+    items = result.get("items") or []
+    n = 0
+    if result.get("kind") == "written":
+        for it in items:
+            n += len(it.get("samples") or [1])
+    else:
+        for it in items:
+            for c in ("small", "large"):
+                cb = (it.get("classes") or {}).get(c)
+                if cb:
+                    n += int(cb.get("forwards") or 0) + (1 if (cb.get("folded") or {}).get("taken") else 0)
+    if (result.get("controls") or {}).get("family") == "other_sites_matched":
+        n += len(items)
+    return n
+
+
 # ----------------------------------------------------------------------------------------------------- the handle
 
 

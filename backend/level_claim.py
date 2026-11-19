@@ -1485,6 +1485,147 @@ def compare_settings_audit(
     return {**out, "note": note, "book_seqs": book_seqs}
 
 
+def estimate_claim(
+    h: lv.Handle,
+    brief: lbr.Brief,
+    edit_or_recipe: Any,
+    *,
+    base_dir: Path = Path("."),
+    main_dose: float = 1.0,
+    selection_mode: str = "free_pick",
+    sham_recipes: Optional[Sequence[Mapping[str, Any]]] = None,
+    n_target: int = 8,
+    n_neutral: int = 4,
+    n_near: int = 4,
+    n_panel: int = 4,
+    rows: Optional[Mapping[str, int]] = None,
+    written_rows: int = 12,
+    controls_override: Optional[int] = None,
+    match_tolerance: Optional[float] = None,
+    run_prompt_arms: bool = True,
+) -> Dict[str, Any]:
+    """What one fresh claim reading would cost, worked with no forward and nothing registered or entered:
+    `{"forwards", "seconds", "gib_above_model", "readings": [{"name", "forwards", "seconds"}, ...]}`.
+
+    It prices the readings `run_fresh_claim` takes with the same arguments, each by `levelling.estimate`: the target
+    reading against matched other sites, the one against same-site controls, the one against sham edits when the
+    selection declares a rule (or the chunked written readings of a `written_loop` brief, and its settings audit),
+    the three battery readings, and the one-row forwards of the brief's prompt arms. The fresh items are not drawn
+    until the claim is registered, so their lengths are taken from a sizing draw of the same frames (a fixed seed of
+    the brief's own; nothing of it is returned or kept): the price is close, not exact, in seconds, and exact in
+    forwards. `scripts/check_level_claim.py` checks it against the forwards a claim then takes, so a change to what a
+    claim reads that is not made here too is caught. Raises what `levelling.normalise`, `levelling.estimate` and
+    `weight_edits.recipe_facts` raise for a plan they refuse."""
+    facts = (we.edit_facts(edit_or_recipe) if isinstance(edit_or_recipe, we.Edit)
+             else we.recipe_facts(dict(edit_or_recipe), Path(base_dir)))
+    declared = selection_mode == "declared_rule" and bool(sham_recipes)
+    C = int(controls_override if controls_override is not None else brief.default_controls)
+    rows_cfg = dict(rows or {"small": lv.ROWS_SMALL, "large": lv.ROWS_LARGE})
+    doses = [float(main_dose), float(-main_dose), 0.0] if brief.direction != 0 else [float(main_dose), 0.0]
+    tol = float(lv.DEFAULT_MATCH_TOL if match_tolerance is None else match_tolerance)
+    ed = {"built": "sizing"}  # a plan is priced from the edit's facts; its edit block only has to be one
+
+    seed = hashlib.sha256(("sizing:" + brief.id).encode("utf-8")).digest()
+    sys_turn = (brief.chat_settings or {}).get("system")
+    target = [d.item for d in brief.generator.draw("kept_back", int(n_target), seed_bytes=seed + b":target",
+                                                   tokenizer=h.tokenizer, system_override=sys_turn)]
+    near = [d.item for d in brief.near_miss_generator.draw("kept_back", int(n_near), seed_bytes=seed + b":near",
+                                                           tokenizer=h.tokenizer, system_override=sys_turn)]
+    neutral = [d.item for d in lbr.neutral_chat_generator().draw("kept_back", int(n_neutral),
+                                                                 seed_bytes=seed + b":neutral", tokenizer=h.tokenizer)]
+    panel = [p["item"] for p in lbr.draw_labelled_sanity_panel(int(n_panel), seed_bytes=seed + b":panel",
+                                                               tokenizer=h.tokenizer)]
+
+    def pieces(items: Sequence[lv.Item], thinking: bool = False) -> List[Tuple[int, int]]:
+        if thinking:
+            return [(len(it.ids), len(lv.chat_ids(h.tokenizer, it.question, it.system, thinking=True))) for it in items]
+        return [(len(it.ids), len(it.prompt_ids)) for it in items]
+
+    readings: List[Dict[str, Any]] = []
+    gib = 0.0
+
+    def add(name: str, plan: Dict[str, Any], pcs: Sequence[Tuple[int, int]], f: Mapping[str, Any] = facts) -> None:
+        nonlocal gib
+        norm = lv.normalise({**plan, "name": f"sizing_{name}"}, n_layers=h.n_layers, tokenizer=h.tokenizer,
+                            facts=dict(f), dtype=h.dtype)  # with the facts, so a layer the model lacks is refused here
+        est = lv.estimate(norm, pcs, n_layers=h.n_layers, facts=dict(f))
+        gib = max(gib, float(est["gib_above_model"]))
+        readings.append({"name": name, "forwards": int(est["forwards"]), "seconds": float(est["seconds"])})
+
+    sham_facts = dict(facts)
+    if declared:
+        layers = set(facts["layers"])
+        for rec in sham_recipes or ():
+            layers |= set(we.recipe_facts(dict(rec), Path(base_dir))["layers"])
+        sham_facts = {**facts, "layers": sorted(layers), "lowest_layer": int(min(layers))}
+
+    if brief.metric == "written_loop":
+        wcfg = dict(brief.written_config or {})
+        max_new = int(wcfg.get("max_new_tokens", 128))
+        seeds = list(wcfg.get("seeds") or [1, 2])
+        sampler = {"temperature": float(wcfg.get("temperature", 1.0)), "top_k": int(wcfg.get("top_k", 64)),
+                   "top_p": float(wcfg.get("top_p", 0.95)), "presence_penalty": float(wcfg.get("presence_penalty", 0.0)),
+                   "seed": int(seeds[0]) if seeds else 1}
+        thinking = bool((brief.chat_settings or {}).get("thinking", False))
+        R = min(max(int(written_rows), lv.WRITTEN_ROWS_MIN), lv.WRITTEN_ROWS_MAX)
+        per_chunk = max(1, R - 2 - len(lv.NULL_E_WRITTEN) - len(doses))
+        families = [("other_sites_matched", C), ("same_site", C)] + ([("sham_target", len(sham_recipes or ()))] if declared else [])
+        for fam, count in families:
+            done, chunk = 0, 0
+            while done < count:
+                take = min(per_chunk, count - done)
+                if fam == "sham_target":
+                    ctl: Dict[str, Any] = {"family": fam, "shams": list((sham_recipes or ())[done:done + take]), "seed": 0}
+                elif fam == "other_sites_matched":
+                    ctl = {"family": fam, "count": take, "seed": 0, "tolerance": tol}
+                else:
+                    ctl = {"family": fam, "count": take, "seed": 0}
+                add(f"{fam}_c{chunk}",
+                    {"kind": "written", "edit": ed, "doses": list(doses), "main_dose": float(main_dose), "controls": ctl,
+                     "rows": R, "max_new": max_new, "thinking": thinking, "sampler": sampler,
+                     "samples": max(1, len(seeds)), "diagnose": True},
+                    pieces(target, thinking), sham_facts if fam == "sham_target" else facts)
+                done, chunk = done + take, chunk + 1
+        if brief.compare_settings:
+            for label, th in (("thinking_off", False), ("thinking_on", True)):
+                add(f"settings_audit_{label}",
+                    {"kind": "written", "edit": ed, "doses": [1.0], "main_dose": 1.0,
+                     "controls": {"family": "other_sites", "count": 1, "seed": 0}, "rows": max(lv.WRITTEN_ROWS_MIN, 6),
+                     "max_new": min(max_new, 256), "thinking": th, "sampler": {**sampler, "seed": int((wcfg.get("seeds") or [1])[0])},
+                     "samples": 1, "diagnose": True},
+                    pieces(target[:min(4, len(target))], th))
+    else:
+        base_plan = {"kind": "paired", "edit": ed, "doses": doses, "main_dose": float(main_dose), "rows": rows_cfg,
+                     "readouts": dict(brief.readouts), "rank_by": brief.metric, "folded": "auto"}
+        add("other_sites_matched", {**base_plan, "controls": {"family": "other_sites_matched", "count": C, "seed": 0,
+                                                              "tolerance": tol}}, pieces(target))
+        add("same_site", {**base_plan, "controls": {"family": "same_site", "count": C, "seed": 0}, "folded": "never"},
+            pieces(target))
+        if declared:
+            add("sham_target", {**base_plan, "controls": {"family": "sham_target", "shams": list(sham_recipes or ()),
+                                                          "seed": 0}, "folded": "never"}, pieces(target), sham_facts)
+
+    bat = {"kind": "paired", "edit": ed, "doses": [float(main_dose), 0.0],
+           "controls": {"family": "other_sites", "count": min(C, 3), "seed": 0}, "rows": rows_cfg, "folded": "never"}
+    add("neutral", {**bat, "readouts": {"kl": True, "own": True, "odds": None}}, pieces(neutral))
+    add("near_misses", {**bat, "readouts": dict(brief.readouts)}, pieces(near))
+    add("labelled_panel", {**bat, "readouts": {"kl": True, "own": True, "odds": None}}, pieces(panel))
+
+    if run_prompt_arms and brief.prompt_arms and brief.metric in ("odds", "own"):
+        scored = [it for it in target + near if it.question is not None and it.answer is not None]
+        k = 1 + len(brief.prompt_arms)  # each item once under the brief's own system turn, once under each arm
+        readings.append({"name": "prompt_arms", "forwards": k * len(scored),
+                         "seconds": float(k * sum(lv.whole(1, len(it.ids)) for it in scored))})
+
+    return {
+        "forwards": int(sum(r["forwards"] for r in readings)),
+        "seconds": float(sum(r["seconds"] for r in readings)),
+        "gib_above_model": gib,
+        "readings": readings,
+        "note": "the fresh items are not drawn yet: lengths are from a sizing draw of the same frames",
+    }
+
+
 def run_fresh_claim(
     h: lv.Handle,
     brief: lbr.Brief,
@@ -1922,6 +2063,21 @@ def run_fresh_claim(
         v_entry = lb.append("note", verdict_body, path=bk)
         we.assert_base(h.lm, h.hooks_at_load)
 
+        # what the reading took, counted from its own entries in the book as `levelling.estimate` counts beforehand
+        taken_fw, taken_s = 0, 0.0
+        mine = set(book_seqs)
+        for ent in lb.entries(bk, start=min(mine)):
+            if int(ent["seq"]) > max(mine):
+                break
+            if int(ent["seq"]) in mine and ent.get("kind") in ("paired", "written"):
+                taken_fw += lv.forwards_taken(ent["body"])
+                taken_s += float(((ent["body"].get("seconds") or {}).get("actual")) or 0.0)
+        if prompt_arm_res:
+            scored = [d for d in list(target_drawn) + list(near_drawn)
+                      if d.item.question is not None and d.item.answer is not None]
+            taken_fw += (1 + len(brief.prompt_arms)) * len(scored)
+        cost = {"forwards": int(taken_fw), "reading_seconds": round(taken_s, 3)}
+
         # Driver-redacted record (aggregates + sheet ONLY — never raw fresh item text or token ids!)
         driver_record = {
             "verdict": judged["verdict"],
@@ -1947,6 +2103,7 @@ def run_fresh_claim(
             "judged": judged,
             "meta": meta,
             "driver_record": driver_record,
+            "cost": cost,
             "book": {"registration_seq": int(reg_entry["seq"]), "verdict_seq": int(v_entry["seq"]),
                      "all_seqs": book_seqs + [int(v_entry["seq"])]},
         }
