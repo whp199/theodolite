@@ -1198,6 +1198,57 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     SHEETS_COLLECTED.append(p_clm.stdout)
     check(lb.verify(cli_dir / "cli_book.jsonl")["ok"], "CLI claim ledger whole")
 
+    # The MCP server itself, started as its owner starts it (the same brief, bars and book, the design by its flags)
+    # and driven over stdio: the second fresh reading on the brief, after the command line's first
+    calls = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "status", "arguments": {}}},
+        {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "claim", "arguments": {
+            "edit": {"terms": [{"layer": 2, "silence": [2, 3]}]}, "match_tolerance": 50}}},
+        {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "claim", "arguments": {
+            "edit": {"terms": [{"layer": 2, "silence": [2, 3]}]}}}},
+    ]
+    p_mcp = subprocess.run(
+        [py, "-I", "backend/level_mcp.py", "--session-dir", str(cli_dir / "mcp_sess"),
+         "--book", str(cli_dir / "cli_book.jsonl"), "--reach", "tools_only", "--stand-in", "--no-probe",
+         "--brief", str(br_file), "--bars", str(bars_file),
+         "--claim-n-target", "4", "--claim-n-neutral", "2", "--claim-n-near", "2", "--claim-n-panel", "2",
+         "--claim-controls", "4", "--claim-match-tolerance", "20"],
+        cwd=str(ROOT_DIR), env=env, input="".join(json.dumps(c) + "\n" for c in calls),
+        capture_output=True, text=True, timeout=180,
+    )
+    answers = {}
+    for ln in p_mcp.stdout.splitlines():
+        try:
+            msg = json.loads(ln)
+            answers[msg["id"]] = msg["result"]
+        except (ValueError, KeyError):
+            pass
+
+    def told(i: int) -> Any:
+        try:
+            return json.loads(answers[i]["content"][0]["text"])
+        except (KeyError, ValueError, IndexError):
+            return {}
+
+    card_design = told(2).get("harness_card", {}).get("claim_design", {})
+    check(p_mcp.returncode == 0 and card_design.get("match_tolerance") == 20.0 and card_design.get("n_target") == 4
+          and card_design.get("controls_override") == 4,
+          f"the MCP server's --claim-* flags fix the design, and its harness card shows it (rc={p_mcp.returncode}, "
+          f"err={p_mcp.stderr[-200:]!r})")
+    check(answers.get(3, {}).get("isError") is True
+          and "takes no argument named match_tolerance" in answers[3]["content"][0]["text"],
+          "over stdio the server refuses the driver's own matching tolerance")
+    r_srv = told(4)
+    SHEETS_COLLECTED.append(r_srv.get("sheet", ""))
+    check(r_srv.get("verdict") in lcl.VERDICTS and r_srv.get("reading_index") == 2
+          and r_srv.get("forwards_charged") == (r_srv.get("estimated") or {}).get("forwards")
+          and "other sites matched within a factor of 20 on delivered" in r_srv.get("sheet", "")
+          and "earlier fresh readings on this brief (1):" in r_srv.get("sheet", ""),
+          f"a claim through the started server is the brief's second reading in the book, after the command line's "
+          f"first, under the owner's design (verdict {r_srv.get('verdict')}, reading {r_srv.get('reading_index')})")
+    check(lb.verify(cli_dir / "cli_book.jsonl")["ok"], "the book is whole after the started server's claim")
+
 
 def run_section_7() -> None:
     print("Section 7: Zero kept-out words audit across all 10 Levelling files & all rendered Claim Sheets", flush=True)
