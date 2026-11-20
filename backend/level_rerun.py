@@ -445,8 +445,13 @@ def _figure_tolerance(key: str, home_value: Optional[float], floors: Mapping[str
                       rel: float, least: float) -> float:
     """How far one figure on the volunteer's card may sit from the home's: the largest of `floor_mult` home floors
     (the floor of the figure's own reading and class: a reworded figure by the reworded reading's floor, a battery's
-    by none), `rel` of the home figure, and `least`."""
-    group, cls_name = (key.split(":") + [""])[:2]
+    by none), `rel` of the home figure, and `least`. What an arm changed the stream by (`...:loud:...`) is set
+    within `rel` of the home figure alone, and a count of separate draws (`...:draws:...`) must be the home's."""
+    group, cls_name, kind = (key.split(":") + ["", ""])[:3]
+    if kind == "loud":  # a change to the stream, a number near a hundredth: by its own size, not by a floor in nats
+        return max(float(rel) * abs(float(home_value or 0.0)), 1e-9)
+    if kind == "draws":  # a count
+        return 0.0
     floor = float(floors.get(f"{group}:{cls_name}") or 0.0)
     return max(float(floor_mult) * floor, float(rel) * abs(float(home_value or 0.0)), float(least))
 
@@ -454,8 +459,9 @@ def _figure_tolerance(key: str, home_value: Optional[float], floors: Mapping[str
 def _bucket(key: str) -> str:
     """Which row of an intake's comparison a figure is counted in: `target:small` and `reworded:large` are the items'
     own effects (the per-row form), `...:folded` the folded form's, `...:controls` the control edits' means,
-    `...:other` the floor and the reversed dose, `batteries` the batteries' figures, `prompt_arms` what the note
-    records of the brief's prompt arms."""
+    `...:delivered` what the edit and each matched or sham control edit changed the stream by, `...:other` the
+    floor, the reversed dose and the count of separate draws, `batteries` the batteries' figures, `prompt_arms` what
+    the note records of the brief's prompt arms."""
     parts = key.split(":")
     if parts[0] == "battery":
         return "batteries"
@@ -463,7 +469,9 @@ def _bucket(key: str) -> str:
         return "prompt_arms"
     kind = parts[2]
     head = f"{parts[0]}:{parts[1]}"
-    return head if kind == "item" else f"{head}:{'folded' if kind == 'folded' else 'controls' if kind == 'control' else 'other'}"
+    if kind == "item":
+        return head
+    return f"{head}:{ {'folded': 'folded', 'control': 'controls', 'loud': 'delivered'}.get(kind, 'other') }"
 
 
 def intake_rerun_bundle(
@@ -496,6 +504,7 @@ def intake_rerun_bundle(
             "checks": [{"name": "bundle_can_be_read", "ok": False, "detail": why}],
         }
         stage.mkdir(parents=True, exist_ok=True)
+        verdict_doc = _writable(verdict_doc)  # the bundle's own name is in it
         write_json_atomic(stage / "intake_verdict.json", verdict_doc, indent=2)
         return verdict_doc
 
@@ -526,10 +535,14 @@ def _intake(
     separate leaves, each named in the verdict when it was given). Other files git does not know in the volunteer's
     checkout do not count against it: the kit and the bundle are such files.
 
-    The figures set beside the home's are the control edits' means as read. Which of them each trial then set aside
-    (for not changing the stream as the edit did) is said apart (`control_edits_set_aside_differently`): it can
-    differ between two cards whose figures agree, and where it does the verdicts are what show whether it mattered.
-    A pair that neither trial has a figure for is counted apart too (`figures_neither_trial_has`), not as compared.
+    The figures set beside the home's are the control edits' means as read, what the edit and each matched or sham
+    control edit changed the stream by (over the prompt, over the answer, at the last position), and how many
+    separate draws each family's control sets were counted as. Which control edits each trial then set aside (for
+    changing the stream less than the edit did) is said apart (`control_edits_set_aside_differently`): it turns on
+    a ratio that can sit at 1, so it can differ between two cards whose figures agree, and one control edit set
+    aside is one more counted as moving as much. Where it differs and the verdicts agree the outcome is still
+    `accepted`, as `within_tolerance` and never `same_figures`. A pair that neither trial has a figure for is
+    counted apart too (`figures_neither_trial_has`), not as compared.
 
     Raises `RerunRefused` when the intake cannot begin (no such bundle, an unsafe tar, a home book that does not hold
     the home trial as its note says). Nothing in the bundle itself makes it raise."""
@@ -661,8 +674,11 @@ def _intake(
         co = vol_reg.get("checkout") if isinstance(vol_reg.get("checkout"), Mapping) else {}
         runner_ok = co.get("sources_match") is True
         # each must be a count of nought: one that could not be asked (None) is not one that was found clean
-        tracked_ok = co.get("tracked_changed") == 0 and co.get("hidden") == 0
-        code_ok = co.get("unlisted_code") == 0
+        def nought(x: Any) -> bool:
+            return type(x) is int and x == 0  # False and 0.0 are no count: a book typed by hand can hold either
+
+        tracked_ok = nought(co.get("tracked_changed")) and nought(co.get("hidden"))
+        code_ok = nought(co.get("unlisted_code"))
         if not runner_ok and allow_other_runner:
             allowances.append("its runner or reader was not the registered one (allow_other_runner)")
         if not tracked_ok and allow_dirty:

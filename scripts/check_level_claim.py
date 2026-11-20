@@ -1098,9 +1098,13 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     dl = (sres["judged"]["classes"].get("small") or {}).get("delivered") or {}
     check(all((dl.get(f) or {}).get("controls_read") == 4 for f in ("other_sites_matched", "same_site", "sham_target"))
           and (dl["sham_target"]["edit"] or 0.0) > 0.0
-          and "delivered (stream change at the highest edited layer, over the positions that predict the answer): edit" in sres["sheet"]
+          and "delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit " in sres["sheet"]
+          and "; over the answer: edit " in sres["sheet"]
           and "; at the last position, where the metric is read: edit " in sres["sheet"]
           and dl["other_sites_matched"]["read_at_end"] is True and dl["other_sites_matched"]["edit_end"] is not None
+          and dl["other_sites_matched"]["edit_prompt"] is not None
+          and dl["other_sites_matched"]["compared_at"] == ["prompt", "answer", "end"]
+          and isinstance(dl["other_sites_matched"]["disjoint_sets"], int)
           and dl["other_sites_matched"]["draw"] == "independent" and "each set drawn on its own" in sres["sheet"]
           and "per_control" not in dl["other_sites_matched"] and "apart" not in dl["sham_target"]
           and "sham-target controls: 4 supplied with the claim" in sres["sheet"],
@@ -1126,7 +1130,7 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     q_sh, q_dv = (q_small.get("controls") or {}).get("sham_target") or {}, (q_small.get("delivered") or {}).get("sham_target") or {}
     check(qres["verdict"] not in ("lead", "lead, matched by a cheaper knob", "void")
           and q_dv.get("not_comparable") == 4 and q_sh.get("at_least") == 4 and q_sh.get("passes_alpha") is False
-          and "outside the matching tolerance of the edit's, or with no figure, and counted as moving as much" in qres["sheet"]
+          and "quieter than the edit at one of those, or with no figure, and counted as moving as much" in qres["sheet"]
           and 'declared rule, in the words given with the claim: "two columns chosen by hand, for this check"' in qres["sheet"],
           f"four sham edits a millionth of the edit's size count against it, and the sheet says so "
           f"(verdict {qres['verdict']}, delivered {q_dv}, standing {q_sh})")
@@ -1352,17 +1356,22 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           and reg_mcp["design"]["controls_per_family"] == 4 and reg_mcp["design"]["prompt_arms"] is True
           and reg_mcp.get("shams") is None,
           "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
-    as_read = re.findall(r"; (\d+) of (\d+) within a factor of 20 of the edit's", r_claim["sheet"])
-    drawn_from = re.findall(r"over the sets each neuron had at least (\d+) different stand-ins of (\d+) eligible sites, "
-                            r"each set drawn on its own", r_claim["sheet"])
+    as_read = re.findall(r"; (\d+) of (\d+) at least as loud as the edit over the prompt, over the answer and at the "
+                         r"last position", r_claim["sheet"])
+    drawn_from = re.findall(r"; (\d+) of the sets share no site with one another \(each neuron had at least (\d+) eligible "
+                            r"sites\), each set drawn on its own", r_claim["sheet"])
     check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 20 (what they "
           "delivered as read is printed with each class)" in r_claim["sheet"]
           and len(as_read) == 2 and all(0 <= int(a) <= int(b) == 4 for a, b in as_read) and len(drawn_from) == 2
           and all(1 <= int(d) <= 4 and int(d) <= int(e) for d, e in drawn_from)
-          and "over the answer and at the last position" in r_claim["sheet"]
-          and "on delivered" not in r_claim["sheet"],
-          "the sheet prints what the matched controls were matched on and within what factor, how many delivered within it "
-          f"as read ({as_read}), and how many different stand-ins a neuron had of how many eligible sites ({drawn_from})")
+          and "on delivered" not in r_claim["sheet"] and "delivery-matched" not in r_claim["sheet"],
+          "the sheet prints what the matched controls were matched on and within what factor, how many were at least as "
+          f"loud as the edit as read ({as_read}), and how many of the sets share no site, of how many eligible sites "
+          f"({drawn_from})")
+    ig_claim = re.findall(r"item gate: (\d+) of (\d+) fresh items are under the kernel's bar of -6\.00 nats a piece",
+                          r_claim["sheet"])
+    check(len(ig_claim) == 1 and 0 <= int(ig_claim[0][0]) <= int(ig_claim[0][1]) == 4,
+          f"a claim's sheet says how many of its fresh items the kernel read under its item gate ({ig_claim})")
     use_now = ses.status()["usage"]
     check(r_claim["forwards_charged"] == r_claim["estimated"]["forwards"] == use_now["claim_forwards"] > 0
           and use_now["forwards"] == fwd_before,

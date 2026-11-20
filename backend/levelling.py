@@ -1322,9 +1322,12 @@ def _delivered_hook(layer_mod: Any, sp: "_Span", box: Dict[str, Any]) -> Iterato
     """Read-only hook on the highest edited layer: records each row's mean relative change against row 0 over the
     scored span (`||h_r[p] - h_0[p]|| / max(||h_0[p]||, 1e-12)` in float32), without altering any tensor. The span is
     the positions that predict the answer's pieces, `lo` to `T` - 2: it stops one short of the last position, where
-    a read-out "at the end" is taken, so the same figure at that one position is recorded beside it
-    (`delivered_end`). At the layer of a one-layer edit the stream at a position changes only by what the edited
-    neurons do at that position, so neither figure says anything of the other."""
+    a read-out "at the end" is taken, and it begins after the prompt, whose positions feed every later one through
+    the layers above. So the same figure is recorded at the last position (`delivered_end`) and over the prompt's
+    positions before `lo` (`delivered_prompt`). At the layer of a one-layer edit the stream at a position changes
+    only by what the edited neurons do at that position, so none of the three says anything of the others. (With
+    control edits on other layers than the edit's, a sham reading's, the hook sits on the highest layer any arm
+    edits, and an arm edited below it is read after the layers between.)"""
 
     def post(_mod: Any, _args: Tuple[Any, ...], out: Any) -> None:
         h_out = out[0] if isinstance(out, tuple) else out
@@ -1344,6 +1347,14 @@ def _delivered_hook(layer_mod: Any, sp: "_Span", box: Dict[str, Any]) -> Iterato
             if torch.equal(h_end[r], h_end[0]):
                 end[r] = 0.0
         box["delivered_end"] = end
+        h_pr = h_out[:, :sp.lo, :].detach()
+        pf = h_pr.float()
+        pre = ((pf - pf[0].unsqueeze(0)).norm(dim=-1)
+               / pf[0].norm(dim=-1).clamp_min(1e-12).unsqueeze(0)).mean(dim=-1).cpu().tolist()
+        for r in range(int(h_pr.shape[0])):
+            if torch.equal(h_pr[r], h_pr[0]):
+                pre[r] = 0.0
+        box["delivered_prompt"] = pre
 
     hook = layer_mod.register_forward_hook(post)
     try:
@@ -1752,6 +1763,7 @@ class _Begun:
     kept: Optional[torch.Tensor]
     delivered0: Optional[List[float]]
     delivered_end0: Optional[List[float]] = None
+    delivered_prompt0: Optional[List[float]] = None
 
 
 def _begin_class(sit: _Sitting, item: Item, sp: _Span, cls: str, one_row: Dict[str, torch.Tensor]) -> _Begun:
@@ -1781,12 +1793,13 @@ def _begin_class(sit: _Sitting, item: Item, sp: _Span, cls: str, one_row: Dict[s
             Hf0 = _whole(h, item.ids, R)
     _check_forward(sit, Hf0, keys[0], 0, None)
     return _Begun(cls=cls, R=R, keys=keys, Hf0=Hf0, kept=kept, delivered0=deliv.get("delivered"),
-                  delivered_end0=deliv.get("delivered_end"))
+                  delivered_end0=deliv.get("delivered_end"), delivered_prompt0=deliv.get("delivered_prompt"))
 
 
 def _read_rows(sit: _Sitting, sp: _Span, Hf: torch.Tensor, keys: Sequence[Optional[str]], f: int,
                skip_null: bool, delivered: Optional[Sequence[float]] = None,
-               delivered_end: Optional[Sequence[float]] = None) -> Tuple[List[Dict[str, Any]], Dict[str, torch.Tensor]]:
+               delivered_end: Optional[Sequence[float]] = None,
+               delivered_prompt: Optional[Sequence[float]] = None) -> Tuple[List[Dict[str, Any]], Dict[str, torch.Tensor]]:
     """Every null row and arm of one forward against that forward's own row 0, plus row 0's raw base values."""
     on = sit.plan["readouts"]
     rows, entries = [], []
@@ -1799,6 +1812,8 @@ def _read_rows(sit: _Sitting, sp: _Span, Hf: torch.Tensor, keys: Sequence[Option
                       "delivered": _clean(delivered[r]) if delivered is not None and r < len(delivered) else None,
                       "delivered_end": (_clean(delivered_end[r])
                                         if delivered_end is not None and r < len(delivered_end) else None),
+                      "delivered_prompt": (_clean(delivered_prompt[r])
+                                           if delivered_prompt is not None and r < len(delivered_prompt) else None),
                       "metrics": None})
         entries.append(entry)
         rows.append(None if entry["non_finite"] else Hf[r])
@@ -1912,7 +1927,7 @@ def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun,
     h, plan, on = sit.h, sit.plan, sit.plan["readouts"]
     n0 = len(plan["null_e"])
     arms, base_raw = _read_rows(sit, sp, st.Hf0, st.keys[0], 0, skip_null=False, delivered=st.delivered0,
-                                delivered_end=st.delivered_end0)
+                                delivered_end=st.delivered_end0, delivered_prompt=st.delivered_prompt0)
     if "own" not in base_raw:  # odds-only reading: compute the base row's own log-probability once for the item gate
         own_raw, _ = _measure(h, {"own": True}, sp, st.Hf0[0], [])
         base_raw["own"] = own_raw["own"]
@@ -1927,7 +1942,8 @@ def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun,
             Hf = _restart(h, sit.L0, st.kept) if st.kept is not None else _whole(h, item.ids, st.R)
         _check_forward(sit, Hf, st.keys[f], f, first)
         more_arms, _ = _read_rows(sit, sp, Hf, st.keys[f], f, skip_null=True, delivered=deliv.get("delivered"),
-                                  delivered_end=deliv.get("delivered_end"))
+                                  delivered_end=deliv.get("delivered_end"),
+                                  delivered_prompt=deliv.get("delivered_prompt"))
         arms += more_arms  # its null rows are forward 0's by bits
         del Hf
     folded = _twin(sit, item, sp, st, arms)
@@ -2694,9 +2710,10 @@ def matched_coverage(h: Handle, reading: dict, items: Mapping[str, Item], *, edi
     the ledger: the plan is prepared as `read` prepares it (so what would refuse the reading raises `Refused` here),
     the 1-row base pre-pass is run over the items, and the control sets are drawn. Returns
     `weight_edits.matched_control_edits`'s coverage (how many sites were eligible for each neuron, how many different
-    stand-ins the sets gave it), or None for a plan whose control edits are not matched other sites. It runs the
-    base forward once an item (counted by `asked_in_process`) and reads nothing of the edit: no metric, no row but
-    the base's."""
+    stand-ins the sets gave it, how many sets share no site), or None for a plan whose control edits are not matched
+    other sites. It runs the base forward once an item (counted by `asked_in_process`) and reads nothing of the
+    edit: no metric, no row but the base's. The scores of the edit's own neurons on these items, which a reading's
+    coverage records, are left out: a look gives counts and nothing a site could be picked by."""
     run = _Reading(h, reading, items, Path(base_dir), edit, False)
     with torch.no_grad():
         try:
@@ -2713,7 +2730,10 @@ def matched_coverage(h: Handle, reading: dict, items: Mapping[str, Item], *, edi
                 tolerance=float(ctl_cfg.get("tolerance", DEFAULT_MATCH_TOL)), spread=ctl_cfg.get("draw") == "spread")
         finally:
             we.assert_base(h.lm, h.hooks_at_load)
-    return _clean(cov)
+    cov = _clean(cov)
+    for term in cov.get("terms") or ():
+        term.pop("edit_scores", None)
+    return cov
 
 
 def read(h: Handle, reading: dict, items: Mapping[str, Item], *, base_dir: Path = Path("."),
@@ -2885,8 +2905,10 @@ def _arm_words(arm: Mapping[str, Any], on: Sequence[str], exact: Optional[Mappin
             got.append(f"{_METRIC_WORDS[m]} mean {_n(s['mean'])}, median {_n(s['median'])}, {s['above_1']} "
                        f"position{'' if s['above_1'] == 1 else 's'} above a nat of {s.get('n')}")
     if arm.get("delivered") is not None:
-        got.append(f"delivered {_n(arm['delivered'])}"
-                   + (f" (at the last position {_n(arm['delivered_end'])})" if arm.get("delivered_end") is not None else ""))
+        beside = [f"{what} {_n(arm[key])}" for what, key in (("over the prompt", "delivered_prompt"),
+                                                             ("at the last position", "delivered_end"))
+                  if arm.get(key) is not None]
+        got.append(f"delivered {_n(arm['delivered'])}" + (f" ({', '.join(beside)})" if beside else ""))
     said = "; ".join(got)
     exact = exact or {}
     if exact.get("input_side") == "rounds":

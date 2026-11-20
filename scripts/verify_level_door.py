@@ -71,8 +71,11 @@ def commit_now() -> Dict[str, Any]:
     root = Path(__file__).resolve().parent.parent
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True, timeout=30)
-        st = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=str(root), capture_output=True,
-                            text=True, timeout=30)
+        # the two files this script itself rewrites are left out: its book is cleared when it starts
+        st = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", ".",
+                             ":(exclude)experiments/results/levelling/verify_door.json",
+                             ":(exclude)experiments/results/levelling/verify_door_book.jsonl"], cwd=str(root),
+                            capture_output=True, text=True, timeout=30)
         return {"commit": head.stdout.strip() or None if head.returncode == 0 else None,
                 "changed_paths": len(st.stdout.splitlines()) if st.returncode == 0 else None}
     except (OSError, subprocess.SubprocessError):

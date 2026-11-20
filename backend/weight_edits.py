@@ -2088,15 +2088,14 @@ def down_stream_norms_under(lm: nn.Module, layer: int, plant: Edit) -> np.ndarra
     out = np.array(base, dtype=np.float64)
     w_post = _w_post(lm, layer).astype(np.float64)[:, None]
     with torch.no_grad():
-        W = dense(mod)  # [D, N]
         for t in terms:
             idx = np.asarray(t.idx, dtype=np.int64)
-            cols = W[:, torch.from_numpy(idx).to(W.device)].double().cpu().numpy()  # [D, K]
-            new = cols * _asked(t, 1.0)[None, :]
+            cols = dense_cols(mod, _long(idx)).double().cpu().numpy()  # [K, D]: the plant's own columns, no others
+            new = cols * _asked(t, 1.0)[:, None]
             if t.vectors is not None:
                 carried = np.asarray(t.op) != 0
-                new[:, carried] += np.asarray(t.vectors, dtype=np.float64)[carried].T
-            out[idx] = np.sqrt(((new * w_post) ** 2).sum(axis=0))
+                new[carried] += np.asarray(t.vectors, dtype=np.float64)[carried]
+            out[idx] = np.sqrt(((new * w_post.T) ** 2).sum(axis=1))
     out.setflags(write=False)
     return out
 
@@ -2106,21 +2105,29 @@ def _draw_spread_indices(
     count: int,
     rng: np.random.Generator,
 ) -> List[np.ndarray]:
-    """`_draw_matched_indices` for two or more positions, with each position's stand-ins repeated as little as its
-    pool allows: position j takes every one of its eligible sites once before it takes any twice (a pass over its
-    pool), so `count` assignments use min(count, len(elig[j])) different stand-ins for it where a draw made
-    independently for each assignment uses fewer (39 assignments from 60 sites: about 29). No assignment uses a site
-    twice, no two are the same set, and their order is shuffled at the end, so the assignments are exchangeable.
-    Where a pass has only sites left that the assignment already holds, a site that has stood in before is taken."""
+    """`_draw_matched_indices` for two or more positions, with the assignments sharing as few sites as the pools
+    allow. A site that stands in an assignment already kept is not taken again, at any position, while the position
+    has another to take; and a position takes every one of its eligible sites once before it takes any twice (a pass
+    over its pool). So where the pools are large enough the assignments are pairwise disjoint, which is what makes
+    them separate draws: assignments drawn each on its own share sites (39 of ten from the same 60 sites: a site
+    sits in six or seven of them). No assignment uses a site twice, no two are the same set, and their order is
+    shuffled at the end. Where a position has only sites left that an assignment already holds, one of those is
+    taken: the assignments then share it, and `matched_control_edits` counts how many are still disjoint
+    (`disjoint_sets`), so nothing is promised here that the coverage does not show. After three attempts in a row
+    that gave nothing new the passes are set aside for an attempt and each position draws from the whole of its
+    pool, so the draw does not lock at the end of a pass while sets remain."""
     K = len(elig)
     pools = [np.array(e, dtype=np.int64) for e in elig]
-    left = [0] * K  # how many sites of position j's pool have not stood in yet in its pass: they sit in slots 0..left-1
+    left = [0] * K  # position j's sites that have not stood in yet in its pass sit in slots 0..left[j]-1
     pos_order = sorted(range(K), key=lambda j: (len(elig[j]), j))
     out: List[np.ndarray] = []
     seen_sets: set = set()
+    taken: set = set()  # every site of an assignment that was kept
+    missed = 0  # attempts in a row that gave no new assignment
     for _attempt in range(max(count * 32, 256)):
         if len(out) >= count:
             break
+        open_pools = missed >= 3
         chosen = np.empty(K, dtype=np.int64)
         used: set = set()
         undo: List[Tuple[int, int, int, int]] = []
@@ -2129,24 +2136,26 @@ def _draw_spread_indices(
             pool = pools[j]
             E, was = int(pool.size), left[j]
             n = was if was > 0 else E  # a pass that is used up begins again over the whole pool
+            reach = E if open_pools else n
             slot = -1
-            for _ in range(16):
-                s = int(rng.integers(n))
-                if int(pool[s]) not in used:
+            for _ in range(16):  # a site no assignment holds yet
+                s = int(rng.integers(reach))
+                site = int(pool[s])
+                if site not in used and site not in taken:
                     slot = s
                     break
             if slot < 0:
-                free = [s for s in range(n) if int(pool[s]) not in used]
-                if free:
-                    slot = free[int(rng.integers(len(free)))]
-            if slot < 0:  # every site left in this pass is in the assignment already: one that has stood in before
-                free = [s for s in range(n, E) if int(pool[s]) not in used]
+                free = [s for s in range(reach) if int(pool[s]) not in used and int(pool[s]) not in taken]
+                if not free:  # every site in reach stands in an assignment already: one that this one does not hold
+                    free = [s for s in range(reach) if int(pool[s]) not in used]
+                if not free:  # nor that: one that has stood in at this position before
+                    free = [s for s in range(E) if int(pool[s]) not in used]
                 if not free:
                     ok = False
                     break
-                pick = int(pool[free[int(rng.integers(len(free)))]])
-            else:
-                pick = int(pool[slot])
+                slot = free[int(rng.integers(len(free)))]
+            pick = int(pool[slot])
+            if slot < n:  # it had not stood in at this position in this pass: out of the unused slots it goes
                 pool[slot], pool[n - 1] = pool[n - 1], pool[slot]
                 undo.append((j, slot, n - 1, was))
                 left[j] = n - 1
@@ -2157,8 +2166,11 @@ def _draw_spread_indices(
             for j, a, b, was in reversed(undo):  # the assignment is not kept: its sites have not stood in
                 pools[j][a], pools[j][b] = pools[j][b], pools[j][a]
                 left[j] = was
+            missed += 1
             continue
+        missed = 0
         seen_sets.add(key)
+        taken.update(key)
         out.append(chosen)
     return [out[int(i)] for i in rng.permutation(len(out))]
 
@@ -2171,8 +2183,8 @@ def _draw_matched_indices(
 ) -> List[np.ndarray]:
     """Draw up to `count` distinct matched assignments `[p_0, ..., p_{K-1}]` where `p_j in elig[j]` and all `p_j` in
     one assignment are distinct. Two assignments are distinct when their sorted sets differ. Each assignment is drawn
-    on its own, so with two or more positions the assignments share stand-ins (one position never does: its sites
-    are drawn without repeats); `spread` draws them so that they share as few as the pools allow
+    on its own, so with two or more positions the assignments share sites (one position never does: its sites are
+    drawn without repeats); `spread` draws them so that they share as few as the pools allow
     (`_draw_spread_indices`)."""
     K = len(elig)
     if K == 0 or count == 0:
@@ -2246,11 +2258,14 @@ def matched_control_edits(
     `scores_by_linear[t.linear]`. Returns `(edits, coverage)` when all `count` distinct matched control edits can be
     formed, or `(None, coverage)` when coverage fails (caller voids the reading and records `coverage`).
 
-    `spread`: draw each neuron's stand-ins with as few repeats as its eligible sites allow (`_draw_spread_indices`).
-    Without it each control set is drawn on its own, and sets that differ in one stand-in are "distinct": the
+    `spread`: draw the control sets so that they share as few sites as the pools allow (`_draw_spread_indices`).
+    Without it each control set is drawn on its own, and sets that differ in one stand-in are "distinct". The
     coverage says, a term, the fewest sites that were eligible for one neuron (`min_eligible`) and the fewest
-    different stand-ins one neuron had over all the sets (`min_distinct`), which is what a reader may count as
-    separate draws."""
+    different stand-ins one neuron had over all the sets (`min_distinct`); and, for the control edits as wholes, how
+    many share no site with one another (`disjoint_sets`: counted one after another in the order drawn, each kept
+    if it shares no site with those kept before it). Only control edits that share no site are separate draws: a
+    site that stands in for one neuron in one set and for another neuron in another ties the two sets together,
+    which a count of each neuron's own stand-ins does not see."""
     seed, count = int(seed), int(count)
     tol = _number(tolerance, "tolerance")
     if seed < 0 or count < 0:
@@ -2311,6 +2326,14 @@ def matched_control_edits(
         "sufficient": bool(sufficient and found == count), "terms": term_cov,
         "draw": "spread" if spread else "independent",
     }
+    seen_sites: set = set()
+    disjoint = 0
+    for c in range(int(found)):
+        sites = {(i, int(x)) for i, d in enumerate(term_draws) if d is not None for x in d[c]}
+        if not (sites & seen_sites):
+            disjoint += 1
+            seen_sites |= sites
+    coverage["disjoint_sets"] = disjoint
     if not coverage["sufficient"]:
         return None, coverage
     out: List[Edit] = []

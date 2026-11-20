@@ -527,23 +527,40 @@ def main() -> int:
                            "on what a base pre-pass expects each to deliver", "is counted as moving as much",
                            "the folded forward's own repeated rows agree to the bit",
                            "in size or as a share of its own effect", "matches on its effect alone",
-                           "with as few repeats as its eligible sites allow",
-                           "no more separate draws than the fewest different stand-ins any one neuron had",
+                           "drawn to share as few sites as the eligible sites allow",
+                           "no more separate draws than the control edits that share no site with one another",
                            "A look taken at registration, with the base alone, counted",
-                           "also at the last position, where this brief's metric is read",
-                           "A control edit, or the edit, with no such figure is counted the same way",
+                           "The look sees the count alone",
+                           "counts for the edit only when, as read, it changed the stream at least as much as the edit did",
+                           "over the prompt's positions, over the positions that predict the answer, and at the last "
+                           "position, where this brief's metric is read",
+                           "and a control edit or an edit with no such figure, is counted as moving as much",
+                           "The matching factor has no part in this",
+                           "rule preset: `trial-2` (version 2)",
                            "and no code where the runner",
                            "the look taken at registration did not say it could not pass"):
                 check(needle in rules_txt, f"3: RULES.md says \"{needle}\"")
             sz_reg = reg["trial"]["sizing"]
-            check(sz_reg["matched"] == {"control_edits": 39, "found": 39, "fewest_eligible": sz_reg["matched"]["fewest_eligible"],
-                                        "fewest_distinct": 39, "counted_as": 39, "needs": 39, "could_pass": True}
-                  and sz_reg["matched"]["fewest_eligible"] >= 39 and sz_reg["reworded"]["counted_as"] == 19
+            look_note = [e for e in lb.entries(cal_book) if e["kind"] == "note"
+                         and e["body"].get("note_type") == "trial_look"][-1]
+            check(sz_reg["matched"] == {"control_edits": 39, "found": 39, "all_drawn": True,
+                                        "fewest_eligible": sz_reg["matched"]["fewest_eligible"], "disjoint_sets": 39,
+                                        "counted_as": 39, "needs": 39, "could_pass": True}
+                  and sz_reg["matched"]["fewest_eligible"] >= 78 and sz_reg["reworded"]["counted_as"] == 19
                   and sz_reg["reworded"]["needs"] == 19 and sz_reg["reworded"]["could_pass"] is True and reg["warnings"] == []
                   and "BY THAT LOOK" not in rules_txt
-                  and f"`39` of `39` (fewest eligible sites a neuron `{sz_reg['matched']['fewest_eligible']}`)" in rules_txt,
+                  and f"`39` of `39` sets sharing no site (fewest eligible sites a neuron "
+                      f"`{sz_reg['matched']['fewest_eligible']}`)" in rules_txt,
                   f"3: a registration records the look taken at how many separate draws its control sets count as, and "
                   f"its rules print it ({sz_reg['matched']})")
+            check(look_note["seq"] == reg["trial"]["look_seq"] == lb.verify(cal_book)["entries"] - 1
+                  and look_note["body"]["trial_name"] == "standin_rebuilt_trial" and look_note["body"]["edit_id"] == e_trial.id
+                  and look_note["body"]["sizing"] == sz_reg and look_note["body"]["match_tolerance"] == 20.0
+                  and "counts as no reading" in look_note["body"]["says"]
+                  and not any("score" in k for t in [look_note["body"]["sizing"]["matched"]] for k in t)
+                  and lcl.brief_history(brief.id, cal_book, name=brief.name)["fresh_count"] == 0,
+                  "3: the look leaves one line in the book the trial is registered against (counts, the design, no "
+                  "score of a neuron), and that line is no reading of the brief")
             # a design that by that look could not pass: registered, said so, and not read of record
             pre_cant = tmp / "cannot_pass" / "prereg"
             reg_cant = lt.register_trial(pre_cant, hP, brief, bars, e_trial, trial_name="cannot_pass",
@@ -554,7 +571,9 @@ def main() -> int:
             n_cant = lb.verify(cal_book)["entries"]
             check(reg_cant["trial"]["sizing"]["matched"]["could_pass"] is False
                   and reg_cant["trial"]["sizing"]["matched"]["counted_as"] < 39 and len(reg_cant["warnings"]) >= 1
-                  and "could not pass" in reg_cant["warnings"][0] and "wider tolerance" in reg_cant["warnings"][0]
+                  and "could not pass" in reg_cant["warnings"][0] and "could not all be drawn: 0 of 39" in reg_cant["warnings"][0]
+                  and "register it with a wider" not in reg_cant["warnings"][0]
+                  and "does not change what a control edit must deliver to count" in reg_cant["warnings"][0]
                   and "BY THAT LOOK THIS TRIAL COULD NOT PASS" in (pre_cant / "RULES.md").read_text()
                   and lt.verify_registration(pre_cant)["ok"]
                   and any("by the look taken at registration it could not pass" in r for r in cond_cant["reasons"])
@@ -566,6 +585,22 @@ def main() -> int:
                   f"3: a trial whose control sets could not count as enough separate draws is registered with a warning, its "
                   f"rules say so, and it is not read of record; nor is one whose registration records no look "
                   f"({reg_cant['trial']['sizing']['matched']})")
+            # more control edits than one neuron has eligible sites: the sets cannot all be drawn, and the words say
+            # that and not "too few draws" (126 would be enough for the level; a reading asked for 150 ends void)
+            e_one = build([we.silence(2, [9])], "one neuron")
+            reg_many = lt.register_trial(tmp / "too_many" / "prereg", hP, brief, bars, e_one, trial_name="too_many",
+                                         **{**KW, "controls_per_family": 150})
+            sz_many = reg_many["trial"]["sizing"]["matched"]
+            check(sz_many["all_drawn"] is False and sz_many["could_pass"] is False and 39 <= sz_many["found"] < 150
+                  and len(reg_many["warnings"]) == 1
+                  and f"could not all be drawn: {sz_many['found']} of 150" in reg_many["warnings"][0]
+                  and "so fewer control edits would do" in reg_many["warnings"][0]
+                  and "count as" not in reg_many["warnings"][0]
+                  and f"only `{sz_many['found']}` of the sets could be drawn" in (tmp / "too_many" / "prereg" / "RULES.md").read_text()
+                  and any("could not all be drawn" in r for r in lt.record_conditions(
+                      tmp / "too_many" / "prereg", reg_many["trial"], book=cal_book)["reasons"]),
+                  f"3: where a trial's control sets cannot all be drawn the look says that, in the warning, the rules and "
+                  f"the reason it is not of record ({sz_many})")
             check(refuses(lambda: lt.register_trial(prereg_dir, hP, brief, bars, e_trial, trial_name="dup", **KW), lt.TrialRefused),
                   "3: register_trial refuses overwriting existing prereg/")
 
@@ -935,28 +970,37 @@ def main() -> int:
                 check(needle in t_res["sheet"], f"5: the sheet prints \"{needle}\"")
             dv_small = t_res["fresh_judged"]["classes"]["small"]["delivered"]["other_sites_matched"]
             cs_small = t_res["fresh_judged"]["classes"]["small"]["controls"]["other_sites_matched"]
+            ig_small = t_res["fresh_judged"]["classes"]["small"]["item_gate"]
             matched_plan = next(lb.entries(cal_book, start=t_res["book"]["all_seqs"][1], limit=1))["body"]
             check("driver prompt named site" not in t_res["sheet"] and "as reported with the claim:" not in t_res["sheet"]
-                  and dv_small["within_tolerance"] + dv_small["not_comparable"] == dv_small["of_controls"] == 39
-                  and dv_small["tolerance"] == 20.0 and isinstance(dv_small["fewest_eligible"], int)
+                  and dv_small["as_loud"] + dv_small["not_comparable"] == dv_small["of_controls"] == 39
+                  and dv_small["compared_at"] == ["prompt", "answer", "end"] and "tolerance" not in dv_small
+                  and isinstance(dv_small["fewest_eligible"], int)
                   and dv_small["read_at_end"] is True and dv_small["edit_end"] is not None and dv_small["edit_end"] > 0.0
-                  and abs(dv_small["edit_end"] - dv_small["edit"]) > 1e-6
-                  and dv_small["draw"] == "spread" and dv_small["fewest_distinct"] == min(39, dv_small["fewest_eligible"])
-                  and cs_small["effective_count"] == min(39, dv_small["fewest_distinct"])
+                  and dv_small["edit_prompt"] is not None and abs(dv_small["edit_end"] - dv_small["edit"]) > 1e-6
+                  and dv_small["draw"] == "spread" and dv_small["disjoint_sets"] == 39
+                  and cs_small["effective_count"] == min(39, dv_small["disjoint_sets"])
                   and matched_plan["plan"]["controls"].get("draw") == "spread" and matched_plan["controls"]["draw"] == "spread"
-                  and "per_control" not in dv_small and "apart" not in dv_small
-                  and f"{dv_small['within_tolerance']} of 39 within a factor of 20 of the edit's over the answer and at the "
-                      "last position" in t_res["sheet"]
+                  and "per_control" not in dv_small and "per_control_prompt" not in dv_small and "apart" not in dv_small
+                  and f"{dv_small['as_loud']} of 39 at least as loud as the edit over the prompt, over the answer and at "
+                      "the last position" in t_res["sheet"]
+                  and "over the prompt: edit " in t_res["sheet"]
                   and "at the last position, where the metric is read: edit " in t_res["sheet"]
-                  and (dv_small["within_tolerance"] == 0 or "(those a median " in t_res["sheet"])
-                  and f"over the sets each neuron had at least {dv_small['fewest_distinct']} different stand-ins of "
-                      f"{dv_small['fewest_eligible']} eligible sites, drawn with as few repeats as the sites allow" in t_res["sheet"]
-                  and t_res["fresh_judged"]["batteries"]["labelled_panel"]["items"]["given"] == 2,
+                  and (dv_small["as_loud"] == 0 or "(those a median " in t_res["sheet"])
+                  and f"; 39 of the sets share no site with one another (each neuron had at least "
+                      f"{dv_small['fewest_eligible']} eligible sites), drawn to share as few sites as the pools allow" in t_res["sheet"]
+                  and t_res["fresh_judged"]["batteries"]["labelled_panel"]["items"]["given"] == 2
+                  and "under_item_gate" in t_res["fresh_judged"]["batteries"]["labelled_panel"]["items"]
+                  and ig_small["items"] == 4 and 0 <= ig_small["under_bar"] <= 4
+                  and f"item gate: {ig_small['under_bar']} of 4 fresh items are under the kernel's bar of -6.00 nats a piece"
+                      in t_res["sheet"]
+                  and "reworded items are under the kernel's bar" in t_res["sheet"],
                   "5: the sheet of a trial has no line that is a claim's alone, says what the edit and its matched control "
-                  f"edits delivered over the answer and at the last position, where this brief's metric is read "
-                  f"({dv_small['within_tolerance']} of 39 within the factor on both), how many different stand-ins a neuron "
-                  f"had ({dv_small['fewest_distinct']} of {dv_small['fewest_eligible']} eligible, drawn spread), and how "
-                  f"many of a battery's items read")
+                  f"edits delivered over the prompt, over the answer and at the last position, where this brief's metric "
+                  f"is read ({dv_small['as_loud']} of 39 at least as loud as the edit at all three), how many of the sets "
+                  f"share no site (39, drawn spread from {dv_small['fewest_eligible']} eligible sites a neuron), how many "
+                  f"items the kernel read under its item gate ({ig_small['under_bar']} of 4), and how many of a battery's "
+                  f"items read")
             check(t_res["meta"]["book_head_before"] == next(lb.entries(cal_book, start=t_res["book"]["registration_seq"] - 1,
                                                                         limit=1))["hash"]
                   and t_res["meta"]["book_head_before"][:12] in t_res["sheet"] and t_res["meta"]["priced"]["forwards"] > 0,
@@ -1127,6 +1171,39 @@ def main() -> int:
                                                     trial_name="long_arm", **{**KW, "book_path": bk_arm, "reworded": rset_arm}),
                           lt.TrialRefused, "cannot be read as registered") and not (tmp / "long_arm" / "prereg").exists(),
                   "5: a prompt arm too long to make an item of is found when the trial is registered, not after its readings")
+            n_arm = lb.verify(bk_arm)["entries"]
+            check(refuses(lambda: lcl.run_fresh_claim(hP, brief_arm, bars_arm, {"terms": [{"layer": 2, "silence": [3, 7]}]},
+                                                      **{**CK, "book_path": bk_arm}),
+                          lcl.ClaimRefused, "cannot be taken as asked") and lb.verify(bk_arm)["entries"] == n_arm,
+                  "5: and so it is for a claim: one whose brief has a prompt arm too long to make an item of is refused "
+                  "before it is registered, where it was registered, read five times and ended on an error")
+
+            # a trial of a site chosen by a declared rule, read whole: its sham edits are judged by the path the
+            # matched ones are, set aside when they were quieter than the edit, and an intake's figures hold theirs
+            bk_sh, bars_sh = fresh_book("shams")
+            shams = [{"terms": [{"layer": 2, "silence": [a, a + 1]}]} for a in (20, 30, 40, 50)]
+            pre_sh = tmp / "shams" / "prereg"
+            lt.register_trial(pre_sh, hP, brief, bars_sh, e_trial, trial_name="by_rule", selection_mode="declared_rule",
+                              declared_rule="two columns chosen by a rule, for this check", sham_recipes=shams,
+                              **{**KW, "book_path": bk_sh})
+            t_sh = lt.run_trial_of_record(hP, pre_sh, out_dir=tmp / "shams" / "out", book_path=bk_sh, dry_run=True)
+            SHEETS.append(t_sh["sheet"])
+            sh_small = t_sh["fresh_judged"]["classes"]["small"]
+            dv_sh, cs_sh = sh_small["delivered"]["sham_target"], sh_small["controls"]["sham_target"]
+            rj_sh = lt.rejudge_trial(bk_sh, t_sh["trial_sha256"], lt.verify_registration(pre_sh))
+            check(t_sh["verdict"] in lt.PASSED + ("failed",) and cs_sh["count"] == 4
+                  and dv_sh["as_loud"] + dv_sh["not_comparable"] == dv_sh["of_controls"] == 4
+                  and dv_sh["compared_at"] == ["prompt", "answer", "end"] and cs_sh["at_least"] >= dv_sh["not_comparable"]
+                  and "sham-target controls: 4 registered with the trial" in t_sh["sheet"]
+                  and 'declared rule, in the words registered with the trial: "two columns chosen by a rule, for this check"'
+                      in t_sh["sheet"]
+                  and rj_sh["as_noted"] is True and rj_sh["verdict"] == t_sh["verdict"]
+                  and sum(1 for k in rj_sh["figures"] if k.startswith("target:small:loud:sham_target:")) == 3 * 5
+                  and sum(1 for k in rj_sh["figures"] if k.startswith("target:small:control:sham_target:")) == 4
+                  and len(rj_sh["judged"]["inputs"]["classes"]["small"]["controls_aside"]["sham_target"]) == 4,
+                  f"5: a trial of a site chosen by a declared rule is read whole, its four sham edits judged as the "
+                  f"matched ones are ({dv_sh['as_loud']} of 4 at least as loud as the edit), and judged again from its book "
+                  f"({t_sh['verdict']})")
             # an arm that alone makes an item, and behind the brief's own system turn (as it is read) does not
             sys_turn_x = " ".join(["quiet"] * 80)
             its_x = [d.item for d in brief.generator.draw("kept_back", 4, seed_bytes=b"y" * 32, tokenizer=hP.tokenizer)]
@@ -1286,21 +1363,30 @@ def main() -> int:
             had_backend = (repo / "backend").is_dir()
             (repo / "backend" / "__pycache__").mkdir(parents=True, exist_ok=True)
             (repo / "backend" / "__pycache__" / "levelling.cpython-312.pyc").write_bytes(b"a cache beside its source")
+            outside_pkg = tmp / "outside_pkg"
+            outside_pkg.mkdir()
+            (outside_pkg / "__init__.py").write_text("raise SystemExit('not the module the registration hashed')\n")
+            os.symlink(outside_pkg, repo / "backend" / "linked")
+            (repo / ".git" / "info" / "exclude").write_text((repo / ".git" / "info" / "exclude").read_text() + "backend/linked\n")
             plain_compiled = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"],
                                             capture_output=True, text=True).stdout
             cond_compiled = cond()
             (repo / "numpy.pyc").unlink()
             shutil.rmtree(repo / "scripts")
             shutil.rmtree(repo / "colorsys")
+            (repo / "backend" / "linked").unlink()
             shutil.rmtree(repo / "backend" / "__pycache__" if had_backend else repo / "backend")
             (repo / ".git" / "info" / "exclude").write_text("")
             check(plain_compiled == "" and cond_compiled["checkout"]["dirty"] is False
-                  and cond_compiled["checkout"]["unlisted_code"] == 3
-                  and any(f"3 file(s) of code the runner would import that are in no commit (colorsys/__init__.pyc, numpy.pyc, "
-                          f"scripts/{so_name})" in r for r in cond_compiled["reasons"])
+                  and cond_compiled["checkout"]["unlisted_code"] == 4
+                  and lt.unlisted_code(repo) == []
+                  and any("4 file(s) of code the runner would import that are in no commit (backend/linked/__init__.py, "
+                          "colorsys/__init__.pyc, numpy.pyc, ...)" in r for r in cond_compiled["reasons"])
+                  and so_name.startswith("torch.")
                   and why(cond()) == [] and cond()["checkout"]["unlisted_code"] == 0,
-                  f"5: compiled Python and an extension module where the runner imports from, which a status does not "
-                  f"list, are found as source is, and a cache beside its source is not counted ({why(cond_compiled)})")
+                  f"5: compiled Python and an extension module where the runner imports from, and a package behind a "
+                  f"folder that is a link, none of which a status lists, are found as source is; a cache beside its "
+                  f"source is not counted ({why(cond_compiled)})")
             outside = lt.record_conditions(prereg_dir, v_ok["trial"], repo_root=repo, book=level_book)
             check(any("outside the checkout" in r for r in outside["reasons"]),
                   "5: a registration folder outside the checkout is in no commit, and is not of record")
@@ -1379,7 +1465,9 @@ def main() -> int:
             real_book = tmp / "xdg" / "theodolite" / "level_book.jsonl"
             n_real = lb.verify(real_book)["entries"]
             check("would not be of record" in early and "in no commit" in early and "uncommitted path" in early
-                  and "first thing its process" not in early and "side book" not in early and n_real == 4,
+                  and "first thing its process" not in early and "side book" not in early
+                  and n_real == 5  # three calibration readings, their note, and the note of the look taken at registration
+                  and list(lb.entries(real_book))[4]["body"].get("note_type") == "trial_look",
                   f"5: before its folder is committed the trial is refused, for that and nothing else, and enters nothing ({early[:200]})")
             proc = in_real(code_run)
             got_line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("RESULT ")), None)
@@ -1398,7 +1486,7 @@ def main() -> int:
             SHEETS.append(rec_sheet)
             rec_entries = list(lb.entries(real_book))
             check(rec_entries[-1]["body"].get("note_type") == lt.NOTE_OF_RECORD and lb.verify(real_book)["ok"]
-                  and rec_entries[4]["body"].get("of_record") is True and rec_entries[4]["body"]["process"]["forwards"] == 0,
+                  and rec_entries[5]["body"].get("of_record") is True and rec_entries[5]["body"]["process"]["forwards"] == 0,
                   "5: and its verdict is entered in the book as a trial of record")
             rec_card = lroutes.build_replay_card(rec_entries[-1])
             check(rec_card["of_record"] is True and rec_card["status"] == got.get("verdict"),
@@ -1426,6 +1514,7 @@ def main() -> int:
                             if "delivered" in arm and (key.startswith("control:") or key == "edit:1.0"):
                                 arm["delivered"] = 0.01
                                 arm["delivered_end"] = 0.01
+                                arm["delivered_prompt"] = 0.01
                             if "odds" in arm["metrics"] and (key in ("edit:1.0", "edit:-1.0") or key.startswith("control:")):
                                 arm["metrics"]["odds"]["mean"] = -1.5 if key == "edit:1.0" else 1.4 if key == "edit:-1.0" else 0.01
                         fl = cb.get("folded")
@@ -1456,10 +1545,10 @@ def main() -> int:
                   f"5: a book written again with figures that would pass, judged again, reads '{rj_pass['verdict']}' "
                   f"({(jp['trial'].get('reasons') or [''])[:2]})")
             check(sent_live.startswith('Trial of record "rec" (registration ' + reg_real["trial_sha256"][:12])
-                  and "in the level book of the environment it ran in, at line 4" in sent_live and "on 4 fresh items" in sent_live
-                  and "as read, 39 of 39 changed the stream within that factor of what the edit changed it, over the answer "
-                      "and at the position the metric is read" in sent_live
-                  and "over the sets each neuron had at least 39 different stand-ins" in sent_live
+                  and "in the level book of the environment it ran in, at line 5" in sent_live and "on 4 fresh items" in sent_live
+                  and "as read, 39 of 39 changed the stream at least as much as the edit did over the prompt, over the "
+                      "answer and at the last position" in sent_live
+                  and "39 of the sets share no site with one another" in sent_live
                   and "gating batteries passed (neutral text 2 of 2; near misses 2 of 2; labelled panel 2 of 2 items read)" in sent_live
                   and sent_live.count("-1.5000") >= 6 and "fresh reading 1 of 2" in sent_live
                   and "0 of 39 matched other-site" in sent_live and "0 of 19 matched control edits moved as much" in sent_live
@@ -1501,8 +1590,23 @@ def main() -> int:
                     arm["delivered_end"] = 0.0001  # a hundredth of the edit's at the last position; the same over the answer
 
             def few_stand_ins(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
-                for term in body["controls"]["coverage"]["terms"]:
-                    term["min_distinct"] = 18
+                body["controls"]["coverage"]["disjoint_sets"] = 18  # each neuron still has 39 different stand-ins
+
+            def no_count(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                body["controls"]["coverage"] = None
+
+            def no_prompt_figure(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                for arm in arms_in(body, ""):
+                    arm.pop("delivered_prompt", None)
+
+            def quiet_over_the_prompt(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                for arm in arms_in(body, "control:"):
+                    arm["delivered_prompt"] = 0.0099  # one part in a hundred under the edit's
+
+            def louder(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                for arm in arms_in(body, "control:"):
+                    for key in ("delivered", "delivered_end", "delivered_prompt"):
+                        arm[key] = 0.5  # fifty times the edit's
 
             def edit_no_figure(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
                 for arm in arms_in(body, "edit:1.0"):
@@ -1519,7 +1623,9 @@ def main() -> int:
             in_pass = jp["inputs"]["classes"]["small"]
             got_x = {tag: judged_with(tag, fn) for tag, fn in (
                 ("quiet_at_end", quiet_at_end), ("few_stand_ins", few_stand_ins), ("edit_no_figure", edit_no_figure),
-                ("edit_delivered_nothing", edit_delivered_nothing), ("old_reading", old_reading))}
+                ("edit_delivered_nothing", edit_delivered_nothing), ("old_reading", old_reading), ("no_count", no_count),
+                ("no_prompt_figure", no_prompt_figure), ("quiet_over_the_prompt", quiet_over_the_prompt),
+                ("louder", louder))}
 
             def small_of(tag: str) -> Dict[str, Any]:
                 return got_x[tag]["judged"]["fresh_judged"]["classes"]["small"]
@@ -1533,37 +1639,75 @@ def main() -> int:
                   and got_x["quiet_at_end"]["verdict"] == "failed"
                   and got_x["quiet_at_end"]["fresh_verdict"] == "no better than control edits"
                   and small_of("quiet_at_end")["delivered"]["other_sites_matched"]["not_comparable"] == 39
-                  and small_of("quiet_at_end")["delivered"]["other_sites_matched"]["within_tolerance"] == 0
+                  and small_of("quiet_at_end")["delivered"]["other_sites_matched"]["as_loud"] == 0
                   and small_of("quiet_at_end")["controls"]["other_sites_matched"]["at_least"] == 39
                   and got_x["quiet_at_end"]["judged"]["inputs"]["classes"]["small"]["controls_aside"]["other_sites_matched"] == [True] * 39
-                  and got_x["quiet_at_end"]["figures"] == rj_pass["figures"]
-                  and "did not change the stream as the edit did" in why_x("quiet_at_end"),
-                  "5: control edits that changed the stream as the edit did over the answer and a hundredth as far at the "
-                  "last position, where the metric is read, are each counted as moving as much: a book that would pass "
-                  f"then fails, with every figure as read the same ({got_x['quiet_at_end']['verdict']}: {why_x('quiet_at_end')[:150]})")
+                  and {k: v for k, v in got_x["quiet_at_end"]["figures"].items() if ":loud:" not in k}
+                      == {k: v for k, v in rj_pass["figures"].items() if ":loud:" not in k}
+                  and "did not change the stream as much as the edit did" in why_x("quiet_at_end")
+                  and got_x["quiet_over_the_prompt"]["verdict"] == "failed"
+                  and small_of("quiet_over_the_prompt")["delivered"]["other_sites_matched"]["as_loud"] == 0,
+                  "5: control edits as loud as the edit over the answer and a hundredth as loud at the last position, "
+                  "where the metric is read, or one part in a hundred quieter over the prompt, are each counted as moving "
+                  "as much: a book that would pass then fails, with every other figure as read the same "
+                  f"({got_x['quiet_at_end']['verdict']}: {why_x('quiet_at_end')[:150]})")
+            m_quiet: Dict[str, Any] = {}
+            for ent in lb.entries(real_book):
+                body = json.loads(json.dumps(ent["body"]))
+                would_pass(ent, body)
+                if ent["kind"] == "paired" and str(body.get("name", "")).endswith("_matched"):
+                    quiet_at_end(ent, body)
+                    m_quiet = body
+            note_real = [e["body"] for e in lb.entries(real_book) if e["kind"] == "note"
+                         and e["body"].get("note_type") == lt.NOTE_OF_RECORD][-1]
+            drawn_real = lt._as_drawn(note_real["drawn"]["target"])
+            dose_real = float(reg_real["trial"]["main_dose"])
+            d_span = lcl._delivered_of(m_quiet, drawn_real, "small", dose_real, compare=True, at_end=False)
+            d_end = lcl._delivered_of(m_quiet, drawn_real, "small", dose_real, compare=True, at_end=True)
+            check(lcl.read_at_end(brief) is True
+                  and lcl.read_at_end(SimpleNamespace(metric="odds", readouts={"odds": {"at": "span"}})) is False
+                  and lcl.read_at_end(SimpleNamespace(metric="own", readouts={"odds": {"at": "end"}})) is False
+                  and d_span["compared_at"] == ["prompt", "answer"] and d_span["as_loud"] == 39
+                  and d_end["compared_at"] == ["prompt", "answer", "end"] and d_end["as_loud"] == 0,
+                  "5: where a brief's metric is read over the answer, what a control edit delivered at the last position "
+                  "is not asked of it: the same reading counts all 39 control edits there and none for a metric read at "
+                  "the end")
+            check(got_x["louder"]["verdict"] in lt.PASSED
+                  and small_of("louder")["delivered"]["other_sites_matched"]["as_loud"] == 39
+                  and small_of("louder")["delivered"]["other_sites_matched"]["not_comparable"] == 0
+                  and got_x["edit_delivered_nothing"]["verdict"] in lt.PASSED
+                  and small_of("edit_delivered_nothing")["delivered"]["other_sites_matched"]["as_loud"] == 39,
+                  "5: there is no upper side: control edits fifty times as loud as the edit count for it when they move "
+                  "the metric less, and so do control edits louder than an edit that changed nothing over the answer")
             check(got_x["few_stand_ins"]["verdict"] == "failed"
                   and small_of("few_stand_ins")["controls"]["other_sites_matched"]["effective_count"] == 18
                   and small_of("few_stand_ins")["controls"]["other_sites_matched"]["at_least"] == 0
                   and small_of("few_stand_ins")["controls"]["other_sites_matched"]["p_fw"] > 0.05
                   and "the 39 control edits are counted as 18 separate draws, too few to reach the level whatever they read"
                       in why_x("few_stand_ins")
-                  and jp["fresh_judged"]["classes"]["small"]["controls"]["other_sites_matched"]["effective_count"] == 39,
-                  "5: control sets in which one neuron had 18 different stand-ins are counted as 18 draws: with none moving "
-                  f"as much the level is not reached, and the reason says the count alone settled it ({why_x('few_stand_ins')[:170]})")
+                  and jp["fresh_judged"]["classes"]["small"]["controls"]["other_sites_matched"]["effective_count"] == 39
+                  and got_x["no_count"]["verdict"] == "failed"
+                  and small_of("no_count")["controls"]["other_sites_matched"]["effective_count"] == 1
+                  and "counted as 1 separate draws" in why_x("no_count"),
+                  "5: control sets of which 18 share no site are counted as 18 draws, though every neuron has 39 "
+                  "different stand-ins: with none moving as much the level is not reached, and the reason says the count "
+                  "alone settled it; a reading that records no count is counted as one draw "
+                  f"({why_x('few_stand_ins')[:170]})")
             check(all(got_x[tag]["verdict"] == "failed"
                       and small_of(tag)["delivered"]["other_sites_matched"]["not_comparable"] == 39
-                      and small_of(tag)["delivered"]["other_sites_matched"]["within_tolerance"] == 0
-                      for tag in ("edit_no_figure", "edit_delivered_nothing", "old_reading"))
-                  and "outside the matching tolerance of the edit's, or with no figure" in lcl.delivered_words(
+                      and small_of(tag)["delivered"]["other_sites_matched"]["as_loud"] == 0
+                      for tag in ("edit_no_figure", "old_reading", "no_prompt_figure"))
+                  and "quieter than the edit at one of those, or with no figure" in lcl.delivered_words(
                       small_of("edit_no_figure")["delivered"]["other_sites_matched"],
                       small_of("edit_no_figure")["controls"]["other_sites_matched"])
-                  and lcl.delivered_apart(None, 0.5, 2.0) and lcl.delivered_apart(0.5, None, 2.0)
-                  and lcl.delivered_apart(0.0, 0.5, 2.0) and not lcl.delivered_apart(0.0, 0.0, 2.0)
-                  and not lcl.delivered_apart(1.0, 0.5, 2.0) and not lcl.delivered_apart(1.0, 2.0, 2.0)
-                  and lcl.delivered_apart(1.0, 0.4999, 2.0) and lcl.delivered_apart(1.0, 2.0001, 2.0),
-                  "5: when the edit has no delivered figure, when it delivered nothing and its control edits something, and "
-                  "when a reading records no figure at the last position for a metric read there, no control edit is taken "
-                  "to have changed the stream as the edit did: each is counted as moving as much, and the trial fails")
+                  and lcl.delivered_apart(None, 0.5) and lcl.delivered_apart(0.5, None)
+                  and not lcl.delivered_apart(0.0, 0.5) and not lcl.delivered_apart(0.0, 0.0)
+                  and lcl.delivered_apart(1.0, 0.5) and not lcl.delivered_apart(1.0, 2.0)
+                  and lcl.delivered_apart(1.0, 0.9999) and not lcl.delivered_apart(1.0, 1.0)
+                  and not lcl.delivered_apart(1.0, 50.0),
+                  "5: when the edit has no delivered figure, and when a reading records no figure at the last position "
+                  "(for a metric read there) or none over the prompt, no control edit is taken to have been as loud as "
+                  "the edit: each is counted as moving as much, and the trial fails")
 
 
             # the command line
@@ -1862,6 +2006,8 @@ def main() -> int:
                   and "finite number" in str(lex.dose_caps(e_trial, True))
                   and "times its own length" in str(lex.dose_caps(SimpleNamespace(terms=(far_term,)), 3.0))
                   and lex.dose_caps(SimpleNamespace(terms=(far_term,)), 1.0) is None
+                  and lex.dose_caps(SimpleNamespace(terms=(far_term,)), 2.0) is None  # 2 x 32 is the cap, not past it
+                  and "finite number" in str(lex.dose_caps(e_trial, 10 ** 400))
                   and refuses(lambda: lex.export_lora_adapter(e_trial, target_mod, out_path=tmp / "owner_exports" / "dose_50.gguf",
                                                               dose=50.0), lex.ExportRefused, "not exported at this dose")
                   and not (tmp / "owner_exports" / "dose_50.gguf").exists(),
@@ -2120,6 +2266,14 @@ def main() -> int:
             # a count that could not be asked is not one that was found to be nought
             co_code = written_again("co_code", checkout_says(unlisted_code=1))
             co_code_none = written_again("co_code_none", checkout_says(unlisted_code=None))
+            iv_bools = intake_of("co_bools", written_again("co_bools", checkout_says(
+                tracked_changed=False, hidden=False, unlisted_code=False)), dirty=False, other_runner=False)
+            iv_floats = intake_of("co_floats", written_again("co_floats", checkout_says(
+                tracked_changed=0.0, hidden=0.0, unlisted_code=0.0)), dirty=False, other_runner=False)
+            check(all(iv["outcome"] == "rejected" and failed(iv, "no_tracked_file_changed")
+                      and failed(iv, "no_code_outside_the_commit") for iv in (iv_bools, iv_floats)),
+                  "7: a count of nought is a whole number: a checkout that says False or 0.0 where a count belongs has "
+                  "not said nought")
             iv_code = intake_of("co_code", co_code, dirty=False, other_runner=False)
             iv_code_none = intake_of("co_code_none", co_code_none, dirty=False, other_runner=False)
             iv_code_ok = intake_of("co_code_leave", co_code, dirty=True, other_runner=False)
@@ -2223,27 +2377,57 @@ def main() -> int:
             # mean as read is the home's, so no figure is "missing"; the intake says which trials set aside what.
             aside_home = [rj["judged"]["inputs"]["classes"][c]["controls_aside"]["other_sites_matched"] for c in ("small", "large")]
             c_in = next((c for c in range(39) if not aside_home[0][c] and not aside_home[1][c]), None)
+            c_out = next((c for c in range(39) if aside_home[0][c] and aside_home[1][c]), None)
+            c_flip, flip_to = (c_in, 1e-9) if c_in is not None else (c_out, 1.0)  # one that counted is made quiet, else one set aside loud
 
-            def one_control_quiet(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
-                if named("_matched", ent, body) and c_in is not None:
+            def one_control_flipped(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                if named("_matched", ent, body):
                     for it in body["items"]:
                         for cls in ("small", "large"):
                             for arm in it["classes"][cls]["arms"]:
-                                if arm.get("key") == f"control:{c_in}":
-                                    arm["delivered"], arm["delivered_end"] = 1e-9, 1e-9
+                                if arm.get("key") == f"control:{c_flip}":
+                                    for key in ("delivered", "delivered_end", "delivered_prompt"):
+                                        arm[key] = flip_to
 
-            iv_bound = intake_of("ctl_at_bound", written_again("ctl_at_bound", one_control_quiet))
-            check(c_in is not None and iv_bound["class_diffs"]["target:small:controls"]["missing"] == 0
+            iv_bound = intake_of("ctl_at_bound", written_again("ctl_at_bound", one_control_flipped))
+            check(c_flip is not None and iv_bound["class_diffs"]["target:small:controls"]["missing"] == 0
                   and iv_bound["class_diffs"]["target:small:controls"]["largest_difference"] == 0.0
                   and iv_bound["class_diffs"]["target:small:controls"]["items"] == 78
                   and iv_bound["control_edits_set_aside_differently"] == {"target:small:other_sites_matched": 1,
                                                                            "target:large:other_sites_matched": 1}
-                  and iv_bound["match_class"] != "same_figures"
-                  and (iv_bound["outcome"] == "accepted" or any("verdict_matches_home" in r or "book_note_follows" in r
-                                                                 for r in iv_bound["disagree_reasons"] + iv_bound["reject_reasons"])),
-                  f"7: a control edit set aside on the volunteer's card and not at home is no figure gone missing: its mean "
-                  f"as read is compared, and the intake says the two trials set aside other control edits "
-                  f"({iv_bound['outcome']}, {iv_bound['control_edits_set_aside_differently']})")
+                  and iv_bound["class_diffs"]["target:small:delivered"]["outside_tolerance"] == 3
+                  and iv_bound["class_diffs"]["target:small:delivered"]["missing"] == 0
+                  and iv_bound["outcome"] == "disagreed" and failed(iv_bound, "figures_agree_target_small_delivered")
+                  and not failed(iv_bound, "figures_agree_target_small_controls"),
+                  f"7: a control edit that counted on one card and was set aside on the other is no figure gone missing: "
+                  f"its mean as read is the home's, what it delivered is seen to differ, and the intake says the two "
+                  f"trials set aside other control edits ({iv_bound['outcome']}, {iv_bound['control_edits_set_aside_differently']})")
+
+            # what the control edits delivered, and how many separate draws they were counted as, are figures too
+            def thrice_as_loud(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                if named("_matched", ent, body):
+                    for it in body["items"]:
+                        for cls in ("small", "large"):
+                            for arm in it["classes"][cls]["arms"]:
+                                if str(arm.get("key", "")).startswith("control:"):
+                                    for key in ("delivered", "delivered_end", "delivered_prompt"):
+                                        arm[key] = 3.0 * arm[key]
+
+            def thirty_draws(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                if named("_matched", ent, body):
+                    body["controls"]["coverage"]["disjoint_sets"] = 30
+
+            iv_loud = intake_of("thrice_as_loud", written_again("thrice_as_loud", thrice_as_loud))
+            iv_draws = intake_of("thirty_draws", written_again("thirty_draws", thirty_draws))
+            check(iv_loud["outcome"] != "accepted" and failed(iv_loud, "figures_agree_target_small_delivered")
+                  and iv_loud["class_diffs"]["target:small:delivered"]["outside_tolerance"] == 39 * 3
+                  and iv_loud["class_diffs"]["target:small"]["outside_tolerance"] == 0
+                  and iv_draws["outcome"] != "accepted" and failed(iv_draws, "figures_agree_target_small_other")
+                  and iv_draws["class_diffs"]["target:small:other"]["outside_tolerance"] == 1
+                  and iv_ok["class_diffs"]["target:small:delivered"]["items"] == 3 * 40
+                  and any(k == "target:small:draws:other_sites_matched" and v == 39.0 for k, v in rj["figures"].items()),
+                  f"7: a returned book whose control edits delivered three times as much, or were counted as 30 draws "
+                  f"where the home's were 39, is not taken for the same figures ({iv_loud['outcome']}, {iv_draws['outcome']})")
             # a value nested deeper than Python will walk, and a number that is no JSON number: a verdict in words
             deep = tmp / "deep_return"
             _bundle(deep, vol_book, ret_ok)

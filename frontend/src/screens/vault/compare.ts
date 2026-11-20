@@ -471,7 +471,7 @@ export function formatPlainEdit(form: CompareFormState): string {
           : `Scale ${countTxt} on ${form.linear} rows in ${layerTxt} by ×${form.factor || "…"}`;
   const ctlTxt =
     form.controlsFamily === "other_sites_matched"
-      ? `${form.controlsCount || "?"} delivery-matched other-site control edits`
+      ? `${form.controlsCount || "?"} matched other-site control edits`
       : form.controlsFamily === "same_site"
         ? `${form.controlsCount || "?"} same-site random-direction control edits`
         : `${form.controlsCount || "?"} random other-site control edits`;

@@ -54,8 +54,11 @@ from backend import levelling as lv
 from backend import weight_edits as we
 from backend.census import write_json_atomic
 
-TRIAL_VERSION = 1
-TRIAL_RULE_PRESET = "trial-1"
+# 2: a control edit counts only when at least as loud as the edit (over the prompt, the answer and, for a metric
+# read there, the last position); control sets are drawn to share no site and counted by those that share none; a
+# look is taken at registration. A folder registered under "trial-1" is refused by its version, in those words.
+TRIAL_VERSION = 2
+TRIAL_RULE_PRESET = "trial-2"
 TRIAL_CONTROLS = 99  # synthesis.md §vi and arbiter.md row 18: 99 control edits a family support five fresh readings
 MAX_REWORDED_USES = 5  # synthesis.md §vi: a reworded item is read at most five times in its life, then the set rotates
 # How far the folded form's mean may sit from the per-row form's and still be called the same edit: one floor (the
@@ -173,10 +176,12 @@ def unlisted_code(root: Path = ROOT_DIR) -> Optional[List[str]]:
     """Code the runner would import that no commit holds: at the checkout's root and in `scripts/` (both are put
     first on the import path by the command lines), a module file or a package's `__init__` in any form Python
     imports (source, compiled Python standing where a source file would, an extension module), and any such file
-    under `backend/`, that git does not track. A status does not list a file git was told to ignore (`.gitignore`,
-    `.git/info/exclude`, a user's own ignore file), and an ignored `numpy.py`, `numpy.pyc` or `numpy.so` at the root
-    would be the `numpy` the trial runs. `__pycache__` is not looked in: Python reads it only beside the source it
-    was made from. None where git cannot be asked."""
+    under `backend/` (a folder there that is a link is walked as a folder), that git does not track. A status does
+    not list a file git was told to ignore (`.gitignore`, `.git/info/exclude`, a user's own ignore file), and an
+    ignored `numpy.py`, `numpy.pyc` or `numpy.so` at the root would be the `numpy` the trial runs. `__pycache__` is
+    not looked in: Python takes a cache there only when it records the time and size of the source beside it, so a
+    cache left by an earlier version of a file is not used. One made to carry the present source's time and size
+    with other code in it would be, and is not looked for. None where git cannot be asked."""
     ls = _git(root, "ls-files", "-z")
     if ls is None or ls.returncode != 0:
         return None
@@ -195,7 +200,15 @@ def unlisted_code(root: Path = ROOT_DIR) -> Optional[List[str]]:
                 there.append(p)
             elif p.is_dir() and p.name != "__pycache__":
                 there += [q for q in p.glob("__init__.*") if code(q)]
-    there += [p for p in (base / "backend").rglob("*") if "__pycache__" not in p.parts and code(p)]
+    walked: set = set()
+    for folder, subfolders, names in os.walk(base / "backend", followlinks=True):
+        real = os.path.realpath(folder)
+        if real in walked:  # a link that leads back into a folder already walked
+            subfolders[:] = []
+            continue
+        walked.add(real)
+        subfolders[:] = [d for d in subfolders if d != "__pycache__"]
+        there += [Path(folder) / nm for nm in names if code(Path(folder) / nm)]
     return sorted({p.relative_to(base).as_posix() for p in there} - tracked)
 
 
@@ -643,16 +656,18 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         f"what a base pre-pass expects each to deliver over the answer, within a factor of "
         f"`{trial_cfg['match_tolerance']:g}`; the same "
         "site" + ("; sham targets, registered here" if trial_cfg["selection_mode"] == "declared_rule" else "") + "). "
-        "A matched or sham control edit that, as read, did not change the stream within that factor of what the edit "
-        "changed it is counted as moving as much: over the positions that predict the answer, and"
-        + (" also at the last position, where this brief's metric is read and which a base pre-pass does not look at"
-           if lcl.read_at_end(brief) else " there alone, since this brief's metric is read over them")
-        + ". A control edit, or the edit, with no such figure is counted the same way",
-        "- separate draws: each neuron's stand-ins are drawn with as few repeats as its eligible sites allow, and the "
-        "control sets are counted as no more separate draws than the fewest different stand-ins any one neuron had "
-        "(a bound for the case where the effect rests on one neuron, not an estimate). A pass needs the fresh items' "
-        f"sets to count as `{_least_controls(brief.max_fresh_readings, bars.alpha)}` and the reworded set's as "
-        f"`{_least_controls(1, bars.alpha)}`, which is known only once the items are drawn. " + _sizing_words(trial_cfg),
+        "A matched or sham control edit counts for the edit only when, as read, it changed the stream at least as "
+        "much as the edit did: over the prompt's positions, over the positions that predict the answer, and"
+        + (" at the last position, where this brief's metric is read and which a base pre-pass does not look at"
+           if lcl.read_at_end(brief) else " nowhere else, since this brief's metric is read over the answer")
+        + ". One that was quieter at any of them, and a control edit or an edit with no such figure, is counted as "
+        "moving as much. The figures are means over the items read. The matching factor has no part in this: a "
+        "wider one makes more sites eligible and lets no quieter control edit count",
+        "- separate draws: the control sets are drawn to share as few sites as the eligible sites allow, and are "
+        "counted as no more separate draws than the control edits that share no site with one another. A pass needs "
+        f"the fresh items' sets to count as `{_least_controls(brief.max_fresh_readings, bars.alpha)}` and the reworded "
+        f"set's as `{_least_controls(1, bars.alpha)}`, which is known only once the items are drawn. "
+        + _sizing_words(trial_cfg),
         f"- fresh items: `{trial_cfg['n_target']}`, drawn from `os.urandom(32)` after the trial is entered in the book",
         f"- batch classes: `small = {trial_cfg['rows']['small']}`, `large = {trial_cfg['rows']['large']}`",
         f"- folded form: read on every item in both classes. Its mean, and the largest gap of any one item's folded "
@@ -721,12 +736,28 @@ def _sizing_words(trial_cfg: Mapping[str, Any]) -> str:
     parts = []
     for role, what in (("matched", "the fresh items' frames, on a sizing draw"), ("reworded", "the reworded set")):
         s = sz.get(role) if isinstance(sz.get(role), Mapping) else {}
-        parts.append(f"{what}: `{s.get('counted_as')}` of `{s.get('control_edits')}` (fewest eligible sites a neuron "
-                     f"`{s.get('fewest_eligible')}`)")
+        parts.append(f"{what}: `{s.get('counted_as')}` of `{s.get('control_edits')}` sets sharing no site (fewest "
+                     f"eligible sites a neuron `{s.get('fewest_eligible')}`"
+                     + ("" if s.get("all_drawn") else f"; only `{s.get('found')}` of the sets could be drawn") + ")")
     bad = [role for role in ("matched", "reworded")
            if isinstance(sz.get(role), Mapping) and sz[role].get("could_pass") is False]
     return ("A look taken at registration, with the base alone, counted " + "; ".join(parts)
+            + ". The look sees the count alone: whether the control edits change the stream at least as much as the "
+            "edit is known only when the trial is read"
             + (". BY THAT LOOK THIS TRIAL COULD NOT PASS: it is read as a dry run or not at all" if bad else ""))
+
+
+def _look_words(what: str, s: Mapping[str, Any], tol: Any) -> str:
+    """Why, by the look taken at registration, a trial could not pass: said of one of its two matched readings."""
+    if not s.get("all_drawn"):
+        return (f"its {what} control sets could not all be drawn: {s.get('found')} of {s.get('control_edits')} (each "
+                f"neuron had as few as {s.get('fewest_eligible')} eligible sites at a matching factor of {tol:g}), and "
+                "a reading whose control sets cannot all be drawn ends void"
+                + (f"; a pass needs {s.get('needs')}, so fewer control edits would do"
+                   if int(s.get("found") or 0) >= int(s.get("needs") or 0) else ""))
+    return (f"its {what} control sets count as {s.get('counted_as')} separate draws ({s.get('counted_as')} of "
+            f"{s.get('control_edits')} share no site with one another; each neuron had as few as "
+            f"{s.get('fewest_eligible')} eligible sites at a matching factor of {tol:g}) and a pass needs {s.get('needs')}")
 
 
 def sizing_look(h: lv.Handle, brief: lbr.Brief, bars: lcl.BarSet, edit: we.Edit, trial_cfg: Mapping[str, Any],
@@ -739,9 +770,12 @@ def sizing_look(h: lv.Handle, brief: lbr.Brief, bars: lcl.BarSet, edit: we.Edit,
     look is taken on a sizing draw of the same frames (a fixed seed of the brief's own, as `preflight_trial` prices
     by) and on the reworded set itself: `levelling.matched_coverage` runs the base alone over them and draws the
     control sets, and nothing of the edit is read. For "matched" and "reworded": {"control_edits", "found",
-    "fewest_eligible", "fewest_distinct", "counted_as", "needs", "could_pass"}. A trial whose look says it could
-    not pass is not read of record (`run_trial_of_record`); the count that judges it is the one its own readings
-    give, which another filling of the frames can move. Raises `TrialRefused`."""
+    "all_drawn", "fewest_eligible", "disjoint_sets", "counted_as", "needs", "could_pass"}. A trial whose look says
+    it could not pass is not read of record (`run_trial_of_record`). The count that judges it is the one its own
+    readings give, which another filling of the frames can move either way: a look can let through a trial that
+    then falls short, and can bar one whose own draw would have counted. And the look sees the count alone: whether
+    the control edits will change the stream at least as much as the edit, which every one that is to count must,
+    is known only when the trial is read. Raises `TrialRefused`."""
     sys_turn = (brief.chat_settings or {}).get("system")
     seed = hashlib.sha256(("sizing:" + brief.id).encode("utf-8")).digest()
     out: Dict[str, Any] = {}
@@ -759,17 +793,19 @@ def sizing_look(h: lv.Handle, brief: lbr.Brief, bars: lcl.BarSet, edit: we.Edit,
             terms = [t for t in ((cov or {}).get("terms") or ()) if isinstance(t, Mapping)]
             count = int(plan["controls"]["count"])
             few_e = min((int(t["min_eligible"]) for t in terms), default=0)
-            few_d = min((int(t["min_distinct"]) for t in terms), default=0)
+            disjoint = int((cov or {}).get("disjoint_sets") or 0)
             needs = _least_controls(brief.max_fresh_readings if role == "matched" else 1, bars.alpha)
-            counted = min(count, few_d)
-            out[role] = {"control_edits": count, "found": int((cov or {}).get("found") or 0),
-                         "fewest_eligible": few_e, "fewest_distinct": few_d, "counted_as": counted, "needs": needs,
-                         "could_pass": bool((cov or {}).get("sufficient")) and counted >= needs}
+            counted = min(count, disjoint)
+            all_drawn = bool((cov or {}).get("sufficient"))
+            out[role] = {"control_edits": count, "found": int((cov or {}).get("found") or 0), "all_drawn": all_drawn,
+                         "fewest_eligible": few_e, "disjoint_sets": disjoint, "counted_as": counted, "needs": needs,
+                         "could_pass": all_drawn and counted >= needs}
     except (lv.Refused, we.Refused, lbr.BriefError) as exc:
         raise TrialRefused(f"The look at this trial's control edits could not be taken, so nothing is registered: "
                            f"{exc}") from None
     out["note"] = ("taken with the base alone on a sizing draw of the brief's frames and on the reworded set; the "
-                   "count that judges the trial is the one its own readings give")
+                   "count that judges the trial is the one its own readings give, and the look does not see whether "
+                   "the control edits will be as loud as the edit")
     return out
 
 
@@ -817,19 +853,7 @@ def _trial_steps(trial_cfg: Mapping[str, Any], brief: lbr.Brief, edit_ref: Mappi
     return steps
 
 
-def _arm_items(h: lv.Handle, brief: lbr.Brief, items: Sequence[Any]) -> int:
-    """Make, and throw away, every item a brief's prompt arms will be read on: each of `items` under each arm's
-    system turn as `level_claim._prompt_arm_eval` puts it together (`prompt_arm_system`: the brief's own system turn
-    first, where it has one). An arm too long to make an item of raises `levelling.Refused` here, where nothing has
-    been read, and not after every reading of a trial. Returns how many were made."""
-    made = 0
-    for arm in brief.prompt_arms or ():
-        sys_p = lcl.prompt_arm_system(brief, arm)
-        for it in items:
-            if it.question is not None and it.answer is not None:
-                lv.make_item(h.tokenizer, it.question, it.answer, system=sys_p, name=it.name)
-                made += 1
-    return made
+_arm_items = lcl.arm_items  # every item a brief's prompt arms will be read on, made and thrown away
 
 
 def preflight_trial(
@@ -945,8 +969,9 @@ def register_trial(
     saved_edit_dir: Optional[Path] = None,
     forecast: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Write the registration folder of a trial. Nothing is entered in the book here: the trial is entered when it
-    is read (`run_trial_of_record`), before its draw.
+    """Write the registration folder of a trial. The trial is not entered in the book here: it is entered when it
+    is read (`run_trial_of_record`), before its draw. What is entered is one note, of the look registration takes
+    (`trial_look`: a look ran the base over fillings of the brief's kept-back frames, and leaves a line).
 
     Refused here, so that no folder is written for a trial that could not be read: a brief or an edit a trial is
     not yet for (a written brief; an edit with no folded form on this model), an edit the brief does not allow or
@@ -1154,13 +1179,28 @@ def register_trial(
     # that could not pass by that count is found to be one before it is spent, not after
     trial_cfg["sizing"] = sizing_look(h, brief, bars, edit, trial_cfg, reworded)
     warnings = [
-        f"By the look taken at registration this trial could not pass: its {what} control sets count as "
-        f"{s['counted_as']} separate draws (each neuron had as few as {s['fewest_eligible']} eligible sites at a "
-        f"tolerance of {float(match_tolerance):g}) and a pass needs {s['needs']}. It will be read as a dry run or not "
-        "at all: register it with a wider tolerance" + (" or more control edits" if s["control_edits"] < s["needs"] else "") + "."
+        f"By the look taken at registration this trial could not pass: {_look_words(what, s, float(match_tolerance))}. "
+        "It will be read as a dry run or not at all. (A wider matching factor makes more sites eligible, with "
+        "stand-ins matched less closely; it does not change what a control edit must deliver to count.)"
         for role, what in (("matched", "fresh items'"), ("reworded", "reworded set's"))
         for s in [trial_cfg["sizing"].get(role) or {}] if s.get("could_pass") is False
     ]
+    # the look ran the base over fillings of the brief's kept-back frames: it leaves a line in the book it was
+    # registered against, so that how often an edit was looked at there, and under which designs, can be read
+    try:
+        look_entry = lb.append("note", _plain({
+            "note_type": "trial_look", "trial_name": trial_cfg["trial_name"], "brief_id": brief.id,
+            "brief_name": brief.name, "edit_id": edit.id, "match_tolerance": float(match_tolerance),
+            "controls_per_family": int(controls_per_family), "reworded_controls": int(rw_ctls),
+            "sizing": trial_cfg["sizing"],
+            "says": "a look taken when a trial was registered: the base alone was run over a sizing draw of the "
+                    "brief's kept-back frames and over the reworded set, and the control sets were drawn. Nothing "
+                    "of the edit was read, and this line counts as no reading",
+        }), path=bk)
+    except lb.BookBroken as exc:
+        raise TrialRefused(f"The look taken at registration could not be entered in {bk.name} ({exc}), so nothing "
+                           "is registered.") from None
+    trial_cfg["look_seq"] = int(look_entry["seq"])
 
     folder.mkdir(parents=True, exist_ok=True)
     lbr.save_brief(brief, folder / "brief.json")
@@ -1598,6 +1638,7 @@ def judge_reworded(
             "halves_ok": halves_ok,
             "controls": ctl_eval,
             "delivered": cdata.get("delivered"),
+            "item_gate": cdata.get("item_gate"),
         }
 
     folded_eval = judge_folded(
@@ -1706,6 +1747,14 @@ def _controls_judged(dv: Dict[str, Any], ctl_means: List[Optional[float]]) -> Tu
     return judged, apart
 
 
+def _loud_of(dv: Mapping[str, Any]) -> Dict[str, Any]:
+    """The edit's and each control edit's change to the stream as read, by place (over the prompt, over the answer,
+    at the last position), from `level_claim._delivered_of`: what an intake sets beside the home trial's."""
+    return {"edit": {"prompt": dv.get("edit_prompt"), "answer": dv.get("edit"), "end": dv.get("edit_end")},
+            "controls": {"prompt": list(dv.get("per_control_prompt") or ()), "answer": list(dv.get("per_control") or ()),
+                         "end": list(dv.get("per_control_end") or ())}}
+
+
 def judge_readings(
     brief: lbr.Brief,
     bars: lcl.BarSet,
@@ -1765,7 +1814,8 @@ def judge_readings(
     at_end = lcl.read_at_end(brief)  # the metric is read at the last position: what was delivered there counts too
 
     def slim(dv: Optional[Dict[str, Any]]) -> None:
-        for key in ("per_control", "per_control_end", "apart"):  # each control's own figures stay in its reading
+        # each control's own figures stay in its reading, and in `delivered_as_read` for an intake to compare
+        for key in ("per_control", "per_control_end", "per_control_prompt", "apart"):
             if isinstance(dv, dict):
                 dv.pop(key, None)
 
@@ -1778,12 +1828,13 @@ def judge_readings(
             # trial's figures are set beside another's by, the second have those set aside taken out
             as_read: Dict[str, Any] = {"other_sites_matched": list(ctl_m), "same_site": list(ctl_s)}
             aside: Dict[str, Any] = {}
-            dv_m = lcl._delivered_of(r_matched, target_drawn, cls_name, main_dose, tolerance=tol, at_end=at_end)
+            dv_m = lcl._delivered_of(r_matched, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
+            loud: Dict[str, Any] = {"other_sites_matched": _loud_of(dv_m)}
             ctl_m, aside["other_sites_matched"] = _controls_judged(dv_m, ctl_m)
             ctls_cls: Dict[str, Any] = {"other_sites_matched": ctl_m, "same_site": ctl_s}
-            eff_cls: Dict[str, Any] = {}
-            if lcl.separate_draws(dv_m) is not None:
-                eff_cls["other_sites_matched"] = lcl.separate_draws(dv_m)
+            # a reading that records no count of its separate draws shows none: it is counted as one
+            draws_m = lcl.separate_draws(dv_m)
+            eff_cls: Dict[str, Any] = {"other_sites_matched": draws_m if draws_m is not None else 1}
             deliv_cls: Dict[str, Any] = {
                 "other_sites_matched": dv_m,
                 "same_site": lcl._delivered_of(r_same, target_drawn, cls_name, main_dose),
@@ -1793,7 +1844,8 @@ def judge_readings(
                 as_read["sham_target"] = list(ctl_sh)
                 # a sham that moves the stream much more or less than the edit is not a control for it: it is
                 # counted against the edit (as the claim gate does), and the sheet says how many
-                dv_sh = lcl._delivered_of(r_sham, target_drawn, cls_name, main_dose, tolerance=tol, at_end=at_end)
+                dv_sh = lcl._delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
+                loud["sham_target"] = _loud_of(dv_sh)
                 ctl_sh, aside["sham_target"] = _controls_judged(dv_sh, ctl_sh)
                 ctls_cls["sham_target"] = ctl_sh
                 deliv_cls["sham_target"] = dv_sh
@@ -1801,22 +1853,25 @@ def judge_readings(
                 slim(dv)
             classes_payload[cls_name] = {"item_effects": it_effs, "floor": fl_both, "reversed_mean": rev_m,
                                          "controls": ctls_cls, "controls_as_read": as_read, "controls_aside": aside,
-                                         "controls_effective": eff_cls, "delivered": deliv_cls}
+                                         "controls_effective": eff_cls, "delivered": deliv_cls,
+                                         "delivered_as_read": loud,
+                                         "item_gate": lcl.item_gate_of(r_matched, target_drawn)}
             folded_by_class[cls_name] = extract_folded_class(r_matched, target_drawn, cls_name, brief.metric)
 
         for cls_name in ("small", "large"):
             it_effs, fl_rw, _, ctl_rw = lcl._extract_item_effects(r_rw, rw_drawn, cls_name, brief.metric, main_dose)
             rw_read = list(ctl_rw)
-            dv_rw = lcl._delivered_of(r_rw, rw_drawn, cls_name, main_dose, tolerance=tol, at_end=at_end)
+            dv_rw = lcl._delivered_of(r_rw, rw_drawn, cls_name, main_dose, compare=True, at_end=at_end)
+            rw_loud = {"other_sites_matched": _loud_of(dv_rw)}
             ctl_rw, rw_aside = _controls_judged(dv_rw, ctl_rw)
             draws_rw = lcl.separate_draws(dv_rw)
             slim(dv_rw)
             rw_classes[cls_name] = {"item_effects": it_effs, "floor": fl_rw, "controls": {"other_sites_matched": ctl_rw},
                                     "controls_as_read": {"other_sites_matched": rw_read},
                                     "controls_aside": {"other_sites_matched": rw_aside},
-                                    "controls_effective": ({"other_sites_matched": draws_rw}
-                                                           if draws_rw is not None else {}),
-                                    "delivered": dv_rw}
+                                    "controls_effective": {"other_sites_matched": draws_rw if draws_rw is not None else 1},
+                                    "delivered": dv_rw, "delivered_as_read": rw_loud,
+                                    "item_gate": lcl.item_gate_of(r_rw, rw_drawn)}
             rw_folded[cls_name] = extract_folded_class(r_rw, rw_drawn, cls_name, brief.metric)
         reworded_eval = judge_reworded(brief, bars, rw_classes, rw_folded, **ftol)
 
@@ -1825,9 +1880,12 @@ def judge_readings(
             return [v for v in got if v is not None]
 
         def counted(r: Mapping[str, Any]) -> Dict[str, int]:
-            """Of the items a battery was given, how many read: one that did not is in none of its figures."""
+            """Of the items a battery was given, how many read (one that did not is in none of its figures), and how
+            many of them the kernel read under its item gate."""
             its = [it for it in (r.get("items") or ()) if isinstance(it, Mapping)]
-            return {"read": sum(1 for it in its if it.get("status") == "ok"), "given": len(its)}
+            return {"read": sum(1 for it in its if it.get("status") == "ok"), "given": len(its),
+                    "under_item_gate": sum(1 for it in its if isinstance(it.get("gate"), Mapping)
+                                           and it["gate"].get("passed") is False)}
 
         neu_kls, neu_ctls = both(r_neu, "kl", 0), both(r_neu, "kl", 1)
         bat_payload["neutral_text"] = {"mean_kl": max(neu_kls) if neu_kls else None,
@@ -1862,10 +1920,13 @@ def trial_figures(inputs: Mapping[str, Any]) -> Dict[str, Optional[float]]:
 
     `target:<class>:item:<item id>` and `reworded:<class>:item:<item id>` (each item's effect at the main dose),
     `...:folded:<item id>` (the same in the folded form), `...:control:<family>:<n>` (each control edit's mean AS
-    READ; None for one with no finite reading on every item. Whether a control edit was then set aside for not
-    changing the stream as the edit did is no figure: it turns on a ratio that can sit at its bound, and
-    `controls_aside` in the judgement's inputs says it), `...:floor`, `target:<class>:reversed`, and
-    `battery:<name>:<key>` for each number a battery gave."""
+    READ; None for one with no finite reading on every item. Whether a control edit was then set aside for
+    changing the stream less than the edit did is no figure: it turns on a ratio that can sit at 1, and
+    `controls_aside` in the judgement's inputs says it), `...:loud:<family>:edit:<place>` and
+    `...:loud:<family>:<n>:<place>` (what the edit and each matched or sham control edit changed the stream by, over
+    the prompt, over the answer and at the last position), `...:draws:<family>` (how many separate draws the control
+    sets were counted as), `...:floor`, `target:<class>:reversed`, and `battery:<name>:<key>` for each number a
+    battery gave."""
     out: Dict[str, Optional[float]] = {}
     for group, key_c, key_f in (("target", "classes", "folded"), ("reworded", "reworded_classes", "reworded_folded")):
         for cls_name, cd in (inputs.get(key_c) or {}).items():
@@ -1877,6 +1938,14 @@ def trial_figures(inputs: Mapping[str, Any]) -> Dict[str, Optional[float]]:
             for fam, vals in sorted((cd.get("controls_as_read") or cd.get("controls") or {}).items()):
                 for c, v in enumerate(vals or ()):
                     out[f"{group}:{cls_name}:control:{fam}:{c}"] = _clean_float(v)
+            for fam, lo in sorted((cd.get("delivered_as_read") or {}).items()):
+                for place, v in sorted((lo.get("edit") or {}).items()):
+                    out[f"{group}:{cls_name}:loud:{fam}:edit:{place}"] = _clean_float(v)
+                for place, vals in sorted((lo.get("controls") or {}).items()):
+                    for c, v in enumerate(vals or ()):
+                        out[f"{group}:{cls_name}:loud:{fam}:{c}:{place}"] = _clean_float(v)
+            for fam, n in sorted((cd.get("controls_effective") or {}).items()):
+                out[f"{group}:{cls_name}:draws:{fam}"] = _clean_float(n)
         for cls_name, fd in (inputs.get(key_f) or {}).items():
             for e in fd.get("item_effects") or ():
                 out[f"{group}:{cls_name}:folded:{e['item_id']}"] = _clean_float(e.get("value"))
@@ -1950,6 +2019,9 @@ def trial_sentence(
     rw_ctl = (rw_cls.get("controls") or {}).get("other_sites_matched") or {}
     rw_fl = ((rw.get("folded") or {}).get("classes") or {}).get("large") or {}
     rw_sm = ((rw.get("classes") or {}).get("small") or {}).get("frames") or {}
+    rw_ig = rw_cls.get("item_gate") if isinstance(rw_cls.get("item_gate"), Mapping) else None
+    rw_gate = (f"; {rw_ig.get('under_bar')} of its {rw_ig.get('items')} items under the kernel's item gate"
+               if rw_ig and rw_ig.get("under_bar") else "")
     src = meta.get("source_claim")
     src_part = (f" It follows the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})."
                 if isinstance(src, Mapping) else " No claim reading of this edit stands in this book before it.")
@@ -1979,7 +2051,7 @@ def trial_sentence(
         f"and {_fmt((fl_s.get('frames') or {}).get('mean'))} in the small class (largest gap "
         f"{_fmt(fl_s.get('max_abs_gap'))}). "
         f"On reworded set {str(trial_cfg.get('reworded_id'))[:12]} ({trial_cfg.get('reworded_origin')}; read "
-        f"{meta.get('reworded_use_index')} of at most {MAX_REWORDED_USES} times in this book) it moved {brief.metric} by "
+        f"{meta.get('reworded_use_index')} of at most {MAX_REWORDED_USES} times in this book{rw_gate}) it moved {brief.metric} by "
         f"{_fmt(rw_fr.get('mean'))} (half 0 {_fmt((rw_fr.get('half_0') or {}).get('mean'))}, half 1 "
         f"{_fmt((rw_fr.get('half_1') or {}).get('mean'))}; {rw_ctl.get('at_least')} of {rw_ctl.get('count')} matched "
         f"control edits moved as much, p {_fmt(rw_ctl.get('p_fw'), 3)}; folded {_fmt((rw_fl.get('frames') or {}).get('mean'))}; "
@@ -2124,6 +2196,8 @@ def render_trial_sheet(
             dv = rc.get("delivered")
             if isinstance(dv, Mapping):
                 out.append("  " + lcl.delivered_words(dv, ctl))
+            if cls_name == "large" and lcl.item_gate_words(rc.get("item_gate")):
+                out.append("  " + lcl.item_gate_words(rc.get("item_gate"), "reworded items"))
             rfc = rw_fl_classes.get(cls_name) or {}
             if rfc.get("available"):
                 out.append(
@@ -2229,9 +2303,8 @@ def record_conditions(prereg_dir: Path, trial_cfg: Mapping[str, Any], *, repo_ro
     for role, what in (("matched", "fresh items'"), ("reworded", "reworded set's")):
         s = sz.get(role) if isinstance(sz.get(role), Mapping) else {}
         if looked and s.get("could_pass") is False:
-            reasons.append(f"by the look taken at registration it could not pass: its {what} control sets count as "
-                           f"{s.get('counted_as')} separate draws and a pass needs {s.get('needs')} (register it with "
-                           "a wider tolerance, or more control edits where they are the fewer)")
+            reasons.append("by the look taken at registration it could not pass: "
+                           + _look_words(what, s, float(trial_cfg.get("match_tolerance") or 0.0)))
     return {
         "reasons": reasons,
         "process": asked,

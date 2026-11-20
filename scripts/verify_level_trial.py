@@ -165,12 +165,16 @@ def main() -> int:
         # the look taken at registration: how many separate draws the matched control sets would count as, with the
         # base alone, on a sizing draw of the brief's frames and on the reworded set
         sz = reg["trial"]["sizing"]
+        look = [e for e in lb.entries(book) if e["kind"] == "note" and e["body"].get("note_type") == "trial_look"][-1]
         check("the_look_at_registration_31b",
-              all(isinstance(sz[r]["fewest_eligible"], int) and sz[r]["found"] == sz[r]["control_edits"]
-                  and sz[r]["counted_as"] == min(sz[r]["control_edits"], sz[r]["fewest_distinct"])
-                  and sz[r]["could_pass"] is (sz[r]["counted_as"] >= sz[r]["needs"]) for r in ("matched", "reworded"))
-              and (reg["warnings"] == []) is all(sz[r]["could_pass"] for r in ("matched", "reworded")),
-              {"matched": sz["matched"], "reworded": sz["reworded"], "warnings": reg["warnings"]})
+              all(isinstance(sz[r]["fewest_eligible"], int)
+                  and sz[r]["counted_as"] == min(sz[r]["control_edits"], sz[r]["disjoint_sets"])
+                  and sz[r]["could_pass"] is (sz[r]["all_drawn"] and sz[r]["counted_as"] >= sz[r]["needs"])
+                  for r in ("matched", "reworded"))
+              and (reg["warnings"] == []) is all(sz[r]["could_pass"] for r in ("matched", "reworded"))
+              and look["seq"] == reg["trial"]["look_seq"] and look["body"]["sizing"] == sz,
+              {"matched": sz["matched"], "reworded": sz["reworded"], "warnings": reg["warnings"],
+               "its_note_is_book_line": look["seq"]})
         hand = lcl.make_bar_set(brief.id, near_miss_abs_max=2.0, near_miss_ratio_max=1.0)
         got_hand = None
         try:
@@ -244,9 +248,10 @@ def main() -> int:
         # counted as moving as much), how far those that count sat from the edit, and how many different stand-ins
         # a neuron had over the sets
         as_read = {}
-        keys_dv = ("edit", "controls_median", "controls_min", "controls_max", "edit_end", "controls_median_end",
-                   "read_at_end", "within_tolerance", "within_median_ratio", "within_median_ratio_end", "not_comparable",
-                   "of_controls", "tolerance", "fewest_eligible", "fewest_distinct", "draw")
+        keys_dv = ("edit_prompt", "controls_median_prompt", "edit", "controls_median", "controls_min", "controls_max",
+                   "edit_end", "controls_median_end", "read_at_end", "compared_at", "as_loud", "as_loud_ratio_prompt",
+                   "as_loud_ratio_answer", "as_loud_ratio_end", "not_comparable", "of_controls", "fewest_eligible",
+                   "fewest_distinct", "disjoint_sets", "draw")
         for cls_name in ("small", "large"):
             ce = t_res["fresh_judged"]["classes"].get(cls_name) or {}
             dv = (ce.get("delivered") or {}).get("other_sites_matched") or {}
@@ -260,11 +265,22 @@ def main() -> int:
                                                "at_least": rw_cs.get("at_least"),
                                                "effective_count": rw_cs.get("effective_count"), "p_fw": rw_cs.get("p_fw")}
         check("matched_controls_as_read_31b",
-              all(isinstance(v["within_tolerance"], int) and v["within_tolerance"] + v["not_comparable"] == v["of_controls"]
+              all(isinstance(v["as_loud"], int) and v["as_loud"] + v["not_comparable"] == v["of_controls"]
                   and v["at_least"] >= v["not_comparable"] and v["read_at_end"] is True and v["edit_end"] is not None
-                  and v["draw"] == "spread" and v["effective_count"] == min(v["of_controls"], v["fewest_distinct"])
+                  and v["edit_prompt"] is not None and v["compared_at"] == ["prompt", "answer", "end"]
+                  and v["draw"] == "spread" and v["effective_count"] == min(v["of_controls"], v["disjoint_sets"])
                   for v in as_read.values())
               and as_read["small"]["of_controls"] == as_read["large"]["of_controls"] == 39, as_read)
+        # how many of the items each verdict rests on the kernel read under its item gate (the base gives their forced
+        # answers under -6 nats a piece): said on the sheet, and recorded here
+        gates = {"fresh": (t_res["fresh_judged"]["classes"].get("large") or {}).get("item_gate"),
+                 "reworded": (rw_cls.get("large") or {}).get("item_gate"),
+                 "batteries": {b: (v.get("items") or {}) for b, v in (t_res["fresh_judged"].get("batteries") or {}).items()
+                               if isinstance(v, dict) and isinstance(v.get("items"), dict)}}
+        check("items_under_the_item_gate_said_31b",
+              isinstance(gates["fresh"], dict) and gates["fresh"]["items"] == 16 and isinstance(gates["reworded"], dict)
+              and f"item gate: {gates['fresh']['under_bar']} of 16 fresh items are under the kernel's bar" in t_res["sheet"]
+              and "reworded items are under the kernel's bar" in t_res["sheet"], gates)
         knobs = t_res["fresh_judged"].get("cheaper_knobs") or {}
         check("prompt_arms_beside_the_edit_31b", knobs.get("prompt_arms_state") == lcl.PROMPT_ARMS_RUN and bool(knobs.get("prompt_arms")),
               {"matched_by": knobs.get("matched_by"), "matched_arm": knobs.get("matched_arm"),

@@ -40,7 +40,7 @@ from backend import weight_edits as we
 from backend.causal_check import logits_fp32
 from backend.theodolite_math import FINAL_LOGIT_SOFTCAP
 
-RULE_VERSION = 1
+RULE_VERSION = 2  # 2: a sham edit counts only when at least as loud as the edit; a prompt arm matches by KNOB_RULE
 RULE_PRESET = "levelling-claim-v1"
 DEFAULT_ALPHA = 0.05
 MIN_FRAMES_PER_HALF = 2
@@ -79,8 +79,8 @@ def _written_rows(written_rows: int, n_doses: int) -> Tuple[int, int]:
 LEADS = ("lead", "lead, matched by a cheaper knob")  # the verdicts a trial of record may follow
 # when one of a brief's own prompt arms "matches" an edit, in the words a sheet and a trial's rules print
 KNOB_RULE = ("it moved the metric at least {frac:g} times as far as the edit in the brief's direction, and its "
-             "near-miss effect was within the registered bar or no worse than the edit's, in size or as a share of "
-             "its own effect; an arm whose near-miss effect was not read matches on its effect alone")
+             "near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose "
+             "near-miss effect was not read matches on its effect alone")
 VERDICTS = (
     "lead",
     "lead, matched by a cheaper knob",
@@ -685,8 +685,8 @@ def judge_claim(
                 if fam in req_families and not cs["passes_alpha"]:
                     any_ctl_fail = True
                     lost = (
-                        f"; {cs['non_finite']} of them gave no finite reading, or did not change the stream as the "
-                        "edit did (a sham edit; in a trial a matched one too), and are counted as moving as much"
+                        f"; {cs['non_finite']} of them gave no finite reading, or did not change the stream as much "
+                        "as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much"
                         if cs["non_finite"] else ""
                     )
                     reasons.append(
@@ -715,6 +715,7 @@ def judge_claim(
             "reversed_ok": rev_ok,
             "controls": ctl_eval,
             "delivered": cdata.get("delivered"),  # printed, gates nothing
+            "item_gate": cdata.get("item_gate"),  # printed: how many items read under the kernel's item gate
         }
 
     # Target magnitude for near-miss ratio check (conservative: min across required classes)
@@ -806,27 +807,28 @@ def judge_claim(
     for bname, counted in bat_items.items():
         bat_eval[bname]["items"] = counted
     # An arm matches when it moves the metric at least `knobs_match_fraction` as far as the edit and its near-miss
-    # effect is within the registered bar or no worse than the edit's, either in size or as a share of its own
-    # effect (`KNOB_RULE` says it in words). In size alone, an arm that moved the metric six times as far, with a
-    # smaller share of near-miss effect, could never match: on the 31B's pronoun brief the author's arm moved it 8.72
-    # with a near-miss of 1.38, against the edit's 1.47 and 0.84. An arm whose near-miss effect was not read matches
-    # on its effect alone: nothing shows it does worse, and a match takes from the edit's verdict, never adds to it.
-    edit_nm_share = (float(edit_nm_abs) / target_abs_min) if (edit_nm_abs is not None and target_abs_min > 0.0) else None
+    # effect is within the registered bar, either in size or as a share of its own effect (`KNOB_RULE` says it in
+    # words). In size alone, an arm that moved the metric six times as far, with a small share of near-miss effect,
+    # could never match: on the 31B's pronoun brief the author's arm moved it 8.72 with a near-miss of 1.38, against
+    # the edit's 1.47 and 0.84. An arm whose near-miss effect was not read matches on its effect alone: nothing
+    # shows it does worse, and a match takes from the edit's verdict, never adds to it. (The rule once read "within
+    # the bar or no worse than the edit's": an edit that is a lead is itself within both bars, so those words could
+    # change no verdict.)
     matched_arm: Optional[Dict[str, Any]] = None
     for p_arm in knobs_out.get("prompt_arms") or []:
         eff = _clean_float(p_arm.get("directed_effect"))
         nm = _clean_float(p_arm.get("near_miss_abs"))
         arm_share = (nm / eff) if (nm is not None and eff is not None and eff > 0.0) else None
-        size_ok = nm is not None and nm <= max(float(edit_nm_abs or 0.0), bars.near_miss_abs_max)
-        share_ok = arm_share is not None and arm_share <= max(float(edit_nm_share or 0.0), bars.near_miss_ratio_max)
+        size_ok = nm is not None and nm <= bars.near_miss_abs_max
+        share_ok = arm_share is not None and arm_share <= bars.near_miss_ratio_max
         nm_ok = nm is None or size_ok or share_ok
         if eff is not None and target_dir_min > 0.0 and eff >= bars.knobs_match_fraction * target_dir_min and nm_ok:
             matched_knob_name = f"prompt arm {p_arm.get('index', 0)}"
             matched_arm = {"index": p_arm.get("index", 0), "directed_effect": eff, "near_miss_abs": nm,
                            "near_miss_share": arm_share,
                            "near_miss": ("not read" if nm is None else
-                                         "within the bar or the edit's, in size" if size_ok else
-                                         "within the bar or the edit's, as a share of its own effect")}
+                                         "within the registered bar in size" if size_ok else
+                                         "within the registered bar as a share of its own effect")}
             break
     if matched_knob_name is None:
         dec = knobs_out.get("decoding_bias")
@@ -1258,24 +1260,32 @@ def read_at_end(brief: lbr.Brief) -> bool:
     return brief.metric == "odds" and isinstance(odds, Mapping) and odds.get("at", "end") == "end"
 
 
-def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float], tol: float) -> bool:
-    """Whether a control edit's change to the stream is NOT within a factor of `tol` of the edit's. A figure missing
-    on either side is apart: nothing then shows the control edit changed the stream as the edit did. An edit that
-    changed nothing is matched only by a control edit that changed nothing."""
+def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float]) -> bool:
+    """Whether a control edit changed the stream LESS than the edit did, by one figure; a figure missing on either
+    side is apart too. A control edit counts for the edit only when it was at least as loud: one that changed the
+    stream less shows nothing of what a change of the edit's size does. A band about the edit's figure, which this
+    was, let through control edits that sat at about two thirds of the edit's on the 31B, and with such control
+    edits the printed level is too small (in a reviewer's simulation, where a set moves the metric by what it
+    delivered times a random factor, an edit that is nothing special topped 39 of them in 8 to 9% of draws, not
+    2.5%). There is no upper side: a louder control edit that moves the metric more counts against the edit, which
+    errs on the careful side, and so the registered matching factor has no part in this."""
     if edit_d is None or ctl_d is None:
         return True
-    if not edit_d > 0.0:
-        return ctl_d != 0.0
-    return not (edit_d / tol <= ctl_d <= edit_d * tol)
+    return ctl_d < edit_d
 
 
 def set_apart_aside(dv: Mapping[str, Any], ctl_means: Sequence[Optional[float]]) -> Tuple[List[Optional[float]], int]:
-    """The control edits' means with each one that did not change the stream as the edit did (`dv["apart"]`) taken out
-    of the edit's favour: None, which `control_standing` counts as moving as much. Returns (the means to judge by,
-    how many were set aside); the means as read are left as they were."""
+    """The control edits' means with each one that did not change the stream as much as the edit did (`dv["apart"]`)
+    taken out of the edit's favour: None, which `control_standing` counts as moving as much. Returns (the means to
+    judge by, how many were set aside); the means as read are left as they were."""
     apart = list(dv.get("apart") or ())
     aside = [c < len(apart) and bool(apart[c]) for c in range(len(ctl_means))]
     return [None if a else v for a, v in zip(aside, ctl_means)], sum(aside)
+
+
+# where an arm's change to the stream is recorded (`levelling._delivered_hook`), and what a sheet calls each place
+_DELIVERED_AT = (("prompt", "delivered_prompt", "over the prompt"), ("answer", "delivered", "over the answer"),
+                 ("end", "delivered_end", "at the last position"))
 
 
 def _delivered_of(
@@ -1284,40 +1294,43 @@ def _delivered_of(
     cls_name: str,
     dose: float,
     *,
-    tolerance: Optional[float] = None,
+    compare: bool = False,
     at_end: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """How much the edit and this reading's control edits each changed the stream, over the items read in `cls_name`:
-    the mean over items of an arm's `delivered` (`levelling._delivered_hook`: the relative change of the stream at
-    the highest layer this reading edits, against the base row, over the positions that predict the answer) and of
-    its `delivered_end` (the same at the last position, where a read-out "at the end" is taken and which the span
-    stops one short of). `{"edit", "controls_median", "controls_min", "controls_max", "controls_read",
-    "per_control"}` and the same at the end (`edit_end`, `controls_median_end`, `per_control_end`). None when the
-    reading recorded none and no `tolerance` was given.
+    the mean over items of what `levelling._delivered_hook` records for an arm (the relative change of the stream at
+    the highest layer this reading edits, against the base row) over the positions that predict the answer
+    (`delivered`: "edit", "controls_median", "controls_min", "controls_max", "controls_read", "per_control"), at the
+    last position (`delivered_end`: "edit_end", "controls_median_end", "per_control_end") and over the prompt
+    (`delivered_prompt`: "edit_prompt", "controls_median_prompt", "per_control_prompt"). None when the reading
+    recorded none and `compare` is not asked.
 
     "Matched" other sites are matched, neuron for neuron, on what a base pre-pass EXPECTS each to deliver over the
-    answer (a neuron's activation there times its column's length, `levelling._score_sites`), not on either figure:
-    in the two dry runs recorded on the 31B before a trial's control sets were drawn spread, 13 to 17 of 39 such
-    control edits changed the stream over the answer within a factor of 2 of what the edit changed it (ROADMAP
-    section viii). So with `tolerance` the result says which did not (`apart`, by `delivered_apart`: a control edit,
-    or the edit, with no figure is apart) and how many did
-    (`within_tolerance` of `of_controls`), with the median of those ones' share of the edit's
-    (`within_median_ratio`). With `at_end` (a metric read at the last position, `read_at_end`) a control edit must be
-    within the factor over the answer AND at the last position: the first is where the edit's change is carried
-    forward from, the second is where the metric is read, and a base pre-pass looks only at the first. In a claim
-    reading the count gates nothing for the kernel's own families; a trial counts each one apart as moving as much.
+    answer (a neuron's activation there times its column's length, `levelling._score_sites`), not on any of these
+    figures: on the 31B the known answer's edit changed the stream at the last position several times as much as
+    the median of its matched control edits (ROADMAP section viii gives the runs). So with `compare`
+    the result says which control edits were quieter than the edit (`apart`, by `delivered_apart`) by any figure
+    that bears on the metric: over the prompt and over the answer, whose positions feed the read-out through the
+    layers above, and with `at_end` (a metric read at the last position, `read_at_end`) at the last position too.
+    The figures are means over the items read, not item by item. A figure the reading does not record at all (a
+    reading of earlier code) sets every control edit apart; so does an edit with no figure. `as_loud` of
+    `of_controls` is how many were not apart, and `as_loud_ratio_<place>` the median of those ones' figure over the
+    edit's. In a claim reading the count gates nothing for the kernel's own families (it does for sham edits); a
+    trial counts each one apart as moving as much.
 
-    With a matched reading's `controls` block it also says the fewest sites that were eligible to stand in for one
-    neuron (`fewest_eligible`), the fewest different stand-ins one neuron had over all the control sets
-    (`fewest_distinct`, where the reading records it) and how the sets were drawn (`draw`): control sets that share a
-    neuron's stand-in are not that many separate draws."""
+    What the three figures still do not show: they are sizes of a change, not its direction, and a mean over
+    positions is not every position.
+
+    With a matched reading's `controls` block it also says how many of the control edits share no site with one
+    another (`disjoint_sets`, where the reading records it), the fewest different stand-ins one neuron had
+    (`fewest_distinct`), the fewest sites that were eligible for one neuron (`fewest_eligible`) and how the sets
+    were drawn (`draw`): control edits that share a site are not separate draws."""
     by_name = {d.item.name: d for d in drawn}
     arm_key = f"edit:{repr(float(dose))}"
     C = int((result.get("controls") or {}).get("count") or 0)
-    edit_vals: List[float] = []
-    edit_end: List[float] = []
-    ctl_vals: List[List[float]] = [[] for _ in range(C)]
-    ctl_end: List[List[float]] = [[] for _ in range(C)]
+    vals_e: Dict[str, List[float]] = {place: [] for place, _key, _say in _DELIVERED_AT}
+    vals_c: Dict[str, List[List[float]]] = {place: [[] for _ in range(C)] for place, _key, _say in _DELIVERED_AT}
+    recorded = {place: False for place, _key, _say in _DELIVERED_AT}
     for it_ent in result.get("items") or []:
         if it_ent.get("status") != "ok" or (it_ent.get("item") or {}).get("name") not in by_name:
             continue
@@ -1325,46 +1338,53 @@ def _delivered_of(
         if not cb:
             continue
         arms_by_k = {a["key"]: a for a in (cb.get("arms") or [])}
-        for key, into in (("delivered", edit_vals), ("delivered_end", edit_end)):
-            ev = _clean_float((arms_by_k.get(arm_key) or {}).get(key))
+        for place, key, _say in _DELIVERED_AT:
+            a_e = arms_by_k.get(arm_key) or {}
+            recorded[place] = recorded[place] or key in a_e
+            ev = _clean_float(a_e.get(key))
             if ev is not None:
-                into.append(ev)
-        for c in range(C):
-            for key, into in (("delivered", ctl_vals), ("delivered_end", ctl_end)):
-                cv = _clean_float((arms_by_k.get(f"control:{c}") or {}).get(key))
+                vals_e[place].append(ev)
+            for c in range(C):
+                a_c = arms_by_k.get(f"control:{c}") or {}
+                recorded[place] = recorded[place] or key in a_c
+                cv = _clean_float(a_c.get(key))
                 if cv is not None:
-                    into[c].append(cv)
-    per_c = [float(np.mean(xs)) if xs else None for xs in ctl_vals]
-    per_c_end = [float(np.mean(xs)) if xs else None for xs in ctl_end]
-    means = [m for m in per_c if m is not None]
-    means_end = [m for m in per_c_end if m is not None]
-    if tolerance is None and not edit_vals and not means:
+                    vals_c[place][c].append(cv)
+    edit_at = {place: (float(np.mean(xs)) if xs else None) for place, xs in vals_e.items()}
+    per = {place: [float(np.mean(xs)) if xs else None for xs in lists] for place, lists in vals_c.items()}
+
+    def median(xs: Sequence[Optional[float]]) -> Optional[float]:
+        got = [x for x in xs if x is not None]
+        return float(np.median(got)) if got else None
+
+    means = [m for m in per["answer"] if m is not None]
+    if not compare and edit_at["answer"] is None and not means:
         return None
     out: Dict[str, Any] = {
-        "edit": float(np.mean(edit_vals)) if edit_vals else None,
-        "controls_median": float(np.median(means)) if means else None,
+        "edit": edit_at["answer"],
+        "controls_median": median(per["answer"]),
         "controls_min": min(means) if means else None,
         "controls_max": max(means) if means else None,
         "controls_read": len(means),
-        "per_control": per_c,
-        "edit_end": float(np.mean(edit_end)) if edit_end else None,
-        "controls_median_end": float(np.median(means_end)) if means_end else None,
-        "per_control_end": per_c_end,
+        "per_control": per["answer"],
+        "edit_end": edit_at["end"],
+        "controls_median_end": median(per["end"]),
+        "per_control_end": per["end"],
+        "edit_prompt": edit_at["prompt"],
+        "controls_median_prompt": median(per["prompt"]),
+        "per_control_prompt": per["prompt"],
         "read_at_end": bool(at_end),
     }
-    if tolerance is not None:
-        tol = float(tolerance)
-        apart = [delivered_apart(out["edit"], per_c[c], tol)
-                 or (bool(at_end) and delivered_apart(out["edit_end"], per_c_end[c], tol)) for c in range(C)]
-        out["tolerance"] = tol
+    if compare:
+        places = ["prompt", "answer"] + (["end"] if at_end else [])
+        apart = [any((not recorded[p]) or delivered_apart(edit_at[p], per[p][c]) for p in places) for c in range(C)]
+        out["compared_at"] = places
         out["apart"] = apart
-        out["within_tolerance"] = C - sum(apart)
+        out["as_loud"] = C - sum(apart)
         out["of_controls"] = C
-        # how far the control edits that count sit from the edit: the median of their share of what it delivered
-        for key, e_d, per in (("within_median_ratio", out["edit"], per_c),
-                              ("within_median_ratio_end", out["edit_end"], per_c_end)):
-            shares = [per[c] / e_d for c in range(C) if not apart[c] and e_d and per[c] is not None]
-            out[key] = float(np.median(shares)) if shares else None
+        for p in places:
+            shares = [per[p][c] / edit_at[p] for c in range(C) if not apart[c] and edit_at[p] and per[p][c] is not None]
+            out[f"as_loud_ratio_{p}"] = float(np.median(shares)) if shares else None
     ctl_block = result.get("controls") if isinstance(result.get("controls"), Mapping) else {}
     cov = ctl_block.get("coverage") if isinstance(ctl_block.get("coverage"), Mapping) else {}
     terms = [t for t in (cov.get("terms") or ()) if isinstance(t, Mapping)]
@@ -1379,22 +1399,65 @@ def _delivered_of(
         out["fewest_eligible"] = fewest("min_eligible")
     if fewest("min_distinct") is not None:
         out["fewest_distinct"] = fewest("min_distinct")
+    if isinstance(cov.get("disjoint_sets"), int) and not isinstance(cov.get("disjoint_sets"), bool):
+        out["disjoint_sets"] = int(cov["disjoint_sets"])
     if isinstance(cov.get("draw"), str):
         out["draw"] = cov["draw"]
     return out
 
 
 def separate_draws(dv: Optional[Mapping[str, Any]]) -> Optional[int]:
-    """How many of a matched reading's control sets may be counted as separate draws, from `_delivered_of`'s figures:
-    the fewest different stand-ins any one neuron had over the sets, where the reading records it, else the fewest
-    sites eligible for one neuron (a reading taken before the kernel counted the stand-ins: no more than that many
-    can differ). None when the reading says neither."""
+    """How many of a matched reading's control edits may be counted as separate draws, from `_delivered_of`'s
+    figures: those that share no site with one another (`disjoint_sets`). Sets that share a site are tied together,
+    whether the site stands in for the same neuron in both or for different ones, and with sites shared the edit
+    tops every set more often than the printed level says (in a reviewer's simulation of ten neurons sharing 60
+    sites, 39 sets in which every neuron had 39 different stand-ins were topped by an edit that is nothing special in
+    3.2 to 11% of draws, where 2.5% was printed). For a reading taken before the kernel counted disjoint sets: the
+    fewest different stand-ins any one neuron had, else the fewest sites eligible for one neuron, neither of which
+    is a bound when neurons share sites. None when the reading says none of these: a caller that judges by the
+    count must then count no separate draw."""
     if not isinstance(dv, Mapping):
         return None
-    for key in ("fewest_distinct", "fewest_eligible"):
+    for key in ("disjoint_sets", "fewest_distinct", "fewest_eligible"):
         if isinstance(dv.get(key), int) and not isinstance(dv.get(key), bool):
             return int(dv[key])
     return None
+
+
+def item_gate_of(result: Mapping[str, Any], drawn: Sequence[Any]) -> Optional[Dict[str, Any]]:
+    """What the kernel's item gate found of the items a reading read: how many, how many under its bar, the bar, and
+    the lowest and highest of the items' figures. An item's figure is what the base model gives its forced answer,
+    in nats a piece on average (the lower of its two row counts'). Under the bar the kernel reads the item all the
+    same and prints a caution (`levelling.GATE_SAY`); a claim's or a trial's sheet must say how many such items its
+    verdict rests on, since their answers are text the base would not have written. None when the reading records
+    no gate."""
+    names = {d.item.name for d in drawn}
+    figures: List[float] = []
+    under, bar = 0, None
+    for it_ent in result.get("items") or []:
+        gate = it_ent.get("gate")
+        if (it_ent.get("item") or {}).get("name") not in names or not isinstance(gate, Mapping):
+            continue
+        got = [_clean_float((gate.get(c) or {}).get("mean")) for c in ("small", "large") if isinstance(gate.get(c), Mapping)]
+        got = [g for g in got if g is not None]
+        if not got:
+            continue
+        figures.append(min(got))
+        under += 1 if gate.get("passed") is False else 0
+        bar = _clean_float(gate.get("bar")) if bar is None else bar
+    if not figures:
+        return None
+    return {"items": len(figures), "under_bar": under, "bar": bar, "lowest": min(figures), "highest": max(figures)}
+
+
+def item_gate_words(ig: Optional[Mapping[str, Any]], what: str = "fresh items") -> str:
+    """One line of a sheet for `item_gate_of`'s count, or "" when there is none."""
+    if not isinstance(ig, Mapping) or not ig.get("items"):
+        return ""
+    return (f"item gate: {ig.get('under_bar')} of {ig.get('items')} {what} are under the kernel's bar of "
+            f"{_fmt(ig.get('bar'), 2)} nats a piece (the base gives their forced answers {_fmt(ig.get('lowest'), 2)} to "
+            f"{_fmt(ig.get('highest'), 2)} a piece on average): text the base would not have written, read with the "
+            "kernel's caution, and the metric is read after it")
 
 
 def _edit_shape(edit: we.Edit) -> List[Tuple[Any, ...]]:
@@ -1487,6 +1550,21 @@ def prompt_arm_system(brief: lbr.Brief, prompt_text: str) -> str:
     (`level_trial.preflight_trial`) is what is read."""
     base_sys = (brief.chat_settings or {}).get("system")
     return f"{base_sys}\n{prompt_text}" if base_sys else prompt_text
+
+
+def arm_items(h: lv.Handle, brief: lbr.Brief, items: Sequence[Any]) -> int:
+    """Make, and throw away, every item a brief's prompt arms will be read on: each of `items` under each arm's
+    system turn as `_prompt_arm_eval` puts it together (`prompt_arm_system`: the brief's own system turn first, where
+    it has one). An arm too long to make an item of raises `levelling.Refused` here, where nothing has been read,
+    and not after every reading of a claim or a trial. Returns how many were made."""
+    made = 0
+    for arm in brief.prompt_arms or ():
+        sys_p = prompt_arm_system(brief, arm)
+        for it in items:
+            if it.question is not None and it.answer is not None:
+                lv.make_item(h.tokenizer, it.question, it.answer, system=sys_p, name=it.name)
+                made += 1
+    return made
 
 
 def _prompt_arm_eval(
@@ -2097,6 +2175,7 @@ def estimate_claim(
 
     if run_prompt_arms and brief.prompt_arms and brief.metric in ("odds", "own"):
         scored = [it for it in target + near if it.question is not None and it.answer is not None]
+        arm_items(h, brief, scored)  # an arm too long to make an item of is refused here, before anything is registered
         k = 1 + len(brief.prompt_arms)  # each item once under the brief's own system turn, once under each arm
         readings.append({"name": "prompt_arms", "forwards": k * len(scored),
                          "seconds": float(k * sum(lv.whole(1, len(it.ids)) for it in scored))})
@@ -2331,6 +2410,13 @@ def run_fresh_claim(
         # Step 4: Target readings with control families (paired or written_loop)
         book_seqs: List[int] = [int(reg_entry["seq"])]
         void_reason: Optional[str] = f"The fresh draw was refused: {draw_refused}" if draw_refused else None
+        if void_reason is None and run_prompt_arms and brief.prompt_arms and brief.metric in ("odds", "own"):
+            # the arms are read after the readings: one that cannot be made into an item on the items as drawn ends
+            # the reading here, void and saying why, and not on an error after everything was read
+            try:
+                arm_items(h, brief, [d.item for d in target_drawn] + [d.item for d in near_drawn])
+            except lv.Refused as exc:
+                void_reason = f"A prompt arm of the brief cannot be read on the items drawn: {exc}"
         classes_payload: Dict[str, Dict[str, Any]] = {}
         written_strata: Optional[Dict[str, Any]] = None
         settings_audit: Optional[Dict[str, Any]] = None
@@ -2399,17 +2485,17 @@ def run_fresh_claim(
                     at_end = read_at_end(brief)
                     deliv_cls: Dict[str, Any] = {
                         "other_sites_matched": _delivered_of(r_matched, target_drawn, cls_name, main_dose,
-                                                             tolerance=tol, at_end=at_end),
+                                                             compare=True, at_end=at_end),
                         "same_site": _delivered_of(r_same, target_drawn, cls_name, main_dose),
                     }
                     if r_sham is not None:
                         _, _, _, ctl_sh = _extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
-                        # A sham edit is the caller's own, checked only for shape before it is read. One that does
-                        # not move the stream within the matching tolerance of what the edit moves it (over the
-                        # answer, and where the metric is read at the last position there too) is no control for the
-                        # edit, and is counted as moving as much: quiet shams cannot help a claim. A sham, or the
-                        # edit, with no figure is counted the same way.
-                        dv_sh = _delivered_of(r_sham, target_drawn, cls_name, main_dose, tolerance=tol, at_end=at_end)
+                        # A sham edit is the caller's own, checked only for shape before it is read. One that
+                        # changed the stream less than the edit did (over the prompt or the answer, or, where the
+                        # metric is read at the last position, there) is no control for the edit, and is counted as
+                        # moving as much: quiet shams cannot help a claim. A sham, or the edit, with no figure is
+                        # counted the same way.
+                        dv_sh = _delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
                         ctl_sh, dv_sh["not_comparable"] = set_apart_aside(dv_sh, ctl_sh)
                         ctls_cls["sham_target"] = ctl_sh
                         deliv_cls["sham_target"] = dv_sh
@@ -2423,6 +2509,7 @@ def run_fresh_claim(
                         "reversed_mean": rev_m,
                         "controls": ctls_cls,
                         "delivered": deliv_cls,
+                        "item_gate": item_gate_of(r_matched, target_drawn),
                     }
 
         # Gating retention batteries (always teacher-forced paired in both batch classes)
@@ -2662,8 +2749,12 @@ def _fmt(x: Optional[float], digits: int = 4) -> str:
 
 def _stand_in_words(dv: Mapping[str, Any]) -> str:
     """What a sheet and a sentence say of how many separate draws a matched reading's control sets are."""
-    fd, fe = dv.get("fewest_distinct"), dv.get("fewest_eligible")
-    how = {"spread": ", drawn with as few repeats as the sites allow", "independent": ", each set drawn on its own"}
+    dj, fd, fe = dv.get("disjoint_sets"), dv.get("fewest_distinct"), dv.get("fewest_eligible")
+    how = {"spread": ", drawn to share as few sites as the pools allow", "independent": ", each set drawn on its own"}
+    if dj is not None:
+        return (f"; {dj} of the sets share no site with one another"
+                + (f" (each neuron had at least {fe} eligible sites)" if fe is not None else "")
+                + how.get(str(dv.get("draw")), ""))
     if fd is not None:
         return (f"; over the sets each neuron had at least {fd} different stand-ins"
                 + (f" of {fe} eligible sites" if fe is not None else "") + how.get(str(dv.get("draw")), ""))
@@ -2672,29 +2763,37 @@ def _stand_in_words(dv: Mapping[str, Any]) -> str:
     return ""
 
 
+def _places_words(dv: Mapping[str, Any]) -> str:
+    """Where a control edit had to be as loud as the edit to count, in words."""
+    says = {place: say for place, _key, say in _DELIVERED_AT}
+    got = [says[p] for p in (dv.get("compared_at") or ()) if p in says]
+    return ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + (got[-1] if got else "")
+
+
 def delivered_words(dv: Mapping[str, Any], cs: Mapping[str, Any]) -> str:
     """One line of a sheet: what the edit and a family's control edits each changed the stream by as read
-    (`_delivered_of`), how many control edits were within the matching tolerance of the edit's and how far those
-    sat from it, how many were set aside, and how many separate draws the sets are counted as."""
-    both = " over the answer and at the last position" if dv.get("read_at_end") else ""
-    share = dv.get("within_median_ratio")
-    share_end = dv.get("within_median_ratio_end") if dv.get("read_at_end") else None
+    (`_delivered_of`) over the prompt, over the answer and at the last position; how many control edits were at
+    least as loud as the edit where it counts, and how far above it those sat; how many were set aside; and how
+    many separate draws the sets are counted as."""
+    at = []
+    for place, _key, say in _DELIVERED_AT:
+        e = dv.get("edit" if place == "answer" else f"edit_{place}")
+        m = dv.get("controls_median" if place == "answer" else f"controls_median_{place}")
+        if e is None and m is None:
+            at.append(f"{say}: not recorded")
+            continue
+        at.append(f"{say}{', where the metric is read' if place == 'end' and dv.get('read_at_end') else ''}: edit "
+                  f"{_fmt(e)}, these controls median {_fmt(m)}"
+                  + (f" ({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})" if place == "answer" else ""))
+    ratios = [f"{_fmt(dv.get(f'as_loud_ratio_{p}'), 2)} {say}" for p, _key, say in _DELIVERED_AT
+              if p in (dv.get("compared_at") or ()) and dv.get(f"as_loud_ratio_{p}") is not None]
     return (
-        "delivered (stream change at the highest edited layer, over the positions that predict the answer): edit "
-        f"{_fmt(dv.get('edit'))}, these controls median {_fmt(dv.get('controls_median'))} "
-        f"({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})"
-        + (f"; at the last position{', where the metric is read' if dv.get('read_at_end') else ''}: edit "
-           f"{_fmt(dv.get('edit_end'))}, these controls median {_fmt(dv.get('controls_median_end'))}"
-           if dv.get("edit_end") is not None or dv.get("controls_median_end") is not None else
-           "; at the last position: not recorded")
-        + (f"; {dv['within_tolerance']} of {dv.get('of_controls')} within a factor of {dv['tolerance']:g} of the "
-           f"edit's{both}"
-           + (f" (those a median {_fmt(share, 2)} of the edit's"
-              + (f", {_fmt(share_end, 2)} at the last position" if share_end is not None else "") + ")"
-              if share is not None else "")
-           if dv.get("within_tolerance") is not None else "")
-        + (f"; {dv['not_comparable']} of them outside the matching tolerance of the edit's, or with no figure, and "
-           "counted as moving as much" if dv.get("not_comparable") else "")
+        "delivered (stream change at the highest edited layer, a mean over the items read) " + "; ".join(at)
+        + (f"; {dv['as_loud']} of {dv.get('of_controls')} at least as loud as the edit {_places_words(dv)}"
+           + (f" (those a median {', '.join(ratios)} times the edit's)" if ratios else "")
+           if dv.get("as_loud") is not None else "")
+        + (f"; {dv['not_comparable']} of them quieter than the edit at one of those, or with no figure, and counted "
+           "as moving as much" if dv.get("not_comparable") else "")
         + _stand_in_words(dv)
         + (f", so counted as {cs['effective_count']} draws"
            if cs.get("effective_count") not in (None, cs.get("count")) else "")
@@ -2746,10 +2845,9 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     dvm = dvm if isinstance(dvm, Mapping) else {}
     # what "matched" is matched on, and what the control edits delivered when read
     tol_part = (f"matched on what a base pre-pass expects each to deliver, within a factor of {tol_now:g}"
-                + (f"; as read, {dvm['within_tolerance']} of {dvm.get('of_controls')} changed the stream within that "
-                   "factor of what the edit changed it"
-                   + (", over the answer and at the position the metric is read" if dvm.get("read_at_end") else "")
-                   if dvm.get("within_tolerance") is not None else "")
+                + (f"; as read, {dvm['as_loud']} of {dvm.get('of_controls')} changed the stream at least as much as "
+                   f"the edit did {_places_words(dvm)}"
+                   if dvm.get("as_loud") is not None else "")
                 + _stand_in_words(dvm)
                 + "; ") if tol_now is not None else ""
     knobs = judged.get("cheaper_knobs") or {}
@@ -2789,12 +2887,15 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
                for bname, b in (judged.get("batteries") or {}).items()
                if isinstance(b, Mapping) and isinstance(b.get("items"), Mapping)]
     bat_counts = f" ({'; '.join(counted)} items read)" if counted else ""
+    ig = lg.get("item_gate") if isinstance(lg.get("item_gate"), Mapping) else None
+    gate_part = (f"; {ig.get('under_bar')} of {ig.get('items')} of the items under the kernel's item gate, their "
+                 "forced answers text the base would not have written" if ig and ig.get("under_bar") else "")
     return (
         f"On {meta.get('date')}, model {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}), "
         f"unpacker {meta.get('unpacker')}, per-row form: edit {str(meta.get('edit_id'))[:12]} at dose "
         f"{meta.get('main_dose'):g} to {', '.join(meta.get('edit_linears') or [])} moved {brief.metric} on "
         f"{fr.get('n_items')} fresh items ({fr.get('n_frames')} kept-back frames{pub_part} drawn from "
-        f"{brief.generator.name} after freeze) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
+        f"{brief.generator.name} after freeze{gate_part}) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
         f"half 0 {_fmt((fr.get('half_0') or {}).get('mean'))}, half 1 {_fmt((fr.get('half_1') or {}).get('mean'))}); "
         f"floor {_fmt(hb.get('floor'))}, house bar {_fmt(hb.get('bar'))}; "
         f"{osm.get('at_least')} of {osm.get('count')} matched other-site ({tol_part}p_fw {_fmt(osm.get('p_fw'), 3)}) and "
@@ -2895,6 +2996,9 @@ def render_sheet(
         lines.append(f"  {sentence}")
     cls_order = ("written",) if brief.metric == "written_loop" else ("small", "large")
     lines.append("reading classes (kept-back frames):")
+    gate_line = item_gate_words(((judged.get("classes") or {}).get(cls_order[-1]) or {}).get("item_gate"))
+    if gate_line:
+        lines.append("  " + gate_line)
     for cls_name in cls_order:
         ce = (judged.get("classes") or {}).get(cls_name)
         if not ce:

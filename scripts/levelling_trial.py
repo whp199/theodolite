@@ -18,8 +18,10 @@ will be read in (`scripts/levelling.py calibrate`; `--book`, else the level book
 calibration note must follow from that book's own readings. Every reading the trial will take is asked of the kernel
 with no forward, so no folder is written for a trial it would refuse. Then a look is taken, with the base alone, at
 how many separate draws the trial's matched control sets would count as (on a sizing draw of the brief's frames and
-on the reworded set): the folder records it, and a trial that by that look could not pass is said so here and is not
-read of record. Nothing is entered in the book.
+on the reworded set): the folder records it, the book takes one note of it (`trial_look`: the look ran the base over
+fillings of the brief's kept-back frames), and a trial that by that look could not pass is said so here and is not
+read of record. The look sees the count alone, not whether the control edits will be as loud as the edit. The trial
+itself is not entered in the book until it is read.
 
 `run`: reads the trial, once. It is of record only when this process has asked nothing else of the model (it is a new
 process), the checkout is clean (nothing changed, nothing untracked, no file git is told to overlook, and no code
@@ -249,8 +251,12 @@ def cmd_register(a: argparse.Namespace) -> int:
         if reg["trial"]["edit_provenance"] == "carried":
             print("note: this edit carries arrays. The folder holds their hashes only: keep the saved edit, give it "
                   "to the run with --payload, and expect no volunteer kit for it.", file=sys.stderr)
-        print("next: commit the folder as it stands, then run it from a clean checkout (a trial of record), or read "
-              "it now with --dry-run.", file=sys.stderr)
+        if reg.get("warnings"):
+            print("next: by that look this trial would not be read of record. Register another design, or read this "
+                  "one with --dry-run (it spends a fresh reading of the brief all the same).", file=sys.stderr)
+        else:
+            print("next: commit the folder as it stands, then run it from a clean checkout (a trial of record), or "
+                  "read it now with --dry-run.", file=sys.stderr)
         return 0
     except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)

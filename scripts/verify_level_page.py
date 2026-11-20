@@ -5,7 +5,8 @@ Binds the live Gemma-4-31B-it W4A16 runtime + `LarqlVaultEngine` directly to `ba
 FastAPI `TestClient`, no external port) and verifies end to end:
 1. `GET /api/level/status` reports `n_layers == 60`, `d_ff == 21504`, `is_base == True`, and allowlisted books.
 2. `POST /api/level/estimate` prices the E6 layer-51 (index 50) top-10 `'she'` preset off-GPU.
-3. `POST /api/level/compare` runs base, edit (`E6_L50_SHE10`), and 3 delivery-matched control edits side by side in ONE
+3. `POST /api/level/compare` runs base, edit (`E6_L50_SHE10`), and 3 matched control edits (matched on what a
+   base pre-pass expects each to deliver) side by side in ONE
    batched written forward (`max_new=24`) PLUS the two-batch-class (`small=12`, `large=32`) paired table with `' she'`
    vs `' he'` odds, verifying `untouched_rows_identical == True`, `base_after == True`, and ledger writes.
 4. Live Vault-overlay isolation on the 31B checkpoint: `DELETE FROM LAYER 50 WHERE slot = 5313` causes `/api/level/status`

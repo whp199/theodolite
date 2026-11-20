@@ -804,8 +804,12 @@ def dose_caps(edit: we.Edit, dose: Any, dtype: Any = None) -> Optional[str]:
     (`MAX_REL_CHANGE`). With `dtype` (the model is at hand and the edit was built on it):
     `weight_edits.dose_refusal` too, which knows how far each term moves its linear. An adapter is not written for a
     dose no reading could have been taken at."""
-    if isinstance(dose, bool) or not isinstance(dose, (int, float)) or not math.isfinite(float(dose)):
-        return f"a dose is a finite number; {dose!r} was given"
+    try:
+        finite = not isinstance(dose, bool) and isinstance(dose, (int, float)) and math.isfinite(float(dose))
+    except OverflowError:  # a whole number past a float's reach
+        finite = False
+    if not finite:
+        return f"a dose is a finite number; {str(dose)[:40]!r} was given"
     d = float(dose)
     if abs(d) > we.MAX_DOSE:
         return f"a reading takes a dose within +/-{we.MAX_DOSE:g}, and {d:g} is past it: the kernel has read nothing there"
@@ -813,7 +817,8 @@ def dose_caps(edit: we.Edit, dose: Any, dtype: Any = None) -> Optional[str]:
         if t.kind in ("cols", "rows"):
             f = np.asarray(t.factor, dtype=np.float64)[np.asarray(t.op) == 0]
             far = np.abs(d * (f - 1.0))
-            if far.size and float(far.max()) > we.MAX_REL_CHANGE:
+            # the kernel works a factor in float32: one it reads at the cap must not be refused here for a last digit
+            if far.size and float(far.max()) > we.MAX_REL_CHANGE * (1.0 + 1e-6):
                 return (f"at dose {d:g} a neuron of {t.linear} would change by {float(far.max()):.3g} times its own "
                         f"length; an edit takes at most {we.MAX_REL_CHANGE:g}")
     if dtype is not None:
