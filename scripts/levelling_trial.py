@@ -248,6 +248,7 @@ def cmd_register(a: argparse.Namespace) -> int:
         ))
         for w in reg.get("warnings") or ():
             print(f"WARNING: {w}", file=sys.stderr)
+        print(f"NOTICE: {reg['rule_stands']}", file=sys.stderr)
         if reg["trial"]["edit_provenance"] == "carried":
             print("note: this edit carries arrays. The folder holds their hashes only: keep the saved edit, give it "
                   "to the run with --payload, and expect no volunteer kit for it.", file=sys.stderr)
@@ -256,7 +257,8 @@ def cmd_register(a: argparse.Namespace) -> int:
                   "one with --dry-run (it spends a fresh reading of the brief all the same).", file=sys.stderr)
         else:
             print("next: commit the folder as it stands, then run it from a clean checkout (a trial of record), or "
-                  "read it now with --dry-run.", file=sys.stderr)
+                  "read it now with --dry-run. By the notice above a read of record is not expected to pass as the "
+                  "rule stands; in the book it is read in, either is the edit's one trial.", file=sys.stderr)
         return 0
     except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)
@@ -297,6 +299,8 @@ def cmd_run(a: argparse.Namespace) -> int:
         print(f"Refused before load: {exc}", file=sys.stderr)
         return 2
 
+    if not a.dry_run:
+        print(f"NOTICE: {lt.RULE_STANDS_SAY}.", file=sys.stderr)
     h, rc, _lock = _open_handle(bool(a.stand_in), int(a.port), packed_stand_in=bool(a.packed_stand_in))
     if rc != 0 or h is None:
         return rc

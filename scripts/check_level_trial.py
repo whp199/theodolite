@@ -486,6 +486,26 @@ def main() -> int:
                   "3: a calibration note follows from its book's own three readings, or its bars are not a trial's "
                   f"({lcl.calibration_follows(forged_note, forged_book, brief, bars_forged)})")
 
+            # a calibration taken under an earlier version of the claim gate's rule: the four bars are what its three
+            # readings give whatever the version, so its note follows from its book and a trial may be registered
+            # with it; the sheet says which version the bars were calibrated under (checked with the trial's sheet)
+            bars_v1 = lcl.BarSet.from_dict({**bars.to_dict(), "rule_version": lcl.RULE_VERSION - 1})
+            old_book = tmp / "old_rule_book.jsonl"
+            for ent in list(lb.entries(cal_book, limit=3)):
+                lb.append(ent["kind"], ent["body"], path=old_book)
+            lb.append("note", {**{k: v for k, v in real_cal.items() if k not in ("seq", "at")},
+                               "bars": bars_v1.to_dict(), "bars_sha256": bars_v1.id}, path=old_book)
+            note_v1 = lcl.calibration_note(bars_v1, old_book)
+            reg_v1 = lt.register_trial(tmp / "old_rule" / "prereg", hP, brief, bars_v1, e_trial, trial_name="old_rule",
+                                       **{**KW, "book_path": old_book})
+            check(bars_v1.id != bars.id and bars_v1.rule_version != lcl.RULE_VERSION
+                  and lcl.calibration_follows(note_v1, old_book, brief, bars_v1) is None
+                  and reg_v1["trial"]["bars_sha256"] == bars_v1.id
+                  and "other bars" in str(lcl.calibration_follows(
+                      note_v1, old_book, brief, lcl.BarSet.from_dict({**bars_v1.to_dict(), "near_miss_abs_max": 50.0}))),
+                  "3: a calibration taken under an earlier version of the rule follows from its book by the version it "
+                  "names, and a trial is registered with its bars; bars it does not give are still refused")
+
             make_was = lv.make_item
 
             def no_item(*a: Any, **k: Any) -> Any:
@@ -527,8 +547,18 @@ def main() -> int:
                            "on what a base pre-pass expects each to deliver", "is counted as moving as much",
                            "the folded forward's own repeated rows agree to the bit",
                            "in size or as a share of its own effect", "matches on its effect alone",
-                           "drawn to share as few sites as the eligible sites allow",
-                           "no more separate draws than the control edits that share no site with one another",
+                           "drawn together to share as few sites as the eligible sites allow",
+                           "no more separate draws than the control edits found to share no site with one another",
+                           "a site is a neuron of a layer, whatever projection a control edit changes it in",
+                           "a reading that records no such count is counted as one draw",
+                           "The same-site family is not asked this",
+                           "At this trial's level at most `0` of the `39` control edits of a family on the fresh items, "
+                           "and `0` of the reworded set's `19`, may move as much or be counted so",
+                           "As the rule stands a trial is not expected to pass it. Each stand-in is drawn from a band "
+                           "on BOTH sides",
+                           "a trial read of record is expected to spend the edit's one trial on a verdict the rule has "
+                           "settled, not the edit",
+                           "when this folder is written and again before it is entered in the book",
                            "A look taken at registration, with the base alone, counted",
                            "The look sees the count alone",
                            "counts for the edit only when, as read, it changed the stream at least as much as the edit did",
@@ -536,7 +566,7 @@ def main() -> int:
                            "position, where this brief's metric is read",
                            "and a control edit or an edit with no such figure, is counted as moving as much",
                            "The matching factor has no part in this",
-                           "rule preset: `trial-2` (version 2)",
+                           "rule preset: `trial-3` (version 3)",
                            "and no code where the runner",
                            "the look taken at registration did not say it could not pass"):
                 check(needle in rules_txt, f"3: RULES.md says \"{needle}\"")
@@ -553,6 +583,12 @@ def main() -> int:
                       f"`{sz_reg['matched']['fewest_eligible']}`)" in rules_txt,
                   f"3: a registration records the look taken at how many separate draws its control sets count as, and "
                   f"its rules print it ({sz_reg['matched']})")
+            check(reg["rule_stands"] == lt.RULE_STANDS_SAY + "." and lt.RULE_STANDS_SAY in rules_txt
+                  and "not expected to pass" in reg["rule_stands"] and "ROADMAP section viii" in reg["rule_stands"]
+                  and lt._most_aside(39, 2, 0.05) == 0 and lt._most_aside(99, 2, 0.05) == 1 and lt._most_aside(19, 1, 0.05) == 0
+                  and lt._most_aside(99, 5, 0.05) == 0 and lt._most_aside(199, 2, 0.05) == 4,
+                  "3: a registration says, in its result and in its rules, that as the rule stands a trial is not "
+                  "expected to pass its matched control edits, and how many of them the level lets move as much")
             check(look_note["seq"] == reg["trial"]["look_seq"] == lb.verify(cal_book)["entries"] - 1
                   and look_note["body"]["trial_name"] == "standin_rebuilt_trial" and look_note["body"]["edit_id"] == e_trial.id
                   and look_note["body"]["sizing"] == sz_reg and look_note["body"]["match_tolerance"] == 20.0
@@ -594,15 +630,54 @@ def main() -> int:
             check(sz_many["all_drawn"] is False and sz_many["could_pass"] is False and 39 <= sz_many["found"] < 150
                   and len(reg_many["warnings"]) == 1
                   and f"could not all be drawn: {sz_many['found']} of 150" in reg_many["warnings"][0]
-                  and "so fewer control edits would do" in reg_many["warnings"][0]
+                  and f"{sz_many['disjoint_sets']} of those drawn share no site with one another and a pass needs 39, "
+                      f"so from 39 to {sz_many['disjoint_sets']} control edits would do" in reg_many["warnings"][0]
+                  and sz_many["disjoint_sets"] == sz_many["found"]
                   and "count as" not in reg_many["warnings"][0]
                   and f"only `{sz_many['found']}` of the sets could be drawn" in (tmp / "too_many" / "prereg" / "RULES.md").read_text()
                   and any("could not all be drawn" in r for r in lt.record_conditions(
                       tmp / "too_many" / "prereg", reg_many["trial"], book=cal_book)["reasons"]),
                   f"3: where a trial's control sets cannot all be drawn the look says that, in the warning, the rules and "
                   f"the reason it is not of record ({sz_many})")
+            look_few = {"all_drawn": False, "found": 90, "control_edits": 99, "fewest_eligible": 12, "disjoint_sets": 7,
+                        "needs": 19}
+            said_few = lt._look_words("fresh items'", look_few, 1.02)
+            said_some = lt._look_words("fresh items'", {**look_few, "disjoint_sets": 45}, 1.02)
+            check("could not all be drawn: 90 of 99" in said_few and "only 7 share no site" in said_few
+                  and "fewer control edits would not do either" in said_few and "control edits would do" not in said_few
+                  and "45 of those drawn share no site with one another and a pass needs 19, so from 19 to 45 control "
+                      "edits would do" in said_some,
+                  "3: where the sets cannot all be drawn, the look says fewer control edits would do only when enough of "
+                  f"those drawn share no site: 90 drawn of which 7 share none do not make the 19 a pass needs ({said_few[-120:]})")
             check(refuses(lambda: lt.register_trial(prereg_dir, hP, brief, bars, e_trial, trial_name="dup", **KW), lt.TrialRefused),
                   "3: register_trial refuses overwriting existing prereg/")
+            # a folder that cannot be made, and a book that cannot be written: each refused in words, with no look
+            # left in the book for a folder that is not there, and no folder left for a look that was not entered
+            if os.geteuid() != 0:
+                locked = tmp / "locked"
+                locked.mkdir()
+                os.chmod(locked, 0o500)
+                n_locked = lb.verify(cal_book)["entries"]
+                try:
+                    ok_locked = refuses(lambda: lt.register_trial(locked / "t" / "prereg", hP, brief, bars, e_trial,
+                                                                  trial_name="locked", **KW),
+                                        lt.TrialRefused, "cannot be written")
+                finally:
+                    os.chmod(locked, 0o700)
+                ro_book = tmp / "read_only_book.jsonl"
+                shutil.copy2(cal_book, ro_book)
+                n_ro = lb.verify(ro_book)["entries"]
+                os.chmod(ro_book, 0o400)
+                try:
+                    ok_ro = refuses(lambda: lt.register_trial(tmp / "ro" / "prereg", hP, brief, bars, e_trial,
+                                                              trial_name="ro", **{**KW, "book_path": ro_book}),
+                                    lt.TrialRefused, "could not be entered in read_only_book.jsonl")
+                finally:
+                    os.chmod(ro_book, 0o600)
+                check(ok_locked and lb.verify(cal_book)["entries"] == n_locked and not (locked / "t").exists()
+                      and ok_ro and not (tmp / "ro" / "prereg").exists() and lb.verify(ro_book)["entries"] == n_ro,
+                      "3: a registration folder that cannot be made is refused before the look is taken (no line in the "
+                      "book), and a book that cannot be written to is refused as a registration is, with no folder left")
 
             sums = (prereg_dir / "SHA256SUMS").read_bytes()
             first = sums.split(b"\n")[0]
@@ -902,6 +977,14 @@ def main() -> int:
                     return says.lower() in str(exc).lower()
                 return False
 
+            # registered now, while the book allows them, and read later, when it will not: a registration is asked
+            # what a fresh reading is asked, and so is the read
+            again = tmp / "again" / "prereg"
+            lt.register_trial(again, hP, brief, bars, e_trial, trial_name="again", **KW)
+            third = tmp / "third" / "prereg"
+            e_third = build([we.silence(2, [20, 21])])
+            lt.register_trial(third, hP, brief, bars, e_third, trial_name="third", **KW)
+
             n_before = lb.verify(cal_book)["entries"]
             check(run_refused("would not be of record", prereg_dir, "refused_out")
                   and "first thing its process asks of the model" in msg[-1] and "registration folder" in msg[-1]
@@ -992,9 +1075,14 @@ def main() -> int:
                   and t_res["fresh_judged"]["batteries"]["labelled_panel"]["items"]["given"] == 2
                   and "under_item_gate" in t_res["fresh_judged"]["batteries"]["labelled_panel"]["items"]
                   and ig_small["items"] == 4 and 0 <= ig_small["under_bar"] <= 4
-                  and f"item gate: {ig_small['under_bar']} of 4 fresh items are under the kernel's bar of -6.00 nats a piece"
-                      in t_res["sheet"]
-                  and "reworded items are under the kernel's bar" in t_res["sheet"],
+                  and f"item gate: {ig_small['under_bar']} of the 4 fresh items that read are under the kernel's bar of "
+                      "-6.00 nats a piece" in t_res["sheet"]
+                  and ig_small["no_figure"] == 0
+                  and "reworded items that read are under the kernel's bar" in t_res["sheet"]
+                  and t_res["fresh_judged"]["classes"]["small"]["delivered"]["same_site"]["read_at_end"] is True
+                  and "calibrated under v" not in t_res["sheet"]
+                  and f"(calibrated under v{bars_v1.rule_version} of the rule: a calibration gives the four bars"
+                      in lcl.render_sheet(brief, bars_v1, t_res["fresh_judged"], t_res["meta"], None),
                   "5: the sheet of a trial has no line that is a claim's alone, says what the edit and its matched control "
                   f"edits delivered over the prompt, over the answer and at the last position, where this brief's metric "
                   f"is read ({dv_small['as_loud']} of 39 at least as loud as the edit at all three), how many of the sets "
@@ -1034,10 +1122,14 @@ def main() -> int:
             check(run_refused("read once", prereg_dir, "my_trial/result", dry_run=True)
                   and run_refused("read once", prereg_dir, "my_trial/result_2", dry_run=True),
                   "5: read-once refuses both existing trial_result.json and duplicate trial_sha256 in book")
-            again = tmp / "again" / "prereg"
-            lt.register_trial(again, hP, brief, bars, e_trial, trial_name="again", **KW)
-            check(run_refused("already had a trial", again, "again_out", dry_run=True),
-                  "5: the same edit registered again is refused: an edit has one trial on a brief in a book")
+            again_late = tmp / "again_late" / "prereg"
+            n_late = lb.verify(cal_book)["entries"]
+            check(run_refused("already had a trial", again, "again_out", dry_run=True)
+                  and refuses(lambda: lt.register_trial(again_late, hP, brief, bars, e_trial, trial_name="again_late", **KW),
+                              lt.TrialRefused, "already had a trial")
+                  and not again_late.exists() and lb.verify(cal_book)["entries"] == n_late,
+                  "5: an edit has one trial on a brief in a book: registered again before that trial was read, it is "
+                  "refused at the read; asked after it, at registration, with no folder written and no look taken")
 
             # counted: a trial spends a fresh reading; a claim after it lists it; the budget is claims and trials together
             hist1 = lcl.brief_history(brief.id, cal_book, name=brief.name)
@@ -1055,12 +1147,11 @@ def main() -> int:
             check(c2["meta"]["reading_index"] == 2 and "earlier trials on this brief (1)" in c2["sheet"]
                   and 'trial "standin_rebuilt_trial" (dry run)' in c2["sheet"],
                   "5: a claim after a trial is the brief's second fresh reading, and its sheet lists the trial")
-            third = tmp / "third" / "prereg"
-            e_third = build([we.silence(2, [20, 21])])
-            lt.register_trial(third, hP, brief, bars, e_third, trial_name="third", **KW)
             check(run_refused("already spent all 2", third, "third_out", dry_run=True)
-                  and "A trial of record is a fresh reading and spends one" in msg[-1],
-                  "5: a brief's budget is its claims and its trials together: a third fresh reading is refused")
+                  and "A trial of record is a fresh reading and spends one" in msg[-1]
+                  and reg_refused("already spent all 2", edit=build([we.silence(2, [22, 23])])),
+                  "5: a brief's budget is its claims and its trials together: a third fresh reading is refused, at the "
+                  "read of a trial registered before the budget was spent and at a registration asked after")
 
             # the claim gate's other refusals reach a trial too (a book of its own for each)
             def fresh_book(tag: str, brief_: Any = None) -> Any:
@@ -1077,12 +1168,16 @@ def main() -> int:
                     os.environ[lb.BOOK_ENV] = str(tmp / "default_book.jsonl")
 
             bk_p, bars_p = fresh_book("practised")
-            kb_items = brief.generator.draw("kept_back", 2, seed_bytes=b"x" * 32, tokenizer=hP.tokenizer)
-            practice(bk_p, "practice_look", {d.item.name: d.item for d in kb_items})
             pre_p = tmp / "practised" / "prereg"
             lt.register_trial(pre_p, hP, brief, bars_p, e_trial, trial_name="practised", **{**KW, "book_path": bk_p})
-            check(run_refused("read in practice in this book", pre_p, "practised_out", book=bk_p, dry_run=True),
-                  "5: kept-back wording read in practice in the book refuses a trial, as it refuses a claim")
+            kb_items = brief.generator.draw("kept_back", 2, seed_bytes=b"x" * 32, tokenizer=hP.tokenizer)
+            practice(bk_p, "practice_look", {d.item.name: d.item for d in kb_items})
+            n_p = lb.verify(bk_p)["entries"]
+            check(run_refused("read in practice in this book", pre_p, "practised_out", book=bk_p, dry_run=True)
+                  and reg_refused("read in practice in this book", bars_=bars_p, book_path=bk_p)
+                  and lb.verify(bk_p)["entries"] == n_p,
+                  "5: kept-back wording read in practice in the book refuses a trial, as it refuses a claim: at the "
+                  "read, and at a registration asked after the practice reading, which takes no look")
 
             bk_r, bars_r = fresh_book("rw_practised")
             practice(bk_r, "practice_on_the_set", {d.item.name: d.item for d in rset.to_drawn_items(hP.tokenizer)[:2]})
@@ -1127,8 +1222,14 @@ def main() -> int:
                   "written again at the same one, is another book")
 
             # a trial follows a lead: an edit whose claim reading in the book read anything else has no trial there
-            def claimed_book(tag: str, said: Optional[str]) -> Any:
+            bars_of: Dict[str, Any] = {}
+
+            def claimed_book(tag: str, said: Optional[str], register_first: bool = False) -> Any:
                 bk, bars_x = fresh_book(tag)
+                bars_of[tag] = bars_x
+                pre = tmp / tag / "prereg"
+                if register_first:  # while the book allows it, so that the read is what refuses
+                    lt.register_trial(pre, hP, brief, bars_x, e_trial, trial_name=tag, **{**KW, "book_path": bk})
                 reg_c = lb.append("note", {"note_type": "claim_registration", "brief_id": brief.id, "brief_name": brief.name,
                                            "edit_id": e_trial.id, "reading_index": 1,
                                            "main_dose": 2.0 if tag == "after_lead_other_dose" else 1.0}, path=bk)
@@ -1136,14 +1237,19 @@ def main() -> int:
                     lb.append("note", {"note_type": "claim_verdict", "brief_id": brief.id, "brief_name": brief.name,
                                        "edit_id": e_trial.id, "verdict": said, "registration_seq": reg_c["seq"],
                                        "reading_index": 1}, path=bk)
-                pre = tmp / tag / "prereg"
-                lt.register_trial(pre, hP, brief, bars_x, e_trial, trial_name=tag, **{**KW, "book_path": bk})
+                if not register_first:
+                    lt.register_trial(pre, hP, brief, bars_x, e_trial, trial_name=tag, **{**KW, "book_path": bk})
                 return bk, pre
 
-            bk_nl, pre_nl = claimed_book("after_no_lead", "did not replicate")
-            bk_ne, pre_ne = claimed_book("after_unended", None)
+            bk_nl, pre_nl = claimed_book("after_no_lead", "did not replicate", register_first=True)
+            bk_ne, pre_ne = claimed_book("after_unended", None, register_first=True)
             bk_ld, pre_ld = claimed_book("after_lead", "lead")
-            bk_od, pre_od = claimed_book("after_lead_other_dose", "lead")
+            bk_od, pre_od = claimed_book("after_lead_other_dose", "lead", register_first=True)
+            check(reg_refused("follows a lead", bars_=bars_of["after_no_lead"], book_path=bk_nl)
+                  and reg_refused("was registered and never ended", bars_=bars_of["after_unended"], book_path=bk_ne)
+                  and reg_refused("read it at dose 2", bars_=bars_of["after_lead_other_dose"], book_path=bk_od),
+                  "5: a registration asked after a claim that read no lead, that never ended, or that read another dose "
+                  "is refused as the read would be, and no folder is written")
             check(run_refused("read it at dose 2", pre_od, "after_other_dose_out", book=bk_od, dry_run=True)
                   and "this trial is registered at dose 1" in msg[-1],
                   "5: a trial follows its edit's claim at the dose the claim read: a lead at one dose does not promote another")
@@ -1549,9 +1655,19 @@ def main() -> int:
                   and "as read, 39 of 39 changed the stream at least as much as the edit did over the prompt, over the "
                       "answer and at the last position" in sent_live
                   and "39 of the sets share no site with one another" in sent_live
-                  and "gating batteries passed (neutral text 2 of 2; near misses 2 of 2; labelled panel 2 of 2 items read)" in sent_live
+                  and "gating batteries passed (items read: neutral text 2 of 2" in sent_live
+                  and all(f"{nm} 2 of 2" + (f", {jp['fresh_judged']['batteries'][key]['items']['under_item_gate']} of them "
+                                            "under the item gate"
+                                            if jp["fresh_judged"]["batteries"][key]["items"]["under_item_gate"] else "")
+                          in sent_live for key, nm in (("neutral_text", "neutral text"), ("near_misses", "near misses"),
+                                                       ("labelled_panel", "labelled panel")))
                   and sent_live.count("-1.5000") >= 6 and "fresh reading 1 of 2" in sent_live
                   and "0 of 39 matched other-site" in sent_live and "0 of 19 matched control edits moved as much" in sent_live
+                  and "a level at which the 0 that were quieter than the edit, or gave no figure, are counted as moving "
+                      "as much, and the sets as 39 separate draws" in sent_live
+                  and "same-site (not asked to be as loud as the edit: as read, their median change to the stream was "
+                      "1.00 over the prompt, 1.00 over the answer and 1.00 at the last position times the edit's; p_fw"
+                      in sent_live
                   and "the same bits on 4 of 4 items" in sent_live and "No claim reading of this edit stands in this book" in sent_live
                   and "which no earlier fresh reading in this book had read" in sent_live
                   and (" Passed. " in sent_live or " Passed, matched by a cheaper knob. " in sent_live)
@@ -1595,6 +1711,15 @@ def main() -> int:
             def no_count(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
                 body["controls"]["coverage"] = None
 
+            def no_disjoint(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                body["controls"]["coverage"].pop("disjoint_sets")  # every neuron's 39 different stand-ins stay recorded
+
+            def count_no_whole_number(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                body["controls"]["coverage"]["disjoint_sets"] = 39.0
+
+            def count_a_truth(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                body["controls"]["coverage"]["disjoint_sets"] = True
+
             def no_prompt_figure(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
                 for arm in arms_in(body, ""):
                     arm.pop("delivered_prompt", None)
@@ -1625,7 +1750,8 @@ def main() -> int:
                 ("quiet_at_end", quiet_at_end), ("few_stand_ins", few_stand_ins), ("edit_no_figure", edit_no_figure),
                 ("edit_delivered_nothing", edit_delivered_nothing), ("old_reading", old_reading), ("no_count", no_count),
                 ("no_prompt_figure", no_prompt_figure), ("quiet_over_the_prompt", quiet_over_the_prompt),
-                ("louder", louder))}
+                ("louder", louder), ("no_disjoint", no_disjoint), ("count_no_whole_number", count_no_whole_number),
+                ("count_a_truth", count_a_truth))}
 
             def small_of(tag: str) -> Dict[str, Any]:
                 return got_x[tag]["judged"]["fresh_judged"]["classes"]["small"]
@@ -1645,6 +1771,8 @@ def main() -> int:
                   and {k: v for k, v in got_x["quiet_at_end"]["figures"].items() if ":loud:" not in k}
                       == {k: v for k, v in rj_pass["figures"].items() if ":loud:" not in k}
                   and "did not change the stream as much as the edit did" in why_x("quiet_at_end")
+                  and "of the control edits that were read and count, 0 moved the metric as much" in why_x("quiet_at_end")
+                  and small_of("quiet_at_end")["controls"]["other_sites_matched"]["as_read_at_least"] == 0
                   and got_x["quiet_over_the_prompt"]["verdict"] == "failed"
                   and small_of("quiet_over_the_prompt")["delivered"]["other_sites_matched"]["as_loud"] == 0,
                   "5: control edits as loud as the edit over the answer and a hundredth as loud at the last position, "
@@ -1688,10 +1816,17 @@ def main() -> int:
                   and jp["fresh_judged"]["classes"]["small"]["controls"]["other_sites_matched"]["effective_count"] == 39
                   and got_x["no_count"]["verdict"] == "failed"
                   and small_of("no_count")["controls"]["other_sites_matched"]["effective_count"] == 1
-                  and "counted as 1 separate draws" in why_x("no_count"),
+                  and "counted as 1 separate draws" in why_x("no_count")
+                  and all(got_x[tag]["verdict"] == "failed"
+                          and small_of(tag)["controls"]["other_sites_matched"]["effective_count"] == 1
+                          and small_of(tag)["delivered"]["other_sites_matched"].get("fewest_distinct") == 39
+                          for tag in ("no_disjoint", "count_no_whole_number", "count_a_truth"))
+                  and lcl.separate_draws({"fewest_distinct": 39, "fewest_eligible": 500}) is None
+                  and lcl.separate_draws({"disjoint_sets": 39}) == 39 and lcl.separate_draws({"disjoint_sets": -1}) is None,
                   "5: control sets of which 18 share no site are counted as 18 draws, though every neuron has 39 "
                   "different stand-ins: with none moving as much the level is not reached, and the reason says the count "
-                  "alone settled it; a reading that records no count is counted as one draw "
+                  "alone settled it; a reading that records no count of sets sharing no site is counted as one draw, "
+                  "though it records 39 different stand-ins a neuron, and so is one whose count is no whole number "
                   f"({why_x('few_stand_ins')[:170]})")
             check(all(got_x[tag]["verdict"] == "failed"
                       and small_of(tag)["delivered"]["other_sites_matched"]["not_comparable"] == 39
@@ -1813,6 +1948,7 @@ def main() -> int:
                   and "each lora_a holds only ones and noughts" not in derived,
                   "6: the file says of each tensor which half holds the change (a row adapter's lora_a is not ones and noughts)")
             check(meta_ab.get("theodolite.levelling.trial_verdict") == "none given"
+                  and meta_ab.get("theodolite.levelling.trial_reasons") == "no trial given"
                   and meta_ab.get("theodolite.levelling.trial_judged_again") == "no trial given"
                   and str(meta_ab.get("theodolite.levelling.gate")).startswith("built and gated by the kernel")
                   and meta_ab.get("theodolite.levelling.compiled_against_is_edit_base") == "another object (a GGUF)"
@@ -1942,6 +2078,8 @@ def main() -> int:
             _t, m_own = el.read_lora(Path(exp_own["gguf_path"]))
             check(m_own["theodolite.levelling.trial_verdict"] == t_res["verdict"]
                   and m_own["theodolite.levelling.trial_fresh_verdict"] == t_res["fresh_verdict"]
+                  and m_own["theodolite.levelling.trial_reasons"] == (
+                      " | ".join(v_note["reasons"])[:1200] if v_note["reasons"] else "none recorded: every test was met")
                   and m_own["theodolite.levelling.trial_kind"] == "a dry run"
                   and m_own["theodolite.levelling.trial_brief"] == brief.name
                   and m_own["theodolite.levelling.trial_judged_again"].startswith("yes: the book's readings, judged again")
@@ -2000,6 +2138,13 @@ def main() -> int:
                   "6: the implant label a registration recorded is of the registered dose: at another dose the file says 'not checked'")
             far_term = SimpleNamespace(kind="cols", linear="layers.2.mlp.down_proj", op=np.zeros(1, dtype=np.uint8),
                                        factor=np.array([1.0 + we.MAX_REL_CHANGE / 2.0], dtype=np.float32))
+            at_cap = SimpleNamespace(kind="cols", linear="layers.2.mlp.down_proj", op=np.zeros(1, dtype=np.uint8),
+                                     factor=np.array([17.0], dtype=np.float32))
+            past_cap = SimpleNamespace(kind="cols", linear="layers.2.mlp.down_proj", op=np.zeros(1, dtype=np.uint8),
+                                       factor=np.array([np.nextafter(np.float32(17.0), np.float32(18.0))], dtype=np.float32))
+            rounds_to_cap = SimpleNamespace(kind="cols", linear="layers.2.mlp.down_proj", op=np.zeros(1, dtype=np.uint8),
+                                            factor=np.array([np.nextafter(np.float32(-63.0), np.float32(-64.0))],
+                                                            dtype=np.float32))
             check(lex.dose_caps(e_trial, 1.0) is None and lex.dose_caps(e_trial, -we.MAX_DOSE) is None
                   and lex.dose_caps(e_trial, 1.0, hP.dtype) is None
                   and "within +/-4" in str(lex.dose_caps(e_trial, 50.0)) and "finite number" in str(lex.dose_caps(e_trial, float("nan")))
@@ -2008,6 +2153,13 @@ def main() -> int:
                   and lex.dose_caps(SimpleNamespace(terms=(far_term,)), 1.0) is None
                   and lex.dose_caps(SimpleNamespace(terms=(far_term,)), 2.0) is None  # 2 x 32 is the cap, not past it
                   and "finite number" in str(lex.dose_caps(e_trial, 10 ** 400))
+                  and "too long to print" in str(lex.dose_caps(e_trial, 10 ** 5000))
+                  # at the cap to the last digit, as the kernel works it (|f - 1| in float32, times the dose)
+                  and lex.dose_caps(SimpleNamespace(terms=(at_cap,)), 4.0) is None
+                  and "times its own length" in str(lex.dose_caps(SimpleNamespace(terms=(past_cap,)), 4.0))
+                  and 4.0 * float(np.abs(past_cap.factor.astype(np.float32) - np.float32(1.0)).max()) > we.MAX_REL_CHANGE
+                  and (lex.dose_caps(SimpleNamespace(terms=(rounds_to_cap,)), 1.0) is None)
+                      == (float(np.abs(rounds_to_cap.factor.astype(np.float32) - np.float32(1.0)).max()) <= we.MAX_REL_CHANGE)
                   and refuses(lambda: lex.export_lora_adapter(e_trial, target_mod, out_path=tmp / "owner_exports" / "dose_50.gguf",
                                                               dose=50.0), lex.ExportRefused, "not exported at this dose")
                   and not (tmp / "owner_exports" / "dose_50.gguf").exists(),

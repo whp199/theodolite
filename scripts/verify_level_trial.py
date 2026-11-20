@@ -14,9 +14,12 @@ On `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens freed, server s
 3. `run_trial_of_record`: refused as it stands (the reasons are recorded), then read with `dry_run=True`. Checked: it
    is not void; the base checksum is unchanged over every stored weight; the folded form is the per-row form to the
    bit on every item in both classes (a silence is exact); the reworded set was read, with its folded form; the sheet
-   says dry run and why; judged again from its book it gives its note's verdict; it is read once; the same edit
-   registered again is refused; the brief's history counts it as a fresh reading. Its verdict is recorded, not asked
-   for: this brief's known answer has read more than one way across draws (ROADMAP §viii).
+   says dry run and why; judged again from its book it gives its note's verdict; it is read once; the same edit,
+   registered a second time before the trial was read, is refused at its read, and a registration asked after the
+   trial is refused itself, with no folder and no look; the brief's history counts it as a fresh reading. How many
+   matched control edits were as loud as the edit is counted again from the readings' own arms, and what the
+   control edits moved the metric by, as read, is recorded beside what the judgement counted. Its verdict is
+   recorded, not asked for: this brief's known answer has read more than one way across draws (ROADMAP §viii).
 4. The export: the adapter of the trial's edit against the loaded model and, off the model, against this machine's
    cached checkpoint; each shown to be the edit on its base (`verify_exported_lora`), with what its keys say. The
    trial's verdict in them is read from the book and judged again with the registration.
@@ -172,9 +175,11 @@ def main() -> int:
                   and sz[r]["could_pass"] is (sz[r]["all_drawn"] and sz[r]["counted_as"] >= sz[r]["needs"])
                   for r in ("matched", "reworded"))
               and (reg["warnings"] == []) is all(sz[r]["could_pass"] for r in ("matched", "reworded"))
-              and look["seq"] == reg["trial"]["look_seq"] and look["body"]["sizing"] == sz,
+              and look["seq"] == reg["trial"]["look_seq"] and look["body"]["sizing"] == sz
+              and reg["rule_stands"] == lt.RULE_STANDS_SAY + "."
+              and lt.RULE_STANDS_SAY in (prereg_dir / "RULES.md").read_text(),
               {"matched": sz["matched"], "reworded": sz["reworded"], "warnings": reg["warnings"],
-               "its_note_is_book_line": look["seq"]})
+               "its_note_is_book_line": look["seq"], "the_registration_also_says": reg["rule_stands"]})
         hand = lcl.make_bar_set(brief.id, near_miss_abs_max=2.0, near_miss_ratio_max=1.0)
         got_hand = None
         try:
@@ -182,6 +187,10 @@ def main() -> int:
         except lt.TrialRefused as exc:
             got_hand = str(exc)
         check("bars_made_by_hand_refused", got_hand is not None and "calibration reading" in got_hand, (got_hand or "")[:160])
+        # the same edit registered a second time now, while the book allows it: it is read after the first trial,
+        # when the read is what refuses it (a registration asked after that trial is refused itself, further down)
+        again = tmp / "prereg_again"
+        lt.register_trial(again, h, brief, bars, edit, trial_name="e6_l50_she10_again", **reg_kw)
 
         # 3. the trial: refused as it stands, then read as a dry run
         why_not = None
@@ -264,13 +273,69 @@ def main() -> int:
             as_read[f"reworded_{cls_name}"] = {**{k: rw_dv.get(k) for k in keys_dv},
                                                "at_least": rw_cs.get("at_least"),
                                                "effective_count": rw_cs.get("effective_count"), "p_fw": rw_cs.get("p_fw")}
+        places = {"prompt": "delivered_prompt", "answer": "delivered", "end": "delivered_end"}
+
+        def loud_again(body: Dict[str, Any], names: Any, cls_name: str) -> Dict[str, Any]:
+            """From a reading's own arms in the book: of its control edits, how many changed the stream at least as
+            much as the edit (a mean over the items read) at each place, and at all three."""
+            n_ctl = int(body["controls"]["count"])
+            e_at: Dict[str, List[float]] = {p: [] for p in places}
+            c_at: Dict[str, List[List[float]]] = {p: [[] for _ in range(n_ctl)] for p in places}
+            for it in body["items"]:
+                if it.get("status") != "ok" or it["item"]["name"] not in names:
+                    continue
+                arms = {a["key"]: a for a in it["classes"][cls_name]["arms"]}
+                for p, key in places.items():
+                    e_at[p].append(float(arms["edit:1.0"][key]))
+                    for c in range(n_ctl):
+                        c_at[p][c].append(float(arms[f"control:{c}"][key]))
+            e_mean = {p: float(np.mean(v)) for p, v in e_at.items()}
+            c_mean = {p: [float(np.mean(v)) for v in c_at[p]] for p in places}
+            return {"as_loud_everywhere": sum(1 for c in range(n_ctl) if all(c_mean[p][c] >= e_mean[p] for p in places)),
+                    "as_loud_by_place": {p: sum(1 for c in range(n_ctl) if c_mean[p][c] >= e_mean[p]) for p in places},
+                    "median_over_the_edits": {p: round(float(np.median(c_mean[p])) / e_mean[p], 4) for p in places}}
+
+        def body_of(role: str) -> Dict[str, Any]:
+            return next(lb.entries(book, start=int(rj["readings"][role]["seq"]), limit=1))["body"]
+
+        again_loud = {}
+        for role, which, key in (("matched", "target", ""), ("reworded", "reworded", "reworded_")):
+            names_now = {r["name"] for r in rj["drawn"][which]}
+            for cls_name in ("small", "large"):
+                again_loud[f"{key}{cls_name}"] = loud_again(body_of(role), names_now, cls_name)
+        same_loud = {cls_name: loud_again(body_of("same_site"), {r["name"] for r in rj["drawn"]["target"]}, cls_name)
+                     for cls_name in ("small", "large")}
         check("matched_controls_as_read_31b",
-              all(isinstance(v["as_loud"], int) and v["as_loud"] + v["not_comparable"] == v["of_controls"]
+              all(isinstance(v["as_loud"], int) and v["as_loud"] == again_loud[k]["as_loud_everywhere"]
+                  and v["not_comparable"] == v["of_controls"] - again_loud[k]["as_loud_everywhere"]
                   and v["at_least"] >= v["not_comparable"] and v["read_at_end"] is True and v["edit_end"] is not None
                   and v["edit_prompt"] is not None and v["compared_at"] == ["prompt", "answer", "end"]
-                  and v["draw"] == "spread" and v["effective_count"] == min(v["of_controls"], v["disjoint_sets"])
-                  for v in as_read.values())
-              and as_read["small"]["of_controls"] == as_read["large"]["of_controls"] == 39, as_read)
+                  and v["draw"] == "spread" and type(v["disjoint_sets"]) is int
+                  and v["effective_count"] == min(v["of_controls"], v["disjoint_sets"])
+                  for k, v in as_read.items())
+              and as_read["small"]["of_controls"] == as_read["large"]["of_controls"] == 39,
+              {"as_judged": as_read, "counted_again_from_the_readings_arms": again_loud,
+               "the_same_site_family_which_is_not_asked_to_be_as_loud": same_loud})
+        # what the control edits moved the metric by, as read: a family can fail because its control edits were set
+        # aside as quieter than the edit, with none that was read moving the metric as much, and the record says which
+        moved = {}
+        for cls_name in ("small", "large"):
+            cin = rj["judged"]["inputs"]["classes"][cls_name]
+            e_mean = float(np.mean([e["value"] for e in cin["item_effects"]]))
+            for fam in ("other_sites_matched", "same_site"):
+                vals = [abs(float(v)) for v in cin["controls_as_read"][fam] if v is not None]
+                cs_f = t_res["fresh_judged"]["classes"][cls_name]["controls"][fam]
+                moved[f"{cls_name}:{fam}"] = {
+                    "edit_mean": round(e_mean, 4), "control_edits_read": len(vals),
+                    "largest_control_move": round(max(vals), 4), "median_control_move": round(float(np.median(vals)), 4),
+                    "moved_as_much_as_read": sum(1 for v in vals if v >= abs(e_mean)),
+                    "as_read_at_least": cs_f.get("as_read_at_least"), "at_least": cs_f.get("at_least"),
+                    "set_aside_or_no_reading": cs_f.get("non_finite")}
+        check("control_edits_as_read_moved_the_metric_31b",
+              all(v["control_edits_read"] == 39 and v["at_least"] == v["as_read_at_least"] + v["set_aside_or_no_reading"]
+                  and (v["as_read_at_least"] <= v["moved_as_much_as_read"]) for v in moved.values())
+              and all(moved[f"{c}:same_site"]["as_read_at_least"] == moved[f"{c}:same_site"]["moved_as_much_as_read"]
+                      for c in ("small", "large")), moved)
         # how many of the items each verdict rests on the kernel read under its item gate (the base gives their forced
         # answers under -6 nats a piece): said on the sheet, and recorded here
         gates = {"fresh": (t_res["fresh_judged"]["classes"].get("large") or {}).get("item_gate"),
@@ -279,8 +344,11 @@ def main() -> int:
                                if isinstance(v, dict) and isinstance(v.get("items"), dict)}}
         check("items_under_the_item_gate_said_31b",
               isinstance(gates["fresh"], dict) and gates["fresh"]["items"] == 16 and isinstance(gates["reworded"], dict)
-              and f"item gate: {gates['fresh']['under_bar']} of 16 fresh items are under the kernel's bar" in t_res["sheet"]
-              and "reworded items are under the kernel's bar" in t_res["sheet"], gates)
+              and f"item gate: {gates['fresh']['under_bar']} of the 16 fresh items that read are under the kernel's bar"
+                  in t_res["sheet"]
+              and "reworded items that read are under the kernel's bar" in t_res["sheet"]
+              and all(set(b) == {"read", "given", "under_item_gate"} and b["under_item_gate"] <= b["read"] <= b["given"]
+                      for b in gates["batteries"].values()) and len(gates["batteries"]) == 3, gates)
         knobs = t_res["fresh_judged"].get("cheaper_knobs") or {}
         check("prompt_arms_beside_the_edit_31b", knobs.get("prompt_arms_state") == lcl.PROMPT_ARMS_RUN and bool(knobs.get("prompt_arms")),
               {"matched_by": knobs.get("matched_by"), "matched_arm": knobs.get("matched_arm"),
@@ -301,10 +369,15 @@ def main() -> int:
 
         ro = refused(lambda: lt.run_trial_of_record(h, prereg_dir, out_dir=tmp / "trial_out_dup", book_path=book, dry_run=True))
         check("trial_read_once_refused", "read once" in ro.lower(), ro[:120])
-        again = tmp / "prereg_again"
-        lt.register_trial(again, h, brief, bars, edit, trial_name="e6_l50_she10_again", **reg_kw)
         ro2 = refused(lambda: lt.run_trial_of_record(h, again, out_dir=tmp / "trial_out_again", book_path=book, dry_run=True))
         check("same_edit_registered_again_refused", "already had a trial" in ro2, ro2[:160])
+        n_late = lb.verify(book)["entries"]
+        ro3 = refused(lambda: lt.register_trial(tmp / "prereg_late", h, brief, bars, edit, trial_name="e6_l50_she10_late",
+                                                **reg_kw))
+        check("registered_after_its_trial_refused_at_registration",
+              "already had a trial" in ro3 and not (tmp / "prereg_late").exists() and lb.verify(book)["entries"] == n_late,
+              {"says": ro3[:160], "folder_written": (tmp / "prereg_late").exists(),
+               "lines_added_to_the_book": lb.verify(book)["entries"] - n_late})
         hist = lcl.brief_history(brief.id, book, name=brief.name)
         check("trial_counted_as_a_fresh_reading",
               hist["fresh_count"] == 1 and len(hist["trials"]) == 1 and meta["reading_index"] == 1,
@@ -328,7 +401,7 @@ def main() -> int:
         ver_exp = lex.verify_exported_lora(Path(exp_out["gguf_path"]), edit=edit, target=target_31b, dose=1.0)
         keys = el.read_lora(Path(exp_out["gguf_path"]))[1]
         said = {k.split("levelling.")[1]: keys[k] for k in sorted(keys) if k.startswith("theodolite.levelling.")
-                and any(s in k for s in ("trial_verdict", "trial_fresh", "trial_kind", "trial_brief", "trial_judged",
+                and any(s in k for s in ("trial_verdict", "trial_fresh", "trial_reasons", "trial_kind", "trial_brief", "trial_judged",
                                          "applies_to", "implant", "compiled_against_is", ".book", ".gate", ".serving"))}
         exp_s = round(time.perf_counter() - t_exp, 2)
         check("export_is_the_edit_on_the_model",
@@ -338,6 +411,8 @@ def main() -> int:
         check("export_keys_say_what_was_checked",
               said.get("trial_verdict") == t_res["verdict"] and said.get("trial_kind") == "a dry run"
               and said.get("trial_fresh_verdict") == t_res["fresh_verdict"] and said.get("trial_brief") == brief.name
+              and said.get("trial_reasons") == (" | ".join(t_res["reasons"])[:1200] if t_res["reasons"]
+                                                else "none recorded: every test was met")
               and str(said.get("trial_judged_again", "")).startswith("yes")
               and str(said.get("trial_applies_to_compiled_base", "")).startswith("yes")
               and str(said.get("compiled_against_is_edit_base", "")).startswith("yes: the same weights id")

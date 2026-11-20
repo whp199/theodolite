@@ -39,6 +39,7 @@ import json
 import math
 import os
 import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,8 +58,21 @@ from backend.census import write_json_atomic
 # 2: a control edit counts only when at least as loud as the edit (over the prompt, the answer and, for a metric
 # read there, the last position); control sets are drawn to share no site and counted by those that share none; a
 # look is taken at registration. A folder registered under "trial-1" is refused by its version, in those words.
-TRIAL_VERSION = 2
-TRIAL_RULE_PRESET = "trial-2"
+TRIAL_VERSION = 3  # 3: control sets drawn over all an edit's terms together and counted by neuron; no count, one draw
+TRIAL_RULE_PRESET = "trial-3"
+# What a registration says, in its result (`rule_stands`) and its RULES.md, of the rule its control edits are
+# judged by as it stands. It is here, and not left to a document, because a trial is read once. It says what is
+# expected and why, not what must be: an edit whose neurons are among the quietest of their layer would have
+# louder stand-ins, and none such has been read.
+RULE_STANDS_SAY = (
+    "As the rule stands a trial is not expected to pass it. Each stand-in is drawn from a band on BOTH sides of "
+    "what its neuron is expected to deliver over the answer, and nothing matches the control edits over the prompt "
+    "or at the last position; so by the draw alone some of an edit's matched control edits are quieter than it at "
+    "one of the places compared (most of them, where the edit's neurons are among the loudest of their layer), "
+    "each of those is counted as moving as much, and the level allows almost none. What a pass should ask of its "
+    "control edits is the owner's to settle (ROADMAP section viii); until then a trial read of record is expected "
+    "to spend the edit's one trial on a verdict the rule has settled, not the edit"
+)
 TRIAL_CONTROLS = 99  # synthesis.md §vi and arbiter.md row 18: 99 control edits a family support five fresh readings
 MAX_REWORDED_USES = 5  # synthesis.md §vi: a reworded item is read at most five times in its life, then the set rotates
 # How far the folded form's mean may sit from the per-row form's and still be called the same edit: one floor (the
@@ -662,9 +676,17 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
            if lcl.read_at_end(brief) else " nowhere else, since this brief's metric is read over the answer")
         + ". One that was quieter at any of them, and a control edit or an edit with no such figure, is counted as "
         "moving as much. The figures are means over the items read. The matching factor has no part in this: a "
-        "wider one makes more sites eligible and lets no quieter control edit count",
-        "- separate draws: the control sets are drawn to share as few sites as the eligible sites allow, and are "
-        "counted as no more separate draws than the control edits that share no site with one another. A pass needs "
+        "wider one makes more sites eligible and lets no quieter control edit count. The same-site family is not "
+        "asked this: its control edits are built at the edit's own sites, and what they changed the stream by is "
+        "printed beside the edit's. At this trial's level at most "
+        f"`{_most_aside(int(trial_cfg['controls_per_family']), brief.max_fresh_readings, bars.alpha)}` of the "
+        f"`{trial_cfg['controls_per_family']}` control edits of a family on the fresh items, and "
+        f"`{_most_aside(int(trial_cfg['reworded_controls']), 1, bars.alpha)}` of the reworded set's "
+        f"`{trial_cfg['reworded_controls']}`, may move as much or be counted so. " + RULE_STANDS_SAY,
+        "- separate draws: the control sets are drawn together to share as few sites as the eligible sites allow, "
+        "and are counted as no more separate draws than the control edits found to share no site with one another (a "
+        "site is a neuron of a layer, whatever projection a control edit changes it in; a reading that records no "
+        "such count is counted as one draw). A pass needs "
         f"the fresh items' sets to count as `{_least_controls(brief.max_fresh_readings, bars.alpha)}` and the reworded "
         f"set's as `{_least_controls(1, bars.alpha)}`, which is known only once the items are drawn. "
         + _sizing_words(trial_cfg),
@@ -680,9 +702,10 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         "",
         "## What a trial is",
         "",
-        "A trial is a fresh reading of the brief's kept-back frames: it is asked what a claim reading is asked",
-        "before it is registered, it spends one of the brief's fresh readings, an edit has one trial, and it is",
-        "read once. Where the book holds a claim reading of the edit, the trial follows it only if that claim read",
+        "A trial is a fresh reading of the brief's kept-back frames. It is asked what a claim reading is asked,",
+        "when this folder is written and again before it is entered in the book. It",
+        "spends one of the brief's fresh readings, an edit has one trial, and it is read once. Where the book",
+        "holds a claim reading of the edit, the trial follows it only if that claim read",
         "a lead. It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
         "clean (nothing changed, nothing untracked, no file git is told to overlook, and no code where the runner",
         "imports from that no commit holds), this folder is committed as it stands, the runner and reader are the",
@@ -728,6 +751,13 @@ def _least_controls(m: int, alpha: float) -> int:
     return int(math.ceil(float(m) / float(alpha) - 1.0 - 1e-9))
 
 
+def _most_aside(count: int, m: int, alpha: float) -> int:
+    """The most control edits of `count` (counted as that many separate draws) that may move as much as the edit, or
+    be counted so, with the level still reached at `m` fresh readings a brief: m (1 + k) / (count + 1) <= alpha.
+    Never under 0: a design with which none could is refused before this is printed."""
+    return max(0, int(math.floor(float(alpha) * (int(count) + 1) / float(m) + 1e-9)) - 1)
+
+
 def _sizing_words(trial_cfg: Mapping[str, Any]) -> str:
     """What RULES.md says of the look taken at registration (`sizing_look`)."""
     sz = trial_cfg.get("sizing")
@@ -750,11 +780,14 @@ def _sizing_words(trial_cfg: Mapping[str, Any]) -> str:
 def _look_words(what: str, s: Mapping[str, Any], tol: Any) -> str:
     """Why, by the look taken at registration, a trial could not pass: said of one of its two matched readings."""
     if not s.get("all_drawn"):
+        needs, dj = int(s.get("needs") or 0), int(s.get("disjoint_sets") or 0)
         return (f"its {what} control sets could not all be drawn: {s.get('found')} of {s.get('control_edits')} (each "
                 f"neuron had as few as {s.get('fewest_eligible')} eligible sites at a matching factor of {tol:g}), and "
                 "a reading whose control sets cannot all be drawn ends void"
-                + (f"; a pass needs {s.get('needs')}, so fewer control edits would do"
-                   if int(s.get("found") or 0) >= int(s.get("needs") or 0) else ""))
+                + (f"; {dj} of those drawn share no site with one another and a pass needs {needs}, so from {needs} "
+                   f"to {dj} control edits would do" if dj >= needs else
+                   f"; of those drawn only {dj} share no site with one another, where a pass needs {needs}, so fewer "
+                   "control edits would not do either"))
     return (f"its {what} control sets count as {s.get('counted_as')} separate draws ({s.get('counted_as')} of "
             f"{s.get('control_edits')} share no site with one another; each neuron had as few as "
             f"{s.get('fewest_eligible')} eligible sites at a matching factor of {tol:g}) and a pass needs {s.get('needs')}")
@@ -978,10 +1011,18 @@ def register_trial(
     that cannot be read at the dose, no reworded set or one that overlaps the brief's own wording, sham controls
     that are not the edit's shape, a design that cannot reach the level (too few control edits for the brief's `m`),
     bars that no calibration reading in `book_path` produced, that were calibrated on other weights, or whose
-    calibration note does not follow from the book's own readings (`level_claim.calibration_follows`), a reworded set
-    the tokenizer cannot make items of, and any reading of the trial that the kernel would refuse as planned
-    (`preflight_trial`). The folder then records which calibration, of which book, the bars came from, and how that
-    calibration was taken.
+    calibration note does not follow from the book's own readings (`level_claim.calibration_follows`), whatever
+    else a fresh reading is refused for in that book as it stands (`level_claim.fresh_reading_gate`: kept-back
+    wording read in practice, a brief changed under its name, an edit that has had its trial or whose claim read
+    no lead, a budget that is spent; all of it asked again when the trial is read), a reworded set the tokenizer
+    cannot make items of, any reading of the trial that the kernel would refuse as planned (`preflight_trial`),
+    and a folder that cannot be written. The folder is made before the look is taken, so that no look leaves its
+    line in the book for a registration that could not be written. The folder then records which calibration, of
+    which book, the bars came from, and how that calibration was taken.
+
+    In the result, what the registrant must be told before the trial is read: `warnings` (what the look found, if
+    by it the trial could not pass) and `rule_stands` (`RULE_STANDS_SAY`: what the rule its control edits are
+    judged by means for any trial, as that rule stands).
     """
     folder = Path(prereg_dir).resolve()
     if folder.exists() and any(folder.iterdir()):
@@ -1112,6 +1153,12 @@ def register_trial(
             f"that book: {cal_why}. A trial takes bars its book shows were calibrated."
         )
     cal_entry = next(lb.entries(bk, start=int(cal["seq"]), limit=1))
+    # what the trial will be asked before it is entered in the book, asked now of the book as it stands: no folder
+    # is written, and no look taken at fillings of the kept-back frames, for a trial that could not be read
+    try:
+        lcl.fresh_reading_gate(h, brief, bars, edit, bk, what="trial", main_dose=float(main_dose))
+    except lcl.ClaimRefused as exc:
+        raise TrialRefused(str(exc)) from None
 
     prov = we.edit_provenance(edit, saved_dir=saved_edit_dir)
     rows_cfg = {
@@ -1175,9 +1222,31 @@ def register_trial(
     # every reading the trial will take, asked now: no folder is written for a trial the kernel would refuse
     priced = preflight_trial(h, brief, edit, trial_cfg, reworded, trial_cfg["sham_recipes"], base_dir=Path(base_dir))
     trial_cfg["priced"] = {"forwards": int(priced["forwards"]), "seconds": float(priced["seconds"])}
+    # the folder, before the look: a look that left its line in the book for a folder that could not be written
+    # would be a look at fillings of the kept-back frames with no registration to show for it
+    made_folder = not folder.exists()
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=folder):
+            pass
+    except OSError as exc:
+        raise TrialRefused(f"The registration folder {folder} cannot be written ({type(exc).__name__}: {exc}), so no "
+                           "look is taken and nothing is registered.") from None
+
+    def unmade() -> None:
+        if made_folder:
+            try:
+                folder.rmdir()
+            except OSError:
+                pass
+
     # how many separate draws its matched control sets would count as, looked at now with the base alone: a trial
     # that could not pass by that count is found to be one before it is spent, not after
-    trial_cfg["sizing"] = sizing_look(h, brief, bars, edit, trial_cfg, reworded)
+    try:
+        trial_cfg["sizing"] = sizing_look(h, brief, bars, edit, trial_cfg, reworded)
+    except TrialRefused:
+        unmade()
+        raise
     warnings = [
         f"By the look taken at registration this trial could not pass: {_look_words(what, s, float(match_tolerance))}. "
         "It will be read as a dry run or not at all. (A wider matching factor makes more sites eligible, with "
@@ -1197,27 +1266,33 @@ def register_trial(
                     "brief's kept-back frames and over the reworded set, and the control sets were drawn. Nothing "
                     "of the edit was read, and this line counts as no reading",
         }), path=bk)
-    except lb.BookBroken as exc:
-        raise TrialRefused(f"The look taken at registration could not be entered in {bk.name} ({exc}), so nothing "
-                           "is registered.") from None
+    except (lb.BookBroken, OSError) as exc:
+        unmade()
+        raise TrialRefused(f"The look taken at registration could not be entered in {bk.name} "
+                           f"({type(exc).__name__}: {exc}), so nothing is registered.") from None
     trial_cfg["look_seq"] = int(look_entry["seq"])
 
-    folder.mkdir(parents=True, exist_ok=True)
-    lbr.save_brief(brief, folder / "brief.json")
-    lcl.save_bars(bars, folder / "bars.json")
-    write_json_atomic(folder / "edit_manifest.json", prov, indent=2)
-    save_reworded(reworded, folder / "reworded.json")
-    write_json_atomic(folder / "trial.json", trial_cfg, indent=2)
-    (folder / "RULES.md").write_text(_render_rules_md(trial_cfg, brief, bars), encoding="utf-8")
-    (folder / "repo_commit").write_text(f"{commit}\n", encoding="utf-8")
-    (folder / "registered_at").write_text(f"{reg_at}\n", encoding="utf-8")
-    trial_sha, files = _write_sha256sums(folder)
+    try:
+        lbr.save_brief(brief, folder / "brief.json")
+        lcl.save_bars(bars, folder / "bars.json")
+        write_json_atomic(folder / "edit_manifest.json", prov, indent=2)
+        save_reworded(reworded, folder / "reworded.json")
+        write_json_atomic(folder / "trial.json", trial_cfg, indent=2)
+        (folder / "RULES.md").write_text(_render_rules_md(trial_cfg, brief, bars), encoding="utf-8")
+        (folder / "repo_commit").write_text(f"{commit}\n", encoding="utf-8")
+        (folder / "registered_at").write_text(f"{reg_at}\n", encoding="utf-8")
+        trial_sha, files = _write_sha256sums(folder)
+    except OSError as exc:
+        raise TrialRefused(f"The look is entered at line {trial_cfg['look_seq']} of {bk.name}, and the registration "
+                           f"folder {folder} could not be written whole ({type(exc).__name__}: {exc}): what stands "
+                           "in it is no registration.") from None
     return {
         "prereg_dir": str(folder),
         "trial_sha256": trial_sha,
         "trial": trial_cfg,
         "files": files,
         "warnings": warnings,
+        "rule_stands": RULE_STANDS_SAY + ".",
     }
 
 
@@ -1837,7 +1912,7 @@ def judge_readings(
             eff_cls: Dict[str, Any] = {"other_sites_matched": draws_m if draws_m is not None else 1}
             deliv_cls: Dict[str, Any] = {
                 "other_sites_matched": dv_m,
-                "same_site": lcl._delivered_of(r_same, target_drawn, cls_name, main_dose),
+                "same_site": lcl._delivered_of(r_same, target_drawn, cls_name, main_dose, at_end=at_end),
             }
             if r_sham is not None:
                 _, _, _, ctl_sh = lcl._extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
@@ -1879,13 +1954,7 @@ def judge_readings(
             got = [lcl._mean_metric_from_read(r, metric, main_dose, cls_name=c)[which] for c in ("small", "large")]
             return [v for v in got if v is not None]
 
-        def counted(r: Mapping[str, Any]) -> Dict[str, int]:
-            """Of the items a battery was given, how many read (one that did not is in none of its figures), and how
-            many of them the kernel read under its item gate."""
-            its = [it for it in (r.get("items") or ()) if isinstance(it, Mapping)]
-            return {"read": sum(1 for it in its if it.get("status") == "ok"), "given": len(its),
-                    "under_item_gate": sum(1 for it in its if isinstance(it.get("gate"), Mapping)
-                                           and it["gate"].get("passed") is False)}
+        counted = lcl.battery_items  # of the items given, how many read, and how many of those under the item gate
 
         neu_kls, neu_ctls = both(r_neu, "kl", 0), both(r_neu, "kl", 1)
         bat_payload["neutral_text"] = {"mean_kl": max(neu_kls) if neu_kls else None,
@@ -2020,7 +2089,7 @@ def trial_sentence(
     rw_fl = ((rw.get("folded") or {}).get("classes") or {}).get("large") or {}
     rw_sm = ((rw.get("classes") or {}).get("small") or {}).get("frames") or {}
     rw_ig = rw_cls.get("item_gate") if isinstance(rw_cls.get("item_gate"), Mapping) else None
-    rw_gate = (f"; {rw_ig.get('under_bar')} of its {rw_ig.get('items')} items under the kernel's item gate"
+    rw_gate = (f"; {rw_ig.get('under_bar')} of its {rw_ig.get('items')} items that read under the kernel's item gate"
                if rw_ig and rw_ig.get("under_bar") else "")
     src = meta.get("source_claim")
     src_part = (f" It follows the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})."

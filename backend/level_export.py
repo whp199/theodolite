@@ -671,7 +671,8 @@ def build_lora_tensors(
 # --------------------------------------------------------------------------------------------- what a trial lends
 
 
-_NO_TRIAL = {"verdict": "none given", "fresh_verdict": "none given", "kind": "none", "brief": "none",
+_NO_TRIAL = {"verdict": "none given", "fresh_verdict": "none given", "reasons": "no trial given", "kind": "none",
+             "brief": "none",
              "trial_sha256": "none", "book_seq": None, "book_hash": None, "book": "no trial given",
              "judged_again": "no trial given", "applies_to_compiled_base": "no trial given",
              "book_before_it": "not given"}
@@ -788,7 +789,13 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
     before = (f"practice readings {reg_note.get('practice_count', 'unknown')}, earlier fresh readings "
               f"{len(reg_note.get('prior_verdicts') or [])}, earlier trials {len(reg_note.get('prior_trials') or [])}, as "
               "the trial's book had them")
+    # why the trial read as it did, in the note's own words: a fresh verdict's name alone can mislead ("no better
+    # than control edits" is also what a trial reads when its control edits were set aside as quieter than the edit
+    # and none that counted moved the metric as much), so the reasons travel with it
+    why = [str(r) for r in (note.get("reasons") or ()) if isinstance(r, str)]
+    reasons = (" | ".join(why))[:1200] if why else "none recorded: every test was met"
     return {"verdict": str(note.get("verdict")), "fresh_verdict": str(note.get("fresh_verdict")), "kind": kind,
+            "reasons": reasons,
             "brief": str(note.get("brief_name") or "unknown"), "trial_sha256": sha, "book_seq": seq,
             "book_hash": vhash, "book": f"line {seq} of {book.name} is the trial's verdict; the book verifies",
             "judged_again": judged, "applies_to_compiled_base": applies, "book_before_it": before}
@@ -809,17 +816,24 @@ def dose_caps(edit: we.Edit, dose: Any, dtype: Any = None) -> Optional[str]:
     except OverflowError:  # a whole number past a float's reach
         finite = False
     if not finite:
-        return f"a dose is a finite number; {str(dose)[:40]!r} was given"
+        try:
+            said = str(dose)[:40]
+        except ValueError:  # a whole number too long for Python to print
+            said = "a whole number too long to print"
+        return f"a dose is a finite number; {said!r} was given"
     d = float(dose)
     if abs(d) > we.MAX_DOSE:
         return f"a reading takes a dose within +/-{we.MAX_DOSE:g}, and {d:g} is past it: the kernel has read nothing there"
     for t in edit.terms:
         if t.kind in ("cols", "rows"):
-            f = np.asarray(t.factor, dtype=np.float64)[np.asarray(t.op) == 0]
-            far = np.abs(d * (f - 1.0))
-            # the kernel works a factor in float32: one it reads at the cap must not be refused here for a last digit
-            if far.size and float(far.max()) > we.MAX_REL_CHANGE * (1.0 + 1e-6):
-                return (f"at dose {d:g} a neuron of {t.linear} would change by {float(far.max()):.3g} times its own "
+            # in the kernel's own arithmetic (`weight_edits._rel_changes` and `dose_refusal`: |f - 1| in float32,
+            # then the dose times the largest), so that what is refused here is what the kernel refuses, to the bit
+            f = np.asarray(t.factor, dtype=np.float32)[np.asarray(t.op) == 0]
+            with np.errstate(all="ignore"):
+                rel = np.abs(f - np.float32(1.0))
+            far = abs(d) * float(rel.max()) if rel.size else 0.0
+            if not far <= we.MAX_REL_CHANGE:
+                return (f"at dose {d:g} a neuron of {t.linear} would change by {far:.3g} times its own "
                         f"length; an edit takes at most {we.MAX_REL_CHANGE:g}")
     if dtype is not None:
         return we.dose_refusal(edit, d, dtype)
@@ -962,6 +976,7 @@ def export_lora_adapter(
         "levelling.gate": gate_words,
         "levelling.trial_verdict": trial["verdict"],
         "levelling.trial_fresh_verdict": trial["fresh_verdict"],
+        "levelling.trial_reasons": trial["reasons"],
         "levelling.trial_kind": trial["kind"],
         "levelling.trial_brief": trial["brief"],
         "levelling.trial_sha256": trial["trial_sha256"],

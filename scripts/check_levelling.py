@@ -88,6 +88,7 @@ import copy
 import dataclasses
 import hashlib
 import importlib
+import itertools
 import json
 import math
 import pickle
@@ -3655,28 +3656,109 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
             return (len(draws) == C and all(len({int(x) for x in d}) == Kn for d in draws)
                     and len({tuple(sorted(int(x) for x in d)) for d in draws}) == C)
 
+        def spread(pools: Sequence[Any], C: int, seed: int = 3, groups: Optional[Sequence[int]] = None,
+                   offsets: Optional[Sequence[int]] = None) -> Tuple[List[np.ndarray], List[bool]]:
+            pools = [np.asarray(list(p), dtype=np.int64) for p in pools]
+            return we._draw_spread_sets(pools, [0] * len(pools) if groups is None else list(groups), C,
+                                        np.random.default_rng([seed, 31]), offsets=offsets)
+
+        def clean_family(sets: Sequence[np.ndarray], clean: Sequence[bool]) -> int:
+            """How many sets the draw calls clean, or -1 when two of them share a site."""
+            fam = [{int(x) for x in s} for s, c in zip(sets, clean) if c]
+            return len(fam) if len(set().union(*fam)) == sum(len(s) for s in fam) else -1
+
         same60, same126 = [range(60)] * 10, [range(126)] * 2
-        narrow = [range(49)] + [range(100, 2100)] * 9  # one neuron with few eligible sites, nine with many
+        narrow = [range(49)] + [range(100, 2100)] * 9  # one neuron with few eligible sites, nine with many others
+        narrow_in = [range(42)] + [range(3000)] * 9  # its few sites among the nine others' many
+        nested = [range(42), range(200)] + [range(3000)] * 8
         tight = {"two neurons, the same 30 sites, 99 sets": ([range(30)] * 2, 99),
                  "three neurons, ten sites each, 39 sets": ([range(10), range(100, 110), range(200, 210)], 39),
-                 "two neurons, the same 18 sites, 39 sets": ([range(18)] * 2, 39)}
+                 "two neurons, the same 18 sites, 39 sets": ([range(18)] * 2, 39),
+                 "two neurons, the same 20 sites, every one of the 190 sets there are": ([range(20)] * 2, 190),
+                 "three neurons, the same 4 sites, all 4 sets": ([range(4)] * 3, 4)}
         short = {name: sum(1 for s in range(120) if not sound(drawn(pools, C, True, s), C, len(pools)))
                  for name, (pools, C) in tight.items()}
         check(all(n == 0 for n in short.values()),
               f"15g: the spread draw gives every set asked for where sets remain, on each of 120 seeds: it does not lock "
-              f"at the end of a pass ({short})")
+              f"when the sites run out ({short})")
+        # against every assignment there is, on small pools that overlap as a band of scores makes them overlap
+        rng_b = np.random.default_rng(7)
+        n_brute = n_short = n_unclean = 0
+        for _case in range(160):
+            Kb = int(rng_b.integers(2, 5))
+            Ub = int(rng_b.integers(Kb, 9))
+            pools_b = [sorted(rng_b.choice(Ub, size=int(rng_b.integers(1, Ub + 1)), replace=False).tolist()) for _ in range(Kb)]
+            groups_b = [int(g) for g in rng_b.integers(0, 2, size=Kb)] if rng_b.random() < 0.4 else [0] * Kb
+
+            def key_of(combo: Sequence[int]) -> Optional[Tuple[Any, ...]]:
+                by: Dict[int, List[int]] = {}
+                for p, x in enumerate(combo):
+                    by.setdefault(groups_b[p], []).append(int(x))
+                if any(len(set(v)) != len(v) for v in by.values()):
+                    return None
+                return tuple((g, tuple(sorted(v))) for g, v in sorted(by.items()))
+
+            every = {key_of(c) for c in itertools.product(*pools_b)} - {None}
+            for C in sorted({1, max(1, len(every) // 2), len(every), len(every) + 3}):
+                sets_b, clean_b = spread(pools_b, C, seed=n_brute, groups=groups_b)
+                n_brute += 1
+                keys = {key_of(s.tolist()) for s in sets_b}
+                if len(sets_b) != min(C, len(every)) or None in keys or len(keys) != len(sets_b) or not keys <= every:
+                    n_short += 1
+                if clean_family(sets_b, clean_b) < 0:
+                    n_unclean += 1
+        check(n_brute > 400 and n_short == 0 and n_unclean == 0,
+              f"15g: on {n_brute} draws from small overlapping pools, in one term or two, the spread draw gives as many "
+              "sets as were asked or as there are, each a set there is and none twice, and the sets it calls clean "
+              "share no site")
         dj_spread = [disjoint(drawn(same126, 39, True, s)) for s in range(30)]
         dj_each = [disjoint(drawn(same126, 39, False, s)) for s in range(30)]
-        dj_narrow = [disjoint(drawn(narrow, 39, True, s)) for s in range(10)]
-        dj_shared = [disjoint(drawn(same60, 39, True, s)) for s in range(10)]
+        cl_narrow = [clean_family(*spread(pools, 39, s)) for pools in (narrow, narrow_in, nested) for s in range(30)]
+        cl_shared = [clean_family(*spread(same60, 39, s)) for s in range(10)]
         n_shared = [min(len({int(d[j]) for d in drawn(same60, 39, True, s)}) for j in range(10)) for s in range(10)]
-        check(set(dj_spread) == {39} and max(dj_each) < 39 and set(dj_narrow) == {39}
-              and max(dj_shared) <= 6 and min(n_shared) >= 30
+        check(set(dj_spread) == {39} and max(dj_each) < 39 and set(cl_narrow) == {39}
+              and set(cl_shared) == {6} and set(n_shared) == {39}
               and all(sound(drawn(same60, 39, sp, s), 39, 10) for sp in (False, True) for s in range(10)),
               f"15g: drawn spread, 39 sets of two from 126 sites share no site (each on its own: {min(dj_each)} to "
-              f"{max(dj_each)} of them share none), and so do 39 of ten where one neuron has 49 eligible sites; ten "
-              f"neurons that share 60 sites give at most 6 sets that share none ({min(dj_shared)} to {max(dj_shared)} "
-              f"counted), though each neuron has {min(n_shared)} or more different stand-ins")
+              f"{max(dj_each)} of them share none); so do 39 of ten where one neuron has 42 or 49 eligible sites, among "
+              "the others' sites or apart from them (a neuron with many sites leaves another's few alone); ten "
+              "neurons that share 60 sites give the 6 sets that can share none, on every seed, and each neuron still "
+              "has 39 different stand-ins")
+        # the count does not fall as more sets are asked for: the sets made of sites no earlier set had are counted as
+        # made, wherever the shuffle puts them (taken one after another as they stand, fewer would be found)
+        asked_more = {}
+        for name, pools, most in (("three neurons, the same 125 sites", [range(125)] * 3, 41),
+                                  ("ten neurons, the same 450 sites", [range(450)] * 10, 45)):
+            got39 = [clean_family(*spread(pools, 39, s)) for s in range(20)]
+            sets99 = [spread(pools, 99, s) for s in range(20)]
+            got99 = [clean_family(*x) for x in sets99]
+            as_stand = [disjoint(x[0]) for x in sets99]
+            asked_more[name] = (set(got39) == {39} and set(got99) == {most} and max(as_stand) < most
+                                and all(sound(x[0], 99, len(pools)) for x in sets99), min(as_stand), max(as_stand))
+        check(all(v[0] for v in asked_more.values()),
+              "15g: asked for 99 sets where 41 or 45 can share no site, the spread draw makes that many of sites no "
+              f"earlier set had and says which, and asked for 39 it makes 39 ({asked_more})")
+        # two projections of one layer are one draw: a neuron stands in one control edit, whatever projection it is in
+        two_proj, apart_draws = [], []
+        for s in range(20):
+            r2 = np.random.default_rng([s, 5])
+            pools2 = [np.sort(r2.choice(2000, size=400, replace=False)) for _ in range(20)]
+            sets2, clean2 = spread(pools2, 39, s, groups=[0] * 10 + [1] * 10)
+            two_proj.append(clean_family(sets2, clean2))
+            a2, b2 = spread(pools2[:10], 39, s)[0], spread(pools2[10:], 39, s + 1000)[0]
+            apart_draws.append(disjoint([np.concatenate([x, y]) for x, y in zip(a2, b2)]))
+        sets_l, clean_l = spread([range(5)] * 4, 2, 0, groups=[0, 0, 1, 1], offsets=[0, 0, 100, 100])
+        check(set(two_proj) == {39} and max(apart_draws) < 39
+              and clean_family(sets_l, clean_l) == 2 and all(int(s[2]) >= 100 and int(s[0]) < 100 for s in sets_l),
+              f"15g: ten neurons changed in two projections of one layer are drawn together, and 39 control edits then "
+              f"share no neuron; the two projections drawn each on its own share neurons between control edits "
+              f"({min(apart_draws)} to {max(apart_draws)} of 39 share none); the same numbers in another layer are other sites")
+        t_cost = time.time()
+        sets_c, clean_c = spread([range(8000)] * 512, 99, 1)
+        t_cost = time.time() - t_cost
+        check(len(sets_c) == 99 and clean_family(sets_c, clean_c) == 15 and t_cost < 30.0,
+              f"15g: 99 sets of 512 neurons that share 8000 sites are drawn in {t_cost:.2f} s (the 15 that can share no "
+              "site among them): a draw that runs out of sites does not look through every pool at every pick")
         d_spr, d_again, d_other = drawn(same60, 39, True), drawn(same60, 39, True), drawn(same60, 39, True, seed=4)
         check(all(np.array_equal(a, b) for a, b in zip(d_spr, d_again))
               and not all(np.array_equal(a, b) for a, b in zip(d_spr, d_other)),
@@ -3727,6 +3809,53 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
         made_i, cov_made_i = we.matched_control_edits(Pb.build(we.silence(2, [3, 40])), Pb.lm,
                                                       lv._score_sites(hP, Pb.build(we.silence(2, [3, 40])),
                                                                       [items_p["orange"]], "paired"), 0, 6, tolerance=3.0)
+        # an edit of the same neurons in two projections: the count is by neuron, over both terms
+        e_both = Pb.build(we.silence(2, [3, 40]), we.scale_rows(2, "up_proj", [3, 40], 0.5))
+        sc_both = lv._score_sites(hP, e_both, [items_p["orange"]], "paired")
+
+        def neurons_of(c: Any) -> set:
+            return {(int(t.layer), int(x)) for t in c.terms for x in t.idx}
+
+        def disjoint_by_neuron(made: Sequence[Any]) -> int:
+            seen_n: set = set()
+            n = 0
+            for c in made:
+                if not (neurons_of(c) & seen_n):
+                    n += 1
+                    seen_n |= neurons_of(c)
+            return n
+
+        both_s, cov_both_s = we.matched_control_edits(e_both, Pb.lm, sc_both, 0, 6, tolerance=20.0, spread=True)
+        both_i = [we.matched_control_edits(e_both, Pb.lm, sc_both, s, 12, tolerance=20.0) for s in range(8)]
+        check(both_s is not None and len(e_both.terms) == 2 and cov_both_s["disjoint_sets"] == 6 == disjoint_by_neuron(both_s)
+              and len(set().union(*(neurons_of(c) for c in both_s))) == 24
+              and all(made is not None and cov["disjoint_sets"] == disjoint_by_neuron(made) for made, cov in both_i)
+              and any(cov["disjoint_sets"] < disjoint([np.concatenate([t.idx + 1000 * i for i, t in enumerate(c.terms)])
+                                                       for c in made]) for made, cov in both_i),
+              "15g (P): for an edit of the same neurons in two projections the count of control edits that share no "
+              "site is by neuron over both terms (a count that took each term's sites for its own would find more), "
+              f"and drawn spread 6 control edits take 24 different neurons ({[cov['disjoint_sets'] for _m, cov in both_i]} "
+              "of 12 drawn each on its own)")
+        # asked for more control edits than can share no site: the count is of those made of sites no earlier one
+        # had, which is more than taking them one after another as they stand finds, and a family of that size is
+        # found again here from the control edits' own sites (those that share a site with the fewest others first)
+        many_s, cov_many = we.matched_control_edits(Pb.build(we.silence(2, [3, 40])), Pb.lm,
+                                                    lv._score_sites(hP, Pb.build(we.silence(2, [3, 40])),
+                                                                    [items_p["orange"]], "paired"), 0, 99,
+                                                    tolerance=20.0, spread=True)
+        sites_many = [neurons_of(c) for c in many_s or ()]
+        left = list(range(len(sites_many)))
+        family: List[int] = []
+        while left:
+            pick = min(left, key=lambda c: (sum(1 for d in left if d != c and sites_many[c] & sites_many[d]), c))
+            family.append(pick)
+            left = [d for d in left if d != pick and not (sites_many[pick] & sites_many[d])]
+        check(many_s is not None and len(many_s) == 99
+              and disjoint_by_neuron(many_s) < cov_many["disjoint_sets"] <= len(set().union(*sites_many)) // 2
+              and len(family) >= cov_many["disjoint_sets"],
+              f"15g (P): asked for 99 control edits of two neurons where {cov_many['disjoint_sets']} can share no site, "
+              f"the coverage counts those ({disjoint_by_neuron(many_s)} are found taking them one after another as "
+              f"they stand; a family of {len(family)} is found again from the control edits' own sites)")
         check(made_s is not None and cov_made["disjoint_sets"] == disjoint([c.terms[0].idx for c in made_s]) == 6
               and [c.id for c in made_s] == r_spr["controls"]["ids"]
               and made_i is not None and [c.id for c in made_i] == r_ind["controls"]["ids"]

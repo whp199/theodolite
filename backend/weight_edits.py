@@ -2100,79 +2100,184 @@ def down_stream_norms_under(lm: nn.Module, layer: int, plant: Edit) -> np.ndarra
     return out
 
 
+def _draw_spread_sets(
+    pools: Sequence[np.ndarray],
+    groups: Sequence[int],
+    count: int,
+    rng: np.random.Generator,
+    offsets: Optional[Sequence[int]] = None,
+) -> Tuple[List[np.ndarray], List[bool]]:
+    """Up to `count` assignments of one site to each position, drawn to share as few sites as the pools allow.
+
+    `pools[p]`: the sites eligible at position p (whole numbers from 0 up, each once), to each of which
+    `offsets[p]` is added to give the site's number; `groups[p]`: the term the position belongs to. Within an
+    assignment no site stands twice in one term (a term's indices are distinct); a site may stand at positions of
+    two terms of one assignment, as an edit's own neuron does when it is changed in two projections. What a site
+    is, is the caller's to say by its offsets: `matched_control_edits` numbers a neuron of a layer the same whatever
+    projection it is changed in and makes ONE draw over all the terms, so that two control edits do not share a
+    neuron through different projections.
+
+    While a position has a site that no kept assignment holds it takes one of those, at random, and of those first
+    the ones no position with fewer eligible sites could take: a neuron with thousands of eligible sites does not
+    use up the few another neuron has. An assignment made wholly of such sites shares nothing with any kept before
+    it, so those are pairwise disjoint by how they were made, and `clean` says which they are. A position with no
+    such site left takes its sites in turn, those it has not stood in itself first and then each once before any
+    twice, so a neuron's stand-ins repeat as little as its eligible sites allow; the assignment then shares a site
+    with an earlier one. After three attempts in a row that gave nothing new, every such position draws from the
+    whole of its pool, so the draw does not lock while assignments remain. No two assignments are the same, and
+    their order is shuffled at the end (with `clean` alongside), so that no part of the list is the part drawn
+    first.
+
+    Returns (assignments, clean): each assignment an int64 array [P] of site numbers (offsets added) in the
+    positions' order. A site found taken is set aside from its position for good, so a draw that runs out of sites
+    does not look through every pool at every pick."""
+    P, count = len(pools), int(count)
+    if P == 0 or count <= 0 or any(len(p) == 0 for p in pools):
+        return [], []
+    off = [0] * P if offsets is None else [int(x) for x in offsets]
+    sizes = [int(len(p)) for p in pools]
+    lo = min(int(np.min(p)) + off[p_i] for p_i, p in enumerate(pools))
+    span = max(int(np.max(p)) + off[p_i] for p_i, p in enumerate(pools)) - lo + 1
+    present = np.zeros(span, dtype=bool)
+    for p in range(P):
+        present[np.asarray(pools[p], dtype=np.int64).reshape(-1) + (off[p] - lo)] = True
+    sites = np.nonzero(present)[0].astype(np.int64) + lo  # every site a position could take, in order
+    rank = np.cumsum(present, dtype=np.int64) - 1  # a site's place among them
+    del present
+
+    def ids_of(p: int) -> np.ndarray:
+        return rank[np.asarray(pools[p], dtype=np.int64).reshape(-1) + (off[p] - lo)]
+
+    narrowest = np.full(int(sites.size), np.iinfo(np.int64).max, dtype=np.int64)
+    for p in range(P):  # the fewest eligible sites of any position that could take the site
+        mine = ids_of(p)
+        narrowest[mine] = np.minimum(narrowest[mine], sizes[p])
+    order: List[np.ndarray] = []  # a position's pool: the sites no narrower position could take, then the others
+    live: List[List[List[int]]] = []  # its classes of sites, each [first, end of those not yet found taken]
+    for p in range(P):
+        o = ids_of(p)[rng.permutation(sizes[p])]
+        o = o[np.argsort(-narrowest[o], kind="stable")]  # contested by an ever narrower position: ever later
+        cuts = [0] + [int(i) + 1 for i in np.nonzero(np.diff(narrowest[o]))[0]] + [sizes[p]]
+        order.append(o.astype(np.int32))
+        live.append([[a, b] for a, b in zip(cuts[:-1], cuts[1:])])
+    del rank
+    taken = np.zeros(int(sites.size), dtype=bool)  # the sites of every assignment kept
+    first = [0] * P  # the first class of a position that may still hold a site no assignment has
+    turn = [0] * P  # where a position stands in its turn through its pool, once it has none
+    in_turn = [False] * P
+    mine: List[set] = [set() for _ in range(P)]  # the sites a position has stood in, in the assignments kept
+
+    def a_free_site(p: int, used: set) -> int:
+        o = order[p]
+        ci = first[p]
+        while ci < len(live[p]):
+            a, hi = live[p][ci]
+            found_taken = in_term = 0
+            pick = -1
+            while hi > a and in_term < 8:
+                r = a + int(rng.integers(hi - a))
+                s = int(o[r])
+                if taken[s]:
+                    hi -= 1
+                    o[r], o[hi] = o[hi], o[r]  # set aside for good: a kept assignment's site is never free again
+                    found_taken += 1
+                    if found_taken >= 8:  # most of what is left is taken: set all of it aside in one pass
+                        part = o[a:hi]
+                        keep = ~taken[part]
+                        o[a:hi] = np.concatenate([part[keep], part[~keep]])
+                        hi = a + int(keep.sum())
+                        found_taken = 0
+                    continue
+                if s not in used:
+                    pick = s
+                    break
+                in_term += 1
+            if pick < 0 and hi > a:  # eight in a row that this assignment's term holds: look at the class whole
+                part = o[a:hi]
+                keep = ~taken[part]
+                o[a:hi] = np.concatenate([part[keep], part[~keep]])
+                hi = a + int(keep.sum())
+                cand = o[a:hi]
+                if used:
+                    cand = cand[~np.isin(cand, np.fromiter(used, dtype=np.int64, count=len(used)))]
+                if cand.size:
+                    pick = int(cand[int(rng.integers(cand.size))])
+            live[p][ci][1] = hi
+            if hi <= a and ci == first[p]:
+                first[p] = ci + 1
+            if pick >= 0:
+                return pick
+            ci += 1
+        return -1
+
+    def a_site_in_turn(p: int, used: set, anywhere: bool) -> int:
+        o, E = order[p], sizes[p]
+        if anywhere:
+            for _ in range(16):
+                s = int(o[int(rng.integers(E))])
+                if s not in used:
+                    return s
+            cand = o[~np.isin(o, np.fromiter(used, dtype=np.int64, count=len(used)))] if used else o
+            return int(cand[int(rng.integers(cand.size))]) if cand.size else -1
+        if not in_turn[p] and first[p] >= len(live[p]):  # its first turn: the sites it has not stood in come first
+            in_turn[p] = True
+            if mine[p]:
+                stood = np.isin(o, np.fromiter(mine[p], dtype=np.int64, count=len(mine[p])))
+                o[:] = np.concatenate([o[~stood], o[stood]])
+            turn[p] = 0
+        for step in range(E):
+            s = int(o[(turn[p] + step) % E])
+            if s not in used:
+                turn[p] = (turn[p] + step + 1) % E
+                return s
+        return -1
+
+    pos_order = sorted(range(P), key=lambda p: (sizes[p], p))
+    out: List[np.ndarray] = []
+    clean: List[bool] = []
+    seen_sets: set = set()
+    missed = 0  # attempts in a row that gave no new assignment
+    for _attempt in range(max(count * 32, 256)):
+        if len(out) >= count:
+            break
+        chosen = np.empty(P, dtype=np.int64)
+        used: Dict[int, set] = {}
+        all_free, ok = True, True
+        for p in pos_order:
+            u = used.setdefault(int(groups[p]), set())
+            s = a_free_site(p, u)
+            if s < 0:
+                all_free = False
+                s = a_site_in_turn(p, u, missed >= 3)
+                if s < 0:
+                    ok = False
+                    break
+            chosen[p] = s
+            u.add(s)
+        key = tuple((g, tuple(sorted(used[g]))) for g in sorted(used)) if ok else None
+        if not ok or key in seen_sets:
+            missed += 1
+            continue
+        missed = 0
+        seen_sets.add(key)
+        taken[chosen] = True
+        for p in range(P):
+            mine[p].add(int(chosen[p]))
+        out.append(sites[chosen])
+        clean.append(all_free)
+    shuffled = [int(i) for i in rng.permutation(len(out))]
+    return [out[i] for i in shuffled], [clean[i] for i in shuffled]
+
+
 def _draw_spread_indices(
     elig: List[np.ndarray],
     count: int,
     rng: np.random.Generator,
 ) -> List[np.ndarray]:
-    """`_draw_matched_indices` for two or more positions, with the assignments sharing as few sites as the pools
-    allow. A site that stands in an assignment already kept is not taken again, at any position, while the position
-    has another to take; and a position takes every one of its eligible sites once before it takes any twice (a pass
-    over its pool). So where the pools are large enough the assignments are pairwise disjoint, which is what makes
-    them separate draws: assignments drawn each on its own share sites (39 of ten from the same 60 sites: a site
-    sits in six or seven of them). No assignment uses a site twice, no two are the same set, and their order is
-    shuffled at the end. Where a position has only sites left that an assignment already holds, one of those is
-    taken: the assignments then share it, and `matched_control_edits` counts how many are still disjoint
-    (`disjoint_sets`), so nothing is promised here that the coverage does not show. After three attempts in a row
-    that gave nothing new the passes are set aside for an attempt and each position draws from the whole of its
-    pool, so the draw does not lock at the end of a pass while sets remain."""
-    K = len(elig)
-    pools = [np.array(e, dtype=np.int64) for e in elig]
-    left = [0] * K  # position j's sites that have not stood in yet in its pass sit in slots 0..left[j]-1
-    pos_order = sorted(range(K), key=lambda j: (len(elig[j]), j))
-    out: List[np.ndarray] = []
-    seen_sets: set = set()
-    taken: set = set()  # every site of an assignment that was kept
-    missed = 0  # attempts in a row that gave no new assignment
-    for _attempt in range(max(count * 32, 256)):
-        if len(out) >= count:
-            break
-        open_pools = missed >= 3
-        chosen = np.empty(K, dtype=np.int64)
-        used: set = set()
-        undo: List[Tuple[int, int, int, int]] = []
-        ok = True
-        for j in pos_order:
-            pool = pools[j]
-            E, was = int(pool.size), left[j]
-            n = was if was > 0 else E  # a pass that is used up begins again over the whole pool
-            reach = E if open_pools else n
-            slot = -1
-            for _ in range(16):  # a site no assignment holds yet
-                s = int(rng.integers(reach))
-                site = int(pool[s])
-                if site not in used and site not in taken:
-                    slot = s
-                    break
-            if slot < 0:
-                free = [s for s in range(reach) if int(pool[s]) not in used and int(pool[s]) not in taken]
-                if not free:  # every site in reach stands in an assignment already: one that this one does not hold
-                    free = [s for s in range(reach) if int(pool[s]) not in used]
-                if not free:  # nor that: one that has stood in at this position before
-                    free = [s for s in range(E) if int(pool[s]) not in used]
-                if not free:
-                    ok = False
-                    break
-                slot = free[int(rng.integers(len(free)))]
-            pick = int(pool[slot])
-            if slot < n:  # it had not stood in at this position in this pass: out of the unused slots it goes
-                pool[slot], pool[n - 1] = pool[n - 1], pool[slot]
-                undo.append((j, slot, n - 1, was))
-                left[j] = n - 1
-            chosen[j] = pick
-            used.add(pick)
-        key = tuple(sorted(int(x) for x in chosen)) if ok else None
-        if not ok or key in seen_sets:
-            for j, a, b, was in reversed(undo):  # the assignment is not kept: its sites have not stood in
-                pools[j][a], pools[j][b] = pools[j][b], pools[j][a]
-                left[j] = was
-            missed += 1
-            continue
-        missed = 0
-        seen_sets.add(key)
-        taken.update(key)
-        out.append(chosen)
-    return [out[int(i)] for i in rng.permutation(len(out))]
+    """`_draw_matched_indices` for two or more positions of ONE term, with the assignments sharing as few sites as
+    the pools allow (`_draw_spread_sets`, which `matched_control_edits` calls itself over all of an edit's terms
+    together)."""
+    return _draw_spread_sets(elig, [0] * len(elig), count, rng)[0]
 
 
 def _draw_matched_indices(
@@ -2258,14 +2363,19 @@ def matched_control_edits(
     `scores_by_linear[t.linear]`. Returns `(edits, coverage)` when all `count` distinct matched control edits can be
     formed, or `(None, coverage)` when coverage fails (caller voids the reading and records `coverage`).
 
-    `spread`: draw the control sets so that they share as few sites as the pools allow (`_draw_spread_indices`).
-    Without it each control set is drawn on its own, and sets that differ in one stand-in are "distinct". The
-    coverage says, a term, the fewest sites that were eligible for one neuron (`min_eligible`) and the fewest
-    different stand-ins one neuron had over all the sets (`min_distinct`); and, for the control edits as wholes, how
-    many share no site with one another (`disjoint_sets`: counted one after another in the order drawn, each kept
-    if it shares no site with those kept before it). Only control edits that share no site are separate draws: a
-    site that stands in for one neuron in one set and for another neuron in another ties the two sets together,
-    which a count of each neuron's own stand-ins does not see."""
+    `spread`: draw the control sets so that they share as few sites as the pools allow: one draw over all the
+    column and row terms together (`_draw_spread_sets`; an edit of one neuron is drawn as it always was). Without it
+    each term's sets are drawn on their own, and sets that differ in one stand-in are "distinct". The coverage
+    says, a term, the fewest sites that were eligible for one neuron (`min_eligible`) and the fewest different
+    stand-ins one neuron had over all the sets (`min_distinct`); and, for the control edits as wholes, how many
+    share no site with one another (`disjoint_sets`). A site is a neuron of a layer, whatever projection the control
+    edit changes it in: two control edits that change one neuron, one in its down projection's column and one in
+    its up projection's row, share it. The count is of a family that was found, not of the largest there is: the
+    larger of (a) the control edits taken one after another as they stand, each counted if it shares no site with
+    those counted before it, and (b) under `spread`, those the draw made wholly of sites that no earlier set had,
+    which are pairwise disjoint by how they were made and are checked to be before they are counted. Only control
+    edits that share no site are separate draws: a site that stands in for one neuron in one set and for another
+    neuron in another ties the two sets together, which a count of each neuron's own stand-ins does not see."""
     seed, count = int(seed), int(count)
     tol = _number(tolerance, "tolerance")
     if seed < 0 or count < 0:
@@ -2278,7 +2388,8 @@ def matched_control_edits(
     mods: Dict[str, nn.Module] = {}
     term_draws: List[Optional[List[np.ndarray]]] = []
     term_cov: List[Dict[str, Any]] = []
-    sufficient = True
+    eligible: Dict[int, List[np.ndarray]] = {}
+    n_sites: Dict[int, int] = {}
     for i, t in enumerate(edit.terms):
         mod = _linear_of(lm, t.linear)
         if mod is None:
@@ -2304,35 +2415,66 @@ def matched_control_edits(
             else:
                 ok_mask = (pool_scores >= s_val / tol) & (pool_scores <= s_val * tol)
             elig.append(pool[ok_mask])
-        rng = np.random.default_rng([seed, i, 29])
-        draws = _draw_matched_indices(elig, count, rng, spread=spread) if count > 0 else []
+        eligible[i] = elig
+        n_sites[i] = int(N)
         union_count = int(len(set().union(*(e.tolist() for e in elig)))) if elig else 0
         term_cov.append({
             "linear": t.linear, "count": K,
             "min_eligible": int(min(len(e) for e in elig)) if elig else 0,
-            "min_distinct": int(min(len({int(d[j]) for d in draws}) for j in range(K))) if draws else 0,
+            "min_distinct": 0,
             "median_eligible": _clean(np.median([len(e) for e in elig])) if elig else 0.0,
             "union_eligible": union_count,
-            "drawn": len(draws),
+            "drawn": 0,
             "edit_scores": {"min": _clean(edit_scores.min()), "median": _clean(np.median(edit_scores)),
                             "max": _clean(edit_scores.max())},
         })
+        term_draws.append([])
+    # the draws. Spread: one over all the terms, a site being a neuron of a layer whatever projection changes it
+    made_clean: Optional[List[bool]] = None
+    if count > 0 and spread and sum(len(e) for e in eligible.values()) >= 2:
+        layers = sorted({int(edit.terms[i].layer) for i in eligible})
+        stride = max(n_sites.values())  # a layer's neurons are numbered after those of the layers before it
+        base = {i: layers.index(int(edit.terms[i].layer)) * stride for i in eligible}
+        sets, made_clean = _draw_spread_sets(
+            [e for elig in eligible.values() for e in elig], [i for i, elig in eligible.items() for _e in elig],
+            count, np.random.default_rng([seed, 31]), offsets=[base[i] for i, elig in eligible.items() for _e in elig])
+        at = 0
+        for i, elig in eligible.items():
+            term_draws[i] = [s[at:at + len(elig)] - base[i] for s in sets]
+            at += len(elig)
+    elif count > 0:
+        for i, elig in eligible.items():
+            term_draws[i] = _draw_matched_indices(elig, count, np.random.default_rng([seed, i, 29]), spread=spread)
+    sufficient = True
+    for cov_t, i in zip(term_cov, eligible):
+        draws = term_draws[i]
+        cov_t["min_distinct"] = (int(min(len({int(d[j]) for d in draws}) for j in range(len(eligible[i]))))
+                                 if draws else 0)
+        cov_t["drawn"] = len(draws)
         if len(draws) < count:
             sufficient = False
-        term_draws.append(draws)
     found = min((len(d) for d in term_draws if d is not None), default=count) if count > 0 else 0
     coverage: Dict[str, Any] = {
         "tolerance": _clean(tol), "requested": count, "found": int(found),
         "sufficient": bool(sufficient and found == count), "terms": term_cov,
         "draw": "spread" if spread else "independent",
     }
+
+    def sites_of(c: int) -> set:
+        """The neurons control edit `c` changes, each a (layer, index) whatever projection it is changed in."""
+        return {(int(edit.terms[i].layer), int(x)) for i, d in enumerate(term_draws) if d is not None for x in d[c]}
+
     seen_sites: set = set()
     disjoint = 0
     for c in range(int(found)):
-        sites = {(i, int(x)) for i, d in enumerate(term_draws) if d is not None for x in d[c]}
+        sites = sites_of(c)
         if not (sites & seen_sites):
             disjoint += 1
             seen_sites |= sites
+    if made_clean is not None:
+        fam = [sites_of(c) for c in range(int(found)) if made_clean[c]]
+        if len(set().union(*fam)) == sum(len(s) for s in fam):  # pairwise disjoint, checked and not taken on trust
+            disjoint = max(disjoint, len(fam))
     coverage["disjoint_sets"] = disjoint
     if not coverage["sufficient"]:
         return None, coverage

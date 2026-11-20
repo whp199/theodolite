@@ -235,8 +235,8 @@ DEFAULT_MATCH_TOL = 2.0
 CONTROLS_MATCHED_SAY = ("Control edits are other sites of the same layer and size, drawn from seed {seed} and matched "
                         "within factor {tol:g} on expected delivered magnitude from the base pre-pass on these items.")
 CONTROL_DRAWS = ("independent", "spread")  # how matched control sets are drawn (`weight_edits.matched_control_edits`)
-CONTROLS_SPREAD_SAY = (" Each neuron's stand-ins were drawn with as few repeats as its eligible sites allow (the "
-                       "spread draw), so the control sets share as few stand-ins as they can.")
+CONTROLS_SPREAD_SAY = (" The control sets were drawn together to share as few sites as the eligible sites allow "
+                       "(the spread draw); the coverage says how many of them share no site with one another.")
 CONTROLS_SAME_SITE_SAY = ("Control edits act on the same sites as the edit, with random directions projected off the "
                           "layer's quiet mask and matched in stream-side delta length, drawn from seed {seed}.")
 CONTROLS_SHAM_SAY = "Control edits are {count} declared sham-target edits supplied in the plan."

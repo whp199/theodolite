@@ -441,15 +441,26 @@ def _longest_line(path: Path) -> int:
     return max(longest, run)
 
 
+LOUD_LEAST = 1e-5  # [provisional] the least two cards' figures of a change to the stream may differ by: no second
+#                    card has been read, so this is a guess that keeps a figure near nought from failing on noise
+
+
 def _figure_tolerance(key: str, home_value: Optional[float], floors: Mapping[str, float], *, floor_mult: float,
                       rel: float, least: float) -> float:
     """How far one figure on the volunteer's card may sit from the home's: the largest of `floor_mult` home floors
     (the floor of the figure's own reading and class: a reworded figure by the reworded reading's floor, a battery's
     by none), `rel` of the home figure, and `least`. What an arm changed the stream by (`...:loud:...`) is set
-    within `rel` of the home figure alone, and a count of separate draws (`...:draws:...`) must be the home's."""
+    within `rel` of the home figure, and never closer than `LOUD_LEAST`; a count of separate draws
+    (`...:draws:...`) must be the home's.
+
+    What these do not show. A control edit's mean (`...:control:...`) is compared within a home floor, and on the
+    31B a control edit's mean is itself of a floor's size (0.01 to 0.19 against a floor of 0.14): that comparison
+    passes almost whatever the two cards read. And another card is likely to draw other control sets altogether (a
+    site's score need only cross the edge of a band), in which case the control edits' figures are of other edits:
+    agreement in the items' own effects is what an intake's "same figures" chiefly shows."""
     group, cls_name, kind = (key.split(":") + ["", ""])[:3]
     if kind == "loud":  # a change to the stream, a number near a hundredth: by its own size, not by a floor in nats
-        return max(float(rel) * abs(float(home_value or 0.0)), 1e-9)
+        return max(float(rel) * abs(float(home_value or 0.0)), LOUD_LEAST)
     if kind == "draws":  # a count
         return 0.0
     floor = float(floors.get(f"{group}:{cls_name}") or 0.0)
@@ -698,9 +709,9 @@ def _intake(
                       "not track (None: it could not be asked)"})
 
         # 6. agreement with the home trial, from the two books: the verdicts, then every figure the judgement used.
-        #    Which control edits a trial set aside (they did not change the stream within the matching tolerance of
-        #    what the edit changed it) is no figure: it turns on a ratio that can sit at its bound, and a control
-        #    edit there falls one side on one card and the other on another. Where the two trials set aside other
+        #    Which control edits a trial set aside (they changed the stream less than the edit did, at one of the
+        #    places compared) is no figure: it turns on a ratio that can sit at 1, and a control edit there falls
+        #    one side on one card and the other on another. Where the two trials set aside other
         #    control edits it is said, and it is said beside the verdicts, which are what it can change.
         hj = home["judged"]
         for group, key_c in (("target", "classes"), ("reworded", "reworded_classes")):

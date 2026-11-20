@@ -32,6 +32,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Mapping, Optional
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -446,6 +447,28 @@ def run_section_2() -> None:
     check(cs_nan["non_finite"] == 1 and cs_nan["at_least"] == 1 and math.isclose(cs_nan["p_fw"], 0.10)
           and not cs_nan["passes_alpha"],
           "m=2, C=39, one NaN control -> counted as moving as much, p_fw=0.10 fails")
+    check(cs_nan["as_read_at_least"] == 0 and cs_none["as_read_at_least"] == 0 and cs_fail1["as_read_at_least"] == 1
+          and cs_pass["as_read_at_least"] == 0,
+          "a standing says how many control edits that were read moved as much, apart from those counted so for "
+          "want of a reading: a family that failed on control edits set aside is not read as one they beat")
+    # what the item gate found, of the items a verdict rests on: those that read
+    def gated(name: str, status: str, passed: Any, small_mean: Any, large_mean: Any) -> Dict[str, Any]:
+        return {"item": {"name": name}, "status": status,
+                "gate": {"bar": -6.0, "small": {"mean": small_mean}, "large": {"mean": large_mean}, "passed": passed}}
+
+    made = {"items": [gated("a", "ok", True, -3.1, -3.4), gated("b", "ok", False, -9.0, -8.0),
+                      gated("c", "unstable", False, -21.0, -20.0), gated("d", "ok", False, None, None),
+                      gated("e", "void", False, -30.0, -30.0), {"item": {"name": "f"}, "status": "ok", "gate": None}]}
+    drawn_made = [SimpleNamespace(item=SimpleNamespace(name=n)) for n in "abcdef"]
+    ig_made = lcl.item_gate_of(made, drawn_made)
+    check(ig_made == {"items": 3, "under_bar": 2, "no_figure": 1, "bar": -6.0, "lowest": -9.0, "highest": -3.4}
+          and lcl.item_gate_of({"items": made["items"][2:3]}, drawn_made) is None
+          and "2 of the 3 fresh items that read are under the kernel's bar of -6.00 nats a piece" in lcl.item_gate_words(ig_made)
+          and "forced answers -9.00 to -3.40 a piece" in lcl.item_gate_words(ig_made)
+          and "1 gave no finite figure and are counted under it" in lcl.item_gate_words(ig_made)
+          and lcl.battery_items(made) == {"read": 4, "given": 6, "under_item_gate": 2},
+          "the item gate's count is over the items that read: one that did not read is in no figure and not counted, "
+          f"and one that read with no finite figure is counted under the bar, as the kernel counts it ({ig_made})")
 
     # written_strata_summary (Row 21) & price_written_reading (§8)
     mock_w = {
@@ -528,6 +551,19 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     s_tol = lcl.claim_sentence(brief, j_decl, meta_d)
     sh_tol = lcl.render_sheet(brief, bars, j_decl, meta_d, s_tol)
     SHEETS_COLLECTED.extend([sh_tol, s_tol or ""])
+    cls_ss = {**sham_cls, "delivered": {"same_site": {"edit": 0.02, "controls_median": 0.0196, "edit_end": 0.04,
+                                                      "controls_median_end": 0.02, "edit_prompt": None,
+                                                      "controls_median_prompt": 0.5}}}
+    s_ss = lcl.claim_sentence(brief, lcl.judge_claim(brief=brief, bars=bars, classes={"small": cls_ss, "large": cls_ss},
+                                                     batteries=_clean_batteries(), selection_mode="declared_rule"), meta_d)
+    check("p_fw 0.050, a level that takes all 39 as control edits and as separate draws, whatever they delivered and "
+          "however many share sites) and" in (s_tol or "")
+          and "same-site (p_fw" in (s_tol or "")
+          and "same-site (not asked to be as loud as the edit: as read, their median change to the stream was 0.98 over "
+              "the answer and 0.50 at the last position times the edit's; p_fw" in (s_ss or ""),
+          "a claim's sentence says what the level beside its matched control edits takes for granted (every one a "
+          "control and a separate draw), and how loud its same-site control edits were beside the edit where a "
+          "reading records it")
     check("matched other-site (matched on what a base pre-pass expects each to deliver, within a factor of 4; p_fw" in (s_tol or "")
           and "on delivered" not in (s_tol or ""),
           "the sentence says what the matched controls were matched on (a base pre-pass's expectation) and within what factor")
@@ -1106,7 +1142,15 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
           and dl["other_sites_matched"]["compared_at"] == ["prompt", "answer", "end"]
           and isinstance(dl["other_sites_matched"]["disjoint_sets"], int)
           and dl["other_sites_matched"]["draw"] == "independent" and "each set drawn on its own" in sres["sheet"]
-          and "per_control" not in dl["other_sites_matched"] and "apart" not in dl["sham_target"]
+          and not any(k.startswith("per_control") or k == "apart" for fam in dl.values() if isinstance(fam, dict)
+                      for k in fam)
+          and "per_control" not in json.dumps(next(lb.entries(sbk, start=sres["book"]["all_seqs"][-1], limit=1))["body"])
+          and "per_control" not in json.dumps(sres["driver_record"])
+          and dl["same_site"]["read_at_end"] is True
+          and all(sres["judged"]["batteries"][b]["items"] == {
+              "read": 2, "given": 2, "under_item_gate": sres["judged"]["batteries"][b]["items"]["under_item_gate"]}
+              and 0 <= sres["judged"]["batteries"][b]["items"]["under_item_gate"] <= 2
+              for b in ("neutral_text", "near_misses", "labelled_panel"))
           and "sham-target controls: 4 supplied with the claim" in sres["sheet"],
           "the sheet prints how much the edit and each family's control edits changed the stream, over the answer and "
           "at the last position where this brief's metric is read, and how the matched sets were drawn")
@@ -1368,8 +1412,8 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           "the sheet prints what the matched controls were matched on and within what factor, how many were at least as "
           f"loud as the edit as read ({as_read}), and how many of the sets share no site, of how many eligible sites "
           f"({drawn_from})")
-    ig_claim = re.findall(r"item gate: (\d+) of (\d+) fresh items are under the kernel's bar of -6\.00 nats a piece",
-                          r_claim["sheet"])
+    ig_claim = re.findall(r"item gate: (\d+) of the (\d+) fresh items that read are under the kernel's bar of "
+                          r"-6\.00 nats a piece", r_claim["sheet"])
     check(len(ig_claim) == 1 and 0 <= int(ig_claim[0][0]) <= int(ig_claim[0][1]) == 4,
           f"a claim's sheet says how many of its fresh items the kernel read under its item gate ({ig_claim})")
     use_now = ses.status()["usage"]
