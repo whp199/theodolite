@@ -1,6 +1,6 @@
 {
-  "date": "2026-11-20T06:07:08Z",
-  "commit": "66d771ad67562699271e3ae4c9fa661929df986c",
+  "date": "2026-11-20T08:21:20Z",
+  "commit": "9d8c83635b580a3e537c4a601f68990128d9bbca",
   "changed_paths": 0,
   "checks": [
     {
@@ -9,7 +9,7 @@
     },
     {
       "ok": true,
-      "says": "1: WeightReader.info exact 31B shape ({'w4a16': 410}, open 0.0036 s)"
+      "says": "1: WeightReader.info exact 31B shape ({'w4a16': 410}, open 0.0027 s)"
     },
     {
       "ok": true,
@@ -89,15 +89,15 @@
     },
     {
       "ok": true,
-      "says": "1: CPU down_stream_norms L20 matches GPU (max diff 5.55e-17, 0.381 s)"
+      "says": "1: CPU down_stream_norms L20 matches GPU (max diff 5.55e-17, 0.606 s)"
     },
     {
       "ok": true,
-      "says": "1: CPU writers(L20, top 16) matches GPU exact order (0.217 s)"
+      "says": "1: CPU writers(L20, top 16) matches GPU exact order (0.363 s)"
     },
     {
       "ok": true,
-      "says": "2a: thinking-on 2-sample written reading ok (16.6 s, peak 18.755 GiB)"
+      "says": "2a: thinking-on 2-sample written reading ok (16.4 s, peak 18.755 GiB)"
     },
     {
       "ok": true,
@@ -109,7 +109,7 @@
     },
     {
       "ok": true,
-      "says": "2b: 512-piece thinking-on written pilot ok (66.4 s, peak 20.541 GiB)"
+      "says": "2b: 512-piece thinking-on written pilot ok (65.0 s, peak 20.541 GiB)"
     },
     {
       "ok": true,
@@ -117,19 +117,19 @@
     },
     {
       "ok": true,
-      "says": "3b: gated capture on 31B L44 ok (norm 8.145, quiet_share 0.0%, 0.251 s)"
+      "says": "3b: gated capture on 31B L44 ok (norm 8.145, quiet_share 0.0%, 0.255 s)"
     },
     {
       "ok": true,
-      "says": "3c: off-card bwrap cell computed top-8 writers on 31B L44 (1.5817 s) "
+      "says": "3c: off-card bwrap cell computed top-8 writers on 31B L44 (1.503 s) "
     },
     {
       "ok": true,
-      "says": "3d: gated 31B paired reading ok (rank {'at_least': 1, 'dose': 1.0, 'metric': 'kl', 'non_finite': 0, 'of': 4, 'rank': 2, 'value': 0.00010146544082090259}, 0.869 s)"
+      "says": "3d: gated 31B paired reading ok (rank {'at_least': 1, 'dose': 1.0, 'metric': 'kl', 'non_finite': 0, 'of': 4, 'rank': 2, 'value': 0.00010146544082090259}, 0.873 s)"
     },
     {
       "ok": true,
-      "says": "3e: session close copied transcript to /home/eric/bin/ai/theodolite2/.claude/worktrees/pr4-review/experiments/results/levelling/transcripts/lvl_20261120T060843Z_1294a14c.jsonl"
+      "says": "3e: session close copied transcript to /home/eric/bin/ai/theodolite2/.claude/worktrees/pr4-review/experiments/results/levelling/transcripts/lvl_20261120T082254Z_3957faa4.jsonl"
     },
     {
       "ok": true,
@@ -141,7 +141,7 @@
     },
     {
       "ok": true,
-      "says": "3i: the planted and the canary reading reply 1.700 s and 1.700 s after they were asked (their price asks 1.700 s), where the card took 0.8823 s and 0.9068 s"
+      "says": "3i: the planted and the canary reading reply 1.700 s and 1.700 s after they were asked (their price asks 1.700 s), where the card took 0.9093 s and 0.9041 s"
     },
     {
       "ok": true,
@@ -153,22 +153,22 @@
     },
     {
       "ok": true,
-      "says": "4: verification ledger whole ({'ok': True, 'entries': 5, 'head': '48c521fbcbde780487f8eed25e34aa3b9c14628c30ec4862bc53483223b3fe6d', 'first_bad': None, 'why': None})"
+      "says": "4: verification ledger whole ({'ok': True, 'entries': 5, 'head': '9618df0f43ab37bf715383ce03cfed84b3ad9d79ca688368388db539bc776352', 'first_bad': None, 'why': None})"
     }
   ],
   "measurements": {
-    "load_s": 10.42,
+    "load_s": 10.44,
     "rest_gib": 17.97,
     "weight_reader": {
-      "open_s": 0.0036,
-      "down_stream_norms_L20_s": 0.381,
-      "writers_L20_s": 0.217,
+      "open_s": 0.0027,
+      "down_stream_norms_L20_s": 0.606,
+      "writers_L20_s": 0.363,
       "norm_max_diff": 5.551115123125783e-17
     },
     "written_thinking_2x192": {
-      "actual_s": 16.58922517499741,
+      "actual_s": 16.355225037004857,
       "predicted_s": 36.858576000000006,
-      "seconds_a_step": 0.1265691374756086,
+      "seconds_a_step": 0.12442749091227329,
       "peak_gib": 18.755,
       "summary": {
         "items": 1,
@@ -286,9 +286,9 @@
       }
     },
     "written_thinking_512": {
-      "actual_s": 66.43050628700439,
+      "actual_s": 64.9901723160001,
       "predicted_s": 48.8504,
-      "seconds_a_step": 0.12935548677104228,
+      "seconds_a_step": 0.126513023078281,
       "peak_gib": 20.541,
       "above_rest_gib": 2.571,
       "base_pieces": 512,
@@ -303,9 +303,9 @@
       }
     },
     "door_31b": {
-      "capture_s": 0.251,
-      "cell_s": 1.5817,
-      "paired_read_s": 0.869,
+      "capture_s": 0.255,
+      "cell_s": 1.503,
+      "paired_read_s": 0.873,
       "paired_rank_large": {
         "at_least": 1,
         "dose": 1.0,
@@ -316,18 +316,18 @@
         "value": 0.00010146544082090259
       },
       "blinded_reply_s": {
-        "planted": 1.7001,
-        "canary": 1.7002,
+        "planted": 1.7002,
+        "canary": 1.7001,
         "asked_of_both": 1.6998,
         "card_took": {
-          "planted": 0.8823,
-          "canary": 0.9068
+          "planted": 0.9093,
+          "canary": 0.9041
         }
       },
       "planted_repair_kl_large": 0.00016025207878556103,
       "canary_repair_kl_large": 0.00019936580793000758
     },
-    "total_s": 104.6,
+    "total_s": 103.4,
     "peak_gib_all": 18.342,
     "fell_back_delta": 0
   },

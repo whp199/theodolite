@@ -1,23 +1,23 @@
 {
- "date": "2026-11-20T06:05:22Z",
+ "date": "2026-11-20T08:19:36Z",
  "environment": "measured on the 31B card",
  "what_this_is": "a DRY RUN of a trial, an export, and a re-run of the kit by this same card in this same process. No trial of record has been read by this script, and no other card has run a kit.",
  "gpu": "NVIDIA GeForce RTX 5090",
  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
  "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
- "load_seconds": 10.06,
- "total_seconds": 313.08,
+ "load_seconds": 10.45,
+ "total_seconds": 308.73,
  "peak_gib": 18.542,
  "fallback_count": 0,
- "passed": 35,
+ "passed": 37,
  "failed": 0,
  "checks": [
   {
    "name": "bars_calibrated",
    "ok": true,
    "detail": {
-    "seconds": 11.93,
-    "bars_sha256": "7162a4c337cc"
+    "seconds": 11.54,
+    "bars_sha256": "bb55b6b13441"
    }
   },
   {
@@ -50,7 +50,7 @@
    "name": "registration_verified",
    "ok": true,
    "detail": {
-    "trial_sha256": "2b2529ca8afc3778",
+    "trial_sha256": "f2d4277c180c41a8",
     "files": [
      "RULES.md",
      "bars.json",
@@ -105,18 +105,19 @@
      "could_pass": true
     },
     "warnings": [],
-    "its_note_is_book_line": 4
+    "its_note_is_book_line": 4,
+    "the_registration_also_says": "As the rule stands a trial is not expected to pass it. Each stand-in is drawn from a band on BOTH sides of what its neuron is expected to deliver over the answer, and nothing matches the control edits over the prompt or at the last position; so by the draw alone some of an edit's matched control edits are quieter than it at one of the places compared (most of them, where the edit's neurons are among the loudest of their layer), each of those is counted as moving as much, and the level allows almost none. What a pass should ask of its control edits is the owner's to settle (ROADMAP section viii); until then a trial read of record is expected to spend the edit's one trial on a verdict the rule has settled, not the edit."
    }
   },
   {
    "name": "bars_made_by_hand_refused",
    "ok": true,
-   "detail": "Bar set 35c8179dd0d4 is not from a calibration reading recorded in verify_trial_book.jsonl for brief \"pronoun_pull\" (92c7776f8ed0): a trial takes the bars calib"
+   "detail": "Bar set 774d59145a01 is not from a calibration reading recorded in verify_trial_book.jsonl for brief \"pronoun_pull\" (92c7776f8ed0): a trial takes the bars calib"
   },
   {
    "name": "refused_when_not_of_record",
    "ok": true,
-   "detail": "This trial would not be of record: this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 48 time(s): a trial of record is the first thing its process asks of the model; the registration folder is outside the checkout, so it is in no commit; it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh "
+   "detail": "This trial would not be of record: this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 72 time(s): a trial of record is the first thing its process asks of the model; the registration folder is outside the checkout, so it is in no commit; it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh "
   },
   {
    "name": "trial_not_void",
@@ -124,7 +125,7 @@
    "detail": {
     "verdict": "failed",
     "fresh_verdict": "no better than control edits",
-    "seconds": 139.23,
+    "seconds": 137.36,
     "priced_seconds": 69.34,
     "cheaper_knob": "prompt arm 0"
    }
@@ -134,7 +135,7 @@
    "ok": true,
    "detail": {
     "not_of_record": [
-     "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 48 time(s): a trial of record is the first thing its process asks of the model",
+     "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 72 time(s): a trial of record is the first thing its process asks of the model",
      "the registration folder is outside the checkout, so it is in no commit",
      "it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in"
     ]
@@ -153,13 +154,14 @@
    "name": "folded_same_bits_31b",
    "ok": true,
    "detail": {
-    "small_same_bits": "16/16",
-    "large_same_bits": "16/16",
-    "small_mean": -1.4928387999534607,
-    "large_mean": -1.5096620470285416,
+    "fresh_items_that_read": "15 of 16",
+    "small_same_bits": "15/15",
+    "large_same_bits": "15/15",
+    "small_mean": -1.2651876583695412,
+    "large_mean": -1.259532142430544,
     "tolerance": [
-     0.14130401611328125,
-     0.14301586151123047
+     0.11729717254638672,
+     0.16733694076538086
     ],
     "folded_ok": true
    }
@@ -176,6 +178,7 @@
      "effective_count": 19,
      "non_finite": 19,
      "at_least": 19,
+     "as_read_at_least": 0,
      "p_emp": 1.0,
      "p_fw": 1.0,
      "tops_every_control": false,
@@ -195,7 +198,7 @@
    "detail": {
     "verdict": "failed",
     "noted": "failed",
-    "items": 16
+    "items": 15
    }
   },
   {
@@ -214,121 +217,251 @@
    "name": "matched_controls_as_read_31b",
    "ok": true,
    "detail": {
-    "small": {
-     "edit_prompt": 0.01039094856241718,
-     "controls_median_prompt": 0.003712618490681052,
-     "edit": 0.011448892299085855,
-     "controls_median": 0.005880464726942591,
-     "controls_min": 0.0034079542019753717,
-     "controls_max": 0.028209590003825724,
-     "edit_end": 0.0262161556747742,
-     "controls_median_end": 0.005094724023365416,
-     "read_at_end": true,
-     "compared_at": [
-      "prompt",
-      "answer",
-      "end"
-     ],
-     "as_loud": 0,
-     "as_loud_ratio_prompt": null,
-     "as_loud_ratio_answer": null,
-     "as_loud_ratio_end": null,
-     "not_comparable": 39,
-     "of_controls": 39,
-     "fewest_eligible": 48,
-     "fewest_distinct": 39,
-     "disjoint_sets": 39,
-     "draw": "spread",
+    "as_judged": {
+     "small": {
+      "edit_prompt": 0.010380061622709037,
+      "controls_median_prompt": 0.002991760444516937,
+      "edit": 0.012003780994564294,
+      "controls_median": 0.005596405283237497,
+      "controls_min": 0.0035777597843358916,
+      "controls_max": 0.017658964668711027,
+      "edit_end": 0.027510606901099285,
+      "controls_median_end": 0.003218900334710876,
+      "read_at_end": true,
+      "compared_at": [
+       "prompt",
+       "answer",
+       "end"
+      ],
+      "as_loud": 0,
+      "as_loud_ratio_prompt": null,
+      "as_loud_ratio_answer": null,
+      "as_loud_ratio_end": null,
+      "not_comparable": 39,
+      "of_controls": 39,
+      "fewest_eligible": 43,
+      "fewest_distinct": 39,
+      "disjoint_sets": 39,
+      "draw": "spread",
+      "at_least": 39,
+      "effective_count": 39,
+      "p_fw": 1.0
+     },
+     "reworded_small": {
+      "edit_prompt": 0.007243086816743016,
+      "controls_median_prompt": 0.0032835957827046514,
+      "edit": 0.008329317206516862,
+      "controls_median": 0.00439290251233615,
+      "controls_min": 0.0034379425924271345,
+      "controls_max": 0.008409525151364505,
+      "edit_end": 0.024555705429520458,
+      "controls_median_end": 0.00319559927447699,
+      "read_at_end": true,
+      "compared_at": [
+       "prompt",
+       "answer",
+       "end"
+      ],
+      "as_loud": 0,
+      "as_loud_ratio_prompt": null,
+      "as_loud_ratio_answer": null,
+      "as_loud_ratio_end": null,
+      "not_comparable": 19,
+      "of_controls": 19,
+      "fewest_eligible": 112,
+      "fewest_distinct": 19,
+      "disjoint_sets": 19,
+      "draw": "spread",
+      "at_least": 19,
+      "effective_count": 19,
+      "p_fw": 1.0
+     },
+     "large": {
+      "edit_prompt": 0.010393556983520588,
+      "controls_median_prompt": 0.0029888398014008997,
+      "edit": 0.011950360207508007,
+      "controls_median": 0.005641599791124463,
+      "controls_min": 0.003581024644275506,
+      "controls_max": 0.017643622308969497,
+      "edit_end": 0.02743291980586946,
+      "controls_median_end": 0.00327610217500478,
+      "read_at_end": true,
+      "compared_at": [
+       "prompt",
+       "answer",
+       "end"
+      ],
+      "as_loud": 0,
+      "as_loud_ratio_prompt": null,
+      "as_loud_ratio_answer": null,
+      "as_loud_ratio_end": null,
+      "not_comparable": 39,
+      "of_controls": 39,
+      "fewest_eligible": 43,
+      "fewest_distinct": 39,
+      "disjoint_sets": 39,
+      "draw": "spread",
+      "at_least": 39,
+      "effective_count": 39,
+      "p_fw": 1.0
+     },
+     "reworded_large": {
+      "edit_prompt": 0.007258822268340737,
+      "controls_median_prompt": 0.003320040152175352,
+      "edit": 0.008318163803778589,
+      "controls_median": 0.004375209333375096,
+      "controls_min": 0.003350269951624796,
+      "controls_max": 0.008390517497900873,
+      "edit_end": 0.02459439664380625,
+      "controls_median_end": 0.0031943376670824364,
+      "read_at_end": true,
+      "compared_at": [
+       "prompt",
+       "answer",
+       "end"
+      ],
+      "as_loud": 0,
+      "as_loud_ratio_prompt": null,
+      "as_loud_ratio_answer": null,
+      "as_loud_ratio_end": null,
+      "not_comparable": 19,
+      "of_controls": 19,
+      "fewest_eligible": 112,
+      "fewest_distinct": 19,
+      "disjoint_sets": 19,
+      "draw": "spread",
+      "at_least": 19,
+      "effective_count": 19,
+      "p_fw": 1.0
+     }
+    },
+    "counted_again_from_the_readings_arms": {
+     "small": {
+      "as_loud_everywhere": 0,
+      "as_loud_by_place": {
+       "prompt": 5,
+       "answer": 2,
+       "end": 0
+      },
+      "median_over_the_edits": {
+       "prompt": 0.2882,
+       "answer": 0.4662,
+       "end": 0.117
+      }
+     },
+     "large": {
+      "as_loud_everywhere": 0,
+      "as_loud_by_place": {
+       "prompt": 5,
+       "answer": 2,
+       "end": 0
+      },
+      "median_over_the_edits": {
+       "prompt": 0.2876,
+       "answer": 0.4721,
+       "end": 0.1194
+      }
+     },
+     "reworded_small": {
+      "as_loud_everywhere": 0,
+      "as_loud_by_place": {
+       "prompt": 1,
+       "answer": 1,
+       "end": 0
+      },
+      "median_over_the_edits": {
+       "prompt": 0.4533,
+       "answer": 0.5274,
+       "end": 0.1301
+      }
+     },
+     "reworded_large": {
+      "as_loud_everywhere": 0,
+      "as_loud_by_place": {
+       "prompt": 1,
+       "answer": 1,
+       "end": 0
+      },
+      "median_over_the_edits": {
+       "prompt": 0.4574,
+       "answer": 0.526,
+       "end": 0.1299
+      }
+     }
+    },
+    "the_same_site_family_which_is_not_asked_to_be_as_loud": {
+     "small": {
+      "as_loud_everywhere": 0,
+      "as_loud_by_place": {
+       "prompt": 0,
+       "answer": 0,
+       "end": 0
+      },
+      "median_over_the_edits": {
+       "prompt": 0.9787,
+       "answer": 0.9896,
+       "end": 0.9808
+      }
+     },
+     "large": {
+      "as_loud_everywhere": 0,
+      "as_loud_by_place": {
+       "prompt": 0,
+       "answer": 0,
+       "end": 0
+      },
+      "median_over_the_edits": {
+       "prompt": 0.9761,
+       "answer": 0.9916,
+       "end": 0.9797
+      }
+     }
+    }
+   }
+  },
+  {
+   "name": "control_edits_as_read_moved_the_metric_31b",
+   "ok": true,
+   "detail": {
+    "small:other_sites_matched": {
+     "edit_mean": -1.219,
+     "control_edits_read": 39,
+     "largest_control_move": 0.1478,
+     "median_control_move": 0.0063,
+     "moved_as_much_as_read": 0,
+     "as_read_at_least": 0,
      "at_least": 39,
-     "effective_count": 39,
-     "p_fw": 1.0
+     "set_aside_or_no_reading": 39
     },
-    "reworded_small": {
-     "edit_prompt": 0.007243086816743016,
-     "controls_median_prompt": 0.0033076640975195915,
-     "edit": 0.008329317206516862,
-     "controls_median": 0.005025170627050102,
-     "controls_min": 0.0035478161298669875,
-     "controls_max": 0.01834012335166335,
-     "edit_end": 0.024555705429520458,
-     "controls_median_end": 0.0038954694027779624,
-     "read_at_end": true,
-     "compared_at": [
-      "prompt",
-      "answer",
-      "end"
-     ],
-     "as_loud": 0,
-     "as_loud_ratio_prompt": null,
-     "as_loud_ratio_answer": null,
-     "as_loud_ratio_end": null,
-     "not_comparable": 19,
-     "of_controls": 19,
-     "fewest_eligible": 112,
-     "fewest_distinct": 19,
-     "disjoint_sets": 19,
-     "draw": "spread",
-     "at_least": 19,
-     "effective_count": 19,
-     "p_fw": 1.0
+    "small:same_site": {
+     "edit_mean": -1.219,
+     "control_edits_read": 39,
+     "largest_control_move": 0.3747,
+     "median_control_move": 0.1427,
+     "moved_as_much_as_read": 0,
+     "as_read_at_least": 0,
+     "at_least": 0,
+     "set_aside_or_no_reading": 0
     },
-    "large": {
-     "edit_prompt": 0.010385045112343505,
-     "controls_median_prompt": 0.0037129471602384,
-     "edit": 0.011399232316762209,
-     "controls_median": 0.005894048998015933,
-     "controls_min": 0.003477202270005364,
-     "controls_max": 0.028230368392542005,
-     "edit_end": 0.026257508361595683,
-     "controls_median_end": 0.0050302573217777535,
-     "read_at_end": true,
-     "compared_at": [
-      "prompt",
-      "answer",
-      "end"
-     ],
-     "as_loud": 0,
-     "as_loud_ratio_prompt": null,
-     "as_loud_ratio_answer": null,
-     "as_loud_ratio_end": null,
-     "not_comparable": 39,
-     "of_controls": 39,
-     "fewest_eligible": 48,
-     "fewest_distinct": 39,
-     "disjoint_sets": 39,
-     "draw": "spread",
+    "large:other_sites_matched": {
+     "edit_mean": -1.2143,
+     "control_edits_read": 39,
+     "largest_control_move": 0.1283,
+     "median_control_move": 0.0122,
+     "moved_as_much_as_read": 0,
+     "as_read_at_least": 0,
      "at_least": 39,
-     "effective_count": 39,
-     "p_fw": 1.0
+     "set_aside_or_no_reading": 39
     },
-    "reworded_large": {
-     "edit_prompt": 0.007258822268340737,
-     "controls_median_prompt": 0.003317780327051878,
-     "edit": 0.008318163803778589,
-     "controls_median": 0.004916011588647962,
-     "controls_min": 0.0034935237490572035,
-     "controls_max": 0.018360121175646782,
-     "edit_end": 0.02459439664380625,
-     "controls_median_end": 0.0038052664895076305,
-     "read_at_end": true,
-     "compared_at": [
-      "prompt",
-      "answer",
-      "end"
-     ],
-     "as_loud": 0,
-     "as_loud_ratio_prompt": null,
-     "as_loud_ratio_answer": null,
-     "as_loud_ratio_end": null,
-     "not_comparable": 19,
-     "of_controls": 19,
-     "fewest_eligible": 112,
-     "fewest_distinct": 19,
-     "disjoint_sets": 19,
-     "draw": "spread",
-     "at_least": 19,
-     "effective_count": 19,
-     "p_fw": 1.0
+    "large:same_site": {
+     "edit_mean": -1.2143,
+     "control_edits_read": 39,
+     "largest_control_move": 0.3486,
+     "median_control_move": 0.144,
+     "moved_as_much_as_read": 0,
+     "as_read_at_least": 0,
+     "at_least": 0,
+     "set_aside_or_no_reading": 0
     }
    }
   },
@@ -337,15 +470,17 @@
    "ok": true,
    "detail": {
     "fresh": {
-     "items": 16,
-     "under_bar": 16,
+     "items": 15,
+     "under_bar": 15,
+     "no_figure": 0,
      "bar": -6.0,
-     "lowest": -25.228069305419922,
-     "highest": -11.621726036071777
+     "lowest": -20.371212005615234,
+     "highest": -10.798233032226562
     },
     "reworded": {
      "items": 8,
      "under_bar": 8,
+     "no_figure": 0,
      "bar": -6.0,
      "lowest": -17.48343849182129,
      "highest": -8.84947681427002
@@ -354,7 +489,7 @@
      "neutral_text": {
       "read": 4,
       "given": 4,
-      "under_item_gate": 3
+      "under_item_gate": 2
      },
      "near_misses": {
       "read": 4,
@@ -364,7 +499,7 @@
      "labelled_panel": {
       "read": 3,
       "given": 4,
-      "under_item_gate": 2
+      "under_item_gate": 1
      }
     }
    }
@@ -376,26 +511,26 @@
     "matched_by": "prompt arm 0",
     "matched_arm": {
      "index": 0,
-     "directed_effect": 8.573584288358688,
-     "near_miss_abs": 1.9809019565582275,
-     "near_miss_share": 0.23104711984320478,
+     "directed_effect": 7.96542588993907,
+     "near_miss_abs": 1.305389642715454,
+     "near_miss_share": 0.16388196447402256,
      "near_miss": "within the registered bar as a share of its own effect"
     },
     "arms": [
      {
       "index": 0,
-      "directed_effect": 8.573584288358688,
-      "near_miss_abs": 1.9809019565582275
+      "directed_effect": 7.96542588993907,
+      "near_miss_abs": 1.305389642715454
      }
     ],
-    "edit_near_miss_abs": 0.9144660234451294
+    "edit_near_miss_abs": 0.8392362594604492
    }
   },
   {
    "name": "every_figure_of_the_judgement_31b",
    "ok": true,
    "detail": {
-    "figures": 668,
+    "figures": 664,
     "with_no_figure": 0,
     "controls_small": 78,
     "says": "each control edit's mean is its mean as read, whether or not the judgement set it aside"
@@ -404,12 +539,21 @@
   {
    "name": "trial_read_once_refused",
    "ok": true,
-   "detail": "Read once: trial registration 2b2529ca8afc has already been recorded in verify_trial_book.jsonl (line 5)."
+   "detail": "Read once: trial registration f2d4277c180c has already been recorded in verify_trial_book.jsonl (line 6)."
   },
   {
    "name": "same_edit_registered_again_refused",
    "ok": true,
-   "detail": "Read once: edit be4328fdb60d has already had a trial on brief \"pronoun_pull\" (92c7776f8ed0) in this book (line 5): a trial is read once, of record or as a dry r"
+   "detail": "Read once: edit be4328fdb60d has already had a trial on brief \"pronoun_pull\" (92c7776f8ed0) in this book (line 6): a trial is read once, of record or as a dry r"
+  },
+  {
+   "name": "registered_after_its_trial_refused_at_registration",
+   "ok": true,
+   "detail": {
+    "says": "Read once: edit be4328fdb60d has already had a trial on brief \"pronoun_pull\" (92c7776f8ed0) in this book (line 6): a trial is read once, of record or as a dry r",
+    "folder_written": false,
+    "lines_added_to_the_book": 0
+   }
   },
   {
    "name": "trial_counted_as_a_fresh_reading",
@@ -419,13 +563,13 @@
     "of": 2,
     "trials": [
      {
-      "seq": 5,
+      "seq": 6,
       "trial_name": "e6_l50_she10_31b",
       "edit_id": "be4328fdb60d05f8ad95d31326f3ae2b3482add121488206db2998e38b60312a",
       "reading_index": 1,
       "kind": "dry run",
       "verdict": "failed",
-      "verdict_seq": 12
+      "verdict_seq": 13
      }
     ]
    }
@@ -434,7 +578,7 @@
    "name": "trial_replay_card_says_dry_run",
    "ok": true,
    "detail": {
-    "seq": 12,
+    "seq": 13,
     "status": "dry run: failed",
     "edit_linears": [
      "layers.50.mlp.down_proj"
@@ -445,8 +589,8 @@
    "name": "export_is_the_edit_on_the_model",
    "ok": true,
    "detail": {
-    "seconds": 0.59,
-    "gguf_bytes": 1081248,
+    "seconds": 0.34,
+    "gguf_bytes": 1082496,
     "max_abs_err": 0.0
    }
   },
@@ -454,10 +598,10 @@
    "name": "export_keys_say_what_was_checked",
    "ok": true,
    "detail": {
-    "book": "line 12 of verify_trial_book.jsonl is the trial's verdict; the book verifies",
+    "book": "line 13 of verify_trial_book.jsonl is the trial's verdict; the book verifies",
     "book_before_it": "practice readings 0, earlier fresh readings 0, earlier trials 0, as the trial's book had them",
-    "book_hash": "ee81e42b35de49ae585187c247623b0d406a6b3d3d609f6f15da13c15c310e76",
-    "book_seq": "12",
+    "book_hash": "c77bd79204cf7bbf98e98035e56e05cce0915e04471704eb84ba3168c4ea19ed",
+    "book_seq": "13",
     "compiled_against_is_edit_base": "yes: the same weights id, and every touched linear by its pin",
     "gate": "built and gated by the kernel on a loaded model for this export",
     "implant_checked_at": "export",
@@ -468,6 +612,7 @@
     "trial_fresh_verdict": "no better than control edits",
     "trial_judged_again": "yes: the book's readings, judged again with the registration, give this verdict",
     "trial_kind": "a dry run",
+    "trial_reasons": "Fresh kept-back gate returned \"no better than control edits\": small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; near_misses abs effect (0.8392362594604492, ratio 0.6663079338657912) exceeded bar (abs <= 0.25, ratio <= 0.35). | Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much). | Reworded large failed \"other_sites_matched\" controls (at_leas",
     "trial_verdict": "failed"
    }
   },
@@ -504,20 +649,20 @@
     "base_is_edit_base": true,
     "whole_base": true,
     "compiled_against_words": "yes: the same weights id, and every touched linear by its pin",
-    "gate": "rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel read it at line 6 of verify_trial_book.jsonl",
+    "gate": "rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel read it at line 7 of verify_trial_book.jsonl",
     "implant": "the trial's registration",
     "same_numbers_as_the_model_export": true,
-    "seconds": 0.54
+    "seconds": 0.52
    }
   },
   {
    "name": "same_card_rerun_reads_the_home_items",
    "ok": true,
    "detail": {
-    "seconds": 143.35,
+    "seconds": 140.51,
     "outcome": "accepted",
     "match_class": "same_figures",
-    "figures_compared": 668,
+    "figures_compared": 664,
     "figures_neither_trial_has": 0,
     "control_edits_set_aside_differently": {},
     "leave_given_for_a_changed_checkout": false,
@@ -611,12 +756,12 @@
       "outside_tolerance": 0
      },
      "target:large": {
-      "items": 16,
+      "items": 15,
       "no_figure": 0,
       "missing": 0,
       "largest_difference": 0.0,
       "outside_tolerance": 0,
-      "home_floor": 0.14301586151123047
+      "home_floor": 0.16733694076538086
      },
      "target:large:controls": {
       "items": 78,
@@ -633,7 +778,7 @@
       "outside_tolerance": 0
      },
      "target:large:folded": {
-      "items": 16,
+      "items": 15,
       "no_figure": 0,
       "missing": 0,
       "largest_difference": 0.0,
@@ -647,12 +792,12 @@
       "outside_tolerance": 0
      },
      "target:small": {
-      "items": 16,
+      "items": 15,
       "no_figure": 0,
       "missing": 0,
       "largest_difference": 0.0,
       "outside_tolerance": 0,
-      "home_floor": 0.14130401611328125
+      "home_floor": 0.11729717254638672
      },
      "target:small:controls": {
       "items": 78,
@@ -669,7 +814,7 @@
       "outside_tolerance": 0
      },
      "target:small:folded": {
-      "items": 16,
+      "items": 15,
       "no_figure": 0,
       "missing": 0,
       "largest_difference": 0.0,
@@ -692,7 +837,7 @@
    "name": "bundle_typed_by_hand_rejected",
    "ok": true,
    "detail": [
-    "book_holds_a_rerun_of_this_registration: no trial registered in the returned book as a re-run of 2b2529ca8afc"
+    "book_holds_a_rerun_of_this_registration: no trial registered in the returned book as a re-run of f2d4277c180c"
    ]
   },
   {
@@ -712,7 +857,7 @@
    "ok": true,
    "detail": {
     "entries": 14,
-    "head": "9186989462ca2cda"
+    "head": "c77bd79204cf7bbf"
    }
   },
   {
@@ -721,7 +866,7 @@
    "detail": {
     "peak_gib": 18.542,
     "of": "the largest peak any reading in the book recorded",
-    "total_seconds": 313.08
+    "total_seconds": 308.73
    }
   }
  ],
@@ -749,21 +894,21 @@
   "note": "taken with the base alone on a sizing draw of the brief's frames and on the reworded set; the count that judges the trial is the one its own readings give, and the look does not see whether the control edits will be as loud as the edit"
  },
  "trial_e6_she10": {
-  "seconds": 139.23,
+  "seconds": 137.36,
   "of_record": false,
   "not_of_record": [
-   "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 48 time(s): a trial of record is the first thing its process asks of the model",
+   "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 72 time(s): a trial of record is the first thing its process asks of the model",
    "the registration folder is outside the checkout, so it is in no commit",
    "it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in"
   ],
   "verdict": "failed",
   "fresh_verdict": "no better than control edits",
   "reasons": [
-   "Fresh kept-back gate returned \"no better than control edits\": small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; near_misses abs effect (0.9144660234451294, ratio 0.6125684993407445) exceeded bar (abs <= 0.25, ratio <= 0.35).",
-   "Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05).",
-   "Reworded large failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05)."
+   "Fresh kept-back gate returned \"no better than control edits\": small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; near_misses abs effect (0.8392362594604492, ratio 0.6663079338657912) exceeded bar (abs <= 0.25, ratio <= 0.35).",
+   "Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).",
+   "Reworded large failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much)."
   ],
-  "sheet": "=== DRY RUN OF A TRIAL (not of record): e6_l50_she10_31b ===\nverdict: failed (a dry run: not a verdict of record)\n  not of record: this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 48 time(s): a trial of record is the first thing its process asks of the model\n  not of record: the registration folder is outside the checkout, so it is in no commit\n  not of record: it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in\nregistration: 2b2529ca8afc3778 (registered 2026-11-20T06:00:31Z at commit 66d771ad6756)\nread at commit 66d771ad6756: checkout clean | registration folder committed: no | runner and reader as registered: yes\nprocess: had begun 3 reading(s) and 0 capture(s) and run the model forward 48 time(s) before the trial\nbook: verify_trial_book.jsonl (a side book, not the level book); the trial was entered at line 5, after the line that hashes to 817809fcb868. Read once and counted in this book: the harness cannot see another book, a copy of this one, or this one cut back to an earlier line\nbars: 7162a4c337cc from the calibration at line 3 of this book: a probe of 10 columns at layer 50 (page layer 51) against 3 control edits (seed 2026); each bar is the larger of its registered least and 2.0 times the largest figure they gave: neutral KL 0.05, near-miss 0.25, panel KL 0.05, panel own drop 0.1 (4 of the 4 are the least a bar can be, which the calibration did not move)\nbase: checksum unchanged=True over 410 linears (1652 tensors); overlays 0, unpacker fallbacks 0\nedit: be4328fdb60d05f8 (rebuilt) at dose 1 | linears: layers.50.mlp.down_proj\nfollows: no claim reading of this edit stands in this book\nfresh items: new fillings of the brief's kept-back frames, which no earlier fresh reading in this book had read; the reworded set below is what stands outside them\ncheaper knob: prompt arm 0, one of the brief's own prompts and no change to the weights, moved odds by 8.5736 in the brief's direction, against the edit's 1.4928; its near-miss effect was 1.9809 against the edit's 0.9145 (within the registered bar as a share of its own effect): a trial that meets every test then reads \"passed, matched by a cheaper knob\", not \"passed\"\nseparate draws, by the look taken at registration (the base alone, on a sizing draw and on the reworded set): the fresh items' control sets 39 of 39 (a pass needs 39); the reworded set's 19 of 19 (a pass needs 19). The count that judges is the readings' own, below\n\n--- the fresh reading, as the claim gate's sheet prints a fresh reading ---\n  CLAIM SHEET — brief \"pronoun_pull\" [92c7776f8ed0] — reading 1 of 2\n  verdict: no better than control edits\n  edit: be4328fdb60d05f8 (dose 1, linears: layers.50.mlp.down_proj)\n  base: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\n  rule: levelling-claim-v1 v2 | bars 7162a4c337cc from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\n  chat settings: {\"system\": null, \"thinking\": false}\n  selection: free_pick | practice readings in this book: 0 | practice best, as reported with the edit's claim reading: none\n  design, registered before the draw: 16 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\n  book: verify_trial_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\n  kept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\n  retention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\n  gate notes:\n    - small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).\n    - large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).\n    - near_misses abs effect (0.9144660234451294, ratio 0.6125684993407445) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  reading classes (kept-back frames):\n    item gate: 16 of 16 fresh items are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -25.23 to -11.62 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n    small: n_frames=8 (16 items), mean=-1.4928 [-2.3712, -0.6145], half0=-1.5310 (n=4), half1=-1.4547 (n=4), floor=0.1413, bar=0.3255, reversed=1.2087\n      controls[other_sites_matched]: at_least=39/39, p_emp=1.0000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0037; over the answer: edit 0.0114, these controls median 0.0059 (0.0034 to 0.0282); at the last position, where the metric is read: edit 0.0262, these controls median 0.0051; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 39 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 39 of the sets share no site with one another (each neuron had at least 48 eligible sites), drawn to share as few sites as the pools allow\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0102; over the answer: edit 0.0114, these controls median 0.0114 (0.0113 to 0.0114); at the last position: edit 0.0262, these controls median 0.0256\n      controls[sham_target]: selection not matched, 0 practice readings in this book\n    large: n_frames=8 (16 items), mean=-1.5097 [-2.4087, -0.6106], half0=-1.5415 (n=4), half1=-1.4779 (n=4), floor=0.1430, bar=0.3275, reversed=1.2072\n      controls[other_sites_matched]: at_least=39/39, p_emp=1.0000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0037; over the answer: edit 0.0114, these controls median 0.0059 (0.0035 to 0.0282); at the last position, where the metric is read: edit 0.0263, these controls median 0.0050; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 39 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 39 of the sets share no site with one another (each neuron had at least 48 eligible sites), drawn to share as few sites as the pools allow\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0102; over the answer: edit 0.0114, these controls median 0.0113 (0.0113 to 0.0114); at the last position: edit 0.0263, these controls median 0.0256\n      controls[sham_target]: selection not matched, 0 practice readings in this book\n  retention batteries:\n    neutral_text (GATING): passed=True {'available': True, 'mean_kl': 0.00012730271510008606, 'bar': 0.05, 'control_kl_max': 8.734800485399319e-05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 3}}\n    near_misses (GATING): passed=False {'available': True, 'mean_effect': 0.9144660234451294, 'abs_effect': 0.9144660234451294, 'ratio_to_target': 0.6125684993407445, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4, 'under_item_gate': 4}}\n    labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.0, 'mean_kl': 7.958836789612178e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 3, 'given': 4, 'under_item_gate': 2}}\n    habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\n  cheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n    matched_by: prompt arm 0 (a prompt arm matches when it moved the metric at least 0.95 times as far as the edit in the brief's direction, and its near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on its effect alone)\n    author prompt arms: run\n    prompt arm 0 [255cdbb968d4]: directed_effect=8.5736, near_miss_abs=1.9809\n  earlier fresh readings on this brief (0):\n    none\n  earlier trials on this brief (0):\n    none\n\n--- the folded form (the change written into the weights), beside the per-row form ---\n  [small] folded mean -1.4928 | h0 -1.5310, h1 -1.4547 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.1413) | same bits 16/16 | agrees with the per-row form: True | clears the bar: True, both halves: True | ok=True\n  [large] folded mean -1.5097 | h0 -1.5415, h1 -1.4779 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.1430) | same bits 16/16 | agrees with the per-row form: True | clears the bar: True, both halves: True | ok=True\n\n--- the reworded set 7025a389aaf1 (the starter set in the instrument's source, which anyone can read; read 1 of at most 5 times in this book; 19 matched control edits, judged alone at the level; it sits in the registration folder, as public as the commit that holds it) ---\n  [small] per-row mean -1.9538 | h0 -1.7234, h1 -2.1841 | floor 0.1042, bar 0.2795 | matched 19/19 (p 1.000; 19 of them did not deliver as the edit did and are counted as moving as much) | ok=False\n  delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0072, these controls median 0.0033; over the answer: edit 0.0083, these controls median 0.0050 (0.0035 to 0.0183); at the last position, where the metric is read: edit 0.0246, these controls median 0.0039; 0 of 19 at least as loud as the edit over the prompt, over the answer and at the last position; 19 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 19 of the sets share no site with one another (each neuron had at least 112 eligible sites), drawn to share as few sites as the pools allow\n  [small] folded mean -1.9538 | largest item gap 0.0000 (tolerance 0.1042) | ok=True\n  [large] per-row mean -1.9373 | h0 -1.6973, h1 -2.1773 | floor 0.1192, bar 0.2990 | matched 19/19 (p 1.000; 19 of them did not deliver as the edit did and are counted as moving as much) | ok=False\n  delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0073, these controls median 0.0033; over the answer: edit 0.0083, these controls median 0.0049 (0.0035 to 0.0184); at the last position, where the metric is read: edit 0.0246, these controls median 0.0038; 0 of 19 at least as loud as the edit over the prompt, over the answer and at the last position; 19 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 19 of the sets share no site with one another (each neuron had at least 112 eligible sites), drawn to share as few sites as the pools allow\n  item gate: 8 of 8 reworded items are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -17.48 to -8.85 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n  [large] folded mean -1.9373 | largest item gap 0.0000 (tolerance 0.1192) | ok=True\n\n--- why ---\n  - Fresh kept-back gate returned \"no better than control edits\": small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; near_misses abs effect (0.9144660234451294, ratio 0.6125684993407445) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  - Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05).\n  - Reworded large failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05).\n",
+  "sheet": "=== DRY RUN OF A TRIAL (not of record): e6_l50_she10_31b ===\nverdict: failed (a dry run: not a verdict of record)\n  not of record: this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 72 time(s): a trial of record is the first thing its process asks of the model\n  not of record: the registration folder is outside the checkout, so it is in no commit\n  not of record: it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in\nregistration: f2d4277c180c41a8 (registered 2026-11-20T08:14:50Z at commit 9d8c83635b58)\nread at commit 9d8c83635b58: checkout clean | registration folder committed: no | runner and reader as registered: yes\nprocess: had begun 3 reading(s) and 0 capture(s) and run the model forward 72 time(s) before the trial\nbook: verify_trial_book.jsonl (a side book, not the level book); the trial was entered at line 6, after the line that hashes to d6a1049b4cf4. Read once and counted in this book: the harness cannot see another book, a copy of this one, or this one cut back to an earlier line\nbars: bb55b6b13441 from the calibration at line 3 of this book: a probe of 10 columns at layer 50 (page layer 51) against 3 control edits (seed 2026); each bar is the larger of its registered least and 2.0 times the largest figure they gave: neutral KL 0.05, near-miss 0.25, panel KL 0.05, panel own drop 0.1 (4 of the 4 are the least a bar can be, which the calibration did not move)\nbase: checksum unchanged=True over 410 linears (1652 tensors); overlays 0, unpacker fallbacks 0\nedit: be4328fdb60d05f8 (rebuilt) at dose 1 | linears: layers.50.mlp.down_proj\nfollows: no claim reading of this edit stands in this book\nfresh items: new fillings of the brief's kept-back frames, which no earlier fresh reading in this book had read; the reworded set below is what stands outside them\ncheaper knob: prompt arm 0, one of the brief's own prompts and no change to the weights, moved odds by 7.9654 in the brief's direction, against the edit's 1.2595; its near-miss effect was 1.3054 against the edit's 0.8392 (within the registered bar as a share of its own effect): a trial that meets every test then reads \"passed, matched by a cheaper knob\", not \"passed\"\nseparate draws, by the look taken at registration (the base alone, on a sizing draw and on the reworded set): the fresh items' control sets 39 of 39 (a pass needs 39); the reworded set's 19 of 19 (a pass needs 19). The count that judges is the readings' own, below\n\n--- the fresh reading, as the claim gate's sheet prints a fresh reading ---\n  CLAIM SHEET — brief \"pronoun_pull\" [92c7776f8ed0] — reading 1 of 2\n  verdict: no better than control edits\n  edit: be4328fdb60d05f8 (dose 1, linears: layers.50.mlp.down_proj)\n  base: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\n  rule: levelling-claim-v1 v2 | bars bb55b6b13441 from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\n  chat settings: {\"system\": null, \"thinking\": false}\n  selection: free_pick | practice readings in this book: 0 | practice best, as reported with the edit's claim reading: none\n  design, registered before the draw: 16 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\n  book: verify_trial_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\n  kept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\n  retention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\n  gate notes:\n    - small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).\n    - large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).\n    - near_misses abs effect (0.8392362594604492, ratio 0.6663079338657912) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  reading classes (kept-back frames):\n    item gate: 15 of the 15 fresh items that read are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -20.37 to -10.80 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n    small: n_frames=8 (15 items), mean=-1.2652 [-1.9660, -0.5644], half0=-1.1050 (n=4), half1=-1.4254 (n=4), floor=0.1173, bar=0.2966, reversed=0.9921\n      controls[other_sites_matched]: at_least=39/39, p_emp=1.0000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0030; over the answer: edit 0.0120, these controls median 0.0056 (0.0036 to 0.0177); at the last position, where the metric is read: edit 0.0275, these controls median 0.0032; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 39 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 39 of the sets share no site with one another (each neuron had at least 43 eligible sites), drawn to share as few sites as the pools allow\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0102; over the answer: edit 0.0120, these controls median 0.0119 (0.0118 to 0.0119); at the last position, where the metric is read: edit 0.0275, these controls median 0.0270\n      controls[sham_target]: selection not matched, 0 practice readings in this book\n    large: n_frames=8 (15 items), mean=-1.2595 [-1.9520, -0.5671], half0=-1.0725 (n=4), half1=-1.4465 (n=4), floor=0.1673, bar=0.3543, reversed=0.9715\n      controls[other_sites_matched]: at_least=39/39, p_emp=1.0000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0030; over the answer: edit 0.0120, these controls median 0.0056 (0.0036 to 0.0176); at the last position, where the metric is read: edit 0.0274, these controls median 0.0033; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 39 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 39 of the sets share no site with one another (each neuron had at least 43 eligible sites), drawn to share as few sites as the pools allow\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0104, these controls median 0.0101; over the answer: edit 0.0120, these controls median 0.0118 (0.0118 to 0.0119); at the last position, where the metric is read: edit 0.0274, these controls median 0.0269\n      controls[sham_target]: selection not matched, 0 practice readings in this book\n  retention batteries:\n    neutral_text (GATING): passed=True {'available': True, 'mean_kl': 3.677004087876412e-05, 'bar': 0.05, 'control_kl_max': 4.303391006033053e-05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 2}}\n    near_misses (GATING): passed=False {'available': True, 'mean_effect': 0.8312444686889648, 'abs_effect': 0.8392362594604492, 'ratio_to_target': 0.6663079338657912, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4, 'under_item_gate': 4}}\n    labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.0, 'mean_kl': 5.635622102317939e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 3, 'given': 4, 'under_item_gate': 1}}\n    habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\n  cheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n    matched_by: prompt arm 0 (a prompt arm matches when it moved the metric at least 0.95 times as far as the edit in the brief's direction, and its near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on its effect alone)\n    author prompt arms: run\n    prompt arm 0 [255cdbb968d4]: directed_effect=7.9654, near_miss_abs=1.3054\n  earlier fresh readings on this brief (0):\n    none\n  earlier trials on this brief (0):\n    none\n\n--- the folded form (the change written into the weights), beside the per-row form ---\n  [small] folded mean -1.2652 | h0 -1.1050, h1 -1.4254 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.1173) | same bits 15/15 | agrees with the per-row form: True | clears the bar: True, both halves: True | ok=True\n  [large] folded mean -1.2595 | h0 -1.0725, h1 -1.4465 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.1673) | same bits 15/15 | agrees with the per-row form: True | clears the bar: True, both halves: True | ok=True\n\n--- the reworded set 381947d4d27a (the starter set in the instrument's source, which anyone can read; read 1 of at most 5 times in this book; 19 matched control edits, judged alone at the level; it sits in the registration folder, as public as the commit that holds it) ---\n  [small] per-row mean -1.9538 | h0 -1.7234, h1 -2.1841 | floor 0.1042, bar 0.2795 | matched 19/19 (p 1.000; 19 of them did not deliver as the edit did and are counted as moving as much) | ok=False\n  delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0072, these controls median 0.0033; over the answer: edit 0.0083, these controls median 0.0044 (0.0034 to 0.0084); at the last position, where the metric is read: edit 0.0246, these controls median 0.0032; 0 of 19 at least as loud as the edit over the prompt, over the answer and at the last position; 19 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 19 of the sets share no site with one another (each neuron had at least 112 eligible sites), drawn to share as few sites as the pools allow\n  [small] folded mean -1.9538 | largest item gap 0.0000 (tolerance 0.1042) | ok=True\n  [large] per-row mean -1.9373 | h0 -1.6973, h1 -2.1773 | floor 0.1192, bar 0.2990 | matched 19/19 (p 1.000; 19 of them did not deliver as the edit did and are counted as moving as much) | ok=False\n  delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0073, these controls median 0.0033; over the answer: edit 0.0083, these controls median 0.0044 (0.0034 to 0.0084); at the last position, where the metric is read: edit 0.0246, these controls median 0.0032; 0 of 19 at least as loud as the edit over the prompt, over the answer and at the last position; 19 of them quieter than the edit at one of those, or with no figure, and counted as moving as much; 19 of the sets share no site with one another (each neuron had at least 112 eligible sites), drawn to share as few sites as the pools allow\n  item gate: 8 of the 8 reworded items that read are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -17.48 to -8.85 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n  [large] folded mean -1.9373 | largest item gap 0.0000 (tolerance 0.1192) | ok=True\n\n--- why ---\n  - Fresh kept-back gate returned \"no better than control edits\": small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; near_misses abs effect (0.8392362594604492, ratio 0.6663079338657912) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  - Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).\n  - Reworded large failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).\n",
   "folded": {
    "available": true,
    "ok": true,
@@ -775,18 +920,18 @@
      "ok": true,
      "no_bar": false,
      "frames": {
-      "n_items": 16,
+      "n_items": 15,
       "n_frames": 8,
-      "mean": -1.4928387999534607,
-      "directed_mean": 1.4928387999534607,
-      "se": 0.37140300077419475,
+      "mean": -1.2651876583695412,
+      "directed_mean": 1.2651876583695412,
+      "se": 0.296315027000704,
       "ci95": [
-       -2.3712068967844315,
-       -0.6144707031224901
+       -1.9659726972262062,
+       -0.5644026195128762
       ],
       "directed_ci95": [
-       0.6144707031224901,
-       2.3712068967844315
+       0.5644026195128762,
+       1.9659726972262062
       ],
       "sign_flip": {
        "two_sided": 0.0078125,
@@ -796,32 +941,32 @@
       },
       "half_0": {
        "n_frames": 4,
-       "mean": -1.5310020446777344,
-       "directed_mean": 1.5310020446777344
+       "mean": -1.1050015687942505,
+       "directed_mean": 1.1050015687942505
       },
       "half_1": {
        "n_frames": 4,
-       "mean": -1.454675555229187,
-       "directed_mean": 1.454675555229187
+       "mean": -1.4253737479448318,
+       "directed_mean": 1.4253737479448318
       }
      },
      "house_bar": {
-      "floor": 0.14130401611328125,
+      "floor": 0.11729717254638672,
       "least_effect": 0.75,
-      "bar": 0.3255426424985841,
+      "bar": 0.29660222421585114,
       "floor_too_loud": false,
-      "ratio_m_over_f": 5.307704767561146
+      "ratio_m_over_f": 6.394016016911257
      },
      "clears_bar": true,
      "halves_ok": true,
      "gap_ok": true,
-     "tolerance": 0.14130401611328125,
+     "tolerance": 0.11729717254638672,
      "mean_diff_vs_per_row": 0.0,
      "max_abs_gap": 0.0,
      "mean_abs_gap": 0.0,
      "between_kl_max": 0.0,
-     "same_bits_count": 16,
-     "taken_count": 16,
+     "same_bits_count": 15,
+     "taken_count": 15,
      "rows_identical_all": true
     },
     "large": {
@@ -829,18 +974,18 @@
      "ok": true,
      "no_bar": false,
      "frames": {
-      "n_items": 16,
+      "n_items": 15,
       "n_frames": 8,
-      "mean": -1.5096620470285416,
-      "directed_mean": 1.5096620470285416,
-      "se": 0.3801419017120018,
+      "mean": -1.259532142430544,
+      "directed_mean": 1.259532142430544,
+      "se": 0.2927960731898082,
       "ci95": [
-       -2.4086976445774257,
-       -0.6106264494796573
+       -1.9519948555244404,
+       -0.5670694293366474
       ],
       "directed_ci95": [
-       0.6106264494796573,
-       2.4086976445774257
+       0.5670694293366474,
+       1.9519948555244404
       ],
       "sign_flip": {
        "two_sided": 0.0078125,
@@ -850,32 +995,32 @@
       },
       "half_0": {
        "n_frames": 4,
-       "mean": -1.5414652228355408,
-       "directed_mean": 1.5414652228355408
+       "mean": -1.0725401639938354,
+       "directed_mean": 1.0725401639938354
       },
       "half_1": {
        "n_frames": 4,
-       "mean": -1.4778588712215424,
-       "directed_mean": 1.4778588712215424
+       "mean": -1.4465241208672523,
+       "directed_mean": 1.4465241208672523
       }
      },
      "house_bar": {
-      "floor": 0.14301586151123047,
+      "floor": 0.16733694076538086,
       "least_effect": 0.75,
-      "bar": 0.32750861993758706,
+      "bar": 0.3542636102876439,
       "floor_too_loud": false,
-      "ratio_m_over_f": 5.24417356281216
+      "ratio_m_over_f": 4.481975089120083
      },
      "clears_bar": true,
      "halves_ok": true,
      "gap_ok": true,
-     "tolerance": 0.14301586151123047,
+     "tolerance": 0.16733694076538086,
      "mean_diff_vs_per_row": 0.0,
      "max_abs_gap": 0.0,
      "mean_abs_gap": 0.0,
      "between_kl_max": 0.0,
-     "same_bits_count": 16,
-     "taken_count": 16,
+     "same_bits_count": 15,
+     "taken_count": 15,
      "rows_identical_all": true
     }
    }
@@ -884,8 +1029,8 @@
    "ok": false,
    "status": "failed",
    "reasons": [
-    "Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05).",
-    "Reworded large failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05)."
+    "Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).",
+    "Reworded large failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much)."
    ],
    "classes": {
     "small": {
@@ -936,6 +1081,7 @@
        "effective_count": 19,
        "non_finite": 19,
        "at_least": 19,
+       "as_read_at_least": 0,
        "p_emp": 1.0,
        "p_fw": 1.0,
        "tops_every_control": false,
@@ -945,14 +1091,14 @@
      },
      "delivered": {
       "edit": 0.008329317206516862,
-      "controls_median": 0.005025170627050102,
-      "controls_min": 0.0035478161298669875,
-      "controls_max": 0.01834012335166335,
+      "controls_median": 0.00439290251233615,
+      "controls_min": 0.0034379425924271345,
+      "controls_max": 0.008409525151364505,
       "controls_read": 19,
       "edit_end": 0.024555705429520458,
-      "controls_median_end": 0.0038954694027779624,
+      "controls_median_end": 0.00319559927447699,
       "edit_prompt": 0.007243086816743016,
-      "controls_median_prompt": 0.0033076640975195915,
+      "controls_median_prompt": 0.0032835957827046514,
       "read_at_end": true,
       "compared_at": [
        "prompt",
@@ -973,6 +1119,7 @@
      "item_gate": {
       "items": 8,
       "under_bar": 8,
+      "no_figure": 0,
       "bar": -6.0,
       "lowest": -17.48343849182129,
       "highest": -8.84947681427002
@@ -1026,6 +1173,7 @@
        "effective_count": 19,
        "non_finite": 19,
        "at_least": 19,
+       "as_read_at_least": 0,
        "p_emp": 1.0,
        "p_fw": 1.0,
        "tops_every_control": false,
@@ -1035,14 +1183,14 @@
      },
      "delivered": {
       "edit": 0.008318163803778589,
-      "controls_median": 0.004916011588647962,
-      "controls_min": 0.0034935237490572035,
-      "controls_max": 0.018360121175646782,
+      "controls_median": 0.004375209333375096,
+      "controls_min": 0.003350269951624796,
+      "controls_max": 0.008390517497900873,
       "controls_read": 19,
       "edit_end": 0.02459439664380625,
-      "controls_median_end": 0.0038052664895076305,
+      "controls_median_end": 0.0031943376670824364,
       "edit_prompt": 0.007258822268340737,
-      "controls_median_prompt": 0.003317780327051878,
+      "controls_median_prompt": 0.003320040152175352,
       "read_at_end": true,
       "compared_at": [
        "prompt",
@@ -1063,6 +1211,7 @@
      "item_gate": {
       "items": 8,
       "under_bar": 8,
+      "no_figure": 0,
       "bar": -6.0,
       "lowest": -17.48343849182129,
       "highest": -8.84947681427002
@@ -1188,7 +1337,7 @@
   },
   "meta": {
    "reading_kind": "trial",
-   "date": "2026-11-20T06:02:53Z",
+   "date": "2026-11-20T08:17:13Z",
    "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
    "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
    "unpacker": "compiled",
@@ -1199,7 +1348,7 @@
    "main_dose": 1.0,
    "brief_id": "92c7776f8ed0788eb12354893e8c3fe78dc5b167b8788a8e98a821b6c0bccd3e",
    "brief_name": "pronoun_pull",
-   "bars_sha256": "7162a4c337ccbc78d074a899274c75526c2b35cd1f39e514056bfb6be9b8a814",
+   "bars_sha256": "bb55b6b134415f3150c672f6d6c1ca5286c8ed6f4684cf414fccd75c428e8a2f",
    "bars_calibration_seq": 3,
    "bars_calibration_where": null,
    "bars_calibrations_in_book": 1,
@@ -1221,18 +1370,18 @@
    "reading_index": 1,
    "max_fresh_readings": 2,
    "earlier_fresh_readings": 0,
-   "draw_seed_sha256": "21a6233ab8a3296de14d3d074918553ccded9492d7aa9a2f893da09051478059",
+   "draw_seed_sha256": "b55fce05dd2314ff34f88f3c296774bb1309e141d016f069696561e0841dda28",
    "n_target_items": 16,
-   "registration_seq": 5,
-   "book_head_before": "817809fcb8682a136460f8ac26cdcd5bea3fef7f6bdd65438359adcd58480710",
+   "registration_seq": 6,
+   "book_head_before": "d6a1049b4cf4ddb24b74324185ad9911ea39fde938aabacca97a2b18e6e78744",
    "book_seqs": [
-    5,
     6,
     7,
     8,
     9,
     10,
-    11
+    11,
+    12
    ],
    "prior_verdicts": [],
    "prior_trials": [],
@@ -1289,12 +1438,12 @@
    "book_fresh_readings": {},
    "written_strata": null,
    "settings_audit": null,
-   "finished_at": "2026-11-20T06:02:53Z",
+   "finished_at": "2026-11-20T08:17:13Z",
    "device": "NVIDIA GeForce RTX 5090",
-   "trial_sha256": "2b2529ca8afc3778ff32f6467f760291340f2e24e04a2028be9653e5d614e365",
+   "trial_sha256": "f2d4277c180c41a891a93a9d2ed3cfd09b33b25bc77244c740e4571948f621b1",
    "of_record": false,
    "not_of_record": [
-    "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 48 time(s): a trial of record is the first thing its process asks of the model",
+    "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 72 time(s): a trial of record is the first thing its process asks of the model",
     "the registration folder is outside the checkout, so it is in no commit",
     "it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in"
    ],
@@ -1302,10 +1451,10 @@
    "process": {
     "readings": 3,
     "captures": 0,
-    "forwards": 48
+    "forwards": 72
    },
    "checkout": {
-    "commit": "66d771ad67562699271e3ae4c9fa661929df986c",
+    "commit": "9d8c83635b580a3e537c4a601f68990128d9bbca",
     "dirty": false,
     "changed": 0,
     "tracked_changed": 0,
@@ -1317,7 +1466,7 @@
     "default_book": false,
     "seed_given": false
    },
-   "repo_commit": "66d771ad67562699271e3ae4c9fa661929df986c",
+   "repo_commit": "9d8c83635b580a3e537c4a601f68990128d9bbca",
    "source_claim": null,
    "book_name": "verify_trial_book.jsonl",
    "base_checksum_before": "acb0b5e917feb6d4d3f352189a271d3a025d70420a8d6b04bcc37593d7e477bd",
@@ -1329,29 +1478,29 @@
    "base_after": true,
    "unpacker_fallbacks": 0,
    "reworded_use_index": 1,
-   "seconds": 139.154
+   "seconds": 137.284
   },
   "book": {
    "name": "verify_trial_book.jsonl",
-   "registration_seq": 5,
-   "verdict_seq": 12,
-   "verdict_hash": "ee81e42b35de49ae585187c247623b0d406a6b3d3d609f6f15da13c15c310e76",
+   "registration_seq": 6,
+   "verdict_seq": 13,
+   "verdict_hash": "c77bd79204cf7bbf98e98035e56e05cce0915e04471704eb84ba3168c4ea19ed",
    "all_seqs": [
-    5,
     6,
     7,
     8,
     9,
     10,
     11,
-    12
+    12,
+    13
    ]
   }
  },
  "export_check": {
-  "seconds": 0.59,
+  "seconds": 0.34,
   "max_abs_err": 0.0,
-  "gguf_bytes": 1081248,
+  "gguf_bytes": 1082496,
   "implant_check": {
    "checked": true,
    "flagged": false,
@@ -1365,10 +1514,10 @@
    "checked_at": "export"
   },
   "keys": {
-   "book": "line 12 of verify_trial_book.jsonl is the trial's verdict; the book verifies",
+   "book": "line 13 of verify_trial_book.jsonl is the trial's verdict; the book verifies",
    "book_before_it": "practice readings 0, earlier fresh readings 0, earlier trials 0, as the trial's book had them",
-   "book_hash": "ee81e42b35de49ae585187c247623b0d406a6b3d3d609f6f15da13c15c310e76",
-   "book_seq": "12",
+   "book_hash": "c77bd79204cf7bbf98e98035e56e05cce0915e04471704eb84ba3168c4ea19ed",
+   "book_seq": "13",
    "compiled_against_is_edit_base": "yes: the same weights id, and every touched linear by its pin",
    "gate": "built and gated by the kernel on a loaded model for this export",
    "implant_checked_at": "export",
@@ -1379,6 +1528,7 @@
    "trial_fresh_verdict": "no better than control edits",
    "trial_judged_again": "yes: the book's readings, judged again with the registration, give this verdict",
    "trial_kind": "a dry run",
+   "trial_reasons": "Fresh kept-back gate returned \"no better than control edits\": small class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; large class failed \"other_sites_matched\" controls (at_least=39/39, p_fw=1.0, alpha=0.05; 39 of them gave no finite reading, or did not change the stream as much as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much).; near_misses abs effect (0.8392362594604492, ratio 0.6663079338657912) exceeded bar (abs <= 0.25, ratio <= 0.35). | Reworded small failed \"other_sites_matched\" controls (at_least=19/19, p_fw=1.0, alpha=0.05; 19 of them gave no finite reading, or did not change the stream as much as the edit did, and are counted as moving as much: of the control edits that were read and count, 0 moved the metric as much). | Reworded large failed \"other_sites_matched\" controls (at_leas",
    "trial_verdict": "failed"
   },
   "off_the_model": {
@@ -1390,17 +1540,17 @@
    "base_is_edit_base": true,
    "whole_base": true,
    "compiled_against_words": "yes: the same weights id, and every touched linear by its pin",
-   "gate": "rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel read it at line 6 of verify_trial_book.jsonl",
+   "gate": "rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel read it at line 7 of verify_trial_book.jsonl",
    "implant": "the trial's registration",
    "same_numbers_as_the_model_export": true,
-   "seconds": 0.54
+   "seconds": 0.52
   }
  },
  "rerun_intake": {
-  "seconds": 143.35,
+  "seconds": 140.51,
   "outcome": "accepted",
   "match_class": "same_figures",
-  "figures_compared": 668,
+  "figures_compared": 664,
   "figures_neither_trial_has": 0,
   "leave_given_for_a_changed_checkout": false,
   "class_diffs": {
@@ -1491,12 +1641,12 @@
     "outside_tolerance": 0
    },
    "target:large": {
-    "items": 16,
+    "items": 15,
     "no_figure": 0,
     "missing": 0,
     "largest_difference": 0.0,
     "outside_tolerance": 0,
-    "home_floor": 0.14301586151123047
+    "home_floor": 0.16733694076538086
    },
    "target:large:controls": {
     "items": 78,
@@ -1513,7 +1663,7 @@
     "outside_tolerance": 0
    },
    "target:large:folded": {
-    "items": 16,
+    "items": 15,
     "no_figure": 0,
     "missing": 0,
     "largest_difference": 0.0,
@@ -1527,12 +1677,12 @@
     "outside_tolerance": 0
    },
    "target:small": {
-    "items": 16,
+    "items": 15,
     "no_figure": 0,
     "missing": 0,
     "largest_difference": 0.0,
     "outside_tolerance": 0,
-    "home_floor": 0.14130401611328125
+    "home_floor": 0.11729717254638672
    },
    "target:small:controls": {
     "items": 78,
@@ -1549,7 +1699,7 @@
     "outside_tolerance": 0
    },
    "target:small:folded": {
-    "items": 16,
+    "items": 15,
     "no_figure": 0,
     "missing": 0,
     "largest_difference": 0.0,
@@ -1568,7 +1718,7 @@
  "ledger": {
   "ok": true,
   "entries": 14,
-  "head": "9186989462ca2cda9c84ea8429342d3a254da5326471558c8f1b2ffc15343b23",
+  "head": "c77bd79204cf7bbf98e98035e56e05cce0915e04471704eb84ba3168c4ea19ed",
   "first_bad": null,
   "why": null
  }

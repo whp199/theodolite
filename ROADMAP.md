@@ -2274,10 +2274,13 @@ in order:
     tracked).
 - **Phase 5 (of record, and out). Built, mended in review, and card-checked as a dry run** (19 and 20 November 2026;
   ARCHITECTURE §7). It came as pull request 4 from the agent that built phases 1b to 4; what follows is what it does
-  after the review’s mends, after four rounds of two independent readers each going over those mends, and after
-  the mends of what the fourth pair found, which the card has read and no reader has gone over yet.
+  after the review’s mends, after five rounds of two independent readers each going over those mends, and after
+  the mends of what the fifth pair found, which the card has read and no reader has gone over yet. One finding of
+  that pair is said and not mended, because it is a ruling: as the rule stands, no trial is expected to pass its
+  matched control edits (“What waits on the owner”).
   - **The trial** (`backend/level_trial.py`, `scripts/levelling_trial.py`: `reworded`, `register`, `verify`, `run`).
-    A trial is a fresh reading: asked what a claim is asked before it is registered, counted in the brief’s budget,
+    A trial is a fresh reading: asked what a claim is asked, when its folder is written and again when it is read,
+    counted in the brief’s budget,
     one to an edit, listed on every later sheet. Where the book holds a claim reading of the edit, a trial follows
     it only if that claim read a lead. Its bars are the ones a calibration reading wrote into the book it is read
     in, on the same weights, and the calibration note must follow from that book’s own three readings
@@ -2291,11 +2294,14 @@ in order:
     changed the stream at least as much as the edit did: over the prompt, over the positions that predict the
     answer and, where the brief’s metric is read at the last position, there too (a reading records the three:
     `delivered_prompt`, `delivered`, `delivered_end`). One that was quieter at any of them, or has no figure, is
-    counted as moving as much; the matching factor has no part in it. A trial’s matched control sets are drawn
-    spread (to share as few sites as the eligible sites allow) and count as no more separate draws than the
-    control edits that share no site with one another. Registration takes a look, with the base alone, at how
-    many that would be (`sizing_look`), records it in the folder and leaves a line in the book; the look sees the
-    count alone. It is of record only when its
+    counted as moving as much; the matching factor has no part in it, and the same-site family is not asked it
+    (what it delivered is printed). A trial’s matched control sets are drawn spread (one draw over all the edit’s
+    terms, to share as few sites as the eligible sites allow; a site is a neuron of a layer, whatever projection
+    changes it) and count as no more separate draws than the control edits found to share no site with one
+    another. **As that rule stands no trial is expected to pass it**, and a registration says so in its result
+    and its `RULES.md` ((al) below, and “What waits on the owner”). Registration takes a look, with the base
+    alone, at how many separate draws that would be (`sizing_look`), records it in the folder and leaves a line
+    in the book; the look sees the count alone. It is of record only when its
     process had asked nothing of the model before it, the checkout is clean (nothing changed, nothing untracked
     whatever git’s configuration says, no file git is told to overlook, no code where the runner imports from
     that no commit holds), its folder is, byte for byte, what the commit holds, the runner and reader are the
@@ -2323,38 +2329,49 @@ in order:
     the verdicts. A changed tracked file, or code no commit holds where its runner imports from, in the
     volunteer’s checkout, and a runner that is not the registered one, each need a leave, named in the verdict;
     other files git does not know there do not count. Whatever a bundle holds, an intake ends in words.
-  - **Checks.** `scripts/check_level_trial.py` 310, `check_levelling.py` 1,050, `check_level_door.py` 150,
-    `check_level_claim.py` 304, `check_level_page.py` 89, `check_lora_export.py` 76, `check_interface_defaults.py`
-    291, `check_local_only.py` 1,310 (at commit `66d771a`, the fifth round of mends). On the card, at that commit
-    from a clean checkout (20 November 2026, 06:00Z to 06:12Z, one run of each script): `scripts/verify_level_trial.py`
-    passed 35 of 35 (313.08 s, peak 18.542 GiB, 0 unpacker fallbacks, the book whole at 14 entries): a **dry run** of
+  - **Checks.** `scripts/check_level_trial.py` 322, `check_levelling.py` 1,056, `check_level_door.py` 150,
+    `check_level_claim.py` 307, `check_level_page.py` 89, `check_lora_export.py` 76, `check_interface_defaults.py`
+    291, `check_local_only.py` 1,310 (at commit `9d8c836`, the sixth round of mends). On the card, at that commit
+    from a clean checkout (20 November 2026, 08:14Z to 08:26Z, one run of each script): `scripts/verify_level_trial.py`
+    passed 37 of 37 (308.73 s, peak 18.542 GiB, 0 unpacker fallbacks, the book whole at 14 entries): a **dry run** of
     the E6 layer-50 ‘she’ ten (refused as it stood, for a process that had already read, a folder in no commit and a
     side book). The look at registration counted 39 of 39 and 19 of 19 control sets sharing no site (fewest eligible
     sites a neuron 42 on the sizing draw, 112 on the reworded set) and let it through. It read `failed`, its fresh
-    reading `no better than control edits`: fresh mean −1.49 (small) and −1.51 (large), floors 0.1413 and 0.1430,
-    near-miss harm 0.91; **none of its 39 matched control edits was at least as loud as the edit at every place**
-    (over the prompt the edit changed the stream 0.0104 and they a median of 0.0037; over the answer 0.0114 and
-    0.0059, 0.0034 to 0.0282; at the last position, where the metric is read, 0.0262 and 0.0051), so all 39 are
-    counted as moving as much; the 39 sets shared no site (48 or more eligible sites a neuron); 0 of 39 same-site
-    control edits moved as much (they delivered 0.0102, 0.0114 and 0.0256); the author’s prompt arm moved the metric
-    8.57 with a near-miss of 1.98 and matches it; the folded form the same bits on 16 of 16 items in both classes;
-    the reworded set −1.95 and −1.94 with none of its 19 control edits as loud as the edit (at the last position
-    0.0246 against a median of 0.0039); all 16 fresh items and all 8 reworded ones under the kernel’s item gate (the
-    base gives their forced answers −25.2 to −11.6 and −17.5 to −8.8 nats a piece); the checksum unchanged over 410
-    linears and 1,652 tensors; an adapter of 1,081,248 bytes that is the edit on the model and, off the model, on
-    the cached checkpoint, its trial keys read from the book and judged again, and refused at a dose of 50; and the
-    same card re-running its own kit `accepted` with the same figures, 668 of them, none without a figure, no leave
-    given. The other four: `verify_levelling_1b.py` 68 of 68 (96.0 s); `verify_level_door.py` 38 of 38 (104.6 s, peak
-    18.342 GiB; a planted and a canary reading replied 1.7001 s and 1.7002 s after they were asked, where the card
-    took 0.8823 s and 0.9068 s; its record now carries its date, its commit and its 38 checks); `verify_level_claim.py`
-    16 of 16 (159.83 s; the known answer read `works but harms` there, −1.01 and −0.98 with a near-miss harm of
-    0.86); and the page’s 11 of 11 against the committed book (16.39 s). Of those four only the door’s record is
-    kept from this run: the kernel’s, the claim’s and the page’s records are still those of their first runs (18
-    and 19 November). One round earlier, at `33057a7` (04:46Z to 04:58Z, records not kept), the same five passed
-    (34, 68, 38, 16, 11) and the dry run read `failed` with 4 of its 39 matched control edits within a factor of 2
-    of the edit’s over the answer and at the last position, the rule of that round (the edit 0.0242 at the last
-    position, they a median of 0.0034). **No trial of record has been read on the 31B, and no kit has been run on
-    another card.**
+    reading `no better than control edits`, on the 15 of its 16 fresh items that read: fresh mean −1.27 (small) and
+    −1.26 (large), floors 0.1173 and 0.1673, near-miss harm 0.84; **none of its 39 matched control edits was at
+    least as loud as the edit at every place** (over the prompt the edit changed the stream 0.0104 and they a
+    median of 0.0030, 5 of them as loud; over the answer 0.0120 and 0.0056, 0.0036 to 0.0177, 2 as loud; at the
+    last position, where the metric is read, 0.0275 and 0.0032, none), so all 39 are counted as moving as much,
+    where as read none moved the metric as much (the largest 0.15 against 1.27); the 39 sets shared no site (43
+    or more eligible sites a neuron); 0 of 39 same-site control edits moved as much (the largest 0.37), at 0.98,
+    0.99 and 0.98 of the edit’s loudness at the median; the author’s prompt arm moved the metric 7.97 with a
+    near-miss of 1.31 and matches it; the folded form the same bits on 15 of 15 items in both classes; the
+    reworded set −1.95 and −1.94 with none of its 19 control edits as loud as the edit at every place (at the last
+    position 0.0246 against a median of 0.0032); all 15 fresh items that read and all 8 reworded ones under the
+    kernel’s item gate (the base gives their forced answers −20.4 to −10.8 and −17.5 to −8.8 nats a piece); the
+    checksum unchanged over 410 linears and 1,652 tensors; an adapter of 1,082,496 bytes that is the edit on the
+    model and, off the model, on the cached checkpoint, its trial keys read from the book and judged again, and
+    refused at a dose of 50; the same edit registered again refused at its read, and refused at registration when
+    asked after the trial; and the same card re-running its own kit `accepted` with the same figures, 664 of
+    them, none without a figure, no leave given. The other four: `verify_levelling_1b.py` 68 of 68 (94.3 s);
+    `verify_level_door.py` 38 of 38 (103.4 s; its two written readings recorded peaks of 18.755 and 20.541 GiB;
+    a planted and a canary reading replied 1.7002 s and 1.7001 s after they were asked, where the card took
+    0.9093 s and 0.9041 s); `verify_level_claim.py` 16 of 16 (156.82 s; the known answer read `works but harms`
+    there, −1.33 and −1.36 with a near-miss harm of 0.61); and the page’s 11 of 11 against the committed book
+    (16.5 s).
+    Of those four only the door’s record is kept from this run: the kernel’s, the claim’s and the page’s records
+    are still those of their first runs (18 and 19 November). A first pass at `d14b487` (08:06Z to 08:11Z, records
+    not kept) was stopped after the trial’s script: its dry run read `failed`, its fresh reading `kept the base`
+    (the large class’s floor 0.327, too loud to set a bar by; 15 of 16 items; −1.36 and −1.38; near-miss harm
+    0.77; none of 39 matched control edits as loud at every place), and three of the script’s 37 checks failed
+    for expecting all 16 fresh items to read, which the script now counts. One round earlier, at `66d771a`
+    (06:00Z to 06:12Z; the trial’s and the door’s records of that run were the ones kept until this round), the
+    five passed (35, 68, 38, 16, 11) and the dry run read `failed`, its fresh reading `no better than control
+    edits`, −1.49 and −1.51, with none of 39 as loud at every place. Before that, at `33057a7` (04:46Z to 04:58Z,
+    records not kept), the same five passed (34, 68, 38, 16, 11) and the dry run read `failed` with 4 of its 39
+    matched control edits within a factor of 2 of the edit’s over the answer and at the last position, the rule
+    of that round (the edit 0.0242 at the last position, they a median of 0.0034). **No trial of record has been
+    read on the 31B, and no kit has been run on another card.**
   - **Mended in review** (the review of pull request 4, 19 November 2026: ten findings, each shown by a probe, and
     what two independent readers added). As it arrived:
     (1) a trial took any bar set unless a flag was given: the committed trial book’s own readings, judged again,
@@ -2543,8 +2560,10 @@ in order:
     (ad) The control edits that counted were quieter than the edit. A control edit counted when it had changed
     the stream within a band about the edit’s figure, and on the record those in the band sat at about two
     thirds of it; with such control edits the printed level is too small (in the reader’s simulation, where a
-    set moves the metric by what it delivered times a random factor, an edit that is nothing special topped 39
-    of them in 8 to 9% of draws where 2.5% was printed). And the band was the registered matching factor, which
+    set moves the metric by what it delivered times a random factor and the 39 are drawn again and again from
+    the record’s control edits that were in the band, an edit that is nothing special topped all 39 in 8 to 9%
+    of draws when that factor was normal and in 5.4 to 5.7% when it was a Student’s t of three degrees of
+    freedom, where 2.5% was printed). And the band was the registered matching factor, which
     a registrant can widen, as the look’s own warning advised. A control edit now counts only when it was at
     least as loud as the edit; there is no upper side, so the factor has no part in it; and the warning no
     longer points at a wider factor.
@@ -2568,11 +2587,12 @@ in order:
     (ah) Every item behind the recorded verdicts is under the kernel’s item gate, and no claim’s or trial’s
     text said so: the starter briefs’ answers are forced text (a name, a verb and an object drawn into a
     frame), and on the 31B the base gives them 12 to 25 nats a piece less than certainty, 15 of the 16 fresh items of
-    the dry run on record below everything the gate’s own caution was measured on. One look on the card at one item: the base wants to go
+    the dry run then on record (at `66d771a`) below everything the gate’s own caution was measured on. One look on
+    the card at one item (it is in no committed book: these figures are this file’s word): the base wants to go
     on reciting the question (“Although Claire was …”) and gives the five forced pieces −26.9, −18.0, −0.6,
     −28.3 and −16.4 nats; at the last position, where the odds are read, its own next piece is “the”, “her” or
-    “she”. A sheet and a sentence now say how many items were read under the gate, for the fresh items, the
-    reworded set and each battery.
+    “she”. A sheet and a sentence now say how many items were read under the gate, for the fresh items and the
+    reworded set (for a battery only a trial’s sheet did then: see (ar)).
     (ai) The look at registration ran the base over fillings of kept-back frames and left no line, and the
     kernel function under it handed back the scores of the edit’s own neurons there. It now leaves one note in
     the book (`trial_look`) and gives counts alone. Its warning contradicted itself when the control sets could
@@ -2586,14 +2606,99 @@ in order:
     writer that makes it safe to write.
     (ak) Smaller: a claim with a prompt arm too long to make an item of was registered, read five times and
     ended on an error with no verdict (a trial’s arms were asked beforehand, a claim’s were not); a prompt
-    arm’s rule carried a clause, “or no worse than the edit’s”, that could change no verdict; a package behind
+    arm’s rule carried a clause, “or no worse than the edit’s”, that changes no verdict under bars that gate on
+    near misses (see (at)); a package behind
     a folder that is a link under `backend/` was not seen by the look for code no commit holds; the trial’s
     rule preset was not raised when its rule changed, so an older folder was refused as “changed by hand” (it
-    is `trial-2` now, and the claim gate’s rule version 2); an adapter’s dose was asked in other arithmetic than
+    became `trial-2`, and the claim gate’s rule version 2); an adapter’s dose was asked in other arithmetic than
     the kernel’s; a plant’s column lengths unpacked its whole projection on every reading; three more places
     said “delivery-matched”; the door’s record carried no date, commit or checks until it was read again; and
     this file gave the door’s first run’s figures for the record now kept, and called a dry run “now on
     record” that no longer was.
+    **And what two reviews of the fifth round found** (20 November 2026: seven findings from the reading for
+    validity and eleven from the reading for bugs; mended at commits `d14b487` and `9d8c836`, which no reader
+    has gone over. The first is said, not mended).
+    (al) The fifth round’s rule is one no trial is expected to pass, and the texts named the wrong cause. A
+    matched control edit counts only when it was at least as loud as the edit at every place compared. But a
+    stand-in is drawn from a band on both sides of what its neuron is expected to deliver, so some of an edit’s
+    control edits are quieter than it by the draw alone; each of those is counted as moving as much; and at the
+    level a pass allows none of 39 (one of 99). On the record of that round 3 of the known answer’s 39 were as
+    loud as it over the answer, where the matching does look (5 over the prompt, none at the last position).
+    The texts had said it of one edit, blamed where the pre-pass looks, and named two remedies: a pre-pass
+    where the metric is read, and control edits scaled to the edit. A pilot on the card read both (next
+    bullet), and neither gives a rule that can be met within the kernel’s caps. The texts now say it of any
+    trial; a registration says it in its result and its `RULES.md` (`level_trial.RULE_STANDS_SAY`), and the
+    command line prints it at registration and before a read of record. The rule itself is not changed: it is
+    the owner’s (“What waits on the owner”). The bold sentences had also left out that the known answer fails
+    on its harm to near misses alone. And `no better than control edits`, the claim gate’s name for a family
+    that did not reach the level, was carried bare by an adapter’s keys when, as read, no control edit had
+    moved the metric a seventh as far as the edit: a failed family’s reason now says how many control edits
+    that were read moved the metric as much, and an adapter carries the reasons beside the verdicts.
+    (am) Two control edits that changed one neuron through different projections of a layer were counted as
+    sharing no site: a site was a term’s own, and each term was drawn apart. This erred towards a pass (the
+    reader’s figures: ten neurons changed in two projections, 39 sets counted as 39 where 14 to 24 shared no
+    neuron). A site is a neuron of a layer, and the spread draw is one draw over all an edit’s terms.
+    (an) The spread draw let a neuron with thousands of eligible sites use up the few another had (the reader’s
+    probe: 42 among the others’ 3,000 gave fewer than 39 sets sharing no site on 59 of 200 seeds, where 42
+    exist; the look, on another seed, could not see it). A position now takes first the sites no position
+    with fewer could take. The count of sets sharing no site was taken one after another after the shuffle,
+    so it fell as more sets were asked for (99 asked of three neurons sharing 125 sites: 27 to 34 counted
+    where 41 exist; 99 is the default). The draw now says which sets it made of sites no earlier set had, and
+    the coverage counts those when that is more, after checking that they share none. And a draw that had
+    run out of sites looked through every pool at every pick (512 neurons sharing 8,000 sites: 65 s, now
+    0.2 s).
+    (ao) A trial counted a reading with no count of disjoint sets by the fewest different stand-ins it
+    recorded, which is no bound; it counts it as one draw. The look’s warning said “fewer control edits would
+    do” whenever enough sets were drawn, though what a pass needs is sets that share no site.
+    (ap) A trial was asked what a fresh reading is asked only when it was read: a folder was written, and a
+    look taken at fillings of the kept-back frames, for an edit that had already had its trial, and three
+    texts said otherwise. A registration asks it too. The look’s line was entered before the folder was made,
+    so a folder that could not be made left a look with no registration, and a book that could not be written
+    to raised an error that was no refusal; the folder is made first, and both are refusals in words.
+    (aq) Raising the claim gate’s rule version made a trial refuse every calibration taken before it, in
+    words that blamed its note, while a claim took the same bars with nothing said: the note was judged
+    against a bar set rebuilt under the new version. A note follows by the version its set names, and a
+    sheet says which version its bars were calibrated under.
+    (ar) The item gate’s count took in items that did not read and left out one that read with no finite
+    figure; a claim’s batteries carried no counts, and no sentence gave a battery’s, where this file said
+    “each battery”. The counts are over the items that read, and a sentence gives them for each battery.
+    “Every item of the starter briefs is under the gate” was recorded for the pronoun brief alone, and the
+    “one look on the card at one item” is in no committed book: both are now said as they are.
+    (as) The same-site family is not asked to be as loud as the edit, and the README implied every control
+    edit is. For a column edit it is built to the edit’s length in the stream (on the record it sat at 0.98
+    to 0.99 of the edit’s loudness); for a row edit nothing ties it there (on a stand-in the reader found its
+    median between 0.79 and 1.45 of the edit’s at the last position). A sentence now prints what it delivered
+    beside the edit’s. And a claim’s sentence printed its level beside two counts that gate nothing: it now
+    says that the level takes every matched control edit as a control and as a separate draw.
+    (at) Smaller: a claim’s verdict note and driver record kept each control edit’s own figure over the
+    prompt; an adapter’s dose was let through one part in a million past the cap, off the model, and a whole
+    number too long to print raised; the reason given for dropping “or no worse than the edit’s” from a
+    prompt arm’s rule was true only of bars that gate on near misses, as every calibrated set does (with a
+    set that does not, which no claim or trial is read with, 79 of 8,000 inputs the reader made up turn from
+    `lead, matched by a cheaper knob` to `lead`); a delivered figure near nought was compared between
+    cards to within 1e-9; the trial’s rule preset is `trial-3`; and stale lines: this file still called “now
+    on record” a dry run that was not, gave the door’s peak as 18.342 GiB (the allocator’s high mark at the
+    script’s end, since a reading last reset it; its two written readings recorded 18.755 and 20.541 GiB),
+    gave “8 to 9%” for a simulation that gave 5.4 to 5.7% under its other law, and “16 to 24 of 39” where a run
+    here gives 14 to 26; ARCHITECTURE still gave the fourth round’s band for sham edits; and the message of
+    commit `66d771a` says the base gives the starter items “12 to 20 nats” where its records say 11.6 to 25.2.
+  - **A pilot of the two remedies** (20 November 2026, on the card, at the code of `cea5f2b`; run by another
+    session of this review, in a worktree of its own. Its report, scripts and figures are **not in this
+    repository**, and what follows is that report as read here, not computed again). On the known answer,
+    with 16 practice items a run (15 read in the first), two runs, 39 control edits drawn spread at a factor
+    of 2:
+    matching where the metric is read gave 0 of 39 control edits as loud as the edit at the last position, in
+    each of three forms, on both runs, and cut the sets sharing no site to between 2 and 22. The reason is one
+    neuron: 5313 carries 95% and 99% of the edit’s score at the last position and is the loudest neuron of
+    layer 50 there; 5 other sites come within a factor of 2 of it, and by the pre-pass scores at most 4 sets of
+    ten other sites could reach the edit’s loudness there at all. Scaling each control edit’s dose up to the
+    edit’s loudness gave 38 or 39 of 39 that count, but at doses with a median of 6.4 and 12.5 (up to 21),
+    where the kernel’s cap is 4 and only 7 and 12 of the 39 stay within it; past dose 1 a silence turns its
+    neurons round and amplifies them, and is no silence. In all 17 readings no control edit moved the log-odds
+    as much as the edit (−1.97 to −2.19): at the edit’s own loudness the scaled control edits moved it a
+    median of 0.07 and at most 0.40, and the 39 same-site control edits, at 0.97 to 0.99 of the edit’s
+    loudness, at most 0.58 (one reading). Not read there: kept-back items, the reworded set, the folded form,
+    any other edit, brief, layer or card.
   - **Left open, and known.**
     The fresh items of a trial are new fillings of the brief’s kept-back frames (8 for the pronoun brief), the
     frames the claim that made the edit a lead has read: the frames are not new to the edit. The reworded set is
@@ -2619,40 +2724,65 @@ in order:
     trial would say of it; but an edit that is a lead and whose claim drew `kept the base` or `did not replicate`
     has none there either. The rule is the builder’s, and with verdicts that turn on the draw it decides which
     edits can ever have a trial: the owner’s to change.
-    **What “matched” control edits are matched on, and what follows.** The base pre-pass that picks a neuron’s
-    stand-ins looks at activations over the positions that predict the answer (`levelling._score_sites`). The
-    three paired starter briefs read their metric at the last position, which it does not look at, and on the
-    31B the known answer’s neurons are loudest there: the edit changed the stream 0.0262 at the last position
-    against 0.0114 over the answer, and its matched control edits a median of 0.0051 and 0.0059. So no control
-    edit of that edit is as loud as it where it matters, a trial sets all of them aside, and **no trial of the
-    known answer can pass until the matching changes**. A pre-pass over the positions a brief’s metric reads, or
-    control edits scaled to the edit’s own loudness, would give control edits that count. Either changes every
-    paired reading’s control edits, a claim’s among them, and is the owner’s to order.
+    **What a trial asks of its matched control edits, and why none is expected to pass it.** The base pre-pass
+    that picks a neuron’s stand-ins looks at activations over the positions that predict the answer
+    (`levelling._score_sites`) and takes sites within a factor, on both sides, of what the neuron is expected to
+    deliver there. A trial then counts a control edit only when, as read, it was at least as loud as the edit
+    over the prompt, over the answer and (for the three paired starter briefs) at the last position. Two things
+    follow. By the draw alone some control edits are quieter than the edit even over the answer (on the record
+    2 of the known answer’s 39 were as loud there, 5 over the prompt), and nothing matches them at the other two
+    places; each quieter one is counted as moving as much, and a pass allows none of 39. And for the known
+    answer the last position cannot be matched at all: there the edit changed the stream 0.0275 against 0.0120
+    over the answer, its matched control edits a median of 0.0032, and by the pilot above its neuron 5313 is the
+    loudest of layer 50 there. **So no trial is expected to pass, and none of the known answer can**; the two
+    remedies an earlier text named (a pre-pass where the metric is read; control edits scaled to the edit) do
+    not mend it within the kernel’s caps. An edit whose neurons were among the quietest of their layer would
+    have louder stand-ins and might be an exception: none has been read. What the readings do show of the
+    question behind the rule, whether the edit only does what a change of its size does, is under “What waits
+    on the owner”.
     **The matched control edits of a claim reading** (as merged, Phase 3) are still counted for the edit
     whatever they delivered, are still drawn each set on its own, and are each counted as a draw: a `lead` there
     can rest on control edits that changed the stream a fifth as much as the edit where the metric is read, in
     sets that share sites (in a simulation of pools like the card’s, one neuron with 49 eligible sites and nine
-    with thousands, 16 to 24 of 39 sets drawn each on its own share none). The sheet and the sentence print how
-    many were as loud as the edit and how many share no site. Judging a claim’s control edits as a trial’s are
-    would, as things stand, turn this brief’s claim readings to `no better than control edits`.
+    with 2,000 each, 14 to 26 of 39 sets drawn each on its own share none, over 400 seeds). The sheet and the
+    sentence print how
+    many were as loud as the edit and how many share no site, and the sentence says that its level counts
+    them all. Judging a claim’s control edits as a trial’s are would, as things stand, let no claim reading
+    read a lead: its matched family would fail as a trial’s does.
     “At least as loud” is a line at a ratio of 1 on figures that move with the batch class and the card by
     about a part in a hundred: a control edit that sits there counts on one card and not on another, and each
     one set aside is one more counted as moving as much (with 39 control edits at two fresh readings a brief, a
     pass needs none). An intake says when two cards set aside different ones. The three figures are sizes of a
     change, not its direction, and means over the items read.
-    The count of separate draws is the control edits that share no site, counted one after another in the order
-    drawn: a lower count than the most that could be found, and exact only under a null in which sites carry
-    separate effects.
+    The count of separate draws is of control edits found to share no site (a neuron of a layer, whatever
+    projection changes it): those the spread draw made of sites no earlier set had, or those found taking the
+    sets one after another as they stand, whichever is more. It is never more than there are. It can be fewer
+    than the most there are, where pools overlap in ways the draw’s one preference does not see (it knows which
+    pools are narrower and nothing else); and it is exact only under a null in which sites carry separate
+    effects.
+    The look’s line in the book records, for each of its two readings, the fewest sites eligible for one neuron
+    at the matching factor the registrant chose. Asked at several factors, that says where the edit’s neurons
+    sit among their layer’s on fillings of the kept-back frames, with no reading of the edit. Each look leaves
+    its line, so how often an edit was looked at, and at which factors, is in the book.
     The look taken at registration is taken on other fillings of the frames than the trial will draw, so it can
-    err either way (on the card it found 42 eligible sites for the narrowest neuron and the trial’s own draw 48),
+    err either way (on the card it found 42 eligible sites for the narrowest neuron and the trial’s own draw 43),
     and it sees the count alone: whether the control edits will be as loud as the edit is known only when the
-    trial is read, which is why a trial of the known answer passes the look and fails.
-    **Every item of the starter briefs is under the kernel’s item gate on the 31B.** Their answers are forced
+    trial is read, which is why a trial of the known answer passes the look and fails. The card script’s check of
+    the look sets the look’s own fields beside one another and does not take the look again (on the stand-in a
+    check holds the look to figures worked out beforehand).
+    **Every item of the pronoun brief on record is under the kernel’s item gate on the 31B.** The other three
+    starter briefs’ items are built the same way and have not been recorded. Their answers are forced
     stems the base would not have written; the gate’s caution was measured on items the base gave −12.13 nats a
-    piece or more, and the trial’s fresh items sit at −11.6 to −25.2 (15 of the 16 below it). What that does to a reading of the odds
+    piece or more, and the fresh items of the dry run on record sit at −10.8 to −20.4 (14 of the 15 that read
+    below it). What that does to a reading of the odds
     after such a stem has not been measured. Whether the briefs’ items should be ones the base finds likely is
-    the owner’s (on the one answer looked at, beginning it with a space cost its first piece about 17 nats).
-    No least number of items is asked of a battery: the sheet and the sentence say how many of those given read.
+    the owner’s (on the one answer looked at, in a look that is in no committed book, beginning it with a space
+    cost its first piece about 17 nats).
+    No least number of items is asked of a trial or of a battery: the sheet and the sentence say how many of
+    those given read. An item whose two row counts disagree is left out by the kernel: one of the 16 fresh items
+    in each of the last two dry runs (a ratio of 3.08 and of 3.11 against a bar of 3.00), and the labelled
+    panel’s first item in each of the three records looked at (3.01), so that panel’s figures on the card are
+    of three items.
     Under a plant a matched reading’s coverage (how many sites were eligible) is the planted model’s and differs
     from a canary’s, as any figure of a planted model may; and a neuron the plant silenced has no stand-ins, so
     a matched reading of an edit on it ends void.
@@ -2675,6 +2805,16 @@ in order:
     An intake cannot tell a re-run from the home book’s own lines copied into a new book: the home book of a
     trial that is out for re-run stays unpublished until the returns are in. (The committed card record is a dry
     run’s book, and is public.)
+    What an intake’s `accepted`, `same_figures` shows is chiefly that the items’ own effects agree. A control
+    edit’s mean is compared within one home floor, and on the 31B those means are themselves of a floor’s size
+    (on the record up to 0.15, against floors of 0.12 and 0.17), so that comparison passes almost whatever two
+    cards read. Another card is also
+    likely to draw other control sets altogether: a site is eligible when its score is within a band, and in
+    the reader’s simulation a score that differed by a part in ten thousand left the sets the same in none of
+    60 draws (at the median all 39 differed; by a part in a million, they were the same in 57 of 60). The
+    control edits’ figures are then of other edits, and the intake would say the figures disagree. A delivered
+    figure is compared within 5% of the home’s and never closer than 1e-5, which is a guess. No second card has
+    run a kit.
     An edit rebuilt off the model is exported only when a level book holds a reading of it; that reading is the
     kernel’s own line, in a book with no signature. On the 31B the command line has no export on the model, so
     every export there is of this kind.
@@ -2711,7 +2851,7 @@ in order:
     near-miss harm of 0.67; −1.50 and −1.50 with 0.92); a dry-run trial `works but harms` (−1.49 and −1.46,
     0.84); a dry-run trial that read `no better than control edits`, once a trial counted the 20 of its 39
     matched control edits that did not deliver within a factor of 2 of the edit’s as moving as much; and the
-    dry run now on record, `kept the base` (the small class’s floor 0.2414, where a quarter of the least effect
+    dry run then on record, `kept the base` (the small class’s floor 0.2414, where a quarter of the least effect
     is 0.1875; means −1.29 and −1.30). In fifteen readings: nine `works but harms`, two `did not replicate`,
     three `kept the base`, and one `no better than control edits` by the trial’s new count.
     Later on 20 November 2026, on the code of the fourth and of the fifth round (one run of each card script at
@@ -2721,19 +2861,47 @@ in order:
     of the edit’s over the answer and at the last position, means −1.51 and −1.50; then none of 39 at least as
     loud as the edit, means −1.49 and −1.51). In nineteen readings: ten `works but harms`, four `kept the base`,
     three `no better than control edits`, two `did not replicate`.
+    On the code of the sixth round (20 November 2026, 08:06Z to 08:26Z: one card pass stopped after its
+    trial script, and one whole): two more dry-run trials, each judged on the 15 of its 16 fresh items that
+    read, `kept the base` (the large class’s floor 0.327, too loud to set a bar by; means −1.36 and −1.38;
+    near-miss harm 0.77) and `no better than control edits` (none of 39 as loud as the edit at every place;
+    means −1.27 and −1.26; 0.84); and one more claim reading, `works but harms` (−1.33 and −1.36, near-miss
+    harm 0.61). In twenty-two readings: eleven `works but harms`, five `kept the base`, four `no better than
+    control edits`, two `did not replicate`.
 - **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
   trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the
-  builders there and the owner’s to change. First, because a `passed` rests on it: a trial counts a matched or
-  sham control edit for the edit only when it was at least as loud as the edit (over the prompt, over the answer
-  and, for a metric read at the last position, there too; one with no figure does not count), draws its control
-  sets spread, and counts them as no more separate draws than those that share no site, where a claim reading
-  (as merged) does none of these but for its sham edits. By that rule no trial of this brief’s known answer can
-  pass: none of its 39 matched control edits was as loud as the edit at the last position, where the kernel’s
-  pre-pass does not look, while its claim readings count all 39 for it. **The first decision is the kernel’s
-  matching**: a pre-pass over the positions a brief’s metric reads, or control edits scaled to the edit’s own
-  loudness; either changes every paired reading’s control edits. Then: whether a claim should judge its control
-  edits as a trial does and draw its sets spread; whether the starter briefs’ items, every one of which the
-  kernel reads under its item gate on the 31B, should be ones the base finds likely; that a trial is not read
+  builders there and the owner’s to change. **First, because nothing can pass until it is settled: what a trial
+  asks of its control edits.** As built, a trial counts a matched or sham control edit for the edit only when it
+  was at least as loud as the edit (over the prompt, over the answer and, for a metric read at the last
+  position, there too; one with no figure does not count), draws its control sets spread, and counts them as no
+  more separate draws than those found to share no site, where a claim reading (as merged) does none of these
+  but for its sham edits. No trial is expected to pass that rule, and none of the known answer can (“Left open”,
+  above). What the readings so far say of the question the rule was written to guard, whether the edit only
+  does what any change of its size does: in the records looked at, no matched control edit moved the metric a
+  fifth as far as the edit (on the record the largest moved it 0.15 against 1.27); none of the 39 same-site
+  control edits, at 0.98 to 0.99 of the edit’s loudness at the median, moved it half as far (the largest 0.37
+  on the record, 0.58 in the pass before it); and in the pilot, control edits scaled up to the edit’s loudness
+  moved it at most 0.40 against 1.97 to 2.19. The ways to settle it, each with what it costs:
+  (a) leave the rule: nothing passes, and the trial stays built and unread of record;
+  (b) let the same-site family answer for size, and count the matched other-site family as read, with its
+  loudness printed beside it. The same-site control edits are the edit’s own sites changed in random directions
+  at the edit’s own length in the stream, so for a column edit they are as loud as it by how they are made. It
+  would want a tolerance (they sit two or three parts in a hundred under the edit, and by the rule as written
+  every one would be set aside) and a rule for row edits, where nothing ties them there. It is a change to the
+  trial’s rule and none to the kernel. A `passed` would then say that other sites, quieter ones, did not do it,
+  and that a change of the edit’s size at its own sites did not;
+  (c) scale each other-site control edit up to the edit’s loudness (the pilot’s second way, and the one its
+  report recommends of the two it read): control doses past the kernel’s cap of 4 (medians of 6.4 and 12.5
+  there), each recorded, a calibration on the items read, and control edits that past dose 1 are reversed,
+  amplified writes and no longer silences. It is a change to the kernel, which is on `main`;
+  (d) match where the metric is read (the pilot’s first way): it was read, and does not work for this edit.
+  Whichever is chosen, 39 control edits at two fresh readings a brief leave no slack: a pass needs all 39 sets
+  to share no site and none to move as much. And until it is settled, whether a trial may be read of record at
+  all is the owner’s too: as built it may, with a notice printed at registration and before the read.
+  Then: whether a claim should judge its control
+  edits as a trial does and draw its sets spread; whether the starter briefs’ items, of which every one of the
+  pronoun brief’s on record is read under the kernel’s item gate on the 31B, should be ones the base finds
+  likely; that a trial is not read
   of record when the look taken at its registration says it could not pass; that a trial whose fresh reading a
   cheaper knob matched reads `passed, matched by a cheaper knob` and not `failed`, and the rule for a match
   (0.95 of the effect, with a near-miss effect within the registered bar in size or as a share of its own
@@ -2743,7 +2911,8 @@ in order:
   read in the level book; 99 control edits a family by default and 19 for the reworded set, which is judged
   alone at the level; 16 fresh items (the proposal spoke of 256); the folded tolerance; five uses of a reworded
   item; the tolerances of an intake (a figure within one home floor or 5% of the home figure, never under 0.02;
-  the same figures to 1e-6) and its two leaves; that an adapter is exported off the model only for an edit a
+  a delivered figure within 5% of the home’s and never closer than 1e-5; a count of draws the same; the same
+  figures to 1e-6) and its two leaves; that an adapter is exported off the model only for an edit a
   book shows the kernel has read, and with no trial behind it, saying so, and never past the kernel’s cap on a
   dose; a blinded reply’s wait of twice its
   price; that the compare tab replays a trial at all. The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
