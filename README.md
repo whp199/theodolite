@@ -281,15 +281,14 @@ environment where a model, today’s or the next, forms a hypothesis about Gemma
 tests it quickly and tries again.
 
 Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 standing checks passed on the 31B),
-slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,046/1,046 CPU checks today, and 68/68 31B card
+slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,050/1,050 CPU checks today, and 68/68 31B card
 checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (150/150 CPU/sandbox checks
 in `scripts/check_level_door.py`, 38/38 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
-(303/303 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`),
+(304/304 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`),
 Phase 4’s Person’s Page (89/89 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
-`scripts/verify_level_page.py`), and Phase 5’s trial of record, owner’s export and volunteer’s re-run (298/298 CPU
-checks in `scripts/check_level_trial.py`; on the 31B, 32/32 checks of a dry run in `scripts/verify_level_trial.py`,
-read on 20 November 2026 before the last round of review mends, which the card has not read yet: no trial of
-record has been read) were built and card-checked:
+`scripts/verify_level_page.py`), and Phase 5’s trial of record, owner’s export and volunteer’s re-run (310/310 CPU
+checks in `scripts/check_level_trial.py`; on the 31B, 35/35 checks of a dry run in `scripts/verify_level_trial.py`:
+no trial of record has been read) were built and card-checked:
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
   projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by
   `post_feedforward_layernorm`), scale, silence, set or add to a row of `gate_proj` or `up_proj` (edited coordinates
@@ -319,17 +318,18 @@ record has been read) were built and card-checked:
   tolerance) into the registration with none of it the driver’s to set, compare author prompt arms, and issue
   bounded harness-authored Claim Sheets (`lead`, `lead, matched by a cheaper knob`, `no better than control edits`,
   `works but harms`, `did not replicate`, `kept the base`, `void`). Sham edits are the driver’s own: they are
-  registered by hash with the rule it declares, checked for shape, and counted against the edit when they do not
-  move the stream as it does. A sheet says what a reader needs to weigh it: which book the reading was taken in,
+  registered by hash with the rule it declares, checked for shape, and counted against the edit when they move
+  the stream less than it does. A sheet says what a reader needs to weigh it: which book the reading was taken in,
   whether the brief’s kept-back frames are published (the four starter briefs’ are, in this repository) and that
   only their wording is guarded, who supplied the sham edits, how far the control edits of a paired reading moved
   the stream (“matched” other sites are matched on what a base pre-pass expects of each over the answer, and the
-  sheet says how many then delivered within the matching factor of the edit, there and at the last position,
-  where the starter briefs read their metric; in a claim reading that count gates nothing), and, for a written
-  reading, that its loops were counted by rule and not by a person. A prompt arm is said to match an edit when it
-  moves the metric at least 0.95 times as far and its near-miss effect is within the registered bar or no worse
-  than the edit’s, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on
-  its effect alone.
+  sheet says how many were then at least as loud as the edit over the prompt, over the answer and at the last
+  position, where the starter briefs read their metric; in a claim reading that count gates nothing), how many
+  of its items the kernel read under its item gate (the starter briefs’ forced answers are text the base would
+  not have written: on the 31B every fresh item is under the gate), and, for a written reading, that its loops
+  were counted by rule and not by a person. A prompt arm is said to match an edit when it moves the metric at
+  least 0.95 times as far and its near-miss effect is within the registered bar, in size or as a share of its own
+  effect; an arm whose near-miss effect was not read matches on its effect alone.
 
 - **Person’s Page (`backend/level_routes.py`, Vault `compare` tab).** Base, edit, and 1–19 control edits heard side by
   side in one batched forward beneath red-italic rubrics, with a two-batch-class paired read-out table, HTTP 409
@@ -342,12 +342,15 @@ record has been read) were built and card-checked:
   one of the brief’s fresh readings, follows the edit’s claim reading only when that read a lead, takes only bars
   whose calibration follows from the book’s own readings, reads the edit in both batch classes with the folded form
   (the change written into the weights) beside the per-row form on every item, against control edits that count
-  for it only when, as read, they changed the stream within the registered factor of what it changed it (2 by
-  default: in the 31B’s dry run on record those that counted had changed it about two thirds as far), over the
-  answer and, for a metric read at the last position, there too. Its matched control sets are drawn so that a
-  neuron’s stand-ins repeat as little as its eligible sites allow, and count as no more separate draws than the
-  fewest different stand-ins one neuron had. And it reads a reworded set, items written outside the brief’s
-  generator. Nothing certain to be refused is entered in the book, and a trial that is
+  for it only when, as read, they changed the stream at least as much as it did: over the prompt, over the answer
+  and, for a metric read at the last position, there too. Its matched control sets are drawn to share as few
+  sites as the eligible sites allow, and count as no more separate draws than the control edits that share no
+  site with one another. And it reads a reworded set, items written outside the brief’s generator. **On the 31B
+  no trial of the known answer can pass this yet.** Its “matched” control edits are matched by a pass over the
+  unedited model that looks at the answer’s positions; where the metric is read the edit changes the stream
+  five to seven times as much as their median, and in the dry run on record none of the 39 was as loud as the
+  edit at every place. What control edits are matched on is the kernel’s, on `main` since Phase 1b, and the
+  owner’s to change (ROADMAP §viii). Nothing certain to be refused is entered in the book, and a trial that is
   entered gets a verdict whatever ends it short of its process being killed: `passed`, `passed, matched by a
   cheaper knob`, `failed` or `void`. It is of record
   only when it is the first thing its process asks of the model, from a clean checkout (nothing changed, nothing
@@ -355,7 +358,8 @@ record has been read) were built and card-checked:
   holds its registration folder committed, run by the files hashed at registration, in the level book, on a seed
   that was drawn, and when the look taken at its registration (with the base alone, at how many separate draws its
   control sets would count as) did not say it could not pass; otherwise it is refused, or read as a dry run when
-  that is asked for. Each of those is looked at and none is a signature: “read once” and a brief’s budget are facts
+  that is asked for. The look leaves a line in the book and sees that count alone: it cannot see whether the
+  control edits will be as loud as the edit. Each of those is looked at and none is a signature: “read once” and a brief’s budget are facts
   about one book, and the harness cannot see another book, a copy of this one, or this one cut back. Its fresh
   items are new fillings of the frames every fresh reading of the brief is drawn from: the reworded set is what
   stands outside them, and once its folder is committed it is as public as that commit. An **export** writes an
@@ -366,10 +370,13 @@ record has been read) were built and card-checked:
   the kernel has read it. A **re-run kit** asks a volunteer’s card for the home trial’s own
   items, and the intake judges the returned book against the home book, figure by figure. It cannot tell a re-run
   from the home book’s own lines copied into a new book, so a home book stays unpublished until its returns are in.
-  On the 31B only a dry run has been read, of the known answer: it read `failed`, its fresh reading “kept the
-  base”, which is the claim gate’s name for a reading that cleared no bar (here the floor was too loud to set one
-  by; the edit moved the metric by −1.29). No trial of record has been read, and no kit on another card; and that
-  dry run was read before the last round of mends, which changed how a trial counts its control edits.
+  On the 31B only dry runs have been read, all of the known answer (the layer-50 ‘she’ ten). The one on record
+  read `failed`: the edit moved the metric by −1.49 and −1.51 in the two batch classes, with a near-miss harm of
+  0.91, and its fresh reading reads `no better than control edits` because no control edit counted. That edit’s
+  verdict has turned on the draw: in nineteen readings on the card it read `works but harms` ten times, `kept the
+  base` four (the claim gate’s name for a reading that cleared no bar, a floor too loud to set one by among
+  them), `no better than control edits` three (by a trial’s count of its control edits) and `did not replicate`
+  twice. No trial of record has been read, and no kit has run on another card.
 
 Three of Phase 5’s questions were ruled on by the owner on 19 November 2026 (a re-run repeats the home items; a trial
 has a reworded set; a trial spends a fresh reading). What else the build chose there is listed in ROADMAP §viii as
