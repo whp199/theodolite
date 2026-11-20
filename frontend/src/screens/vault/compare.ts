@@ -171,6 +171,11 @@ export interface ReplayCard {
   book_seqs?: number[] | null;
   selection_mode?: string | null;
   controls_per_family?: number | null;
+  folded_summary?: Record<string, unknown> | null;
+  reworded_summary?: Record<string, unknown> | null;
+  trial_sha256?: string | null;
+  of_record?: boolean | null;
+  not_of_record?: string[] | null;
   recorded_tag?: string | null;
 }
 
@@ -466,7 +471,7 @@ export function formatPlainEdit(form: CompareFormState): string {
           : `Scale ${countTxt} on ${form.linear} rows in ${layerTxt} by ×${form.factor || "…"}`;
   const ctlTxt =
     form.controlsFamily === "other_sites_matched"
-      ? `${form.controlsCount || "?"} delivery-matched other-site control edits`
+      ? `${form.controlsCount || "?"} matched other-site control edits`
       : form.controlsFamily === "same_site"
         ? `${form.controlsCount || "?"} same-site random-direction control edits`
         : `${form.controlsCount || "?"} random other-site control edits`;
@@ -484,7 +489,7 @@ export function fmtSigned(v: number | null | undefined, digits = 4): string {
 }
 
 export function controlsFamilyGloss(fam: string | null | undefined): string {
-  if (fam === "other_sites_matched") return "other sites matched on delivered stream change";
+  if (fam === "other_sites_matched") return "other sites matched on what a base pre-pass expects each to deliver";
   if (fam === "same_site") return "same sites with random masked directions of equal length";
   if (fam === "sham_target") return "declared sham-target control edits";
   return "other sites of the same layer and size";
@@ -493,11 +498,37 @@ export function controlsFamilyGloss(fam: string | null | undefined): string {
 /** Label for a ledger replay row's verdict / status badge. */
 export function statusTone(status: string | null | undefined): "good" | "warn" | "bad" | "neutral" {
   const s = (status || "").toLowerCase();
-  if (s === "lead") return "good";
+  if (s === "lead" || s === "passed") return "good";
   if (s === "ok" || s === "calibrated" || s === "registered") return "neutral";
-  if (s === "lead, matched by a cheaper knob" || s === "kept the base" || s === "unstable") return "warn";
-  if (s === "works but harms" || s === "no better than control edits" || s === "did not replicate" || s === "void" || s === "refused") {
+  if (
+    s === "lead, matched by a cheaper knob" ||
+    s === "passed, matched by a cheaper knob" ||
+    s === "kept the base" ||
+    s === "unstable"
+  ) {
+    return "warn";
+  }
+  if (
+    s === "failed" ||
+    s === "works but harms" ||
+    s === "no better than control edits" ||
+    s === "did not replicate" ||
+    s === "void" ||
+    s === "refused"
+  ) {
     return "bad";
   }
   return "neutral";
+}
+
+/** Label and tone for a retention battery chip (never calls an unavailable battery "passed"). */
+export function batteryOutcome(
+  bv: Record<string, unknown> | null | undefined,
+): { label: "passed" | "failed" | "not run"; tone: "good" | "bad" | "neutral" } {
+  const available = bv?.available !== false;
+  const gating = Boolean(bv?.gating);
+  if (!available) {
+    return { label: "not run", tone: gating ? "bad" : "neutral" };
+  }
+  return Boolean(bv?.passed) ? { label: "passed", tone: "good" } : { label: "failed", tone: "bad" };
 }

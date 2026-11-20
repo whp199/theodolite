@@ -630,8 +630,8 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     check(got_fwd_cap, "5: forward budget cap refuses over-budget capture")
     sess_tiny.close()
 
-    # Planted vs Canary blinding check (arbiter.md row 33)
-    plant = we.build(hP.lm, [we.silence(3, [4, 9])], model_id=hP.model_id, weights_id=hP.weights_id)
+    # Planted vs Canary blinding check (arbiter.md row 33 + review leftover: predicted seconds & lower="whole")
+    plant = we.build(hP.lm, [we.silence(0, [4, 9])], model_id=hP.model_id, weights_id=hP.weights_id)
     s_plant = lses.LevelSession(
         hP, tmp / "sess_planted", reach="sandbox_no_weights", backend="claude",
         budget=lses.SessionBudget(min_controls=1), book_path=book, probe_on_start=False, plant=plant,
@@ -644,17 +644,49 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     c_c = {k: v for k, v in s_canary.harness_card().items() if k != "session_id"}
     check(c_p == c_c and c_p["with_healthy_reference"] is False,
           "5: planted and canary sessions present identical blinded harness cards (sandbox_no_weights)")
-    rp_blind = s_plant.read({
-        "name": "blind_read", "kind": "paired", "edit": {"terms": [{"layer": 3, "scale": [4, 9], "factor": 2.0}]},
-        "items": ["alpha"], "controls": {"count": 1, "seed": 0}, "rows": {"small": 8, "large": 16},
-    }, items)
-    rc_blind = s_canary.read({
-        "name": "blind_read", "kind": "paired", "edit": {"terms": [{"layer": 3, "scale": [4, 9], "factor": 2.0}]},
-        "items": ["alpha"], "controls": {"count": 1, "seed": 0}, "rows": {"small": 8, "large": 16},
-    }, items)
+    # Edit at layer 4 while hidden plant is at layer 0, with multi-forward controls so restart-layer leak would show
+    blind_plan = {
+        "name": "blind_read", "kind": "paired", "edit": {"terms": [{"layer": 4, "scale": [4, 9], "factor": 2.0}]},
+        "items": ["alpha"], "controls": {"count": 6, "seed": 0}, "rows": {"small": 8, "large": 16},
+    }
+    ep_blind = s_plant.estimate(blind_plan, items)
+    ec_blind = s_canary.estimate(blind_plan, items)
+    t_p0 = time.perf_counter()
+    rp_blind = s_plant.read(blind_plan, items)
+    t_p1 = time.perf_counter()
+    rc_blind = s_canary.read(blind_plan, items)
+    t_c1 = time.perf_counter()
+    bv_plant = s_plant.book_view(tail=4)["entries"]
+    t_k0 = time.perf_counter()
+    cap_p = s_plant.capture([items["alpha"]], [items["beta"]], 2)
+    t_k1 = time.perf_counter()
+    cap_c = s_canary.capture([items["alpha"]], [items["beta"]], 2)
+    # a reading the kernel refuses (a layer the model lacks): priced at nothing, and its reply waits all the same
+    t_r0 = time.perf_counter()
+    rr_blind = s_plant.read({**blind_plan, "name": "blind_refused",
+                             "edit": {"terms": [{"layer": 99, "scale": [4], "factor": 2.0}]}}, items)
+    t_r1 = time.perf_counter()
     we.assert_base(hP.lm, hP.hooks_at_load)
     s_plant.close()
     s_canary.close()
+    # where a planted reading scales its null rows: the layer the null program names (the edit's), plant or no plant
+    mod_names = {id(m): n for n, m in hP.lm.named_modules()}
+    null_on: List[str] = []
+    hook_was = torch.nn.Module.register_forward_hook
+
+    def _spy(self: Any, hook: Any, *a: Any, **k: Any) -> Any:
+        if getattr(hook, "__name__", "") == "_null_post":
+            null_on.append(mod_names.get(id(self), "?"))
+        return hook_was(self, hook, *a, **k)
+
+    torch.nn.Module.register_forward_hook = _spy
+    try:
+        r_low = lv.read(hP, {**blind_plan, "name": "null_place", "controls": {"count": 2, "seed": 0}, "folded": "never",
+                             "lower": "whole"}, items, _plant=plant)
+    finally:
+        torch.nn.Module.register_forward_hook = hook_was
+    check(r_low["status"] == "ok" and null_on and set(null_on) == {"layers.4.mlp.down_proj"},
+          f"5: with the plant at layer 0 and the edit at layer 4, null rows are scaled at the edit's layer ({sorted(set(null_on))})")
     # Neither session.json, transcript.jsonl, nor driver_view leaks plant/canary secrets
     disk_dump = (
         (tmp / "sess_planted" / "session.json").read_text()
@@ -665,8 +697,133 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     check(plant.id[:12] not in disk_dump and "canary" not in disk_dump and "plant" not in disk_dump,
           "5: planted/canary state stays strictly in memory (zero leakage to session.json, transcript, or driver_view)")
     check(rp_blind["driver_view"]["body"]["plan"]["folded"] == "never"
-          and rc_blind["driver_view"]["body"]["plan"]["folded"] == "never",
-          "5: both planted and canary sessions enforce folded=never (no twin side-channel)")
+          and rc_blind["driver_view"]["body"]["plan"]["folded"] == "never"
+          and rp_blind["driver_view"]["body"]["plan"]["lower"] == "whole"
+          and rc_blind["driver_view"]["body"]["plan"]["lower"] == "whole",
+          "5: both planted and canary sessions enforce folded=never and lower=whole (no twin or restart side-channel)")
+    p_pred = rp_blind["driver_view"]["body"]["seconds"]["predicted"]
+    c_pred = rc_blind["driver_view"]["body"]["seconds"]["predicted"]
+    p_parts = rp_blind["driver_view"]["body"]["seconds"]["parts"]
+    c_parts = rc_blind["driver_view"]["body"]["seconds"]["parts"]
+    check(ep_blind["estimate"]["seconds"] == ec_blind["estimate"]["seconds"] == p_pred == c_pred
+          and ep_blind["estimate"]["parts"] == ec_blind["estimate"]["parts"] == p_parts == c_parts,
+          f"5: blinded estimate and reading predicted seconds/parts match identically across plant & canary ({p_pred} vs {c_pred})")
+    dv_p, dv_c = rp_blind["driver_view"]["body"], rc_blind["driver_view"]["body"]
+    check(all(dv["seconds"]["actual"] is None and dv["seconds"]["ratio"] is None and dv.get("peak_gib") is None
+              for dv in (dv_p, dv_c)),
+          "5: a blinded session is shown nothing measured of a reading's cost (seconds, ratio, peak)")
+    check(rp_blind["gpu_seconds_charged"] == rc_blind["gpu_seconds_charged"] == round(float(p_pred), 3)
+          and {k: v for k, v in rp_blind["remaining"].items() if "wall" not in k}
+          == {k: v for k, v in rc_blind["remaining"].items() if "wall" not in k}
+          and cap_p["seconds"] == cap_c["seconds"],
+          f"5: planted and canary sessions are charged the same price for the same calls ({rp_blind['gpu_seconds_charged']} s a reading)")
+    own_seq = rp_blind["book"]["seq"]
+    check(any(e.get("seq") == own_seq and "body" in e and e["body"]["seconds"]["actual"] is None for e in bv_plant)
+          and any(e.get("redacted") == "another session's line" for e in bv_plant)
+          and all("body" not in e for e in bv_plant if e.get("seq") != own_seq),
+          "5: a blinded session's book view shows its own lines, without measured costs, and no other session's")
+    check(next(lb.entries(book, start=own_seq, limit=1))["body"]["seconds"]["actual"] is not None,
+          "5: the book itself keeps the measured seconds of a blinded session's reading")
+    # what `_unmeasured` takes out, on a row that holds every one of them (a reading on the CPU has no peak to hide)
+    shown = lses.LevelSession._unmeasured({"seq": 1, "body": {"seconds": {"actual": 1.5, "ratio": 0.9, "predicted": 1.7,
+                                                                           "parts": {"whole": 1.7}}, "peak_gib": 3.25}})
+    check(shown["body"]["seconds"]["actual"] is None and shown["body"]["seconds"]["ratio"] is None
+          and shown["body"]["peak_gib"] is None and shown["body"]["seconds"]["predicted"] == 1.7
+          and shown["body"]["seconds"]["parts"] == {"whole": 1.7}
+          and shown["body"]["seconds"]["measured"] == "not shown in a blinded session",
+          "5: the measured seconds, their ratio and the peak of memory are taken out of a blinded view; the price stays")
+    # when a blinded call replies: no sooner than its price says, plant or no plant, and a refused one after the same
+    # short wait whatever the plant cost it
+    wait_read = lses.BLIND_PAD_FACTOR * float(p_pred) + lses.BLIND_PAD_OVER_S
+    wait_cap = lses.BLIND_PAD_FACTOR * float(cap_p["seconds"]) + lses.BLIND_PAD_OVER_S
+    check(t_p1 - t_p0 >= wait_read - 0.005 and t_c1 - t_p1 >= wait_read - 0.005 and t_k1 - t_k0 >= wait_cap - 0.005
+          and rr_blind["driver_view"]["body"]["status"] == "refused" and rr_blind["gpu_seconds_charged"] == 0.0
+          and t_r1 - t_r0 >= lses.BLIND_PAD_OVER_S - 0.005,
+          f"5: a blinded call's reply waits for its price ({wait_read:.2f} s a reading here; the planted one came after "
+          f"{t_p1 - t_p0:.2f} s, the canary's after {t_c1 - t_p1:.2f} s), and a refused one for the wait over")
+    s_open = lses.LevelSession(hP, tmp / "sess_open", reach="tools_only", backend="claude",
+                               budget=lses.SessionBudget(min_controls=1), book_path=book, probe_on_start=False)
+    t_o0 = time.perf_counter()
+    s_open._wait_out(t_o0, 30.0)
+    check(time.perf_counter() - t_o0 < 0.5, "5: a session that is not blinded waits for nothing")
+    s_open.close()
+
+    # a plant changes nothing about what is refused. An edit of 16 terms that leaves the plant's linear alone is 17
+    # with it; an edit that sets the very column a plant set meets a set there. Both read with the plant under them
+    # as they read alone, where a caller's own stack of two such edits is still refused.
+    kw = dict(model_id=hP.model_id, weights_id=hP.weights_id)
+    wide = we.build(hP.lm, [we.silence(L, [1]) for L in range(1, 6)]
+                    + [we.silence_rows(L, w, [1]) for L in range(6) for w in ("gate_proj", "up_proj")][:11], **kw)
+    d_out = we.linear_shape(hP.lm.layers[0].mlp.down_proj)[0]
+    plant_set = we.build(hP.lm, [we.set_columns(0, [4], np.full((1, d_out), 0.01, dtype=np.float32))], **kw)
+    v_mine = np.full((1, d_out), -0.02, dtype=np.float32)
+    same_col = we.build(hP.lm, [we.set_columns(0, [4], v_mine)], **kw)
+
+    def rd(e: Any, pl: Any, name: str) -> Dict[str, Any]:
+        return lv.read(hP, {"name": name, "kind": "paired", "edit": {"built": e.id}, "items": ["alpha"],
+                            "controls": {"count": 2, "seed": 0}, "rows": {"small": 8, "large": 16}, "folded": "never",
+                            "lower": "whole"}, items, edit=e, _plant=pl)
+
+    def stack_refused(pair: Any, says: str) -> bool:
+        try:
+            we.stack(hP.lm, pair, **kw)
+        except we.Refused as exc:
+            return says in str(exc)
+        return False
+
+    rw_p, rw_c = rd(wide, plant, "wide_under_a_plant"), rd(wide, None, "wide_alone")
+    rs_p, rs_c = rd(same_col, plant_set, "set_under_a_plant"), rd(same_col, None, "set_alone")
+    check(len(wide.terms) == we.MAX_TERMS and "layers.0.mlp.down_proj" not in wide.linears()
+          and rw_p["status"] == rw_c["status"] == "ok" and stack_refused([plant, wide], "at most 16"),
+          f"5: an edit of {we.MAX_TERMS} terms reads with a plant under it as it reads alone ({rw_p['status']}: "
+          f"{rw_p.get('why')}); what a planted session refuses does not say where its plant is")
+    whole = we.stack(hP.lm, [plant_set, same_col], caps=False, plant_first=True, **kw)
+    check(rs_p["status"] == rs_c["status"] == "ok" and stack_refused([plant_set, same_col], "both set")
+          and len(whole.terms) == 1 and int(whole.terms[0].op[0]) == 1
+          and np.array_equal(whole.terms[0].vectors[0], v_mine[0]),
+          f"5: an edit that sets the column a plant set reads as it reads alone ({rs_p['status']}: {rs_p.get('why')}), "
+          "and its own set is the one that stands")
+    # the cap on a factor: a plant's own factor adds to the driver's, and a dose stretches a factor, and neither
+    # may make a planted reading refuse what a canary reads (one such call told the two apart, and gave the plant's factor)
+    plant_f8 = we.build(hP.lm, [we.scale(2, [7], 8.0)], **kw)
+    big = we.build(hP.lm, [we.scale(4, [4], we.MAX_FACTOR)], **kw)
+    on_plant = we.build(hP.lm, [we.scale(2, [7], 60.0)], **kw)
+
+    def rd_dose(e: Any, pl: Any, name: str, dose: float) -> str:
+        try:
+            r = lv.read(hP, {"name": name, "kind": "paired", "edit": {"built": e.id}, "items": ["alpha"], "doses": [dose, 0.0],
+                             "main_dose": dose, "controls": {"count": 2, "seed": 0}, "rows": {"small": 8, "large": 16},
+                             "folded": "never", "lower": "whole"}, items, edit=e, _plant=pl)
+            return str(r["status"])
+        except Exception as exc:  # noqa: BLE001
+            return f"raised {type(exc).__name__}: {str(exc)[:80]}"
+
+    # a control edit is gated a second time only under a plant: the tests on an edit's size must not be asked of it
+    # then (a same-site control of 8 silenced columns is 8 added columns; with the cap on those set to 4 for the check)
+    wide_cols = we.build(hP.lm, [we.silence(4, list(range(8)))], **kw)
+    cap_was = we.MAX_VECTOR_COLUMNS
+    we.MAX_VECTOR_COLUMNS = 4
+    try:
+        got_ctl = []
+        for i, pl in enumerate((plant, None)):
+            try:
+                r = lv.read(hP, {"name": f"same_site_under_{i}", "kind": "paired", "edit": {"built": wide_cols.id}, "items": ["alpha"],
+                                 "controls": {"family": "same_site", "count": 2, "seed": 0}, "rows": {"small": 8, "large": 16},
+                                 "folded": "never", "lower": "whole"}, items, edit=wide_cols, _plant=pl)
+                got_ctl.append(str(r["status"]))
+            except Exception as exc:  # noqa: BLE001
+                got_ctl.append(f"raised {type(exc).__name__}: {str(exc)[:80]}")
+    finally:
+        we.MAX_VECTOR_COLUMNS = cap_was
+    check(got_ctl[0] == got_ctl[1] == "ok",
+          f"5: a same-site control edit past a cap on an edit's size reads under a plant as it reads without ({got_ctl})")
+    got_big = [rd_dose(big, pl, f"factor_cap_{i}", 1.01) for i, pl in enumerate((plant, None))]
+    got_on = [rd_dose(on_plant, pl, f"on_the_plant_{i}", 1.0) for i, pl in enumerate((plant_f8, None))]
+    check(got_big[0] == got_big[1] and not got_big[0].startswith("raised") and got_on[0] == got_on[1]
+          and not got_on[0].startswith("raised") and stack_refused([plant_f8, on_plant], "at most 64"),
+          f"5: a scaling at the cap read at dose 1.01, and a scaling of a neuron the plant scaled, read with a plant as "
+          f"without ({got_big}; {got_on})")
+    we.assert_base(hP.lm, hP.hooks_at_load)
 
 
 # ------------------------------------------------------------------------------- 6. MCP stdio protocol

@@ -32,6 +32,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Mapping, Optional
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -446,6 +447,28 @@ def run_section_2() -> None:
     check(cs_nan["non_finite"] == 1 and cs_nan["at_least"] == 1 and math.isclose(cs_nan["p_fw"], 0.10)
           and not cs_nan["passes_alpha"],
           "m=2, C=39, one NaN control -> counted as moving as much, p_fw=0.10 fails")
+    check(cs_nan["as_read_at_least"] == 0 and cs_none["as_read_at_least"] == 0 and cs_fail1["as_read_at_least"] == 1
+          and cs_pass["as_read_at_least"] == 0,
+          "a standing says how many control edits that were read moved as much, apart from those counted so for "
+          "want of a reading: a family that failed on control edits set aside is not read as one they beat")
+    # what the item gate found, of the items a verdict rests on: those that read
+    def gated(name: str, status: str, passed: Any, small_mean: Any, large_mean: Any) -> Dict[str, Any]:
+        return {"item": {"name": name}, "status": status,
+                "gate": {"bar": -6.0, "small": {"mean": small_mean}, "large": {"mean": large_mean}, "passed": passed}}
+
+    made = {"items": [gated("a", "ok", True, -3.1, -3.4), gated("b", "ok", False, -9.0, -8.0),
+                      gated("c", "unstable", False, -21.0, -20.0), gated("d", "ok", False, None, None),
+                      gated("e", "void", False, -30.0, -30.0), {"item": {"name": "f"}, "status": "ok", "gate": None}]}
+    drawn_made = [SimpleNamespace(item=SimpleNamespace(name=n)) for n in "abcdef"]
+    ig_made = lcl.item_gate_of(made, drawn_made)
+    check(ig_made == {"items": 3, "under_bar": 2, "no_figure": 1, "bar": -6.0, "lowest": -9.0, "highest": -3.4}
+          and lcl.item_gate_of({"items": made["items"][2:3]}, drawn_made) is None
+          and "2 of the 3 fresh items that read are under the kernel's bar of -6.00 nats a piece" in lcl.item_gate_words(ig_made)
+          and "forced answers -9.00 to -3.40 a piece" in lcl.item_gate_words(ig_made)
+          and "1 gave no finite figure and are counted under it" in lcl.item_gate_words(ig_made)
+          and lcl.battery_items(made) == {"read": 4, "given": 6, "under_item_gate": 2},
+          "the item gate's count is over the items that read: one that did not read is in no figure and not counted, "
+          f"and one that read with no finite figure is counted under the bar, as the kernel counts it ({ig_made})")
 
     # written_strata_summary (Row 21) & price_written_reading (§8)
     mock_w = {
@@ -505,8 +528,8 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     sh_lead = lcl.render_sheet(brief, bars, j_lead, meta, s_lead)
     SHEETS_COLLECTED.extend([sh_lead, s_lead or ""])
     check(j_lead["verdict"] == "lead", f"planted true signal -> lead (got {j_lead['verdict']})")
-    check(s_lead is not None and "selection not matched, 7 read in practice" in s_lead,
-          "free_pick claim_sentence carries 'selection not matched, 7 read in practice'")
+    check(s_lead is not None and "selection not matched, 7 practice readings in this book" in s_lead,
+          "free_pick claim_sentence carries 'selection not matched, 7 practice readings in this book'")
     check("This is a lead, not a finding of record." in (s_lead or ""), "claim_sentence is bounded as a lead")
 
     # 2. True lead (declared_rule with sham_target)
@@ -528,9 +551,23 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     s_tol = lcl.claim_sentence(brief, j_decl, meta_d)
     sh_tol = lcl.render_sheet(brief, bars, j_decl, meta_d, s_tol)
     SHEETS_COLLECTED.extend([sh_tol, s_tol or ""])
-    check("matched other-site (within a factor of 4, p_fw" in (s_tol or ""),
-          "the sentence names the tolerance the matched controls were matched within")
-    check("other sites matched within a factor of 4 on delivered" in sh_tol
+    cls_ss = {**sham_cls, "delivered": {"same_site": {"edit": 0.02, "controls_median": 0.0196, "edit_end": 0.04,
+                                                      "controls_median_end": 0.02, "edit_prompt": None,
+                                                      "controls_median_prompt": 0.5}}}
+    s_ss = lcl.claim_sentence(brief, lcl.judge_claim(brief=brief, bars=bars, classes={"small": cls_ss, "large": cls_ss},
+                                                     batteries=_clean_batteries(), selection_mode="declared_rule"), meta_d)
+    check("p_fw 0.050, a level that takes all 39 as control edits and as separate draws, whatever they delivered and "
+          "however many share sites) and" in (s_tol or "")
+          and "same-site (p_fw" in (s_tol or "")
+          and "same-site (not asked to be as loud as the edit: as read, their median change to the stream was 0.98 over "
+              "the answer and 0.50 at the last position times the edit's; p_fw" in (s_ss or ""),
+          "a claim's sentence says what the level beside its matched control edits takes for granted (every one a "
+          "control and a separate draw), and how loud its same-site control edits were beside the edit where a "
+          "reading records it")
+    check("matched other-site (matched on what a base pre-pass expects each to deliver, within a factor of 4; p_fw" in (s_tol or "")
+          and "on delivered" not in (s_tol or ""),
+          "the sentence says what the matched controls were matched on (a base pre-pass's expectation) and within what factor")
+    check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 4" in sh_tol
           and "sham-target controls: 39 supplied with the claim" in sh_tol,
           "the sheet prints the registered design and that the shams were supplied, not made by the harness")
     check("kept-back frames, whose templates are published in the instrument's source, drawn from" in (s_tol or "")
@@ -1021,6 +1058,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     )
     check("written strata (" in wres["sheet"] and "base settings audit (" in wres["sheet"],
           "written_loop Claim Sheet prints written strata and base settings audit")
+    check("(a written reading does not record what they delivered as read)" in wres["sheet"]
+          and "is printed with each class" not in wres["sheet"] and "delivered (stream change" not in wres["sheet"],
+          "a written claim's sheet does not say that what its control edits delivered is printed: a written reading "
+          "records none")
     check(lb.verify(bk)["ok"], "level book whole after written_loop claim")
     we.assert_base(h.lm, h.hooks_at_load)
 
@@ -1093,9 +1134,26 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     dl = (sres["judged"]["classes"].get("small") or {}).get("delivered") or {}
     check(all((dl.get(f) or {}).get("controls_read") == 4 for f in ("other_sites_matched", "same_site", "sham_target"))
           and (dl["sham_target"]["edit"] or 0.0) > 0.0
-          and "delivered (stream change at the highest edited layer): edit" in sres["sheet"]
+          and "delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit " in sres["sheet"]
+          and "; over the answer: edit " in sres["sheet"]
+          and "; at the last position, where the metric is read: edit " in sres["sheet"]
+          and dl["other_sites_matched"]["read_at_end"] is True and dl["other_sites_matched"]["edit_end"] is not None
+          and dl["other_sites_matched"]["edit_prompt"] is not None
+          and dl["other_sites_matched"]["compared_at"] == ["prompt", "answer", "end"]
+          and isinstance(dl["other_sites_matched"]["disjoint_sets"], int)
+          and dl["other_sites_matched"]["draw"] == "independent" and "each set drawn on its own" in sres["sheet"]
+          and not any(k.startswith("per_control") or k == "apart" for fam in dl.values() if isinstance(fam, dict)
+                      for k in fam)
+          and "per_control" not in json.dumps(next(lb.entries(sbk, start=sres["book"]["all_seqs"][-1], limit=1))["body"])
+          and "per_control" not in json.dumps(sres["driver_record"])
+          and dl["same_site"]["read_at_end"] is True
+          and all(sres["judged"]["batteries"][b]["items"] == {
+              "read": 2, "given": 2, "under_item_gate": sres["judged"]["batteries"][b]["items"]["under_item_gate"]}
+              and 0 <= sres["judged"]["batteries"][b]["items"]["under_item_gate"] <= 2
+              for b in ("neutral_text", "near_misses", "labelled_panel"))
           and "sham-target controls: 4 supplied with the claim" in sres["sheet"],
-          "the sheet prints how much the edit and each family's control edits changed the stream")
+          "the sheet prints how much the edit and each family's control edits changed the stream, over the answer and "
+          "at the last position where this brief's metric is read, and how the matched sets were drawn")
     check(lb.verify(sbk)["ok"], "level book whole after the declared-rule claim")
     we.assert_base(h.lm, h.hooks_at_load)
 
@@ -1116,7 +1174,7 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     q_sh, q_dv = (q_small.get("controls") or {}).get("sham_target") or {}, (q_small.get("delivered") or {}).get("sham_target") or {}
     check(qres["verdict"] not in ("lead", "lead, matched by a cheaper knob", "void")
           and q_dv.get("not_comparable") == 4 and q_sh.get("at_least") == 4 and q_sh.get("passes_alpha") is False
-          and "outside the matching tolerance of the edit's, and counted as moving as much" in qres["sheet"]
+          and "quieter than the edit at one of those, or with no figure, and counted as moving as much" in qres["sheet"]
           and 'declared rule, in the words given with the claim: "two columns chosen by hand, for this check"' in qres["sheet"],
           f"four sham edits a millionth of the edit's size count against it, and the sheet says so "
           f"(verdict {qres['verdict']}, delivered {q_dv}, standing {q_sh})")
@@ -1342,8 +1400,22 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           and reg_mcp["design"]["controls_per_family"] == 4 and reg_mcp["design"]["prompt_arms"] is True
           and reg_mcp.get("shams") is None,
           "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
-    check("other sites matched within a factor of 20 on delivered" in r_claim["sheet"],
-          "the sheet prints the tolerance the matched controls were matched within")
+    as_read = re.findall(r"; (\d+) of (\d+) at least as loud as the edit over the prompt, over the answer and at the "
+                         r"last position", r_claim["sheet"])
+    drawn_from = re.findall(r"; (\d+) of the sets share no site with one another \(each neuron had at least (\d+) eligible "
+                            r"sites\), each set drawn on its own", r_claim["sheet"])
+    check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 20 (what they "
+          "delivered as read is printed with each class)" in r_claim["sheet"]
+          and len(as_read) == 2 and all(0 <= int(a) <= int(b) == 4 for a, b in as_read) and len(drawn_from) == 2
+          and all(1 <= int(d) <= 4 and int(d) <= int(e) for d, e in drawn_from)
+          and "on delivered" not in r_claim["sheet"] and "delivery-matched" not in r_claim["sheet"],
+          "the sheet prints what the matched controls were matched on and within what factor, how many were at least as "
+          f"loud as the edit as read ({as_read}), and how many of the sets share no site, of how many eligible sites "
+          f"({drawn_from})")
+    ig_claim = re.findall(r"item gate: (\d+) of the (\d+) fresh items that read are under the kernel's bar of "
+                          r"-6\.00 nats a piece", r_claim["sheet"])
+    check(len(ig_claim) == 1 and 0 <= int(ig_claim[0][0]) <= int(ig_claim[0][1]) == 4,
+          f"a claim's sheet says how many of its fresh items the kernel read under its item gate ({ig_claim})")
     use_now = ses.status()["usage"]
     check(r_claim["forwards_charged"] == r_claim["estimated"]["forwards"] == use_now["claim_forwards"] > 0
           and use_now["forwards"] == fwd_before,
@@ -1484,7 +1556,7 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     SHEETS_COLLECTED.append(r_srv.get("sheet", ""))
     check(r_srv.get("verdict") in lcl.VERDICTS and r_srv.get("reading_index") == 2
           and r_srv.get("forwards_charged") == (r_srv.get("estimated") or {}).get("forwards")
-          and "other sites matched within a factor of 20 on delivered" in r_srv.get("sheet", "")
+          and "other sites matched on what a base pre-pass expects each to deliver, within a factor of 20" in r_srv.get("sheet", "")
           and "earlier fresh readings on this brief (1):" in r_srv.get("sheet", ""),
           f"a claim through the started server is the brief's second reading in the book, after the command line's "
           f"first, under the owner's design (verdict {r_srv.get('verdict')}, reading {r_srv.get('reading_index')})")

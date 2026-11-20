@@ -104,6 +104,7 @@ Layers count from 0 here and in every file; a message a person reads says both (
 
 from __future__ import annotations
 
+import copy
 import datetime
 import hashlib
 import io
@@ -1095,7 +1096,7 @@ def _neurons(s: TermSpec) -> List[int]:
 
 
 def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weights_id: Optional[str], note: str,
-              caps: bool = True) -> Edit:
+              caps: bool = True, sized: bool = True) -> Edit:
     """The gate. The tests run in the order of the table of refusals, each over every term before the next, so that
     an input that breaks two rules is told the earlier one. Nothing is installed and nothing is written here.
     `caps` false is a control edit met again (loaded, or handed to a reading): it is let past ONE cap, a column's or
@@ -1234,10 +1235,12 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
     # normalize -0.0 -> 0.0 before sorting low-rank parts so -0.0 never changes merge order or edit id
     low_ab = [(A + np.float32(0.0), B + np.float32(0.0)) for A, B in low_ab]
 
-    for (_s, _name, _L, _neurons_), (f, _v) in zip(col, given):
+    # the cap on a factor is one of the tests a whole made of a plant and an edit is not asked again (`sized`): a
+    # plant's 8 and an edit's 60 add to 67, and an edit's 64 at dose 1.01 is 64.63, where each part met the cap alone
+    for (_s, _name, _L, _neurons_), (f, _v) in zip(col, given) if sized else ():
         if f is not None and (np.abs(f) > MAX_FACTOR).any():
             raise Refused(_SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0])))
-    for (_s, _name, _L, _w, _neurons_), (f, _v) in zip(row, given_rows):
+    for (_s, _name, _L, _w, _neurons_), (f, _v) in zip(row, given_rows) if sized else ():
         if f is not None and (np.abs(f) > MAX_FACTOR).any():
             raise Refused(_SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0])))
     for (_s, name, L, neurons), (_f, v) in zip(col, given):
@@ -1364,12 +1367,15 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
                 j = int(over[0])
                 raise Refused(_SAY_REL.format(n=int(c["idx"][j]), L=c["layer"], L1=c["layer"] + 1,
                                               x=float(c["rel"][j]), cap=MAX_REL_CHANGE))
-    for name, c in cols.items():
+    # `sized` false is a whole the harness made of a plant and an edit (`stack(plant_first=True)`), each of which
+    # met these tests alone: the whole is not asked them again, or what a planted session refuses would say where
+    # its plant is (an edit of 16 terms that leaves the plant's linear alone would be 17 with it)
+    for name, c in cols.items() if sized else ():
         f0 = float(c["factor"][0])
         every, alike = len(c["idx"]) == shape[name][1], bool((c["factor"] == c["factor"][0]).all())
         if every and alike and f0 > 0 and not c["op"].any():
             raise Refused(_SAY_UNIFORM.format(L=c["layer"], f=f0))
-    for name, c in rows_m.items():
+    for name, c in rows_m.items() if sized else ():
         if c["which"] == "up_proj":
             f0 = float(c["factor"][0])
             every, alike = len(c["idx"]) == shape[name][0], bool((c["factor"] == c["factor"][0]).all())
@@ -1377,19 +1383,19 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
                 raise Refused(_SAY_UNIFORM_UP.format(L=c["layer"], f=f0))
     low_names = sorted({name for _s, name, _L in low})
     n_terms = len(cols) + len(rows_m) + len(low_names)
-    if n_terms > MAX_TERMS:
+    if sized and n_terms > MAX_TERMS:
         raise Refused(_SAY_CAP.format(cap=MAX_TERMS, what="terms", k=n_terms))
-    for c in cols.values():
+    for c in cols.values() if sized else ():
         if len(c["idx"]) > MAX_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_COLUMNS, what="columns a term", k=len(c["idx"])))
-    for c in rows_m.values():
+    for c in rows_m.values() if sized else ():
         if len(c["idx"]) > MAX_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_COLUMNS, what="rows a term", k=len(c["idx"])))
-    for c in cols.values():
+    for c in cols.values() if sized else ():
         if int((c["op"] != 0).sum()) > MAX_VECTOR_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what="set or added columns a term",
                                           k=int((c["op"] != 0).sum())))
-    for c in rows_m.values():
+    for c in rows_m.values() if sized else ():
         if int((c["op"] != 0).sum()) > MAX_VECTOR_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what="set or added rows a term",
                                           k=int((c["op"] != 0).sum())))
@@ -1407,17 +1413,17 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
         A = np.concatenate([low_ab[i][0] for _a, _b, i in parts], axis=0) + np.float32(0.0)
         B = np.concatenate([low_ab[i][1] for _a, _b, i in parts], axis=1) + np.float32(0.0)
         lows[name] = {"layer": _parse(name)[0], "A": A, "B": B}
-    for name, c in lows.items():
+    for name, c in lows.items() if sized else ():
         if c["A"].shape[0] > MAX_RANK:
             raise Refused(_SAY_RANK.format(cap=MAX_RANK, r=int(c["A"].shape[0])))
-    for name, c in lows.items():
+    for name, c in lows.items() if sized else ():
         x = _bound(mods[name], c["A"], c["B"])
         if not x <= MAX_REL_CHANGE:
             raise Refused(_SAY_BOUND.format(name=name, x=x, cap=MAX_REL_CHANGE))
     carried = sum(c["vectors"].nbytes for c in cols.values() if c["vectors"] is not None)
     carried += sum(c["vectors"].nbytes for c in rows_m.values() if c["vectors"] is not None)
     carried += sum(c["A"].nbytes + c["B"].nbytes for c in lows.values())
-    if carried > MAX_PAYLOAD_BYTES:
+    if sized and carried > MAX_PAYLOAD_BYTES:
         raise Refused(_SAY_BYTES.format(mb=carried / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20))
     touched = sorted(set(cols) | set(rows_m) | set(lows))
     pins = {name: _pin(mods[name], name) for name in touched}
@@ -1591,7 +1597,88 @@ def _carry_info_report(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
         dest["parents"] = list(parents)
 
 
-def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional[str]) -> Edit:
+def static_caps(edit: Edit) -> Optional[str]:
+    """The gate's refusals that need no weights, asked of an edit put together with no model at hand (an export off
+    the model): None when all hold, else why not, in the gate's words. The caps on an edit's size (terms, columns or
+    rows a term, set or added ones, rank, bytes carried); factors, vectors and low-rank pairs that are finite, and
+    factors within the cap on one; a kind of term this kernel builds, on a linear that takes it; no neuron named
+    twice. What cannot be asked without the weights, and so is not: how far a column, a row or a low-rank term moves
+    its linear (`MAX_REL_CHANGE`), whether a scaling of every column is the no-op the norm undoes, and whether a
+    neuron exists. (How far a set or added vector moves its column, and a low-rank term's bound, need the weights:
+    not asked here.)"""
+    try:
+        low_names = {t.linear for t in edit.terms if t.kind == "lowrank"}
+        n_terms = sum(1 for t in edit.terms if t.kind in ("cols", "rows")) + len(low_names)
+        if n_terms > MAX_TERMS:
+            return _SAY_CAP.format(cap=MAX_TERMS, what="terms", k=n_terms)
+        for t in edit.terms:  # a low-rank term that is not a pair has no rank to ask
+            if t.kind == "lowrank" and (np.ndim(t.A) != 2 or np.ndim(t.B) != 2
+                                        or np.shape(t.A)[0] != np.shape(t.B)[1]):
+                return f"The low-rank term on {t.linear} is not a pair A [rank, in], B [out, rank]."
+        for name in sorted(low_names):  # the gate joins the low-rank terms of one linear before it asks their rank
+            rank = sum(int(np.asarray(t.A).shape[0]) for t in edit.terms if t.kind == "lowrank" and t.linear == name)
+            if rank > MAX_RANK:
+                return _SAY_RANK.format(cap=MAX_RANK, r=rank)
+        seen: Dict[Tuple[str, str], set] = {}
+        carried = 0
+        for t in edit.terms:
+            if t.kind in ("cols", "rows"):
+                what = "columns" if t.kind == "cols" else "rows"
+                if t.kind == "cols" and t.which != "down_proj":
+                    return _SAY_COLS_WHICH.format(name=t.linear)
+                if t.kind == "rows" and t.which not in ("gate_proj", "up_proj"):
+                    return _SAY_ROWS_WHICH.format(name=t.linear)
+                idx, op, f = np.asarray(t.idx), np.asarray(t.op), np.asarray(t.factor, dtype=np.float64)
+                if idx.ndim != 1 or idx.size == 0 or not (len(idx) == len(op) == len(f)):
+                    return _SAY_NO_COLUMN
+                if len(idx) > MAX_COLUMNS:
+                    return _SAY_CAP.format(cap=MAX_COLUMNS, what=f"{what} a term", k=len(idx))
+                if int((op != 0).sum()) > MAX_VECTOR_COLUMNS:
+                    return _SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what=f"set or added {what} a term",
+                                           k=int((op != 0).sum()))
+                if int(op.max(initial=0)) >= len(OPS):
+                    return f"A term on {t.linear} holds an operation this kernel does not know."
+                if not np.isfinite(f).all():
+                    return _SAY_NOT_FINITE.format(where=f"a factor on {t.linear}")
+                if (np.abs(f) > MAX_FACTOR).any():
+                    return _SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0]))
+                # a scaled column or row changes by |f - 1| times its own length, whatever the weights are
+                far = (op == 0) & (np.abs(f - 1.0) > MAX_REL_CHANGE)
+                if far.any():
+                    return (f"A neuron of {t.linear} would change by {float(np.abs(f - 1.0)[far][0]):.0f} times its own "
+                            f"length; an edit takes at most {MAX_REL_CHANGE:g}.")
+                if (op != 0).any() and t.vectors is None:
+                    return f"A term on {t.linear} sets or adds {what} and carries no vectors."
+                if t.vectors is not None:
+                    if not np.isfinite(np.asarray(t.vectors)).all():
+                        return _SAY_NOT_FINITE.format(where=f"a vector on {t.linear}")
+                    carried += int(np.asarray(t.vectors).nbytes)
+                named = {int(n) for n in idx.tolist()}
+                was = seen.setdefault((t.linear, t.kind), set())
+                if len(named) != len(idx) or was & named:
+                    return f"A neuron of {t.linear} is named twice in this edit: one change a {what[:-1]}."
+                was |= named
+            elif t.kind == "lowrank":
+                if t.which != "down_proj":
+                    return f"A low-rank term on {t.linear} is not one this kernel builds: it takes a down_proj."
+                A, B = np.asarray(t.A), np.asarray(t.B)
+                if A.ndim != 2 or B.ndim != 2 or A.shape[0] != B.shape[1]:
+                    return f"The low-rank term on {t.linear} is not a pair A [rank, in], B [out, rank]."
+                if A.shape[0] > MAX_RANK:
+                    return _SAY_RANK.format(cap=MAX_RANK, r=int(A.shape[0]))
+                if not (np.isfinite(A).all() and np.isfinite(B).all()):
+                    return _SAY_NOT_FINITE.format(where=f"the low-rank term on {t.linear}")
+                carried += int(A.nbytes + B.nbytes)
+            else:
+                return f"A term of kind {t.kind!r} is not one this kernel builds."
+        if carried > MAX_PAYLOAD_BYTES:
+            return _SAY_BYTES.format(mb=carried / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20)
+    except (AttributeError, TypeError, ValueError, IndexError) as exc:
+        return f"The edit is not laid out as an edit's terms are ({type(exc).__name__})."
+    return None
+
+
+def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional[str], sized: bool = True) -> Edit:
     """An edit that was not built here and now (one handed to a reading as an object), passed through the gate as a
     loaded one is: its terms are taken as recipe terms and built again against `lm`, and the id that comes out must be
     the id the object carries. So the ledger never holds an id that is not the hash of what ran, and an object made by
@@ -1606,8 +1693,11 @@ def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional
     except (ValueError, TypeError, AttributeError, IndexError):
         raise Refused(f"The edit {str(edit.id)[:12]} is not laid out as an edit's terms are: build it with "
                       "weight_edits.build.") from None
+    # `sized` false: a part of a whole made under a plant (`stack(plant_first=True)`). The kernel built it in this
+    # reading; a control edit is gated a second time only when there is a plant, so asking it the tests on an edit's
+    # size again would refuse under a plant what reads without one.
     again = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=str(edit.note or ""),
-                      caps=report.get("caps") != CONTROL_CAPS)
+                      caps=report.get("caps") != CONTROL_CAPS, sized=sized)
     if again.id != edit.id:
         raise Refused(f"The edit handed in says it is {str(edit.id)[:12]} and hashes to {again.id[:12]}.")
     _carry_info_report(again.report, report)
@@ -1982,13 +2072,225 @@ def same_site_controls(
     return out
 
 
-def _draw_matched_indices(
+def down_stream_norms_under(lm: nn.Module, layer: int, plant: Edit) -> np.ndarray:
+    """`down_stream_norms` as the model has them with `plant` in its weights at dose 1: a column that a column term
+    of the plant on this layer's down projection scales, sets or adds to is measured as the plant leaves it, every
+    other column as the base has it (float64 [N], read-only). A low-rank term of the plant moves every column a
+    little and is not counted. For the site scores of a reading taken under a plant: the per-row form of a set
+    column multiplies the neuron's activation by nought and adds the new column after, so a score taken from the
+    activation as the projection receives it would call the neuron silent when it writes the new column."""
+    base = down_stream_norms(lm, layer)
+    name = linear_name(int(layer), "down_proj")
+    terms = [t for t in plant.terms if t.kind == "cols" and t.linear == name]
+    mod = _linear_of(lm, name)
+    if not terms or mod is None:
+        return base
+    out = np.array(base, dtype=np.float64)
+    w_post = _w_post(lm, layer).astype(np.float64)[:, None]
+    with torch.no_grad():
+        for t in terms:
+            idx = np.asarray(t.idx, dtype=np.int64)
+            cols = dense_cols(mod, _long(idx)).double().cpu().numpy()  # [K, D]: the plant's own columns, no others
+            new = cols * _asked(t, 1.0)[:, None]
+            if t.vectors is not None:
+                carried = np.asarray(t.op) != 0
+                new[carried] += np.asarray(t.vectors, dtype=np.float64)[carried]
+            out[idx] = np.sqrt(((new * w_post.T) ** 2).sum(axis=1))
+    out.setflags(write=False)
+    return out
+
+
+def _draw_spread_sets(
+    pools: Sequence[np.ndarray],
+    groups: Sequence[int],
+    count: int,
+    rng: np.random.Generator,
+    offsets: Optional[Sequence[int]] = None,
+) -> Tuple[List[np.ndarray], List[bool]]:
+    """Up to `count` assignments of one site to each position, drawn to share as few sites as the pools allow.
+
+    `pools[p]`: the sites eligible at position p (whole numbers from 0 up, each once), to each of which
+    `offsets[p]` is added to give the site's number; `groups[p]`: the term the position belongs to. Within an
+    assignment no site stands twice in one term (a term's indices are distinct); a site may stand at positions of
+    two terms of one assignment, as an edit's own neuron does when it is changed in two projections. What a site
+    is, is the caller's to say by its offsets: `matched_control_edits` numbers a neuron of a layer the same whatever
+    projection it is changed in and makes ONE draw over all the terms, so that two control edits do not share a
+    neuron through different projections.
+
+    While a position has a site that no kept assignment holds it takes one of those, at random, and of those first
+    the ones no position with fewer eligible sites could take: a neuron with thousands of eligible sites does not
+    use up the few another neuron has. An assignment made wholly of such sites shares nothing with any kept before
+    it, so those are pairwise disjoint by how they were made, and `clean` says which they are. A position with no
+    such site left takes its sites in turn, those it has not stood in itself first and then each once before any
+    twice, so a neuron's stand-ins repeat as little as its eligible sites allow; the assignment then shares a site
+    with an earlier one. After three attempts in a row that gave nothing new, every such position draws from the
+    whole of its pool, so the draw does not lock while assignments remain. No two assignments are the same, and
+    their order is shuffled at the end (with `clean` alongside), so that no part of the list is the part drawn
+    first.
+
+    Returns (assignments, clean): each assignment an int64 array [P] of site numbers (offsets added) in the
+    positions' order. A site found taken is set aside from its position for good, so a draw that runs out of sites
+    does not look through every pool at every pick."""
+    P, count = len(pools), int(count)
+    if P == 0 or count <= 0 or any(len(p) == 0 for p in pools):
+        return [], []
+    off = [0] * P if offsets is None else [int(x) for x in offsets]
+    sizes = [int(len(p)) for p in pools]
+    lo = min(int(np.min(p)) + off[p_i] for p_i, p in enumerate(pools))
+    span = max(int(np.max(p)) + off[p_i] for p_i, p in enumerate(pools)) - lo + 1
+    present = np.zeros(span, dtype=bool)
+    for p in range(P):
+        present[np.asarray(pools[p], dtype=np.int64).reshape(-1) + (off[p] - lo)] = True
+    sites = np.nonzero(present)[0].astype(np.int64) + lo  # every site a position could take, in order
+    rank = np.cumsum(present, dtype=np.int64) - 1  # a site's place among them
+    del present
+
+    def ids_of(p: int) -> np.ndarray:
+        return rank[np.asarray(pools[p], dtype=np.int64).reshape(-1) + (off[p] - lo)]
+
+    narrowest = np.full(int(sites.size), np.iinfo(np.int64).max, dtype=np.int64)
+    for p in range(P):  # the fewest eligible sites of any position that could take the site
+        mine = ids_of(p)
+        narrowest[mine] = np.minimum(narrowest[mine], sizes[p])
+    order: List[np.ndarray] = []  # a position's pool: the sites no narrower position could take, then the others
+    live: List[List[List[int]]] = []  # its classes of sites, each [first, end of those not yet found taken]
+    for p in range(P):
+        o = ids_of(p)[rng.permutation(sizes[p])]
+        o = o[np.argsort(-narrowest[o], kind="stable")]  # contested by an ever narrower position: ever later
+        cuts = [0] + [int(i) + 1 for i in np.nonzero(np.diff(narrowest[o]))[0]] + [sizes[p]]
+        order.append(o.astype(np.int32))
+        live.append([[a, b] for a, b in zip(cuts[:-1], cuts[1:])])
+    del rank
+    taken = np.zeros(int(sites.size), dtype=bool)  # the sites of every assignment kept
+    first = [0] * P  # the first class of a position that may still hold a site no assignment has
+    turn = [0] * P  # where a position stands in its turn through its pool, once it has none
+    in_turn = [False] * P
+    mine: List[set] = [set() for _ in range(P)]  # the sites a position has stood in, in the assignments kept
+
+    def a_free_site(p: int, used: set) -> int:
+        o = order[p]
+        ci = first[p]
+        while ci < len(live[p]):
+            a, hi = live[p][ci]
+            found_taken = in_term = 0
+            pick = -1
+            while hi > a and in_term < 8:
+                r = a + int(rng.integers(hi - a))
+                s = int(o[r])
+                if taken[s]:
+                    hi -= 1
+                    o[r], o[hi] = o[hi], o[r]  # set aside for good: a kept assignment's site is never free again
+                    found_taken += 1
+                    if found_taken >= 8:  # most of what is left is taken: set all of it aside in one pass
+                        part = o[a:hi]
+                        keep = ~taken[part]
+                        o[a:hi] = np.concatenate([part[keep], part[~keep]])
+                        hi = a + int(keep.sum())
+                        found_taken = 0
+                    continue
+                if s not in used:
+                    pick = s
+                    break
+                in_term += 1
+            if pick < 0 and hi > a:  # eight in a row that this assignment's term holds: look at the class whole
+                part = o[a:hi]
+                keep = ~taken[part]
+                o[a:hi] = np.concatenate([part[keep], part[~keep]])
+                hi = a + int(keep.sum())
+                cand = o[a:hi]
+                if used:
+                    cand = cand[~np.isin(cand, np.fromiter(used, dtype=np.int64, count=len(used)))]
+                if cand.size:
+                    pick = int(cand[int(rng.integers(cand.size))])
+            live[p][ci][1] = hi
+            if hi <= a and ci == first[p]:
+                first[p] = ci + 1
+            if pick >= 0:
+                return pick
+            ci += 1
+        return -1
+
+    def a_site_in_turn(p: int, used: set, anywhere: bool) -> int:
+        o, E = order[p], sizes[p]
+        if anywhere:
+            for _ in range(16):
+                s = int(o[int(rng.integers(E))])
+                if s not in used:
+                    return s
+            cand = o[~np.isin(o, np.fromiter(used, dtype=np.int64, count=len(used)))] if used else o
+            return int(cand[int(rng.integers(cand.size))]) if cand.size else -1
+        if not in_turn[p] and first[p] >= len(live[p]):  # its first turn: the sites it has not stood in come first
+            in_turn[p] = True
+            if mine[p]:
+                stood = np.isin(o, np.fromiter(mine[p], dtype=np.int64, count=len(mine[p])))
+                o[:] = np.concatenate([o[~stood], o[stood]])
+            turn[p] = 0
+        for step in range(E):
+            s = int(o[(turn[p] + step) % E])
+            if s not in used:
+                turn[p] = (turn[p] + step + 1) % E
+                return s
+        return -1
+
+    pos_order = sorted(range(P), key=lambda p: (sizes[p], p))
+    out: List[np.ndarray] = []
+    clean: List[bool] = []
+    seen_sets: set = set()
+    missed = 0  # attempts in a row that gave no new assignment
+    for _attempt in range(max(count * 32, 256)):
+        if len(out) >= count:
+            break
+        chosen = np.empty(P, dtype=np.int64)
+        used: Dict[int, set] = {}
+        all_free, ok = True, True
+        for p in pos_order:
+            u = used.setdefault(int(groups[p]), set())
+            s = a_free_site(p, u)
+            if s < 0:
+                all_free = False
+                s = a_site_in_turn(p, u, missed >= 3)
+                if s < 0:
+                    ok = False
+                    break
+            chosen[p] = s
+            u.add(s)
+        key = tuple((g, tuple(sorted(used[g]))) for g in sorted(used)) if ok else None
+        if not ok or key in seen_sets:
+            missed += 1
+            continue
+        missed = 0
+        seen_sets.add(key)
+        taken[chosen] = True
+        for p in range(P):
+            mine[p].add(int(chosen[p]))
+        out.append(sites[chosen])
+        clean.append(all_free)
+    shuffled = [int(i) for i in rng.permutation(len(out))]
+    return [out[i] for i in shuffled], [clean[i] for i in shuffled]
+
+
+def _draw_spread_indices(
     elig: List[np.ndarray],
     count: int,
     rng: np.random.Generator,
 ) -> List[np.ndarray]:
+    """`_draw_matched_indices` for two or more positions of ONE term, with the assignments sharing as few sites as
+    the pools allow (`_draw_spread_sets`, which `matched_control_edits` calls itself over all of an edit's terms
+    together)."""
+    return _draw_spread_sets(elig, [0] * len(elig), count, rng)[0]
+
+
+def _draw_matched_indices(
+    elig: List[np.ndarray],
+    count: int,
+    rng: np.random.Generator,
+    spread: bool = False,
+) -> List[np.ndarray]:
     """Draw up to `count` distinct matched assignments `[p_0, ..., p_{K-1}]` where `p_j in elig[j]` and all `p_j` in
-    one assignment are distinct. Two assignments are distinct when their sorted sets differ."""
+    one assignment are distinct. Two assignments are distinct when their sorted sets differ. Each assignment is drawn
+    on its own, so with two or more positions the assignments share sites (one position never does: its sites are
+    drawn without repeats); `spread` draws them so that they share as few as the pools allow
+    (`_draw_spread_indices`)."""
     K = len(elig)
     if K == 0 or count == 0:
         return []
@@ -2000,6 +2302,8 @@ def _draw_matched_indices(
             return [np.array([int(x)], dtype=np.int64) for x in rng.permutation(pool)]
         picked = rng.choice(pool, size=count, replace=False)
         return [np.array([int(x)], dtype=np.int64) for x in picked]
+    if spread:
+        return _draw_spread_indices(elig, count, rng)
     # Order positions from narrowest eligible pool to widest to minimize collisions during assignment
     pos_order = sorted(range(K), key=lambda j: (len(elig[j]), j))
     out: List[np.ndarray] = []
@@ -2053,10 +2357,25 @@ def matched_control_edits(
     count: int,
     *,
     tolerance: float = 2.0,
+    spread: bool = False,
 ) -> Tuple[Optional[List[Edit]], Dict[str, Any]]:
     """`count` control edits on other sites matched within factor `tolerance` on per-neuron expected delivered score
     `scores_by_linear[t.linear]`. Returns `(edits, coverage)` when all `count` distinct matched control edits can be
-    formed, or `(None, coverage)` when coverage fails (caller voids the reading and records `coverage`)."""
+    formed, or `(None, coverage)` when coverage fails (caller voids the reading and records `coverage`).
+
+    `spread`: draw the control sets so that they share as few sites as the pools allow: one draw over all the
+    column and row terms together (`_draw_spread_sets`; an edit of one neuron is drawn as it always was). Without it
+    each term's sets are drawn on their own, and sets that differ in one stand-in are "distinct". The coverage
+    says, a term, the fewest sites that were eligible for one neuron (`min_eligible`) and the fewest different
+    stand-ins one neuron had over all the sets (`min_distinct`); and, for the control edits as wholes, how many
+    share no site with one another (`disjoint_sets`). A site is a neuron of a layer, whatever projection the control
+    edit changes it in: two control edits that change one neuron, one in its down projection's column and one in
+    its up projection's row, share it. The count is of a family that was found, not of the largest there is: the
+    larger of (a) the control edits taken one after another as they stand, each counted if it shares no site with
+    those counted before it, and (b) under `spread`, those the draw made wholly of sites that no earlier set had,
+    which are pairwise disjoint by how they were made and are checked to be before they are counted. Only control
+    edits that share no site are separate draws: a site that stands in for one neuron in one set and for another
+    neuron in another ties the two sets together, which a count of each neuron's own stand-ins does not see."""
     seed, count = int(seed), int(count)
     tol = _number(tolerance, "tolerance")
     if seed < 0 or count < 0:
@@ -2069,7 +2388,8 @@ def matched_control_edits(
     mods: Dict[str, nn.Module] = {}
     term_draws: List[Optional[List[np.ndarray]]] = []
     term_cov: List[Dict[str, Any]] = []
-    sufficient = True
+    eligible: Dict[int, List[np.ndarray]] = {}
+    n_sites: Dict[int, int] = {}
     for i, t in enumerate(edit.terms):
         mod = _linear_of(lm, t.linear)
         if mod is None:
@@ -2095,26 +2415,67 @@ def matched_control_edits(
             else:
                 ok_mask = (pool_scores >= s_val / tol) & (pool_scores <= s_val * tol)
             elig.append(pool[ok_mask])
-        rng = np.random.default_rng([seed, i, 29])
-        draws = _draw_matched_indices(elig, count, rng) if count > 0 else []
+        eligible[i] = elig
+        n_sites[i] = int(N)
         union_count = int(len(set().union(*(e.tolist() for e in elig)))) if elig else 0
         term_cov.append({
             "linear": t.linear, "count": K,
             "min_eligible": int(min(len(e) for e in elig)) if elig else 0,
+            "min_distinct": 0,
             "median_eligible": _clean(np.median([len(e) for e in elig])) if elig else 0.0,
             "union_eligible": union_count,
-            "drawn": len(draws),
+            "drawn": 0,
             "edit_scores": {"min": _clean(edit_scores.min()), "median": _clean(np.median(edit_scores)),
                             "max": _clean(edit_scores.max())},
         })
+        term_draws.append([])
+    # the draws. Spread: one over all the terms, a site being a neuron of a layer whatever projection changes it
+    made_clean: Optional[List[bool]] = None
+    if count > 0 and spread and sum(len(e) for e in eligible.values()) >= 2:
+        layers = sorted({int(edit.terms[i].layer) for i in eligible})
+        stride = max(n_sites.values())  # a layer's neurons are numbered after those of the layers before it
+        base = {i: layers.index(int(edit.terms[i].layer)) * stride for i in eligible}
+        sets, made_clean = _draw_spread_sets(
+            [e for elig in eligible.values() for e in elig], [i for i, elig in eligible.items() for _e in elig],
+            count, np.random.default_rng([seed, 31]), offsets=[base[i] for i, elig in eligible.items() for _e in elig])
+        at = 0
+        for i, elig in eligible.items():
+            term_draws[i] = [s[at:at + len(elig)] - base[i] for s in sets]
+            at += len(elig)
+    elif count > 0:
+        for i, elig in eligible.items():
+            term_draws[i] = _draw_matched_indices(elig, count, np.random.default_rng([seed, i, 29]), spread=spread)
+    sufficient = True
+    for cov_t, i in zip(term_cov, eligible):
+        draws = term_draws[i]
+        cov_t["min_distinct"] = (int(min(len({int(d[j]) for d in draws}) for j in range(len(eligible[i]))))
+                                 if draws else 0)
+        cov_t["drawn"] = len(draws)
         if len(draws) < count:
             sufficient = False
-        term_draws.append(draws)
     found = min((len(d) for d in term_draws if d is not None), default=count) if count > 0 else 0
     coverage: Dict[str, Any] = {
         "tolerance": _clean(tol), "requested": count, "found": int(found),
         "sufficient": bool(sufficient and found == count), "terms": term_cov,
+        "draw": "spread" if spread else "independent",
     }
+
+    def sites_of(c: int) -> set:
+        """The neurons control edit `c` changes, each a (layer, index) whatever projection it is changed in."""
+        return {(int(edit.terms[i].layer), int(x)) for i, d in enumerate(term_draws) if d is not None for x in d[c]}
+
+    seen_sites: set = set()
+    disjoint = 0
+    for c in range(int(found)):
+        sites = sites_of(c)
+        if not (sites & seen_sites):
+            disjoint += 1
+            seen_sites |= sites
+    if made_clean is not None:
+        fam = [sites_of(c) for c in range(int(found)) if made_clean[c]]
+        if len(set().union(*fam)) == sum(len(s) for s in fam):  # pairwise disjoint, checked and not taken on trust
+            disjoint = max(disjoint, len(fam))
+    coverage["disjoint_sets"] = disjoint
     if not coverage["sufficient"]:
         return None, coverage
     out: List[Edit] = []
@@ -2158,12 +2519,19 @@ def stack(
     note: str = "",
     doses: Optional[Sequence[float]] = None,
     caps: bool = True,
+    plant_first: bool = False,
 ) -> Edit:
     """Compose a sequence of edits on the same base by adding their weight deltas (`W + sum_k d_k * Delta_k`). Two
     scalings on the same column or row add as `f1 + f2 - 1` (the additive delta rule); two `add` vectors sum;
     `scale` + `add` lowers to an `add`; `set` + `add` or `set` + `scale` stays a `set`; two `set`s on the same index
     are refused. Low-rank terms on the same linear concatenate along rank. The composed edit passes through the gate
-    and carries its parents' ids in `report["parents"]`."""
+    and carries its parents' ids in `report["parents"]`.
+
+    `plant_first`: the first edit is a plant lying under the rest (a blinded session's, `levelling._Sitting`), and the
+    whole must be refused nothing that the rest alone is not, or a refusal would say where the plant is. So the whole
+    is not asked the caps on one edit's size again (each part met them alone), and where both set one column or row the
+    later edit's set stands. The deltas still add: an edit that scales a neuron the plant scaled gives `f1 + f2 - 1`,
+    not `f1 * f2`, so on the plant's own neurons the whole is not yet the edit on a model with those weights."""
     edits = list(edits)
     if not edits:
         raise Refused("stack requires at least one edit.")
@@ -2184,7 +2552,7 @@ def stack(
             a = e.base.get("model") if isinstance(e.base, dict) else None
             ia = e.base.get("weights_id") if isinstance(e.base, dict) else None
             raise Refused(_SAY_OTHER_BASE.format(a=a, ia=ia, b=model_id, ib=weights_id))
-        checked.append(gate_again(lm, e, model_id=model_id, weights_id=weights_id))
+        checked.append(gate_again(lm, e, model_id=model_id, weights_id=weights_id, sized=not plant_first))
     # per (linear, kind) -> idx -> (op_code, factor, vector_or_None)
     slices: Dict[Tuple[str, str, int, str], Dict[int, Tuple[int, float, Optional[np.ndarray]]]] = {}
     low_specs: List[TermSpec] = []
@@ -2228,6 +2596,9 @@ def stack(
                     continue
                 op1, f1, v1 = bucket[n]
                 if op1 == 1 and op2 == 1:
+                    if plant_first:  # the later edit replaces what the plant set: no refusal names the plant's neuron
+                        bucket[n] = (1, 1.0, v2)
+                        continue
                     raise Refused(f"Cannot stack two edits that both set neuron {n} of {t.linear} "
                                   f"(page layer {t.layer + 1}).")
                 if op1 == 0 and op2 == 0:
@@ -2267,7 +2638,7 @@ def stack(
                 vs = np.stack([v.astype(np.float32) for _n, _f, v in by_op[code]], axis=0)
                 specs.append(TermSpec(kind, layer, which, ns, opname, vectors=vs))
     specs.extend(low_specs)
-    out = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=note, caps=caps)
+    out = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=note, caps=caps, sized=not plant_first)
     out.report["parents"] = [e.id for e in checked]
     return out
 
@@ -2739,3 +3110,265 @@ def folded(lm: nn.Module, edit: Edit, dose: float = 1.0, *,
             od.clear()
             od.update(before)
         assert_base(lm, hooks_at_load)
+
+
+# ------------------------------------------------------------------------ Phase 5 provenance & base integrity
+
+
+def rebuilt_recipe(edit: Edit) -> Optional[Dict[str, Any]]:
+    """Return a pure-JSON `{"terms": [...]}` recipe when every term of `edit` can be rebuilt from the public base
+    weights with no carried payload arrays (column or row `silence` / `scale`), else `None`."""
+    terms_out: List[Dict[str, Any]] = []
+    for t in edit.terms:
+        if t.kind not in ("cols", "rows") or t.vectors is not None:
+            return None
+        if int(t.op.max(initial=0)) != 0:
+            return None
+        idx = [int(n) for n in t.idx]
+        fac = [float(f) for f in t.factor]
+        all_zero = all(f == 0.0 for f in fac)
+        all_same = all(f == fac[0] for f in fac)
+        if t.kind == "cols":
+            if all_zero:
+                terms_out.append({"layer": int(t.layer), "silence": idx})
+            elif all_same:
+                terms_out.append({"layer": int(t.layer), "scale": idx, "factor": float(fac[0])})
+            else:
+                terms_out.append({"layer": int(t.layer), "scale": idx, "factors": fac})
+        else:
+            if all_zero:
+                terms_out.append({"layer": int(t.layer), "which": t.which, "silence_rows": idx})
+            elif all_same:
+                terms_out.append({"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factor": float(fac[0])})
+            else:
+                terms_out.append({"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factors": fac})
+    out: Dict[str, Any] = {"terms": terms_out}
+    if edit.note:
+        out["note"] = edit.note
+    return out
+
+
+def edit_provenance(edit: Edit, *, saved_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Phase 5 provenance manifest: marks each term `"rebuilt"` (reconstructible from the public base with its pure-JSON
+    recipe) or `"carried"` (requires external array payload, naming sha256 hashes only and never embedding weights)."""
+    man = edit.manifest()
+    terms_prov: List[Dict[str, Any]] = []
+    any_carried = False
+    for t, mt in zip(edit.terms, man["terms"]):
+        is_carried = bool(mt.get("carried"))
+        if is_carried:
+            any_carried = True
+            entry: Dict[str, Any] = {
+                "linear": t.linear,
+                "layer": int(t.layer),
+                "which": t.which,
+                "kind": t.kind,
+                "provenance": "carried",
+                "sha256": dict(mt.get("sha256") or {}),
+            }
+            if t.kind in ("cols", "rows"):
+                idx_key = "columns" if t.kind == "cols" else "rows"
+                entry[idx_key] = list(mt[idx_key])
+                entry["ops"] = list(mt["ops"])
+                entry["factors"] = list(mt["factors"])
+                entry["payload_key"] = mt.get("vectors")
+            else:
+                entry["rank"] = int(mt["rank"])
+                entry["payload_keys"] = {"A": mt.get("A"), "B": mt.get("B")}
+            terms_prov.append(entry)
+        else:
+            idx = [int(n) for n in t.idx]
+            fac = [float(f) for f in t.factor]
+            all_zero = all(f == 0.0 for f in fac)
+            all_same = all(f == fac[0] for f in fac)
+            if t.kind == "cols":
+                rec: Dict[str, Any] = (
+                    {"layer": int(t.layer), "silence": idx}
+                    if all_zero else
+                    ({"layer": int(t.layer), "scale": idx, "factor": float(fac[0])}
+                     if all_same else {"layer": int(t.layer), "scale": idx, "factors": fac})
+                )
+            else:
+                rec = (
+                    {"layer": int(t.layer), "which": t.which, "silence_rows": idx}
+                    if all_zero else
+                    ({"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factor": float(fac[0])}
+                     if all_same else {"layer": int(t.layer), "which": t.which, "scale_rows": idx, "factors": fac})
+                )
+            terms_prov.append({
+                "linear": t.linear,
+                "layer": int(t.layer),
+                "which": t.which,
+                "kind": t.kind,
+                "provenance": "rebuilt",
+                "recipe_term": rec,
+                "sha256": dict(mt.get("sha256") or {}),
+            })
+
+    payload_sha256: Optional[str] = None
+    if any_carried:
+        if saved_dir is not None and (Path(saved_dir) / "payload.safetensors").is_file():
+            payload_sha256 = hashlib.sha256((Path(saved_dir) / "payload.safetensors").read_bytes()).hexdigest()
+        else:
+            # Deterministic hash of the carried array hashes so a registration folder pins payload identity even before saving
+            carried_hashes = [
+                {"linear": tp["linear"], "kind": tp["kind"], "sha256": tp["sha256"]}
+                for tp in terms_prov if tp["provenance"] == "carried"
+            ]
+            payload_sha256 = _sha({"carried_arrays": carried_hashes})
+
+    return {
+        "format": FORMAT,
+        "version": VERSION,
+        "edit_id": edit.id,
+        "base": copy.deepcopy(edit.base),
+        "linears": edit.linears(),
+        "layers": edit.layers(),
+        "all_rebuilt": not any_carried,
+        "provenance": "rebuilt" if not any_carried else "carried",
+        "rebuilt_recipe": rebuilt_recipe(edit),
+        "payload_sha256": payload_sha256,
+        "note": edit.note,
+        "terms": terms_prov,
+    }
+
+
+IMPLANT_COSINE = 0.85  # a write this close to one unembedding row is called the shape of a single-piece implant
+IMPLANT_CHUNK = 16384  # rows of the unembedding read at a time by the implant label: the 31B's table is never copied whole
+# where this house's linears keep weights that `Module.state_dict` does not hold (`base_checksum` hashes these too)
+_WEIGHT_ATTRS = ("weight_packed", "weight_scale", "weight_blocks", "int4_packed", "int4_scales_zeros")
+
+
+def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float = 1.0) -> Dict[str, Any]:
+    """Whether `edit` has the shape of a last-block, single-word-piece implant (`design/synthesis.md` §viii: "a
+    last-block neuron whose write is dominated by one word-piece's unembedding"): a label, not a judgement of what
+    the edit is for.
+
+    Looked at: every direction the edit writes into the stream in the last tenth of the layers, as the stream takes
+    it (times the layer's `post_feedforward_layernorm` weight): the change to each edited `down_proj` column, and
+    each column of a low-rank term's `B` on `down_proj`. A direction whose cosine with one unembedding row is
+    `IMPLANT_COSINE` or more in size is a hit. Not looked at, and named in `not_examined`: row terms on `gate_proj`
+    and `up_proj` (they change what a neuron reads, and write nothing to the stream themselves) and any term below
+    the last tenth. `examined` counts the directions looked at: `flagged` False with `examined` 0 says nothing was
+    in reach, not that the edit is clear."""
+    n_layers = len(lm.layers)
+    late_cut = max(0, int(math.floor(0.9 * n_layers)))
+    d = float(dose)
+    hits: List[Dict[str, Any]] = []
+    not_examined: List[str] = []
+
+    cand: List[Tuple[int, str, torch.Tensor]] = []  # (layer, what, the direction it writes into the stream)
+    for t in edit.terms:
+        if t.which != "down_proj":
+            not_examined.append(f"{t.linear} ({t.kind}): a row term changes what a neuron reads and writes nothing "
+                                "to the stream itself")
+            continue
+        if t.layer < late_cut:
+            not_examined.append(f"{t.linear} ({t.kind}): below the last tenth of the layers")
+            continue
+        w_post = _w_post(lm, t.layer)
+        if t.kind == "cols":
+            mod = lm.get_submodule(t.linear)
+            with torch.no_grad():
+                Wc = dense_cols(mod, torch.from_numpy(np.array(t.idx, dtype=np.int64))).float().cpu().numpy()
+            delta = (_asked(t, d)[:, None] - 1.0) * Wc  # [K, D]
+            if t.vectors is not None:
+                m = t.op != 0
+                delta[m] = delta[m] + d * t.vectors[m]
+            names = [f"neuron {int(n)}" for n in t.idx]
+        else:  # low-rank: each column of B is a direction written
+            delta = (d * t.B).T.astype(np.float64)  # [r, D]
+            names = [f"low-rank direction {k}" for k in range(delta.shape[0])]
+        dS = torch.from_numpy((delta * w_post[None, :]).astype(np.float32))
+        for j in range(dS.shape[0]):
+            if float(torch.linalg.norm(dS[j])) > 1e-8:
+                cand.append((int(t.layer), names[j], dS[j]))
+    examined = len(cand)
+    if cand:
+        # every direction against every unembedding row, the table read once, `IMPLANT_CHUNK` rows at a time on the
+        # CPU (the 31B's is 262,144 by 5,376: it is never copied whole, and not once a direction)
+        V = torch.stack([v for _l, _n, v in cand]).float().cpu()
+        V = V / torch.linalg.norm(V, dim=1, keepdim=True)
+        K = int(V.shape[0])
+        best_abs, best_cos = torch.full((K, 2), -1.0), torch.zeros((K, 2))
+        best_idx = torch.zeros((K, 2), dtype=torch.long)
+        step = max(1, int(IMPLANT_CHUNK))
+        for at in range(0, int(W_U.shape[0]), step):
+            part = W_U[at:at + step].detach().float().cpu()
+            part = part / torch.linalg.norm(part, dim=1, keepdim=True).clamp_min(1e-8)
+            dots = V @ part.T  # [directions, rows of this part]
+            top = torch.topk(dots.abs(), k=min(2, int(dots.shape[1])), dim=1)
+            all_abs = torch.cat([best_abs, top.values], dim=1)
+            all_idx = torch.cat([best_idx, top.indices + at], dim=1)
+            all_cos = torch.cat([best_cos, torch.gather(dots, 1, top.indices)], dim=1)
+            keep = torch.topk(all_abs, k=2, dim=1).indices
+            best_abs, best_idx, best_cos = (torch.gather(x, 1, keep) for x in (all_abs, all_idx, all_cos))
+        for j, (layer, what, _v) in enumerate(cand):
+            top_cos = float(best_cos[j, 0])
+            if abs(top_cos) >= IMPLANT_COSINE:
+                nxt = float(best_abs[j, 1])
+                hits.append({"layer": layer, "page_layer": layer + 1, "what": what,
+                             "top_piece_id": int(best_idx[j, 0]), "top_cosine": round(top_cos, 4),
+                             "next_cosine": round(nxt, 4) if nxt >= 0.0 else None})
+    return {"checked": True, "flagged": bool(hits), "late_layer_cutoff": late_cut, "cosine_bar": IMPLANT_COSINE,
+            "examined": examined, "not_examined": not_examined, "hits": hits[:16]}
+
+
+def base_checksum(
+    lm: nn.Module,
+    *,
+    hooks_at_load: Optional[Dict[str, List[int]]] = None,
+    names: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """A sha256, worked afresh at every call, over every weight the model under `lm` holds: each module's own
+    parameters and the buffers it would save (a norm's weight, an embedding's table, a plain linear's weight), and a
+    packed linear's words and scales as stored, whichever way it keeps them. Beside it, `assert_base`'s overlay and
+    hook checks. A trial takes it before its first reading and after its last: equal means no stored number of the
+    model changed in between.
+
+    `linears_checked` counts the linears among what was hashed (packed, or plain with a weight of two dimensions),
+    `tensors_checked` every tensor. A buffer a module does not save is left out (a cache it may fill as it runs is
+    not the model), but for the weights this house's own linears keep in such buffers or in plain attributes
+    (`_WEIGHT_ATTRS`: a W4A16 linear's words and scales, a GGUF linear's blocks, an int4 linear's packed words). With
+    `names`, only the modules so named."""
+    assert_base(lm, hooks_at_load)
+    h_all = hashlib.sha256()
+    linears = tensors = 0
+    wanted = set(names) if names is not None else None
+    for mod_name, mod in sorted(lm.named_modules(), key=lambda kv: kv[0]):
+        if wanted is not None and mod_name not in wanted:
+            continue
+        store: Dict[str, torch.Tensor] = {}
+        for key, t in mod._parameters.items():
+            if isinstance(t, torch.Tensor):
+                store[key] = t
+        unsaved = getattr(mod, "_non_persistent_buffers_set", set())
+        for key, t in mod._buffers.items():
+            if isinstance(t, torch.Tensor) and key not in unsaved:
+                store[key] = t
+        for key in _WEIGHT_ATTRS:  # a packed linear's own, however the module keeps them
+            t = getattr(mod, key, None)
+            if isinstance(t, torch.Tensor):
+                store[key] = t
+        if not store:
+            continue
+        packed = ("weight_packed" in store and "weight_scale" in store) or "weight_blocks" in store \
+            or "int4_packed" in store
+        w = store.get("weight")
+        if packed or (isinstance(mod, nn.Linear) and isinstance(w, torch.Tensor) and w.dim() == 2):
+            linears += 1
+        hm = hashlib.sha256()
+        for key in sorted(store):
+            t = store[key]
+            shape = "x".join(str(int(n)) for n in t.shape)
+            hm.update(f"{key}:{shape}:{t.dtype}:".encode("ascii"))
+            hm.update(_raw(t.to(torch.int32) if key == "weight_packed" else t))
+            tensors += 1
+        h_all.update(f"{mod_name}:{hm.hexdigest()}\n".encode("ascii"))
+    return {
+        "sha256": h_all.hexdigest(),
+        "linears_checked": linears,
+        "tensors_checked": tensors,
+        "overlays_in_force": len(overlays_in_force(lm)),
+        "hooks_now": sum(len(v) for v in hook_census(lm).values()),
+    }

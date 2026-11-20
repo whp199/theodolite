@@ -530,9 +530,11 @@ def base_record(plan: Plan, source: Columns, given: Dict[str, Any], kinds: Seque
     }
 
 
-def write_lora(path: Path, tensors: Dict[str, Tuple[np.ndarray, np.ndarray]], record: Dict[str, Any]) -> Path:
+def write_lora(path: Path, tensors: Dict[str, Tuple[np.ndarray, np.ndarray]], record: Dict[str, Any],
+               derived: Optional[str] = None) -> Path:
     """The adapter: llama.cpp's keys, the licence and the base model (`ecv.add_origin`), `theodolite.*` from `record`
-    and `theodolite.derived_from` (B is made of the model's own columns: `DERIVED`), a lora_a and lora_b per model
+    and `theodolite.derived_from` (B is made of the model's own columns: `DERIVED`; `derived` in its place for an
+    adapter of another make, whose tensors that sentence would not describe), a lora_a and lora_b per model
     tensor, F32. Atomically: a temporary file beside it, then a rename, over a file of that name (`main` refuses one
     already there unless --force)."""
     import gguf
@@ -549,7 +551,7 @@ def write_lora(path: Path, tensors: Dict[str, Tuple[np.ndarray, np.ndarray]], re
         if record.get("description"):
             w.add_description(str(record["description"]))
         ecv.add_origin(w)
-        ecv.add_record(w, {**record, "derived_from": DERIVED})
+        ecv.add_record(w, {**record, "derived_from": derived or DERIVED})
         for name in sorted(tensors):
             A, B = tensors[name]
             w.add_tensor(f"{name}.lora_a", np.ascontiguousarray(A, dtype=np.float32))

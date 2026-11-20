@@ -13,9 +13,11 @@ Never touches `verify_1a.json`, `verify_1b.json`, or the user's default ledger.
 """
 from __future__ import annotations
 
+import datetime
 import gc
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -50,16 +52,34 @@ from backend.weight_reader import WeightReader  # noqa: E402
 
 PASS = 0
 FAIL: List[str] = []
+CHECKS: List[Dict[str, Any]] = []  # every check as it was made, for the record this script writes
 
 
 def check(cond: bool, msg: str) -> None:
     global PASS
+    CHECKS.append({"ok": bool(cond), "says": msg})
     if cond:
         PASS += 1
         print(f"  PASS  {msg}", flush=True)
     else:
         FAIL.append(msg)
         print(f"  FAIL  {msg}", flush=True)
+
+
+def commit_now() -> Dict[str, Any]:
+    """The commit this script ran at and whether git lists a change, for the record (None where git cannot say)."""
+    root = Path(__file__).resolve().parent.parent
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True, timeout=30)
+        # the two files this script itself rewrites are left out: its book is cleared when it starts
+        st = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", ".",
+                             ":(exclude)experiments/results/levelling/verify_door.json",
+                             ":(exclude)experiments/results/levelling/verify_door_book.jsonl"], cwd=str(root),
+                            capture_output=True, text=True, timeout=30)
+        return {"commit": head.stdout.strip() or None if head.returncode == 0 else None,
+                "changed_paths": len(st.stdout.splitlines()) if st.returncode == 0 else None}
+    except (OSError, subprocess.SubprocessError):
+        return {"commit": None, "changed_paths": None}
 
 
 def fell_back() -> int:
@@ -69,7 +89,8 @@ def fell_back() -> int:
 def main() -> int:
     t_all = time.perf_counter()
     torch.set_grad_enabled(False)
-    record: Dict[str, Any] = {"checks": [], "measurements": {}}
+    record: Dict[str, Any] = {"date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                              **commit_now(), "checks": CHECKS, "measurements": {}}
 
     # ------------------------------------------------------------------ load 31B W4A16 + compiled unpacker
     print("[0. Load Gemma-4-31B-it W4A16 + compiled unpacker]", flush=True)
@@ -303,13 +324,28 @@ print("DOOR_CELL:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
             "controls": {"family": "other_sites", "count": 3, "seed": 0},
             "rows": {"small": 12, "large": 32},
         }
+        t_b0 = time.perf_counter()
         rp = s_plant.read(repair_plan, items_door)
+        t_b1 = time.perf_counter()
         rc = s_canary.read(repair_plan, items_door)
+        t_b2 = time.perf_counter()
         we.assert_base(h.lm, h.hooks_at_load)
         s_plant.close()
         s_canary.close()
         check(rp["driver_view"]["body"]["status"] == "ok" and rc["driver_view"]["body"]["status"] == "ok",
               "3g: 31B planted and canary gated readings both ok and leave base untouched")
+        # when a blinded reading replies: at its price, not when the card was done with it. The card's own seconds are
+        # in the book, which the driver is not shown.
+        price_b = float(rp["driver_view"]["body"]["seconds"]["predicted"])
+        wait_b = lses.BLIND_PAD_FACTOR * price_b + lses.BLIND_PAD_OVER_S
+        took = {tag: float(next(lb.entries(BOOK_PATH, start=int(r["book"]["seq"]), limit=1))["body"]["seconds"]["actual"])
+                for tag, r in (("planted", rp), ("canary", rc))}
+        reply = {"planted": t_b1 - t_b0, "canary": t_b2 - t_b1}
+        check(min(reply.values()) >= wait_b - 0.005 and abs(reply["planted"] - reply["canary"]) < 0.05
+              and rp["driver_view"]["body"]["seconds"]["actual"] is None,
+              f"3i: the planted and the canary reading reply {reply['planted']:.3f} s and {reply['canary']:.3f} s after they "
+              f"were asked (their price asks {wait_b:.3f} s), where the card took {took['planted']:.4f} s and "
+              f"{took['canary']:.4f} s")
         disk_chk = (
             (tmp / "sess_plant_31b" / "session.json").read_text()
             + (tmp / "sess_plant_31b" / "transcript.jsonl").read_text()
@@ -322,6 +358,8 @@ print("DOOR_CELL:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
             "cell_s": cell_r["seconds"],
             "paired_read_s": rd["gpu_seconds_charged"],
             "paired_rank_large": dv["body"]["summary"]["classes"]["large"]["rank"],
+            "blinded_reply_s": {"planted": round(reply["planted"], 4), "canary": round(reply["canary"], 4),
+                                "asked_of_both": round(wait_b, 4), "card_took": {k: round(v, 4) for k, v in took.items()}},
             "planted_repair_kl_large": rp["driver_view"]["body"]["summary"]["classes"]["large"]["arms"]["edit:1.0"]["kl"]["mean_over_items"],
             "canary_repair_kl_large": rc["driver_view"]["body"]["summary"]["classes"]["large"]["arms"]["edit:1.0"]["kl"]["mean_over_items"],
         }

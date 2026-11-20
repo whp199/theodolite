@@ -40,7 +40,7 @@ from backend import weight_edits as we
 from backend.causal_check import logits_fp32
 from backend.theodolite_math import FINAL_LOGIT_SOFTCAP
 
-RULE_VERSION = 1
+RULE_VERSION = 2  # 2: a sham edit counts only when at least as loud as the edit; a prompt arm matches by KNOB_RULE
 RULE_PRESET = "levelling-claim-v1"
 DEFAULT_ALPHA = 0.05
 MIN_FRAMES_PER_HALF = 2
@@ -57,9 +57,9 @@ PROMPT_ARMS_OFF = "switched off for this reading"
 # on its harness card, `scripts/check_level_claim.py` checks the two agree).
 DESIGN_DEFAULTS = {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4, "written_rows": 12}
 
-# A reading whose name begins with one of these is the harness's own (a calibration's, a claim's, a settings audit's,
-# a pricing's); a session's practice gates refuse such a name, so in a book every other reading is practice.
-RESERVED_NAMES = ("cal_", "claim_", "settings_audit_", "sizing_")
+# A reading whose name begins with one of these is the harness's own (a calibration's, a claim's, a trial of record's,
+# a settings audit's, a pricing's); a session's practice gates refuse such a name, so in a book every other reading is practice.
+RESERVED_NAMES = ("cal_", "claim_", "trial_", "settings_audit_", "sizing_")
 _LOOP_COUNT_KEY = {"instrument": "looped", "published": "looped_published", "either": "looped_either"}
 
 
@@ -76,6 +76,11 @@ def _written_rows(written_rows: int, n_doses: int) -> Tuple[int, int]:
     rows = min(max(int(written_rows), lv.WRITTEN_ROWS_MIN, need), lv.WRITTEN_ROWS_MAX)
     return rows, max(1, rows - 2 - len(lv.NULL_E_WRITTEN) - int(n_doses))
 
+LEADS = ("lead", "lead, matched by a cheaper knob")  # the verdicts a trial of record may follow
+# when one of a brief's own prompt arms "matches" an edit, in the words a sheet and a trial's rules print
+KNOB_RULE = ("it moved the metric at least {frac:g} times as far as the edit in the brief's direction, and its "
+             "near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose "
+             "near-miss effect was not read matches on its effect alone")
 VERDICTS = (
     "lead",
     "lead, matched by a cheaper knob",
@@ -358,33 +363,62 @@ def control_standing(
     *,
     max_fresh_readings: int,
     alpha: float,
+    effective_count: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Empirical rank and family-wise bound `p_fw = min(1, m * (1 + at_least) / (C + 1))` against one control family.
     Uses magnitude `|x|` (conservative two-sided comparison against exchangeability). A control edit whose reading is
     missing or not finite counts in `at_least`: it was run, and nothing shows the edit moved more than it did, so it
-    may not sit in the denominator as one the edit topped (`non_finite` says how many there were)."""
+    may not sit in the denominator as one the edit topped (`non_finite` says how many there were).
+
+    `effective_count`: how many of the control edits may be counted as separate draws, when that is fewer than were
+    read. Matched control sets are drawn from the sites eligible for each neuron, and sets that differ in one
+    stand-in are "distinct": sets that share a site are tied together, whether the site stands in for the same
+    neuron in both or for different ones. `C` in the bound is then the smaller number (`effective_count` in the
+    result), and `at_least` is not scaled down with it. A trial passes the number of its control edits that share
+    no site with one another (`separate_draws`), and 1 when its reading records no such count; a claim reading
+    passes nothing, so its level takes every control edit as a separate draw.
+
+    `as_read_at_least`: how many control edits with a finite reading moved the metric as much (`at_least` less
+    those counted in it for want of one), so that a family that failed on control edits set aside is not read as
+    one that control edits beat."""
     C = len(control_values)
     ev = _clean_float(edit_value)
     valid = [abs(v) for v in (_clean_float(c) for c in control_values) if v is not None]
     non_fin = C - len(valid)
     if ev is None or C == 0:
         return {
-            "count": C, "non_finite": non_fin, "at_least": None, "p_emp": None, "p_fw": None,
-            "tops_every_control": False, "passes_alpha": False,
+            "count": C, "non_finite": non_fin, "at_least": None, "as_read_at_least": None, "p_emp": None,
+            "p_fw": None, "tops_every_control": False, "passes_alpha": False,
         }
     ae = abs(ev)
-    at_least = sum(1 for v in valid if v >= ae) + non_fin
-    p_emp = (1 + at_least) / float(C + 1)
+    as_read = sum(1 for v in valid if v >= ae)
+    at_least = as_read + non_fin
+    c_eff = C if effective_count is None else max(1, min(C, int(effective_count)))
+    p_emp = min(1.0, (1 + at_least) / float(c_eff + 1))
     p_fw = min(1.0, float(max_fresh_readings) * p_emp)
     return {
         "count": C,
+        "effective_count": c_eff,
         "non_finite": non_fin,
         "at_least": at_least,
+        "as_read_at_least": as_read,
         "p_emp": p_emp,
         "p_fw": p_fw,
         "tops_every_control": at_least == 0,
         "passes_alpha": bool(p_fw <= float(alpha) + 1e-12),
     }
+
+
+def draws_words(cs: Mapping[str, Any], m: int, alpha: float) -> str:
+    """What a failed control family's reason says when its control edits were counted as fewer separate draws than
+    were read, and when that count alone settled it (no reading of them could have reached the level)."""
+    eff = cs.get("effective_count")
+    if eff in (None, cs.get("count")):
+        return ""
+    said = f"; the {cs.get('count')} control edits are counted as {eff} separate draws"
+    if float(m) / (float(eff) + 1.0) > float(alpha) + 1e-12:
+        said += ", too few to reach the level whatever they read"
+    return said
 
 
 def _min_detectable_gain(n: int, p0: float, *, alpha: float = DEFAULT_ALPHA) -> Optional[float]:
@@ -651,19 +685,22 @@ def judge_claim(
                 cs = control_standing(
                     fstats["mean"], ctls_in[fam],
                     max_fresh_readings=brief.max_fresh_readings, alpha=bars.alpha,
+                    effective_count=(cdata.get("controls_effective") or {}).get(fam),
                 )
                 ctl_eval[fam] = cs
                 if fam in req_families and not cs["passes_alpha"]:
                     any_ctl_fail = True
                     lost = (
-                        f"; {cs['non_finite']} of them gave no finite reading, or (a sham edit) did not move the "
-                        "stream as the edit did, and are counted as moving as much"
+                        f"; {cs['non_finite']} of them gave no finite reading, or did not change the stream as much "
+                        "as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as "
+                        f"much: of the control edits that were read and count, {cs['as_read_at_least']} moved the "
+                        "metric as much"
                         if cs["non_finite"] else ""
                     )
                     reasons.append(
                         f'{cls_name} class failed "{fam}" controls (at_least={cs["at_least"]}/{cs["count"]}, '
-                        f'p_fw={cs["p_fw"]}, alpha={bars.alpha}{lost}).'
-                    )
+                        f'p_fw={cs["p_fw"]}, alpha={bars.alpha}{lost}'
+                        + draws_words(cs, brief.max_fresh_readings, bars.alpha) + ").")
             elif fam in req_families:
                 ctl_eval[fam] = {
                     "count": 0, "non_finite": 0, "at_least": None, "p_emp": None, "p_fw": None,
@@ -674,7 +711,7 @@ def judge_claim(
             else:
                 ctl_eval[fam] = {
                     "count": 0, "p_emp": None, "p_fw": None, "passes_alpha": None,
-                    "note": f"selection not matched, {int(practice_count)} read in practice",
+                    "note": f"selection not matched, {int(practice_count)} practice readings in this book",
                 }
 
         cls_eval[cls_name] = {
@@ -686,6 +723,7 @@ def judge_claim(
             "reversed_ok": rev_ok,
             "controls": ctl_eval,
             "delivered": cdata.get("delivered"),  # printed, gates nothing
+            "item_gate": cdata.get("item_gate"),  # printed: how many items read under the kernel's item gate
         }
 
     # Target magnitude for near-miss ratio check (conservative: min across required classes)
@@ -702,6 +740,7 @@ def judge_claim(
 
     # Gating batteries evaluation (arbiter.md Row 20)
     bat_eval: Dict[str, Any] = {}
+    bat_items: Dict[str, Dict[str, Any]] = {}
     any_harm = False
     for bname in ("neutral_text", "near_misses", "labelled_panel", "habitat"):
         gating = bname in bars.gating_batteries
@@ -712,6 +751,8 @@ def judge_claim(
                 any_harm = True
                 reasons.append(f'Gating battery "{bname}" was not run.')
             continue
+        if isinstance(bdata.get("items"), Mapping):  # of the items drawn, how many read (the rest are in no figure)
+            bat_items[bname] = dict(bdata["items"])
         if bname == "neutral_text":
             mkl = _clean_float(bdata.get("mean_kl"))
             ok = mkl is not None and mkl <= bars.neutral_kl_max
@@ -771,18 +812,42 @@ def judge_claim(
     knobs_out = dict(cheaper_knobs or {})
     matched_knob_name: Optional[str] = None
     edit_nm_abs = (bat_eval.get("near_misses") or {}).get("abs_effect")
+    for bname, counted in bat_items.items():
+        bat_eval[bname]["items"] = counted
+    # An arm matches when it moves the metric at least `knobs_match_fraction` as far as the edit and its near-miss
+    # effect is within the registered bar, either in size or as a share of its own effect (`KNOB_RULE` says it in
+    # words). In size alone, an arm that moved the metric six times as far, with a small share of near-miss effect,
+    # could never match: on the 31B's pronoun brief the author's arm moved it 8.72 with a near-miss of 1.38, against
+    # the edit's 1.47 and 0.84. An arm whose near-miss effect was not read matches on its effect alone: nothing
+    # shows it does worse, and a match takes from the edit's verdict, never adds to it. (The rule once read "within
+    # the bar or no worse than the edit's". With bars that gate on near misses, as every calibrated set does, an edit
+    # that is a lead is itself within both bars, so leaving those words out changes no verdict; it changes which
+    # readings that are no lead name a matching arm (`matched_by`). With a bar set that does not gate on near
+    # misses, which `make_bar_set` can build and no claim or trial is read with, an arm over both bars and no worse
+    # than the edit matched then and does not now: such a reading was "lead, matched by a cheaper knob" and is
+    # "lead".)
+    matched_arm: Optional[Dict[str, Any]] = None
     for p_arm in knobs_out.get("prompt_arms") or []:
         eff = _clean_float(p_arm.get("directed_effect"))
         nm = _clean_float(p_arm.get("near_miss_abs"))
-        nm_ok = (nm is None) or (nm <= max(float(edit_nm_abs or 0.0), bars.near_miss_abs_max))
+        arm_share = (nm / eff) if (nm is not None and eff is not None and eff > 0.0) else None
+        size_ok = nm is not None and nm <= bars.near_miss_abs_max
+        share_ok = arm_share is not None and arm_share <= bars.near_miss_ratio_max
+        nm_ok = nm is None or size_ok or share_ok
         if eff is not None and target_dir_min > 0.0 and eff >= bars.knobs_match_fraction * target_dir_min and nm_ok:
             matched_knob_name = f"prompt arm {p_arm.get('index', 0)}"
+            matched_arm = {"index": p_arm.get("index", 0), "directed_effect": eff, "near_miss_abs": nm,
+                           "near_miss_share": arm_share,
+                           "near_miss": ("not read" if nm is None else
+                                         "within the registered bar in size" if size_ok else
+                                         "within the registered bar as a share of its own effect")}
             break
     if matched_knob_name is None:
         dec = knobs_out.get("decoding_bias")
         if isinstance(dec, Mapping) and dec.get("gating") and dec.get("matched"):
             matched_knob_name = "decoding bias"
     knobs_out["matched_by"] = matched_knob_name
+    knobs_out["matched_arm"] = matched_arm
 
     # Strict verdict precedence (arbiter.md §4 & §8)
     if any_void_frames:
@@ -845,16 +910,19 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
 
     By the brief's hash (`brief_id`): its `calibrations` (a bar set is one version's).
 
-    By the brief's NAME when `name` is given, else by its hash: the fresh readings registered (`registrations`,
-    `verdicts`, `seen_edit_ids`) and the practice draws (`practice_item_ids`, `practice_frame_ids`). A brief's
-    budget of fresh readings is its name's: changing a word of the brief does not start a new count
-    (`run_fresh_claim` asks by name and refuses a brief whose hash is not the one its name was first read under,
-    `other_ids`).
+    By the brief's NAME when `name` is given, else by its hash: the fresh claim readings registered
+    (`registrations`, `verdicts`, `seen_edit_ids`), the trials registered (`trials`, `trial_verdicts`,
+    `tried_edit_ids`: trials of record, dry runs of one and a volunteer's re-runs alike), `fresh_count` (claims and
+    trials together: a trial reads the kept-back frames, so it is a fresh reading and spends one of the brief's
+    `m`), and the practice draws (`practice_item_ids`, `practice_frame_ids`). A brief's budget of fresh readings is
+    its name's: changing a word of the brief does not start a new count (`fresh_reading_gate` asks by name and
+    refuses a brief whose hash is not the one its name was first read under, `other_ids`).
 
     Of the whole book, whatever the brief: `practice_templates`, the template ids of every frame drawn in practice
     here (so a practice frame moved into another brief's kept-back split is still known); `book_fresh_readings`,
-    the count of fresh readings registered under each brief name (so a sheet can list them all); `frames_read`,
-    for each kept-back template a registration recorded, the `[name, hash]` of every brief it was read under;
+    the count of fresh readings (claims and trials) registered under each brief name (so a sheet can list them
+    all); `frames_read`, for each kept-back template a registration recorded, the `[name, hash]` of every brief it
+    was read under;
     `practice_readings`, how many readings in the book are not the harness's own (`RESERVED_NAMES`); and, when a
     `guard` is given, `kept_back_practised`: the lines of practice readings holding an item the guard finds
     (`level_briefs.KeptBack.hit`), whichever door they came in by (a session, the command line, the page).
@@ -873,10 +941,14 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     frames_read: Dict[str, set] = {}
     practice_readings = 0
     kept_back_practised: List[int] = []
+    trials: List[Dict[str, Any]] = []
+    trial_verdicts: List[Dict[str, Any]] = []
+    tried_edit_ids: List[str] = []
     empty = {
         "calibrations": [], "registrations": [], "verdicts": [], "seen_edit_ids": [], "other_ids": [],
         "practice_item_ids": [], "practice_frame_ids": [], "practice_templates": [], "book_fresh_readings": {},
         "frames_read": {}, "practice_readings": 0, "kept_back_practised": [],
+        "trials": [], "trial_verdicts": [], "tried_edit_ids": [], "fresh_count": 0,
     }
     want_name = _name_key(name) if name is not None else None
     p = book_path if book_path is not None else lb.book_path()
@@ -926,12 +998,26 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         elif nt == "claim_verdict":
             if mine(body):
                 verdicts.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
+        elif nt == "trial_registration":
+            # a trial (of record, a dry run of one, a volunteer's re-run) reads the kept-back frames: a fresh reading
+            if isinstance(body.get("brief_name"), str):
+                book_fresh[body["brief_name"]] = book_fresh.get(body["brief_name"], 0) + 1
+            for tid in ((body.get("kept_back") or {}).get("template_ids") or ()):
+                frames_read.setdefault(str(tid), set()).add((str(body.get("brief_name")), str(body.get("brief_id"))))
+            if mine(body):
+                trials.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
+                eid = body.get("edit_id")
+                if isinstance(eid, str):
+                    tried_edit_ids.append(eid)
+        elif nt in TRIAL_VERDICT_NOTES:
+            if mine(body):
+                trial_verdicts.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
     return {
         "calibrations": calibrations,
         "registrations": registrations,
         "verdicts": verdicts,
         "seen_edit_ids": seen_edit_ids,
-        "other_ids": sorted({str(r.get("brief_id")) for r in registrations if r.get("brief_id") != brief_id}),
+        "other_ids": sorted({str(r.get("brief_id")) for r in registrations + trials if r.get("brief_id") != brief_id}),
         "practice_item_ids": sorted(practice_item_ids),
         "practice_frame_ids": sorted(practice_frame_ids),
         "practice_templates": sorted(practice_templates),
@@ -939,7 +1025,185 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         "frames_read": {tid: sorted([n, i] for n, i in who) for tid, who in sorted(frames_read.items())},
         "practice_readings": practice_readings,
         "kept_back_practised": kept_back_practised,
+        "trials": trials,
+        "trial_verdicts": trial_verdicts,
+        "tried_edit_ids": tried_edit_ids,
+        "fresh_count": len(registrations) + len(trials),
     }
+
+
+TRIAL_VERDICT_NOTES = ("trial_of_record", "trial_dry_run", "trial_rerun")
+
+
+def prior_trials(hist: Mapping[str, Any]) -> List[Dict[str, Any]]:
+    """Every trial registered on the brief in the book, in order, each with what it came to: its line, name, edit,
+    whether it was of record, a dry run or a volunteer's re-run, and its verdict (none when the trial was registered
+    and never ended). What a sheet prints of the trials before it."""
+    ended = {int(v.get("registration_seq")): v for v in hist.get("trial_verdicts") or ()
+             if isinstance(v.get("registration_seq"), int)}
+    out: List[Dict[str, Any]] = []
+    for t in hist.get("trials") or ():
+        v = ended.get(int(t["seq"]))
+        kind = "re-run" if t.get("rerun_of") else ("of record" if t.get("of_record") else "dry run")
+        out.append({"seq": int(t["seq"]), "trial_name": t.get("trial_name"), "edit_id": t.get("edit_id"),
+                    "reading_index": t.get("reading_index"), "kind": kind,
+                    "verdict": v.get("verdict") if v else None, "verdict_seq": int(v["seq"]) if v else None})
+    return out
+
+
+def fresh_reading_gate(
+    h: lv.Handle,
+    brief: lbr.Brief,
+    bars: BarSet,
+    edit: we.Edit,
+    bk: Path,
+    *,
+    what: str = "claim",
+    practice_item_ids: Optional[Iterable[str]] = None,
+    practice_frame_ids: Optional[Iterable[str]] = None,
+    calibration: Optional[Mapping[str, Any]] = None,
+    main_dose: Optional[float] = None,
+) -> Dict[str, Any]:
+    """What every fresh reading of a brief is asked before it is registered: a claim's (`what="claim"`) and a trial
+    of record's (`what="trial"`) alike, since both read the brief's kept-back frames and both spend one of its `m`.
+
+    Refused, in this order: kept-back wording that a practice reading in this book holds; a brief changed under its
+    name since its first fresh reading; a kept-back frame seen in practice (by id or by template); a kept-back frame
+    already read under another brief; bars that no calibration reading in this book produced, or that were
+    calibrated on other weights; an edit already read (a claim reads an edit once; a trial reads an edit once, and
+    may follow that edit's claim when the claim read a lead, which is what a trial promotes; nothing follows a
+    trial); and a brief whose `m` fresh readings, claims and trials together, are spent.
+
+    A trial is asked two things more of its bars. The calibration note must name the weights it was taken on (a
+    note that names none is taken for a claim, as it always was, and not for a trial). And the note must follow from
+    the book (`calibration_follows`): its three readings stand before it and give the bars by the note's own
+    settings, so a note written into the book with bars of someone's choosing is not a calibration.
+
+    `calibration`: for a volunteer's re-run alone, whose book is its own and holds no calibration: the home
+    registration's record of the calibration the bars came from ({"seq", "weights_id", ...}), taken in place of this
+    book's note and checked against this model's weights all the same.
+
+    All of this is asked of ONE book, the one at `bk`. The harness cannot see another book, a copy of this one, or
+    this one cut back to an earlier line: "read once" and the budget `m` are facts about the book a reading is
+    taken in.
+
+    Returns {"hist", "cal_note", "reading_index", "forbid_items", "forbid_frames", "kb_tids", "book"}. Raises
+    `ClaimRefused`, in words that name the reading asked for."""
+    if what not in ("claim", "trial"):
+        raise ValueError(f'what is "claim" or "trial"; {what!r} was given.')
+    noun = "claim" if what == "claim" else "trial of record"
+    hist = brief_history(brief.id, bk, name=brief.name, guard=lbr.KeptBack([brief]))
+    if hist["kept_back_practised"]:
+        at = ", ".join(str(s) for s in hist["kept_back_practised"][:8])
+        raise ClaimRefused(
+            f'Kept-back frames of brief "{brief.name}" were read in practice in this book (line'
+            f'{"s" if len(hist["kept_back_practised"]) > 1 else ""} {at}'
+            f'{", ..." if len(hist["kept_back_practised"]) > 8 else ""}): their wording, or a near wording, stands in a '
+            f"reading that is not a fresh claim reading, so a {noun} on them here would not be on fresh frames."
+        )
+    if hist["other_ids"]:
+        raise ClaimRefused(
+            f'Brief "{brief.name}" has changed since its first fresh reading in this book (it was '
+            f'{hist["other_ids"][0][:12]} then, it is {brief.short()} now). A brief and its budget of fresh readings '
+            "are fixed before the first one: read the brief as it was, or give the changed brief a name of its own "
+            "(every sheet lists the fresh readings of every brief in its book)."
+        )
+    all_forbid_items = set(hist["practice_item_ids"]) | set(practice_item_ids or ())
+    all_forbid_frames = set(hist["practice_frame_ids"]) | set(practice_frame_ids or ())
+    kb_now = brief.generator.frames_for("kept_back")
+    practised = set(hist["practice_templates"])
+    leaked_frames = ({fr.id for fr in kb_now} & all_forbid_frames) | {fr.id for fr in kb_now if fr.template_id in practised}
+    if leaked_frames:
+        raise ClaimRefused(
+            f"Frame leakage refused before registration: kept-back frame(s) {sorted(leaked_frames)} "
+            "were already seen in practice in this book (by their id under this brief, or by their template under any)."
+        )
+    kb_tids = sorted(fr.template_id for fr in kb_now)
+    elsewhere = sorted({(n, i) for tid in kb_tids for n, i in hist["frames_read"].get(tid, ()) if i != brief.id})
+    if elsewhere:
+        raise ClaimRefused(
+            f'Kept-back frames of this brief were already read in this book under brief "{elsewhere[0][0]}" '
+            f"({elsewhere[0][1][:12]}): a kept-back frame is read under one brief, with that brief's budget of fresh "
+            "readings, whatever a later brief that holds it is called."
+        )
+    if calibration is not None:
+        cal_note: Optional[Dict[str, Any]] = dict(calibration)
+        if cal_note.get("bars_sha256") not in (None, bars.id) or not isinstance(cal_note.get("seq"), int):
+            raise ClaimRefused(
+                f"The registration's record of its calibration does not name bar set {bars.short()} and the line "
+                "of the home book it was written at: a re-run takes the bars its registration was calibrated with."
+            )
+    else:
+        cal_note = next((c for c in reversed(hist["calibrations"]) if c.get("bars_sha256") == bars.id), None)
+    if cal_note is None:
+        raise ClaimRefused(
+            f'Bar set {bars.short()} is not from a calibration reading recorded in this level book for brief '
+            f'"{brief.name}" ({brief.short()}): a {noun} takes the bars calibrate_bars wrote into the same book '
+            "(scripts/levelling.py calibrate), and no others."
+        )
+    if cal_note.get("weights_id") not in (None, h.weights_id):
+        raise ClaimRefused(
+            f"Bar set {bars.short()} was calibrated on other weights ({str(cal_note.get('weights_id'))[:16]}) than "
+            f"this model's ({str(h.weights_id)[:16]}): calibrate on the model the {noun} is read on."
+        )
+    if what == "trial":
+        if h.weights_id is not None and cal_note.get("weights_id") is None:
+            raise ClaimRefused(
+                f"The calibration of bar set {bars.short()} (line {cal_note.get('seq')}) does not name the weights it "
+                "was taken on, so it cannot be shown to be this model's: calibrate again (scripts/levelling.py "
+                "calibrate) for a trial of record."
+            )
+        if calibration is None:
+            why_not = calibration_follows(cal_note, bk, brief, bars)
+            if why_not is not None:
+                raise ClaimRefused(
+                    f"The calibration note of bar set {bars.short()} (line {cal_note.get('seq')}) does not follow "
+                    f"from this book: {why_not}. A trial of record takes bars its book shows were calibrated."
+                )
+    k_prior = int(hist["fresh_count"])
+    if edit.id in hist["tried_edit_ids"]:
+        at_line = next((t["seq"] for t in hist["trials"] if t.get("edit_id") == edit.id), None)
+        raise ClaimRefused(
+            f'Read once: edit {edit.short()} has already had a trial on brief "{brief.name}" ({brief.short()}) in '
+            f"this book (line {at_line}): a trial is read once, of record or as a dry run, and nothing is read of "
+            "the edit on these frames after it."
+        )
+    if what == "claim" and edit.id in hist["seen_edit_ids"]:
+        raise ClaimRefused(
+            f'Read once: edit {edit.short()} has already been read on brief "{brief.name}" ({brief.short()}).'
+        )
+    if what == "trial" and edit.id in hist["seen_edit_ids"]:
+        # a trial promotes a lead. An edit whose claim reading here read anything else has nothing to promote, and a
+        # trial of it would be a second draw at the same question on the same frames
+        claim_reg = next(r for r in hist["registrations"] if r.get("edit_id") == edit.id)
+        claim_said = next((v.get("verdict") for v in hist["verdicts"]
+                           if v.get("registration_seq") == claim_reg["seq"]), None)
+        if claim_said not in LEADS:
+            raise ClaimRefused(
+                f"Edit {edit.short()}'s claim reading on brief \"{brief.name}\" in this book (line {claim_reg['seq']}) "
+                + (f'read "{claim_said}"' if claim_said is not None else "was registered and never ended")
+                + ": a trial of record follows a lead, and a second reading of the same edit on the same frames "
+                "after anything else would be a second draw at one question."
+            )
+        claim_dose = _clean_float(claim_reg.get("main_dose"))
+        if main_dose is not None and claim_dose is not None and float(main_dose) != claim_dose:
+            raise ClaimRefused(
+                f"Edit {edit.short()}'s claim reading in this book (line {claim_reg['seq']}) read it at dose "
+                f"{claim_dose:g}, and this trial is registered at dose {float(main_dose):g}: a trial promotes what the "
+                "claim read, at the dose it read it."
+            )
+    if k_prior >= brief.max_fresh_readings:
+        raise ClaimRefused(
+            f'Brief "{brief.name}" has already spent all {brief.max_fresh_readings} of its fresh readings.'
+            + (" A trial of record is a fresh reading and spends one: a brief that is to have a claim and then its "
+               "trial is given at least 2 before the first." if what == "trial" else "")
+        )
+    bk_resolved = Path(bk).expanduser().resolve()
+    # which book this is: a fresh reading is counted in the book it is taken in and nowhere else, so one taken in a
+    # side book (a check's, a dry run's) says so, in its registration, on its sheet and in its sentence
+    book_note = {"name": bk_resolved.name, "default": bk_resolved == lb.default_book_path().resolve()}
+    return {"hist": hist, "cal_note": cal_note, "reading_index": k_prior + 1, "forbid_items": all_forbid_items,
+            "forbid_frames": all_forbid_frames, "kb_tids": kb_tids, "book": book_note}
 
 
 # ----------------------------------------------------------------------------------- calibration & live execution
@@ -1001,22 +1265,87 @@ def _extract_item_effects(
     return item_effects, floor_max, rev_mean, ctl_means
 
 
+def read_at_end(brief: lbr.Brief) -> bool:
+    """Whether the brief's metric is read at the last position alone (log-odds "at the end"): one position past the
+    span a reading's `delivered` is taken over, where `delivered_end` is taken."""
+    odds = brief.readouts.get("odds") if isinstance(brief.readouts, Mapping) else None
+    return brief.metric == "odds" and isinstance(odds, Mapping) and odds.get("at", "end") == "end"
+
+
+def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float]) -> bool:
+    """Whether a control edit changed the stream LESS than the edit did, by one figure; a figure missing on either
+    side is apart too. A control edit counts for the edit only when it was at least as loud: one that changed the
+    stream less shows nothing of what a change of the edit's size does. A band about the edit's figure, which this
+    was, let through control edits that sat at about two thirds of the edit's on the 31B, and with such control
+    edits the printed level is too small (in a reviewer's simulation, where a set moves the metric by what it
+    delivered times a random factor and the 39 are drawn again and again from the record's control edits that
+    were in the band, an edit that is nothing special topped all 39 in 8 to 9% of draws with a normal factor and
+    in 5.4 to 5.7% with a Student's t of three degrees of freedom, not 2.5%). There is no upper side: a louder
+    control edit that moves the metric more counts against the edit, which errs on the careful side, and so the
+    registered matching factor has no part in this. As it stands the rule is one no trial is expected to meet
+    (`level_trial.RULE_STANDS_SAY`): what a pass should ask of its control edits is the owner's to settle."""
+    if edit_d is None or ctl_d is None:
+        return True
+    return ctl_d < edit_d
+
+
+def set_apart_aside(dv: Mapping[str, Any], ctl_means: Sequence[Optional[float]]) -> Tuple[List[Optional[float]], int]:
+    """The control edits' means with each one that did not change the stream as much as the edit did (`dv["apart"]`)
+    taken out of the edit's favour: None, which `control_standing` counts as moving as much. Returns (the means to
+    judge by, how many were set aside); the means as read are left as they were."""
+    apart = list(dv.get("apart") or ())
+    aside = [c < len(apart) and bool(apart[c]) for c in range(len(ctl_means))]
+    return [None if a else v for a, v in zip(aside, ctl_means)], sum(aside)
+
+
+# where an arm's change to the stream is recorded (`levelling._delivered_hook`), and what a sheet calls each place
+_DELIVERED_AT = (("prompt", "delivered_prompt", "over the prompt"), ("answer", "delivered", "over the answer"),
+                 ("end", "delivered_end", "at the last position"))
+
+
 def _delivered_of(
     result: Mapping[str, Any],
     drawn: Sequence[lbr.DrawnItem],
     cls_name: str,
     dose: float,
+    *,
+    compare: bool = False,
+    at_end: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """How much the edit and this reading's control edits each changed the stream, over the items read in `cls_name`:
-    the mean over items of an arm's `delivered` (`levelling._delivered_hook`: the relative change of the stream at
-    the highest layer this reading edits, against the base row). `{"edit", "controls_median", "controls_min",
-    "controls_max", "controls_read"}`, or None when the reading recorded none. It gates nothing: it is printed so
-    that control edits which hardly touch the stream (a wide matching tolerance, sham edits on quiet sites) show."""
+    the mean over items of what `levelling._delivered_hook` records for an arm (the relative change of the stream at
+    the highest layer this reading edits, against the base row) over the positions that predict the answer
+    (`delivered`: "edit", "controls_median", "controls_min", "controls_max", "controls_read", "per_control"), at the
+    last position (`delivered_end`: "edit_end", "controls_median_end", "per_control_end") and over the prompt
+    (`delivered_prompt`: "edit_prompt", "controls_median_prompt", "per_control_prompt"). None when the reading
+    recorded none and `compare` is not asked.
+
+    "Matched" other sites are matched, neuron for neuron, on what a base pre-pass EXPECTS each to deliver over the
+    answer (a neuron's activation there times its column's length, `levelling._score_sites`), not on any of these
+    figures: on the 31B the known answer's edit changed the stream at the last position several times as much as
+    the median of its matched control edits (ROADMAP section viii gives the runs). So with `compare`
+    the result says which control edits were quieter than the edit (`apart`, by `delivered_apart`) by any figure
+    that bears on the metric: over the prompt and over the answer, whose positions feed the read-out through the
+    layers above, and with `at_end` (a metric read at the last position, `read_at_end`) at the last position too.
+    The figures are means over the items read, not item by item. A figure the reading does not record at all (a
+    reading of earlier code) sets every control edit apart; so does an edit with no figure. `as_loud` of
+    `of_controls` is how many were not apart, and `as_loud_ratio_<place>` the median of those ones' figure over the
+    edit's. In a claim reading the count gates nothing for the kernel's own families (it does for sham edits); a
+    trial counts each one apart as moving as much.
+
+    What the three figures still do not show: they are sizes of a change, not its direction, and a mean over
+    positions is not every position.
+
+    With a matched reading's `controls` block it also says how many of the control edits share no site with one
+    another (`disjoint_sets`, where the reading records it), the fewest different stand-ins one neuron had
+    (`fewest_distinct`), the fewest sites that were eligible for one neuron (`fewest_eligible`) and how the sets
+    were drawn (`draw`): control edits that share a site are not separate draws."""
     by_name = {d.item.name: d for d in drawn}
     arm_key = f"edit:{repr(float(dose))}"
     C = int((result.get("controls") or {}).get("count") or 0)
-    edit_vals: List[float] = []
-    ctl_vals: List[List[float]] = [[] for _ in range(C)]
+    vals_e: Dict[str, List[float]] = {place: [] for place, _key, _say in _DELIVERED_AT}
+    vals_c: Dict[str, List[List[float]]] = {place: [[] for _ in range(C)] for place, _key, _say in _DELIVERED_AT}
+    recorded = {place: False for place, _key, _say in _DELIVERED_AT}
     for it_ent in result.get("items") or []:
         if it_ent.get("status") != "ok" or (it_ent.get("item") or {}).get("name") not in by_name:
             continue
@@ -1024,24 +1353,143 @@ def _delivered_of(
         if not cb:
             continue
         arms_by_k = {a["key"]: a for a in (cb.get("arms") or [])}
-        ev = _clean_float((arms_by_k.get(arm_key) or {}).get("delivered"))
-        if ev is not None:
-            edit_vals.append(ev)
-        for c in range(C):
-            cv = _clean_float((arms_by_k.get(f"control:{c}") or {}).get("delivered"))
-            if cv is not None:
-                ctl_vals[c].append(cv)
-    means = [float(np.mean(xs)) for xs in ctl_vals if xs]
-    if not edit_vals and not means:
+        for place, key, _say in _DELIVERED_AT:
+            a_e = arms_by_k.get(arm_key) or {}
+            recorded[place] = recorded[place] or key in a_e
+            ev = _clean_float(a_e.get(key))
+            if ev is not None:
+                vals_e[place].append(ev)
+            for c in range(C):
+                a_c = arms_by_k.get(f"control:{c}") or {}
+                recorded[place] = recorded[place] or key in a_c
+                cv = _clean_float(a_c.get(key))
+                if cv is not None:
+                    vals_c[place][c].append(cv)
+    edit_at = {place: (float(np.mean(xs)) if xs else None) for place, xs in vals_e.items()}
+    per = {place: [float(np.mean(xs)) if xs else None for xs in lists] for place, lists in vals_c.items()}
+
+    def median(xs: Sequence[Optional[float]]) -> Optional[float]:
+        got = [x for x in xs if x is not None]
+        return float(np.median(got)) if got else None
+
+    means = [m for m in per["answer"] if m is not None]
+    if not compare and edit_at["answer"] is None and not means:
         return None
-    return {
-        "edit": float(np.mean(edit_vals)) if edit_vals else None,
-        "controls_median": float(np.median(means)) if means else None,
+    out: Dict[str, Any] = {
+        "edit": edit_at["answer"],
+        "controls_median": median(per["answer"]),
         "controls_min": min(means) if means else None,
         "controls_max": max(means) if means else None,
         "controls_read": len(means),
-        "per_control": [float(np.mean(xs)) if xs else None for xs in ctl_vals],
+        "per_control": per["answer"],
+        "edit_end": edit_at["end"],
+        "controls_median_end": median(per["end"]),
+        "per_control_end": per["end"],
+        "edit_prompt": edit_at["prompt"],
+        "controls_median_prompt": median(per["prompt"]),
+        "per_control_prompt": per["prompt"],
+        "read_at_end": bool(at_end),
     }
+    if compare:
+        places = ["prompt", "answer"] + (["end"] if at_end else [])
+        apart = [any((not recorded[p]) or delivered_apart(edit_at[p], per[p][c]) for p in places) for c in range(C)]
+        out["compared_at"] = places
+        out["apart"] = apart
+        out["as_loud"] = C - sum(apart)
+        out["of_controls"] = C
+        for p in places:
+            shares = [per[p][c] / edit_at[p] for c in range(C) if not apart[c] and edit_at[p] and per[p][c] is not None]
+            out[f"as_loud_ratio_{p}"] = float(np.median(shares)) if shares else None
+    ctl_block = result.get("controls") if isinstance(result.get("controls"), Mapping) else {}
+    cov = ctl_block.get("coverage") if isinstance(ctl_block.get("coverage"), Mapping) else {}
+    terms = [t for t in (cov.get("terms") or ()) if isinstance(t, Mapping)]
+
+    def fewest(key: str) -> Optional[int]:
+        got = [t.get(key) for t in terms]
+        if not got or not all(isinstance(g, (int, float)) and not isinstance(g, bool) for g in got):
+            return None
+        return int(min(got))
+
+    if fewest("min_eligible") is not None:
+        out["fewest_eligible"] = fewest("min_eligible")
+    if fewest("min_distinct") is not None:
+        out["fewest_distinct"] = fewest("min_distinct")
+    if isinstance(cov.get("disjoint_sets"), int) and not isinstance(cov.get("disjoint_sets"), bool):
+        out["disjoint_sets"] = int(cov["disjoint_sets"])
+    if isinstance(cov.get("draw"), str):
+        out["draw"] = cov["draw"]
+    return out
+
+
+def separate_draws(dv: Optional[Mapping[str, Any]]) -> Optional[int]:
+    """How many of a matched reading's control edits may be counted as separate draws, from `_delivered_of`'s
+    figures: those that share no site with one another (`disjoint_sets`). Sets that share a site are tied together,
+    whether the site stands in for the same neuron in both or for different ones, and with sites shared the edit
+    tops every set more often than the printed level says (in a reviewer's simulation of ten neurons sharing 60
+    sites, 39 sets in which every neuron had 39 different stand-ins were topped by an edit that is nothing special in
+    3.2 to 11% of draws, where 2.5% was printed). None when the reading records no such count (one taken before
+    the kernel counted disjoint sets, or one whose count is not a whole number): a caller that judges by the count
+    must then count no separate draw. The fewest different stand-ins one neuron had, and the fewest sites eligible
+    for one, are printed where a reading has them and are never taken for this count: neither is a bound when
+    neurons share sites."""
+    n = dv.get("disjoint_sets") if isinstance(dv, Mapping) else None
+    return int(n) if type(n) is int and n >= 0 else None
+
+
+def item_gate_of(result: Mapping[str, Any], drawn: Sequence[Any]) -> Optional[Dict[str, Any]]:
+    """What the kernel's item gate found of the items a verdict rests on: of the items drawn that READ (status ok; an
+    item that did not read is in none of a reading's figures), how many (`items`), how many of them under the gate's
+    bar (`under_bar`, by the kernel's own `gate.passed`, which also calls an item under whose figure is not
+    finite), how many gave no finite figure (`no_figure`), the bar, and the lowest and highest of the finite
+    figures. An item's figure is what the base model gives its forced answer, in nats a piece on average (the lower
+    of its two row counts'). Under the bar the kernel reads the item all the same and prints a caution
+    (`levelling.GATE_SAY`); a claim's or a trial's sheet must say how many such items its verdict rests on, since
+    their answers are text the base would not have written. None when no item that read records a gate."""
+    names = {d.item.name for d in drawn}
+    figures: List[float] = []
+    read = under = no_figure = 0
+    bar = None
+    for it_ent in result.get("items") or []:
+        gate = it_ent.get("gate")
+        if (it_ent.get("item") or {}).get("name") not in names or not isinstance(gate, Mapping) \
+                or it_ent.get("status") != "ok":
+            continue
+        read += 1
+        under += 1 if gate.get("passed") is False else 0
+        bar = _clean_float(gate.get("bar")) if bar is None else bar
+        got = [_clean_float((gate.get(c) or {}).get("mean")) for c in ("small", "large") if isinstance(gate.get(c), Mapping)]
+        got = [g for g in got if g is not None]
+        if got:
+            figures.append(min(got))
+        else:
+            no_figure += 1
+    if not read:
+        return None
+    return {"items": read, "under_bar": under, "no_figure": no_figure, "bar": bar,
+            "lowest": min(figures) if figures else None, "highest": max(figures) if figures else None}
+
+
+def battery_items(result: Mapping[str, Any]) -> Dict[str, int]:
+    """Of the items a battery's reading was given, how many read (one that did not is in none of its figures), and
+    how many of those the kernel read under its item gate."""
+    its = [it for it in (result.get("items") or ()) if isinstance(it, Mapping)]
+    ok = [it for it in its if it.get("status") == "ok"]
+    return {"read": len(ok), "given": len(its),
+            "under_item_gate": sum(1 for it in ok if isinstance(it.get("gate"), Mapping)
+                                   and it["gate"].get("passed") is False)}
+
+
+def item_gate_words(ig: Optional[Mapping[str, Any]], what: str = "fresh items") -> str:
+    """One line of a sheet for `item_gate_of`'s count, or "" when there is none."""
+    if not isinstance(ig, Mapping) or not ig.get("items"):
+        return ""
+    span = (f"the base gives their forced answers {_fmt(ig.get('lowest'), 2)} to {_fmt(ig.get('highest'), 2)} a piece "
+            "on average" if ig.get("lowest") is not None else "none of them gave a finite figure")
+    return (f"item gate: {ig.get('under_bar')} of the {ig.get('items')} {what} that read are under the kernel's bar of "
+            f"{_fmt(ig.get('bar'), 2)} nats a piece ({span}"
+            + (f"; {ig['no_figure']} gave no finite figure and are counted under it" if ig.get("no_figure") else "")
+            + "): text the base would not have written, read with the kernel's caution, and the metric is read "
+            "after it")
 
 
 def _edit_shape(edit: we.Edit) -> List[Tuple[Any, ...]]:
@@ -1128,6 +1576,29 @@ def _mean_metric_from_read(
     return e_val, (max(ctl_abs) if ctl_abs else None)
 
 
+def prompt_arm_system(brief: lbr.Brief, prompt_text: str) -> str:
+    """The system turn a prompt arm is read under: the brief's own system turn, when it has one, with the arm's text
+    on a new line after it. One place, so that what is asked before a trial is entered
+    (`level_trial.preflight_trial`) is what is read."""
+    base_sys = (brief.chat_settings or {}).get("system")
+    return f"{base_sys}\n{prompt_text}" if base_sys else prompt_text
+
+
+def arm_items(h: lv.Handle, brief: lbr.Brief, items: Sequence[Any]) -> int:
+    """Make, and throw away, every item a brief's prompt arms will be read on: each of `items` under each arm's
+    system turn as `_prompt_arm_eval` puts it together (`prompt_arm_system`: the brief's own system turn first, where
+    it has one). An arm too long to make an item of raises `levelling.Refused` here, where nothing has been read,
+    and not after every reading of a claim or a trial. Returns how many were made."""
+    made = 0
+    for arm in brief.prompt_arms or ():
+        sys_p = prompt_arm_system(brief, arm)
+        for it in items:
+            if it.question is not None and it.answer is not None:
+                lv.make_item(h.tokenizer, it.question, it.answer, system=sys_p, name=it.name)
+                made += 1
+    return made
+
+
 def _prompt_arm_eval(
     h: lv.Handle,
     brief: lbr.Brief,
@@ -1170,7 +1641,7 @@ def _prompt_arm_eval(
     n_base = _base_score_items(near_drawn, base_sys) if near_drawn else []
     results: List[Dict[str, Any]] = []
     for idx, prompt_text in enumerate(brief.prompt_arms):
-        sys_p = f"{base_sys}\n{prompt_text}" if base_sys else prompt_text
+        sys_p = prompt_arm_system(brief, prompt_text)
         t_arm = _base_score_items(target_drawn, sys_p)
         n_arm = _base_score_items(near_drawn, sys_p) if near_drawn else []
         t_diffs = [a - b for a, b in zip(t_arm, t_base)]
@@ -1186,6 +1657,81 @@ def _prompt_arm_eval(
         })
     we.assert_base(h.lm, h.hooks_at_load)
     return results
+
+
+_CAL_STEMS = ("cal_neutral_", "cal_nearmiss_", "cal_panel_")
+# the least each calibrated bar can be: a calibration can raise a bar above this, never lower it
+BAR_LEASTS = {"neutral_kl_max": 0.05, "near_miss_abs_max": 0.25, "panel_kl_max": 0.05, "panel_own_drop_max": 0.10}
+
+
+def bars_in_words(bars: "BarSet") -> str:
+    """The four calibrated bars as a sheet and a rules file say them, with how many are the least itself (a bar the
+    calibration did not move: on the 31B's pronoun brief all four are)."""
+    at_least = sum(1 for k, v in BAR_LEASTS.items() if abs(float(getattr(bars, k)) - v) < 1e-12)
+    return (f"neutral KL {bars.neutral_kl_max:g}, near-miss {bars.near_miss_abs_max:g}, panel KL {bars.panel_kl_max:g}, "
+            f"panel own drop {bars.panel_own_drop_max:g} ({at_least} of the 4 are the least a bar can be, which the "
+            "calibration did not move)")
+
+
+def _bars_from_readings(brief: lbr.Brief, r_neu: Mapping[str, Any], r_nm: Mapping[str, Any],
+                        r_pan: Mapping[str, Any], mult: float) -> Dict[str, float]:
+    """The four bars a calibration gives, from its three readings (their results, or their bodies in the book):
+    each `mult` times the largest figure its probe edit and its control edits gave, never under the registered
+    least, to six places."""
+    e_nkl, c_nkl = _mean_metric_from_read(r_neu, "kl", 1.0, cls_name="large")
+    e_nm, c_nm = _mean_metric_from_read(r_nm, brief.metric if brief.metric != "written_loop" else "kl", 1.0,
+                                        cls_name="large")
+    e_pkl, c_pkl = _mean_metric_from_read(r_pan, "kl", 1.0, cls_name="large")
+    e_pown, c_pown = _mean_metric_from_read(r_pan, "own", 1.0, cls_name="large")
+    m, least = float(mult), BAR_LEASTS
+    return {
+        "neutral_kl_max": round(max(least["neutral_kl_max"], m * max(float(c_nkl or 0.0), float(e_nkl or 0.0))), 6),
+        "near_miss_abs_max": round(max(least["near_miss_abs_max"], m * max(float(c_nm or 0.0), abs(float(e_nm or 0.0)))), 6),
+        "panel_kl_max": round(max(least["panel_kl_max"], m * max(float(c_pkl or 0.0), float(e_pkl or 0.0))), 6),
+        "panel_own_drop_max": round(max(least["panel_own_drop_max"], m * max(float(c_pown or 0.0), abs(float(e_pown or 0.0)))), 6),
+    }
+
+
+def calibration_follows(cal_note: Mapping[str, Any], book_path: Path, brief: lbr.Brief, bars: BarSet) -> Optional[str]:
+    """None when a `brief_calibration` note follows from its book, else why not, in words.
+
+    It follows when the three readings it names stand in the book before it, each the harness's own calibration
+    reading of this brief (by name: a session's practice gates refuse such a name) that ended ok, and when those
+    readings, by the note's own `mult`, give exactly the bar set the note records (every other field of the set
+    being the one `calibrate_bars` writes, under the rule preset and version the set itself names: a calibration
+    taken under an earlier version of the rule still follows from its book, and a sheet says which version its bars
+    were calibrated under when that is not the one it was judged by). So bars typed into a note by hand are not a
+    calibration, and neither is a note that names another brief's readings. What it does not show: that the probe,
+    the layer and `mult` were well chosen; a sheet prints them."""
+    seqs, settings = cal_note.get("book_seqs"), cal_note.get("settings")
+    if not (isinstance(seqs, list) and len(seqs) == len(_CAL_STEMS)
+            and all(isinstance(s, int) and not isinstance(s, bool) for s in seqs)):
+        return "it does not name its three readings"
+    if not isinstance(settings, Mapping) or _clean_float(settings.get("mult")) is None:
+        return "it does not record the settings it was taken with (calibrations before 19 November 2026 do not)"
+    if not isinstance(cal_note.get("seq"), int) or not all(0 <= s < int(cal_note["seq"]) for s in seqs):
+        return "the readings it names are not lines before it"
+    bodies: List[Mapping[str, Any]] = []
+    for s, stem in zip(seqs, _CAL_STEMS):
+        ent = next(lb.entries(book_path, start=int(s), limit=1), None)
+        body = ent.get("body") if isinstance(ent, Mapping) else None
+        if ent is None or ent.get("kind") != "paired" or not isinstance(body, Mapping) \
+                or body.get("name") != stem + brief.name:
+            return f"line {s} is not the reading {stem}{brief.name} it names"
+        if body.get("status") != "ok":
+            return f'its reading at line {s} ended "{body.get("status")}"'
+        bodies.append(body)
+    want = _bars_from_readings(brief, bodies[0], bodies[1], bodies[2], float(settings["mult"]))
+    made = BarSet(brief_id=brief.id, calibration_book_seqs=tuple(int(s) for s in seqs),
+                  calibrated_at=bars.calibrated_at, rule_preset=bars.rule_preset, rule_version=bars.rule_version,
+                  **want)
+    if made.id != bars.id:
+        other = [k for k in want if abs(float(want[k]) - float(getattr(bars, k))) > 1e-12]
+        return ("its readings give other bars than it records (" + ", ".join(
+            f"{k} {want[k]:g}, recorded {float(getattr(bars, k)):g}" for k in other) + ")" if other else
+            "the bar set it records is not the one calibrate_bars writes from its readings (a field beside the four "
+            "calibrated bars differs)")
+    return None
 
 
 def calibrate_bars(
@@ -1236,26 +1782,13 @@ def calibrate_bars(
             "rows": rows_cfg, "readouts": {"kl": True, "own": True, "odds": None}, "folded": "never",
         }, {p["item"].name: p["item"] for p in panel})
 
-        e_nkl, c_nkl = _mean_metric_from_read(r_neu, "kl", 1.0, cls_name="large")
-        e_nm, c_nm = _mean_metric_from_read(r_nm, brief.metric if brief.metric != "written_loop" else "kl", 1.0, cls_name="large")
-        e_pkl, c_pkl = _mean_metric_from_read(r_pan, "kl", 1.0, cls_name="large")
-        e_pown, c_pown = _mean_metric_from_read(r_pan, "own", 1.0, cls_name="large")
-
-        neu_bar = max(0.05, float(mult) * max(float(c_nkl or 0.0), float(e_nkl or 0.0)))
-        nm_bar = max(0.25, float(mult) * max(float(c_nm or 0.0), abs(float(e_nm or 0.0))))
-        pan_kl_bar = max(0.05, float(mult) * max(float(c_pkl or 0.0), float(e_pkl or 0.0)))
-        pan_own_bar = max(0.10, float(mult) * max(float(c_pown or 0.0), abs(float(e_pown or 0.0))))
-
         now = _utc_now()
         cal_seqs = (int(r_neu["book"]["seq"]), int(r_nm["book"]["seq"]), int(r_pan["book"]["seq"]))
         bars = BarSet(
             brief_id=brief.id,
-            neutral_kl_max=round(neu_bar, 6),
-            near_miss_abs_max=round(nm_bar, 6),
-            panel_kl_max=round(pan_kl_bar, 6),
-            panel_own_drop_max=round(pan_own_bar, 6),
             calibration_book_seqs=cal_seqs,
             calibrated_at=now,
+            **_bars_from_readings(brief, r_neu, r_nm, r_pan, float(mult)),
         )
         note_body = {
             "note_type": "brief_calibration",
@@ -1677,6 +2210,7 @@ def estimate_claim(
 
     if run_prompt_arms and brief.prompt_arms and brief.metric in ("odds", "own"):
         scored = [it for it in target + near if it.question is not None and it.answer is not None]
+        arm_items(h, brief, scored)  # an arm too long to make an item of is refused here, before anything is registered
         k = 1 + len(brief.prompt_arms)  # each item once under the brief's own system turn, once under each arm
         readings.append({"name": "prompt_arms", "forwards": k * len(scored),
                          "seconds": float(k * sum(lv.whole(1, len(it.ids)) for it in scored))})
@@ -1758,66 +2292,11 @@ def run_fresh_claim(
 
     # Check read-once, fixed `m` budget, and ledger-recorded practice items/frames
     bk = Path(book_path) if book_path is not None else lb.book_path()
-    hist = brief_history(brief.id, bk, name=brief.name, guard=lbr.KeptBack([brief]))
-    if hist["kept_back_practised"]:
-        at = ", ".join(str(s) for s in hist["kept_back_practised"][:8])
-        raise ClaimRefused(
-            f'Kept-back frames of brief "{brief.name}" were read in practice in this book (line'
-            f'{"s" if len(hist["kept_back_practised"]) > 1 else ""} {at}'
-            f'{", ..." if len(hist["kept_back_practised"]) > 8 else ""}): their wording, or a near wording, stands in a '
-            "reading that is not a fresh claim reading, so a claim on them here would not be on fresh frames."
-        )
-    if hist["other_ids"]:
-        raise ClaimRefused(
-            f'Brief "{brief.name}" has changed since its first fresh reading in this book (it was '
-            f'{hist["other_ids"][0][:12]} then, it is {brief.short()} now). A brief and its budget of fresh readings '
-            "are fixed before the first one: read the brief as it was, or give the changed brief a name of its own "
-            "(every sheet lists the fresh readings of every brief in its book)."
-        )
-    all_forbid_items = set(hist["practice_item_ids"]) | set(practice_item_ids or ())
-    all_forbid_frames = set(hist["practice_frame_ids"]) | set(practice_frame_ids or ())
-    kb_now = brief.generator.frames_for("kept_back")
-    practised = set(hist["practice_templates"])
-    leaked_frames = ({fr.id for fr in kb_now} & all_forbid_frames) | {fr.id for fr in kb_now if fr.template_id in practised}
-    if leaked_frames:
-        raise ClaimRefused(
-            f"Frame leakage refused before registration: kept-back frame(s) {sorted(leaked_frames)} "
-            "were already seen in practice in this book (by their id under this brief, or by their template under any)."
-        )
-    kb_tids = sorted(fr.template_id for fr in kb_now)
-    elsewhere = sorted({(n, i) for tid in kb_tids for n, i in hist["frames_read"].get(tid, ()) if i != brief.id})
-    if elsewhere:
-        raise ClaimRefused(
-            f'Kept-back frames of this brief were already read in this book under brief "{elsewhere[0][0]}" '
-            f"({elsewhere[0][1][:12]}): a kept-back frame is read under one brief, with that brief's budget of fresh "
-            "readings, whatever a later brief that holds it is called."
-        )
-    cal_note = next((c for c in reversed(hist["calibrations"]) if c.get("bars_sha256") == bars.id), None)
-    if cal_note is None:
-        raise ClaimRefused(
-            f'Bar set {bars.short()} is not from a calibration reading recorded in this level book for brief '
-            f'"{brief.name}" ({brief.short()}): a claim takes the bars calibrate_bars wrote into the same book '
-            "(scripts/levelling.py calibrate), and no others."
-        )
-    if cal_note.get("weights_id") not in (None, h.weights_id):
-        raise ClaimRefused(
-            f"Bar set {bars.short()} was calibrated on other weights ({str(cal_note.get('weights_id'))[:16]}) than "
-            f"this model's ({str(h.weights_id)[:16]}): calibrate on the model the claim is read on."
-        )
-    k_prior = len(hist["registrations"])
-    if edit.id in hist["seen_edit_ids"]:
-        raise ClaimRefused(
-            f'Read once: edit {edit.short()} has already been read on brief "{brief.name}" ({brief.short()}).'
-        )
-    if k_prior >= brief.max_fresh_readings:
-        raise ClaimRefused(
-            f'Brief "{brief.name}" has already spent all {brief.max_fresh_readings} of its fresh readings.'
-        )
-    reading_index = k_prior + 1
-    bk_resolved = Path(bk).expanduser().resolve()
-    # which book this is: a fresh reading is counted in the book it is taken in and nowhere else, so one taken in a
-    # side book (a check's, a dry run's) says so, in its registration, on its sheet and in its sentence
-    book_note = {"name": bk_resolved.name, "default": bk_resolved == lb.default_book_path().resolve()}
+    gate = fresh_reading_gate(h, brief, bars, edit, bk, what="claim", practice_item_ids=practice_item_ids,
+                              practice_frame_ids=practice_frame_ids)
+    hist, cal_note, reading_index = gate["hist"], gate["cal_note"], gate["reading_index"]
+    all_forbid_items, all_forbid_frames = gate["forbid_items"], gate["forbid_frames"]
+    kb_tids, book_note = gate["kb_tids"], gate["book"]
 
     C = int(controls_override if controls_override is not None else brief.default_controls)
     rows_cfg = dict(rows or {"small": lv.ROWS_SMALL, "large": lv.ROWS_LARGE})
@@ -1859,8 +2338,9 @@ def run_fresh_claim(
             raise ClaimRefused(f"Sham control {i} cannot be read at dose {float(main_dose):g}: {words}")
     if not any(t.kind in ("cols", "rows") for t in edit.terms):
         raise ClaimRefused(
-            "A fresh reading sets the edit beside other sites matched on what they deliver, and those are drawn for "
-            "column and row terms: an edit of low-rank terms alone has no such controls, and cannot be claimed yet."
+            "A fresh reading sets the edit beside other sites matched on what a base pre-pass expects each to "
+            "deliver, and those are drawn for column and row terms: an edit of low-rank terms alone has no such "
+            "controls, and cannot be claimed yet."
         )
     try:
         priced = estimate_claim(
@@ -1894,6 +2374,8 @@ def run_fresh_claim(
             "brief_id": brief.id,
             "brief_name": brief.name,
             "edit_id": edit.id,
+            "edit_linears": edit.linears(),
+            "edit_provenance": we.edit_provenance(edit),
             "main_dose": float(main_dose),
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
@@ -1922,6 +2404,7 @@ def run_fresh_claim(
                  "reading_index": v.get("reading_index"), "brief_id": v.get("brief_id")}
                 for v in hist["verdicts"]
             ],
+            "prior_trials": prior_trials(hist),
         }
         reg_entry = lb.append("note", reg_body, path=bk)
 
@@ -1962,6 +2445,13 @@ def run_fresh_claim(
         # Step 4: Target readings with control families (paired or written_loop)
         book_seqs: List[int] = [int(reg_entry["seq"])]
         void_reason: Optional[str] = f"The fresh draw was refused: {draw_refused}" if draw_refused else None
+        if void_reason is None and run_prompt_arms and brief.prompt_arms and brief.metric in ("odds", "own"):
+            # the arms are read after the readings: one that cannot be made into an item on the items as drawn ends
+            # the reading here, void and saying why, and not on an error after everything was read
+            try:
+                arm_items(h, brief, [d.item for d in target_drawn] + [d.item for d in near_drawn])
+            except lv.Refused as exc:
+                void_reason = f"A prompt arm of the brief cannot be read on the items drawn: {exc}"
         classes_payload: Dict[str, Dict[str, Any]] = {}
         written_strata: Optional[Dict[str, Any]] = None
         settings_audit: Optional[Dict[str, Any]] = None
@@ -2027,35 +2517,34 @@ def run_fresh_claim(
                     _, fl_s, _, ctl_s = _extract_item_effects(r_same, target_drawn, cls_name, brief.metric, main_dose)
                     fl_both = max([x for x in (fl_m, fl_s) if x is not None], default=None)
                     ctls_cls: Dict[str, Any] = {"other_sites_matched": ctl_m, "same_site": ctl_s}
+                    at_end = read_at_end(brief)
                     deliv_cls: Dict[str, Any] = {
-                        "other_sites_matched": _delivered_of(r_matched, target_drawn, cls_name, main_dose),
-                        "same_site": _delivered_of(r_same, target_drawn, cls_name, main_dose),
+                        "other_sites_matched": _delivered_of(r_matched, target_drawn, cls_name, main_dose,
+                                                             compare=True, at_end=at_end),
+                        "same_site": _delivered_of(r_same, target_drawn, cls_name, main_dose, at_end=at_end),
                     }
                     if r_sham is not None:
                         _, _, _, ctl_sh = _extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
-                        dv_sh = _delivered_of(r_sham, target_drawn, cls_name, main_dose)
-                        if dv_sh is not None:
-                            # A sham edit is the caller's own, checked only for shape before it is read. One that
-                            # does not move the stream within the matching tolerance of what the edit moves it is no
-                            # control for the edit, and is counted as moving as much: quiet shams cannot help a claim.
-                            e_d, apart = dv_sh.get("edit"), 0
-                            if e_d is not None and e_d > 0.0:
-                                for c, d_c in enumerate(dv_sh.get("per_control") or []):
-                                    if c < len(ctl_sh) and (d_c is None or not e_d / tol <= d_c <= e_d * tol):
-                                        ctl_sh[c] = None
-                                        apart += 1
-                            dv_sh["not_comparable"] = apart
+                        # A sham edit is the caller's own, checked only for shape before it is read. One that
+                        # changed the stream less than the edit did (over the prompt or the answer, or, where the
+                        # metric is read at the last position, there) is no control for the edit, and is counted as
+                        # moving as much: quiet shams cannot help a claim. A sham, or the edit, with no figure is
+                        # counted the same way.
+                        dv_sh = _delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
+                        ctl_sh, dv_sh["not_comparable"] = set_apart_aside(dv_sh, ctl_sh)
                         ctls_cls["sham_target"] = ctl_sh
                         deliv_cls["sham_target"] = dv_sh
                     for dv in deliv_cls.values():
                         if isinstance(dv, dict):
-                            dv.pop("per_control", None)  # each control's own figure stays in its reading's entry
+                            for key in [k for k in dv if k.startswith("per_control") or k == "apart"]:
+                                dv.pop(key, None)  # each control's own figures stay in its reading's entry
                     classes_payload[cls_name] = {
                         "item_effects": it_effs,
                         "floor": fl_both,
                         "reversed_mean": rev_m,
                         "controls": ctls_cls,
                         "delivered": deliv_cls,
+                        "item_gate": item_gate_of(r_matched, target_drawn),
                     }
 
         # Gating retention batteries (always teacher-forced paired in both batch classes)
@@ -2099,12 +2588,14 @@ def run_fresh_claim(
                 bat_payload["neutral_text"] = {
                     "mean_kl": max(neu_kls) if neu_kls else None,
                     "control_kl_max": max(neu_ctls) if neu_ctls else None,
+                    "items": battery_items(r_neu),
                 }
                 nm_vals = [v for c in ("small", "large") for v in [_mean_metric_from_read(r_nm, nm_metric, main_dose, cls_name=c)[0]] if v is not None]
                 nm_abs = max((abs(v) for v in nm_vals), default=None)
                 bat_payload["near_misses"] = {
                     "mean_effect": nm_vals[-1] if nm_vals else None,
                     "abs_effect": nm_abs,
+                    "items": battery_items(r_nm),
                 }
                 p_owns = [v for c in ("small", "large") for v in [_mean_metric_from_read(r_pan, "own", main_dose, cls_name=c)[0]] if v is not None]
                 p_kls = [v for c in ("small", "large") for v in [_mean_metric_from_read(r_pan, "kl", main_dose, cls_name=c)[0]] if v is not None]
@@ -2112,6 +2603,7 @@ def run_fresh_claim(
                 bat_payload["labelled_panel"] = {
                     "own_drop": own_drop,
                     "mean_kl": max(p_kls) if p_kls else None,
+                    "items": battery_items(r_pan),
                 }
                 bat_payload["habitat"] = {"available": False, "note": "no atlas passages index mounted"}
 
@@ -2169,6 +2661,7 @@ def run_fresh_claim(
             "registration_seq": int(reg_entry["seq"]),
             "book_seqs": book_seqs,
             "prior_verdicts": reg_body["prior_verdicts"],
+            "prior_trials": reg_body["prior_trials"],
             "prompt_named_site": brief.prompt_named_site,
             "chat_settings": dict(brief.chat_settings),
             "forecast": dict(forecast or {}),
@@ -2188,6 +2681,7 @@ def run_fresh_claim(
             "brief_id": brief.id,
             "brief_name": brief.name,
             "edit_id": edit.id,
+            "edit_linears": edit.linears(),
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
             "verdict": judged["verdict"],
@@ -2273,17 +2767,106 @@ def run_fresh_claim(
 # --------------------------------------------------------------------------------------------- claim sheet
 
 
+def prior_trial_lines(trials: Sequence[Mapping[str, Any]]) -> List[str]:
+    """The lines a sheet prints of the trials registered on its brief before it (a claim's sheet and a trial's)."""
+    out = [f"earlier trials on this brief ({len(trials)}):"]
+    if not trials:
+        out.append("  none")
+    for t in trials:
+        ended = t.get("verdict") if t.get("verdict") is not None else "registered, never ended"
+        out.append(f"  reading {t.get('reading_index')}: trial \"{t.get('trial_name')}\" ({t.get('kind')}) of edit "
+                   f"{str(t.get('edit_id'))[:12]} -> {ended} (book seq {t.get('seq')})")
+    return out
+
+
 def _fmt(x: Optional[float], digits: int = 4) -> str:
     if x is None:
         return "none"
     return f"{float(x):.{digits}f}"
 
 
-def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[str, Any]) -> Optional[str]:
-    """Bounded claim sentence issued strictly by the harness when verdict is `lead` or `lead, matched by a cheaper knob`."""
+def _stand_in_words(dv: Mapping[str, Any]) -> str:
+    """What a sheet and a sentence say of how many separate draws a matched reading's control sets are."""
+    dj, fd, fe = dv.get("disjoint_sets"), dv.get("fewest_distinct"), dv.get("fewest_eligible")
+    how = {"spread": ", drawn to share as few sites as the pools allow", "independent": ", each set drawn on its own"}
+    if dj is not None:
+        return (f"; {dj} of the sets share no site with one another"
+                + (f" (each neuron had at least {fe} eligible sites)" if fe is not None else "")
+                + how.get(str(dv.get("draw")), ""))
+    if fd is not None:
+        return (f"; over the sets each neuron had at least {fd} different stand-ins"
+                + (f" of {fe} eligible sites" if fe is not None else "") + how.get(str(dv.get("draw")), ""))
+    if fe is not None:
+        return f"; drawn from at least {fe} eligible sites a neuron"
+    return ""
+
+
+def _same_site_words(dv: Mapping[str, Any]) -> str:
+    """What a sentence says of how loud a reading's same-site control edits were beside the edit, as read: the median
+    of their change to the stream over the edit's, at each place it was recorded. The same-site family is not asked
+    for the loudness a matched or sham control edit must have to count: for a column edit it is built to the edit's
+    stream-side length and sits near 1; for a row edit nothing ties it there, so the figure is printed."""
+    got = []
+    for place, _key, say in _DELIVERED_AT:
+        e = _clean_float(dv.get("edit" if place == "answer" else f"edit_{place}"))
+        m = _clean_float(dv.get("controls_median" if place == "answer" else f"controls_median_{place}"))
+        if e and m is not None:
+            got.append(f"{_fmt(m / e, 2)} {say}")
+    if not got:
+        return ""
+    return ("not asked to be as loud as the edit: as read, their median change to the stream was "
+            + ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + got[-1] + " times the edit's; ")
+
+
+def _places_words(dv: Mapping[str, Any]) -> str:
+    """Where a control edit had to be as loud as the edit to count, in words."""
+    says = {place: say for place, _key, say in _DELIVERED_AT}
+    got = [says[p] for p in (dv.get("compared_at") or ()) if p in says]
+    return ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + (got[-1] if got else "")
+
+
+def delivered_words(dv: Mapping[str, Any], cs: Mapping[str, Any]) -> str:
+    """One line of a sheet: what the edit and a family's control edits each changed the stream by as read
+    (`_delivered_of`) over the prompt, over the answer and at the last position; how many control edits were at
+    least as loud as the edit where it counts, and how far above it those sat; how many were set aside; and how
+    many separate draws the sets are counted as."""
+    at = []
+    for place, _key, say in _DELIVERED_AT:
+        e = dv.get("edit" if place == "answer" else f"edit_{place}")
+        m = dv.get("controls_median" if place == "answer" else f"controls_median_{place}")
+        if e is None and m is None:
+            at.append(f"{say}: not recorded")
+            continue
+        at.append(f"{say}{', where the metric is read' if place == 'end' and dv.get('read_at_end') else ''}: edit "
+                  f"{_fmt(e)}, these controls median {_fmt(m)}"
+                  + (f" ({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})" if place == "answer" else ""))
+    ratios = [f"{_fmt(dv.get(f'as_loud_ratio_{p}'), 2)} {say}" for p, _key, say in _DELIVERED_AT
+              if p in (dv.get("compared_at") or ()) and dv.get(f"as_loud_ratio_{p}") is not None]
+    return (
+        "delivered (stream change at the highest edited layer, a mean over the items read) " + "; ".join(at)
+        + (f"; {dv['as_loud']} of {dv.get('of_controls')} at least as loud as the edit {_places_words(dv)}"
+           + (f" (those a median {', '.join(ratios)} times the edit's)" if ratios else "")
+           if dv.get("as_loud") is not None else "")
+        + (f"; {dv['not_comparable']} of them quieter than the edit at one of those, or with no figure, and counted "
+           "as moving as much" if dv.get("not_comparable") else "")
+        + _stand_in_words(dv)
+        + (f", so counted as {cs['effective_count']} draws"
+           if cs.get("effective_count") not in (None, cs.get("count")) else "")
+    )
+
+
+def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[str, Any], *,
+                   tail: bool = True) -> Optional[str]:
+    """Bounded claim sentence issued strictly by the harness when verdict is `lead` or `lead, matched by a cheaper knob`.
+
+    `tail=False` (a trial's sentence, which is built on this one): without the two sentences that are a claim's own,
+    whether the driver's prompt named a site (a trial has no driver) and "This is a lead, not a finding of record".
+    `meta["shams"]["source"]` says in words where sham-target controls came from ("supplied with the claim" when it
+    says nothing)."""
     verdict = judged.get("verdict")
-    if verdict not in ("lead", "lead, matched by a cheaper knob"):
+    if verdict not in LEADS:
         return None
+    sham_src = str((meta.get("shams") or {}).get("source") or "supplied with the claim")
     primary_key = "written" if brief.metric == "written_loop" else "large"
     lg = (judged.get("classes") or {}).get(primary_key) or {}
     fr = lg.get("frames") or {}
@@ -2294,12 +2877,12 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     ss = ctls.get("same_site") or {}
     sh = ctls.get("sham_target") or {}
     sham_part = (
-        f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits, supplied with the claim and checked "
+        f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits, {sham_src} and checked "
         + ("for shape only" if brief.metric == "written_loop" else
            "for shape and for moving the stream as the edit does")
         + f", moved as much (p_fw {_fmt(sh.get('p_fw'), 3)})"
         if sh.get("count")
-        else f"; selection not matched, {judged.get('practice_count', 0)} read in practice"
+        else f"; selection not matched, {judged.get('practice_count', 0)} practice readings in this book"
     )
     kbn = meta.get("kept_back") or {}
     n_pub, n_kb = int(kbn.get("published") or 0), int(kbn.get("frames") or 0)
@@ -2313,13 +2896,44 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     side_part = (", taken in a side book and not the default level book"
                  if isinstance(bkn, Mapping) and not bkn.get("default") else "")
     tol_now = _clean_float((meta.get("design") or {}).get("match_tolerance"))
-    tol_part = f"within a factor of {tol_now:g}, " if tol_now is not None else ""
+    dvm = (lg.get("delivered") or {}).get("other_sites_matched") if isinstance(lg.get("delivered"), Mapping) else None
+    dvm = dvm if isinstance(dvm, Mapping) else {}
+    # what "matched" is matched on, and what the control edits delivered when read
+    tol_part = (f"matched on what a base pre-pass expects each to deliver, within a factor of {tol_now:g}"
+                + (f"; as read, {dvm['as_loud']} of {dvm.get('of_controls')} changed the stream at least as much as "
+                   f"the edit did {_places_words(dvm)}"
+                   if dvm.get("as_loud") is not None else "")
+                + _stand_in_words(dvm)
+                + "; ") if tol_now is not None else ""
+    # what the level printed beside the matched control edits takes for granted. A claim's takes every one of them
+    # as a control and as a separate draw, whatever the two counts before it say; a trial's does not
+    if not osm.get("count"):
+        level_part = ""
+    elif tail:
+        level_part = (f", a level that takes all {osm.get('count')} as control edits and as separate draws, whatever "
+                      "they delivered and however many share sites")
+    else:
+        level_part = (f", a level at which the {osm.get('non_finite') or 0} that were quieter than the edit, or gave "
+                      f"no figure, are counted as moving as much, and the sets as "
+                      f"{osm.get('effective_count', osm.get('count'))} separate draws")
+    dvs = (lg.get("delivered") or {}).get("same_site") if isinstance(lg.get("delivered"), Mapping) else None
+    ss_part = _same_site_words(dvs if isinstance(dvs, Mapping) else {})
     knobs = judged.get("cheaper_knobs") or {}
     arms_run = knobs.get("prompt_arms") or []
+    best_arm = max((a for a in arms_run if _clean_float(a.get("directed_effect")) is not None),
+                   key=lambda a: float(a["directed_effect"]), default=None)
+
+    def arm_figures(a: Mapping[str, Any]) -> str:
+        nm = _clean_float(a.get("near_miss_abs"))
+        return (f"moved {brief.metric} by {_fmt(a.get('directed_effect'))} in the brief's direction, near-miss "
+                + (_fmt(nm) if nm is not None else "not read"))
+
+    m_arm = knobs.get("matched_arm") if isinstance(knobs.get("matched_arm"), Mapping) else None
     if verdict == "lead, matched by a cheaper knob":
-        knob_part = f"; matched by {knobs['matched_by']}"
+        knob_part = f"; matched by {knobs['matched_by']}" + (f" (it {arm_figures(m_arm)})" if m_arm is not None else "")
     elif arms_run:
-        knob_part = "; no author prompt arm matched it"
+        knob_part = "; no author prompt arm matched it" + (
+            f" (the author's strongest prompt arm {arm_figures(best_arm)})" if best_arm is not None else "")
     else:  # none was run: say so, and why, and never that none matched
         why = knobs.get("prompt_arms_state")
         knob_part = "; no author prompt arm was compared with it" + (
@@ -2333,22 +2947,36 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     else:
         loop_part = ""
     cal_seq = meta.get("bars_calibration_seq")
-    bars_from = f" (calibrated at book line {cal_seq})" if cal_seq is not None else ""
+    cal_where = meta.get("bars_calibration_where")  # a volunteer's re-run: the line is the home book's, not its own
+    bars_from = ((f" (calibrated at line {cal_seq} of {cal_where})" if cal_where else
+                  f" (calibrated at book line {cal_seq})") if cal_seq is not None else "")
+    # of the items each battery was given, how many read: one that did not is in none of its figures
+    counted = [f"{bname.replace('_', ' ')} {b['items'].get('read')} of {b['items'].get('given')}"
+               + (f", {b['items']['under_item_gate']} of them under the item gate"
+                  if b["items"].get("under_item_gate") else "")
+               for bname, b in (judged.get("batteries") or {}).items()
+               if isinstance(b, Mapping) and isinstance(b.get("items"), Mapping)]
+    bat_counts = f" (items read: {'; '.join(counted)})" if counted else ""
+    ig = lg.get("item_gate") if isinstance(lg.get("item_gate"), Mapping) else None
+    gate_part = (f"; {ig.get('under_bar')} of the {ig.get('items')} that read under the kernel's item gate, their "
+                 "forced answers text the base would not have written" if ig and ig.get("under_bar") else "")
     return (
         f"On {meta.get('date')}, model {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}), "
         f"unpacker {meta.get('unpacker')}, per-row form: edit {str(meta.get('edit_id'))[:12]} at dose "
         f"{meta.get('main_dose'):g} to {', '.join(meta.get('edit_linears') or [])} moved {brief.metric} on "
         f"{fr.get('n_items')} fresh items ({fr.get('n_frames')} kept-back frames{pub_part} drawn from "
-        f"{brief.generator.name} after freeze) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
+        f"{brief.generator.name} after freeze{gate_part}) by {_fmt(fr.get('mean'))} (95% frame CI [{_fmt(ci[0])}, {_fmt(ci[1])}]; "
         f"half 0 {_fmt((fr.get('half_0') or {}).get('mean'))}, half 1 {_fmt((fr.get('half_1') or {}).get('mean'))}); "
         f"floor {_fmt(hb.get('floor'))}, house bar {_fmt(hb.get('bar'))}; "
-        f"{osm.get('at_least')} of {osm.get('count')} matched other-site ({tol_part}p_fw {_fmt(osm.get('p_fw'), 3)}) and "
-        f"{ss.get('at_least')} of {ss.get('count')} same-site (p_fw {_fmt(ss.get('p_fw'), 3)}) control edits moved as much"
+        f"{osm.get('at_least')} of {osm.get('count')} matched other-site ({tol_part}p_fw {_fmt(osm.get('p_fw'), 3)}"
+        f"{level_part}) and "
+        f"{ss.get('at_least')} of {ss.get('count')} same-site ({ss_part}p_fw {_fmt(ss.get('p_fw'), 3)}) control edits moved as much"
         f"{sham_part} (fresh reading {meta.get('reading_index')} of {meta.get('max_fresh_readings')} on brief "
         f'"{brief.name}"{side_part}); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
-        f"gating batteries passed against hashed bar set {str(meta.get('bars_sha256'))[:12]}{bars_from}{knob_part} "
-        f"(no search over cheaper knobs; not compared with a trained adapter). "
-        f"Driver prompt {named} a suspected site.{loop_part} This is a lead, not a finding of record."
+        f"gating batteries passed{bat_counts} against hashed bar set {str(meta.get('bars_sha256'))[:12]}{bars_from}{knob_part} "
+        f"(no search over cheaper knobs; not compared with a trained adapter)."
+        + (f" Driver prompt {named} a suspected site.{loop_part} This is a lead, not a finding of record." if tail
+           else loop_part)
     )
 
 
@@ -2359,20 +2987,31 @@ def render_sheet(
     meta: Mapping[str, Any],
     sentence: Optional[str],
 ) -> str:
-    """Human-readable Phase 3 Claim Sheet generated strictly by the harness (zero kept-out words)."""
+    """Human-readable Phase 3 Claim Sheet generated strictly by the harness (zero kept-out words). A trial's sheet
+    carries this one for its fresh reading (`meta["reading_kind"] == "trial"`): the lines that are a claim's alone
+    (a driver's prompt; what was reported "with the claim") are then left out or said of the trial."""
+    is_trial = meta.get("reading_kind") == "trial"
     lines: List[str] = [
         f'CLAIM SHEET — brief "{brief.name}" [{brief.short()}] — reading {meta.get("reading_index")} of {meta.get("max_fresh_readings")}',
         f"verdict: {judged['verdict']}",
         f"edit: {str(meta.get('edit_id'))[:16]} (dose {meta.get('main_dose'):g}, linears: {', '.join(meta.get('edit_linears') or [])})",
         f"base: {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}, unpacker {meta.get('unpacker')})",
         f"rule: {RULE_PRESET} v{RULE_VERSION} | bars {bars.short()}"
-        + (f" from the calibration at book line {meta['bars_calibration_seq']}"
+        + (f" (calibrated under v{bars.rule_version} of the rule: a calibration gives the four bars, which no "
+           "version of the rule has changed, and this reading is judged by the version named first)"
+           if int(bars.rule_version) != RULE_VERSION else "")
+        + ((f" from the calibration at line {meta['bars_calibration_seq']} of {meta['bars_calibration_where']}"
+            if meta.get("bars_calibration_where") else
+            f" from the calibration at book line {meta['bars_calibration_seq']}")
            + (f" (one of {meta['bars_calibrations_in_book']} calibrations of this brief in the book)"
               if (meta.get("bars_calibrations_in_book") or 0) > 1 else "")
            if meta.get("bars_calibration_seq") is not None else "")
         + f" (alpha={bars.alpha:g}, least_effect M={brief.least_effect:g})",
-        f"chat settings: {json.dumps(meta.get('chat_settings') or {}, sort_keys=True)} | driver prompt named site: {bool(meta.get('prompt_named_site'))}",
-        f"selection: {judged.get('selection_mode')} | practice reads: {judged.get('practice_count', 0)} | practice best, as reported with the claim: {_fmt(judged.get('practice_best'))}",
+        f"chat settings: {json.dumps(meta.get('chat_settings') or {}, sort_keys=True)}"
+        + ("" if is_trial else f" | driver prompt named site: {bool(meta.get('prompt_named_site'))}"),
+        f"selection: {judged.get('selection_mode')} | practice readings in this book: {judged.get('practice_count', 0)} | "
+        + ("practice best, as reported with the edit's claim reading: " if is_trial else "practice best, as reported with the claim: ")
+        + _fmt(judged.get("practice_best")),
     ]
     dz = meta.get("design")
     if isinstance(dz, Mapping):
@@ -2380,8 +3019,10 @@ def render_sheet(
         lines.append(
             f"design, registered before the draw: {dz.get('n_target')} fresh items, {dz.get('n_near')} near misses, "
             f"{dz.get('n_neutral')} neutral, {dz.get('n_panel')} panel; rows {rz.get('small')} and {rz.get('large')}; "
-            f"{dz.get('controls_per_family')} control edits a family; other sites matched within a factor of "
-            f"{float(dz.get('match_tolerance')):g} on delivered"
+            f"{dz.get('controls_per_family')} control edits a family; other sites matched on what a base pre-pass "
+            f"expects each to deliver, within a factor of {float(dz.get('match_tolerance')):g} "
+            + ("(a written reading does not record what they delivered as read)" if brief.metric == "written_loop" else
+               "(what they delivered as read is printed with each class)")
         )
     bz = meta.get("book")
     if isinstance(bz, Mapping):
@@ -2411,13 +3052,15 @@ def render_sheet(
     sz = meta.get("shams")
     if isinstance(sz, Mapping):
         lines.append(
-            f"sham-target controls: {sz.get('count')} supplied with the claim [{str(sz.get('sha256'))[:12]}]; the "
+            f"sham-target controls: {sz.get('count')} {sz.get('source') or 'supplied with the claim'} "
+            f"[{str(sz.get('sha256'))[:12]}]; the "
             "harness did not make them. It checked that each has the edit's shape and, in a paired reading, counts "
             "one that does not move the stream as the edit does as no control (as moving as much); it cannot check "
             "that they follow the declared rule"
         )
     if meta.get("declared_rule"):
-        lines.append(f"declared rule, in the words given with the claim: \"{meta['declared_rule']}\"")
+        lines.append(f"declared rule, in the words {'registered with the trial' if is_trial else 'given with the claim'}: "
+                     f"\"{meta['declared_rule']}\"")
     if judged.get("reasons"):
         lines.append("gate notes:")
         for r in judged["reasons"]:
@@ -2427,6 +3070,9 @@ def render_sheet(
         lines.append(f"  {sentence}")
     cls_order = ("written",) if brief.metric == "written_loop" else ("small", "large")
     lines.append("reading classes (kept-back frames):")
+    gate_line = item_gate_words(((judged.get("classes") or {}).get(cls_order[-1]) or {}).get("item_gate"))
+    if gate_line:
+        lines.append("  " + gate_line)
     for cls_name in cls_order:
         ce = (judged.get("classes") or {}).get(cls_name)
         if not ce:
@@ -2450,14 +3096,8 @@ def render_sheet(
             elif cs.get("note"):
                 lines.append(f"    controls[{fam}]: {cs['note']}")
             dv = (ce.get("delivered") or {}).get(fam)
-            if isinstance(dv, Mapping) and dv.get("controls_read"):
-                lines.append(
-                    f"      delivered (stream change at the highest edited layer): edit "
-                    f"{_fmt(dv.get('edit'))}, these controls median {_fmt(dv.get('controls_median'))} "
-                    f"({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})"
-                    + (f"; {dv['not_comparable']} of them outside the matching tolerance of the edit's, and counted "
-                       "as moving as much" if dv.get("not_comparable") else "")
-                )
+            if isinstance(dv, Mapping) and (dv.get("controls_read") or dv.get("not_comparable")):
+                lines.append("      " + delivered_words(dv, cs))
     ws = meta.get("written_strata")
     if isinstance(ws, Mapping):
         lr = ws.get("loop_rules") or {}
@@ -2489,16 +3129,23 @@ def render_sheet(
     lines.append("retention batteries:")
     for bname, bv in (judged.get("batteries") or {}).items():
         tag = "GATING" if bv.get("gating") else "info"
-        lines.append(f"  {bname} ({tag}): passed={bv.get('passed')} { {k: v for k, v in bv.items() if k not in ('gating', 'passed')} }")
+        rest = {k: v for k, v in bv.items() if k not in ("gating", "passed")}
+        if bv.get("available") is False:  # a battery that was not run has not passed: say what it is
+            lines.append(f"  {bname} ({tag}): not run {rest}")
+        else:
+            lines.append(f"  {bname} ({tag}): passed={bv.get('passed')} {rest}")
     lines.append("cheaper knobs (no search over cheaper knobs; not compared with a trained adapter):")
     ck = judged.get("cheaper_knobs") or {}
-    lines.append(f"  matched_by: {ck.get('matched_by') or 'none'}")
+    lines.append(f"  matched_by: {ck.get('matched_by') or 'none'} (a prompt arm matches when "
+                 + KNOB_RULE.format(frac=bars.knobs_match_fraction) + ")")
     if ck.get("prompt_arms_state"):
         lines.append(f"  author prompt arms: {ck['prompt_arms_state']}")
     elif not ck.get("prompt_arms"):
         lines.append("  author prompt arms: not compared")
     for pa in ck.get("prompt_arms") or []:
-        lines.append(f"  prompt arm {pa['index']} [{pa['prompt_sha256']}]: directed_effect={_fmt(pa.get('directed_effect'))}, near_miss_abs={_fmt(pa.get('near_miss_abs'))}")
+        nm_said = _fmt(pa.get("near_miss_abs")) if _clean_float(pa.get("near_miss_abs")) is not None else "not read"
+        lines.append(f"  prompt arm {pa['index']} [{pa['prompt_sha256']}]: directed_effect={_fmt(pa.get('directed_effect'))}, "
+                     f"near_miss_abs={nm_said}")
     prior = meta.get("prior_verdicts") or []
     others = {k: v for k, v in (meta.get("book_fresh_readings") or {}).items() if k != brief.name}
     if others:
@@ -2510,4 +3157,5 @@ def render_sheet(
     else:
         for pv in prior:
             lines.append(f"  reading {pv.get('reading_index')}: edit {str(pv.get('edit_id'))[:12]} -> {pv.get('verdict')} (book seq {pv.get('seq')})")
+    lines.extend(prior_trial_lines(meta.get("prior_trials") or []))
     return "\n".join(lines)

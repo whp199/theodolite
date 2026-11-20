@@ -234,6 +234,9 @@ CONTROL_FAMILIES = ("other_sites", "other_sites_matched", "same_site", "sham_tar
 DEFAULT_MATCH_TOL = 2.0
 CONTROLS_MATCHED_SAY = ("Control edits are other sites of the same layer and size, drawn from seed {seed} and matched "
                         "within factor {tol:g} on expected delivered magnitude from the base pre-pass on these items.")
+CONTROL_DRAWS = ("independent", "spread")  # how matched control sets are drawn (`weight_edits.matched_control_edits`)
+CONTROLS_SPREAD_SAY = (" The control sets were drawn together to share as few sites as the eligible sites allow "
+                       "(the spread draw); the coverage says how many of them share no site with one another.")
 CONTROLS_SAME_SITE_SAY = ("Control edits act on the same sites as the edit, with random directions projected off the "
                           "layer's quiet mask and matched in stream-side delta length, drawn from seed {seed}.")
 CONTROLS_SHAM_SAY = "Control edits are {count} declared sham-target edits supplied in the plan."
@@ -770,7 +773,7 @@ def _controls(reading: Mapping[str, Any], default_count: int) -> Dict[str, Any]:
             raise Refused(f"The control edits' seed is a whole number from 0 up; {given.get('seed')!r} was given.")
         return {"family": "same_site", "count": count, "seed": seed}
     if family == "other_sites_matched":
-        _unknown_keys(given, ("count", "seed", "family", "tolerance"))
+        _unknown_keys(given, ("count", "seed", "family", "tolerance", "draw"))
         count, seed = _whole_number(given.get("count", default_count)), _whole_number(given.get("seed", 0))
         if count is None or not 0 <= count <= MAX_CONTROLS:
             raise Refused(f"A reading takes 0 to {MAX_CONTROLS} control edits; {given.get('count')!r} were asked.")
@@ -779,7 +782,13 @@ def _controls(reading: Mapping[str, Any], default_count: int) -> Dict[str, Any]:
         tol = _number(given.get("tolerance", DEFAULT_MATCH_TOL))
         if tol is None or tol < 1.0:
             raise Refused(f"controls.tolerance is a finite number >= 1; {given.get('tolerance')!r} was given.")
-        return {"family": "other_sites_matched", "count": count, "seed": seed, "tolerance": float(tol)}
+        draw = given.get("draw", CONTROL_DRAWS[0])
+        if not isinstance(draw, str) or draw not in CONTROL_DRAWS:
+            raise Refused(f'controls.draw is one of {", ".join(CONTROL_DRAWS)}; {draw!r} was given.')
+        out = {"family": "other_sites_matched", "count": count, "seed": seed, "tolerance": float(tol)}
+        if draw != CONTROL_DRAWS[0]:  # a plan that asks for the draw every reading had until now is written as it was
+            out["draw"] = draw
+        return out
     # family == "sham_target"
     _unknown_keys(given, ("count", "seed", "family", "shams"))
     shams = given.get("shams")
@@ -1311,7 +1320,14 @@ def _capture(layer: Any, box: Dict[str, torch.Tensor]) -> Iterator[None]:
 @contextmanager
 def _delivered_hook(layer_mod: Any, sp: "_Span", box: Dict[str, Any]) -> Iterator[None]:
     """Read-only hook on the highest edited layer: records each row's mean relative change against row 0 over the
-    scored span (`||h_r[p] - h_0[p]|| / max(||h_0[p]||, 1e-12)` in float32), without altering any tensor."""
+    scored span (`||h_r[p] - h_0[p]|| / max(||h_0[p]||, 1e-12)` in float32), without altering any tensor. The span is
+    the positions that predict the answer's pieces, `lo` to `T` - 2: it stops one short of the last position, where
+    a read-out "at the end" is taken, and it begins after the prompt, whose positions feed every later one through
+    the layers above. So the same figure is recorded at the last position (`delivered_end`) and over the prompt's
+    positions before `lo` (`delivered_prompt`). At the layer of a one-layer edit the stream at a position changes
+    only by what the edited neurons do at that position, so none of the three says anything of the others. (With
+    control edits on other layers than the edit's, a sham reading's, the hook sits on the highest layer any arm
+    edits, and an arm edited below it is read after the layers between.)"""
 
     def post(_mod: Any, _args: Tuple[Any, ...], out: Any) -> None:
         h_out = out[0] if isinstance(out, tuple) else out
@@ -1324,6 +1340,21 @@ def _delivered_hook(layer_mod: Any, sp: "_Span", box: Dict[str, Any]) -> Iterato
             if torch.equal(h_span[r], h_span[0]):
                 rel[r] = 0.0
         box["delivered"] = rel
+        h_end = h_out[:, sp.T - 1, :].detach()
+        ef = h_end.float()
+        end = ((ef - ef[0].unsqueeze(0)).norm(dim=-1) / ef[0].norm().clamp_min(1e-12)).cpu().tolist()
+        for r in range(int(h_end.shape[0])):
+            if torch.equal(h_end[r], h_end[0]):
+                end[r] = 0.0
+        box["delivered_end"] = end
+        h_pr = h_out[:, :sp.lo, :].detach()
+        pf = h_pr.float()
+        pre = ((pf - pf[0].unsqueeze(0)).norm(dim=-1)
+               / pf[0].norm(dim=-1).clamp_min(1e-12).unsqueeze(0)).mean(dim=-1).cpu().tolist()
+        for r in range(int(h_pr.shape[0])):
+            if torch.equal(h_pr[r], h_pr[0]):
+                pre[r] = 0.0
+        box["delivered_prompt"] = pre
 
     hook = layer_mod.register_forward_hook(post)
     try:
@@ -1366,6 +1397,7 @@ def capture_direction(
             raise Refused("An in-memory plant must be a weight_edits.Edit.")
         _same_base(h, _plant)
     we.assert_base(h.lm, h.hooks_at_load)
+    _ASKED["captures"] += 1
     box: Dict[str, torch.Tensor] = {}
 
     def pre(_mod: Any, args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> None:
@@ -1417,7 +1449,15 @@ def _score_sites(
     plant: Optional[Any] = None,
 ) -> Dict[str, np.ndarray]:
     """1-row base pre-pass over `chosen` to score every neuron of each touched column or row linear:
-    for `down_proj` (`cols`), `rms_act * down_stream_norms`; for `gate_proj`/`up_proj` (`rows`), `rms_out`."""
+    for `down_proj` (`cols`), `rms_act * down_stream_norms`; for `gate_proj`/`up_proj` (`rows`), `rms_out`.
+
+    The activations are taken over the positions that predict the answer's pieces (a written reading: the prompt's).
+    A read-out "at the end" is taken one position later, which this pass does not look at: what each site then
+    delivered there is recorded as read (`_delivered_hook`), and no site is matched on it.
+
+    Under `plant` the scores are the planted model's: a neuron's activation as its layer makes it (taken before the
+    plant's own hook scales it) times the length of its column as the plant leaves it
+    (`weight_edits.down_stream_norms_under`)."""
     terms = [t for t in edit.terms if t.kind in ("cols", "rows")]
     if not terms:
         return {}
@@ -1443,7 +1483,8 @@ def _score_sites(
                 for t in terms:
                     mod = h.lm.get_submodule(t.linear)
                     if t.kind == "cols":
-                        handles.append(mod.register_forward_pre_hook(lambda _m, args, nm=t.linear: _acc(nm, args[0])))
+                        handles.append(mod.register_forward_pre_hook(lambda _m, args, nm=t.linear: _acc(nm, args[0]),
+                                                                     prepend=plant is not None))
                     else:
                         handles.append(mod.register_forward_hook(lambda _m, _args, out, nm=t.linear: _acc(nm, out)))
                 for it in chosen:
@@ -1462,7 +1503,9 @@ def _score_sites(
         n_pos = max(counts.get(t.linear, 0), 1)
         rms = np.sqrt(sums[t.linear] / float(n_pos))
         if t.kind == "cols":
-            out[t.linear] = rms * we.down_stream_norms(h.lm, t.layer)
+            norms = (we.down_stream_norms(h.lm, t.layer) if plant is None
+                     else we.down_stream_norms_under(h.lm, t.layer, plant))
+            out[t.linear] = rms * norms
         else:
             out[t.linear] = rms
     return out
@@ -1477,6 +1520,7 @@ def _whole(h: Handle, ids: Sequence[int], rows: int) -> torch.Tensor:
     """One whole forward of the item's ids repeated to `rows` rows: no attention mask and no position ids, as every
     pilot ran it. Final-normed states [rows, pieces, D] in the model's dtype."""
     x = torch.tensor([list(ids)] * int(rows), dtype=torch.long, device=h.device)
+    _ASKED["forwards"] += 1
     return h.lm(input_ids=x, use_cache=False).last_hidden_state
 
 
@@ -1484,6 +1528,7 @@ def _restart(h: Handle, layer: int, kept: torch.Tensor) -> torch.Tensor:
     """The forward from `layer` on, on a stream kept at this batch shape."""
     R, T = int(kept.shape[0]), int(kept.shape[1])
     pos = torch.arange(T, device=kept.device).unsqueeze(0).expand(R, T)
+    _ASKED["forwards"] += 1
     return ao.forward_from_layer(h.lm, int(layer), kept, None, pos)
 
 
@@ -1605,10 +1650,12 @@ class _Sitting:
             if prog.dose == 0.0:
                 got = we.Arm(self.plant, 1.0)
             else:
+                # `plant_first`: the whole is refused nothing the edit alone is not (a refusal would say where the
+                # plant is). Each part met the gate alone before this.
                 stacked = we.stack(
                     self.h.lm, [self.plant, prog.edit],
                     model_id=self.h.model_id, weights_id=self.h.weights_id,
-                    doses=[1.0, float(prog.dose)], caps=False,
+                    doses=[1.0, float(prog.dose)], caps=False, plant_first=True,
                 )
                 got = we.Arm(stacked, 1.0)
         else:
@@ -1625,6 +1672,7 @@ class _Sitting:
             return
         progs: List[Any] = []
         null_scales: List[Tuple[int, float]] = []
+        null_layer: Optional[int] = None
         dt = self.h.dtype
         for r, k in enumerate(keys):
             if k is None:
@@ -1632,13 +1680,16 @@ class _Sitting:
             elif self.arms[k]["what"] == "null":
                 progs.append(we.Arm(self.plant, 1.0))
                 null_scales.append((r, float(we.null_factor(self.arms[k]["e"], dt))))
+                # where the null program says (the lowest layer of the caller's edit and controls), which is where a
+                # reading with no plant puts it: `self.L0` is lower than that when the plant sits below the edit
+                null_layer = int(self.arms[k]["program"].layer)
             else:
                 progs.append(self._composed_for(k))
         with we.per_row(self.h.lm, progs):
             if not null_scales:
                 yield
                 return
-            mod = self.h.lm.get_submodule(we.linear_name(self.L0, "down_proj"))
+            mod = self.h.lm.get_submodule(we.linear_name(null_layer, "down_proj"))
             R_want = len(keys)
 
             def _null_post(_m: Any, _args: Tuple[Any, ...], y: torch.Tensor) -> torch.Tensor:
@@ -1711,6 +1762,8 @@ class _Begun:
     Hf0: torch.Tensor
     kept: Optional[torch.Tensor]
     delivered0: Optional[List[float]]
+    delivered_end0: Optional[List[float]] = None
+    delivered_prompt0: Optional[List[float]] = None
 
 
 def _begin_class(sit: _Sitting, item: Item, sp: _Span, cls: str, one_row: Dict[str, torch.Tensor]) -> _Begun:
@@ -1739,11 +1792,14 @@ def _begin_class(sit: _Sitting, item: Item, sp: _Span, cls: str, one_row: Dict[s
         with sit.run_hooks(keys[0]), _delivered_hook(h.lm.layers[sit.L_high], sp, deliv):
             Hf0 = _whole(h, item.ids, R)
     _check_forward(sit, Hf0, keys[0], 0, None)
-    return _Begun(cls=cls, R=R, keys=keys, Hf0=Hf0, kept=kept, delivered0=deliv.get("delivered"))
+    return _Begun(cls=cls, R=R, keys=keys, Hf0=Hf0, kept=kept, delivered0=deliv.get("delivered"),
+                  delivered_end0=deliv.get("delivered_end"), delivered_prompt0=deliv.get("delivered_prompt"))
 
 
 def _read_rows(sit: _Sitting, sp: _Span, Hf: torch.Tensor, keys: Sequence[Optional[str]], f: int,
-               skip_null: bool, delivered: Optional[Sequence[float]] = None) -> Tuple[List[Dict[str, Any]], Dict[str, torch.Tensor]]:
+               skip_null: bool, delivered: Optional[Sequence[float]] = None,
+               delivered_end: Optional[Sequence[float]] = None,
+               delivered_prompt: Optional[Sequence[float]] = None) -> Tuple[List[Dict[str, Any]], Dict[str, torch.Tensor]]:
     """Every null row and arm of one forward against that forward's own row 0, plus row 0's raw base values."""
     on = sit.plan["readouts"]
     rows, entries = [], []
@@ -1754,6 +1810,10 @@ def _read_rows(sit: _Sitting, sp: _Span, Hf: torch.Tensor, keys: Sequence[Option
         entry.update({"forward": f, "row": r, "non_finite": not bool(torch.isfinite(Hf[r]).all()),
                       "same_as_base": bool(torch.equal(Hf[r], Hf[0])),
                       "delivered": _clean(delivered[r]) if delivered is not None and r < len(delivered) else None,
+                      "delivered_end": (_clean(delivered_end[r])
+                                        if delivered_end is not None and r < len(delivered_end) else None),
+                      "delivered_prompt": (_clean(delivered_prompt[r])
+                                           if delivered_prompt is not None and r < len(delivered_prompt) else None),
                       "metrics": None})
         entries.append(entry)
         rows.append(None if entry["non_finite"] else Hf[r])
@@ -1866,7 +1926,8 @@ def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun,
     gate when `kl` or `own` is on), the later forwards with their rules and arms, the twin, the floor and the rank."""
     h, plan, on = sit.h, sit.plan, sit.plan["readouts"]
     n0 = len(plan["null_e"])
-    arms, base_raw = _read_rows(sit, sp, st.Hf0, st.keys[0], 0, skip_null=False, delivered=st.delivered0)
+    arms, base_raw = _read_rows(sit, sp, st.Hf0, st.keys[0], 0, skip_null=False, delivered=st.delivered0,
+                                delivered_end=st.delivered_end0, delivered_prompt=st.delivered_prompt0)
     if "own" not in base_raw:  # odds-only reading: compute the base row's own log-probability once for the item gate
         own_raw, _ = _measure(h, {"own": True}, sp, st.Hf0[0], [])
         base_raw["own"] = own_raw["own"]
@@ -1880,7 +1941,9 @@ def _read_class(sit: _Sitting, item: Item, sp: _Span, st: _Begun,
         with sit.run_hooks(st.keys[f]), _delivered_hook(h.lm.layers[sit.L_high], sp, deliv):
             Hf = _restart(h, sit.L0, st.kept) if st.kept is not None else _whole(h, item.ids, st.R)
         _check_forward(sit, Hf, st.keys[f], f, first)
-        more_arms, _ = _read_rows(sit, sp, Hf, st.keys[f], f, skip_null=True, delivered=deliv.get("delivered"))
+        more_arms, _ = _read_rows(sit, sp, Hf, st.keys[f], f, skip_null=True, delivered=deliv.get("delivered"),
+                                  delivered_end=deliv.get("delivered_end"),
+                                  delivered_prompt=deliv.get("delivered_prompt"))
         arms += more_arms  # its null rows are forward 0's by bits
         del Hf
     folded = _twin(sit, item, sp, st, arms)
@@ -2060,6 +2123,7 @@ def _written_batch(
     steps: List[float] = []
     last = R
     samples_of = [0] * R if sampler_settings is not None else None
+    _ASKED["forwards"] += 1
     with sit.run_hooks(keys):
         for st in ao.write_rows(
             h.lm, h.W_U, [list(prompt_ids)] * R, None, max_new=max_new, stop_ids=stop_ids,
@@ -2307,6 +2371,17 @@ def _same_base(h: Handle, edit: Any) -> None:
                           f"loaded model's hashes to {now[:12]}.")
 
 
+_ASKED = {"readings": 0, "captures": 0, "forwards": 0}
+
+
+def asked_in_process() -> Dict[str, int]:
+    """How many readings (`read`) and captures (`capture_direction`) this process has begun, and how many times this
+    module has run the model forward (a whole forward, a restart, a written batch): a trial of record is to be the
+    first thing its process asks of the model, and says what came before it when it is not. It counts what went
+    through this module: code that calls the model itself is not seen from here."""
+    return dict(_ASKED)
+
+
 def _fell_back() -> Optional[int]:
     n = getattr(backend.engine_runtime.dequantize_w4a16_full, "fell_back", None)
     return int(n) if isinstance(n, int) else None
@@ -2444,9 +2519,8 @@ class _Reading:
             all_layers = sorted(set(facts["layers"]) | {L for se in shams_built for L in se.layers()})
             est_facts = {**facts, "layers": all_layers, "lowest_layer": int(min(all_layers))}
             _fact_refusals(plan, est_facts, h.n_layers)
-        if self.plant is not None:
-            all_layers = sorted(set(est_facts["layers"]) | set(self.plant.layers()))
-            est_facts = {**est_facts, "layers": all_layers, "lowest_layer": int(min(all_layers))}
+        # Note: never fold a hidden `_plant`'s layers into `est_facts`, so `seconds.predicted` and `seconds.parts`
+        # match `estimate()` identically in blinded planted and canary sessions.
         twin, twin_why, cannot = False, None, None
         if plan["kind"] == "paired":
             if self.plant is not None:
@@ -2487,13 +2561,15 @@ class _Reading:
             self.saved = str(we.save(edit))
         layer_list = [edit.lowest_layer()] + [c.lowest_layer() for c in self.controls]
         high_list = [max(edit.layers())] + [max(c.layers()) for c in self.controls]
-        if self.plant is not None:
-            layer_list.append(self.plant.lowest_layer())
-            high_list.append(max(self.plant.layers()))
-        L0 = int(min(layer_list))
+        edit_L0 = int(min(layer_list))
         L_high = int(max(high_list))
+        L0 = int(min(edit_L0, self.plant.lowest_layer())) if self.plant is not None else edit_L0
+        # The null programs name `edit_L0` (the lowest layer of the caller's edit and controls) and `L_high` stays
+        # the caller's highest layer, so a plant moves neither the null rows (`_Sitting.run_hooks` scales them at the
+        # layer the program names) nor the depth `delivered` is read at. `L0`, where a restart begins, does take the
+        # plant in: the rows below it are not run again.
         self.sit = _Sitting(h=h, plan=plan, edit=edit, controls=self.controls, L0=L0, L_high=L_high,
-                            arms=_arm_facts(plan, edit, self.controls, L0, h.dtype), twin=twin, twin_why=twin_why,
+                            arms=_arm_facts(plan, edit, self.controls, edit_L0, h.dtype), twin=twin, twin_why=twin_why,
                             where=self.where, peaks=self.peaks, plant=self.plant)
         return chosen
 
@@ -2510,6 +2586,7 @@ class _Reading:
             matched, cov = we.matched_control_edits(
                 self.edit, h.lm, scores, ctl_cfg["seed"], int(ctl_cfg["count"]),
                 tolerance=float(ctl_cfg.get("tolerance", DEFAULT_MATCH_TOL)),
+                spread=ctl_cfg.get("draw") == "spread",
             )
             self.controls_coverage = cov
             if matched is None:
@@ -2521,7 +2598,8 @@ class _Reading:
                 )
             self.controls = list(matched)
             sit.controls = self.controls
-            sit.arms = _arm_facts(plan, self.edit, self.controls, sit.L0, h.dtype)
+            edit_L0 = int(min([self.edit.lowest_layer()] + [c.lowest_layer() for c in self.controls]))
+            sit.arms = _arm_facts(plan, self.edit, self.controls, edit_L0, h.dtype)
         for item in chosen:
             self.where.update({"item": item.name if item.name is not None else item.id[:12], "class": None,
                                "rows": None, "forward": None})
@@ -2582,9 +2660,13 @@ class _Reading:
                             "says": CONTROLS_SAY.format(seed=seed)}
             elif family == "other_sites_matched":
                 tol = float(ctl_cfg.get("tolerance", DEFAULT_MATCH_TOL))
+                spread = ctl_cfg.get("draw") == "spread"
                 controls = {"family": "other_sites_matched", "matched": True, "seed": seed, "count": count,
                             "tolerance": tol, "ids": ids, "coverage": self.controls_coverage,
-                            "says": CONTROLS_MATCHED_SAY.format(seed=seed, tol=tol)}
+                            "says": CONTROLS_MATCHED_SAY.format(seed=seed, tol=tol)
+                            + (CONTROLS_SPREAD_SAY if spread else "")}
+                if spread:
+                    controls["draw"] = "spread"
             elif family == "same_site":
                 controls = {"family": "same_site", "matched": True, "seed": seed, "count": count, "ids": ids,
                             "says": CONTROLS_SAME_SITE_SAY.format(seed=seed)}
@@ -2622,6 +2704,38 @@ class _Reading:
         return _clean(out)
 
 
+def matched_coverage(h: Handle, reading: dict, items: Mapping[str, Item], *, edit: Optional[Any] = None,
+                     base_dir: Path = Path(".")) -> Optional[Dict[str, Any]]:
+    """What a matched reading would find of its control edits on these items, with no arm read and nothing entered in
+    the ledger: the plan is prepared as `read` prepares it (so what would refuse the reading raises `Refused` here),
+    the 1-row base pre-pass is run over the items, and the control sets are drawn. Returns
+    `weight_edits.matched_control_edits`'s coverage (how many sites were eligible for each neuron, how many different
+    stand-ins the sets gave it, how many sets share no site), or None for a plan whose control edits are not matched
+    other sites. It runs the base forward once an item (counted by `asked_in_process`) and reads nothing of the
+    edit: no metric, no row but the base's. The scores of the edit's own neurons on these items, which a reading's
+    coverage records, are left out: a look gives counts and nothing a site could be picked by."""
+    run = _Reading(h, reading, items, Path(base_dir), edit, False)
+    with torch.no_grad():
+        try:
+            chosen = run.prepare()
+        except (we.Refused, we.NotBase) as exc:
+            raise Refused(str(exc)) from None
+        ctl_cfg = run.plan["controls"]
+        if ctl_cfg.get("family") != "other_sites_matched" or int(ctl_cfg["count"]) <= 0:
+            return None
+        try:
+            scores = _score_sites(h, run.edit, chosen, run.plan["kind"])
+            _made, cov = we.matched_control_edits(
+                run.edit, h.lm, scores, ctl_cfg["seed"], int(ctl_cfg["count"]),
+                tolerance=float(ctl_cfg.get("tolerance", DEFAULT_MATCH_TOL)), spread=ctl_cfg.get("draw") == "spread")
+        finally:
+            we.assert_base(h.lm, h.hooks_at_load)
+    cov = _clean(cov)
+    for term in cov.get("terms") or ():
+        term.pop("edit_scores", None)
+    return cov
+
+
 def read(h: Handle, reading: dict, items: Mapping[str, Item], *, base_dir: Path = Path("."),
          edit: Optional[Any] = None, save_edit: bool = False, _plant: Optional[Any] = None) -> dict:
     """One reading, paired or written, entered in the ledger whatever happens.
@@ -2638,6 +2752,7 @@ def read(h: Handle, reading: dict, items: Mapping[str, Item], *, base_dir: Path 
     a void ("error" or "interrupted") and then raised again. However the reading ends, `we.assert_base` runs last:
     the result's `base_after` says whether the model is the base again."""
     lb.head()
+    _ASKED["readings"] += 1
     run = _Reading(h, reading, items, Path(base_dir), edit, save_edit, plant=_plant)
     raised: Optional[BaseException] = None
     try:
@@ -2790,7 +2905,10 @@ def _arm_words(arm: Mapping[str, Any], on: Sequence[str], exact: Optional[Mappin
             got.append(f"{_METRIC_WORDS[m]} mean {_n(s['mean'])}, median {_n(s['median'])}, {s['above_1']} "
                        f"position{'' if s['above_1'] == 1 else 's'} above a nat of {s.get('n')}")
     if arm.get("delivered") is not None:
-        got.append(f"delivered {_n(arm['delivered'])}")
+        beside = [f"{what} {_n(arm[key])}" for what, key in (("over the prompt", "delivered_prompt"),
+                                                             ("at the last position", "delivered_end"))
+                  if arm.get(key) is not None]
+        got.append(f"delivered {_n(arm['delivered'])}" + (f" ({', '.join(beside)})" if beside else ""))
     said = "; ".join(got)
     exact = exact or {}
     if exact.get("input_side") == "rounds":

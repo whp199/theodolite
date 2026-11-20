@@ -110,8 +110,9 @@ def _book_catalog() -> Dict[str, Dict[str, Any]]:
         }
     }
     candidates = [
+        ("verify_trial", "31B trial dry run check (20 Nov 2026)", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
         ("verify_claim", "31B claim gate check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_claim_book.jsonl"),
-        ("verify_door", "31B agent door check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
+        ("verify_door", "31B agent door check (20 Nov 2026)", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
         ("verify_1b", "31B slice 1b check (18 Nov 2026)", RECORDED_BOOKS_DIR / "verify_1b_book.jsonl"),
     ]
     for bid, label, p in candidates:
@@ -416,7 +417,55 @@ def _paired_table_from_body(body: Mapping[str, Any]) -> Optional[Dict[str, Any]]
     }
 
 
-def build_replay_card(entry: Mapping[str, Any]) -> Dict[str, Any]:
+def _extract_edit_linears(
+    body: Mapping[str, Any],
+    linears_by_edit: Optional[Mapping[str, List[str]]] = None,
+) -> Optional[List[str]]:
+    """Recover touched linear names from a reading or note body (`edit.linears`, `body.edit_linears`,
+    `edit.terms.terms[*].linear`, or an optional `edit_id -> linears` map built from the same book)."""
+    edit_blk = body.get("edit") if isinstance(body.get("edit"), Mapping) else {}
+    direct = edit_blk.get("linears")
+    if isinstance(direct, list) and direct:
+        return [str(x) for x in direct]
+    top = body.get("edit_linears")
+    if isinstance(top, list) and top:
+        return [str(x) for x in top]
+    entries = lv._report_entries(edit_blk.get("terms"))
+    found = sorted({str(t["linear"]) for t in entries if t.get("linear")})
+    if found:
+        return found
+    eid = edit_blk.get("id") or body.get("edit_id")
+    if isinstance(eid, str) and linears_by_edit and eid in linears_by_edit:
+        return list(linears_by_edit[eid])
+    return None
+
+
+def _book_linears_by_edit(path: Path) -> Dict[str, List[str]]:
+    """Scan a book once to map `edit_id -> sorted linears`, so note entries written without inline `edit_linears`
+    (such as earlier `claim_verdict` or `claim_registration` notes) still display their linears on live replay."""
+    out: Dict[str, List[str]] = {}
+    try:
+        for ent in lb.entries(path):
+            body = ent.get("body")
+            if not isinstance(body, Mapping):
+                continue
+            edit_blk = body.get("edit") if isinstance(body.get("edit"), Mapping) else {}
+            eid = edit_blk.get("id") or body.get("edit_id")
+            if not isinstance(eid, str) or eid in out:
+                continue
+            lins = _extract_edit_linears(body)
+            if lins:
+                out[eid] = lins
+    except lb.BookBroken:
+        pass  # a damaged line ends the scan, not the replay: the whole lines before it are still shown, as before
+    return out
+
+
+def build_replay_card(
+    entry: Mapping[str, Any],
+    *,
+    linears_by_edit: Optional[Mapping[str, List[str]]] = None,
+) -> Dict[str, Any]:
     """Turn any level-book entry (`written`, `paired`, or `note`) into a model-free replay card for the UI."""
     kind = str(entry.get("kind") or "")
     body = entry.get("body") if isinstance(entry.get("body"), Mapping) else {}
@@ -431,7 +480,7 @@ def build_replay_card(entry: Mapping[str, Any]) -> Dict[str, Any]:
         "why": body.get("why"),
         "name": body.get("name"),
         "edit_id": edit_blk.get("id") or body.get("edit_id"),
-        "edit_linears": edit_blk.get("linears"),
+        "edit_linears": _extract_edit_linears(body, linears_by_edit=linears_by_edit),
         "seconds": sec_blk.get("actual"),
         "base_after": body.get("base_after"),
     }
@@ -457,6 +506,37 @@ def build_replay_card(entry: Mapping[str, Any]) -> Dict[str, Any]:
             base_card["cheaper_knobs"] = body.get("cheaper_knobs")
             base_card["bars_sha256"] = body.get("bars_sha256")
             base_card["book_seqs"] = body.get("book_seqs")
+        elif nt in ("trial_of_record", "trial_dry_run", "trial_rerun"):
+            # only a trial of record shows its verdict as a verdict: a dry run's and a re-run's is prefixed, and so
+            # takes no verdict colour on the page
+            kind = {"trial_of_record": "trial of record", "trial_dry_run": "dry run of a trial",
+                    "trial_rerun": "re-run of a trial"}[nt]
+            lead = {"trial_of_record": "", "trial_dry_run": "dry run: ", "trial_rerun": "re-run: "}[nt]
+            base_card["status"] = f'{lead}{body.get("verdict")}'
+            base_card["name"] = f'{kind} · {body.get("trial_name") or body.get("brief_name")}'
+            base_card["verdict"] = body.get("verdict")
+            base_card["of_record"] = bool(body.get("of_record")) and nt == "trial_of_record"
+            base_card["not_of_record"] = list(body.get("not_of_record") or [])
+            base_card["reasons"] = body.get("reasons") or []
+            base_card["claim_sentence"] = body.get("claim_sentence")
+            base_card["summary"] = body.get("summary")
+            base_card["batteries"] = body.get("batteries")
+            base_card["cheaper_knobs"] = body.get("cheaper_knobs")
+            base_card["bars_sha256"] = body.get("bars_sha256")
+            base_card["book_seqs"] = body.get("book_seqs")
+            base_card["folded_summary"] = body.get("folded")
+            base_card["reworded_summary"] = body.get("reworded")
+            base_card["trial_sha256"] = body.get("trial_sha256")
+            base_card["cheaper_knob"] = body.get("cheaper_knob")  # the arm that matched a pass, with its figure
+        elif nt == "trial_registration":
+            base_card["status"] = "registered"
+            base_card["name"] = f'register trial · {body.get("trial_name") or body.get("brief_name")}'
+            base_card["of_record"] = bool(body.get("of_record"))
+            base_card["not_of_record"] = list(body.get("not_of_record") or [])
+            base_card["selection_mode"] = body.get("selection_mode")
+            base_card["controls_per_family"] = body.get("controls_per_family")
+            base_card["bars_sha256"] = body.get("bars_sha256")
+            base_card["trial_sha256"] = body.get("trial_sha256")
         elif nt == "brief_calibration":
             base_card["status"] = "calibrated"
             base_card["name"] = f'bars for {body.get("brief_name")}'
@@ -611,12 +691,11 @@ async def level_compare(req: CompareRequest) -> Dict[str, Any]:
             raise HTTPException(status_code=400, detail=str(exc)) from None
 
         t0 = time.perf_counter()
-        w_plan_built = {**w_plan, "edit": {"built": edit.id}}
-        w_res = lv.read(h, w_plan_built, {"audition": item}, edit=edit)
+        # Keep the rebuildable recipe in `plan["edit"]` so every compare reading can be rebuilt from the ledger.
+        w_res = lv.read(h, w_plan, {"audition": item})
         p_res = None
         if p_plan is not None and w_res.get("status") == "ok":
-            p_plan_built = {**p_plan, "edit": {"built": edit.id}}
-            p_res = lv.read(h, p_plan_built, {"audition": item}, edit=edit)
+            p_res = lv.read(h, p_plan, {"audition": item})
         we.assert_base(h.lm, h.hooks_at_load)
         elapsed = round(time.perf_counter() - t0, 3)
 
@@ -690,9 +769,10 @@ def level_book_list(
     start = max(0, total - int(tail))
     cards: List[Dict[str, Any]] = []
     if total > 0:
+        linears_map = _book_linears_by_edit(path)
         for ent in lb.entries(path, start=start, limit=int(tail)):
             src = lb.driver_view(ent) if redacted else ent
-            cards.append(build_replay_card(src))
+            cards.append(build_replay_card(src, linears_by_edit=linears_map))
     cards.reverse()  # newest first for quick inspection
     return {
         "book": bid,
@@ -719,11 +799,12 @@ def level_book_entry(
     ent = next(lb.entries(path, start=seq, limit=1), None)
     if ent is None:
         raise HTTPException(status_code=404, detail=f"Line {seq} could not be read.")
+    linears_map = _book_linears_by_edit(path)
     shown = lb.driver_view(ent) if redacted else ent
     return {
         "book": bid,
         "recorded": recorded,
         "verify": v,
-        "card": build_replay_card(shown),
+        "card": build_replay_card(shown, linears_by_edit=linears_map),
         "entry": shown,
     }

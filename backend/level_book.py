@@ -314,6 +314,10 @@ def _parse(raw: bytes) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         entry = json.loads(raw, parse_constant=_no_constant)
     except (ValueError, RecursionError):
         return None, "it is not JSON"
+    try:
+        canonical(entry)
+    except (ValueError, RecursionError):  # a number written past a float's reach (1e999) parses as an infinity
+        return None, "it holds a number that is not finite, or is nested too deep to write"
     if type(entry) is not dict or set(entry) != set(_KEYS):
         return None, f"it has not exactly the seven keys of an entry ({', '.join(_KEYS)})"
     if type(entry["v"]) is not int or entry["v"] != VERSION:
@@ -326,9 +330,13 @@ def _parse(raw: bytes) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
 def _not_own(entry: Dict[str, Any], raw: bytes) -> Optional[str]:
     """None when the entry's hash is its own and the line's bytes are those its content is written as, else which
     fails. The second catches a byte changed where the JSON's meaning is not (an exponent's e written E)."""
-    if entry["hash"] != entry_hash(entry):
+    try:
+        own, written = entry_hash(entry), canonical(entry) + b"\n"
+    except (ValueError, RecursionError):  # 1e999 parses as an infinity, which no line is written with
+        return "it holds a number that is not finite, or is nested too deep to write: no line of the book is"
+    if entry["hash"] != own:
         return "its hash is not its own"
-    if canonical(entry) + b"\n" != raw:
+    if written != raw:
         return "its bytes are not those an entry of this content is written as"
     return None
 

@@ -88,6 +88,7 @@ import copy
 import dataclasses
 import hashlib
 import importlib
+import itertools
 import json
 import math
 import pickle
@@ -100,6 +101,7 @@ import time
 import traceback
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -1908,7 +1910,8 @@ TOP = {"v", "kind", "name", "status", "why", "void", "base_after", "edit", "base
        "controls", "items", "summary", "seconds", "peak_gib", "book"}
 ITEM_BLOCK = {"id", "name", "question", "answer", "system", "prompt_ids", "answer_ids", "pieces", "prompt_pieces", "scored"}
 CLASS = {"rows", "forwards", "lower", "restart_from", "untouched_rows_identical", "repeats_identical", "base", "arms", "floor", "rank", "folded", "peak_gib"}
-ARM_ANY = {"key", "what", "e", "dose", "factor", "edit_id", "forward", "row", "non_finite", "same_as_base", "delivered", "metrics"}
+ARM_ANY = {"key", "what", "e", "dose", "factor", "edit_id", "forward", "row", "non_finite", "same_as_base", "delivered",
+           "delivered_end", "delivered_prompt", "metrics"}
 ARM_MUST = {"key", "what", "forward", "row", "non_finite", "same_as_base", "metrics"}
 STATS = {"mean", "median", "max_abs", "above_1", "n"}
 FOLDED = {"taken", "why", "dose", "base_from", "restart", "rows_identical", "metrics", "per_row", "gap", "between_kl_mean", "same_bits", "seconds"}
@@ -2851,6 +2854,21 @@ def check_book() -> None:
             check(words_of(lambda: lb.append("note", {}, path=odd), lb.BookBroken) is not None, f"12: and append will not write after it ({label})")
         v = lb.verify(TMP / "book12")  # a folder where the book should be
         check(v["ok"] is False and v["first_bad"] == 0 and isinstance(v["why"], str), f"12: verify of a path that cannot be read as a book does not raise: it says so ({v})")
+        # a number written past a float's reach reads as an infinity, which no line is written with: such a line is
+        # not an entry, wherever it stands, and no reader of the book raises anything but BookBroken for it
+        for at_line, label in ((1, "a middle line"), (2, "the last line")):
+            raw = [lines[0], lines[1], lines[2]]
+            raw[at_line] = raw[at_line].replace(b'"body":{', b'"body":{"a_number":1e999,', 1)
+            odd.write_bytes(b"\n".join(raw + [b""]))
+            v = words_of(lambda: lb.verify(odd), Exception) or lb.verify(odd)
+            check(isinstance(v, dict) and v["ok"] is False and v["first_bad"] == at_line and "not finite" in str(v["why"]),
+                  f"12: {label} that holds a number past a float's reach is named by verify, which does not raise ({v})")
+            got = words_of(lambda: list(lb.entries(odd)), lb.BookBroken)
+            check(got is not None and not got.startswith("<") and f"Line {at_line} of the book" in got,
+                  f"12: and reading the book's entries raises BookBroken at it, and nothing else ({label}: {got!r})")
+        got_h, got_a = words_of(lambda: lb.head(odd), lb.BookBroken), words_of(lambda: lb.append("note", {}, path=odd), lb.BookBroken)
+        check(got_h is not None and not got_h.startswith("<") and got_a is not None and not got_a.startswith("<"),
+              f"12: with such a line last, head raises BookBroken and append will not write after it ({got_h!r})")
         cut = TMP / "book12" / "cut.jsonl"
         cut.write_bytes(b"\n".join([lines[0], lines[1], b""]))
         v = lb.verify(cut)
@@ -3479,6 +3497,20 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
         check(arm0["delivered"] == 0.0 and arm1["delivered"] is not None and arm1["delivered"] > 0.0
               and close(arm1["delivered"], bf_del, 1e-5) and "delivered" in " ".join(lv.lines(r_del)),
               f"15d (P): delivered matches brute-force layer output ({arm1['delivered']} vs {bf_del}, dose 0 is {arm0['delivered']})")
+        # the span stops one short of the last position, where a read-out "at the end" is taken: the same figure
+        # at that one position is recorded beside it, and is another number
+        he = box_d["h"][:, T - 1, :].float()
+        bf_end = float((he[arm1["row"]] - he[0]).norm() / he[0].norm().clamp_min(1e-12))
+        check(arm0["delivered_end"] == 0.0 and close(arm1["delivered_end"], bf_end, 1e-5) and bf_end > 0.0
+              and abs(bf_end - bf_del) > 1e-4 and "at the last position" in " ".join(lv.lines(r_del)),
+              f"15d (P): delivered_end is the same figure at the last position alone, which the span leaves out "
+              f"({arm1['delivered_end']} vs {bf_end}; over the span {bf_del})")
+        hp = box_d["h"][:, :lo, :].float()
+        bf_pre = float(((hp[arm1["row"]] - hp[0]).norm(dim=-1) / hp[0].norm(dim=-1).clamp_min(1e-12)).mean())
+        check(arm0["delivered_prompt"] == 0.0 and close(arm1["delivered_prompt"], bf_pre, 1e-5) and bf_pre > 0.0 and lo > 1
+              and "over the prompt" in " ".join(lv.lines(r_del)),
+              f"15d (P): delivered_prompt is the same figure over the prompt's {lo} positions, which the span begins "
+              f"after ({arm1['delivered_prompt']} vs {bf_pre})")
 
     with part("15e: control families (same_site, other_sites_matched, sham_target)"):
         # 1. same_site on a rank-1 remove_direction edit (with quiet mask dims)
@@ -3602,6 +3634,288 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
         diag_row = we.edit_diagnostics(Pb.lm, Pb.build(we.silence_rows(2, "gate_proj", [3])), dose=1.0)
         check(diag_row["terms"][0]["kind"] == "rows" and diag_row["terms"][0]["dtype_changed_share"] > 0.5,
               "15f: edit_diagnostics handles row terms")
+
+    with part("15g: the spread draw, a matched reading's coverage with nothing read, a plant's site scores"):
+        # 1. drawn each on its own, control sets share sites; drawn spread, as few as the pools allow. Over many seeds,
+        #    not one: a draw that locks at the end of a pass does so on some seeds only.
+        def drawn(pools: Sequence[Any], C: int, spread: bool, seed: int = 3) -> List[np.ndarray]:
+            return we._draw_matched_indices([np.asarray(list(p)) for p in pools], C, np.random.default_rng([seed, 0, 29]),
+                                            spread=spread)
+
+        def disjoint(draws: Sequence[np.ndarray]) -> int:
+            seen: set = set()
+            n = 0
+            for d in draws:
+                s = {int(x) for x in d}
+                if not (s & seen):
+                    n += 1
+                    seen |= s
+            return n
+
+        def sound(draws: Sequence[np.ndarray], C: int, Kn: int) -> bool:
+            return (len(draws) == C and all(len({int(x) for x in d}) == Kn for d in draws)
+                    and len({tuple(sorted(int(x) for x in d)) for d in draws}) == C)
+
+        def spread(pools: Sequence[Any], C: int, seed: int = 3, groups: Optional[Sequence[int]] = None,
+                   offsets: Optional[Sequence[int]] = None) -> Tuple[List[np.ndarray], List[bool]]:
+            pools = [np.asarray(list(p), dtype=np.int64) for p in pools]
+            return we._draw_spread_sets(pools, [0] * len(pools) if groups is None else list(groups), C,
+                                        np.random.default_rng([seed, 31]), offsets=offsets)
+
+        def clean_family(sets: Sequence[np.ndarray], clean: Sequence[bool]) -> int:
+            """How many sets the draw calls clean, or -1 when two of them share a site."""
+            fam = [{int(x) for x in s} for s, c in zip(sets, clean) if c]
+            return len(fam) if len(set().union(*fam)) == sum(len(s) for s in fam) else -1
+
+        same60, same126 = [range(60)] * 10, [range(126)] * 2
+        narrow = [range(49)] + [range(100, 2100)] * 9  # one neuron with few eligible sites, nine with many others
+        narrow_in = [range(42)] + [range(3000)] * 9  # its few sites among the nine others' many
+        nested = [range(42), range(200)] + [range(3000)] * 8
+        tight = {"two neurons, the same 30 sites, 99 sets": ([range(30)] * 2, 99),
+                 "three neurons, ten sites each, 39 sets": ([range(10), range(100, 110), range(200, 210)], 39),
+                 "two neurons, the same 18 sites, 39 sets": ([range(18)] * 2, 39),
+                 "two neurons, the same 20 sites, every one of the 190 sets there are": ([range(20)] * 2, 190),
+                 "three neurons, the same 4 sites, all 4 sets": ([range(4)] * 3, 4)}
+        short = {name: sum(1 for s in range(120) if not sound(drawn(pools, C, True, s), C, len(pools)))
+                 for name, (pools, C) in tight.items()}
+        check(all(n == 0 for n in short.values()),
+              f"15g: the spread draw gives every set asked for where sets remain, on each of 120 seeds: it does not lock "
+              f"when the sites run out ({short})")
+        # against every assignment there is, on small pools that overlap as a band of scores makes them overlap
+        rng_b = np.random.default_rng(7)
+        n_brute = n_short = n_unclean = 0
+        for _case in range(160):
+            Kb = int(rng_b.integers(2, 5))
+            Ub = int(rng_b.integers(Kb, 9))
+            pools_b = [sorted(rng_b.choice(Ub, size=int(rng_b.integers(1, Ub + 1)), replace=False).tolist()) for _ in range(Kb)]
+            groups_b = [int(g) for g in rng_b.integers(0, 2, size=Kb)] if rng_b.random() < 0.4 else [0] * Kb
+
+            def key_of(combo: Sequence[int]) -> Optional[Tuple[Any, ...]]:
+                by: Dict[int, List[int]] = {}
+                for p, x in enumerate(combo):
+                    by.setdefault(groups_b[p], []).append(int(x))
+                if any(len(set(v)) != len(v) for v in by.values()):
+                    return None
+                return tuple((g, tuple(sorted(v))) for g, v in sorted(by.items()))
+
+            every = {key_of(c) for c in itertools.product(*pools_b)} - {None}
+            for C in sorted({1, max(1, len(every) // 2), len(every), len(every) + 3}):
+                sets_b, clean_b = spread(pools_b, C, seed=n_brute, groups=groups_b)
+                n_brute += 1
+                keys = {key_of(s.tolist()) for s in sets_b}
+                if len(sets_b) != min(C, len(every)) or None in keys or len(keys) != len(sets_b) or not keys <= every:
+                    n_short += 1
+                if clean_family(sets_b, clean_b) < 0:
+                    n_unclean += 1
+        check(n_brute > 400 and n_short == 0 and n_unclean == 0,
+              f"15g: on {n_brute} draws from small overlapping pools, in one term or two, the spread draw gives as many "
+              "sets as were asked or as there are, each a set there is and none twice, and the sets it calls clean "
+              "share no site")
+        dj_spread = [disjoint(drawn(same126, 39, True, s)) for s in range(30)]
+        dj_each = [disjoint(drawn(same126, 39, False, s)) for s in range(30)]
+        cl_narrow = [clean_family(*spread(pools, 39, s)) for pools in (narrow, narrow_in, nested) for s in range(30)]
+        cl_shared = [clean_family(*spread(same60, 39, s)) for s in range(10)]
+        n_shared = [min(len({int(d[j]) for d in drawn(same60, 39, True, s)}) for j in range(10)) for s in range(10)]
+        check(set(dj_spread) == {39} and max(dj_each) < 39 and set(cl_narrow) == {39}
+              and set(cl_shared) == {6} and set(n_shared) == {39}
+              and all(sound(drawn(same60, 39, sp, s), 39, 10) for sp in (False, True) for s in range(10)),
+              f"15g: drawn spread, 39 sets of two from 126 sites share no site (each on its own: {min(dj_each)} to "
+              f"{max(dj_each)} of them share none); so do 39 of ten where one neuron has 42 or 49 eligible sites, among "
+              "the others' sites or apart from them (a neuron with many sites leaves another's few alone); ten "
+              "neurons that share 60 sites give the 6 sets that can share none, on every seed, and each neuron still "
+              "has 39 different stand-ins")
+        # the count does not fall as more sets are asked for: the sets made of sites no earlier set had are counted as
+        # made, wherever the shuffle puts them (taken one after another as they stand, fewer would be found)
+        asked_more = {}
+        for name, pools, most in (("three neurons, the same 125 sites", [range(125)] * 3, 41),
+                                  ("ten neurons, the same 450 sites", [range(450)] * 10, 45)):
+            got39 = [clean_family(*spread(pools, 39, s)) for s in range(20)]
+            sets99 = [spread(pools, 99, s) for s in range(20)]
+            got99 = [clean_family(*x) for x in sets99]
+            as_stand = [disjoint(x[0]) for x in sets99]
+            asked_more[name] = (set(got39) == {39} and set(got99) == {most} and max(as_stand) < most
+                                and all(sound(x[0], 99, len(pools)) for x in sets99), min(as_stand), max(as_stand))
+        check(all(v[0] for v in asked_more.values()),
+              "15g: asked for 99 sets where 41 or 45 can share no site, the spread draw makes that many of sites no "
+              f"earlier set had and says which, and asked for 39 it makes 39 ({asked_more})")
+        # two projections of one layer are one draw: a neuron stands in one control edit, whatever projection it is in
+        two_proj, apart_draws = [], []
+        for s in range(20):
+            r2 = np.random.default_rng([s, 5])
+            pools2 = [np.sort(r2.choice(2000, size=400, replace=False)) for _ in range(20)]
+            sets2, clean2 = spread(pools2, 39, s, groups=[0] * 10 + [1] * 10)
+            two_proj.append(clean_family(sets2, clean2))
+            a2, b2 = spread(pools2[:10], 39, s)[0], spread(pools2[10:], 39, s + 1000)[0]
+            apart_draws.append(disjoint([np.concatenate([x, y]) for x, y in zip(a2, b2)]))
+        sets_l, clean_l = spread([range(5)] * 4, 2, 0, groups=[0, 0, 1, 1], offsets=[0, 0, 100, 100])
+        check(set(two_proj) == {39} and max(apart_draws) < 39
+              and clean_family(sets_l, clean_l) == 2 and all(int(s[2]) >= 100 and int(s[0]) < 100 for s in sets_l),
+              f"15g: ten neurons changed in two projections of one layer are drawn together, and 39 control edits then "
+              f"share no neuron; the two projections drawn each on its own share neurons between control edits "
+              f"({min(apart_draws)} to {max(apart_draws)} of 39 share none); the same numbers in another layer are other sites")
+        t_cost = time.time()
+        sets_c, clean_c = spread([range(8000)] * 512, 99, 1)
+        t_cost = time.time() - t_cost
+        check(len(sets_c) == 99 and clean_family(sets_c, clean_c) == 15 and t_cost < 30.0,
+              f"15g: 99 sets of 512 neurons that share 8000 sites are drawn in {t_cost:.2f} s (the 15 that can share no "
+              "site among them): a draw that runs out of sites does not look through every pool at every pick")
+        d_spr, d_again, d_other = drawn(same60, 39, True), drawn(same60, 39, True), drawn(same60, 39, True, seed=4)
+        check(all(np.array_equal(a, b) for a, b in zip(d_spr, d_again))
+              and not all(np.array_equal(a, b) for a, b in zip(d_spr, d_other)),
+              "15g: the spread draw is its seed's")
+        d_one = we._draw_matched_indices([np.arange(50)], 20, np.random.default_rng([3, 0, 29]), spread=True)
+        d_one_was = we._draw_matched_indices([np.arange(50)], 20, np.random.default_rng([3, 0, 29]))
+        check(all(np.array_equal(a, b) for a, b in zip(d_one, d_one_was)) and len({int(d[0]) for d in d_one}) == 20,
+              "15g: one neuron's stand-ins were never repeated, and are drawn as they were")
+
+
+        # 2. a plan asks for it; one that does not is written as it always was
+        ctl_m = {"family": "other_sites_matched", "count": 6, "seed": 0, "tolerance": 3.0}
+        e_two = {"terms": [{"layer": 2, "silence": [3, 40]}]}
+        pl_was = lv.normalise({**paired_base, "name": "g1", "edit": e_two, "controls": ctl_m},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        pl_ind = lv.normalise({**paired_base, "name": "g1", "edit": e_two, "controls": {**ctl_m, "draw": "independent"}},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        pl_spr = lv.normalise({**paired_base, "name": "g1", "edit": e_two, "controls": {**ctl_m, "draw": "spread"}},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        check(pl_was["controls"] == pl_ind["controls"] and "draw" not in pl_was["controls"]
+              and pl_spr["controls"] == {**pl_was["controls"], "draw": "spread"}
+              and words_of(lambda: lv.normalise({**paired_base, "name": "g1", "edit": e_two,
+                                                 "controls": {**ctl_m, "draw": "lucky"}},
+                                                n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype), lv.Refused) is not None
+              and words_of(lambda: lv.normalise({**paired_base, "name": "g1", "edit": e_two,
+                                                 "controls": {"count": 4, "seed": 0, "draw": "spread"}},
+                                                n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype), lv.Refused) is not None,
+              "15g: controls.draw is 'independent' (written as a plan always was) or 'spread', for matched other sites alone")
+        r_spr = lv.read(hP, {**paired_base, "name": "1b matched spread", "edit": e_two, "controls": {**ctl_m, "draw": "spread"}},
+                        items_p)
+        r_ind = lv.read(hP, {**paired_base, "name": "1b matched each", "edit": e_two, "controls": ctl_m}, items_p)
+        printed(r_spr)
+        cov_s, cov_i = r_spr["controls"]["coverage"], r_ind["controls"]["coverage"]
+        check(r_spr["status"] == "ok" and r_ind["status"] == "ok" and cov_s["draw"] == "spread" and cov_i["draw"] == "independent"
+              and r_spr["controls"].get("draw") == "spread" and "draw" not in r_ind["controls"]
+              and cov_s["terms"][0]["min_distinct"] == 6 and cov_s["disjoint_sets"] == 6
+              and cov_s["terms"][0]["min_eligible"] >= 12
+              and cov_s["terms"][0]["min_eligible"] == cov_i["terms"][0]["min_eligible"]
+              and "the spread draw" in " ".join(lv.lines(r_spr)) and "the spread draw" not in " ".join(lv.lines(r_ind)),
+              f"15g (P): a reading says how its control sets were drawn and how many of them share no site with one "
+              f"another ({cov_s['disjoint_sets']} of 6 spread, {cov_i['disjoint_sets']} each on its own, from "
+              f"{cov_s['terms'][0]['min_eligible']} eligible sites a neuron)")
+        # the count is the control edits' own: worked again here from the sites of the edits the reading recorded
+        made_s, cov_made = we.matched_control_edits(Pb.build(we.silence(2, [3, 40])), Pb.lm,
+                                                    lv._score_sites(hP, Pb.build(we.silence(2, [3, 40])),
+                                                                    [items_p["orange"]], "paired"), 0, 6,
+                                                    tolerance=3.0, spread=True)
+        made_i, cov_made_i = we.matched_control_edits(Pb.build(we.silence(2, [3, 40])), Pb.lm,
+                                                      lv._score_sites(hP, Pb.build(we.silence(2, [3, 40])),
+                                                                      [items_p["orange"]], "paired"), 0, 6, tolerance=3.0)
+        # an edit of the same neurons in two projections: the count is by neuron, over both terms
+        e_both = Pb.build(we.silence(2, [3, 40]), we.scale_rows(2, "up_proj", [3, 40], 0.5))
+        sc_both = lv._score_sites(hP, e_both, [items_p["orange"]], "paired")
+
+        def neurons_of(c: Any) -> set:
+            return {(int(t.layer), int(x)) for t in c.terms for x in t.idx}
+
+        def disjoint_by_neuron(made: Sequence[Any]) -> int:
+            seen_n: set = set()
+            n = 0
+            for c in made:
+                if not (neurons_of(c) & seen_n):
+                    n += 1
+                    seen_n |= neurons_of(c)
+            return n
+
+        both_s, cov_both_s = we.matched_control_edits(e_both, Pb.lm, sc_both, 0, 6, tolerance=20.0, spread=True)
+        both_i = [we.matched_control_edits(e_both, Pb.lm, sc_both, s, 12, tolerance=20.0) for s in range(8)]
+        check(both_s is not None and len(e_both.terms) == 2 and cov_both_s["disjoint_sets"] == 6 == disjoint_by_neuron(both_s)
+              and len(set().union(*(neurons_of(c) for c in both_s))) == 24
+              and all(made is not None and cov["disjoint_sets"] == disjoint_by_neuron(made) for made, cov in both_i)
+              and any(cov["disjoint_sets"] < disjoint([np.concatenate([t.idx + 1000 * i for i, t in enumerate(c.terms)])
+                                                       for c in made]) for made, cov in both_i),
+              "15g (P): for an edit of the same neurons in two projections the count of control edits that share no "
+              "site is by neuron over both terms (a count that took each term's sites for its own would find more), "
+              f"and drawn spread 6 control edits take 24 different neurons ({[cov['disjoint_sets'] for _m, cov in both_i]} "
+              "of 12 drawn each on its own)")
+        # asked for more control edits than can share no site: the count is of those made of sites no earlier one
+        # had, which is more than taking them one after another as they stand finds, and a family of that size is
+        # found again here from the control edits' own sites (those that share a site with the fewest others first)
+        many_s, cov_many = we.matched_control_edits(Pb.build(we.silence(2, [3, 40])), Pb.lm,
+                                                    lv._score_sites(hP, Pb.build(we.silence(2, [3, 40])),
+                                                                    [items_p["orange"]], "paired"), 0, 99,
+                                                    tolerance=20.0, spread=True)
+        sites_many = [neurons_of(c) for c in many_s or ()]
+        left = list(range(len(sites_many)))
+        family: List[int] = []
+        while left:
+            pick = min(left, key=lambda c: (sum(1 for d in left if d != c and sites_many[c] & sites_many[d]), c))
+            family.append(pick)
+            left = [d for d in left if d != pick and not (sites_many[pick] & sites_many[d])]
+        check(many_s is not None and len(many_s) == 99
+              and disjoint_by_neuron(many_s) < cov_many["disjoint_sets"] <= len(set().union(*sites_many)) // 2
+              and len(family) >= cov_many["disjoint_sets"],
+              f"15g (P): asked for 99 control edits of two neurons where {cov_many['disjoint_sets']} can share no site, "
+              f"the coverage counts those ({disjoint_by_neuron(many_s)} are found taking them one after another as "
+              f"they stand; a family of {len(family)} is found again from the control edits' own sites)")
+        check(made_s is not None and cov_made["disjoint_sets"] == disjoint([c.terms[0].idx for c in made_s]) == 6
+              and [c.id for c in made_s] == r_spr["controls"]["ids"]
+              and made_i is not None and [c.id for c in made_i] == r_ind["controls"]["ids"]
+              and cov_i["disjoint_sets"] == cov_made_i["disjoint_sets"] == disjoint([c.terms[0].idx for c in made_i]),
+              f"15g (P): the count of sets that share no site is the one the control edits' own sites give, drawn "
+              f"spread ({cov_made['disjoint_sets']}) and each on its own ({cov_made_i['disjoint_sets']})")
+        # 3. the same coverage with no arm read and nothing entered
+        n_book = lb.verify()["entries"]
+        asked0 = dict(lv.asked_in_process())
+        cov_look = lv.matched_coverage(hP, {**paired_base, "name": "1b look", "edit": e_two,
+                                            "controls": {**ctl_m, "draw": "spread"}}, items_p)
+        asked1 = lv.asked_in_process()
+        cov_s_counts = {**cov_s, "terms": [{k: v for k, v in t.items() if k != "edit_scores"} for t in cov_s["terms"]]}
+        check(cov_look == cov_s_counts and all("edit_scores" in t for t in cov_s["terms"])
+              and lb.verify()["entries"] == n_book and asked1["readings"] == asked0["readings"]
+              and asked1["forwards"] == asked0["forwards"] + 1
+              and lv.matched_coverage(hP, {**paired_base, "name": "1b look", "edit": e_two}, items_p) is None
+              and words_of(lambda: lv.matched_coverage(hP, {**paired_base, "name": "1b look", "edit": e_two, "doses": [99.0],
+                                                            "controls": ctl_m}, items_p), lv.Refused) is not None
+              and words_of(lambda: we.assert_base(Pb.lm, hP.hooks_at_load), we.NotBase) is None,
+              "15g (P): matched_coverage gives the counts of the coverage a reading would find and not the scores of "
+              "the edit's own neurons, with one base forward an item, no reading counted, nothing entered in the "
+              "ledger, and the refusals a reading would meet")
+        # 4. a reading under a plant scores a neuron as the planted model has it
+        v_new = vec(211, 1, D, size=0.03)
+        plant_set = Pb.build(we.set_columns(2, [5], v_new))
+        plant_sil = Pb.build(we.silence(2, [5]))
+        e_on = Pb.build(we.scale(2, [5, 40], 0.5))
+        base_n = we.down_stream_norms(Pb.lm, 2)
+        set_n = we.down_stream_norms_under(Pb.lm, 2, plant_set)
+        w_post = we._w_post(Pb.lm, 2).astype(np.float64)
+        want_5 = float(np.sqrt(((v_new[0].astype(np.float64) * w_post) ** 2).sum()))
+        other = np.ones(base_n.shape[0], dtype=bool)
+        other[5] = False
+        sc_base = lv._score_sites(hP, e_on, [items_p["orange"]], "paired")[e_on.terms[0].linear]
+        sc_set = lv._score_sites(hP, e_on, [items_p["orange"]], "paired", plant=plant_set)[e_on.terms[0].linear]
+        sc_sil = lv._score_sites(hP, e_on, [items_p["orange"]], "paired", plant=plant_sil)[e_on.terms[0].linear]
+        check(close(set_n[5], want_5, 1e-6) and np.array_equal(set_n[other], base_n[other])
+              and float(we.down_stream_norms_under(Pb.lm, 2, plant_sil)[5]) == 0.0
+              and we.down_stream_norms_under(Pb.lm, 3, plant_set) is we.down_stream_norms(Pb.lm, 3)
+              and sc_base[5] > 0.0 and sc_set[5] > 0.0 and close(sc_set[5] / sc_base[5], want_5 / base_n[5], 1e-4)
+              and np.allclose(sc_set[other], sc_base[other], rtol=1e-6, atol=0.0) and sc_sil[5] == 0.0
+              and words_of(lambda: we.assert_base(Pb.lm, hP.hooks_at_load), we.NotBase) is None,
+              f"15g (P): under a plant that sets a column, the neuron is scored by its activation times the new column's "
+              f"length ({sc_set[5]:.5g}, where the per-row form's nought times the old column would give 0), every other "
+              f"neuron as on the base; a silenced one scores 0, which is the planted model's own")
+        ctl_p = {"family": "other_sites_matched", "count": 4, "seed": 0, "tolerance": 50.0}
+        r_under = lv.read(hP, {**paired_base, "name": "1b under a set plant", "folded": "never", "controls": ctl_p},
+                          items_p, edit=e_on, _plant=plant_set)
+        check(r_under["status"] == "ok" and r_under["controls"]["coverage"]["sufficient"] is True
+              and r_under["base_after"] is True,
+              f"15g (P): a matched reading of an edit that touches a planted set column is read, not ended for want of "
+              f"stand-ins ({r_under['status']}: {r_under['why']})")
+        # 5. a low-rank term that is not a pair is answered in words
+        bad_lr = [SimpleNamespace(kind="lowrank", linear="layers.2.mlp.down_proj", which="down_proj", A=None, B=None),
+                  SimpleNamespace(kind="lowrank", linear="layers.2.mlp.down_proj", which="down_proj",
+                                  A=np.float32(1.0), B=np.zeros((D, 1), dtype=np.float32))]
+        said = [we.static_caps(SimpleNamespace(terms=(t,))) for t in bad_lr]
+        check(all(isinstance(s, str) and "is not a pair A [rank, in], B [out, rank]" in s for s in said),
+              f"15g: static_caps says in words that a low-rank term with no A, or an A that is one number, is not a pair ({said})")
 
 
 # --------------------------------------------------------------------------------------------- 16. the words

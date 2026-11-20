@@ -107,9 +107,17 @@ const out = {
   presets: C.COMPARE_PRESETS.map((p) => p.id),
   tones: {
     lead: C.statusTone("lead"),
+    passed: C.statusTone("passed"),
+    failed: C.statusTone("failed"),
     harms: C.statusTone("works but harms"),
     kept: C.statusTone("kept the base"),
     ok: C.statusTone("ok"),
+  },
+  batteries: {
+    habitatRecorded: C.batteryOutcome((RECORDED_REPLAY_CARDS[0].batteries as Record<string, Record<string, unknown>>).habitat),
+    unavailGating: C.batteryOutcome({ available: false, gating: true, passed: false }),
+    availPass: C.batteryOutcome({ available: true, gating: true, passed: true }),
+    availFail: C.batteryOutcome({ available: true, gating: true, passed: false }),
   },
   recordedCount: RECORDED_REPLAY_CARDS.length,
   recordedVerdicts: RECORDED_REPLAY_CARDS.map((c) => c.verdict),
@@ -154,7 +162,15 @@ def run_section_1(tmp: Path) -> None:
     check(req_def.layer == 50 and req_row.layer == 2, "frontend ComparePayloads pass server Pydantic CompareRequest")
     check("Nothing remains on the model" in data["plain"], "formatPlainEdit explains transient edit honestly")
     check(len(data["presets"]) == 3, "all 3 presets present")
-    check(data["tones"] == {"lead": "good", "harms": "bad", "kept": "warn", "ok": "neutral"}, "statusTone mapping ok")
+    check(data["tones"] == {"lead": "good", "passed": "good", "failed": "bad", "harms": "bad", "kept": "warn", "ok": "neutral"},
+          "statusTone mapping ok")
+    check(
+        data["batteries"]["habitatRecorded"] == {"label": "not run", "tone": "neutral"}
+        and data["batteries"]["unavailGating"] == {"label": "not run", "tone": "bad"}
+        and data["batteries"]["availPass"] == {"label": "passed", "tone": "good"}
+        and data["batteries"]["availFail"] == {"label": "failed", "tone": "bad"},
+        f"batteryOutcome never calls an unavailable battery 'passed': {data['batteries']}",
+    )
     check(data["recordedCount"] == 2 and data["recordedVerdicts"] == ["works but harms", "kept the base"],
           "offline recorded 31B replay fixture has both verified 19 Nov 2026 verdicts")
 
@@ -288,11 +304,16 @@ def run_section_2(tmp: Path) -> None:
         check(r_sc.status_code == 200 and r_sc.json()["status"] == "ok" and r_sc.json()["edit"]["op"] == "scale",
               f"POST /api/level/compare runs a scale by 0.5 (got {r_sc.status_code}: {r_sc.text[:160]})")
         r_ent0 = client.get("/api/level/book/0?book=live")
-        check(r_ent0.status_code == 200 and r_ent0.json()["card"]["voices"] is not None,
-              "replay of seq 0 returns full three-voice card")
+        ent0 = r_ent0.json()
+        check(r_ent0.status_code == 200 and ent0["card"]["voices"] is not None
+              and ent0["card"]["edit_linears"] == ["layers.2.mlp.down_proj"]
+              and "terms" in (ent0["entry"]["body"]["plan"].get("edit") or {}),
+              f"replay of seq 0 returns full three-voice card, edit_linears, and rebuildable recipe ({ent0['card']['edit_linears']})")
         r_ent1 = client.get("/api/level/book/1?book=live")
-        check(r_ent1.status_code == 200 and r_ent1.json()["card"]["paired"] is not None,
-              "replay of seq 1 returns full paired metrics card")
+        ent1 = r_ent1.json()
+        check(r_ent1.status_code == 200 and ent1["card"]["paired"] is not None
+              and ent1["card"]["edit_linears"] == ["layers.2.mlp.down_proj"],
+              f"replay of seq 1 returns full paired metrics card with edit_linears ({ent1['card']['edit_linears']})")
 
         # 7. Model-free Replay: real 31B card Phase 3 verification book!
         r_vc = client.get("/api/level/book?book=verify_claim&tail=50")
@@ -302,14 +323,52 @@ def run_section_2(tmp: Path) -> None:
               f"verify_claim_book.jsonl verified whole with 20 entries: {vc_d['verify']}")
         r_v10 = client.get("/api/level/book/10?book=verify_claim").json()
         r_v17 = client.get("/api/level/book/17?book=verify_claim").json()
-        check(r_v10["card"]["verdict"] == "works but harms", "replay of 31B seq 10 shows 'works but harms'")
-        check(r_v17["card"]["verdict"] == "kept the base", "replay of 31B seq 17 shows 'kept the base'")
+        check(r_v10["card"]["verdict"] == "works but harms"
+              and r_v10["card"]["edit_linears"] == ["layers.50.mlp.down_proj"],
+              f"replay of 31B seq 10 shows 'works but harms' and edit_linears ({r_v10['card']['edit_linears']})")
+        check(r_v17["card"]["verdict"] == "kept the base"
+              and r_v17["card"]["edit_linears"] == ["layers.50.mlp.down_proj"],
+              f"replay of 31B seq 17 shows 'kept the base' and edit_linears ({r_v17['card']['edit_linears']})")
+
+        # 7b. Model-free replay of the recorded 31B trial book: the card of its trial is the book's own note, and a
+        #     dry run is shown as a dry run (the book is rewritten by scripts/verify_level_trial.py; what it holds
+        #     is read here, not assumed)
+        r_vt = client.get("/api/level/book?book=verify_trial&tail=50")
+        check(r_vt.status_code == 200 and r_vt.json()["verify"]["ok"], "GET /api/level/book?book=verify_trial -> 200 whole")
+        trial_book = ROOT_DIR / "experiments" / "results" / "levelling" / "verify_trial_book.jsonl"
+        kinds = {"trial_of_record": "", "trial_dry_run": "dry run: ", "trial_rerun": "re-run: "}
+        t_notes = [e for e in lb.entries(trial_book) if e["kind"] == "note" and e["body"].get("note_type") in kinds]
+        check(len(t_notes) >= 1, "the recorded trial book holds a trial's verdict note")
+        t_note = t_notes[0]
+        r_vtn = client.get(f"/api/level/book/{t_note['seq']}?book=verify_trial").json()
+        t_card, t_body = r_vtn["card"], t_note["body"]
+        check(t_card["note_type"] == t_body["note_type"]
+              and t_card["status"] == kinds[t_body["note_type"]] + str(t_body["verdict"])
+              and t_card["verdict"] == t_body["verdict"]
+              and t_card["of_record"] == (t_body["note_type"] == "trial_of_record" and bool(t_body.get("of_record")))
+              and t_card["edit_linears"] == ["layers.50.mlp.down_proj"]
+              and (t_card.get("folded_summary") or {}).get("ok") == (t_body.get("folded") or {}).get("ok")
+              and (t_card.get("reworded_summary") or {}).get("ok") == (t_body.get("reworded") or {}).get("ok"),
+              f"replay of the recorded 31B trial (line {t_note['seq']}) is its note: {t_card['status']!r}, of record "
+              f"{t_card.get('of_record')}, with its linears and its folded and reworded standing")
 
         # 8. Path traversal & foreign-origin guards
         r_bad_bk = client.get("/api/level/book?book=../../etc/passwd")
         check(r_bad_bk.status_code == 400, "unknown book id refused with HTTP 400")
         r_foreign = client.get("/api/level/status", headers={"Origin": "https://evil.example"})
         check(r_foreign.status_code == 403, f"foreign Origin refused with HTTP 403 (got {r_foreign.status_code})")
+
+        # 9. A live book whose last line is cut short: the whole lines before it are still replayed
+        n_whole = lb.verify(bk)["entries"]
+        with open(bk, "ab") as f:
+            f.write(b'{"seq": 9999, "kind": "note", "body": {"cut')
+        r_cut1 = client.get("/api/level/book/1?book=live")
+        r_cutl = client.get(f"/api/level/book?book=live&tail={min(n_whole, 3)}")
+        check(r_cut1.status_code == 200 and r_cut1.json()["card"]["edit_linears"] == ["layers.2.mlp.down_proj"]
+              and r_cut1.json()["verify"]["ok"] is False,
+              f"replay of a whole line of a damaged book still answers, and says the book is not whole (got {r_cut1.status_code})")
+        check(r_cutl.status_code == 200 and len(r_cutl.json()["entries"]) == min(n_whole, 3),
+              f"the replay index of a damaged book still lists the whole lines asked for (got {r_cutl.status_code})")
     finally:
         if prev_bk is None:
             os.environ.pop(lb.BOOK_ENV, None)
