@@ -100,6 +100,7 @@ import time
 import traceback
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -1908,7 +1909,8 @@ TOP = {"v", "kind", "name", "status", "why", "void", "base_after", "edit", "base
        "controls", "items", "summary", "seconds", "peak_gib", "book"}
 ITEM_BLOCK = {"id", "name", "question", "answer", "system", "prompt_ids", "answer_ids", "pieces", "prompt_pieces", "scored"}
 CLASS = {"rows", "forwards", "lower", "restart_from", "untouched_rows_identical", "repeats_identical", "base", "arms", "floor", "rank", "folded", "peak_gib"}
-ARM_ANY = {"key", "what", "e", "dose", "factor", "edit_id", "forward", "row", "non_finite", "same_as_base", "delivered", "metrics"}
+ARM_ANY = {"key", "what", "e", "dose", "factor", "edit_id", "forward", "row", "non_finite", "same_as_base", "delivered",
+           "delivered_end", "metrics"}
 ARM_MUST = {"key", "what", "forward", "row", "non_finite", "same_as_base", "metrics"}
 STATS = {"mean", "median", "max_abs", "above_1", "n"}
 FOLDED = {"taken", "why", "dose", "base_from", "restart", "rows_identical", "metrics", "per_row", "gap", "between_kl_mean", "same_bits", "seconds"}
@@ -3494,6 +3496,14 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
         check(arm0["delivered"] == 0.0 and arm1["delivered"] is not None and arm1["delivered"] > 0.0
               and close(arm1["delivered"], bf_del, 1e-5) and "delivered" in " ".join(lv.lines(r_del)),
               f"15d (P): delivered matches brute-force layer output ({arm1['delivered']} vs {bf_del}, dose 0 is {arm0['delivered']})")
+        # the span stops one short of the last position, where a read-out "at the end" is taken: the same figure
+        # at that one position is recorded beside it, and is another number
+        he = box_d["h"][:, T - 1, :].float()
+        bf_end = float((he[arm1["row"]] - he[0]).norm() / he[0].norm().clamp_min(1e-12))
+        check(arm0["delivered_end"] == 0.0 and close(arm1["delivered_end"], bf_end, 1e-5) and bf_end > 0.0
+              and abs(bf_end - bf_del) > 1e-4 and "at the last position" in " ".join(lv.lines(r_del)),
+              f"15d (P): delivered_end is the same figure at the last position alone, which the span leaves out "
+              f"({arm1['delivered_end']} vs {bf_end}; over the span {bf_del})")
 
     with part("15e: control families (same_site, other_sites_matched, sham_target)"):
         # 1. same_site on a rank-1 remove_direction edit (with quiet mask dims)
@@ -3617,6 +3627,117 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
         diag_row = we.edit_diagnostics(Pb.lm, Pb.build(we.silence_rows(2, "gate_proj", [3])), dose=1.0)
         check(diag_row["terms"][0]["kind"] == "rows" and diag_row["terms"][0]["dtype_changed_share"] > 0.5,
               "15f: edit_diagnostics handles row terms")
+
+    with part("15g: the spread draw, a matched reading's coverage with nothing read, a plant's site scores"):
+        # 1. drawn each on its own, control sets share stand-ins; drawn spread, as few as the pools allow
+        def stand_ins(E: int, C: int, Kn: int, spread: bool, seed: int = 3) -> Tuple[List[np.ndarray], List[int]]:
+            draws = we._draw_matched_indices([np.arange(E)] * Kn, C, np.random.default_rng([seed, 0, 29]), spread=spread)
+            return draws, [len({int(d[j]) for d in draws}) for j in range(Kn)]
+
+        d_ind, n_ind = stand_ins(60, 39, 10, False)
+        d_spr, n_spr = stand_ins(60, 39, 10, True)
+        d_few, n_few = stand_ins(18, 39, 2, True)
+        d_again, _n = stand_ins(60, 39, 10, True)
+        d_other, _n = stand_ins(60, 39, 10, True, seed=4)
+
+        def sound(draws: List[np.ndarray], Kn: int) -> bool:
+            return (len(draws) == 39 and all(len({int(x) for x in d}) == Kn for d in draws)
+                    and len({tuple(sorted(int(x) for x in d)) for d in draws}) == 39)
+
+        use_few = [sum(1 for d in d_few if int(d[0]) == s) for s in range(18)]
+        check(sound(d_ind, 10) and sound(d_spr, 10) and sound(d_few, 2) and max(n_ind) < 39 and n_spr == [39] * 10
+              and n_few == [18, 18] and min(use_few) >= 1 and max(use_few) - min(use_few) <= 2
+              and all(np.array_equal(a, b) for a, b in zip(d_spr, d_again))
+              and not all(np.array_equal(a, b) for a, b in zip(d_spr, d_other)),
+              f"15g: 39 control sets of ten from 60 eligible sites share stand-ins when each is drawn on its own (a neuron "
+              f"gets {min(n_ind)} to {max(n_ind)} different ones); drawn spread each gets 39, and from 18 sites all 18, "
+              f"each used {min(use_few)} or {max(use_few)} times; the draw is its seed's")
+        d_one = we._draw_matched_indices([np.arange(50)], 20, np.random.default_rng([3, 0, 29]), spread=True)
+        d_one_was = we._draw_matched_indices([np.arange(50)], 20, np.random.default_rng([3, 0, 29]))
+        check(all(np.array_equal(a, b) for a, b in zip(d_one, d_one_was)) and len({int(d[0]) for d in d_one}) == 20,
+              "15g: one neuron's stand-ins were never repeated, and are drawn as they were")
+        # 2. a plan asks for it; one that does not is written as it always was
+        ctl_m = {"family": "other_sites_matched", "count": 6, "seed": 0, "tolerance": 3.0}
+        e_two = {"terms": [{"layer": 2, "silence": [3, 40]}]}
+        pl_was = lv.normalise({**paired_base, "name": "g1", "edit": e_two, "controls": ctl_m},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        pl_ind = lv.normalise({**paired_base, "name": "g1", "edit": e_two, "controls": {**ctl_m, "draw": "independent"}},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        pl_spr = lv.normalise({**paired_base, "name": "g1", "edit": e_two, "controls": {**ctl_m, "draw": "spread"}},
+                              n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype)
+        check(pl_was["controls"] == pl_ind["controls"] and "draw" not in pl_was["controls"]
+              and pl_spr["controls"] == {**pl_was["controls"], "draw": "spread"}
+              and words_of(lambda: lv.normalise({**paired_base, "name": "g1", "edit": e_two,
+                                                 "controls": {**ctl_m, "draw": "lucky"}},
+                                                n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype), lv.Refused) is not None
+              and words_of(lambda: lv.normalise({**paired_base, "name": "g1", "edit": e_two,
+                                                 "controls": {"count": 4, "seed": 0, "draw": "spread"}},
+                                                n_layers=NL, tokenizer=Pb.tok, dtype=Pb.dtype), lv.Refused) is not None,
+              "15g: controls.draw is 'independent' (written as a plan always was) or 'spread', for matched other sites alone")
+        r_spr = lv.read(hP, {**paired_base, "name": "1b matched spread", "edit": e_two, "controls": {**ctl_m, "draw": "spread"}},
+                        items_p)
+        r_ind = lv.read(hP, {**paired_base, "name": "1b matched each", "edit": e_two, "controls": ctl_m}, items_p)
+        printed(r_spr)
+        cov_s, cov_i = r_spr["controls"]["coverage"], r_ind["controls"]["coverage"]
+        check(r_spr["status"] == "ok" and r_ind["status"] == "ok" and cov_s["draw"] == "spread" and cov_i["draw"] == "independent"
+              and r_spr["controls"].get("draw") == "spread" and "draw" not in r_ind["controls"]
+              and cov_s["terms"][0]["min_distinct"] == 6 and 1 <= cov_i["terms"][0]["min_distinct"] <= 6
+              and cov_s["terms"][0]["min_eligible"] == cov_i["terms"][0]["min_eligible"]
+              and "the spread draw" in " ".join(lv.lines(r_spr)) and "the spread draw" not in " ".join(lv.lines(r_ind)),
+              f"15g (P): a reading says how its control sets were drawn and the fewest different stand-ins a neuron had "
+              f"({cov_s['terms'][0]['min_distinct']} spread, {cov_i['terms'][0]['min_distinct']} each on its own, of "
+              f"{cov_s['terms'][0]['min_eligible']} eligible)")
+        # 3. the same coverage with no arm read and nothing entered
+        n_book = lb.verify()["entries"]
+        asked0 = dict(lv.asked_in_process())
+        cov_look = lv.matched_coverage(hP, {**paired_base, "name": "1b look", "edit": e_two,
+                                            "controls": {**ctl_m, "draw": "spread"}}, items_p)
+        asked1 = lv.asked_in_process()
+        check(cov_look == cov_s and lb.verify()["entries"] == n_book and asked1["readings"] == asked0["readings"]
+              and asked1["forwards"] == asked0["forwards"] + 1
+              and lv.matched_coverage(hP, {**paired_base, "name": "1b look", "edit": e_two}, items_p) is None
+              and words_of(lambda: lv.matched_coverage(hP, {**paired_base, "name": "1b look", "edit": e_two, "doses": [99.0],
+                                                            "controls": ctl_m}, items_p), lv.Refused) is not None
+              and words_of(lambda: we.assert_base(Pb.lm, hP.hooks_at_load), we.NotBase) is None,
+              "15g (P): matched_coverage gives the coverage a reading would find, with one base forward an item, no "
+              "reading counted, nothing entered in the ledger, and the refusals a reading would meet")
+        # 4. a reading under a plant scores a neuron as the planted model has it
+        v_new = vec(211, 1, D, size=0.03)
+        plant_set = Pb.build(we.set_columns(2, [5], v_new))
+        plant_sil = Pb.build(we.silence(2, [5]))
+        e_on = Pb.build(we.scale(2, [5, 40], 0.5))
+        base_n = we.down_stream_norms(Pb.lm, 2)
+        set_n = we.down_stream_norms_under(Pb.lm, 2, plant_set)
+        w_post = we._w_post(Pb.lm, 2).astype(np.float64)
+        want_5 = float(np.sqrt(((v_new[0].astype(np.float64) * w_post) ** 2).sum()))
+        other = np.ones(base_n.shape[0], dtype=bool)
+        other[5] = False
+        sc_base = lv._score_sites(hP, e_on, [items_p["orange"]], "paired")[e_on.terms[0].linear]
+        sc_set = lv._score_sites(hP, e_on, [items_p["orange"]], "paired", plant=plant_set)[e_on.terms[0].linear]
+        sc_sil = lv._score_sites(hP, e_on, [items_p["orange"]], "paired", plant=plant_sil)[e_on.terms[0].linear]
+        check(close(set_n[5], want_5, 1e-6) and np.array_equal(set_n[other], base_n[other])
+              and float(we.down_stream_norms_under(Pb.lm, 2, plant_sil)[5]) == 0.0
+              and we.down_stream_norms_under(Pb.lm, 3, plant_set) is we.down_stream_norms(Pb.lm, 3)
+              and sc_base[5] > 0.0 and sc_set[5] > 0.0 and close(sc_set[5] / sc_base[5], want_5 / base_n[5], 1e-4)
+              and np.allclose(sc_set[other], sc_base[other], rtol=1e-6, atol=0.0) and sc_sil[5] == 0.0
+              and words_of(lambda: we.assert_base(Pb.lm, hP.hooks_at_load), we.NotBase) is None,
+              f"15g (P): under a plant that sets a column, the neuron is scored by its activation times the new column's "
+              f"length ({sc_set[5]:.5g}, where the per-row form's nought times the old column would give 0), every other "
+              f"neuron as on the base; a silenced one scores 0, which is the planted model's own")
+        ctl_p = {"family": "other_sites_matched", "count": 4, "seed": 0, "tolerance": 50.0}
+        r_under = lv.read(hP, {**paired_base, "name": "1b under a set plant", "folded": "never", "controls": ctl_p},
+                          items_p, edit=e_on, _plant=plant_set)
+        check(r_under["status"] == "ok" and r_under["controls"]["coverage"]["sufficient"] is True
+              and r_under["base_after"] is True,
+              f"15g (P): a matched reading of an edit that touches a planted set column is read, not ended for want of "
+              f"stand-ins ({r_under['status']}: {r_under['why']})")
+        # 5. a low-rank term that is not a pair is answered in words
+        bad_lr = [SimpleNamespace(kind="lowrank", linear="layers.2.mlp.down_proj", which="down_proj", A=None, B=None),
+                  SimpleNamespace(kind="lowrank", linear="layers.2.mlp.down_proj", which="down_proj",
+                                  A=np.float32(1.0), B=np.zeros((D, 1), dtype=np.float32))]
+        said = [we.static_caps(SimpleNamespace(terms=(t,))) for t in bad_lr]
+        check(all(isinstance(s, str) and "is not a pair A [rank, in], B [out, rank]" in s for s in said),
+              f"15g: static_caps says in words that a low-rank term with no A, or an A that is one number, is not a pair ({said})")
 
 
 # --------------------------------------------------------------------------------------------- 16. the words

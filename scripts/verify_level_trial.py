@@ -162,6 +162,15 @@ def main() -> int:
               {"trial_sha256": reg["trial_sha256"][:16], "files": reg["files"],
                "reworded": reg["trial"]["reworded_origin"], "implant_check": reg["trial"]["implant_check"],
                "priced": reg["trial"]["priced"], "source_files_hashed": len(reg["trial"]["sources"])})
+        # the look taken at registration: how many separate draws the matched control sets would count as, with the
+        # base alone, on a sizing draw of the brief's frames and on the reworded set
+        sz = reg["trial"]["sizing"]
+        check("the_look_at_registration_31b",
+              all(isinstance(sz[r]["fewest_eligible"], int) and sz[r]["found"] == sz[r]["control_edits"]
+                  and sz[r]["counted_as"] == min(sz[r]["control_edits"], sz[r]["fewest_distinct"])
+                  and sz[r]["could_pass"] is (sz[r]["counted_as"] >= sz[r]["needs"]) for r in ("matched", "reworded"))
+              and (reg["warnings"] == []) is all(sz[r]["could_pass"] for r in ("matched", "reworded")),
+              {"matched": sz["matched"], "reworded": sz["reworded"], "warnings": reg["warnings"]})
         hand = lcl.make_bar_set(brief.id, near_miss_abs_max=2.0, near_miss_ratio_max=1.0)
         got_hand = None
         try:
@@ -231,28 +240,41 @@ def main() -> int:
         check("unpacker_fallbacks_counted_31b", meta["unpacker_fallbacks"] == 0 and "unpacker fallbacks 0" in t_res["sheet"],
               {"unpacker_fallbacks": meta["unpacker_fallbacks"]})
         # the matched control edits as read: how many changed the stream within the registered factor of what the
-        # edit changed it (the rest are counted as moving as much), and from how many eligible sites they were drawn
+        # edit changed it, over the answer and at the last position where this brief's metric is read (the rest are
+        # counted as moving as much), how far those that count sat from the edit, and how many different stand-ins
+        # a neuron had over the sets
         as_read = {}
+        keys_dv = ("edit", "controls_median", "controls_min", "controls_max", "edit_end", "controls_median_end",
+                   "read_at_end", "within_tolerance", "within_median_ratio", "within_median_ratio_end", "not_comparable",
+                   "of_controls", "tolerance", "fewest_eligible", "fewest_distinct", "draw")
         for cls_name in ("small", "large"):
             ce = t_res["fresh_judged"]["classes"].get(cls_name) or {}
             dv = (ce.get("delivered") or {}).get("other_sites_matched") or {}
             cs = (ce.get("controls") or {}).get("other_sites_matched") or {}
-            as_read[cls_name] = {k: dv.get(k) for k in ("edit", "controls_median", "controls_min", "controls_max",
-                                                        "within_tolerance", "not_comparable", "of_controls", "tolerance",
-                                                        "fewest_eligible")}
+            as_read[cls_name] = {k: dv.get(k) for k in keys_dv}
             as_read[cls_name].update({"at_least": cs.get("at_least"), "effective_count": cs.get("effective_count"),
                                       "p_fw": cs.get("p_fw")})
+            rw_dv = ((rw_cls.get(cls_name) or {}).get("delivered")) or {}
+            rw_cs = ((rw_cls.get(cls_name) or {}).get("controls") or {}).get("other_sites_matched") or {}
+            as_read[f"reworded_{cls_name}"] = {**{k: rw_dv.get(k) for k in keys_dv},
+                                               "at_least": rw_cs.get("at_least"),
+                                               "effective_count": rw_cs.get("effective_count"), "p_fw": rw_cs.get("p_fw")}
         check("matched_controls_as_read_31b",
-              all(isinstance(v["within_tolerance"], int) and v["within_tolerance"] + v["not_comparable"] == v["of_controls"] == 39
-                  and v["at_least"] >= v["not_comparable"] for v in as_read.values()), as_read)
+              all(isinstance(v["within_tolerance"], int) and v["within_tolerance"] + v["not_comparable"] == v["of_controls"]
+                  and v["at_least"] >= v["not_comparable"] and v["read_at_end"] is True and v["edit_end"] is not None
+                  and v["draw"] == "spread" and v["effective_count"] == min(v["of_controls"], v["fewest_distinct"])
+                  for v in as_read.values())
+              and as_read["small"]["of_controls"] == as_read["large"]["of_controls"] == 39, as_read)
         knobs = t_res["fresh_judged"].get("cheaper_knobs") or {}
         check("prompt_arms_beside_the_edit_31b", knobs.get("prompt_arms_state") == lcl.PROMPT_ARMS_RUN and bool(knobs.get("prompt_arms")),
-              {"matched_by": knobs.get("matched_by"),
+              {"matched_by": knobs.get("matched_by"), "matched_arm": knobs.get("matched_arm"),
                "arms": [{k: a.get(k) for k in ("index", "directed_effect", "near_miss_abs")} for a in knobs.get("prompt_arms") or []],
                "edit_near_miss_abs": (t_res["fresh_judged"].get("batteries", {}).get("near_misses") or {}).get("abs_effect")})
-        check("every_figure_of_the_judgement_31b", len(rj["figures"]) > 200,
-              {"figures": len(rj["figures"]),
-               "controls_small": sum(1 for k in rj["figures"] if k.startswith("target:small:control:"))})
+        check("every_figure_of_the_judgement_31b",
+              len(rj["figures"]) > 200 and all(v is not None for k, v in rj["figures"].items() if ":control:" in k),
+              {"figures": len(rj["figures"]), "with_no_figure": sum(1 for v in rj["figures"].values() if v is None),
+               "controls_small": sum(1 for k in rj["figures"] if k.startswith("target:small:control:")),
+               "says": "each control edit's mean is its mean as read, whether or not the judgement set it aside"})
 
         def refused(fn: Any) -> str:
             try:
@@ -305,7 +327,15 @@ def main() -> int:
               and str(said.get("compiled_against_is_edit_base", "")).startswith("yes: the same weights id")
               and str(said.get("gate", "")).startswith("built and gated")
               and "llama.cpp does not serve" in str(said.get("serving", ""))
-              and said.get("implant_flagged") in ("true", "false", "nothing in reach of the check"), said)
+              and (said.get("implant_flagged") in ("true", "false", "nothing in reach of the check")
+                   or str(said.get("implant_flagged", "")).startswith("false for the part in reach of the check")), said)
+        past_dose = ""
+        try:
+            lex.export_lora_adapter(edit, target_31b, out_path=tmp / "exports" / "dose_50.gguf", dose=50.0)
+        except lex.ExportRefused as exc:
+            past_dose = str(exc)
+        check("export_refused_at_a_dose_the_kernel_would_not_read", "not exported at this dose" in past_dose
+              and not (tmp / "exports" / "dose_50.gguf").exists(), past_dose[:200])
         said_more = {**t_res, "verdict": "passed", "of_record": True}
         out_more = lex.export_lora_adapter(edit, target_31b, out_path=tmp / "exports" / "said_more.gguf", trial_result=said_more,
                                            registration=v_reg)
@@ -358,7 +388,8 @@ def main() -> int:
         vol = lr.run_volunteer_rerun(h, kit_dir, vol_tar, volunteer_name="the_home_card_itself", work_dir=tmp / "vol_work")
         # leave for a changed checkout is given only when this checkout has a tracked file changed, and the record says
         tracked_now = lt.checkout_changes(ROOT_DIR, tracked_only=True)
-        leave = bool(tracked_now) or tracked_now is None or bool(lt.hidden_from_status(ROOT_DIR))
+        leave = (bool(tracked_now) or tracked_now is None or bool(lt.hidden_from_status(ROOT_DIR))
+                 or lt.unlisted_code(ROOT_DIR) != [])
         intake_res = lr.intake_rerun_bundle(vol_tar, prereg_dir, book, tmp / "intake_stage", allow_dirty=leave)
         rr_s = round(time.perf_counter() - t_rr, 2)
         check("same_card_rerun_reads_the_home_items",
@@ -366,9 +397,13 @@ def main() -> int:
               and intake_res["class_diffs"]["target:large"]["items"] == 16
               and intake_res["class_diffs"]["reworded:large"]["items"] == 8
               and intake_res["class_diffs"]["target:large:controls"]["items"] == 78
-              and intake_res["figures_compared"] == len(rj["figures"]),
+              and intake_res["figures_compared"] + intake_res["figures_neither_trial_has"] == len(rj["figures"])
+              and intake_res["control_edits_set_aside_differently"] == {},
               {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
-               "figures_compared": intake_res["figures_compared"], "leave_given_for_a_changed_checkout": leave,
+               "figures_compared": intake_res["figures_compared"],
+               "figures_neither_trial_has": intake_res["figures_neither_trial_has"],
+               "control_edits_set_aside_differently": intake_res["control_edits_set_aside_differently"],
+               "leave_given_for_a_changed_checkout": leave,
                "with_leave_for": intake_res["with_leave_for"],
                "verdict": vol["verdict"], "class_diffs": intake_res["class_diffs"],
                "what_this_is": "this card re-running its own kit in this process: not another card",
@@ -424,6 +459,7 @@ def main() -> int:
             "passed": n_ok,
             "failed": n_fail,
             "checks": checks,
+            "registration_look": reg["trial"]["sizing"],
             "trial_e6_she10": {
                 "seconds": tr_s,
                 "of_record": t_res["of_record"],
@@ -441,6 +477,7 @@ def main() -> int:
                              "implant_check": exp_out["implant_check"], "keys": said, "off_the_model": off},
             "rerun_intake": {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
                              "figures_compared": intake_res["figures_compared"],
+                             "figures_neither_trial_has": intake_res["figures_neither_trial_has"],
                              "leave_given_for_a_changed_checkout": leave,
                              "class_diffs": intake_res["class_diffs"],
                              "what_this_is": "this card re-running its own kit in this process: not another card"},

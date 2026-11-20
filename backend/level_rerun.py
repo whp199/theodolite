@@ -98,16 +98,33 @@ def _clean_float(x: Any) -> Optional[float]:
     return v if math.isfinite(v) else None
 
 
-def _writable(obj: Any) -> Any:
+MAX_WRITE_DEPTH = 64  # how deep a value from a bundle is followed when it is written into a verdict
+
+
+def _writable(obj: Any, _depth: int = 0) -> Any:
     """A value as a JSON file takes it whatever a bundle put in it: a string that is not valid Unicode (half of a
-    surrogate pair, which JSON can spell and UTF-8 cannot hold) is written with the odd part escaped."""
+    surrogate pair, which JSON can spell and UTF-8 cannot hold) is written with the odd part escaped; a number that
+    is not finite (JSON has no such token, though Python's reader takes `NaN` and `1e999`) is written as a string
+    that says so; and a value nested deeper than `MAX_WRITE_DEPTH` is cut there, in words (a list nested three
+    thousand deep is six kilobytes of brackets, and this walk is Python's own)."""
+    if _depth > MAX_WRITE_DEPTH:
+        return "(nested too deep to write)"
     if isinstance(obj, str):
         return obj.encode("utf-8", "backslashreplace").decode("utf-8")
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return f"{obj!r} (not a finite number)"
     if isinstance(obj, Mapping):
-        return {_writable(str(k)): _writable(v) for k, v in obj.items()}
+        return {_writable(k if isinstance(k, str) else f"({type(k).__name__})", _depth + 1): _writable(v, _depth + 1)
+                for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
-        return [_writable(v) for v in obj]
+        return [_writable(v, _depth + 1) for v in obj]
     return obj
+
+
+def _s(x: Any, n: int) -> str:
+    """The first `n` characters of a string a bundle or a returned book gave; anything that is not a string is named
+    by its kind, since the text of a value nested thousands deep cannot always be made."""
+    return x[:n] if isinstance(x, str) else ("" if x is None else f"({type(x).__name__})")
 
 
 def _seed_of(text: Any) -> Optional[bytes]:
@@ -461,6 +478,40 @@ def intake_rerun_bundle(
     item_rel_tol: float = ITEM_REL_TOL,
     item_min_tol: float = ITEM_MIN_TOL,
 ) -> Dict[str, Any]:
+    """`_intake`, with the one thing a bundle could still raise turned into a verdict: a value nested deeper than
+    Python will walk (`RecursionError`) rejects the bundle in words, and `intake_verdict.json` is written all the
+    same. See `_intake` for what an intake does and what it raises before it begins."""
+    try:
+        return _intake(bundle_tar, prereg_dir, home_book, staging_dir, allow_dirty=allow_dirty,
+                       allow_other_runner=allow_other_runner, item_floor_mult=item_floor_mult,
+                       item_rel_tol=item_rel_tol, item_min_tol=item_min_tol)
+    except RecursionError:
+        stage = Path(staging_dir).resolve()
+        why = "bundle_can_be_read: a value in the bundle or in its book is nested deeper than can be read"
+        verdict_doc = {
+            "v": KIT_VERSION, "judged_at": _utc_now(), "outcome": "rejected", "match_class": None,
+            "with_leave_for": [], "bundle_tar": str(Path(bundle_tar).name), "bundle_sha256": _sha_file(Path(bundle_tar)),
+            "judged_from": "nothing: the bundle could not be read", "on_the_volunteers_word": list(ON_THE_VOLUNTEERS_WORD),
+            "reject_reasons": [why], "disagree_reasons": [],
+            "checks": [{"name": "bundle_can_be_read", "ok": False, "detail": why}],
+        }
+        stage.mkdir(parents=True, exist_ok=True)
+        write_json_atomic(stage / "intake_verdict.json", verdict_doc, indent=2)
+        return verdict_doc
+
+
+def _intake(
+    bundle_tar: Path,
+    prereg_dir: Path,
+    home_book: Path,
+    staging_dir: Path,
+    *,
+    allow_dirty: bool = False,
+    allow_other_runner: bool = False,
+    item_floor_mult: float = ITEM_FLOOR_MULT,
+    item_rel_tol: float = ITEM_REL_TOL,
+    item_min_tol: float = ITEM_MIN_TOL,
+) -> Dict[str, Any]:
     """Unpack a returned bundle and judge it against the home trial, from the two books.
 
     `prereg_dir` is the home registration and `home_book` the book its trial was read in: the home trial is judged
@@ -468,11 +519,17 @@ def intake_rerun_bundle(
     code. Writes `intake_verdict.json` into `staging_dir` and returns it: `outcome` is "rejected", "disagreed" or
     "accepted" (see the module's top), with every check it made and what it took on the volunteer's word.
 
-    A re-run says of its own checkout whether a tracked file was changed and whether its runner and reader were the
-    files hashed at registration; a bundle that says a tracked file was changed is rejected unless `allow_dirty`,
-    and one whose runner or reader was not the registered one unless `allow_other_runner` (two separate leaves, each
-    named in the verdict when it was given). Files git does not know in the volunteer's checkout do not count
-    against it: the kit and the bundle are such files.
+    A re-run says of its own checkout whether a tracked file was changed, whether code that no commit holds stood
+    where its runner imports from, and whether its runner and reader were the files hashed at registration; a bundle
+    that says a tracked file was changed, or that such code was there, or that cannot say, is rejected unless
+    `allow_dirty`, and one whose runner or reader was not the registered one unless `allow_other_runner` (two
+    separate leaves, each named in the verdict when it was given). Other files git does not know in the volunteer's
+    checkout do not count against it: the kit and the bundle are such files.
+
+    The figures set beside the home's are the control edits' means as read. Which of them each trial then set aside
+    (for not changing the stream as the edit did) is said apart (`control_edits_set_aside_differently`): it can
+    differ between two cards whose figures agree, and where it does the verdicts are what show whether it mattered.
+    A pair that neither trial has a figure for is counted apart too (`figures_neither_trial_has`), not as compared.
 
     Raises `RerunRefused` when the intake cannot begin (no such bundle, an unsafe tar, a home book that does not hold
     the home trial as its note says). Nothing in the bundle itself makes it raise."""
@@ -499,6 +556,7 @@ def intake_rerun_bundle(
     disagree_reasons: List[str] = []
 
     def _chk(name: str, ok: bool, detail: Any = None, *, kind: str = "reject") -> bool:
+        detail = _writable(detail)  # it may quote the bundle: cut to a depth that can be written and said
         checks.append({"name": name, "ok": bool(ok), "detail": detail})
         if not ok:
             msg = f"{name}: {detail}" if detail is not None else name
@@ -521,7 +579,7 @@ def intake_rerun_bundle(
     for fname in ("return.json", "volunteer_book.jsonl", "TRIAL_SHEET.md"):
         row = m_files.get(fname) if isinstance(m_files.get(fname), Mapping) else {}
         want, got = row.get("sha256"), _sha_file(stage / fname)
-        _chk(f"sha256_{fname}", want == got, {"got": got[:16], "want": str(want or "")[:16]})
+        _chk(f"sha256_{fname}", want == got, {"got": got[:16], "want": _s(want, 16)})
 
     # 2. the returned book is whole, with no line longer than a reading's, and holds a re-run of this registration
     vol_book = stage / "volunteer_book.jsonl"
@@ -544,6 +602,7 @@ def intake_rerun_bundle(
             vol = None
 
     class_diffs: Dict[str, Any] = {}
+    set_aside_differently: Dict[str, int] = {}
     all_same = False
     allowances: List[str] = []
     if vol is not None:
@@ -594,7 +653,7 @@ def intake_rerun_bundle(
              isinstance(vol_reg.get("base_checksum_before"), str)
              and vol_reg.get("base_checksum_before") == home_reg.get("base_checksum_before")
              and vol_reg.get("base_tensors_checked") == home_reg.get("base_tensors_checked"),
-             {"volunteer": str(vol_reg.get("base_checksum_before"))[:16], "home": str(home_reg.get("base_checksum_before"))[:16],
+             {"volunteer": _s(vol_reg.get("base_checksum_before"), 16), "home": _s(home_reg.get("base_checksum_before"), 16),
               "tensors": [vol_reg.get("base_tensors_checked"), home_reg.get("base_tensors_checked")]})
 
         # 5. on the volunteer's word: that no tracked file of its checkout was changed, and that its runner and
@@ -602,24 +661,47 @@ def intake_rerun_bundle(
         co = vol_reg.get("checkout") if isinstance(vol_reg.get("checkout"), Mapping) else {}
         runner_ok = co.get("sources_match") is True
         # each must be a count of nought: one that could not be asked (None) is not one that was found clean
-        tracked_ok = co.get("tracked_changed") == 0 and co.get("hidden") == 0 and co.get("unlisted_code") in (0, None)
+        tracked_ok = co.get("tracked_changed") == 0 and co.get("hidden") == 0
+        code_ok = co.get("unlisted_code") == 0
         if not runner_ok and allow_other_runner:
             allowances.append("its runner or reader was not the registered one (allow_other_runner)")
         if not tracked_ok and allow_dirty:
             allowances.append("a tracked file of its checkout was changed, or could not be shown unchanged (allow_dirty)")
+        if not code_ok and allow_dirty:
+            allowances.append("its checkout had code where its runner imports from that no commit holds, or could not "
+                              "be shown to have none (allow_dirty)")
         _chk("runner_and_reader_as_registered", runner_ok or allow_other_runner,
              {"sources_match": co.get("sources_match"), "moved": co.get("sources_moved"),
               "allow_other_runner": allow_other_runner})
         _chk("no_tracked_file_changed", tracked_ok or allow_dirty,
              {"tracked_changed": co.get("tracked_changed"), "overlooked_by_git": co.get("hidden"),
               "allow_dirty": allow_dirty})
+        _chk("no_code_outside_the_commit", code_ok or allow_dirty,
+             {"code_no_commit_holds": co.get("unlisted_code"), "allow_dirty": allow_dirty,
+              "says": "source, compiled Python or an extension module, where the runner imports from, that git does "
+                      "not track (None: it could not be asked)"})
 
-        # 6. agreement with the home trial, from the two books: the verdicts, then every figure the judgement used
-        _chk("verdict_matches_home", vol["verdict"] == home["verdict"],
-             {"volunteer": vol["verdict"], "home": home["verdict"]}, kind="disagree")
-        _chk("fresh_verdict_matches_home", vol["fresh_verdict"] == home["fresh_verdict"],
-             {"volunteer": vol["fresh_verdict"], "home": home["fresh_verdict"]}, kind="disagree")
+        # 6. agreement with the home trial, from the two books: the verdicts, then every figure the judgement used.
+        #    Which control edits a trial set aside (they did not change the stream within the matching tolerance of
+        #    what the edit changed it) is no figure: it turns on a ratio that can sit at its bound, and a control
+        #    edit there falls one side on one card and the other on another. Where the two trials set aside other
+        #    control edits it is said, and it is said beside the verdicts, which are what it can change.
         hj = home["judged"]
+        for group, key_c in (("target", "classes"), ("reworded", "reworded_classes")):
+            for cls_name in ("small", "large"):
+                ha = ((hj["inputs"].get(key_c) or {}).get(cls_name) or {}).get("controls_aside") or {}
+                va = ((vol["judged"]["inputs"].get(key_c) or {}).get(cls_name) or {}).get("controls_aside") or {}
+                for fam in sorted(set(ha) | set(va)):
+                    a, b = list(ha.get(fam) or ()), list(va.get(fam) or ())
+                    n = sum(1 for x, y in zip(a, b) if bool(x) != bool(y)) + abs(len(a) - len(b))
+                    if n:
+                        set_aside_differently[f"{group}:{cls_name}:{fam}"] = n
+        aside_note = ({"control_edits_set_aside_on_one_card_and_not_the_other": dict(set_aside_differently)}
+                      if set_aside_differently else {})
+        _chk("verdict_matches_home", vol["verdict"] == home["verdict"],
+             {"volunteer": vol["verdict"], "home": home["verdict"], **aside_note}, kind="disagree")
+        _chk("fresh_verdict_matches_home", vol["fresh_verdict"] == home["fresh_verdict"],
+             {"volunteer": vol["fresh_verdict"], "home": home["fresh_verdict"], **aside_note}, kind="disagree")
         floors: Dict[str, float] = {}
         for cls_name in ("small", "large"):
             floors[f"target:{cls_name}"] = _clean_float(
@@ -629,20 +711,22 @@ def intake_rerun_bundle(
         hfig, vfig = home["figures"], vol["figures"]
         rows: Dict[str, Dict[str, Any]] = {}
         for must in [f"{g}:{c}" for g in ("target", "reworded") for c in ("small", "large")]:
-            rows[must] = {"items": 0, "missing": 0, "largest_difference": 0.0, "outside_tolerance": 0,
+            rows[must] = {"items": 0, "no_figure": 0, "missing": 0, "largest_difference": 0.0, "outside_tolerance": 0,
                           "home_floor": floors[must]}
-        all_same = True
+        all_same = not set_aside_differently
         for key, h_val in hfig.items():
             b = _bucket(key)
-            row = rows.setdefault(b, {"items": 0, "missing": 0, "largest_difference": 0.0, "outside_tolerance": 0})
-            row["items"] += 1
+            row = rows.setdefault(b, {"items": 0, "no_figure": 0, "missing": 0, "largest_difference": 0.0,
+                                      "outside_tolerance": 0})
             v_val = vfig.get(key) if key in vfig else None
             if key not in vfig or (h_val is None) != (v_val is None):
                 row["missing"] += 1
                 all_same = False
                 continue
             if h_val is None:
+                row["no_figure"] += 1  # neither trial has this figure (a control edit that did not read): not compared
                 continue
+            row["items"] += 1
             diff = abs(float(v_val) - float(h_val))
             row["largest_difference"] = max(row["largest_difference"], diff)
             if diff > _figure_tolerance(key, h_val, floors, floor_mult=item_floor_mult, rel=item_rel_tol,
@@ -674,7 +758,7 @@ def intake_rerun_bundle(
         "outcome": outcome,
         "match_class": match_class,
         "with_leave_for": allowances if outcome == "accepted" else [],
-        "volunteer": str(ret.get("volunteer") or "")[:64],
+        "volunteer": _s(ret.get("volunteer"), 64),
         "bundle_tar": str(Path(bundle_tar).name),
         "bundle_sha256": _sha_file(Path(bundle_tar)),
         "trial_name": reg["trial"]["trial_name"],
@@ -684,6 +768,8 @@ def intake_rerun_bundle(
         "volunteer_verdict": vol["verdict"] if vol is not None else None,
         "class_diffs": class_diffs,
         "figures_compared": sum(int(r["items"]) for r in class_diffs.values()),
+        "figures_neither_trial_has": sum(int(r.get("no_figure") or 0) for r in class_diffs.values()),
+        "control_edits_set_aside_differently": set_aside_differently,
         "tolerance": {"item_floor_mult": float(item_floor_mult), "item_rel_tol": float(item_rel_tol),
                       "item_min_tol": float(item_min_tol), "same_figures": SAME_FIGURES_TOL},
         "judged_from": "the returned book and the home book, both judged again by the home's code",

@@ -489,7 +489,7 @@ export function fmtSigned(v: number | null | undefined, digits = 4): string {
 }
 
 export function controlsFamilyGloss(fam: string | null | undefined): string {
-  if (fam === "other_sites_matched") return "other sites matched on delivered stream change";
+  if (fam === "other_sites_matched") return "other sites matched on what a base pre-pass expects each to deliver";
   if (fam === "same_site") return "same sites with random masked directions of equal length";
   if (fam === "sham_target") return "declared sham-target control edits";
   return "other sites of the same layer and size";

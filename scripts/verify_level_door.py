@@ -13,9 +13,11 @@ Never touches `verify_1a.json`, `verify_1b.json`, or the user's default ledger.
 """
 from __future__ import annotations
 
+import datetime
 import gc
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -50,16 +52,31 @@ from backend.weight_reader import WeightReader  # noqa: E402
 
 PASS = 0
 FAIL: List[str] = []
+CHECKS: List[Dict[str, Any]] = []  # every check as it was made, for the record this script writes
 
 
 def check(cond: bool, msg: str) -> None:
     global PASS
+    CHECKS.append({"ok": bool(cond), "says": msg})
     if cond:
         PASS += 1
         print(f"  PASS  {msg}", flush=True)
     else:
         FAIL.append(msg)
         print(f"  FAIL  {msg}", flush=True)
+
+
+def commit_now() -> Dict[str, Any]:
+    """The commit this script ran at and whether git lists a change, for the record (None where git cannot say)."""
+    root = Path(__file__).resolve().parent.parent
+    try:
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True, timeout=30)
+        st = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=str(root), capture_output=True,
+                            text=True, timeout=30)
+        return {"commit": head.stdout.strip() or None if head.returncode == 0 else None,
+                "changed_paths": len(st.stdout.splitlines()) if st.returncode == 0 else None}
+    except (OSError, subprocess.SubprocessError):
+        return {"commit": None, "changed_paths": None}
 
 
 def fell_back() -> int:
@@ -69,7 +86,8 @@ def fell_back() -> int:
 def main() -> int:
     t_all = time.perf_counter()
     torch.set_grad_enabled(False)
-    record: Dict[str, Any] = {"checks": [], "measurements": {}}
+    record: Dict[str, Any] = {"date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                              **commit_now(), "checks": CHECKS, "measurements": {}}
 
     # ------------------------------------------------------------------ load 31B W4A16 + compiled unpacker
     print("[0. Load Gemma-4-31B-it W4A16 + compiled unpacker]", flush=True)

@@ -399,7 +399,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--claim-controls", type=int, default=None,
                     help="Control edits a family for a claim (the brief's own 20m - 1 when not given).")
     ap.add_argument("--claim-match-tolerance", type=float, default=None,
-                    help="Factor the matched other-site controls are matched within on delivered (the kernel's own: 2).")
+                    help="Factor the matched other-site controls are matched within, on what a base pre-pass expects each to "
+                         "deliver (the kernel's own: 2).")
     ap.add_argument("--stand-in", action="store_true", help="Use CPU stand-in runtime (no GPU).")
     ap.add_argument("--no-model", action="store_true", help="Off-card sandbox cells and book_view only.")
     ap.add_argument("--no-probe", action="store_true", help="Skip startup sandbox probe (for tests only).")

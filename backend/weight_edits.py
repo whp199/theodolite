@@ -1611,6 +1611,10 @@ def static_caps(edit: Edit) -> Optional[str]:
         n_terms = sum(1 for t in edit.terms if t.kind in ("cols", "rows")) + len(low_names)
         if n_terms > MAX_TERMS:
             return _SAY_CAP.format(cap=MAX_TERMS, what="terms", k=n_terms)
+        for t in edit.terms:  # a low-rank term that is not a pair has no rank to ask
+            if t.kind == "lowrank" and (np.ndim(t.A) != 2 or np.ndim(t.B) != 2
+                                        or np.shape(t.A)[0] != np.shape(t.B)[1]):
+                return f"The low-rank term on {t.linear} is not a pair A [rank, in], B [out, rank]."
         for name in sorted(low_names):  # the gate joins the low-rank terms of one linear before it asks their rank
             rank = sum(int(np.asarray(t.A).shape[0]) for t in edit.terms if t.kind == "lowrank" and t.linear == name)
             if rank > MAX_RANK:
@@ -1669,7 +1673,7 @@ def static_caps(edit: Edit) -> Optional[str]:
                 return f"A term of kind {t.kind!r} is not one this kernel builds."
         if carried > MAX_PAYLOAD_BYTES:
             return _SAY_BYTES.format(mb=carried / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20)
-    except (AttributeError, TypeError, ValueError) as exc:
+    except (AttributeError, TypeError, ValueError, IndexError) as exc:
         return f"The edit is not laid out as an edit's terms are ({type(exc).__name__})."
     return None
 
@@ -2068,13 +2072,108 @@ def same_site_controls(
     return out
 
 
-def _draw_matched_indices(
+def down_stream_norms_under(lm: nn.Module, layer: int, plant: Edit) -> np.ndarray:
+    """`down_stream_norms` as the model has them with `plant` in its weights at dose 1: a column that a column term
+    of the plant on this layer's down projection scales, sets or adds to is measured as the plant leaves it, every
+    other column as the base has it (float64 [N], read-only). A low-rank term of the plant moves every column a
+    little and is not counted. For the site scores of a reading taken under a plant: the per-row form of a set
+    column multiplies the neuron's activation by nought and adds the new column after, so a score taken from the
+    activation as the projection receives it would call the neuron silent when it writes the new column."""
+    base = down_stream_norms(lm, layer)
+    name = linear_name(int(layer), "down_proj")
+    terms = [t for t in plant.terms if t.kind == "cols" and t.linear == name]
+    mod = _linear_of(lm, name)
+    if not terms or mod is None:
+        return base
+    out = np.array(base, dtype=np.float64)
+    w_post = _w_post(lm, layer).astype(np.float64)[:, None]
+    with torch.no_grad():
+        W = dense(mod)  # [D, N]
+        for t in terms:
+            idx = np.asarray(t.idx, dtype=np.int64)
+            cols = W[:, torch.from_numpy(idx).to(W.device)].double().cpu().numpy()  # [D, K]
+            new = cols * _asked(t, 1.0)[None, :]
+            if t.vectors is not None:
+                carried = np.asarray(t.op) != 0
+                new[:, carried] += np.asarray(t.vectors, dtype=np.float64)[carried].T
+            out[idx] = np.sqrt(((new * w_post) ** 2).sum(axis=0))
+    out.setflags(write=False)
+    return out
+
+
+def _draw_spread_indices(
     elig: List[np.ndarray],
     count: int,
     rng: np.random.Generator,
 ) -> List[np.ndarray]:
+    """`_draw_matched_indices` for two or more positions, with each position's stand-ins repeated as little as its
+    pool allows: position j takes every one of its eligible sites once before it takes any twice (a pass over its
+    pool), so `count` assignments use min(count, len(elig[j])) different stand-ins for it where a draw made
+    independently for each assignment uses fewer (39 assignments from 60 sites: about 29). No assignment uses a site
+    twice, no two are the same set, and their order is shuffled at the end, so the assignments are exchangeable.
+    Where a pass has only sites left that the assignment already holds, a site that has stood in before is taken."""
+    K = len(elig)
+    pools = [np.array(e, dtype=np.int64) for e in elig]
+    left = [0] * K  # how many sites of position j's pool have not stood in yet in its pass: they sit in slots 0..left-1
+    pos_order = sorted(range(K), key=lambda j: (len(elig[j]), j))
+    out: List[np.ndarray] = []
+    seen_sets: set = set()
+    for _attempt in range(max(count * 32, 256)):
+        if len(out) >= count:
+            break
+        chosen = np.empty(K, dtype=np.int64)
+        used: set = set()
+        undo: List[Tuple[int, int, int, int]] = []
+        ok = True
+        for j in pos_order:
+            pool = pools[j]
+            E, was = int(pool.size), left[j]
+            n = was if was > 0 else E  # a pass that is used up begins again over the whole pool
+            slot = -1
+            for _ in range(16):
+                s = int(rng.integers(n))
+                if int(pool[s]) not in used:
+                    slot = s
+                    break
+            if slot < 0:
+                free = [s for s in range(n) if int(pool[s]) not in used]
+                if free:
+                    slot = free[int(rng.integers(len(free)))]
+            if slot < 0:  # every site left in this pass is in the assignment already: one that has stood in before
+                free = [s for s in range(n, E) if int(pool[s]) not in used]
+                if not free:
+                    ok = False
+                    break
+                pick = int(pool[free[int(rng.integers(len(free)))]])
+            else:
+                pick = int(pool[slot])
+                pool[slot], pool[n - 1] = pool[n - 1], pool[slot]
+                undo.append((j, slot, n - 1, was))
+                left[j] = n - 1
+            chosen[j] = pick
+            used.add(pick)
+        key = tuple(sorted(int(x) for x in chosen)) if ok else None
+        if not ok or key in seen_sets:
+            for j, a, b, was in reversed(undo):  # the assignment is not kept: its sites have not stood in
+                pools[j][a], pools[j][b] = pools[j][b], pools[j][a]
+                left[j] = was
+            continue
+        seen_sets.add(key)
+        out.append(chosen)
+    return [out[int(i)] for i in rng.permutation(len(out))]
+
+
+def _draw_matched_indices(
+    elig: List[np.ndarray],
+    count: int,
+    rng: np.random.Generator,
+    spread: bool = False,
+) -> List[np.ndarray]:
     """Draw up to `count` distinct matched assignments `[p_0, ..., p_{K-1}]` where `p_j in elig[j]` and all `p_j` in
-    one assignment are distinct. Two assignments are distinct when their sorted sets differ."""
+    one assignment are distinct. Two assignments are distinct when their sorted sets differ. Each assignment is drawn
+    on its own, so with two or more positions the assignments share stand-ins (one position never does: its sites
+    are drawn without repeats); `spread` draws them so that they share as few as the pools allow
+    (`_draw_spread_indices`)."""
     K = len(elig)
     if K == 0 or count == 0:
         return []
@@ -2086,6 +2185,8 @@ def _draw_matched_indices(
             return [np.array([int(x)], dtype=np.int64) for x in rng.permutation(pool)]
         picked = rng.choice(pool, size=count, replace=False)
         return [np.array([int(x)], dtype=np.int64) for x in picked]
+    if spread:
+        return _draw_spread_indices(elig, count, rng)
     # Order positions from narrowest eligible pool to widest to minimize collisions during assignment
     pos_order = sorted(range(K), key=lambda j: (len(elig[j]), j))
     out: List[np.ndarray] = []
@@ -2139,10 +2240,17 @@ def matched_control_edits(
     count: int,
     *,
     tolerance: float = 2.0,
+    spread: bool = False,
 ) -> Tuple[Optional[List[Edit]], Dict[str, Any]]:
     """`count` control edits on other sites matched within factor `tolerance` on per-neuron expected delivered score
     `scores_by_linear[t.linear]`. Returns `(edits, coverage)` when all `count` distinct matched control edits can be
-    formed, or `(None, coverage)` when coverage fails (caller voids the reading and records `coverage`)."""
+    formed, or `(None, coverage)` when coverage fails (caller voids the reading and records `coverage`).
+
+    `spread`: draw each neuron's stand-ins with as few repeats as its eligible sites allow (`_draw_spread_indices`).
+    Without it each control set is drawn on its own, and sets that differ in one stand-in are "distinct": the
+    coverage says, a term, the fewest sites that were eligible for one neuron (`min_eligible`) and the fewest
+    different stand-ins one neuron had over all the sets (`min_distinct`), which is what a reader may count as
+    separate draws."""
     seed, count = int(seed), int(count)
     tol = _number(tolerance, "tolerance")
     if seed < 0 or count < 0:
@@ -2182,11 +2290,12 @@ def matched_control_edits(
                 ok_mask = (pool_scores >= s_val / tol) & (pool_scores <= s_val * tol)
             elig.append(pool[ok_mask])
         rng = np.random.default_rng([seed, i, 29])
-        draws = _draw_matched_indices(elig, count, rng) if count > 0 else []
+        draws = _draw_matched_indices(elig, count, rng, spread=spread) if count > 0 else []
         union_count = int(len(set().union(*(e.tolist() for e in elig)))) if elig else 0
         term_cov.append({
             "linear": t.linear, "count": K,
             "min_eligible": int(min(len(e) for e in elig)) if elig else 0,
+            "min_distinct": int(min(len({int(d[j]) for d in draws}) for j in range(K))) if draws else 0,
             "median_eligible": _clean(np.median([len(e) for e in elig])) if elig else 0.0,
             "union_eligible": union_count,
             "drawn": len(draws),
@@ -2200,6 +2309,7 @@ def matched_control_edits(
     coverage: Dict[str, Any] = {
         "tolerance": _clean(tol), "requested": count, "found": int(found),
         "sufficient": bool(sufficient and found == count), "terms": term_cov,
+        "draw": "spread" if spread else "independent",
     }
     if not coverage["sufficient"]:
         return None, coverage

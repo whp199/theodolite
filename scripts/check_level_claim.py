@@ -1022,6 +1022,10 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     )
     check("written strata (" in wres["sheet"] and "base settings audit (" in wres["sheet"],
           "written_loop Claim Sheet prints written strata and base settings audit")
+    check("(a written reading does not record what they delivered as read)" in wres["sheet"]
+          and "is printed with each class" not in wres["sheet"] and "delivered (stream change" not in wres["sheet"],
+          "a written claim's sheet does not say that what its control edits delivered is printed: a written reading "
+          "records none")
     check(lb.verify(bk)["ok"], "level book whole after written_loop claim")
     we.assert_base(h.lm, h.hooks_at_load)
 
@@ -1094,9 +1098,14 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     dl = (sres["judged"]["classes"].get("small") or {}).get("delivered") or {}
     check(all((dl.get(f) or {}).get("controls_read") == 4 for f in ("other_sites_matched", "same_site", "sham_target"))
           and (dl["sham_target"]["edit"] or 0.0) > 0.0
-          and "delivered (stream change at the highest edited layer): edit" in sres["sheet"]
+          and "delivered (stream change at the highest edited layer, over the positions that predict the answer): edit" in sres["sheet"]
+          and "; at the last position, where the metric is read: edit " in sres["sheet"]
+          and dl["other_sites_matched"]["read_at_end"] is True and dl["other_sites_matched"]["edit_end"] is not None
+          and dl["other_sites_matched"]["draw"] == "independent" and "each set drawn on its own" in sres["sheet"]
+          and "per_control" not in dl["other_sites_matched"] and "apart" not in dl["sham_target"]
           and "sham-target controls: 4 supplied with the claim" in sres["sheet"],
-          "the sheet prints how much the edit and each family's control edits changed the stream")
+          "the sheet prints how much the edit and each family's control edits changed the stream, over the answer and "
+          "at the last position where this brief's metric is read, and how the matched sets were drawn")
     check(lb.verify(sbk)["ok"], "level book whole after the declared-rule claim")
     we.assert_base(h.lm, h.hooks_at_load)
 
@@ -1117,7 +1126,7 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     q_sh, q_dv = (q_small.get("controls") or {}).get("sham_target") or {}, (q_small.get("delivered") or {}).get("sham_target") or {}
     check(qres["verdict"] not in ("lead", "lead, matched by a cheaper knob", "void")
           and q_dv.get("not_comparable") == 4 and q_sh.get("at_least") == 4 and q_sh.get("passes_alpha") is False
-          and "outside the matching tolerance of the edit's, and counted as moving as much" in qres["sheet"]
+          and "outside the matching tolerance of the edit's, or with no figure, and counted as moving as much" in qres["sheet"]
           and 'declared rule, in the words given with the claim: "two columns chosen by hand, for this check"' in qres["sheet"],
           f"four sham edits a millionth of the edit's size count against it, and the sheet says so "
           f"(verdict {qres['verdict']}, delivered {q_dv}, standing {q_sh})")
@@ -1344,12 +1353,16 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           and reg_mcp.get("shams") is None,
           "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
     as_read = re.findall(r"; (\d+) of (\d+) within a factor of 20 of the edit's", r_claim["sheet"])
-    drawn_from = re.findall(r"drawn from at least (\d+) eligible sites a neuron", r_claim["sheet"])
-    check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 20" in r_claim["sheet"]
+    drawn_from = re.findall(r"over the sets each neuron had at least (\d+) different stand-ins of (\d+) eligible sites, "
+                            r"each set drawn on its own", r_claim["sheet"])
+    check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 20 (what they "
+          "delivered as read is printed with each class)" in r_claim["sheet"]
           and len(as_read) == 2 and all(0 <= int(a) <= int(b) == 4 for a, b in as_read) and len(drawn_from) == 2
+          and all(1 <= int(d) <= 4 and int(d) <= int(e) for d, e in drawn_from)
+          and "over the answer and at the last position" in r_claim["sheet"]
           and "on delivered" not in r_claim["sheet"],
           "the sheet prints what the matched controls were matched on and within what factor, how many delivered within it "
-          f"as read ({as_read}), and the fewest eligible sites a neuron ({drawn_from})")
+          f"as read ({as_read}), and how many different stand-ins a neuron had of how many eligible sites ({drawn_from})")
     use_now = ses.status()["usage"]
     check(r_claim["forwards_charged"] == r_claim["estimated"]["forwards"] == use_now["claim_forwards"] > 0
           and use_now["forwards"] == fwd_before,

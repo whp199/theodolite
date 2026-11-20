@@ -16,13 +16,17 @@ with no `--from` it writes the starter set that stands in the instrument's sourc
 `register`: writes the registration folder. The bars must be those a calibration reading wrote into the book the trial
 will be read in (`scripts/levelling.py calibrate`; `--book`, else the level book), on this model's weights, and the
 calibration note must follow from that book's own readings. Every reading the trial will take is asked of the kernel
-with no forward, so no folder is written for a trial it would refuse. Nothing is entered in the book.
+with no forward, so no folder is written for a trial it would refuse. Then a look is taken, with the base alone, at
+how many separate draws the trial's matched control sets would count as (on a sizing draw of the brief's frames and
+on the reworded set): the folder records it, and a trial that by that look could not pass is said so here and is not
+read of record. Nothing is entered in the book.
 
 `run`: reads the trial, once. It is of record only when this process has asked nothing else of the model (it is a new
-process), the checkout is clean (nothing changed, nothing untracked, no file git is told to overlook), the folder is
-committed as it stands, the runner and reader are the files hashed at registration, and it is read in the level book
-(`--book` names a side book, and a trial read in one is not of record); otherwise it is refused, in words that say
-which did not hold. `--dry-run` reads it all the same, as a dry run: judged and counted as a trial is, spending a
+process), the checkout is clean (nothing changed, nothing untracked, no file git is told to overlook, and no code
+where the runner imports from that no commit holds: source, compiled Python or an extension module), the folder is
+committed as it stands, the runner and reader are the files hashed at registration, it is read in the level book
+(`--book` names a side book, and a trial read in one is not of record), and the look taken at registration did not
+say it could not pass; otherwise it is refused, in words that say which did not hold. `--dry-run` reads it all the same, as a dry run: judged and counted as a trial is, spending a
 fresh reading of the brief, and never a verdict of record. On the card it takes the card's lock and refuses while the
 page server answers. "Read once" and the brief's budget are facts about the one book a trial is read in.
 
@@ -237,9 +241,11 @@ def cmd_register(a: argparse.Namespace) -> int:
         print(json.dumps(
             {"prereg_dir": reg["prereg_dir"], "trial_sha256": reg["trial_sha256"], "files": reg["files"],
              "edit_provenance": reg["trial"]["edit_provenance"], "reworded": reg["trial"]["reworded_origin"],
-             "bars_calibration": reg["trial"]["bars_calibration"]},
+             "bars_calibration": reg["trial"]["bars_calibration"], "separate_draws": reg["trial"]["sizing"]},
             indent=2,
         ))
+        for w in reg.get("warnings") or ():
+            print(f"WARNING: {w}", file=sys.stderr)
         if reg["trial"]["edit_provenance"] == "carried":
             print("note: this edit carries arrays. The folder holds their hashes only: keep the saved edit, give it "
                   "to the run with --payload, and expect no volunteer kit for it.", file=sys.stderr)

@@ -1628,9 +1628,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             On the vault’s compare tab you can hear the untouched base, your edit, and a control edit side by side. Three
-            families are available: other sites of the same layer and size (unmatched, or matched on delivered stream
-            change), random masked directions at the same sites, and declared sham-target edits for formal claim
-            readings.
+            families are available: other sites of the same layer and size (unmatched, or matched on what a pass over
+            the unedited model expects each to deliver, which is not what each then delivers), random masked
+            directions at the same sites, and declared sham-target edits for formal claim readings.
           </Note>
           <Note>
             Outranking control edits on one question says only that your edit moved more than those random edits on that

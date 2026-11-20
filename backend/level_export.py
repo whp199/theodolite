@@ -23,8 +23,9 @@ What the adapter's keys say is what was checked, and no more:
   again with the registration and gave that verdict, and whether the base the trial read is the base served;
 - whether the served base is the edit's base says how far that was compared: the whole base (by its weights id), or
   only the linears the edit touches (by their pins);
-- the implant label is "true", "false", "not checked" or "nothing in reach of the check", with where it was checked
-  (at export, with the model at hand; or at the trial's registration, for the dose registered);
+- the implant label is "true", "false", "false for the part in reach of the check", "not checked" or "nothing in
+  reach of the check", with where it was checked (at export, with the model at hand; or at the trial's
+  registration, for the dose registered);
 - how the edit came to be exported: built and gated on the model here, or rebuilt off the model, which is allowed
   only for an edit a level book shows the kernel has read;
 - where the file's numbers came from is said term by term.
@@ -796,6 +797,30 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
 # --------------------------------------------------------------------------------------------- writing an adapter
 
 
+def dose_caps(edit: we.Edit, dose: Any, dtype: Any = None) -> Optional[str]:
+    """Why the kernel would not read `edit` at `dose`, as far as can be asked: None, or the reason in words. With no
+    model at hand: a dose that is not a finite number or is past the cap on a reading's dose
+    (`weight_edits.MAX_DOSE`), and a scaled column or row that the dose carries further from itself than an edit may
+    (`MAX_REL_CHANGE`). With `dtype` (the model is at hand and the edit was built on it):
+    `weight_edits.dose_refusal` too, which knows how far each term moves its linear. An adapter is not written for a
+    dose no reading could have been taken at."""
+    if isinstance(dose, bool) or not isinstance(dose, (int, float)) or not math.isfinite(float(dose)):
+        return f"a dose is a finite number; {dose!r} was given"
+    d = float(dose)
+    if abs(d) > we.MAX_DOSE:
+        return f"a reading takes a dose within +/-{we.MAX_DOSE:g}, and {d:g} is past it: the kernel has read nothing there"
+    for t in edit.terms:
+        if t.kind in ("cols", "rows"):
+            f = np.asarray(t.factor, dtype=np.float64)[np.asarray(t.op) == 0]
+            far = np.abs(d * (f - 1.0))
+            if far.size and float(far.max()) > we.MAX_REL_CHANGE:
+                return (f"at dose {d:g} a neuron of {t.linear} would change by {float(far.max()):.3g} times its own "
+                        f"length; an edit takes at most {we.MAX_REL_CHANGE:g}")
+    if dtype is not None:
+        return we.dose_refusal(edit, d, dtype)
+    return None
+
+
 def export_lora_adapter(
     edit: we.Edit,
     target: TargetBase,
@@ -816,7 +841,8 @@ def export_lora_adapter(
     `general.license.link`, `general.base_model.*`, `theodolite.derived_from`), with `theodolite.levelling.*` beside
     them.
 
-    The edit must be the one its id names (its terms are hashed again here). One rebuilt off the model
+    The edit must be the one its id names (its terms are hashed again here), at a dose the kernel would read it at
+    (`dose_caps`). One rebuilt off the model
     (`edit_from_saved`, `edit_from_registration`) must also meet the kernel's caps that need no weights
     (`weight_edits.static_caps`) and be an edit the kernel has read: `book_path`, or the level book, must hold a
     reading of it that ended ok (`gate_evidence`). The adapter's `levelling.gate` key says which.
@@ -851,6 +877,10 @@ def export_lora_adapter(
                       f"read it at line {seen['seq']} of {seen['book']}")
     else:
         gate_words = "built and gated by the kernel on a loaded model for this export"
+    # the gate's words are of the edit as built; an adapter is of the edit at a dose, which the kernel must also take
+    dose_why = dose_caps(edit, dose, lm_for_implant.norm.weight.dtype if lm_for_implant is not None else None)
+    if dose_why is not None:
+        raise ExportRefused(f"This edit is not exported at this dose: {dose_why}.")
 
     if out_path is None:
         base_dir = exports_dir()
