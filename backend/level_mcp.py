@@ -24,14 +24,16 @@ the load needs. `--stand-in` and `--no-model` touch no card and take no lock.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
 import json
 import os
 import signal
 import socket
 import sys
+import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -259,6 +261,98 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
             "additionalProperties": False,
         },
     },
+    "atlas_query": {
+        "name": "atlas_query",
+        "description": (
+            "Query the read-only atlas index (available at reach 'atlas' or when an atlas index is mounted): "
+            "op in info, search_words, neuron_card, top_wiring, layer_stats."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "op": {"type": "string", "enum": ["info", "search_words", "neuron_card", "top_wiring", "layer_stats"]},
+                "args": {"type": "object"},
+            },
+            "required": ["op"],
+            "additionalProperties": False,
+        },
+    },
+    "knob_estimate": {
+        "name": "knob_estimate",
+        "description": "Estimate forwards and GPU-seconds for a cheaper-knob reading (prompts, decoding, steering; zero weight edits).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "items": {"type": "object"},
+                "kind": {"type": "string", "enum": ["paired", "written"], "default": "paired"},
+                "controls": {"type": "integer", "minimum": 0, "default": 3},
+                "rows": {"type": "object"},
+                "max_new": {"type": "integer", "minimum": 1, "default": 48},
+                "samples": {"type": "integer", "minimum": 1, "default": 1},
+            },
+            "required": ["knob", "items"],
+            "additionalProperties": False,
+        },
+    },
+    "knob_read": {
+        "name": "knob_read",
+        "description": (
+            "Run a gated paired practice reading of a cheaper knob (prompts, decoding, and/or transient steering; "
+            "zero weight edits), returning aggregates and steering-control ranks only."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "items": {"type": "object"},
+                "readouts": {"type": "object"},
+                "metric": {"type": "string", "default": "odds"},
+                "direction": {"type": "integer", "default": 0},
+                "controls": {"type": "integer", "minimum": 1},
+                "rows": {"type": "object"},
+                "seed": {"type": "integer", "default": 0},
+                "name": {"type": "string", "default": "knob_practice"},
+            },
+            "required": ["knob", "items"],
+            "additionalProperties": False,
+        },
+    },
+    "knob_write": {
+        "name": "knob_write",
+        "description": "Run a gated written practice reading of a cheaper knob on practice items (zero weight edits).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "items": {"type": "object"},
+                "max_new": {"type": "integer", "minimum": 1, "default": 48},
+                "seeds": {"type": "array", "items": {"type": "integer"}},
+                "controls": {"type": "integer", "minimum": 1},
+                "seed": {"type": "integer", "default": 0},
+                "name": {"type": "string", "default": "knob_write_practice"},
+            },
+            "required": ["knob", "items"],
+            "additionalProperties": False,
+        },
+    },
+    "claim_knob": {
+        "name": "claim_knob",
+        "description": (
+            "Submit a cheaper knob (prompts, decoding, and/or transient steering; zero weight edits) for one registered "
+            "fresh claim reading on the bound brief's kept-back frames and calibrated bar set."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "forecast": {"type": "object"},
+                "practice_best": {"type": "number"},
+            },
+            "required": ["knob"],
+            "additionalProperties": False,
+        },
+    },
 }
 
 
@@ -311,6 +405,46 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             selection_mode=str(a.get("selection_mode", "free_pick")),
             sham_recipes=a.get("sham_recipes"),
             declared_rule=a.get("declared_rule"),
+            practice_best=a.get("practice_best"),
+        )
+    if name == "atlas_query":
+        return session.atlas_query(str(a["op"]), a.get("args"))
+    if name == "knob_estimate":
+        return session.knob_estimate(
+            a["knob"],
+            a["items"],
+            kind=str(a.get("kind", "paired")),
+            controls=int(a.get("controls", 3)),
+            rows=a.get("rows"),
+            max_new=int(a.get("max_new", 48)),
+            samples=int(a.get("samples", 1)),
+        )
+    if name == "knob_read":
+        return session.knob_read(
+            a["knob"],
+            a["items"],
+            readouts=a.get("readouts"),
+            metric=str(a.get("metric", "odds")),
+            direction=int(a.get("direction", 0)),
+            controls=a.get("controls"),
+            rows=a.get("rows"),
+            seed=int(a.get("seed", 0)),
+            name=str(a.get("name", "knob_practice")),
+        )
+    if name == "knob_write":
+        return session.knob_write(
+            a["knob"],
+            a["items"],
+            max_new=int(a.get("max_new", 48)),
+            seeds=a.get("seeds") or (1,),
+            controls=a.get("controls"),
+            seed=int(a.get("seed", 0)),
+            name=str(a.get("name", "knob_write_practice")),
+        )
+    if name == "claim_knob":
+        return session.claim_knob(
+            a["knob"],
+            forecast=a.get("forecast"),
             practice_best=a.get("practice_best"),
         )
     raise lses.SessionRefused(f'Unknown tool "{name}".')
@@ -376,11 +510,131 @@ def serve_stdio(session: lses.LevelSession) -> int:
     return 0
 
 
+@contextlib.contextmanager
+def session_socket_bridge(session: lses.LevelSession, sock_path: Path) -> Iterator[Path]:
+    """Serve `session` over a private mode-0600 AF_UNIX stream socket so a CLI driver's stdio MCP child
+    (`level_mcp.py --socket <path>`) reaches an already-loaded model without reloading weights.
+
+    `sock_path` MUST lie outside `session.work_dir` so sandboxed cells can never open it."""
+    sp = Path(sock_path).resolve()
+    if str(sp).startswith(str(session.work_dir) + os.sep) or sp == session.work_dir:
+        raise lses.SessionRefused("MCP bridge socket cannot live inside the session's writable work folder.")
+    if sp.exists():
+        sp.unlink()
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    prev_umask = os.umask(0o177)
+    try:
+        srv.bind(str(sp))
+    finally:
+        os.umask(prev_umask)
+    try:
+        os.chmod(sp, 0o600)
+    except OSError:
+        pass
+    srv.listen(4)
+    srv.settimeout(0.25)
+    stop_ev = threading.Event()
+
+    def _serve_conn(conn: socket.socket) -> None:
+        try:
+            rfile = conn.makefile("r", encoding="utf-8", errors="replace")
+            wfile = conn.makefile("w", encoding="utf-8")
+            with rfile, wfile:
+                for line in rfile:
+                    if stop_ev.is_set():
+                        break
+                    if not line.strip():
+                        continue
+                    try:
+                        msg = json.loads(line)
+                    except ValueError:
+                        continue
+                    if not isinstance(msg, dict):
+                        continue
+                    resp = handle_request(msg, session)
+                    if resp is not None:
+                        wfile.write(json.dumps(resp, ensure_ascii=True) + "\n")
+                        wfile.flush()
+        except OSError:
+            pass
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+    def _accept_loop() -> None:
+        while not stop_ev.is_set():
+            try:
+                conn, _ = srv.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            t = threading.Thread(target=_serve_conn, args=(conn,), daemon=True)
+            t.start()
+
+    thread = threading.Thread(target=_accept_loop, daemon=True)
+    thread.start()
+    try:
+        yield sp
+    finally:
+        stop_ev.set()
+        try:
+            srv.close()
+        except OSError:
+            pass
+        thread.join(timeout=2.0)
+        try:
+            if sp.exists():
+                sp.unlink()
+        except OSError:
+            pass
+
+
+def serve_socket_bridge(sock_path: Path) -> int:
+    """Connect stdio JSON-RPC lines to a live parent `session_socket_bridge` Unix socket."""
+    sp = Path(sock_path).resolve()
+    cli = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        cli.connect(str(sp))
+    except OSError as exc:
+        raise SystemExit(f"Could not connect to MCP bridge socket {sp}: {exc}") from None
+    try:
+        rfile = cli.makefile("r", encoding="utf-8", errors="replace")
+        wfile = cli.makefile("w", encoding="utf-8")
+        with rfile, wfile:
+            for line in sys.stdin:
+                if not line.strip():
+                    continue
+                try:
+                    msg = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(msg, dict):
+                    continue
+                wfile.write(json.dumps(msg, ensure_ascii=True) + "\n")
+                wfile.flush()
+                if msg.get("id") is not None:
+                    resp_line = rfile.readline()
+                    if not resp_line:
+                        break
+                    sys.stdout.write(resp_line)
+                    sys.stdout.flush()
+    finally:
+        cli.close()
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
-    ap = argparse.ArgumentParser(description="Theodolite Levelling Phase 2 stdio MCP server (practice only).")
-    ap.add_argument("--session-dir", required=True, type=Path, help="Per-session directory (holds work/, cells/, transcript).")
+    ap = argparse.ArgumentParser(description="Theodolite Levelling stdio MCP server (practice and claim gates).")
+    ap.add_argument("--socket", type=Path, default=None,
+                    help="Forward stdio JSON-RPC to an existing session_socket_bridge Unix socket (no model load).")
+    ap.add_argument("--session-dir", type=Path, default=None, help="Per-session directory (holds work/, cells/, transcript).")
     ap.add_argument("--book", type=Path, default=None, help="Path to level_book.jsonl (must be outside work/).")
     ap.add_argument("--reach", default="sandbox", choices=list(lses.VALID_REACHES))
+    ap.add_argument("--mode", default="weight_edit", choices=list(lses.VALID_MODES))
+    ap.add_argument("--bare", action="store_true", help="Mark session as bare (minimal scaffolding) on harness card.")
     ap.add_argument("--backend", default="local", choices=list(lses.VALID_BACKENDS))
     ap.add_argument("--weights-dir", type=Path, default=None, help="Read-only safetensors folder mounted at /weights.")
     ap.add_argument("--atlas-dir", type=Path, default=None, help="Optional read-only atlas index folder mounted at /atlas.")
@@ -408,6 +662,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="The port the Theodolite server would answer on; the session is refused while it does.")
     args = ap.parse_args(argv)
 
+    if args.socket is not None:
+        return serve_socket_bridge(args.socket)
+    if args.session_dir is None:
+        ap.error("--session-dir is required unless --socket is supplied.")
+
     h = None
     weights_dir = args.weights_dir
     if not args.no_model:
@@ -422,7 +681,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             use_stand_in_atlas()
             rt, _vault = make_stand_in()
             h = lv.handle(rt)
-            if weights_dir is None and args.reach == "sandbox":
+            if weights_dir is None and args.reach in ("sandbox", "weights", "atlas"):
                 weights_dir = export_stand_in_safetensors(h.lm, args.session_dir / "_stand_in_weights", model_id=h.model_id)
         else:
             # the card is taken, and found free, before anything is loaded on it
@@ -442,7 +701,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 rt.jpp_lenses.clear()
             w4a16_fast.install(rt, "compiled")
             h = lv.handle(rt)
-            if weights_dir is None and args.reach == "sandbox":
+            if weights_dir is None and args.reach in ("sandbox", "weights", "atlas"):
                 weights_dir = checkpoint_snapshot(h.model_id.split("@", 1)[0])
 
     budget = lses.SessionBudget(
@@ -484,6 +743,8 @@ def _make_session(h: Any, args: Any, budget: Any, weights_dir: Any, brief_obj: A
         h,
         args.session_dir,
         reach=args.reach,
+        mode=args.mode,
+        bare=bool(args.bare),
         backend=args.backend,
         budget=budget,
         book_path=args.book,

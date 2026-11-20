@@ -2868,6 +2868,56 @@ in order:
     means −1.27 and −1.26; 0.84); and one more claim reading, `works but harms` (−1.33 and −1.36, near-miss
     harm 0.61). In twenty-two readings: eleven `works but harms`, five `kept the base`, four `no better than
     control edits`, two `did not replicate`.
+- **Phase 6 (whether agents help — driver evals). Built and card-checked** (20 November 2026;
+  `backend/level_atlas.py`, `backend/level_knobs.py`, `backend/level_drivers.py`, `backend/level_eval.py`,
+  `backend/level_sandbox.py`, `backend/level_session.py`, `backend/level_mcp.py`, `docs/SCAFFOLD.md`,
+  `scripts/levelling_eval.py`; `level_eval` and `level_drivers` stay isolated from all agent and page surfaces).
+  - **Reach ladder and read-only atlas** (`backend/level_atlas.py`, `backend/level_sandbox.py`,
+    `backend/level_session.py`): explicit four-rung evaluation ladder (`behaviour`, `activations`, `weights`, `atlas`)
+    never pooled in aggregation. `"atlas"` mounts allowlisted index files read-only at `/atlas` inside `bwrap` as `A`
+    and exposes `LevelSession.atlas_query` with Theodolite’s label-gate provenance (`trusted=False` below layer 40 on
+    31B or zero lens/eye overlap), never binding `scientist/`, `uploads/`, `logs/`, `endpoints.json`, or `level_book.jsonl`.
+  - **Matched-budget cheaper-knob mode** (`backend/level_knobs.py`, `mode="knobs_only"`): same driver, brief, kept-back
+    frames, calibrated `BarSet`, and budget, with all weight-edit tools hidden and refused. Supports system prompts,
+    decoding (`thinking`, `sampler` mirroring `backend/sampler_request.py`, `logit_bias`), and transient activation
+    steering (`direction`, `neuron_mul`, `neuron_add`) with matched random steering controls, post-freeze OS-random
+    draws, dual batch classes, all three gating retention batteries, read-once per `knob_id`, fixed `m`, and clean
+    `assert_base`. Blinded `knobs_only` sessions are refused; fine-tuned LoRA adapters remain unbuilt until needed.
+  - **Driver-neutral runners, kill switches, and thin scaffolding** (`backend/level_drivers.py`,
+    `backend/level_mcp.py --socket`, `docs/SCAFFOLD.md`): deterministic scripted weight/knob baselines, `ReplayDriver`,
+    `OpenAIChatDriver` (reusing `scientist_chat.py` profiles, env-var-only keys, remote endpoints refused without
+    owner-approved `max_dollars`), folder-reach `ClaudeCLIDriver` over a `0o600` Unix-socket MCP bridge (zero model
+    reload across sessions, `child_env` secret stripping, `cwd=work_dir`, `--disallowedTools Bash`, process-group
+    `SIGKILL` on wall/dollar/`STOP`-file caps), `CodexCLIDriver` (strictly refused until probed with private compile
+    cache), and `--bare` ablation removing every non-safety prompt/tool convenience listed in `docs/SCAFFOLD.md`.
+  - **Multi-session studies, blinded scoring, and future-ready protocol checks** (`backend/level_eval.py`,
+    `scripts/levelling_eval.py`: `plan`, `run`, `knobs`, `rebuild`, `cold-page`, `report`): single calibration + `N >= 3`
+    isolated per-session side books (never touching the default book; never a trial of record), unpooled per-arm Wilson
+    95% CIs and exact two-sided Fisher/permutation tests (`weight_vs_knobs`, `reach_ladders` with `atlas_vs_weights`,
+    `agent_vs_scripted`, `scaffolding_ablations`), model-free `load_study_from_book`, blinded planted-fault (both
+    healthy-reference and no-healthy-reference) & canary scoring with identical harness cards, `<= 600`-word cold-driver
+    pages (zero site spoilers), and `<= 200`-word rebuild checks.
+  - **Checks.** `scripts/check_level_eval.py` 84/84 (58.8 s), alongside zero regressions on `check_levelling.py`
+    (1,056/1,056), `check_level_door.py` (150/150), `check_level_claim.py` (307/307), `check_level_trial.py` (322/322),
+    `check_local_only.py` (1,310/1,310), `check_lora_export.py` (76/76), and `check_sampler_mirror.py` (6,691/6,691).
+    On the 31B card (RTX 5090, 20 November 2026; `scripts/verify_level_eval.py` ->
+    `experiments/results/levelling/verify_eval.json` and `verify_eval_book.jsonl`): 18 of 18 checks passed in 319.3 s,
+    peak 18.27 GiB (rest 17.97 GiB), 0 unpacker fallbacks, ledger whole (12 entries), zero kept-out words across all 9
+    rendered outputs. Real 31B `AtlasReader` (60×21,504, 262,144 vocab) returned 158 trusted `'she'` hits in 1.64 s
+    and live `bwrap` mounted both the 23.26 GB checkpoint and 1.5 GB atlas index read-only in 1.20 s. On
+    `pronoun_pull`: `neuron_mul(0)` matched `weight_edits.silence` identically on E6 layer-50 `'she'` ten (`0.45484` vs
+    `0.45484`, gap `0.0`); blunt `logit_bias` (`-4.0`, 11.82 s), 59-control `neuron_mul(0)` steering on E6 layer-50
+    `'she'` ten (`small = 1.650`, `large = 1.660`, `0/59` controls, `p_fw = 0.05`, `near_miss_abs = 0.777`, 51.82 s),
+    and a system prompt (`small = 14.68`, `large = 14.71`, `neutral_kl = 2.236`, `near_miss_abs = 6.306`, 27.39 s) all
+    read `works but harms`; read-once and `m = 3` refusals passed live. A 5-arm × 3-session (15 isolated side books,
+    `m = 1`, `C = 19`, 182.48 s, `unpacker: compiled`) study left reaches and families unpooled: scripted `behaviour`,
+    `activations`, and `weights` weight-edit arms abstained 3/3 (`no_submission`, 1.85–3.23 s mean GPU); scripted
+    `atlas` submitted 3/3 (`kept the base` 2, `void` 1, median directed `+0.085` nats, 24.25 s mean GPU); and
+    matched-budget `weights` `knobs_only` submitted 3/3 (`works but harms` 3/3, median directed `+9.19` nats, 24.53 s
+    mean GPU). Blinded layer-50 planted/canary benchmark (3.67 s) confirmed identical cards at both `weights` and
+    `activations` reaches, `canary_abstention_rate = 1.0`, and exact additive repair recovery (`kl_plant_alone = 0.004596`,
+    `kl_after_repair = 0.0`, `recovery_fraction = 1.0`). Cold-driver pages were 220–242 words, and the 36-word live 31B
+    rebuild check (0.61 s) reproduced all 6 figures with `max_abs_gap = 0.0`.
 - **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
   trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the
   builders there and the owner’s to change. **First, because nothing can pass until it is settled: what a trial
@@ -2931,4 +2981,4 @@ in order:
   and that item now reads “ok”); and,
   from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved.
 - **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
-  terms; Phase 6 driver evals; gradients.
+  terms; fine-tuned LoRA adapters as a cheaper-knob arm; gradients.

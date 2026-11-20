@@ -2044,19 +2044,25 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/weight_reader.py` | no-card CPU W4A16 / dense safetensors reader (`WeightReader`: `info`, `tensor_pin`, `dense_cols`, `dense_rows`, `quiet_mask`, `down_stream_norms`, `writers`, `save_array`), also mounted read-only inside the off-card sandbox |
 | `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading (short greedy or long sampled / thinking-on with loop & cut-off detectors), `capture_direction`, the read-outs, what a person reads (`lines`) |
 | `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before, plus `driver_view` redaction |
-| `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights` and `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`) |
-| `backend/level_session.py` | Phase 2 practice-only Agent's Door (`LevelSession`: reach/backend enforcement, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`estimate`/`read`/`write`/`book_view` gates, blinded in-memory planted & canary sessions with matched `estimate`/`read` normalization, transcript copy on close) |
-| `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver |
+| `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights`, allowlisted read-only `/atlas` index for `"atlas"` reach, read-only `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`) |
+| `backend/level_session.py` | Phase 2 & 6 practice-only Agent's Door (`LevelSession`: reach/backend enforcement across `behaviour`/`activations`/`weights`/`atlas` plus Phase 2 names, `mode="weight_edit"` vs matched-budget `mode="knobs_only"`, `--bare` ablation flag, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`atlas_query`/`estimate`/`read`/`write`/`knob_*`/`book_view`/`claim`/`claim_knob` gates, blinded in-memory planted & canary sessions with matched `estimate`/`read` normalization, transcript copy on close) |
+| `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver, plus `--mode`, `--bare`, and `--socket` (`0o600` Unix-socket bridge outside `/work` so multi-session CLI drivers share one live model handle with zero reloads) |
 | `backend/level_briefs.py` | Phase 3 versioned briefs, policy guard, disjoint practice/kept-back frame generators, wording-overlap `KeptBack`, retention battery generators, 4 starter briefs |
 | `backend/level_claim.py` | Phase 3 calibrated hashed `BarSet`s, the gate every fresh reading is asked before it is registered (`fresh_reading_gate`, a claim's and a trial's alike), post-freeze `os.urandom(32)` claim execution, dual-batch-class control/battery/knob judgement, bounded Claim Sheets |
 | `backend/level_routes.py` | Phase 4 FastAPI `/api/level/*` routes (status, estimate, compare with 409 vault-overlay guard, model-free live & recorded ledger replay) |
 | `backend/level_trial.py` | Phase 5 trial of record: the registration folder (exactly its files, `SHA256SUMS` read byte for byte), the reworded set (uses counted by an item's wording), the conditions of record (a process that has read nothing, a clean checkout, the folder committed, the runner and reader as hashed), `run_trial_of_record` (of record, refused, or a dry run), `judge_readings`, `rejudge_trial` from a book, the sheet and the sentence |
 | `backend/level_export.py` | Phase 5 owner's export: a llama.cpp LoRA adapter and its manifest outside every git checkout, compiled against the base served (`TargetBase`: a GGUF, a checkpoint, the loaded model), keys that say what was checked (`trial_standing`, the implant label), an edit rebuilt off the model and kept to its id, `verify_exported_lora` against the edit's own arithmetic, `llama_server_smoke` |
 | `backend/level_rerun.py` | Phase 5 re-run: a kit of a registration with the home draw's seed (rebuilt edits only), the volunteer's run of the home items into a book of its own, and an intake that unpacks a plain tar without trusting it and judges the returned book against the home book |
+| `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`) with allowlisted `/atlas` `bwrap` bind collection and label-gate provenance (`trusted=False` below layer 40 on 31B or zero lens/eye overlap) |
+| `backend/level_knobs.py` | Phase 6 matched-budget cheaper-knob kernel (`KnobSpec` for prompts, decoding `thinking`/`sampler`/`logit_bias`, and transient `direction`/`neuron_mul`/`neuron_add` steering hooks), matched random steering controls, `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (post-freeze OS-random draw, calibrated `BarSet`, read-once, fixed `m`, dual batch classes, retention batteries), `render_knob_sheet` |
+| `backend/level_drivers.py` | Phase 6 driver-neutral runner layer (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard vs `--bare`, `ScriptedWeightDriver`, `ScriptedKnobDriver`, `ReplayDriver`, `OpenAIChatDriver`, folder-reach `ClaudeCLIDriver` over Unix-socket MCP bridge with secret stripping and process-group `SIGKILL`, and gated `CodexCLIDriver` refused until probed with private compile cache) |
+| `backend/level_eval.py` | Phase 6 multi-session driver evaluation (`EvalStudyPlan`, `run_eval_study` with single calibration and strictly isolated per-session side books, unpooled `summarize_study` with Wilson 95% CIs, exact two-sided Fisher & permutation tests, `load_study_from_book`, `render_study_report`, `run_blinded_benchmark` at both healthy-reference and no-healthy-reference reaches, `<= 600`-word `render_cold_driver_page`, and `<= 200`-word `make_rebuild_description` / `run_rebuild_check`) |
+| `docs/SCAFFOLD.md` | Phase 6 thin scaffolding register separating fixed trust boundaries from `--bare`-retirable conveniences |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
 | `scripts/levelling_trial.py` | `reworded`, `register`, `verify`, `run` (the owner's command line for a trial; `run --dry-run` reads what would not be of record) |
 | `scripts/levelling_export.py` | `lora`, `verify`, `show`, `smoke` (the owner's export; CPU, no model loaded) |
 | `scripts/levelling_rerun.py` | `pack`, `verify-kit`, `run`, `intake` (a volunteer's re-run and its intake) |
+| `scripts/levelling_eval.py` | `plan`, `run`, `knobs`, `rebuild`, `cold-page`, `report` (owner CLI for Phase 6 studies, cheaper-knob baselines, cold-driver sheets, and rebuild checks) |
 
 **The edit.** A list of terms, each an additive difference from one feed-forward linear's shipped tensor, at dose d
 the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Four forms are built (slices 1a and 1b): a column term on
@@ -2416,6 +2422,46 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   run on the model it names, and that its figures are that run's and not the home book's own lines copied into a
   new book. A home book whose trial is out for re-run stays unpublished until the returns are in.
 
+**Phase 6: whether agents help** (`backend/level_atlas.py`, `backend/level_knobs.py`, `backend/level_drivers.py`,
+`backend/level_eval.py`, `docs/SCAFFOLD.md`, `scripts/levelling_eval.py`; none of `level_eval` or `level_drivers` is
+imported or named by `level_mcp.py`, `level_session.py`, `level_routes.py`, `scientist_tools.py`, `scientist_mcp.py`,
+or `server.py`):
+- **Reach ladder and read-only atlas (`backend/level_atlas.py`, `backend/level_sandbox.py`, `backend/level_session.py`).**
+  Evaluations distinguish four explicit reaches: `behaviour` (practice/claim/book tools only; zero `cell`, `capture`,
+  weights, or atlas), `activations` (`cell` + `capture`, zero weights or atlas), `weights` (`cell` + `capture` +
+  read-only `/weights`), and `atlas` (adds allowlisted read-only `/atlas` index files as `A` inside `bwrap` and
+  `LevelSession.atlas_query`, never binding `scientist/`, `uploads/`, `logs/`, `endpoints.json`, or `level_book.jsonl`).
+  `AtlasReader` enforces Theodolite's label-gate provenance (`trusted=False` below layer 40 on 31B or when lens/eye
+  top-10 overlap is zero) and supports exact word lookup (with substring opt-in) over `vocab.json`.
+- **Matched-budget cheaper-knob mode (`backend/level_knobs.py`, `mode="knobs_only"`).** Same driver, same brief, same
+  kept-back frames, same calibrated `BarSet`, and same budget, with all weight-edit tools hidden and refused. Permits
+  only bounded system prompts, decoding (`thinking`, `sampler` mirroring `backend/sampler_request.py`, `logit_bias`),
+  and transient activation steering (`direction`, `neuron_mul`, `neuron_add`), leaving `weight_edits.assert_base` clean
+  after every call. `run_fresh_knob_claim` draws fresh kept-back frames post-freeze with `os.urandom(32)`, evaluates
+  matched random steering controls for steering knobs, checks dual batch classes and all three gating retention
+  batteries (`neutral_text`, `near_misses`, `labelled_panel`), enforces read-once per `knob_id` and fixed `m`, and
+  places null rows at the lowest steered layer (or the final layer for prompt/decoding knobs). Blinded `knobs_only`
+  sessions are refused because planted weight faults are not repairable without weight edits.
+- **Driver-neutral runners and kill switches (`backend/level_drivers.py`, `backend/level_mcp.py --socket`).** Supports
+  deterministic no-LLM baselines (`ScriptedWeightDriver`, `ScriptedKnobDriver`), `ReplayDriver`, `OpenAIChatDriver`
+  (reusing `backend/scientist_chat.py` profiles, env-var-only keys, refusing remote endpoints without an explicit
+  owner-approved `max_dollars`), folder-reach `ClaudeCLIDriver` (bridged to a live `LevelSession` over a `0o600` Unix
+  socket outside `work_dir` so multi-session studies never reload the 31B model, with `scientist_chat.child_env` secret
+  stripping, `cwd=work_dir`, `--disallowedTools Bash`, and process-group `SIGKILL` on wall/dollar/`STOP`-file caps),
+  and `CodexCLIDriver` (strictly refused until `codex_probed=True` with a private compile cache outside `/tmp`).
+  `docs/SCAFFOLD.md` registers every convenience prompt/tool wrapper and `--bare` ablates all non-safety scaffolding.
+- **Multi-session studies, blinded scoring, and protocol checks (`backend/level_eval.py`, `scripts/levelling_eval.py`).**
+  `run_eval_study` calibrates `BarSet` once and runs `N >= 3` independent sessions per arm in strictly isolated side
+  books seeded from the calibration book (never touching the owner's default book; never a trial of record), halting
+  cleanly on total dollar/wall caps or a study `STOP` file. `summarize_study` never pools across reaches or driver
+  families, reporting per-arm Wilson 95% CIs, exact two-sided Fisher and permutation tests, matched `weight_vs_knobs`,
+  `reach_ladders` (including `atlas_vs_weights`), `agent_vs_scripted`, and `scaffolding_ablations`; `load_study_from_book`
+  verifies `study_book.jsonl` and every isolated session book model-free. `run_blinded_benchmark` runs planted-fault
+  (both `with_healthy_reference=True` and `False`) and canary cases with identical harness cards and external
+  ground-truth scoring (localization, additive `stack` recovery, canary abstention). `render_cold_driver_page` emits
+  `<= 600`-word zero-spoiler sheets, and `make_rebuild_description` / `run_rebuild_check` verify `<= 200`-word
+  reproduction of any paired reading.
+
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
 result in its body (the plan, the edit, the items' text and ids, every row's figures, how it ended), refused and void
@@ -2502,6 +2548,19 @@ checkout and another runner with and without their leaves, code no commit holds,
 control edit that counted on one card and not the other, control edits that delivered three times as much or were
 counted as other draws, a return nested 3,000 deep or stating a verdict of NaN, odd JSON and unsafe tars); and
 zero kept-out words (322/322 checks passing in 65 s).
+`scripts/check_level_eval.py` (CPU stand-ins + live `bwrap` sandbox + Unix-socket MCP bridge + mock OpenAI/Claude CLI
+subprocesses) verifies Phase 6 across 8 sections: read-only `AtlasReader` + allowlisted `/atlas` `bwrap` containment and
+label-gate provenance; cheaper-knob kernel validation, `neuron_mul(0)` matching `weight_edits.silence` per-row, blunt
+`logit_bias` triggering `works but harms`, matched random steering controls, read-once/`m`/same-book-calibration
+refusals, and `written_loop` knob claims; Phase 6 reach ladder (`behaviour`/`activations`/`weights`/`atlas`),
+`knobs_only` tool hiding, `KeptBack` enforcement on `knob_read`, and `0o600` Unix-socket `level_mcp.py --socket` bridge;
+`--bare` prompt stripping, `OpenAIChatDriver` tool loop and dollar/remote-cap refusals, `KillSwitch` `STOP` file,
+`CodexCLIDriver` unprobed refusal, and `ClaudeCLIDriver` socket bridge / secret stripping / `SIGKILL` wall cap; exact
+Wilson/Fisher/permutation statistics, `validate_study_plan` refusals, 7-arm × 3-session (21 isolated verified side
+books) unpooled study + model-free `load_study_from_book` + study-level `STOP` halt; blinded planted-fault (both
+healthy-ref and no-healthy-ref) & canary benchmark with identical cards and exact additive repair recovery; `<= 600`-word
+cold-driver pages, `<= 200`-word rebuild check (0.0 gap), and `scripts/levelling_eval.py` CLI; and agent-surface
+isolation + zero kept-out words across all Phase 6 modules, docs, and rendered outputs (84/84 checks passing in 59 s).
 On the 31B card (RTX 5090; each record is of the code at its date: the door's and the trial's are of the sixth
 round of review mends of Phase 5, `9d8c836`, at which the other three scripts passed again without their records
 being kept):
@@ -2584,5 +2643,27 @@ being kept):
   checks failed for expecting all 16 fresh items to read, which that draw's did not either, and the script now
   counts those that read.
 
-**Not built:** attention, embedding and norm edits; a folded form for low-rank terms; Phase 6 driver evals; gradients.
-Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.
+- `scripts/verify_level_eval.py` (Phase 6 on the 31B, 20 November 2026, `verify_eval.json` and `verify_eval_book.jsonl`):
+  18 of 18 checks passed in 319.3 s, peak 18.27 GiB (rest 17.97 GiB), 0 unpacker fallbacks, ledger whole (12 entries),
+  zero kept-out words across all 9 rendered sheets, reports, cold-driver pages, and rebuild descriptions. Real 31B
+  `AtlasReader` (60×21,504, 262,144-token vocab) found 158 trusted `'she'` hits in 1.64 s (`L50 N5313` trusted with
+  `shared_top10 = 8`, `L10 N0` marked untrusted `below_layer_40`), and live `bwrap` mounted both the 23.26 GB checkpoint
+  and 1.5 GB atlas index read-only in 1.20 s with zero leaks. On `pronoun_pull`: `neuron_mul(0)` steering on the E6
+  layer-50 `'she'` ten matched `weight_edits.silence` identically (`0.45484` vs `0.45484`, gap `0.0`); blunt `logit_bias`
+  (`-4.0` on `' she'`, 11.82 s) read `works but harms` (`4.0`, `near_miss_abs = 4.0`); transient `neuron_mul(0)` steering
+  on E6 layer-50 `'she'` ten with `C = 59` matched random steering controls (51.82 s) beat all 59/59 controls
+  (`p_fw = 0.05`, `small = 1.650`, `large = 1.660`) and read `works but harms` (`near_miss_abs = 0.777`, mirroring Phase 3's
+  weight-edit verdict); a system-prompt knob (27.39 s) read `works but harms` (`small = 14.68`, `large = 14.71`,
+  `neutral_kl = 2.236`, `near_miss_abs = 6.306`); read-once and `m = 3` refusals passed live. A 5-arm × 3-session (15
+  isolated verified side books, `m = 1`, `C = 19`, 182.48 s, `unpacker: compiled`) comparison study left reaches and
+  families unpooled: scripted `behaviour` / `activations` / `weights` weight-edit arms abstained 3/3 (`no_submission`,
+  1.85–3.23 s mean GPU), scripted `atlas` weight-edit submitted 3/3 (`kept the base` 2, `void` 1, median directed
+  `+0.085` nats, 24.25 s mean GPU), and matched-budget `weights` `knobs_only` submitted 3/3 (`works but harms` 3/3,
+  median directed `+9.19` nats, 24.53 s mean GPU). Blinded layer-50 planted vs canary benchmark (3.67 s) confirmed
+  identical cards at both `weights` and `activations` reaches, `canary_abstention_rate = 1.0`, and exact additive repair
+  recovery (`kl_plant_alone = 0.004596`, `kl_after_repair = 0.0`, `recovery_fraction = 1.0`). Cold-driver pages were
+  220–242 words (zero site spoilers), and the live 31B `<= 200`-word rebuild test (36 words, 0.61 s) reproduced all 6
+  figures with `max_abs_gap = 0.0`.
+
+**Not built:** attention, embedding and norm edits; a folded form for low-rank terms; fine-tuned LoRA adapters as a
+cheaper-knob arm; gradients. Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.

@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEIGHT_READER_PATH = ROOT_DIR / "backend" / "weight_reader.py"
+LEVEL_ATLAS_PATH = ROOT_DIR / "backend" / "level_atlas.py"
 QUIET_DIMS_PATH = ROOT_DIR / "experiments" / "results" / "V6_quiet_dims_pers181.npy"
 
 DEFAULT_TIMEOUT_S = 30.0
@@ -120,6 +121,13 @@ def main() -> int:
 
     work = Path("/work")
     atlas = Path("/atlas") if Path("/atlas").is_dir() else None
+    A = None
+    if atlas is not None:
+        try:
+            from backend.level_atlas import AtlasReader
+            A = AtlasReader(atlas)
+        except Exception:
+            A = None
     weights_path = Path("/weights")
     quiet_path = Path("/opt/app/experiments/results/V6_quiet_dims_pers181.npy")
     W = None
@@ -160,6 +168,7 @@ def main() -> int:
     ns = {
         "__name__": "__main__",
         "W": W,
+        "A": A,
         "WORK": work,
         "ATLAS": atlas,
         "save_array": save_array,
@@ -177,6 +186,8 @@ def main() -> int:
         traceback.print_exc()
         return 1
     finally:
+        if A is not None:
+            A.close()
         if W is not None:
             W.close()
     return 0
@@ -432,7 +443,7 @@ def run_cell(
             cmd += ["--ro-bind", str(sd), dst]
             py_paths.append(dst)
 
-        # Minimal read-only app code (weight_reader only — never engine_runtime or host credentials)
+        # Minimal read-only app code (weight_reader + level_atlas only — never engine_runtime or host credentials)
         cmd += [
             "--tmpfs", "/opt/app",
             "--dir", "/opt/app/backend",
@@ -442,6 +453,8 @@ def run_cell(
             "--ro-bind", str(runner_file), "/opt/runner/cell_runner.py",
             "--ro-bind", str(code_file), "/opt/runner/cell_code.py",
         ]
+        if LEVEL_ATLAS_PATH.is_file():
+            cmd += ["--ro-bind", str(LEVEL_ATLAS_PATH), "/opt/app/backend/level_atlas.py"]
         if QUIET_DIMS_PATH.is_file():
             cmd += [
                 "--dir", "/opt/app/experiments",
@@ -458,9 +471,17 @@ def run_cell(
                 cmd += ["--ro-bind", str(src), dst]
             cmd += ["--remount-ro", "/weights"]
 
-        # Optional read-only atlas index folder (index-only, never scientist/ or level_book)
-        if cfg.atlas_dir is not None and Path(cfg.atlas_dir).is_dir():
-            cmd += ["--ro-bind", str(Path(cfg.atlas_dir).resolve()), "/atlas"]
+        # Optional read-only atlas index files ONLY (allowlisted; never scientist/, uploads/, logs/, or level_book)
+        if cfg.atlas_dir is not None:
+            from backend.level_atlas import collect_atlas_binds
+
+            atlas_binds = collect_atlas_binds(Path(cfg.atlas_dir))
+            cmd += ["--tmpfs", "/atlas"]
+            if any(dst.startswith("/atlas/passages.d/") for _src, dst in atlas_binds):
+                cmd += ["--dir", "/atlas/passages.d"]
+            for src, dst in atlas_binds:
+                cmd += ["--ro-bind", str(src), dst]
+            cmd += ["--remount-ro", "/atlas"]
 
         # Single writable scratch folder
         cmd += ["--bind", str(work), "/work", "--chdir", "/work"]
