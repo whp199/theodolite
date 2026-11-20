@@ -281,13 +281,13 @@ environment where a model, today’s or the next, forms a hypothesis about Gemma
 tests it quickly and tries again.
 
 Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 standing checks passed on the 31B),
-slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,032/1,032 CPU checks and 68/68 31B card
-checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (143/143 CPU/sandbox checks
-in `scripts/check_level_door.py`, 37/37 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
+slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,037/1,037 CPU checks today, and 68/68 31B card
+checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (150/150 CPU/sandbox checks
+in `scripts/check_level_door.py`, 38/38 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
 (302/302 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`),
 Phase 4’s Person’s Page (89/89 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
-`scripts/verify_level_page.py`), and Phase 5’s trial of record, owner’s export and volunteer’s re-run (189/189 CPU
-checks in `scripts/check_level_trial.py`; on the 31B, 26/26 checks of a dry run in `scripts/verify_level_trial.py`:
+`scripts/verify_level_page.py`), and Phase 5’s trial of record, owner’s export and volunteer’s re-run (277/277 CPU
+checks in `scripts/check_level_trial.py`; on the 31B, 32/32 checks of a dry run in `scripts/verify_level_trial.py`:
 no trial of record has been read yet) were built and card-checked:
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
   projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by
@@ -322,29 +322,47 @@ no trial of record has been read yet) were built and card-checked:
   move the stream as it does. A sheet says what a reader needs to weigh it: which book the reading was taken in,
   whether the brief’s kept-back frames are published (the four starter briefs’ are, in this repository) and that
   only their wording is guarded, who supplied the sham edits, how far the control edits of a paired reading moved
-  the stream, and, for a written reading, that its loops were counted by rule and not by a person.
+  the stream (“matched” other sites are matched on what a base pre-pass expects of each, and the sheet says how
+  many then delivered within the matching factor of the edit; in a claim reading that count gates nothing), and,
+  for a written reading, that its loops were counted by rule and not by a person. A prompt arm is said to match
+  an edit when it moves the metric at least 0.95 times as far with a near-miss effect no worse, in size or as a
+  share of its own effect.
 
 - **Person’s Page (`backend/level_routes.py`, Vault `compare` tab).** Base, edit, and 1–19 control edits heard side by
   side in one batched forward beneath red-italic rubrics, with a two-batch-class paired read-out table, HTTP 409
   refusal while any vault overlay is in force, and model-free replay from the append-only level book (live readings,
   Phase 3 claim verdicts, and Phase 5 trials, a dry run shown as a dry run and never as a verdict).
 - **Of record, and out (`backend/level_trial.py`, `backend/level_export.py`, `backend/level_rerun.py`; the owner’s
-  command lines, which no agent and no page can reach).** A **trial of record** is a fresh reading of a brief’s
-  kept-back frames with more asked of it. It is asked what a claim is asked before it is registered, spends one of
-  the brief’s fresh readings, reads the edit in both batch classes with the folded form (the change written into the
-  weights) beside the per-row form on every item, and reads a reworded set, items written outside the brief’s
-  generator. It is of record only when it is the first thing its process reads, from a clean checkout that holds its
-  registration folder committed; otherwise it is refused, or read as a dry run when that is asked for. Its fresh
-  items are new fillings of the frames a claim has already read: the reworded set is what stands outside them. An
-  **export** writes an edit as a llama.cpp LoRA adapter outside every git checkout, with keys that say only what was
-  checked (a trial’s verdict for that edit at that dose alone). A **re-run kit** asks a volunteer’s card for the home
-  trial’s own items, and the intake judges the returned book against the home book. On the 31B only a dry run has
-  been read (of the known answer, which read “kept the base” on that draw); no trial of record, and no kit on
-  another card.
+  command lines).** No agent’s tool and no page route reaches them; a driver given a shell of its own could run the
+  scripts, so what keeps a driver from them is the door’s sandbox. A **trial of record** is a fresh reading of a
+  brief’s kept-back frames with more asked of it. It is asked what a claim is asked before it is registered, spends
+  one of the brief’s fresh readings, follows the edit’s claim reading only when that read a lead, takes only bars
+  whose calibration follows from the book’s own readings, reads the edit in both batch classes with the folded form
+  (the change written into the weights) beside the per-row form on every item, against control edits that count
+  for it only when, as read, they changed the stream about as far as it did, and reads a reworded set, items
+  written outside the brief’s generator. Nothing certain to be refused is entered in the book, and a trial that is
+  entered gets a verdict whatever ends it short of its process being killed: `passed`, `passed, matched by a
+  cheaper knob`, `failed` or `void`. It is of record
+  only when it is the first thing its process asks of the model, from a clean checkout (nothing changed, nothing
+  untracked, no file git is told to overlook, no Python where the runner imports from that no commit holds) that holds its registration folder committed, run by the files hashed
+  at registration, in the level book, on a seed that was drawn; otherwise it is refused, or read as a dry run when
+  that is asked for. Each of those is looked at and none is a signature: “read once” and a brief’s budget are facts
+  about one book, and the harness cannot see another book, a copy of this one, or this one cut back. Its fresh
+  items are new fillings of the frames every fresh reading of the brief is drawn from: the reworded set is what
+  stands outside them, and once its folder is committed it is as public as that commit. An **export** writes an
+  edit as a llama.cpp LoRA adapter outside every git checkout, with keys that say only what was checked: a trial’s
+  verdict is read from the trial’s book (never from its result file) and judged again with the registration; the
+  base it was compiled against is called the edit’s only as far as it was compared, and a key says that a
+  checkpoint is not what llama.cpp serves; an edit rebuilt off the model is exported only when a level book shows
+  the kernel has read it. A **re-run kit** asks a volunteer’s card for the home trial’s own
+  items, and the intake judges the returned book against the home book, figure by figure. It cannot tell a re-run
+  from the home book’s own lines copied into a new book, so a home book stays unpublished until its returns are in.
+  On the 31B only a dry run has been read (of the known answer, which read “kept the base” on that draw); no trial of
+  record, and no kit on another card.
 
 Three of Phase 5’s questions were ruled on by the owner on 19 November 2026 (a re-run repeats the home items; a trial
 has a reworded set; a trial spends a fresh reading). What else the build chose there is listed in ROADMAP §viii as
-the builder’s, and later work (Phase 6 driver evaluations) waits on decisions that are the owner’s.
+the builder’s (first among them that a trial counts its matched control edits by what they delivered when read, where a claim reading does not; and that a trial follows only a claim that read a lead), and later work (Phase 6 driver evaluations) waits on decisions that are the owner’s.
 
 “Levelling” is a working name: as a surveyor levels heights against a benchmark, it reads each edit against the
 untouched model. More is in [ARCHITECTURE §7](ARCHITECTURE.md) and [ROADMAP §viii](ROADMAP.md#viii--a-weight-edit-read-against-the-base), and the exploration

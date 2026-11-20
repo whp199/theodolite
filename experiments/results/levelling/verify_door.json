@@ -1,18 +1,18 @@
 {
   "checks": [],
   "measurements": {
-    "load_s": 17.72,
+    "load_s": 7.85,
     "rest_gib": 17.97,
     "weight_reader": {
-      "open_s": 0.0039,
-      "down_stream_norms_L20_s": 0.435,
-      "writers_L20_s": 0.289,
+      "open_s": 0.0023,
+      "down_stream_norms_L20_s": 0.328,
+      "writers_L20_s": 0.18,
       "norm_max_diff": 5.551115123125783e-17
     },
     "written_thinking_2x192": {
-      "actual_s": 14.483953400980681,
+      "actual_s": 12.938346969000122,
       "predicted_s": 36.858576000000006,
-      "seconds_a_step": 0.1103204532957492,
+      "seconds_a_step": 0.098681986346703,
       "peak_gib": 18.755,
       "summary": {
         "items": 1,
@@ -26,11 +26,19 @@
           "presence_penalty": 0.0,
           "seed": 42
         },
+        "loop_rules": {
+          "looped": "theodolite-loop-1",
+          "looped_published": "arXiv:2606.13705v2 sec. 4, as worded",
+          "note": "rules on the written pieces and lines; neither is checked against a person's reading of this checkpoint's answers"
+        },
         "base": {
           "n": 2,
           "ended": 2,
           "cut_off": 0,
           "looped": 0,
+          "looped_published": 0,
+          "looped_either": 0,
+          "loop_rules_differ": 0,
           "mean_pieces": 64.5,
           "max_pieces": 82,
           "mean_thought_pieces": 57.5,
@@ -45,6 +53,9 @@
             "ended": 2,
             "cut_off": 0,
             "looped": 0,
+            "looped_published": 0,
+            "looped_either": 0,
+            "loop_rules_differ": 0,
             "changed_from_base": 2,
             "rescued_from_loop": 0,
             "rescued_from_cutoff": 0,
@@ -62,6 +73,9 @@
             "ended": 2,
             "cut_off": 0,
             "looped": 0,
+            "looped_published": 0,
+            "looped_either": 0,
+            "loop_rules_differ": 0,
             "changed_from_base": 2,
             "rescued_from_loop": 0,
             "rescued_from_cutoff": 0,
@@ -79,6 +93,9 @@
             "ended": 2,
             "cut_off": 0,
             "looped": 0,
+            "looped_published": 0,
+            "looped_either": 0,
+            "loop_rules_differ": 0,
             "changed_from_base": 2,
             "rescued_from_loop": 0,
             "rescued_from_cutoff": 0,
@@ -96,6 +113,9 @@
             "ended": 2,
             "cut_off": 0,
             "looped": 0,
+            "looped_published": 0,
+            "looped_either": 0,
+            "loop_rules_differ": 0,
             "changed_from_base": 0,
             "rescued_from_loop": 0,
             "rescued_from_cutoff": 0,
@@ -110,9 +130,9 @@
       }
     },
     "written_thinking_512": {
-      "actual_s": 56.7721850000089,
+      "actual_s": 51.62083368799722,
       "predicted_s": 48.8504,
-      "seconds_a_step": 0.1104985025126775,
+      "seconds_a_step": 0.10051173808023463,
       "peak_gib": 20.541,
       "above_rest_gib": 2.571,
       "base_pieces": 512,
@@ -127,9 +147,9 @@
       }
     },
     "door_31b": {
-      "capture_s": 0.275,
-      "cell_s": 2.2043,
-      "paired_read_s": 0.743,
+      "capture_s": 0.196,
+      "cell_s": 0.9939,
+      "paired_read_s": 0.69,
       "paired_rank_large": {
         "at_least": 1,
         "dose": 1.0,
@@ -139,14 +159,23 @@
         "rank": 2,
         "value": 0.00010146544082090259
       },
+      "blinded_reply_s": {
+        "planted": 1.7001,
+        "canary": 1.7001,
+        "asked_of_both": 1.6998,
+        "card_took": {
+          "planted": 0.7066,
+          "canary": 0.7032
+        }
+      },
       "planted_repair_kl_large": 0.00016025207878556103,
       "canary_repair_kl_large": 0.00019936580793000758
     },
-    "total_s": 101.0,
+    "total_s": 81.9,
     "peak_gib_all": 18.342,
     "fell_back_delta": 0
   },
-  "passed": 37,
+  "passed": 38,
   "failed": 0,
   "failures": []
 }

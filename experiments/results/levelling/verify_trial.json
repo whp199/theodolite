@@ -1,30 +1,56 @@
 {
- "date": "2026-11-19T23:10:35Z",
+ "date": "2026-11-20T02:14:37Z",
  "environment": "measured on the 31B card",
  "what_this_is": "a DRY RUN of a trial, an export, and a re-run of the kit by this same card in this same process. No trial of record has been read by this script, and no other card has run a kit.",
  "gpu": "NVIDIA GeForce RTX 5090",
  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
  "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
- "load_seconds": 8.33,
- "total_seconds": 230.48,
+ "load_seconds": 7.8,
+ "total_seconds": 235.71,
  "peak_gib": 18.542,
  "fallback_count": 0,
- "passed": 26,
+ "passed": 32,
  "failed": 0,
  "checks": [
   {
    "name": "bars_calibrated",
    "ok": true,
    "detail": {
-    "seconds": 8.79,
-    "bars_sha256": "167535794f8c"
+    "seconds": 9.13,
+    "bars_sha256": "2c2349ad57fc"
+   }
+  },
+  {
+   "name": "calibration_follows_from_its_readings_31b",
+   "ok": true,
+   "detail": {
+    "why_not": null,
+    "settings": {
+     "layer": 50,
+     "mult": 2.0,
+     "n_cols": 10,
+     "n_controls": 3,
+     "n_near": 4,
+     "n_neutral": 4,
+     "n_panel": 4,
+     "rows": {
+      "large": 32,
+      "small": 12
+     },
+     "seed": 2026
+    },
+    "readings": [
+     0,
+     1,
+     2
+    ]
    }
   },
   {
    "name": "registration_verified",
    "ok": true,
    "detail": {
-    "trial_sha256": "b0a90169a6ec4008",
+    "trial_sha256": "146adede7461800a",
     "files": [
      "RULES.md",
      "bars.json",
@@ -46,18 +72,23 @@
       "layers.50.mlp.down_proj (cols): below the last tenth of the layers"
      ],
      "hits": []
-    }
+    },
+    "priced": {
+     "forwards": 424,
+     "seconds": 69.34
+    },
+    "source_files_hashed": 47
    }
   },
   {
    "name": "bars_made_by_hand_refused",
    "ok": true,
-   "detail": "Bar set b4d12f3e4cd8 is not from a calibration reading recorded in verify_trial_book.jsonl for brief \"pronoun_pull\" (92c7776f8ed0): a trial takes the bars calib"
+   "detail": "Bar set 76da2f968361 is not from a calibration reading recorded in verify_trial_book.jsonl for brief \"pronoun_pull\" (92c7776f8ed0): a trial takes the bars calib"
   },
   {
    "name": "refused_when_not_of_record",
    "ok": true,
-   "detail": "This trial would not be of record: this process had already begun 3 reading(s) and 0 capture(s): a trial of record is the first thing its process reads; the registration folder is outside the checkout, so it is in no commit. Mend that, or read it as a dry run (dry_run=True; --dry-run on the command line): a dry run is judged and counted as a trial is, spends a fresh reading of the brief all the sa"
+   "detail": "This trial would not be of record: this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 24 time(s): a trial of record is the first thing its process asks of the model; the registration folder is outside the checkout, so it is in no commit; it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh "
   },
   {
    "name": "trial_not_void",
@@ -65,7 +96,9 @@
    "detail": {
     "verdict": "failed",
     "fresh_verdict": "kept the base",
-    "seconds": 103.4
+    "seconds": 107.84,
+    "priced_seconds": 69.34,
+    "cheaper_knob": "prompt arm 0"
    }
   },
   {
@@ -73,8 +106,9 @@
    "ok": true,
    "detail": {
     "not_of_record": [
-     "this process had already begun 3 reading(s) and 0 capture(s): a trial of record is the first thing its process reads",
-     "the registration folder is outside the checkout, so it is in no commit"
+     "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 24 time(s): a trial of record is the first thing its process asks of the model",
+     "the registration folder is outside the checkout, so it is in no commit",
+     "it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in"
     ]
    }
   },
@@ -93,11 +127,11 @@
    "detail": {
     "small_same_bits": "16/16",
     "large_same_bits": "16/16",
-    "small_mean": -1.129670888185501,
-    "large_mean": -1.1561612337827682,
+    "small_mean": -1.2934915646910667,
+    "large_mean": -1.2979356795549393,
     "tolerance": [
-     0.20046615600585938,
-     0.1600170135498047
+     0.24138307571411133,
+     0.13660621643066406
     ],
     "folded_ok": false
    }
@@ -106,17 +140,19 @@
    "name": "reworded_set_read_31b",
    "ok": true,
    "detail": {
-    "ok": true,
+    "ok": false,
     "small_mean": -1.953764796257019,
     "large_mean": -1.9373210668563843,
     "controls_small": {
      "count": 19,
-     "non_finite": 0,
-     "at_least": 0,
-     "p_emp": 0.05,
-     "p_fw": 0.05,
-     "tops_every_control": true,
-     "passes_alpha": true
+     "effective_count": 19,
+     "non_finite": 11,
+     "at_least": 11,
+     "p_emp": 0.6,
+     "p_fw": 0.6,
+     "tops_every_control": false,
+     "passes_alpha": false,
+     "not_comparable": 11
     }
    }
   },
@@ -137,12 +173,76 @@
   {
    "name": "seed_in_the_result_not_in_the_book",
    "ok": true,
-   "detail": null
+   "detail": "and kept in a file of its own from the draw on"
+  },
+  {
+   "name": "unpacker_fallbacks_counted_31b",
+   "ok": true,
+   "detail": {
+    "unpacker_fallbacks": 0
+   }
+  },
+  {
+   "name": "matched_controls_as_read_31b",
+   "ok": true,
+   "detail": {
+    "small": {
+     "edit": 0.01141725221532397,
+     "controls_median": 0.00542853657680098,
+     "controls_min": 0.0037318928953027353,
+     "controls_max": 0.013613222807180136,
+     "within_tolerance": 16,
+     "not_comparable": 23,
+     "of_controls": 39,
+     "tolerance": 2.0,
+     "fewest_eligible": 60,
+     "at_least": 23,
+     "effective_count": 39,
+     "p_fw": 1.0
+    },
+    "large": {
+     "edit": 0.011431482300395146,
+     "controls_median": 0.0053684557060478255,
+     "controls_min": 0.0037465572968358174,
+     "controls_max": 0.013612232985906303,
+     "within_tolerance": 17,
+     "not_comparable": 22,
+     "of_controls": 39,
+     "tolerance": 2.0,
+     "fewest_eligible": 60,
+     "at_least": 22,
+     "effective_count": 39,
+     "p_fw": 1.0
+    }
+   }
+  },
+  {
+   "name": "prompt_arms_beside_the_edit_31b",
+   "ok": true,
+   "detail": {
+    "matched_by": "prompt arm 0",
+    "arms": [
+     {
+      "index": 0,
+      "directed_effect": 7.393880777060986,
+      "near_miss_abs": 2.098834753036499
+     }
+    ],
+    "edit_near_miss_abs": 0.7341187000274658
+   }
+  },
+  {
+   "name": "every_figure_of_the_judgement_31b",
+   "ok": true,
+   "detail": {
+    "figures": 304,
+    "controls_small": 78
+   }
   },
   {
    "name": "trial_read_once_refused",
    "ok": true,
-   "detail": "Read once: trial registration b0a90169a6ec has already been recorded in verify_trial_book.jsonl (line 4)."
+   "detail": "Read once: trial registration 146adede7461 has already been recorded in verify_trial_book.jsonl (line 4)."
   },
   {
    "name": "same_edit_registered_again_refused",
@@ -183,8 +283,8 @@
    "name": "export_is_the_edit_on_the_model",
    "ok": true,
    "detail": {
-    "seconds": 1.89,
-    "gguf_bytes": 1080000,
+    "seconds": 0.5,
+    "gguf_bytes": 1081248,
     "max_abs_err": 0.0
    }
   },
@@ -192,22 +292,38 @@
    "name": "export_keys_say_what_was_checked",
    "ok": true,
    "detail": {
-    "book": "line 11 of verify_trial_book.jsonl is the trial's verdict",
+    "book": "line 11 of verify_trial_book.jsonl is the trial's verdict; the book verifies",
     "book_before_it": "practice readings 0, earlier fresh readings 0, earlier trials 0, as the trial's book had them",
-    "book_hash": "3843382f6bdc8907d9758ba455a6589e54cb3d5847a84ad3d7285a1c4efcf31f",
+    "book_hash": "a0d26a4733bd5e6a3a9191bb5924e442cb9ab8ad33f7782ccc1ec956c91c5aa4",
     "book_seq": "11",
+    "compiled_against_is_edit_base": "yes: the same weights id, and every touched linear by its pin",
+    "gate": "built and gated by the kernel on a loaded model for this export",
     "implant_checked_at": "export",
     "implant_flagged": "nothing in reach of the check",
-    "served_base_is_edit_base": "yes",
-    "trial_applies_to_served_base": "yes: the adapter is compiled against the base the trial read",
+    "serving": "compiled against a checkpoint llama.cpp does not serve: over any GGUF this adapter's numbers are another quantisation's (a silenced column is left with the difference between the two), and what it does there is to be measured there. To compile against the file it will be served over, give --gguf",
+    "trial_applies_to_compiled_base": "yes: the adapter is compiled against the base the trial read (the same weights id). That base is a checkpoint: served over a GGUF, the adapter is on another object than the trial read",
+    "trial_brief": "pronoun_pull",
+    "trial_fresh_verdict": "kept the base",
+    "trial_judged_again": "yes: the book's readings, judged again with the registration, give this verdict",
     "trial_kind": "a dry run",
     "trial_verdict": "failed"
    }
   },
   {
+   "name": "a_result_file_changed_by_hand_is_not_taken_at_its_word",
+   "ok": true,
+   "detail": {
+    "file_said": "passed, of record",
+    "adapter_says": [
+     "failed",
+     "a dry run"
+    ]
+   }
+  },
+  {
    "name": "another_edit_does_not_take_this_trials_verdict",
    "ok": true,
-   "detail": "The trial result given is of edit be4328fdb60d, not of the edit exported (1945084400b2): an adapter carries the verdict of its own edit's tr"
+   "detail": "The trial in verify_trial_book.jsonl is of edit be4328fdb60d, not of the edit exported (1945084400b2): an adapter carries the verdict of its"
   },
   {
    "name": "export_off_the_model_from_the_cached_checkpoint",
@@ -216,49 +332,140 @@
     "ran": true,
     "ok": true,
     "max_abs_err": 0.0,
+    "max_rel_err": 0.0,
     "edit_id_kept": true,
     "base_is_edit_base": true,
+    "whole_base": true,
+    "compiled_against_words": "yes: the same weights id, and every touched linear by its pin",
+    "gate": "rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel read it at line 5 of verify_trial_book.jsonl",
     "implant": "the trial's registration",
     "same_numbers_as_the_model_export": true,
-    "seconds": 0.05
+    "seconds": 0.44
    }
   },
   {
    "name": "same_card_rerun_reads_the_home_items",
    "ok": true,
    "detail": {
-    "seconds": 103.51,
+    "seconds": 108.67,
     "outcome": "accepted",
     "match_class": "same_figures",
+    "figures_compared": 304,
+    "leave_given_for_a_changed_checkout": false,
+    "with_leave_for": [],
     "verdict": "failed",
     "class_diffs": {
-     "target:small": {
-      "items": 16,
+     "batteries": {
+      "items": 6,
       "missing": 0,
       "largest_difference": 0.0,
-      "outside_tolerance": 0,
-      "home_floor": 0.20046615600585938
+      "outside_tolerance": 0
      },
-     "target:large": {
-      "items": 16,
+     "prompt_arms": {
+      "items": 2,
       "missing": 0,
       "largest_difference": 0.0,
-      "outside_tolerance": 0,
-      "home_floor": 0.1600170135498047
-     },
-     "reworded:small": {
-      "items": 8,
-      "missing": 0,
-      "largest_difference": 0.0,
-      "outside_tolerance": 0,
-      "home_floor": 0.20046615600585938
+      "outside_tolerance": 0
      },
      "reworded:large": {
       "items": 8,
       "missing": 0,
       "largest_difference": 0.0,
       "outside_tolerance": 0,
-      "home_floor": 0.1600170135498047
+      "home_floor": 0.11921310424804688
+     },
+     "reworded:large:controls": {
+      "items": 19,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "reworded:large:folded": {
+      "items": 8,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "reworded:large:other": {
+      "items": 1,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "reworded:small": {
+      "items": 8,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0,
+      "home_floor": 0.10419082641601562
+     },
+     "reworded:small:controls": {
+      "items": 19,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "reworded:small:folded": {
+      "items": 8,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "reworded:small:other": {
+      "items": 1,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "target:large": {
+      "items": 16,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0,
+      "home_floor": 0.13660621643066406
+     },
+     "target:large:controls": {
+      "items": 78,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "target:large:folded": {
+      "items": 16,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "target:large:other": {
+      "items": 2,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "target:small": {
+      "items": 16,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0,
+      "home_floor": 0.24138307571411133
+     },
+     "target:small:controls": {
+      "items": 78,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "target:small:folded": {
+      "items": 16,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
+     },
+     "target:small:other": {
+      "items": 2,
+      "missing": 0,
+      "largest_difference": 0.0,
+      "outside_tolerance": 0
      }
     },
     "what_this_is": "this card re-running its own kit in this process: not another card",
@@ -270,7 +477,7 @@
    "name": "bundle_typed_by_hand_rejected",
    "ok": true,
    "detail": [
-    "book_holds_a_rerun_of_this_registration: no trial registered in the returned book as a re-run of b0a90169a6ec"
+    "book_holds_a_rerun_of_this_registration: no trial registered in the returned book as a re-run of 146adede7461"
    ]
   },
   {
@@ -290,7 +497,7 @@
    "ok": true,
    "detail": {
     "entries": 12,
-    "head": "3843382f6bdc8907"
+    "head": "a0d26a4733bd5e6a"
    }
   },
   {
@@ -299,79 +506,81 @@
    "detail": {
     "peak_gib": 18.542,
     "of": "the largest peak any reading in the book recorded",
-    "total_seconds": 230.48
+    "total_seconds": 235.71
    }
   }
  ],
  "trial_e6_she10": {
-  "seconds": 103.4,
+  "seconds": 107.84,
   "of_record": false,
   "not_of_record": [
-   "this process had already begun 3 reading(s) and 0 capture(s): a trial of record is the first thing its process reads",
-   "the registration folder is outside the checkout, so it is in no commit"
+   "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 24 time(s): a trial of record is the first thing its process asks of the model",
+   "the registration folder is outside the checkout, so it is in no commit",
+   "it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in"
   ],
   "verdict": "failed",
   "fresh_verdict": "kept the base",
   "reasons": [
-   "Fresh kept-back gate returned \"kept the base\": small class floor too loud (F=0.20047, M=0.75, M < 4F).; near_misses abs effect (0.921141505241394, ratio 0.8154069604475238) exceeded bar (abs <= 0.25, ratio <= 0.35).",
-   "small folded directed mean (1.129670888185501) did not clear house bar (None).",
-   "small folded form did not replicate across both halves (h0=0.6900623440742493, h1=1.569279432296753)."
+   "Fresh kept-back gate returned \"kept the base\": small class floor too loud (F=0.24138, M=0.75, M < 4F).; small class failed \"other_sites_matched\" controls (at_least=23/39, p_fw=1.0, alpha=0.05; 23 of them gave no finite reading, or did not change the stream as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; large class failed \"other_sites_matched\" controls (at_least=22/39, p_fw=1.0, alpha=0.05; 22 of them gave no finite reading, or did not change the stream as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; near_misses abs effect (0.7341187000274658, ratio 0.5675481155555895) exceeded bar (abs <= 0.25, ratio <= 0.35).",
+   "small class floor too loud for a house bar (F=0.24138, M=0.75, M < 4F): the folded form has no bar to clear.",
+   "Reworded small failed \"other_sites_matched\" controls (at_least=11/19, p_fw=0.6, alpha=0.05).",
+   "Reworded large failed \"other_sites_matched\" controls (at_least=11/19, p_fw=0.6, alpha=0.05)."
   ],
-  "sheet": "=== DRY RUN OF A TRIAL (not of record): e6_l50_she10_31b ===\nverdict: failed (a dry run: not a verdict of record)\n  not of record: this process had already begun 3 reading(s) and 0 capture(s): a trial of record is the first thing its process reads\n  not of record: the registration folder is outside the checkout, so it is in no commit\nregistration: b0a90169a6ec4008 (registered 2026-11-19T23:07:01Z at commit 3e5f1be878f3)\nread at commit 3e5f1be878f3: checkout clean | registration folder committed: no | runner and reader as registered: yes\nprocess: had begun 3 reading(s) and 0 capture(s) before the trial\nbase: checksum unchanged=True over 410 linears (1652 tensors); overlays 0, unpacker fallbacks 0\nedit: be4328fdb60d05f8 (rebuilt) at dose 1 | linears: layers.50.mlp.down_proj\nfollows: no claim reading of this edit stands in this book\nfresh items: new fillings of the brief's kept-back frames, the frames a claim reading of this brief has already read; the reworded set below is what stands outside them\ncheaper knob: matched by prompt arm 0 (the verdict stands; the sentence says so)\n\n--- the fresh reading, as the claim gate's sheet prints a fresh reading ---\n  CLAIM SHEET — brief \"pronoun_pull\" [92c7776f8ed0] — reading 1 of 2\n  verdict: kept the base\n  edit: be4328fdb60d05f8 (dose 1, linears: layers.50.mlp.down_proj)\n  base: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\n  rule: levelling-claim-v1 v1 | bars 167535794f8c from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\n  chat settings: {\"system\": null, \"thinking\": false} | driver prompt named site: False\n  selection: free_pick | practice reads: 0 | practice best, as reported with the claim: none\n  design, registered before the draw: 16 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched within a factor of 2 on delivered\n  book: verify_trial_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\n  kept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\n  retention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\n  gate notes:\n    - small class floor too loud (F=0.20047, M=0.75, M < 4F).\n    - near_misses abs effect (0.921141505241394, ratio 0.8154069604475238) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  reading classes (kept-back frames):\n    small: n_frames=8 (16 items), mean=-1.1297 [-2.2316, -0.0277], half0=-0.6901 (n=4), half1=-1.5693 (n=4), floor=0.2005, bar=none, reversed=1.0335\n      controls[other_sites_matched]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0112, these controls median 0.0052 (0.0036 to 0.0275)\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0112, these controls median 0.0111 (0.0110 to 0.0111)\n      controls[sham_target]: selection not matched, 0 read in practice\n    large: n_frames=8 (16 items), mean=-1.1562 [-2.2607, -0.0516], half0=-0.7164 (n=4), half1=-1.5959 (n=4), floor=0.1600, bar=0.3464, reversed=1.0349\n      controls[other_sites_matched]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0111, these controls median 0.0053 (0.0036 to 0.0276)\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0111, these controls median 0.0110 (0.0109 to 0.0111)\n      controls[sham_target]: selection not matched, 0 read in practice\n  retention batteries:\n    neutral_text (GATING): passed=True {'available': True, 'mean_kl': 0.0001222612008859869, 'bar': 0.05, 'control_kl_max': 6.143653956769413e-05}\n    near_misses (GATING): passed=False {'available': True, 'mean_effect': 0.921141505241394, 'abs_effect': 0.921141505241394, 'ratio_to_target': 0.8154069604475238, 'abs_bar': 0.25, 'ratio_bar': 0.35}\n    labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.0, 'mean_kl': 4.935699138286509e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05}\n    habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\n  cheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n    matched_by: prompt arm 0\n    author prompt arms: run\n    prompt arm 0 [255cdbb968d4]: directed_effect=8.5336, near_miss_abs=0.6422\n  earlier fresh readings on this brief (0):\n    none\n  earlier trials on this brief (0):\n    none\n\n--- the folded form (the change written into the weights), beside the per-row form ---\n  [small] folded mean -1.1297 | h0 -0.6901, h1 -1.5693 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.2005) | same bits 16/16 | ok=False\n  [large] folded mean -1.1562 | h0 -0.7164, h1 -1.5959 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.1600) | same bits 16/16 | ok=True\n\n--- the reworded set 9c3078865a98 (the starter set in the instrument's source, which anyone can read; read 1 of at most 5 times in this book; 19 matched control edits, judged alone at the level) ---\n  [small] per-row mean -1.9538 | h0 -1.7234, h1 -2.1841 | floor 0.1042, bar 0.2795 | matched 0/19 (p 0.050) | ok=True\n  [small] folded mean -1.9538 | largest item gap 0.0000 (tolerance 0.1042) | ok=True\n  [large] per-row mean -1.9373 | h0 -1.6973, h1 -2.1773 | floor 0.1192, bar 0.2990 | matched 0/19 (p 0.050) | ok=True\n  [large] folded mean -1.9373 | largest item gap 0.0000 (tolerance 0.1192) | ok=True\n\n--- why ---\n  - Fresh kept-back gate returned \"kept the base\": small class floor too loud (F=0.20047, M=0.75, M < 4F).; near_misses abs effect (0.921141505241394, ratio 0.8154069604475238) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  - small folded directed mean (1.129670888185501) did not clear house bar (None).\n  - small folded form did not replicate across both halves (h0=0.6900623440742493, h1=1.569279432296753).\n",
+  "sheet": "=== DRY RUN OF A TRIAL (not of record): e6_l50_she10_31b ===\nverdict: failed (a dry run: not a verdict of record)\n  not of record: this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 24 time(s): a trial of record is the first thing its process asks of the model\n  not of record: the registration folder is outside the checkout, so it is in no commit\n  not of record: it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in\nregistration: 146adede7461800a (registered 2026-11-20T02:10:59Z at commit bdcf9a333e6d)\nread at commit bdcf9a333e6d: checkout clean | registration folder committed: no | runner and reader as registered: yes\nprocess: had begun 3 reading(s) and 0 capture(s) and run the model forward 24 time(s) before the trial\nbook: verify_trial_book.jsonl (a side book, not the level book); the trial was entered at line 4, after the line that hashes to 67c7acb61278. Read once and counted in this book: the harness cannot see another book, a copy of this one, or this one cut back to an earlier line\nbars: 2c2349ad57fc from the calibration at line 3 of this book: a probe of 10 columns at layer 50 (page layer 51) against 3 control edits (seed 2026); each bar is the larger of its registered least and 2.0 times the largest figure they gave: neutral KL 0.05, near-miss 0.25, panel KL 0.05, panel own drop 0.1 (4 of the 4 are the least a bar can be, which the calibration did not move)\nbase: checksum unchanged=True over 410 linears (1652 tensors); overlays 0, unpacker fallbacks 0\nedit: be4328fdb60d05f8 (rebuilt) at dose 1 | linears: layers.50.mlp.down_proj\nfollows: no claim reading of this edit stands in this book\nfresh items: new fillings of the brief's kept-back frames, which no earlier fresh reading in this book had read; the reworded set below is what stands outside them\ncheaper knob: prompt arm 0, one of the brief's own prompts and no change to the weights, moved odds by 7.3939 in the brief's direction, against the edit's 1.2935: a trial that meets every test then reads \"passed, matched by a cheaper knob\", not \"passed\"\n\n--- the fresh reading, as the claim gate's sheet prints a fresh reading ---\n  CLAIM SHEET — brief \"pronoun_pull\" [92c7776f8ed0] — reading 1 of 2\n  verdict: kept the base\n  edit: be4328fdb60d05f8 (dose 1, linears: layers.50.mlp.down_proj)\n  base: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\n  rule: levelling-claim-v1 v1 | bars 2c2349ad57fc from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\n  chat settings: {\"system\": null, \"thinking\": false}\n  selection: free_pick | practice readings in this book: 0 | practice best, as reported with the edit's claim reading: none\n  design, registered before the draw: 16 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\n  book: verify_trial_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\n  kept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\n  retention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\n  gate notes:\n    - small class floor too loud (F=0.24138, M=0.75, M < 4F).\n    - small class failed \"other_sites_matched\" controls (at_least=23/39, p_fw=1.0, alpha=0.05; 23 of them gave no finite reading, or did not change the stream as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).\n    - large class failed \"other_sites_matched\" controls (at_least=22/39, p_fw=1.0, alpha=0.05; 22 of them gave no finite reading, or did not change the stream as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).\n    - near_misses abs effect (0.7341187000274658, ratio 0.5675481155555895) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  reading classes (kept-back frames):\n    small: n_frames=8 (16 items), mean=-1.2935 [-2.0407, -0.5463], half0=-1.3287 (n=4), half1=-1.2583 (n=4), floor=0.2414, bar=none, reversed=1.0211\n      controls[other_sites_matched]: at_least=23/39, p_emp=0.6000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0114, these controls median 0.0054 (0.0037 to 0.0136); 16 of 39 within a factor of 2 of the edit's; 23 of them outside the matching tolerance of the edit's, and counted as moving as much; drawn from at least 60 eligible sites a neuron\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0114, these controls median 0.0113 (0.0113 to 0.0114)\n      controls[sham_target]: selection not matched, 0 practice readings in this book\n    large: n_frames=8 (16 items), mean=-1.2979 [-2.0719, -0.5240], half0=-1.3362 (n=4), half1=-1.2597 (n=4), floor=0.1366, bar=0.3201, reversed=1.0347\n      controls[other_sites_matched]: at_least=22/39, p_emp=0.5750, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0114, these controls median 0.0054 (0.0037 to 0.0136); 17 of 39 within a factor of 2 of the edit's; 22 of them outside the matching tolerance of the edit's, and counted as moving as much; drawn from at least 60 eligible sites a neuron\n      controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n        delivered (stream change at the highest edited layer): edit 0.0114, these controls median 0.0114 (0.0113 to 0.0114)\n      controls[sham_target]: selection not matched, 0 practice readings in this book\n  retention batteries:\n    neutral_text (GATING): passed=True {'available': True, 'mean_kl': 3.9863509073256864e-05, 'bar': 0.05, 'control_kl_max': 0.00035752134454014595, 'items': {'read': 4, 'given': 4}}\n    near_misses (GATING): passed=False {'available': True, 'mean_effect': 0.6945116519927979, 'abs_effect': 0.7341187000274658, 'ratio_to_target': 0.5675481155555895, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4}}\n    labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.0, 'mean_kl': 6.911128854388456e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 3, 'given': 4}}\n    habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\n  cheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n    matched_by: prompt arm 0\n    author prompt arms: run\n    prompt arm 0 [255cdbb968d4]: directed_effect=7.3939, near_miss_abs=2.0988\n  earlier fresh readings on this brief (0):\n    none\n  earlier trials on this brief (0):\n    none\n\n--- the folded form (the change written into the weights), beside the per-row form ---\n  [small] folded mean -1.2935 | h0 -1.3287, h1 -1.2583 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.2414) | same bits 16/16 | agrees with the per-row form: True | no house bar in this class (floor too loud), so it clears none | ok=False\n  [large] folded mean -1.2979 | h0 -1.3362, h1 -1.2597 | from the per-row mean 0.0000, largest item gap 0.0000 (tolerance 0.1366) | same bits 16/16 | agrees with the per-row form: True | clears the bar: True, both halves: True | ok=True\n\n--- the reworded set 9c3078865a98 (the starter set in the instrument's source, which anyone can read; read 1 of at most 5 times in this book; 19 matched control edits, judged alone at the level; it sits in the registration folder, as public as the commit that holds it) ---\n  [small] per-row mean -1.9538 | h0 -1.7234, h1 -2.1841 | floor 0.1042, bar 0.2795 | matched 11/19 (p 0.600; 11 of them did not deliver as the edit did and are counted as moving as much) | ok=False\n  [small] folded mean -1.9538 | largest item gap 0.0000 (tolerance 0.1042) | ok=True\n  [large] per-row mean -1.9373 | h0 -1.6973, h1 -2.1773 | floor 0.1192, bar 0.2990 | matched 11/19 (p 0.600; 11 of them did not deliver as the edit did and are counted as moving as much) | ok=False\n  [large] folded mean -1.9373 | largest item gap 0.0000 (tolerance 0.1192) | ok=True\n\n--- why ---\n  - Fresh kept-back gate returned \"kept the base\": small class floor too loud (F=0.24138, M=0.75, M < 4F).; small class failed \"other_sites_matched\" controls (at_least=23/39, p_fw=1.0, alpha=0.05; 23 of them gave no finite reading, or did not change the stream as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; large class failed \"other_sites_matched\" controls (at_least=22/39, p_fw=1.0, alpha=0.05; 22 of them gave no finite reading, or did not change the stream as the edit did (a sham edit; in a trial a matched one too), and are counted as moving as much).; near_misses abs effect (0.7341187000274658, ratio 0.5675481155555895) exceeded bar (abs <= 0.25, ratio <= 0.35).\n  - small class floor too loud for a house bar (F=0.24138, M=0.75, M < 4F): the folded form has no bar to clear.\n  - Reworded small failed \"other_sites_matched\" controls (at_least=11/19, p_fw=0.6, alpha=0.05).\n  - Reworded large failed \"other_sites_matched\" controls (at_least=11/19, p_fw=0.6, alpha=0.05).\n",
   "folded": {
    "available": true,
    "ok": false,
    "status": "failed",
    "reasons": [
-    "small folded directed mean (1.129670888185501) did not clear house bar (None).",
-    "small folded form did not replicate across both halves (h0=0.6900623440742493, h1=1.569279432296753)."
+    "small class floor too loud for a house bar (F=0.24138, M=0.75, M < 4F): the folded form has no bar to clear."
    ],
    "classes": {
     "small": {
      "available": true,
      "ok": false,
+     "no_bar": true,
      "frames": {
       "n_items": 16,
       "n_frames": 8,
-      "mean": -1.129670888185501,
-      "directed_mean": 1.129670888185501,
-      "se": 0.4659341145212677,
+      "mean": -1.2934915646910667,
+      "directed_mean": 1.2934915646910667,
+      "se": 0.3159239101792158,
       "ci95": [
-       -2.2316050690282996,
-       -0.027736707342702838
+       -2.040651612264912,
+       -0.5463315171172214
       ],
       "directed_ci95": [
-       0.027736707342702838,
-       2.2316050690282996
+       0.5463315171172214,
+       2.040651612264912
       ],
       "sign_flip": {
-       "two_sided": 0.0625,
-       "one_sided": 0.03125,
+       "two_sided": 0.0078125,
+       "one_sided": 0.00390625,
        "n": 8,
        "exact": true
       },
       "half_0": {
        "n_frames": 4,
-       "mean": -0.6900623440742493,
-       "directed_mean": 0.6900623440742493
+       "mean": -1.3286643028259277,
+       "directed_mean": 1.3286643028259277
       },
       "half_1": {
        "n_frames": 4,
-       "mean": -1.569279432296753,
-       "directed_mean": 1.569279432296753
+       "mean": -1.2583188265562057,
+       "directed_mean": 1.2583188265562057
       }
      },
      "house_bar": {
-      "floor": 0.20046615600585938,
+      "floor": 0.24138307571411133,
       "least_effect": 0.75,
       "bar": null,
       "floor_too_loud": true,
-      "ratio_m_over_f": 3.7412798995261745
+      "ratio_m_over_f": 3.107094388374946
      },
      "clears_bar": false,
      "halves_ok": false,
      "gap_ok": true,
-     "tolerance": 0.20046615600585938,
+     "tolerance": 0.24138307571411133,
      "mean_diff_vs_per_row": 0.0,
      "max_abs_gap": 0.0,
      "mean_abs_gap": 0.0,
@@ -383,48 +592,49 @@
     "large": {
      "available": true,
      "ok": true,
+     "no_bar": false,
      "frames": {
       "n_items": 16,
       "n_frames": 8,
-      "mean": -1.1561612337827682,
-      "directed_mean": 1.1561612337827682,
-      "se": 0.46702846262910347,
+      "mean": -1.2979356795549393,
+      "directed_mean": 1.2979356795549393,
+      "se": 0.3272508455816419,
       "ci95": [
-       -2.260683547900598,
-       -0.0516389196649385
+       -2.0718839293555225,
+       -0.5239874297543561
       ],
       "directed_ci95": [
-       0.0516389196649385,
-       2.260683547900598
+       0.5239874297543561,
+       2.0718839293555225
       ],
       "sign_flip": {
-       "two_sided": 0.0625,
-       "one_sided": 0.03125,
+       "two_sided": 0.0078125,
+       "one_sided": 0.00390625,
        "n": 8,
        "exact": true
       },
       "half_0": {
        "n_frames": 4,
-       "mean": -0.716387927532196,
-       "directed_mean": 0.716387927532196
+       "mean": -1.3362014293670654,
+       "directed_mean": 1.3362014293670654
       },
       "half_1": {
        "n_frames": 4,
-       "mean": -1.5959345400333405,
-       "directed_mean": 1.5959345400333405
+       "mean": -1.259669929742813,
+       "directed_mean": 1.259669929742813
       }
      },
      "house_bar": {
-      "floor": 0.1600170135498047,
+      "floor": 0.13660621643066406,
       "least_effect": 0.75,
-      "bar": 0.34642857873211547,
+      "bar": 0.3200853984845264,
       "floor_too_loud": false,
-      "ratio_m_over_f": 4.6870016091543
+      "ratio_m_over_f": 5.49023331145893
      },
      "clears_bar": true,
      "halves_ok": true,
      "gap_ok": true,
-     "tolerance": 0.1600170135498047,
+     "tolerance": 0.13660621643066406,
      "mean_diff_vs_per_row": 0.0,
      "max_abs_gap": 0.0,
      "mean_abs_gap": 0.0,
@@ -436,12 +646,15 @@
    }
   },
   "reworded": {
-   "ok": true,
-   "status": "ok",
-   "reasons": [],
+   "ok": false,
+   "status": "failed",
+   "reasons": [
+    "Reworded small failed \"other_sites_matched\" controls (at_least=11/19, p_fw=0.6, alpha=0.05).",
+    "Reworded large failed \"other_sites_matched\" controls (at_least=11/19, p_fw=0.6, alpha=0.05)."
+   ],
    "classes": {
     "small": {
-     "ok": true,
+     "ok": false,
      "frames": {
       "n_items": 8,
       "n_frames": 8,
@@ -485,17 +698,19 @@
      "controls": {
       "other_sites_matched": {
        "count": 19,
-       "non_finite": 0,
-       "at_least": 0,
-       "p_emp": 0.05,
-       "p_fw": 0.05,
-       "tops_every_control": true,
-       "passes_alpha": true
+       "effective_count": 19,
+       "non_finite": 11,
+       "at_least": 11,
+       "p_emp": 0.6,
+       "p_fw": 0.6,
+       "tops_every_control": false,
+       "passes_alpha": false,
+       "not_comparable": 11
       }
      }
     },
     "large": {
-     "ok": true,
+     "ok": false,
      "frames": {
       "n_items": 8,
       "n_frames": 8,
@@ -539,12 +754,14 @@
      "controls": {
       "other_sites_matched": {
        "count": 19,
-       "non_finite": 0,
-       "at_least": 0,
-       "p_emp": 0.05,
-       "p_fw": 0.05,
-       "tops_every_control": true,
-       "passes_alpha": true
+       "effective_count": 19,
+       "non_finite": 11,
+       "at_least": 11,
+       "p_emp": 0.6,
+       "p_fw": 0.6,
+       "tops_every_control": false,
+       "passes_alpha": false,
+       "not_comparable": 11
       }
      }
     }
@@ -558,6 +775,7 @@
      "small": {
       "available": true,
       "ok": true,
+      "no_bar": false,
       "frames": {
        "n_items": 8,
        "n_frames": 8,
@@ -611,6 +829,7 @@
      "large": {
       "available": true,
       "ok": true,
+      "no_bar": false,
       "frames": {
        "n_items": 8,
        "n_frames": 8,
@@ -665,7 +884,8 @@
    }
   },
   "meta": {
-   "date": "2026-11-19T23:08:47Z",
+   "reading_kind": "trial",
+   "date": "2026-11-20T02:12:46Z",
    "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
    "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
    "unpacker": "compiled",
@@ -676,15 +896,32 @@
    "main_dose": 1.0,
    "brief_id": "92c7776f8ed0788eb12354893e8c3fe78dc5b167b8788a8e98a821b6c0bccd3e",
    "brief_name": "pronoun_pull",
-   "bars_sha256": "167535794f8c9d6e1c718ffbcdf1f547f34a311b302738e3c086167a09fb57c7",
+   "bars_sha256": "2c2349ad57fc2baadb476f3eb729e5d22ef07b13238c3af1601d7c959a914afa",
    "bars_calibration_seq": 3,
+   "bars_calibration_where": null,
    "bars_calibrations_in_book": 1,
+   "calibration_settings": {
+    "layer": 50,
+    "mult": 2.0,
+    "n_cols": 10,
+    "n_controls": 3,
+    "n_near": 4,
+    "n_neutral": 4,
+    "n_panel": 4,
+    "rows": {
+     "large": 32,
+     "small": 12
+    },
+    "seed": 2026
+   },
    "declared_rule": null,
    "reading_index": 1,
    "max_fresh_readings": 2,
-   "draw_seed_sha256": "89bbf89b7edc949880b94d967f774e4b567900ae977ab1b61be0b1aea116da40",
+   "earlier_fresh_readings": 0,
+   "draw_seed_sha256": "b19f83fda1dce03a826faecfea28593edcc598eac7e8667cecf4d1eaeebccd01",
    "n_target_items": 16,
    "registration_seq": 4,
+   "book_head_before": "67c7acb612786c61a4309707b17e6bd439aebd273fd38d10e97a49f6a8dc4f29",
    "book_seqs": [
     4,
     5,
@@ -723,6 +960,10 @@
     "prompt_arms": true,
     "reworded_controls": 19
    },
+   "priced": {
+    "forwards": 424,
+    "seconds": 69.34
+   },
    "shams": null,
    "kept_back": {
     "frames": 8,
@@ -745,27 +986,35 @@
    "book_fresh_readings": {},
    "written_strata": null,
    "settings_audit": null,
-   "finished_at": "2026-11-19T23:08:47Z",
+   "finished_at": "2026-11-20T02:12:46Z",
    "device": "NVIDIA GeForce RTX 5090",
-   "trial_sha256": "b0a90169a6ec4008684cdee76d27558df62e0caa7001112f56d9ff512d13f134",
+   "trial_sha256": "146adede7461800a861805981342e2eabe647f4d12ce1eede6769db8f27fd67a",
    "of_record": false,
    "not_of_record": [
-    "this process had already begun 3 reading(s) and 0 capture(s): a trial of record is the first thing its process reads",
-    "the registration folder is outside the checkout, so it is in no commit"
+    "this process had already begun 3 reading(s) and 0 capture(s) and run the model forward 24 time(s): a trial of record is the first thing its process asks of the model",
+    "the registration folder is outside the checkout, so it is in no commit",
+    "it is read in verify_trial_book.jsonl, a side book and not the level book: a trial of record is counted in the one book fresh readings are counted in"
    ],
    "rerun_of": null,
    "process": {
     "readings": 3,
-    "captures": 0
+    "captures": 0,
+    "forwards": 24
    },
    "checkout": {
-    "commit": "3e5f1be878f3303098858bc3db9fd42cef31c1fd",
+    "commit": "bdcf9a333e6d3abc5f292cd30d5ff499eeb40f43",
     "dirty": false,
     "changed": 0,
+    "tracked_changed": 0,
+    "hidden": 0,
+    "unlisted_code": 0,
     "folder_committed": false,
-    "sources_match": true
+    "sources_match": true,
+    "sources_moved": [],
+    "default_book": false,
+    "seed_given": false
    },
-   "repo_commit": "3e5f1be878f3303098858bc3db9fd42cef31c1fd",
+   "repo_commit": "bdcf9a333e6d3abc5f292cd30d5ff499eeb40f43",
    "source_claim": null,
    "book_name": "verify_trial_book.jsonl",
    "base_checksum_before": "acb0b5e917feb6d4d3f352189a271d3a025d70420a8d6b04bcc37593d7e477bd",
@@ -777,13 +1026,13 @@
    "base_after": true,
    "unpacker_fallbacks": 0,
    "reworded_use_index": 1,
-   "seconds": 103.351
+   "seconds": 107.768
   },
   "book": {
    "name": "verify_trial_book.jsonl",
    "registration_seq": 4,
    "verdict_seq": 11,
-   "verdict_hash": "3843382f6bdc8907d9758ba455a6589e54cb3d5847a84ad3d7285a1c4efcf31f",
+   "verdict_hash": "a0d26a4733bd5e6a3a9191bb5924e442cb9ab8ad33f7782ccc1ec956c91c5aa4",
    "all_seqs": [
     4,
     5,
@@ -797,9 +1046,9 @@
   }
  },
  "export_check": {
-  "seconds": 1.89,
+  "seconds": 0.5,
   "max_abs_err": 0.0,
-  "gguf_bytes": 1080000,
+  "gguf_bytes": 1081248,
   "implant_check": {
    "checked": true,
    "flagged": false,
@@ -813,14 +1062,19 @@
    "checked_at": "export"
   },
   "keys": {
-   "book": "line 11 of verify_trial_book.jsonl is the trial's verdict",
+   "book": "line 11 of verify_trial_book.jsonl is the trial's verdict; the book verifies",
    "book_before_it": "practice readings 0, earlier fresh readings 0, earlier trials 0, as the trial's book had them",
-   "book_hash": "3843382f6bdc8907d9758ba455a6589e54cb3d5847a84ad3d7285a1c4efcf31f",
+   "book_hash": "a0d26a4733bd5e6a3a9191bb5924e442cb9ab8ad33f7782ccc1ec956c91c5aa4",
    "book_seq": "11",
+   "compiled_against_is_edit_base": "yes: the same weights id, and every touched linear by its pin",
+   "gate": "built and gated by the kernel on a loaded model for this export",
    "implant_checked_at": "export",
    "implant_flagged": "nothing in reach of the check",
-   "served_base_is_edit_base": "yes",
-   "trial_applies_to_served_base": "yes: the adapter is compiled against the base the trial read",
+   "serving": "compiled against a checkpoint llama.cpp does not serve: over any GGUF this adapter's numbers are another quantisation's (a silenced column is left with the difference between the two), and what it does there is to be measured there. To compile against the file it will be served over, give --gguf",
+   "trial_applies_to_compiled_base": "yes: the adapter is compiled against the base the trial read (the same weights id). That base is a checkpoint: served over a GGUF, the adapter is on another object than the trial read",
+   "trial_brief": "pronoun_pull",
+   "trial_fresh_verdict": "kept the base",
+   "trial_judged_again": "yes: the book's readings, judged again with the registration, give this verdict",
    "trial_kind": "a dry run",
    "trial_verdict": "failed"
   },
@@ -828,45 +1082,135 @@
    "ran": true,
    "ok": true,
    "max_abs_err": 0.0,
+   "max_rel_err": 0.0,
    "edit_id_kept": true,
    "base_is_edit_base": true,
+   "whole_base": true,
+   "compiled_against_words": "yes: the same weights id, and every touched linear by its pin",
+   "gate": "rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel read it at line 5 of verify_trial_book.jsonl",
    "implant": "the trial's registration",
    "same_numbers_as_the_model_export": true,
-   "seconds": 0.05
+   "seconds": 0.44
   }
  },
  "rerun_intake": {
-  "seconds": 103.51,
+  "seconds": 108.67,
   "outcome": "accepted",
   "match_class": "same_figures",
+  "figures_compared": 304,
+  "leave_given_for_a_changed_checkout": false,
   "class_diffs": {
-   "target:small": {
-    "items": 16,
+   "batteries": {
+    "items": 6,
     "missing": 0,
     "largest_difference": 0.0,
-    "outside_tolerance": 0,
-    "home_floor": 0.20046615600585938
+    "outside_tolerance": 0
    },
-   "target:large": {
-    "items": 16,
+   "prompt_arms": {
+    "items": 2,
     "missing": 0,
     "largest_difference": 0.0,
-    "outside_tolerance": 0,
-    "home_floor": 0.1600170135498047
-   },
-   "reworded:small": {
-    "items": 8,
-    "missing": 0,
-    "largest_difference": 0.0,
-    "outside_tolerance": 0,
-    "home_floor": 0.20046615600585938
+    "outside_tolerance": 0
    },
    "reworded:large": {
     "items": 8,
     "missing": 0,
     "largest_difference": 0.0,
     "outside_tolerance": 0,
-    "home_floor": 0.1600170135498047
+    "home_floor": 0.11921310424804688
+   },
+   "reworded:large:controls": {
+    "items": 19,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "reworded:large:folded": {
+    "items": 8,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "reworded:large:other": {
+    "items": 1,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "reworded:small": {
+    "items": 8,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0,
+    "home_floor": 0.10419082641601562
+   },
+   "reworded:small:controls": {
+    "items": 19,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "reworded:small:folded": {
+    "items": 8,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "reworded:small:other": {
+    "items": 1,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "target:large": {
+    "items": 16,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0,
+    "home_floor": 0.13660621643066406
+   },
+   "target:large:controls": {
+    "items": 78,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "target:large:folded": {
+    "items": 16,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "target:large:other": {
+    "items": 2,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "target:small": {
+    "items": 16,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0,
+    "home_floor": 0.24138307571411133
+   },
+   "target:small:controls": {
+    "items": 78,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "target:small:folded": {
+    "items": 16,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
+   },
+   "target:small:other": {
+    "items": 2,
+    "missing": 0,
+    "largest_difference": 0.0,
+    "outside_tolerance": 0
    }
   },
   "what_this_is": "this card re-running its own kit in this process: not another card"
@@ -874,7 +1218,7 @@
  "ledger": {
   "ok": true,
   "entries": 12,
-  "head": "3843382f6bdc8907d9758ba455a6589e54cb3d5847a84ad3d7285a1c4efcf31f",
+  "head": "a0d26a4733bd5e6a3a9191bb5924e442cb9ab8ad33f7782ccc1ec956c91c5aa4",
   "first_bad": null,
   "why": null
  }

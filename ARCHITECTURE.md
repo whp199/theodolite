@@ -2252,60 +2252,112 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
 
 **Phase 5: of record, and out** (`backend/level_trial.py`, `backend/level_export.py`, `backend/level_rerun.py` and
 the owner's command lines `scripts/levelling_trial.py`, `scripts/levelling_export.py`, `scripts/levelling_rerun.py`;
-none of them is imported by the MCP server, the session, the page's routes or the scientist's tools):
+none of them is imported by the MCP server, the session, the page's routes or the scientist's tools. A driver with a
+shell of its own could run the scripts: what keeps one from them is the door's sandbox, not these files):
 - **The trial of record.** A trial is a fresh reading of a brief's kept-back frames, so before it is registered it is
   asked what a claim is asked (`level_claim.fresh_reading_gate`: kept-back wording practised in the book, a brief
   changed under its name, frames read under another brief, bars that no calibration reading in the book produced or
   that were calibrated on other weights, the brief's budget `m`); it spends one of the brief's `m`; an edit has one
-  trial and nothing is read of it on that brief after; and every later sheet of the brief, a claim's or a trial's,
-  lists it. Its registration folder holds exactly `trial.json`, `brief.json`, `bars.json`, `edit_manifest.json`,
-  `reworded.json`, `RULES.md`, `repo_commit`, `registered_at` and `SHA256SUMS` (manifests and hashes; a weight file,
-  a folder or a link in it is refused, and `SHA256SUMS` is read only byte for byte as a registration writes it), and
-  `register_trial` refuses, before it writes anything, a trial that could not be read: a written brief, an edit with
-  no folded form on the model, no reworded set, a design that cannot reach the level, sham controls that are not the
-  edit's shape, bars not calibrated in the book it will be read in. It reads the edit in both batch classes against
-  matched other-site and same-site control edits (and sham-target ones for a declared rule), with the folded form
-  beside the per-row form on every item, then a reworded set (items written outside the brief's generator; an item is
-  read at most 5 times in a book, counted by its wording; a set read in practice in the book is refused), the three
+  trial and nothing is read of it on that brief after; where the book holds a claim reading of the edit, a trial
+  follows it only if that claim read a lead, and at the dose the claim read (a trial promotes a lead; after
+  anything else it would be a second draw at one question); and every later sheet of the brief, a claim's or a trial's, lists it. A trial's bars are asked
+  more than a claim's: the calibration note must name the weights it was taken on, and must follow from its book
+  (`calibration_follows`: its three readings stand before it, are the harness's own calibration readings of the
+  brief, and give exactly the recorded bar set by the note's own `mult`), so bars typed into a note are not a
+  calibration; the sheet and `RULES.md` print how the calibration was taken. Its registration folder holds exactly
+  `trial.json`, `brief.json`, `bars.json`, `edit_manifest.json`, `reworded.json`, `RULES.md`, `repo_commit`,
+  `registered_at` and `SHA256SUMS` (manifests and hashes; a weight file, a folder or a link in it is refused,
+  `SHA256SUMS` is read only byte for byte as a registration writes it, and `RULES.md` is rendered again from
+  `trial.json` and compared, so the rules a person reads are the rules the code judges by), and `register_trial`
+  refuses, before it writes anything, a trial that could not be read: a written brief, an edit with no folded form
+  on the model, no reworded set or one the tokenizer cannot make items of, a design that cannot reach the level, sham
+  controls that are not the edit's shape, bars not calibrated in the book it will be read in, and any reading the
+  kernel would refuse as planned (`preflight_trial` normalises and prices every plan of `_trial_steps`, the one list
+  the trial itself reads from, with no forward, and asks the kernel's cap on a reading's items). It reads the edit in both batch classes against matched other-site
+  and same-site control edits (and sham-target ones for a declared rule), with the folded form beside the per-row
+  form on every item that read. "Matched" other sites are matched, neuron for neuron, on what a base pre-pass
+  expects each to deliver, within the registered factor; a matched or sham control edit that, as read, did not
+  change the stream within that factor of what the edit changed it is counted as moving as much (in a trial; a
+  claim reading prints the count and gates nothing on it), and control sets count as no more separate draws than
+  the fewest sites that were eligible to stand in for one neuron. Then it reads a reworded set (items written
+  outside the brief's generator; an item is read at most 5 times in a book, counted by its question or the start
+  of its answer in a registration, or by a near wording in a trial's own reworded reading, so another system turn,
+  another name or a word changed does not start a new count; a set read in practice in the book, by near
+  wording, is refused), the three
   gating batteries and the brief's prompt arms, with `base_checksum` over every stored weight before and after.
-  Verdicts: `passed`, `failed`, `void` (`judge_readings`; the folded form's mean within one floor or 5% of the
-  per-row form's and never more than half the house bar).
-  A trial is **of record** only when its process had read nothing before it (`levelling.asked_in_process`), the
-  checkout is clean, its folder is committed as it stands, and the runner and reader are the files hashed at
-  registration (`record_conditions`). Otherwise `run_trial_of_record` refuses, in words that name each reason, or,
-  with `dry_run=True` (`--dry-run`), reads it as a **dry run**: judged and counted as a trial is, entered in the book
-  as `trial_dry_run`, with no sentence. Only a trial of record that passed has a sentence: the fresh reading's own
-  (as the claim gate writes it) with the trial's conditions as found, the folded form, the reworded set and where
-  its items stand, and the claim reading it follows. What a `passed` does not show: the fresh items are new
-  fillings of the frames a claim has already read, so the frames are not new to the edit; the reworded set is what
-  stands outside them, and the starter set in the source is published. `rejudge_trial` judges a trial again from
-  the lines its note names.
+  Verdicts: `passed`, `passed, matched by a cheaper knob` (every test of a pass met, and one of the brief's own
+  prompt arms moved the metric at least 0.95 times as far with a near-miss effect no worse than the edit's, in
+  size or as a share of its own effect, and no change to the weights), `failed`, `void` (`judge_readings`; the
+  folded form's mean and its largest item gap within one floor or 5% of the per-row form's and never more than half
+  the house bar).
+  `run_trial_of_record` asks all of the above again before anything is written, makes and writes to the result
+  folder, and only then enters the trial in the book; the seed of the draw is kept in `trial_seed.json` at once; and
+  a trial that is entered always gets a verdict note (whatever raises after that is written as `void` and raised
+  again). A trial is **of record** only when (`record_conditions`): its process had asked nothing of the model
+  through the kernel before it (`levelling.asked_in_process`: readings, captures and forwards); the checkout is one
+  git knows with nothing changed and nothing untracked (asked with untracked files always listed, whatever the
+  user's configuration) and no file git is told to overlook (`--assume-unchanged`, `--skip-worktree`); its folder
+  is, file for file and byte for byte, what the commit holds (read with `git cat-file`); the runner and reader are
+  the files hashed at registration (every Python file of `backend/` and the two command lines); it is read in the
+  level book (`level_book.default_book_path`) and not a side book; and the seed of its draw was drawn, not handed
+  in. Otherwise it is refused, in words that name each reason, or, with `dry_run=True` (`--dry-run`), read as a
+  **dry run**: judged and counted as a trial is, entered in the book as `trial_dry_run`, with no sentence. Only a
+  trial of record that passed has a sentence: the fresh reading's own (as the claim gate writes it, without the two
+  sentences that are a claim's alone) with the trial's conditions as found, the small batch class beside the large
+  one, the folded form in both, the reworded set and where its items stand, the claim reading it follows, the
+  cheaper knob's own figure when one matched, and that it was read once in one book. What a `passed` does not show:
+  the fresh items are new fillings of the frames every fresh reading of the brief is drawn from, so where a claim
+  came first the frames are not new to the edit; the reworded set is what stands outside them, the starter set in
+  the source is published, and any set is as public as the commit that holds its registration folder. And what "of
+  record" does not show: each condition is looked at and none is a signature. The harness sees one book: a copy of
+  it, the book cut back to an earlier line, or another book the environment names as the level book would take the
+  same trial again. `rejudge_trial` judges a trial again from the lines its note names and returns every figure the
+  judgement was made from (`trial_figures`); a book typed by hand is refused in words, never by another error.
 - **The owner's export.** `export_lora_adapter` writes a llama.cpp LoRA `.gguf` and a `.manifest.json` to
   `$THEODOLITE_EXPORT_DIR`, else `~/.local/share/theodolite/exports`, or to a path given; any path inside a git
   checkout, `atlas_data/`, a registration folder or a session's folder is refused (it cannot know every folder a tool
   can write to). A term that scales or silences is compiled from the weights of the base served (`TargetBase`: a
   Gemma 4 GGUF, a checkpoint folder or this machine's cached checkpoint, the loaded model); terms that carry vectors
   and low-rank terms say when the base is not the edit's own. The licence and origin keys are the house's
-  (`export_lora.write_lora`); `theodolite.levelling.*` say what was checked: a trial's verdict only for that edit at
-  that dose, with its kind, the book line looked up and whether the base read is the base served; the implant label
-  (`weight_edits.implant_shape`, which looks at column and low-rank writes in the last tenth of the layers) as
-  `true`, `false`, `not checked` or `nothing in reach of the check`, worked at export when the model is at hand and
-  otherwise taken from the trial's registration; and of each tensor which half holds the change. Off the model an
-  edit is rebuilt from a registration or a saved edit and kept to its id (`edit_from_registration`,
-  `edit_from_saved`); a bare recipe is taken only where a model can gate it. `verify_exported_lora` sets a file beside
-  the edit's own arithmetic on the target (`term_change`), which does not go through the compiler that wrote it.
-  `ffn_gate` and `ffn_up` adapters are marked unverified in llama.cpp. `llama_server_smoke` is a smoke test (one
-  prompt, the adapter off and on), not a measurement.
+  (`export_lora.write_lora`); `theodolite.levelling.*` say what was checked, and how far. A trial's verdict, its
+  kind, its brief and its fresh reading's verdict are read from the trial's **book** (`trial_standing`): the result
+  file only says which registration and which book to look in, so one changed by hand changes nothing the adapter
+  says; the book must verify and hold the trial's verdict note for this edit at this dose, and when the registration
+  is given the book's readings are judged again first (`trial_judged_again`). The keys speak of the base the
+  adapter was compiled against, not of where it will run: `compiled_against_is_edit_base` says "yes" for the
+  whole base only when its weights id is the edit's (`TargetBase.standing`); touched linears that agree by their
+  pins, with no id to go by, are said to be that and no more; whether a trial applies to that base follows the
+  same rule; and `serving` says that llama.cpp serves a GGUF, so an adapter compiled against a checkpoint is
+  exact to weights it will not be served over (a warning says so too). `gate` says how the edit came to be exported: built and gated by the kernel on a loaded
+  model, or rebuilt off the model (`edit_from_registration`, `edit_from_saved`), where "kept to its id" shows only
+  that the terms are the id's, so such an edit must also meet the kernel's caps that need no weights
+  (`weight_edits.static_caps`) and be one a level book shows the kernel has read (`gate_evidence`; the key names the
+  line). The implant label (`weight_edits.implant_shape`, which looks at column and low-rank writes in the last
+  tenth of the layers and reads the unembedding in parts) is `true`, `false`, `not checked` or `nothing in reach of
+  the check`, or `false for the part in reach of the check` when some terms were out of it, worked at export when
+  the model is at hand and otherwise taken from the verified registration, for its edit at its dose alone. A bare recipe is taken only where a model can gate it. `verify_exported_lora` sets a
+  file beside the edit's own arithmetic on the target (`term_change`), which does not go through the compiler that
+  wrote it; each comparison is set against its own size (a small change is not shown by a file of noughts) and a
+  number that is not finite fails. `ffn_gate` and `ffn_up` adapters are marked unverified in llama.cpp.
+  `llama_server_smoke` is a smoke test (one prompt, the adapter off and on), not a measurement.
 - **A volunteer's re-run and its intake.** `make_rerun_kit` packs a registration that has been read at home (rebuilt
   edits only) with the home folder's sums and the seed of the home draw, so that `run_volunteer_rerun` reads the home
   trial's own items, into a book of its own, as a re-run and never of record. The kit carries the brief and the
   reworded set in clear. `intake_rerun_bundle` unpacks a plain tar of exactly four plain files, each under its cap and
-  checked before any is read, and judges the returned **book**, not the bundle's account of itself: it must be whole
-  and hold a re-run of this registration, its readings must be the registered edit on the registered base with the
-  home's control seeds and items, its note and its summary must be what its readings give under the home's code, and
-  its items are set beside the home's one by one. Outcomes: `rejected`, `disagreed`, `accepted` (`same_figures` or
-  `within_tolerance`). What it cannot show, and writes into its verdict: that the book was written by a run on the
-  model it names.
+  checked before any is read, and judges the returned **book**, not the bundle's account of itself: it must be whole,
+  with no line longer than a reading's (asked before any line is parsed), and hold a re-run of this registration;
+  its readings must be the home's (the registered edit on the registered base, the same plan to its last setting,
+  the same items, the same record of which item is which frame and half, the same checksum of the base); its note
+  and its summary must be what its readings give under the home's code; and every figure the judgement used is set
+  beside the home's, by name (each item's effect per-row and folded, each control edit's mean, the floors, the
+  reversed dose, the batteries, the prompt arms' figures as the note records them), a reworded figure within the
+  reworded reading's own floor. A tracked file changed
+  in the volunteer's checkout and a runner that was not the registered one are each rejected unless their own leave
+  is given (`allow_dirty`, `allow_other_runner`), and the verdict then names it; files git does not know there do
+  not count. Outcomes: `rejected`, `disagreed`, `accepted` (`same_figures` or `within_tolerance`). Nothing in a
+  bundle makes an intake raise. What it cannot show, and writes into its verdict: that the book was written by a
+  run on the model it names, and that its figures are that run's and not the home book's own lines copied into a
+  new book. A home book whose trial is out for re-run stays unpublished until the returns are in.
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
@@ -2324,13 +2376,19 @@ check's own readings (a reading's cost, not a bare forward's, which pilot 1 meas
 a written reading whose cache would pass 6 GiB.
 
 **The checks.** `scripts/check_levelling.py` (CPU, the GPU hidden, one thread, on the float32 six-layer stand-in and
-a packed bf16 one) holds the kernel to the spec across 16 sections (1,032/1,032 checks passing).
+a packed bf16 one) holds the kernel to the spec across 16 sections (1,037/1,037 checks passing; a ledger line that
+holds a number past a float's reach is named by every reader of the book, and none raises anything else for it).
 `scripts/check_level_door.py` (CPU stand-ins + live `bwrap` sandbox) verifies the no-card weights reader, extended
 sampled/thinking-on written readings and loop/cut-off detectors, `stack(doses=...)` and in-memory `_plant` repair,
 `bwrap` containment probes, Phase 2 session gates/budgets/blinding/transcripts (a planted session and a canary are
 priced alike, run with `lower="whole"`, scale their null rows at the edit's layer, are shown nothing measured of a
-reading's cost and are charged its price, and see their own lines of the book alone), stdio MCP protocol, CLI
-subcommands, and zero kept-out words (143/143 checks passing in 22 s).
+reading's cost and are charged its price, reply when twice their price says and not when the card was done,
+are refused nothing with a plant under an edit that the edit alone is not (16 terms, a set on the plant's own
+column, a factor at the cap, a control edit past a cap on size), and see their own lines of the book alone,
+without when they were written), stdio MCP protocol, CLI subcommands, and zero kept-out words (150/150 checks
+passing in 30 s).
+A planted session adds the plant's change to the driver's (`stack`): on the plant's own neurons it is not the
+edit on a model with the plant's weights (ROADMAP §viii).
 `scripts/check_level_claim.py` (CPU stand-ins) verifies Phase 3 briefs, canonical hashing/tamper checks, policy
 refusals, `FrameGenerator` disjointness/half balancing/anti-leakage, `house_bar`/`frame_statistics`/`control_standing`
 /`written_strata_summary`/`price_written_reading`, all planted-failure verdicts, 200 planted nulls calibration (0/200
@@ -2346,25 +2404,39 @@ kept-out words, and that a book with a damaged line still replays its whole line
 `scripts/check_lora_export.py`: 76/76 passing; `npm run build`: clean).
 `scripts/check_level_trial.py` (CPU: the packed bf16 stand-in, the float32 one, and a small Gemma 4 GGUF written
 for the purpose) holds Phase 5 to the above in 8 sections: the kernel's additions (`base_checksum` must notice a
-changed packed word, scale, embedding entry and plain weight; `implant_shape`); reworded sets (uses by wording, where
-the items stand); what registration refuses before it writes and what verification refuses (eleven ways a folder can
-be wrong); the judgement by planted cases (the folded tolerance and its cap, every `void`, the sentence's words); a
-trial read on the stand-in (refused when it would not be of record, a dry run, read once, counted beside claims, the
-claim gate's refusals, judged again from its book, and a trial of record read in a process and a repository of its
-own); the export (where it may go, every kind of term against the kernel's own change, a compiler that writes the
-wrong thing, what the keys say, an edit rebuilt off the model, no agent's reach); the re-run (the home items, and an
-intake faced with a bundle typed by hand, the home book handed back, a summary that is not its book's, another
-card's figures, odd JSON and unsafe tars); and zero kept-out words (189/189 checks passing in 23 s).
+changed packed word, scale, embedding entry, plain weight and a weight kept in a buffer a module does not save;
+`implant_shape`, read in parts); reworded sets (uses by an item's question or answer, where the items stand, practice
+by near wording); what registration refuses before it writes (a reading the kernel would refuse, a calibration note
+that does not follow from its readings) and what verification refuses (fourteen ways a folder can be wrong, three
+of them with its sums written again); the judgement by planted cases (the folded tolerance and its cap, an item that
+did not read, a floor too loud, a pass a cheaper knob matched, every `void`, the sentence's words); a trial read on
+the stand-in (refused when it would not be of record, a dry run, read once, counted beside claims, the claim gate's
+refusals, a trial only after a lead and at its dose, a prompt arm too long for an item, a verdict note whatever
+ends it, judged again from its book, the conditions of record against what a plain `git status` hides (a file git is
+told to overlook, an untracked file the configuration leaves out, Python git was told to ignore where the runner
+imports from), and a trial of record read whole: a repository of its own that
+holds the code as it stands, a level book of its own, the registration made by one process and committed, the trial
+read by another and refused a second time; then that trial's book written again with figures that would pass,
+judged by the same path, with the sentence and the sheet of record made from it, since no stand-in reads `passed`);
+the export (where it may go, every kind of term against the kernel's own change, compilers that write half the
+change, NaN, noughts, or all but one small column, what the keys say and that they come from the book, where an
+adapter can be served, an edit rebuilt off the model, no agent's reach); the re-run (the home items, and an intake faced with a bundle typed by hand, the home book handed
+back, a summary that is not its book's, another card's items, control edits that read otherwise or are other
+edits, another plan, other halves, another base, a home book that does not verify, words a file cannot hold, a book that holds a billion control edits or a number past a float's reach, a changed
+checkout and another runner with and without their leaves, odd JSON and unsafe tars); and zero kept-out words
+(277/277 checks passing in 47 s).
 On the 31B card (RTX 5090):
 - `scripts/verify_levelling.py` (1a, 16 November 2026, `verify_1a.json`): 142 of 145 standing lines passed in 13 min.
 - `scripts/verify_levelling_1b.py` (1b, 18 November 2026, `verify_1b.json`): 68 of 68 checks passed in 86.2 s, peak
   18.61 GiB, 0 unpacker fallbacks.
 - `scripts/verify_level_door.py` (no-card reader + sampled thinking-on written readings + Phase 2 door, 19 November
-  2026, `verify_door.json`): 37 of 37 checks passed in 101.0 s, peak 20.541 GiB (512-piece thinking-on pilot), 0 unpacker
+  2026, run again on 20 November 2026, `verify_door.json`): 38 of 38 checks passed in 81.9 s, peak 20.541 GiB (512-piece thinking-on pilot), 0 unpacker
   fallbacks, ledger whole (5 entries): 9/9 CPU `tensor_pin` and 9/9 `dense_cols`/`dense_rows` checks bit-identical to
   live GPU, 2×192 and 512-piece thinking-on sampled readings clean, full `bwrap` sandbox -> `capture` -> `cell` ->
   gated `read` -> `driver_view` -> transcript copy verified, and blinded planted vs canary sessions clean with zero
-  leakage and `assert_base` passing throughout.
+  leakage and `assert_base` passing throughout. The planted and the canary reading replied 1.700 s and 1.700 s
+  after they were asked (their price asked 1.700 s of both), where the card took 0.7066 s and 0.7032 s:
+  one reading each.
 - `scripts/verify_level_claim.py` (Phase 3 Claim Gate, 19 November 2026, `verify_claim.json`): 16 of 16 checks passed
   in 138.6 s, peak 18.710 GiB, 0 unpacker fallbacks, ledger whole (20 entries): `calibrate_bars` on `pronoun_pull`
   (layer 50, 10 cols, 3 controls) in 10.3 s; full `C = 39` fresh claim #1 on E6 layer-50 top-10 `'she'` neurons
@@ -2379,25 +2451,34 @@ On the 31B card (RTX 5090):
   table ran in 4.64 s (`small` odds `-1.853`, `large` odds `-1.817`, `0/3` matched controls, untouched rows identical,
   `base_after = True`), live Vault `DELETE` -> HTTP 409 -> `ROLLBACK` isolation verified, and model-free replay of both
   the live book and `verify_claim` confirmed.
-- `scripts/verify_level_trial.py` (Phase 5 on the 31B, 19 November 2026, `verify_trial.json` and
-  `verify_trial_book.jsonl`): 26 of 26 checks passed in 230.48 s, peak 18.542 GiB (the largest any reading recorded),
-  0 unpacker fallbacks, the book whole (12 entries). It is a **dry run** and says so: the script calibrates before
-  it reads and registers into a temporary folder, so the trial is refused as it stands (both reasons recorded) and
-  read with `dry_run=True`. No trial of record has been read on the 31B. On the E6 layer-50 'she' ten (39 control
-  edits a family, 16 fresh items, the starter reworded set with 19): `base_checksum` unchanged over 410 linears and
-  1,652 tensors (`acb0b5e917feb6d4`); fresh mean `-1.1297` (small) and `-1.1562` (large), 0 of 39 matched and 0 of
-  39 same-site control edits moving as much; the folded form the same bits on 16 of 16 items in both classes; the
-  reworded set `-1.9538` and `-1.9373`, 0 of 19; verdict **`failed`**, the fresh reading reading `kept the base` on
-  this draw (the small class's floor 0.2005, over a quarter of the least effect 0.75) with the near-miss harm there
-  too (0.92). The same edit read `works but harms` in the record this one replaces: the verdict turns on the draw
-  (ROADMAP §viii). Judged again from its book the trial gives its note's verdict; it is read once; the same edit
-  registered again is refused; bars made by hand are refused at registration. The export: an adapter of 1,080,000
+- `scripts/verify_level_trial.py` (Phase 5 on the 31B, 20 November 2026, 02:14Z, at commit `bdcf9a3` from a clean
+  checkout; `verify_trial.json` and `verify_trial_book.jsonl`): 32 of 32 checks passed in 235.71 s, peak 18.542 GiB
+  (the largest any reading recorded), 0 unpacker fallbacks, the book whole (12 entries). It is a **dry run** and says
+  so: the script calibrates before it reads, registers into a temporary folder and reads in a book of its own, so the
+  trial is refused as it stands (three reasons recorded: a process that had already read, a folder in no commit, a
+  side book) and read with `dry_run=True`. No trial of record has been read on the 31B. The calibration note follows
+  from its three readings, and moved no bar: all four are the least a bar can be. The registration priced the trial's
+  readings at 69 s and they took 108 s. On the E6 layer-50 'she' ten (39 control edits a family, 16 fresh items, the
+  starter reworded set with 19): `base_checksum` unchanged over 410 linears and 1,652 tensors (`acb0b5e917feb6d4`);
+  fresh mean `-1.2935` (small) and `-1.2979` (large); of the 39 matched control edits 16 (small) and 17 (large)
+  delivered within a factor of 2 of the edit's when read (the edit `0.0114`, they a median of `0.0054`, `0.0037` to
+  `0.0136`), drawn from at least 60 eligible sites a neuron, and the rest are counted as moving as much; 0 of 39
+  same-site control edits moved as much; the author's prompt arm moved the metric `7.39` with a near-miss of `2.10`
+  (matched by: prompt arm 0); the folded form the same bits on 16 of 16 items in both classes; the reworded set
+  `-1.9538` and `-1.9373`, with 11 of its 19 control edits counted as moving as much (those that did not deliver as
+  the edit did among them); verdict **`failed`**, the fresh reading reading `kept the base` (the floor 0.2414 (small)
+  and 0.1366 (large) against a least effect of 0.75; its near-miss harm was 0.73). The same edit has read three ways
+  across draws, and a fourth since a trial counts its matched control edits by what they delivered (ROADMAP §viii).
+  Judged again from its book the trial gives its note's verdict, from 304 figures; it is read once; the same edit
+  registered again is refused; bars made by hand are refused at registration. The export: an adapter of 1,081,248
   bytes that is the edit on the loaded model (largest difference 0.0), the same numbers again off the model from the
-  cached checkpoint (shown to be the edit's base by its pins), keys `trial_kind: a dry run`, `implant_flagged:
-  nothing in reach of the check` (the edit is at layer 50; the check looks from layer 54). The re-run: this same card
-  re-running its own kit in the same process was `accepted`, `same_figures` (16 fresh and 8 reworded items a class,
-  largest difference 0.0), which shows that the kit carries the home items and that the intake reads books, and is
-  not another card's reading; a bundle typed by hand was `rejected`. No kit has been run on another card.
+  cached checkpoint (the same weights id, and every touched linear by its pin), keys read from the book and judged
+  again (`trial_kind: a dry run`, `trial_verdict: failed`; a result file changed by hand to say `passed` and of record
+  changed neither), a key and a warning that a checkpoint is not what llama.cpp serves, `implant_flagged: nothing in
+  reach of the check` (the edit is at layer 50; the check looks from layer 54). The re-run: this same card re-running
+  its own kit in the same process was `accepted`, `same_figures`, on all 304 figures (no leave given), which shows
+  that the kit carries the home items and that the intake reads books, and is not another card's reading; a bundle
+  typed by hand was `rejected`. No kit has been run on another card.
 
 **Not built:** attention, embedding and norm edits; a folded form for low-rank terms; Phase 6 driver evals; gradients.
 Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.
