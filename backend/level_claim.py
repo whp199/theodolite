@@ -666,8 +666,8 @@ def judge_claim(
                 if fam in req_families and not cs["passes_alpha"]:
                     any_ctl_fail = True
                     lost = (
-                        f"; {cs['non_finite']} of them gave no finite reading, or (a sham edit) did not move the "
-                        "stream as the edit did, and are counted as moving as much"
+                        f"; {cs['non_finite']} of them gave no finite reading, or did not change the stream as the "
+                        "edit did (a sham edit; in a trial a matched one too), and are counted as moving as much"
                         if cs["non_finite"] else ""
                     )
                     reasons.append(
