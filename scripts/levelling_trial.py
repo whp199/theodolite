@@ -14,17 +14,21 @@
 with no `--from` it writes the starter set that stands in the instrument's source, which is for checks and dry runs.
 
 `register`: writes the registration folder. The bars must be those a calibration reading wrote into the book the trial
-will be read in (`scripts/levelling.py calibrate`; `--book`, else the level book). Nothing is entered in the book.
+will be read in (`scripts/levelling.py calibrate`; `--book`, else the level book), on this model's weights, and the
+calibration note must follow from that book's own readings. Every reading the trial will take is asked of the kernel
+with no forward, so no folder is written for a trial it would refuse. Nothing is entered in the book.
 
-`run`: reads the trial, once. It is of record only when this process has read nothing else (it is a new process),
-the checkout is clean, the folder is committed as it stands, and the runner and reader are the files hashed at
-registration; otherwise it is refused, in words that say which did not hold. `--dry-run` reads it all the same, as a
-dry run: judged and counted as a trial is, spending a fresh reading of the brief, and never a verdict of record. On
-the card it takes the card's lock and refuses while the page server answers.
+`run`: reads the trial, once. It is of record only when this process has asked nothing else of the model (it is a new
+process), the checkout is clean (nothing changed, nothing untracked, no file git is told to overlook), the folder is
+committed as it stands, the runner and reader are the files hashed at registration, and it is read in the level book
+(`--book` names a side book, and a trial read in one is not of record); otherwise it is refused, in words that say
+which did not hold. `--dry-run` reads it all the same, as a dry run: judged and counted as a trial is, spending a
+fresh reading of the brief, and never a verdict of record. On the card it takes the card's lock and refuses while the
+page server answers. "Read once" and the brief's budget are facts about the one book a trial is read in.
 
 With `--stand-in` (the float32 stand-in) or `--packed-stand-in` (the packed one, which has a folded form) the model is
-a small random one on the CPU and `--book` must be given: a stand-in's readings do not go into the level book. A
-trial on a stand-in shows that the plumbing runs; its figures mean nothing.
+a small random one on the CPU and `--book` must be given: a stand-in's readings do not go into the level book, so a
+trial on a stand-in is a dry run. It shows that the plumbing runs; its figures mean nothing.
 """
 from __future__ import annotations
 
@@ -135,7 +139,10 @@ def _refusals() -> Tuple[type, ...]:
     from backend import levelling as lv
     from backend import weight_edits as we
 
-    return (lt.TrialRefused, lcl.ClaimRefused, lbr.BriefError, we.Refused, lv.Refused, lb.BookBroken, OSError, ValueError)
+    # KeyError and TypeError: a registration or a recipe typed by hand that lacks a key or holds another kind of
+    # value ends in words here too. NotBase: the model was not the base when the command began.
+    return (lt.TrialRefused, lcl.ClaimRefused, lbr.BriefError, we.Refused, lv.Refused, we.NotBase, lb.BookBroken,
+            OSError, ValueError, KeyError, TypeError)
 
 
 def cmd_reworded(a: argparse.Namespace) -> int:
@@ -247,7 +254,8 @@ def cmd_verify(a: argparse.Namespace) -> int:
 
     try:
         v = lt.verify_registration(Path(a.prereg))
-        cond = lt.record_conditions(Path(a.prereg), v["trial"])
+        cond = lt.record_conditions(Path(a.prereg), v["trial"],
+                                    book=Path(a.book).expanduser() if a.book else lb.book_path())
         print(json.dumps({
             "ok": True,
             "prereg_dir": v["prereg_dir"],
@@ -289,8 +297,12 @@ def cmd_run(a: argparse.Namespace) -> int:
         )
         print(res["sheet"])
         return 0 if res["verdict"] != "void" else 1
-    except _refusals() as exc:
+    except lt.TrialRefused as exc:
         print(f"Refused: {exc}", file=sys.stderr)
+        return 2
+    except _refusals() as exc:
+        # anything else that ends a trial after it was entered in the book has left a void verdict note there
+        print(f"Refused, or ended on an error: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
 
 
@@ -334,6 +346,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     vf = sub.add_parser("verify", help="check a registration folder against itself, with no model")
     vf.add_argument("prereg", help="registration folder path")
+    vf.add_argument("--book", default=None, help="the book a run would read it in (the level book when not given)")
     vf.set_defaults(fn=cmd_verify)
 
     rn = sub.add_parser("run", help="read a registered trial, once")

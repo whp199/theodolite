@@ -51,6 +51,11 @@ VALID_BACKENDS = ("claude", "openai", "local", "script", "codex")
 CLAIM_DESIGN_KEYS = ("n_target", "n_neutral", "n_near", "n_panel", "rows", "written_rows", "controls_override",
                      "match_tolerance")
 PRACTICE_NOTE = "Practice door only: returns aggregates and ranks against control edits, no word past a rank."
+# A blinded session's model call replies no sooner than its price times this factor, and this many seconds over,
+# after it began (`Session._wait_out`): what a plant costs (about 0.6% of a reading's seconds on the 31B) is then not
+# in WHEN the reply comes, so long as the call took less than that. A call that took longer replies when it is done.
+BLIND_PAD_FACTOR = 1.25
+BLIND_PAD_OVER_S = 0.25
 
 
 class SessionRefused(ValueError):
@@ -547,6 +552,7 @@ class LevelSession:
     ) -> Dict[str, Any]:
         """Gated contrast-direction capture (`levelling.capture_direction`), persisted to `/work` with sha256."""
         self._check_open_and_wall()
+        t_in = time.perf_counter()
         if self._handle is None:
             raise SessionRefused("No model handle is bound to this session.")
         a_items = _as_item_list(items_a, self._handle.tokenizer, "items_a")
@@ -571,6 +577,7 @@ class LevelSession:
         elapsed = time.perf_counter() - t0
         if self._blinded:  # charged and shown its price, not its measured seconds (see `_unmeasured`)
             elapsed = float(est_s)
+            self._wait_out(t_in, float(est_s))
         self.forwards_used += n_fwd
         self.gpu_seconds_used += elapsed
 
@@ -597,6 +604,19 @@ class LevelSession:
         }
         self._log("capture", {k: v for k, v in out.items() if k != "remaining"})
         return out
+
+    def _wait_out(self, t_in: float, priced_s: float) -> None:
+        """In a blinded session, wait until a model call that began at `t_in` (`time.perf_counter`) and was priced
+        at `priced_s` may reply: `BLIND_PAD_FACTOR` times the price and `BLIND_PAD_OVER_S` after it began. The model
+        and the card's lock are let go before this is called, so nothing waits on the card. A driver that times its
+        own calls then sees the price, not what the plant added, for every call that took less than that; one that
+        took longer (a card under load, a plan the cost model prices low) replies as soon as it is done, and its
+        time is its own."""
+        if not self._blinded:
+            return
+        left = t_in + BLIND_PAD_FACTOR * max(0.0, float(priced_s)) + BLIND_PAD_OVER_S - time.perf_counter()
+        if left > 0.0:
+            time.sleep(left)
 
     @staticmethod
     def _unmeasured(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -660,6 +680,7 @@ class LevelSession:
         save_edit: bool = False,
     ) -> Dict[str, Any]:
         self._check_open_and_wall()
+        t_in = time.perf_counter()
         if self._handle is None:
             raise SessionRefused("No model handle is bound to this session.")
         if not isinstance(plan, Mapping):
@@ -728,6 +749,7 @@ class LevelSession:
             priced_s = float((result.get("seconds") or {}).get("predicted") or 0.0)
             actual_s = priced_s if result.get("status") != "refused" else 0.0
             redacted = self._unmeasured(redacted)
+            self._wait_out(t_in, actual_s)  # and its reply comes when its price says, not when the card was done
         # Count forwards actually executed (0 on refused; estimated/counted on ok or void)
         used_fwd = lv.forwards_taken(result)
         self.gpu_seconds_used += actual_s
@@ -791,6 +813,12 @@ class LevelSession:
             "prior_verdicts": [
                 {"reading_index": v.get("reading_index"), "edit_id": v.get("edit_id"), "verdict": v.get("verdict")}
                 for v in hist["verdicts"]
+            ],
+            # the trials that spent a fresh reading too (of record, a dry run, a re-run), so the count above adds up
+            "prior_trials": [
+                {"reading_index": t.get("reading_index"), "edit_id": t.get("edit_id"), "kind": t.get("kind"),
+                 "verdict": t.get("verdict")}
+                for t in lcl.prior_trials(hist)
             ],
         }
 

@@ -15,6 +15,9 @@ kept from a reader. `run` reads the kit into a book of its own (a re-run is neve
 a plain tar. `intake` judges the returned BOOK against the home book, both judged again by the home's code, and
 writes `intake_verdict.json`: rejected, disagreed, or accepted (same_figures or within_tolerance). `--book` is the
 book the home trial was read in (the level book when not given).
+
+What an intake cannot tell: a re-run from the home book's own lines copied into a new book. Keep the home book
+unpublished until the returns are in.
 """
 from __future__ import annotations
 
@@ -37,7 +40,7 @@ def _refusals() -> tuple:
     from backend import level_rerun as lr
     from backend import level_trial as lt
 
-    return (lr.RerunRefused, lt.TrialRefused, lb.BookBroken, OSError, ValueError)
+    return (lr.RerunRefused, lt.TrialRefused, lb.BookBroken, OSError, ValueError, KeyError, TypeError)
 
 
 def cmd_pack(a: argparse.Namespace) -> int:
@@ -107,7 +110,8 @@ def cmd_intake(a: argparse.Namespace) -> int:
     try:
         book = Path(a.book).expanduser() if a.book else lb.book_path()
         verdict = lr.intake_rerun_bundle(Path(a.bundle), Path(a.prereg), book, Path(a.out),
-                                         allow_dirty=bool(a.allow_dirty))
+                                         allow_dirty=bool(a.allow_dirty),
+                                         allow_other_runner=bool(a.allow_other_runner))
         print(json.dumps(verdict, indent=2))
         return 0 if verdict["outcome"] == "accepted" else 1
     except _refusals() as exc:
@@ -144,7 +148,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ik.add_argument("--book", default=None, help="the book the home trial was read in (the level book when not given)")
     ik.add_argument("--out", required=True, help="a fresh, empty staging folder")
     ik.add_argument("--allow-dirty", action="store_true",
-                    help="take a re-run from a checkout with changes, or with another runner (checks and dry runs)")
+                    help="take a re-run whose checkout had a tracked file changed (the verdict says leave was given)")
+    ik.add_argument("--allow-other-runner", action="store_true",
+                    help="take a re-run whose runner or reader was not the one registered (the verdict says so)")
     ik.set_defaults(fn=cmd_intake)
 
     args = ap.parse_args(argv)

@@ -1096,7 +1096,7 @@ def _neurons(s: TermSpec) -> List[int]:
 
 
 def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weights_id: Optional[str], note: str,
-              caps: bool = True) -> Edit:
+              caps: bool = True, sized: bool = True) -> Edit:
     """The gate. The tests run in the order of the table of refusals, each over every term before the next, so that
     an input that breaks two rules is told the earlier one. Nothing is installed and nothing is written here.
     `caps` false is a control edit met again (loaded, or handed to a reading): it is let past ONE cap, a column's or
@@ -1365,12 +1365,15 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
                 j = int(over[0])
                 raise Refused(_SAY_REL.format(n=int(c["idx"][j]), L=c["layer"], L1=c["layer"] + 1,
                                               x=float(c["rel"][j]), cap=MAX_REL_CHANGE))
-    for name, c in cols.items():
+    # `sized` false is a whole the harness made of a plant and an edit (`stack(plant_first=True)`), each of which
+    # met these tests alone: the whole is not asked them again, or what a planted session refuses would say where
+    # its plant is (an edit of 16 terms that leaves the plant's linear alone would be 17 with it)
+    for name, c in cols.items() if sized else ():
         f0 = float(c["factor"][0])
         every, alike = len(c["idx"]) == shape[name][1], bool((c["factor"] == c["factor"][0]).all())
         if every and alike and f0 > 0 and not c["op"].any():
             raise Refused(_SAY_UNIFORM.format(L=c["layer"], f=f0))
-    for name, c in rows_m.items():
+    for name, c in rows_m.items() if sized else ():
         if c["which"] == "up_proj":
             f0 = float(c["factor"][0])
             every, alike = len(c["idx"]) == shape[name][0], bool((c["factor"] == c["factor"][0]).all())
@@ -1378,19 +1381,19 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
                 raise Refused(_SAY_UNIFORM_UP.format(L=c["layer"], f=f0))
     low_names = sorted({name for _s, name, _L in low})
     n_terms = len(cols) + len(rows_m) + len(low_names)
-    if n_terms > MAX_TERMS:
+    if sized and n_terms > MAX_TERMS:
         raise Refused(_SAY_CAP.format(cap=MAX_TERMS, what="terms", k=n_terms))
-    for c in cols.values():
+    for c in cols.values() if sized else ():
         if len(c["idx"]) > MAX_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_COLUMNS, what="columns a term", k=len(c["idx"])))
-    for c in rows_m.values():
+    for c in rows_m.values() if sized else ():
         if len(c["idx"]) > MAX_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_COLUMNS, what="rows a term", k=len(c["idx"])))
-    for c in cols.values():
+    for c in cols.values() if sized else ():
         if int((c["op"] != 0).sum()) > MAX_VECTOR_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what="set or added columns a term",
                                           k=int((c["op"] != 0).sum())))
-    for c in rows_m.values():
+    for c in rows_m.values() if sized else ():
         if int((c["op"] != 0).sum()) > MAX_VECTOR_COLUMNS:
             raise Refused(_SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what="set or added rows a term",
                                           k=int((c["op"] != 0).sum())))
@@ -1408,17 +1411,17 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
         A = np.concatenate([low_ab[i][0] for _a, _b, i in parts], axis=0) + np.float32(0.0)
         B = np.concatenate([low_ab[i][1] for _a, _b, i in parts], axis=1) + np.float32(0.0)
         lows[name] = {"layer": _parse(name)[0], "A": A, "B": B}
-    for name, c in lows.items():
+    for name, c in lows.items() if sized else ():
         if c["A"].shape[0] > MAX_RANK:
             raise Refused(_SAY_RANK.format(cap=MAX_RANK, r=int(c["A"].shape[0])))
-    for name, c in lows.items():
+    for name, c in lows.items() if sized else ():
         x = _bound(mods[name], c["A"], c["B"])
         if not x <= MAX_REL_CHANGE:
             raise Refused(_SAY_BOUND.format(name=name, x=x, cap=MAX_REL_CHANGE))
     carried = sum(c["vectors"].nbytes for c in cols.values() if c["vectors"] is not None)
     carried += sum(c["vectors"].nbytes for c in rows_m.values() if c["vectors"] is not None)
     carried += sum(c["A"].nbytes + c["B"].nbytes for c in lows.values())
-    if carried > MAX_PAYLOAD_BYTES:
+    if sized and carried > MAX_PAYLOAD_BYTES:
         raise Refused(_SAY_BYTES.format(mb=carried / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20))
     touched = sorted(set(cols) | set(rows_m) | set(lows))
     pins = {name: _pin(mods[name], name) for name in touched}
@@ -1590,6 +1593,73 @@ def _carry_info_report(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
     parents = src.get("parents")
     if isinstance(parents, list) and all(isinstance(x, str) for x in parents):
         dest["parents"] = list(parents)
+
+
+def static_caps(edit: Edit) -> Optional[str]:
+    """The gate's refusals that need no weights, asked of an edit put together with no model at hand (an export off
+    the model): None when all hold, else why not, in the gate's words. The caps on an edit's size (terms, columns or
+    rows a term, set or added ones, rank, bytes carried); factors, vectors and low-rank pairs that are finite, and
+    factors within the cap on one; a kind of term this kernel builds, on a linear that takes it; no neuron named
+    twice. What cannot be asked without the weights, and so is not: how far a column, a row or a low-rank term moves
+    its linear (`MAX_REL_CHANGE`), whether a scaling of every column is the no-op the norm undoes, and whether a
+    neuron exists."""
+    try:
+        low_names = {t.linear for t in edit.terms if t.kind == "lowrank"}
+        n_terms = sum(1 for t in edit.terms if t.kind in ("cols", "rows")) + len(low_names)
+        if n_terms > MAX_TERMS:
+            return _SAY_CAP.format(cap=MAX_TERMS, what="terms", k=n_terms)
+        seen: Dict[Tuple[str, str], set] = {}
+        carried = 0
+        for t in edit.terms:
+            if t.kind in ("cols", "rows"):
+                what = "columns" if t.kind == "cols" else "rows"
+                if t.kind == "cols" and t.which != "down_proj":
+                    return _SAY_COLS_WHICH.format(name=t.linear)
+                if t.kind == "rows" and t.which not in ("gate_proj", "up_proj"):
+                    return _SAY_ROWS_WHICH.format(name=t.linear)
+                idx, op, f = np.asarray(t.idx), np.asarray(t.op), np.asarray(t.factor, dtype=np.float64)
+                if idx.ndim != 1 or idx.size == 0 or not (len(idx) == len(op) == len(f)):
+                    return _SAY_NO_COLUMN
+                if len(idx) > MAX_COLUMNS:
+                    return _SAY_CAP.format(cap=MAX_COLUMNS, what=f"{what} a term", k=len(idx))
+                if int((op != 0).sum()) > MAX_VECTOR_COLUMNS:
+                    return _SAY_CAP.format(cap=MAX_VECTOR_COLUMNS, what=f"set or added {what} a term",
+                                           k=int((op != 0).sum()))
+                if int(op.max(initial=0)) >= len(OPS):
+                    return f"A term on {t.linear} holds an operation this kernel does not know."
+                if not np.isfinite(f).all():
+                    return _SAY_NOT_FINITE.format(where=f"a factor on {t.linear}")
+                if (np.abs(f) > MAX_FACTOR).any():
+                    return _SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0]))
+                if (op != 0).any() and t.vectors is None:
+                    return f"A term on {t.linear} sets or adds {what} and carries no vectors."
+                if t.vectors is not None:
+                    if not np.isfinite(np.asarray(t.vectors)).all():
+                        return _SAY_NOT_FINITE.format(where=f"a vector on {t.linear}")
+                    carried += int(np.asarray(t.vectors).nbytes)
+                named = {int(n) for n in idx.tolist()}
+                was = seen.setdefault((t.linear, t.kind), set())
+                if len(named) != len(idx) or was & named:
+                    return f"A neuron of {t.linear} is named twice in this edit: one change a {what[:-1]}."
+                was |= named
+            elif t.kind == "lowrank":
+                if t.which != "down_proj":
+                    return f"A low-rank term on {t.linear} is not one this kernel builds: it takes a down_proj."
+                A, B = np.asarray(t.A), np.asarray(t.B)
+                if A.ndim != 2 or B.ndim != 2 or A.shape[0] != B.shape[1]:
+                    return f"The low-rank term on {t.linear} is not a pair A [rank, in], B [out, rank]."
+                if A.shape[0] > MAX_RANK:
+                    return _SAY_RANK.format(cap=MAX_RANK, r=int(A.shape[0]))
+                if not (np.isfinite(A).all() and np.isfinite(B).all()):
+                    return _SAY_NOT_FINITE.format(where=f"the low-rank term on {t.linear}")
+                carried += int(A.nbytes + B.nbytes)
+            else:
+                return f"A term of kind {t.kind!r} is not one this kernel builds."
+        if carried > MAX_PAYLOAD_BYTES:
+            return _SAY_BYTES.format(mb=carried / 2**20, cap_mb=MAX_PAYLOAD_BYTES / 2**20)
+    except (AttributeError, TypeError, ValueError) as exc:
+        return f"The edit is not laid out as an edit's terms are ({type(exc).__name__})."
+    return None
 
 
 def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional[str]) -> Edit:
@@ -2159,12 +2229,19 @@ def stack(
     note: str = "",
     doses: Optional[Sequence[float]] = None,
     caps: bool = True,
+    plant_first: bool = False,
 ) -> Edit:
     """Compose a sequence of edits on the same base by adding their weight deltas (`W + sum_k d_k * Delta_k`). Two
     scalings on the same column or row add as `f1 + f2 - 1` (the additive delta rule); two `add` vectors sum;
     `scale` + `add` lowers to an `add`; `set` + `add` or `set` + `scale` stays a `set`; two `set`s on the same index
     are refused. Low-rank terms on the same linear concatenate along rank. The composed edit passes through the gate
-    and carries its parents' ids in `report["parents"]`."""
+    and carries its parents' ids in `report["parents"]`.
+
+    `plant_first`: the first edit is a plant lying under the rest (a blinded session's, `levelling._Sitting`), and the
+    whole must be refused nothing that the rest alone is not, or a refusal would say where the plant is. So the whole
+    is not asked the caps on one edit's size again (each part met them alone), and where both set one column or row the
+    later edit's set stands. The deltas still add: an edit that scales a neuron the plant scaled gives `f1 + f2 - 1`,
+    not `f1 * f2`, so on the plant's own neurons the whole is not yet the edit on a model with those weights."""
     edits = list(edits)
     if not edits:
         raise Refused("stack requires at least one edit.")
@@ -2229,6 +2306,9 @@ def stack(
                     continue
                 op1, f1, v1 = bucket[n]
                 if op1 == 1 and op2 == 1:
+                    if plant_first:  # the later edit replaces what the plant set: no refusal names the plant's neuron
+                        bucket[n] = (1, 1.0, v2)
+                        continue
                     raise Refused(f"Cannot stack two edits that both set neuron {n} of {t.linear} "
                                   f"(page layer {t.layer + 1}).")
                 if op1 == 0 and op2 == 0:
@@ -2268,7 +2348,7 @@ def stack(
                 vs = np.stack([v.astype(np.float32) for _n, _f, v in by_op[code]], axis=0)
                 specs.append(TermSpec(kind, layer, which, ns, opname, vectors=vs))
     specs.extend(low_specs)
-    out = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=note, caps=caps)
+    out = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=note, caps=caps, sized=not plant_first)
     out.report["parents"] = [e.id for e in checked]
     return out
 
@@ -2864,6 +2944,9 @@ def edit_provenance(edit: Edit, *, saved_dir: Optional[Path] = None) -> Dict[str
 
 
 IMPLANT_COSINE = 0.85  # a write this close to one unembedding row is called the shape of a single-piece implant
+IMPLANT_CHUNK = 16384  # rows of the unembedding read at a time by the implant label: the 31B's table is never copied whole
+# where this house's linears keep weights that `Module.state_dict` does not hold (`base_checksum` hashes these too)
+_WEIGHT_ATTRS = ("weight_packed", "weight_scale", "weight_blocks", "int4_packed", "int4_scales_zeros")
 
 
 def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float = 1.0) -> Dict[str, Any]:
@@ -2880,12 +2963,27 @@ def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float =
     in reach, not that the edit is clear."""
     n_layers = len(lm.layers)
     late_cut = max(0, int(math.floor(0.9 * n_layers)))
-    wu = W_U.detach().float().cpu()  # [V, D]
-    wu_norms = torch.linalg.norm(wu, dim=1).clamp_min(1e-8)
     d = float(dose)
     hits: List[Dict[str, Any]] = []
     not_examined: List[str] = []
     examined = 0
+
+    def nearest(v: torch.Tensor) -> Tuple[int, float, Optional[float]]:
+        """The unembedding row nearest `v` by cosine, its cosine, and the next row's size of cosine: read
+        `IMPLANT_CHUNK` rows at a time on the CPU, so the 31B's table (262,144 by 5,376) is never copied whole."""
+        v = v.float().cpu()
+        vn = float(torch.linalg.norm(v))
+        best: List[Tuple[float, int, float]] = []
+        step = max(1, int(IMPLANT_CHUNK))
+        for at in range(0, int(W_U.shape[0]), step):
+            part = W_U[at:at + step].detach().float().cpu()
+            dots = (part @ v) / (torch.linalg.norm(part, dim=1).clamp_min(1e-8) * vn)
+            top = torch.topk(dots.abs(), k=min(2, int(dots.shape[0])))
+            best += [(float(top.values[k]), at + int(top.indices[k]), float(dots[int(top.indices[k])]))
+                     for k in range(int(top.values.shape[0]))]
+        best.sort(reverse=True)
+        return best[0][1], best[0][2], (best[1][0] if len(best) > 1 else None)
+
     for t in edit.terms:
         if t.which != "down_proj":
             not_examined.append(f"{t.linear} ({t.kind}): a row term changes what a neuron reads and writes nothing "
@@ -2910,18 +3008,14 @@ def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float =
         dS = torch.from_numpy((delta * w_post[None, :]).astype(np.float32))
         for j in range(dS.shape[0]):
             v = dS[j]
-            vn = float(torch.linalg.norm(v))
-            if vn <= 1e-8:
+            if float(torch.linalg.norm(v)) <= 1e-8:
                 continue
             examined += 1
-            dots = (wu @ v) / (wu_norms * vn)
-            top = torch.topk(dots.abs(), k=min(2, int(dots.shape[0])))
-            top_idx = int(top.indices[0])
-            top_cos = float(dots[top_idx])
+            top_idx, top_cos, next_cos = nearest(v)
             if abs(top_cos) >= IMPLANT_COSINE:
                 hits.append({"layer": int(t.layer), "page_layer": int(t.layer) + 1, "what": names[j],
                              "top_piece_id": top_idx, "top_cosine": round(top_cos, 4),
-                             "next_cosine": round(float(top.values[1]), 4) if int(top.values.shape[0]) > 1 else None})
+                             "next_cosine": round(next_cos, 4) if next_cos is not None else None})
     return {"checked": True, "flagged": bool(hits), "late_layer_cutoff": late_cut, "cosine_bar": IMPLANT_COSINE,
             "examined": examined, "not_examined": not_examined, "hits": hits[:16]}
 
@@ -2939,8 +3033,10 @@ def base_checksum(
     model changed in between.
 
     `linears_checked` counts the linears among what was hashed (packed, or plain with a weight of two dimensions),
-    `tensors_checked` every tensor. A buffer a module does not save (a cache it may fill as it runs) is left out: it
-    is not the model. With `names`, only the modules so named."""
+    `tensors_checked` every tensor. A buffer a module does not save is left out (a cache it may fill as it runs is
+    not the model), but for the weights this house's own linears keep in such buffers or in plain attributes
+    (`_WEIGHT_ATTRS`: a W4A16 linear's words and scales, a GGUF linear's blocks, an int4 linear's packed words). With
+    `names`, only the modules so named."""
     assert_base(lm, hooks_at_load)
     h_all = hashlib.sha256()
     linears = tensors = 0
@@ -2956,13 +3052,14 @@ def base_checksum(
         for key, t in mod._buffers.items():
             if isinstance(t, torch.Tensor) and key not in unsaved:
                 store[key] = t
-        for key in ("weight_packed", "weight_scale"):  # a packed linear's own, however the module keeps them
+        for key in _WEIGHT_ATTRS:  # a packed linear's own, however the module keeps them
             t = getattr(mod, key, None)
             if isinstance(t, torch.Tensor):
                 store[key] = t
         if not store:
             continue
-        packed = "weight_packed" in store and "weight_scale" in store
+        packed = ("weight_packed" in store and "weight_scale" in store) or "weight_blocks" in store \
+            or "int4_packed" in store
         w = store.get("weight")
         if packed or (isinstance(mod, nn.Linear) and isinstance(w, torch.Tensor) and w.dim() == 2):
             linears += 1

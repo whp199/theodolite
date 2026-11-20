@@ -527,6 +527,7 @@ def build_replay_card(
             base_card["folded_summary"] = body.get("folded")
             base_card["reworded_summary"] = body.get("reworded")
             base_card["trial_sha256"] = body.get("trial_sha256")
+            base_card["cheaper_knob"] = body.get("cheaper_knob")  # the arm that matched a pass, with its figure
         elif nt == "trial_registration":
             base_card["status"] = "registered"
             base_card["name"] = f'register trial · {body.get("trial_name") or body.get("brief_name")}'

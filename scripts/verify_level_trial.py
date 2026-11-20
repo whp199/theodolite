@@ -18,10 +18,12 @@ On `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens freed, server s
    registered again is refused; the brief's history counts it as a fresh reading. Its verdict is recorded, not asked
    for: this brief's known answer has read more than one way across draws (ROADMAP §viii).
 4. The export: the adapter of the trial's edit against the loaded model and, off the model, against this machine's
-   cached checkpoint; each shown to be the edit on its base (`verify_exported_lora`), with what its keys say.
-5. The re-run: a kit of the dry run, read by this same card in this same process, and its intake from the two books.
-   Equal figures here show that the kit carries the home items and that the intake reads books; they are not another
-   card's. A bundle typed by hand is rejected.
+   cached checkpoint; each shown to be the edit on its base (`verify_exported_lora`), with what its keys say. The
+   trial's verdict in them is read from the book and judged again with the registration.
+5. The re-run: a kit of the dry run, read by this same card in this same process, and its intake from the two books,
+   figure by figure. Equal figures here show that the kit carries the home items and that the intake reads books;
+   they are not another card's. The intake is given leave for a changed checkout only when this checkout has a
+   tracked file changed (the record says which). A bundle typed by hand is rejected.
 
 Outputs (written at the end, so the checkout is not changed while the trial reads):
 - `experiments/results/levelling/verify_trial.json`
@@ -141,8 +143,11 @@ def main() -> int:
             seed=2026, book_path=book,
         )
         cal_s = round(time.perf_counter() - t_cal, 2)
-        check("bars_calibrated", lcl.calibration_note(bars, book) is not None,
-              {"seconds": cal_s, "bars_sha256": bars.short()})
+        cal_note = lcl.calibration_note(bars, book)
+        check("bars_calibrated", cal_note is not None, {"seconds": cal_s, "bars_sha256": bars.short()})
+        follows = lcl.calibration_follows(cal_note, book, brief, bars) if cal_note is not None else "no note"
+        check("calibration_follows_from_its_readings_31b", follows is None,
+              {"why_not": follows, "settings": (cal_note or {}).get("settings"), "readings": (cal_note or {}).get("book_seqs")})
 
         # 2. the registration
         edit = we.build(h.lm, [we.silence(50, E6_L50_SHE10)], model_id=h.model_id, weights_id=h.weights_id,
@@ -155,7 +160,8 @@ def main() -> int:
         check("registration_verified",
               v_reg["ok"] and v_reg["trial"]["edit_provenance"] == "rebuilt" and v_reg["trial_sha256"] == reg["trial_sha256"],
               {"trial_sha256": reg["trial_sha256"][:16], "files": reg["files"],
-               "reworded": reg["trial"]["reworded_origin"], "implant_check": reg["trial"]["implant_check"]})
+               "reworded": reg["trial"]["reworded_origin"], "implant_check": reg["trial"]["implant_check"],
+               "priced": reg["trial"]["priced"], "source_files_hashed": len(reg["trial"]["sources"])})
         hand = lcl.make_bar_set(brief.id, near_miss_abs_max=2.0, near_miss_ratio_max=1.0)
         got_hand = None
         try:
@@ -182,8 +188,9 @@ def main() -> int:
         tr_s = round(time.perf_counter() - t_tr, 2)
         print("\n" + t_res["sheet"] + "\n", flush=True)
         meta = t_res["meta"]
-        check("trial_not_void", t_res["verdict"] in ("passed", "failed"),
-              {"verdict": t_res["verdict"], "fresh_verdict": t_res["fresh_verdict"], "seconds": tr_s})
+        check("trial_not_void", t_res["verdict"] in lt.PASSED + ("failed",),
+              {"verdict": t_res["verdict"], "fresh_verdict": t_res["fresh_verdict"], "seconds": tr_s,
+               "priced_seconds": reg["trial"]["priced"]["seconds"], "cheaper_knob": t_res["fresh_judged"].get("cheaper_knobs", {}).get("matched_by")})
         check("it_is_a_dry_run_and_says_so",
               t_res["of_record"] is False and t_res["claim_sentence"] is None
               and t_res["sheet"].startswith("=== DRY RUN OF A TRIAL (not of record)") and len(t_res["not_of_record"]) >= 1,
@@ -218,7 +225,14 @@ def main() -> int:
         check("judged_again_from_its_book", rj["as_noted"] and rj["verdict"] == t_res["verdict"],
               {"verdict": rj["verdict"], "noted": rj["noted_verdict"], "items": len(rj["items"]["target"].get("large", {}))})
         check("seed_in_the_result_not_in_the_book",
-              len(t_res["seed_hex"]) == 64 and t_res["seed_hex"] not in book.read_text(), None)
+              len(t_res["seed_hex"]) == 64 and t_res["seed_hex"] not in book.read_text()
+              and json.loads((tmp / "trial_out" / "trial_seed.json").read_text())["seed_hex"] == t_res["seed_hex"],
+              "and kept in a file of its own from the draw on")
+        check("unpacker_fallbacks_counted_31b", meta["unpacker_fallbacks"] == 0 and "unpacker fallbacks 0" in t_res["sheet"],
+              {"unpacker_fallbacks": meta["unpacker_fallbacks"]})
+        check("every_figure_of_the_judgement_31b", len(rj["figures"]) > 200,
+              {"figures": len(rj["figures"]),
+               "controls_small": sum(1 for k in rj["figures"] if k.startswith("target:small:control:"))})
 
         def refused(fn: Any) -> str:
             try:
@@ -248,15 +262,16 @@ def main() -> int:
         # 4. the export: against the loaded model, and off the model against the cached checkpoint
         print("\nStep 3: the export, against the loaded model and against the cached checkpoint...", flush=True)
         t_exp = time.perf_counter()
-        target_31b = lex.TargetBase(lm=h.lm, label=f"{h.model_id} ({h.weights_id[:16]})")
+        target_31b = lex.TargetBase(lm=h.lm, label=f"{h.model_id} ({h.weights_id[:16]})", weights_id=h.weights_id)
         exp_out = lex.export_lora_adapter(
             edit, target_31b, out_path=tmp / "exports" / "e6_l50_she10_31b.gguf", dose=1.0, trial_result=t_res,
-            lm_for_implant=h.lm, W_U_for_implant=h.W_U,
+            registration=v_reg, lm_for_implant=h.lm, W_U_for_implant=h.W_U,
         )
         ver_exp = lex.verify_exported_lora(Path(exp_out["gguf_path"]), edit=edit, target=target_31b, dose=1.0)
         keys = el.read_lora(Path(exp_out["gguf_path"]))[1]
         said = {k.split("levelling.")[1]: keys[k] for k in sorted(keys) if k.startswith("theodolite.levelling.")
-                and any(s in k for s in ("trial_verdict", "trial_kind", "applies_to", "implant", "served_base_is", ".book"))}
+                and any(s in k for s in ("trial_verdict", "trial_fresh", "trial_kind", "trial_brief", "trial_judged",
+                                         "applies_to", "implant", "served_base_is", ".book", ".gate"))}
         exp_s = round(time.perf_counter() - t_exp, 2)
         check("export_is_the_edit_on_the_model",
               ver_exp["ok"] and (ver_exp["max_abs_err"] or 0.0) < 1e-4 and exp_out["recompiled_from_recipe"] is True
@@ -264,8 +279,21 @@ def main() -> int:
               {"seconds": exp_s, "gguf_bytes": exp_out["gguf_bytes"], "max_abs_err": ver_exp["max_abs_err"]})
         check("export_keys_say_what_was_checked",
               said.get("trial_verdict") == t_res["verdict"] and said.get("trial_kind") == "a dry run"
+              and said.get("trial_fresh_verdict") == t_res["fresh_verdict"] and said.get("trial_brief") == brief.name
+              and str(said.get("trial_judged_again", "")).startswith("yes")
               and str(said.get("trial_applies_to_served_base", "")).startswith("yes")
+              and str(said.get("served_base_is_edit_base", "")).startswith("yes: the same weights id")
+              and str(said.get("gate", "")).startswith("built and gated")
               and said.get("implant_flagged") in ("true", "false", "nothing in reach of the check"), said)
+        said_more = {**t_res, "verdict": "passed", "of_record": True}
+        out_more = lex.export_lora_adapter(edit, target_31b, out_path=tmp / "exports" / "said_more.gguf", trial_result=said_more,
+                                           registration=v_reg)
+        keys_more = el.read_lora(Path(out_more["gguf_path"]))[1]
+        check("a_result_file_changed_by_hand_is_not_taken_at_its_word",
+              keys_more["theodolite.levelling.trial_verdict"] == t_res["verdict"]
+              and keys_more["theodolite.levelling.trial_kind"] == "a dry run",
+              {"file_said": "passed, of record", "adapter_says": [keys_more["theodolite.levelling.trial_verdict"],
+                                                                  keys_more["theodolite.levelling.trial_kind"]]})
         wrong = ""
         try:
             lex.export_lora_adapter(
@@ -280,18 +308,25 @@ def main() -> int:
             target_ck = lex.TargetBase.default_checkpoint()
             edit_off = lex.edit_from_registration(v_reg["edit_manifest"])
             out_off = lex.export_lora_adapter(edit_off, target_ck, out_path=tmp / "exports" / "e6_l50_she10_checkpoint.gguf",
-                                              trial_result=t_res, implant_at_registration=v_reg["trial"]["implant_check"])
+                                              trial_result=t_res, registration=v_reg)
             ver_off = lex.verify_exported_lora(Path(out_off["gguf_path"]), edit=edit_off, target=target_ck)
             t_a, t_b = el.read_lora(Path(out_off["gguf_path"]))[0], el.read_lora(Path(exp_out["gguf_path"]))[0]
             same_file = set(t_a) == set(t_b) and all(
                 np.array_equal(t_a[k][0], t_b[k][0]) and np.array_equal(t_a[k][1], t_b[k][1]) for k in t_a)
-            off = {"ran": True, "ok": ver_off["ok"], "max_abs_err": ver_off["max_abs_err"], "edit_id_kept": edit_off.id == edit.id,
-                   "base_is_edit_base": out_off["served_base_is_edit_base"], "implant": out_off["implant_check"].get("checked_at"),
+            keys_off = el.read_lora(Path(out_off["gguf_path"]))[1]
+            off = {"ran": True, "ok": ver_off["ok"], "max_abs_err": ver_off["max_abs_err"], "max_rel_err": ver_off["max_rel_err"],
+                   "edit_id_kept": edit_off.id == edit.id,
+                   "base_is_edit_base": out_off["served_base_is_edit_base"],
+                   "whole_base": out_off["manifest"]["served_base"]["whole_base_is_the_edits"],
+                   "served_base_words": keys_off["theodolite.levelling.served_base_is_edit_base"],
+                   "gate": keys_off["theodolite.levelling.gate"],
+                   "implant": out_off["implant_check"].get("checked_at"),
                    "same_numbers_as_the_model_export": same_file, "seconds": round(time.perf_counter() - t_off, 2)}
         except lex.ExportRefused as exc:
             off = {"ran": False, "why": str(exc)[:200]}
         check("export_off_the_model_from_the_cached_checkpoint",
-              off.get("ran") and off.get("ok") and off.get("edit_id_kept") and off.get("base_is_edit_base") is True, off)
+              off.get("ran") and off.get("ok") and off.get("edit_id_kept") and off.get("base_is_edit_base") is True
+              and off.get("whole_base") is True and str(off.get("gate", "")).startswith("rebuilt off the model"), off)
 
         # 5. a kit of the dry run, read by this same card, and its intake from the two books
         print("\nStep 4: the kit, read by this same card, and the intake from the two books...", flush=True)
@@ -300,13 +335,20 @@ def main() -> int:
         lr.make_rerun_kit(prereg_dir, kit_dir, t_res)
         vol_tar = tmp / "vol_31b.tar"
         vol = lr.run_volunteer_rerun(h, kit_dir, vol_tar, volunteer_name="the_home_card_itself", work_dir=tmp / "vol_work")
-        intake_res = lr.intake_rerun_bundle(vol_tar, prereg_dir, book, tmp / "intake_stage", allow_dirty=True)
+        # leave for a changed checkout is given only when this checkout has a tracked file changed, and the record says
+        tracked_now = lt.checkout_changes(ROOT_DIR, tracked_only=True)
+        leave = bool(tracked_now) or tracked_now is None or bool(lt.hidden_from_status(ROOT_DIR))
+        intake_res = lr.intake_rerun_bundle(vol_tar, prereg_dir, book, tmp / "intake_stage", allow_dirty=leave)
         rr_s = round(time.perf_counter() - t_rr, 2)
         check("same_card_rerun_reads_the_home_items",
               intake_res["outcome"] == "accepted" and intake_res["match_class"] == "same_figures"
               and intake_res["class_diffs"]["target:large"]["items"] == 16
-              and intake_res["class_diffs"]["reworded:large"]["items"] == 8,
+              and intake_res["class_diffs"]["reworded:large"]["items"] == 8
+              and intake_res["class_diffs"]["target:large:controls"]["items"] == 78
+              and intake_res["figures_compared"] == len(rj["figures"]),
               {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
+               "figures_compared": intake_res["figures_compared"], "leave_given_for_a_changed_checkout": leave,
+               "with_leave_for": intake_res["with_leave_for"],
                "verdict": vol["verdict"], "class_diffs": intake_res["class_diffs"],
                "what_this_is": "this card re-running its own kit in this process: not another card",
                "reject_reasons": intake_res["reject_reasons"][:3], "disagree_reasons": intake_res["disagree_reasons"][:3]})
@@ -321,7 +363,7 @@ def main() -> int:
         with tarfile.open(tmp / "typed.tar", "w") as tf:
             for n in lr.PACKED_FILES:
                 tf.add(typed / n, arcname=n)
-        iv_typed = lr.intake_rerun_bundle(tmp / "typed.tar", prereg_dir, book, tmp / "intake_typed", allow_dirty=True)
+        iv_typed = lr.intake_rerun_bundle(tmp / "typed.tar", prereg_dir, book, tmp / "intake_typed")
         check("bundle_typed_by_hand_rejected", iv_typed["outcome"] == "rejected", iv_typed["reject_reasons"][:1])
 
         # 6. the base, the unpacker, the book
@@ -377,6 +419,8 @@ def main() -> int:
             "export_check": {"seconds": exp_s, "max_abs_err": ver_exp["max_abs_err"], "gguf_bytes": exp_out["gguf_bytes"],
                              "implant_check": exp_out["implant_check"], "keys": said, "off_the_model": off},
             "rerun_intake": {"seconds": rr_s, "outcome": intake_res["outcome"], "match_class": intake_res["match_class"],
+                             "figures_compared": intake_res["figures_compared"],
+                             "leave_given_for_a_changed_checkout": leave,
                              "class_diffs": intake_res["class_diffs"],
                              "what_this_is": "this card re-running its own kit in this process: not another card"},
             "ledger": bv,

@@ -1478,6 +1478,7 @@ def _whole(h: Handle, ids: Sequence[int], rows: int) -> torch.Tensor:
     """One whole forward of the item's ids repeated to `rows` rows: no attention mask and no position ids, as every
     pilot ran it. Final-normed states [rows, pieces, D] in the model's dtype."""
     x = torch.tensor([list(ids)] * int(rows), dtype=torch.long, device=h.device)
+    _ASKED["forwards"] += 1
     return h.lm(input_ids=x, use_cache=False).last_hidden_state
 
 
@@ -1485,6 +1486,7 @@ def _restart(h: Handle, layer: int, kept: torch.Tensor) -> torch.Tensor:
     """The forward from `layer` on, on a stream kept at this batch shape."""
     R, T = int(kept.shape[0]), int(kept.shape[1])
     pos = torch.arange(T, device=kept.device).unsqueeze(0).expand(R, T)
+    _ASKED["forwards"] += 1
     return ao.forward_from_layer(h.lm, int(layer), kept, None, pos)
 
 
@@ -1606,10 +1608,12 @@ class _Sitting:
             if prog.dose == 0.0:
                 got = we.Arm(self.plant, 1.0)
             else:
+                # `plant_first`: the whole is refused nothing the edit alone is not (a refusal would say where the
+                # plant is). Each part met the gate alone before this.
                 stacked = we.stack(
                     self.h.lm, [self.plant, prog.edit],
                     model_id=self.h.model_id, weights_id=self.h.weights_id,
-                    doses=[1.0, float(prog.dose)], caps=False,
+                    doses=[1.0, float(prog.dose)], caps=False, plant_first=True,
                 )
                 got = we.Arm(stacked, 1.0)
         else:
@@ -2065,6 +2069,7 @@ def _written_batch(
     steps: List[float] = []
     last = R
     samples_of = [0] * R if sampler_settings is not None else None
+    _ASKED["forwards"] += 1
     with sit.run_hooks(keys):
         for st in ao.write_rows(
             h.lm, h.W_U, [list(prompt_ids)] * R, None, max_new=max_new, stop_ids=stop_ids,
@@ -2312,12 +2317,14 @@ def _same_base(h: Handle, edit: Any) -> None:
                           f"loaded model's hashes to {now[:12]}.")
 
 
-_ASKED = {"readings": 0, "captures": 0}
+_ASKED = {"readings": 0, "captures": 0, "forwards": 0}
 
 
 def asked_in_process() -> Dict[str, int]:
-    """How many readings (`read`) and captures (`capture_direction`) this process has begun: a trial of record is to
-    be the first thing its process asks of the model, and says how many came before it when it is not."""
+    """How many readings (`read`) and captures (`capture_direction`) this process has begun, and how many times this
+    module has run the model forward (a whole forward, a restart, a written batch): a trial of record is to be the
+    first thing its process asks of the model, and says what came before it when it is not. It counts what went
+    through this module: code that calls the model itself is not seen from here."""
     return dict(_ASKED)
 
 

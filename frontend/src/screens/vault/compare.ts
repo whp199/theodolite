@@ -500,7 +500,14 @@ export function statusTone(status: string | null | undefined): "good" | "warn" |
   const s = (status || "").toLowerCase();
   if (s === "lead" || s === "passed") return "good";
   if (s === "ok" || s === "calibrated" || s === "registered") return "neutral";
-  if (s === "lead, matched by a cheaper knob" || s === "kept the base" || s === "unstable") return "warn";
+  if (
+    s === "lead, matched by a cheaper knob" ||
+    s === "passed, matched by a cheaper knob" ||
+    s === "kept the base" ||
+    s === "unstable"
+  ) {
+    return "warn";
+  }
   if (
     s === "failed" ||
     s === "works but harms" ||

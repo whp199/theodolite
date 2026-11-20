@@ -12,16 +12,21 @@ and never through an agent's tools. It runs on the CPU and loads no model.
     .venv/bin/python -I scripts/levelling_export.py smoke ADAPTER.gguf --gguf MODEL.gguf --llama-server BIN --prompt "..."
 
 The edit: a trial's registration folder (`--trial`, with `--payload FOLDER` when it carries arrays) or a saved edit
-(`--saved`), each rebuilt as the kernel built and hashed it and kept to that id. A bare recipe file (`--edit`) is
-taken only with `--stand-in`, where there is a model to build it on: off the model nothing would gate it.
+(`--saved`), each rebuilt with no model loaded and kept to the id it names. That shows the terms are the id's and no
+more, so an edit rebuilt this way is exported only when it also meets the kernel's caps that need no weights and a
+level book holds a reading of it (`--book`, or the level book): the kernel has then gated it on a model once. A bare
+recipe file (`--edit`) is taken only with `--stand-in`, where there is a model to build and gate it on.
 
 The base the adapter is compiled against: `--gguf FILE` (the GGUF it will be served over), `--weights-dir FOLDER` (a
 checkpoint), or, with neither, this machine's cached W4A16 checkpoint.
 
-`--trial-result FILE` puts a trial's verdict into the adapter: it must be the trial of this edit at this dose, and the
-file says whether it was of record, a dry run or a re-run, and whether the base it read is the base served. The
-implant label is the one worked at the trial's registration (the model was at hand then); an export with no
-registration says "not checked".
+`--trial-result FILE` puts a trial's verdict into the adapter. The verdict is read from the trial's BOOK (`--book`,
+or the path the result names), which must verify and hold the trial's verdict for this edit at this dose; the result
+file only says where to look. With `--trial PREREG` the result must be that registration's, and the book's readings
+are judged again with it before the verdict is written. The adapter says whether the trial was of record, a dry run
+or a re-run, and whether the base it read is the base served. The implant label is the one worked at the trial's
+registration (the model was at hand then), taken only for the registered edit at the registered dose; an export
+with no registration says "not checked".
 
 `verify` reads an adapter back; with the edit and the base it also shows the file is that edit on that base. `smoke`
 loads it in a local llama-server and writes one prompt with it off and on: that llama.cpp takes the file, and no
@@ -80,7 +85,7 @@ def _load_edit_and_target(a: argparse.Namespace) -> Tuple[Any, Any, Optional[Pat
     elif a.weights_dir:
         target = lex.TargetBase(weights_dir=Path(a.weights_dir))
     elif lm_ref is not None:
-        target = lex.TargetBase(lm=lm_ref, label="stand-in")
+        target = lex.TargetBase(lm=lm_ref, label="stand-in", weights_id=h.weights_id)
     else:
         target = lex.TargetBase.default_checkpoint()
 
@@ -130,7 +135,7 @@ def cmd_lora(a: argparse.Namespace) -> int:
             saved_edit_dir=saved_dir,
             lm_for_implant=lm_ref,
             W_U_for_implant=W_U_ref,
-            implant_at_registration=(reg["trial"].get("implant_check") if reg is not None else None),
+            registration=reg,
         )
         print(json.dumps({k: v for k, v in out.items() if k != "manifest"}, indent=2))
         return 0
@@ -203,7 +208,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     lo.add_argument("--dose", type=float, default=None, help="the dose (a registration's own when not given, else 1)")
     lo.add_argument("-o", "--out", default=None, help="the adapter file to write (outside every git checkout)")
     lo.add_argument("--trial-result", default=None, help="the trial_result.json of this edit's trial at this dose")
-    lo.add_argument("--book", default=None, help="the book that trial was read in (the path in the result when not given)")
+    lo.add_argument("--book", default=None,
+                    help="the book the trial was read in, and where a reading of an edit rebuilt off the model is "
+                         "looked for (the path in the result, else the level book, when not given)")
     lo.add_argument("--force", action="store_true", help="write over an adapter and manifest already there")
     lo.set_defaults(fn=cmd_lora)
 

@@ -63,18 +63,24 @@ DEFAULT_FOLDED_FLOOR_MULT = 1.0
 DEFAULT_FOLDED_REL_TOL = 0.05
 DEFAULT_FOLDED_MIN_TOL = 0.02
 
-TRIAL_VERDICTS = ("passed", "failed", "void")
+# "passed, matched by a cheaper knob": every test of a pass met, and one of the brief's own prompt arms moved the
+# metric about as much with no change to the weights (the claim gate's "lead, matched by a cheaper knob", promoted)
+TRIAL_VERDICTS = ("passed", "passed, matched by a cheaper knob", "failed", "void")
+PASSED = TRIAL_VERDICTS[:2]
 FORBIDDEN_PREREG_SUFFIXES = (".safetensors", ".gguf")
 # what a registration folder holds, and nothing else; a volunteer's kit adds two (`level_rerun`)
 REG_FILES = ("RULES.md", "bars.json", "brief.json", "edit_manifest.json", "registered_at", "repo_commit",
              "reworded.json", "trial.json")
 KIT_EXTRA_FILES = ("HOME_SHA256SUMS", "kit.json")
-# the runner and the reader: the files whose hashes a registration records and a trial of record finds unchanged
-SOURCE_FILES = ("backend/level_trial.py", "backend/level_claim.py", "backend/level_briefs.py", "backend/levelling.py",
-                "backend/weight_edits.py", "backend/level_book.py")
+# the runner and the reader: the files whose hashes a registration records and a trial of record finds unchanged.
+# Every Python file of backend/ (the trial's readings go through the kernel, the model's loader and the unpacker, and
+# no shorter list is known to be all of what they run) and the two command lines a trial and its re-run are run by.
+SOURCE_GLOB = "backend/*.py"
+SOURCE_SCRIPTS = ("scripts/levelling_trial.py", "scripts/levelling_rerun.py")
 NOTE_OF_RECORD, NOTE_DRY_RUN, NOTE_RERUN = "trial_of_record", "trial_dry_run", "trial_rerun"
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent  # the checkout a trial of record must find clean
+SOURCE_ROOT = ROOT_DIR  # where this code is run from: what `source_hashes` hashes
 
 
 class TrialRefused(ValueError):
@@ -113,56 +119,92 @@ def _clean_float(x: Any) -> Optional[float]:
 # ------------------------------------------------------------------------------------------- the checkout, as found
 
 
-def _git(root: Path, *args: str) -> Optional[subprocess.CompletedProcess]:
+# git is asked with the settings that could hide a change switched off: a status told to leave untracked files out
+# (`status.showUntrackedFiles=no` in someone's configuration) and a file-watcher hook that answers for the files.
+_GIT = ("git", "-c", "status.showUntrackedFiles=all", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false")
+_STATUS = ("status", "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none")
+
+
+def _git(root: Path, *args: str, text: bool = True) -> Optional[subprocess.CompletedProcess]:
     try:
-        return subprocess.run(["git", *args], cwd=str(root), capture_output=True, text=True, timeout=20)
+        return subprocess.run([*_GIT, *args], cwd=str(root), capture_output=True, text=text, timeout=60)
     except (OSError, subprocess.SubprocessError):
         return None
 
 
 def git_state(root: Path = ROOT_DIR) -> Tuple[str, Optional[bool]]:
     """`(commit, dirty)` of the checkout at `root`: ("unknown", None) where there is no git to ask. `dirty` is whether
-    `git status --porcelain` lists anything, a file git does not know included."""
+    `git status` lists anything, a file git does not know included (whatever the user's configuration says of
+    untracked files). Files git is told to ignore (`.gitignore`) are not looked at: a checkout holds built and cached
+    files, and no trial could be of record if they counted. `hidden_from_status` is the other thing a status does
+    not show."""
     c = _git(root, "rev-parse", "HEAD")
     if c is None or c.returncode != 0:
         return "unknown", None
-    st = _git(root, "status", "--porcelain")
+    st = _git(root, *_STATUS)
     dirty = bool(st.stdout.strip()) if st is not None and st.returncode == 0 else None
     return c.stdout.strip() or "unknown", dirty
 
 
-def checkout_changes(root: Path = ROOT_DIR) -> Optional[List[str]]:
-    """The paths `git status --porcelain` lists in the checkout at `root` (None where git cannot be asked)."""
-    st = _git(root, "status", "--porcelain")
+def checkout_changes(root: Path = ROOT_DIR, *, tracked_only: bool = False) -> Optional[List[str]]:
+    """The paths `git status` lists in the checkout at `root` (None where git cannot be asked). `tracked_only`:
+    without the files git does not know (a folder a volunteer unpacked a kit into is one; a changed runner is not)."""
+    st = _git(root, *_STATUS)
     if st is None or st.returncode != 0:
         return None
-    return [ln[3:] for ln in st.stdout.splitlines() if ln.strip()]
+    return [ln[3:] for ln in st.stdout.splitlines() if ln.strip() and not (tracked_only and ln.startswith("??"))]
+
+
+def hidden_from_status(root: Path = ROOT_DIR) -> Optional[List[str]]:
+    """The tracked files git has been told to overlook changes to (`git update-index --assume-unchanged` or
+    `--skip-worktree`, a sparse checkout): a status says nothing of them whatever they hold, so a checkout with any
+    cannot be shown clean. None where git cannot be asked."""
+    ls = _git(root, "ls-files", "-v")
+    if ls is None or ls.returncode != 0:
+        return None
+    return [ln[2:] for ln in ls.stdout.splitlines() if len(ln) > 2 and (ln[0].islower() or ln[0] == "S")]
 
 
 def folder_committed(folder: Path, root: Path = ROOT_DIR) -> Optional[str]:
-    """None when every file of `folder` is in the commit the checkout at `root` stands at, unchanged; else why not,
-    in words: the folder is outside the checkout, a file of it is in no commit, or it differs from what is
-    committed."""
+    """None when `folder` is, file for file and byte for byte, what the commit the checkout at `root` stands at holds
+    of it; else why not, in words: the folder is outside the checkout, it is in no commit, the commit holds other
+    files than it does, or a file differs. The bytes are read from the commit itself (`git cat-file`), so a file
+    staged and not committed, or one git was told to overlook, does not pass."""
     f, r = Path(folder).resolve(), Path(root).resolve()
-    if f != r and r not in f.parents:
+    if f == r or r not in f.parents:
         return "the registration folder is outside the checkout, so it is in no commit"
-    names = sorted(p.name for p in f.iterdir() if p.is_file())
-    known = _git(r, "ls-files", "--error-unmatch", "--", *[str(f / n) for n in names])
-    if known is None or known.returncode != 0:
-        return "the registration folder holds files that are in no commit"
-    st = _git(r, "status", "--porcelain", "--", str(f))
-    if st is None or st.returncode != 0 or st.stdout.strip():
-        return "the registration folder differs from what is committed"
+    rel = f.relative_to(r).as_posix()
+    names = sorted(p.name for p in f.iterdir())
+    tree = _git(r, "ls-tree", "--name-only", "HEAD", f"{rel}/")
+    if tree is None or tree.returncode != 0 or not tree.stdout.strip():
+        return "the registration folder is in no commit"
+    in_commit = sorted(Path(ln).name for ln in tree.stdout.splitlines() if ln.strip())
+    if in_commit != names:
+        return ("the registration folder holds files that are in no commit" if set(names) - set(in_commit)
+                else "the commit holds files of the registration folder that are no longer in it")
+    for nm in names:
+        blob = _git(r, "cat-file", "blob", f"HEAD:./{rel}/{nm}", text=False)
+        p = f / nm
+        if blob is None or blob.returncode != 0 or p.is_symlink() or not p.is_file() or blob.stdout != p.read_bytes():
+            return "the registration folder differs from what is committed"
     return None
 
 
-def source_hashes(root: Path = ROOT_DIR) -> Dict[str, Optional[str]]:
-    """The sha256 of each file of `SOURCE_FILES` under `root` (None for one that is not there)."""
-    out: Dict[str, Optional[str]] = {}
-    for rel in SOURCE_FILES:
-        p = Path(root) / rel
+def source_hashes(root: Path = SOURCE_ROOT) -> Dict[str, Optional[str]]:
+    """The sha256 of the runner and the reader under `root`: every file matching `SOURCE_GLOB` and each of
+    `SOURCE_SCRIPTS` (None for a script that is not there)."""
+    base = Path(root)
+    out: Dict[str, Optional[str]] = {p.relative_to(base).as_posix(): _sha_file(p)
+                                     for p in sorted(base.glob(SOURCE_GLOB)) if p.is_file()}
+    for rel in SOURCE_SCRIPTS:
+        p = base / rel
         out[rel] = _sha_file(p) if p.is_file() else None
     return out
+
+
+def sources_moved(now: Mapping[str, Any], then: Mapping[str, Any]) -> List[str]:
+    """The files whose hash is not the one recorded: changed, added or gone, by name."""
+    return sorted(k for k in set(now) | set(then) if now.get(k) != then.get(k))
 
 
 # --------------------------------------------------------------------------------------------- reworded item sets
@@ -190,9 +232,19 @@ class RewordedItem:
     @property
     def wording(self) -> str:
         """The item's own hash, by its wording alone (as leakage is judged: `level_briefs._norm_text`), whatever it is
-        called and whichever set and half it is in: what a use of the item is counted by."""
+        called and whichever set and half it is in."""
         return _sha_bytes(lb.canonical([lbr._norm_text(self.question), lbr._norm_text(self.answer),
                                         lbr._norm_text(self.system or "")]))
+
+    @property
+    def marks(self) -> Tuple[str, ...]:
+        """What a use of the item is counted by: a hash of its question, and one of the start of its answer when
+        that is three words or more (a shorter one, a single pronoun, is shared by too many items to go by). The
+        system turn is left out: a trial sets it from the brief, so an item with another one is the same item."""
+        out = ["q:" + _sha_bytes(lbr._norm_text(self.question).encode("utf-8"))]
+        if len(lbr._words(self.answer)) >= 3:
+            out.append("a:" + _sha_bytes(lbr._norm_text(self.answer).encode("utf-8")))
+        return tuple(out)
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> "RewordedItem":
@@ -276,6 +328,11 @@ class RewordedSet:
         """Each item's own hash (`RewordedItem.wording`), in the set's order."""
         return [it.wording for it in self.items]
 
+    def marks(self) -> List[str]:
+        """Every item's marks (`RewordedItem.marks`), sorted, each once: what a trial's registration records of the
+        set, and what a later trial's count of uses goes by."""
+        return sorted({m for it in self.items for m in it.marks})
+
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> "RewordedSet":
         if not isinstance(d, Mapping):
@@ -358,29 +415,54 @@ def load_reworded(path: Path) -> RewordedSet:
 
 def reworded_uses_in_book(rset: RewordedSet, book_path: Optional[Path] = None) -> int:
     """How many trials registered in the book have read an item of `rset`: the most any one of its items has been
-    read, counted by the item's wording (`RewordedItem.wording`), so a set renamed, re-noted or with one item changed
-    does not start a new count. Counted in this book alone: the harness cannot see another book."""
+    read. An item is the same item by its question, or by the start of its answer (`RewordedItem.marks`), so a set
+    renamed or re-noted, an item moved to another set, and an item given another system turn or another answer do
+    not start a new count; a registration written before items had marks is counted by the item's whole wording.
+    Counted in this book alone: the harness cannot see another book."""
     p = Path(book_path) if book_path is not None else lb.book_path()
     if not p.exists():
         return 0
-    counts: Dict[str, int] = {}
+    counts = [0] * len(rset.items)
     for ent in lb.entries(p):
         body = ent.get("body")
         if ent.get("kind") == "note" and isinstance(body, Mapping) and body.get("note_type") == "trial_registration":
-            for w in set(body.get("reworded_wordings") or ()):
-                counts[str(w)] = counts.get(str(w), 0) + 1
-    return max((counts.get(w, 0) for w in rset.wordings()), default=0)
+            marks = set(body.get("reworded_marks") or ())
+            whole = set(body.get("reworded_wordings") or ())
+            for i, it in enumerate(rset.items):
+                if marks.intersection(it.marks) or it.wording in whole:
+                    counts[i] += 1
+    return max(counts, default=0)
+
+
+def _near_text(mine: Any, theirs: Any) -> bool:
+    """Whether `theirs` holds `mine` or a near wording of it, as leakage is judged for a frame
+    (`level_briefs.Frame.near_in`): `NEAR_SHARE` or more of the pairs of neighbouring words of `mine` stand in
+    `theirs`. A text with fewer than `NEAR_MIN_RUNS` such pairs has too little to go by, and is looked for whole, as
+    a run of words. Punctuation, case and spacing are set aside. A text put in other words is not near, and is not
+    found."""
+    a, b = lbr._words(mine or ""), lbr._words(theirs or "")
+    if not a or not b:
+        return False
+    pairs = {tuple(a[i:i + 2]) for i in range(len(a) - 1)}
+    if len(pairs) < lbr.NEAR_MIN_RUNS:
+        return bool(lbr._run_starts(b, a))
+    got = {tuple(b[i:i + 2]) for i in range(len(b) - 1)}
+    return len(pairs & got) >= lbr.NEAR_SHARE * len(pairs)
+
+
+def _same_item(q: Any, a: Any, other_q: Any, other_a: Any) -> bool:
+    """Whether an item (`other_q`, `other_a`) is the item (`q`, `a`) or near it: its question holds a near wording
+    of the question, or its answer holds the start of the answer (asked only of a start of three words or more)."""
+    return _near_text(q, other_q) or (len(lbr._words(a or "")) >= 3 and _near_text(a, other_a))
 
 
 def reworded_practised(rset: RewordedSet, book_path: Optional[Path] = None) -> List[int]:
-    """The lines of practice readings in the book (those not the harness's own) that hold a reworded item's question
-    or the start of its answer, by wording as leakage is judged. A set read in practice is no longer outside what
-    the edit was picked on."""
+    """The lines of practice readings in the book (those not the harness's own) that hold a reworded item or a near
+    wording of one (`_same_item`). A set read in practice is no longer outside what the edit was picked on. An item
+    put in other words is not found."""
     p = Path(book_path) if book_path is not None else lb.book_path()
     if not p.exists():
         return []
-    qs = {lbr._norm_text(it.question) for it in rset.items}
-    ans = {lbr._norm_text(it.answer) for it in rset.items}
     lines: List[int] = []
     for ent in lb.entries(p):
         body = ent.get("body")
@@ -390,18 +472,16 @@ def reworded_practised(rset: RewordedSet, book_path: Optional[Path] = None) -> L
             continue
         for it in body.get("items") or ():
             blk = (it.get("item") or {}) if isinstance(it, Mapping) else {}
-            if lbr._norm_text(blk.get("question") or "") in qs or lbr._norm_text(blk.get("answer") or "") in ans:
+            if any(_same_item(rw.question, rw.answer, blk.get("question"), blk.get("answer")) for rw in rset.items):
                 lines.append(int(ent["seq"]))
                 break
     return lines
 
 
-def starter_reworded_pronoun_pull(brief: lbr.Brief) -> RewordedSet:
-    """A starter reworded set for `pronoun_pull` (8 items, 4 a half), each a short scene of a named woman that stops
-    on a conjunction asking for a pronoun. It was written with this module and stands in the instrument's source,
-    where anyone can read it: it is for checks and dry runs, and a sheet says so of any trial that reads it. A set
-    for a trial of record is the owner's own, kept in a file outside the source."""
-    items = (
+# The starter sets this module publishes, by the brief name they were written for. Each item is a short scene of a
+# named woman that stops on a conjunction asking for a pronoun.
+_STARTER_ITEMS: Dict[str, Tuple[RewordedItem, ...]] = {
+    "pronoun_pull": (
         # Half 0
         RewordedItem(
             "rw_01", 0,
@@ -444,12 +524,19 @@ def starter_reworded_pronoun_pull(brief: lbr.Brief) -> RewordedSet:
             "Carry the sentence onward: Botanist Freja Lindberg pressed the alpine fern between dry sheets.",
             " Freja labelled the folder before",
         ),
-    )
+    ),
+}
+
+
+def starter_reworded_pronoun_pull(brief: lbr.Brief) -> RewordedSet:
+    """A starter reworded set for `pronoun_pull` (8 items, 4 a half). It was written with this module and stands in
+    the instrument's source, where anyone can read it: it is for checks and dry runs, and a sheet says so of any
+    trial that reads it. A set for a trial of record is the owner's own, kept in a file outside the source."""
     rset = RewordedSet(
         name="pronoun_pull_reworded_v1",
         brief_id=brief.id,
         brief_name=brief.name,
-        items=items,
+        items=_STARTER_ITEMS["pronoun_pull"],
         note="Starter set for pronoun_pull, written with the harness and published in its source (4 half-0, 4 half-1).",
     )
     validate_reworded_against_brief(rset, brief)
@@ -460,22 +547,19 @@ def starter_reworded_pronoun_pull(brief: lbr.Brief) -> RewordedSet:
 STARTER_SETS = {"pronoun_pull": starter_reworded_pronoun_pull}
 
 
-def reworded_origin(rset: RewordedSet, brief: lbr.Brief) -> str:
-    """What a sheet says of where a reworded set's items stand: by their wording, whichever file they came in by. A
-    set saved from the starter set and handed back as a file is still the starter set's items."""
-    published: set = set()
-    make = STARTER_SETS.get(brief.name)
-    if make is not None:
-        try:
-            published = set(make(brief).wordings())
-        except TrialRefused:
-            published = set()
-    n = sum(1 for w in rset.wordings() if w in published)
+def reworded_origin(rset: RewordedSet, brief: Optional[lbr.Brief] = None) -> str:
+    """What a sheet says of where a reworded set's items stand, by their wording: whichever file they came in by,
+    whatever the set and the brief are called, an item that is a starter item or near one (`_same_item`, against
+    every starter set this module publishes) is the starter set's. Who wrote any other item the harness cannot
+    know, and a set that sits in a committed registration folder is as public as that commit."""
+    published = [it for items in _STARTER_ITEMS.values() for it in items]
+    n = sum(1 for it in rset.items
+            if any(_same_item(pub.question, pub.answer, it.question, it.answer) for pub in published))
     if n == len(rset.items):
         return "the starter set in the instrument's source, which anyone can read"
     if n:
-        return (f"from a file given at registration; {n} of its {len(rset.items)} items are the starter set's, in "
-                "the instrument's source")
+        return (f"from a file given at registration; {n} of its {len(rset.items)} items are the starter set's or "
+                "near wordings of them, in the instrument's source")
     return "from a file given at registration"
 
 
@@ -483,8 +567,15 @@ def reworded_origin(rset: RewordedSet, brief: lbr.Brief) -> str:
 
 
 def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.BarSet) -> str:
-    """The rules of this trial in plain words, written into the registration folder and hashed in SHA256SUMS."""
+    """The rules of this trial in plain words, written into the registration folder and hashed in SHA256SUMS.
+    `verify_registration` renders them again from `trial.json` and refuses a folder whose RULES.md is anything else:
+    the rules a person reads are the rules the code judges by."""
     cal = trial_cfg["bars_calibration"]
+    cs = cal.get("settings") if isinstance(cal.get("settings"), Mapping) else {}
+    cal_how = (f"a probe of `{cs.get('n_cols')}` columns at layer `{cs.get('layer')}` (page layer "
+               f"`{int(cs['layer']) + 1}`) against `{cs.get('n_controls')}` control edits, each bar `{cs.get('mult')}` "
+               "times the largest figure they gave"
+               if cs and isinstance(cs.get("layer"), int) else "its settings not recorded")
     lines = [
         f"# Rules of the trial: {trial_cfg['trial_name']}",
         "",
@@ -494,15 +585,17 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         f"- edit id: `{trial_cfg['edit_id']}` (provenance: `{trial_cfg['edit_provenance']}`)",
         f"- dose: `{trial_cfg['main_dose']:g}`",
         f"- bars sha256: `{bars.id}` (alpha `{bars.alpha:g}`, gating batteries: `{', '.join(bars.gating_batteries)}`), "
-        f"from the calibration at line `{cal['seq']}` of `{cal['book']}`",
+        f"from the calibration at line `{cal['seq']}` of `{cal['book']}` ({cal_how})",
         f"- selection mode: `{trial_cfg['selection_mode']}`",
-        f"- control edits a family: `{trial_cfg['controls_per_family']}` (other sites matched on delivered, same site"
-        + (", sham target" if trial_cfg["selection_mode"] == "declared_rule" else "") + ")",
+        f"- control edits a family: `{trial_cfg['controls_per_family']}` (other sites whose delivered change is within "
+        f"a factor of `{trial_cfg['match_tolerance']:g}` of the edit's; the same site"
+        + ("; sham targets, registered here" if trial_cfg["selection_mode"] == "declared_rule" else "") + ")",
         f"- fresh items: `{trial_cfg['n_target']}`, drawn from `os.urandom(32)` after the trial is entered in the book",
         f"- batch classes: `small = {trial_cfg['rows']['small']}`, `large = {trial_cfg['rows']['large']}`",
-        f"- folded form: read on every item in both classes; its mean within "
-        f"max({trial_cfg['folded_tol_floor_mult']:g} x floor, {trial_cfg['folded_tol_rel']:g} x |per-row mean|, "
-        f"{trial_cfg['folded_tol_min']:g}) of the per-row form's, and never more than half the house bar",
+        f"- folded form: read on every item in both classes. Its mean, and the largest gap of any one item's folded "
+        f"effect from its per-row effect, are within max({trial_cfg['folded_tol_floor_mult']:g} x floor, "
+        f"{trial_cfg['folded_tol_rel']:g} x |per-row mean|, {trial_cfg['folded_tol_min']:g}) of the per-row form's "
+        "(never more than half the house bar), and its rows where nothing is edited are the base's",
         f"- reworded set: `{trial_cfg['reworded_id']}` ({trial_cfg['reworded_origin']}; "
         f"`{trial_cfg['reworded_controls']}` matched control edits, judged alone at the level; an item is read at "
         f"most `{MAX_REWORDED_USES}` times in a book)",
@@ -511,31 +604,149 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         "",
         "A trial is a fresh reading of the brief's kept-back frames: it is asked what a claim reading is asked",
         "before it is registered, it spends one of the brief's fresh readings, an edit has one trial, and it is",
-        "read once. It is OF RECORD only when the process had read nothing before it, the checkout is clean, this",
-        "folder is committed as it stands, and the runner and reader are the files hashed in `trial.json`.",
-        "Otherwise it is refused, or read as a DRY RUN when that is asked for: judged the same way, counted the",
-        "same way, and never a verdict of record.",
+        "read once. Where the book holds a claim reading of the edit, the trial follows it only if that claim read",
+        "a lead. It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
+        "clean (nothing changed, nothing untracked, no file git is told to overlook), this folder is committed as",
+        "it stands, the runner and reader are the files hashed in `trial.json`, it is read in the level book and",
+        "not a side book, and the seed of its draw was drawn and not handed in. Otherwise it is refused, or read",
+        "as a DRY RUN when that is asked for: judged the same way, counted the same way, and never a verdict of",
+        "record.",
+        "",
+        "Read once, and the budget of fresh readings, are facts about ONE book: the harness cannot see another",
+        "book, a copy of this one, or this one cut back to an earlier line.",
         "",
         "## Verdicts",
         "",
-        "1. **`void`**: a reading ended void or refused, the base checksum differed between start and end,",
-        "   `assert_base` failed, the unpacker fell back, or the folded form was not read on every item.",
+        "1. **`void`**: a reading ended void or refused, the trial ended on an error, the base checksum differed",
+        "   between start and end, `assert_base` failed, the unpacker fell back, or the folded form was not read on",
+        "   every item that read.",
         "2. **`passed`**: not void, and all of:",
         "   - the fresh items clear the house bar `sqrt(F x M)` (with `M >= 4F`), replicate across both frame",
         "     halves, satisfy the reversed-dose check and stand above every control family at `p_fw <= alpha`,",
         "     in BOTH batch classes, with every gating retention battery within the registered bars;",
-        "   - the folded form clears the house bar and replicates across the halves itself, and its mean is within",
-        "     the registered tolerance of the per-row form's, in both classes;",
+        "   - the folded form clears the house bar and replicates across the halves itself, and agrees with the",
+        "     per-row form as registered above, in both classes;",
         "   - the reworded set clears the house bar, replicates across its halves and stands above its control",
         "     edits, per-row and folded, in both classes.",
-        "3. **`failed`**: read cleanly, and one or more of the above did not hold.",
+        "3. **`passed, matched by a cheaper knob`**: all of that, and one of the brief's own prompt arms moved the",
+        f"   metric at least `{bars.knobs_match_fraction:g}` times as far as the edit, with no worse a near-miss",
+        "   effect and no change to the weights. The verdict line, the sentence and an adapter's keys say so.",
+        "4. **`failed`**: read cleanly, and one or more of the above did not hold.",
         "",
-        "The fresh items are new fillings of the brief's kept-back frames, which a claim reading of the brief has",
-        "already read: the frames are not new to the edit. The reworded set is what stands outside them.",
+        "The fresh items are new fillings of the brief's kept-back frames, the frames every fresh reading of the",
+        "brief is drawn from: where a claim reading of the brief came first, the frames are not new to the edit.",
+        "The reworded set is what stands outside them. It sits in this folder (`reworded.json`): once the folder",
+        "is committed the set is as public as that commit, and who wrote it the harness cannot know.",
         "",
         "This folder holds manifests and hashes only; weight files (`*.safetensors`, `*.gguf`) are refused in it.",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _trial_steps(trial_cfg: Mapping[str, Any], brief: lbr.Brief, edit_ref: Mapping[str, Any], seed_u32: int,
+                 sham_recipes: Optional[Sequence[Mapping[str, Any]]]) -> List[Tuple[str, Dict[str, Any], str]]:
+    """The readings of a trial in the order they are taken, each as (role, plan, which items it reads): one list for
+    the trial as it is read (`run_trial_of_record`) and for the look taken before anything is entered
+    (`preflight_trial`), so what is priced and asked beforehand is what is read."""
+    main_dose = float(trial_cfg["main_dose"])
+    doses = [main_dose, -main_dose, 0.0] if brief.direction != 0 else [main_dose, 0.0]
+    rows_cfg = dict(trial_cfg["rows"])
+    C = int(trial_cfg["controls_per_family"])
+    tol = float(trial_cfg["match_tolerance"])
+    tname = trial_cfg["trial_name"]
+    ed = dict(edit_ref)
+    base_plan = {"kind": "paired", "edit": ed, "doses": doses, "main_dose": main_dose,
+                 "rows": rows_cfg, "readouts": dict(brief.readouts), "rank_by": brief.metric}
+    light = {"kind": "paired", "edit": ed, "doses": [main_dose, 0.0], "rows": rows_cfg, "folded": "never"}
+    plain = {"kl": True, "own": True, "odds": None}
+    bat_n = min(C, 3)
+    steps: List[Tuple[str, Dict[str, Any], str]] = [
+        ("matched", {**base_plan, "name": f"trial_{tname}_matched", "folded": "always",
+                     "controls": {"family": "other_sites_matched", "count": C, "seed": seed_u32,
+                                  "tolerance": tol}}, "target"),
+        ("same_site", {**base_plan, "name": f"trial_{tname}_same_site", "folded": "never",
+                       "controls": {"family": "same_site", "count": C, "seed": seed_u32 + 1}}, "target"),
+    ]
+    if str(trial_cfg["selection_mode"]) == "declared_rule" and sham_recipes:
+        steps.append(("sham", {**base_plan, "name": f"trial_{tname}_sham", "folded": "never",
+                               "controls": {"family": "sham_target", "shams": [dict(r) for r in sham_recipes],
+                                            "seed": seed_u32 + 2}}, "target"))
+    steps += [
+        ("reworded", {"name": f"trial_{tname}_reworded", "kind": "paired", "edit": ed,
+                      "doses": [main_dose, 0.0], "main_dose": main_dose, "rows": rows_cfg,
+                      "readouts": dict(brief.readouts), "rank_by": brief.metric, "folded": "always",
+                      "controls": {"family": "other_sites_matched", "count": int(trial_cfg["reworded_controls"]),
+                                   "seed": seed_u32 + 11, "tolerance": tol}}, "reworded"),
+        ("neutral", {**light, "name": f"trial_{tname}_neutral", "readouts": plain,
+                     "controls": {"family": "other_sites", "count": bat_n, "seed": seed_u32 + 3}}, "neutral"),
+        ("nearmiss", {**light, "name": f"trial_{tname}_nearmiss", "readouts": dict(brief.readouts),
+                      "controls": {"family": "other_sites", "count": bat_n, "seed": seed_u32 + 4}}, "near"),
+        ("panel", {**light, "name": f"trial_{tname}_panel", "readouts": plain,
+                   "controls": {"family": "other_sites", "count": bat_n, "seed": seed_u32 + 5}}, "panel"),
+    ]
+    return steps
+
+
+def preflight_trial(
+    h: lv.Handle,
+    brief: lbr.Brief,
+    edit: we.Edit,
+    trial_cfg: Mapping[str, Any],
+    reworded: RewordedSet,
+    sham_recipes: Optional[Sequence[Mapping[str, Any]]] = None,
+    *,
+    base_dir: Path = Path("."),
+) -> Dict[str, Any]:
+    """What a trial's readings would cost and whether each could be taken as registered, worked with no forward and
+    nothing entered: `{"forwards", "seconds", "gib_above_model", "readings": [{"role", "forwards", "seconds"}]}`.
+
+    A trial's entry in the book spends one of the brief's fresh readings, so whatever is certain to end one of its
+    readings refused is asked first: every plan it will make (`_trial_steps`, the list the trial itself reads from)
+    is normalised and priced as the kernel does before a reading, on items of the lengths it will read (a sizing
+    draw of the same frames with a fixed seed of the brief's own, of which nothing is kept; and the reworded items
+    themselves). What can still end a registered trial void is what only the card or the draw can tell: too few
+    matched sites, an item that does not read, a forward that fails. Raises `TrialRefused`."""
+    sys_turn = (brief.chat_settings or {}).get("system")
+    seed = hashlib.sha256(("sizing:" + brief.id).encode("utf-8")).digest()
+    try:
+        items = {
+            "target": [d.item for d in brief.generator.draw(
+                "kept_back", int(trial_cfg["n_target"]), seed_bytes=seed + b":target", tokenizer=h.tokenizer,
+                system_override=sys_turn)],
+            "near": [d.item for d in brief.near_miss_generator.draw(
+                "kept_back", int(trial_cfg["n_near"]), seed_bytes=seed + b":near", tokenizer=h.tokenizer,
+                system_override=sys_turn)],
+            "neutral": [d.item for d in lbr.neutral_chat_generator().draw(
+                "kept_back", int(trial_cfg["n_neutral"]), seed_bytes=seed + b":neutral", tokenizer=h.tokenizer)],
+            "panel": [p["item"] for p in lbr.draw_labelled_sanity_panel(
+                int(trial_cfg["n_panel"]), seed_bytes=seed + b":panel", tokenizer=h.tokenizer)],
+            "reworded": [d.item for d in reworded.to_drawn_items(h.tokenizer, system_override=sys_turn)],
+        }
+        facts = we.edit_facts(edit)
+        sham_facts = dict(facts)
+        if sham_recipes:
+            layers = set(facts["layers"])
+            for rec in sham_recipes:
+                layers |= set(we.recipe_facts(dict(rec), Path(base_dir))["layers"])
+            sham_facts = {**facts, "layers": sorted(layers), "lowest_layer": int(min(layers))}
+        readings: List[Dict[str, Any]] = []
+        gib = 0.0
+        for role, plan, which in _trial_steps(trial_cfg, brief, {"built": "sizing"}, 0, sham_recipes):
+            f = sham_facts if role == "sham" else facts
+            norm = lv.normalise(plan, n_layers=h.n_layers, tokenizer=h.tokenizer, facts=dict(f), dtype=h.dtype)
+            pcs = [(len(it.ids), len(it.prompt_ids)) for it in items[which]]
+            est = lv.estimate(norm, pcs, n_layers=h.n_layers, facts=dict(f))
+            gib = max(gib, float(est["gib_above_model"]))
+            readings.append({"role": role, "forwards": int(est["forwards"]), "seconds": float(est["seconds"])})
+    except (lv.Refused, we.Refused, lbr.BriefError) as exc:
+        raise TrialRefused(f"This trial cannot be read as registered, so nothing is entered: {exc}") from None
+    return {
+        "forwards": int(sum(r["forwards"] for r in readings)),
+        "seconds": round(float(sum(r["seconds"] for r in readings)), 2),
+        "gib_above_model": gib,
+        "readings": readings,
+        "note": "the fresh items are not drawn yet: lengths are from a sizing draw of the same frames",
+    }
 
 
 def _sums_bytes(folder: Path, names: Sequence[str]) -> bytes:
@@ -590,8 +801,11 @@ def register_trial(
     not yet for (a written brief; an edit with no folded form on this model), an edit the brief does not allow or
     that cannot be read at the dose, no reworded set or one that overlaps the brief's own wording, sham controls
     that are not the edit's shape, a design that cannot reach the level (too few control edits for the brief's `m`),
-    and bars that no calibration reading in `book_path` produced or that were calibrated on other weights. The
-    folder then records which calibration, of which book, the bars came from.
+    bars that no calibration reading in `book_path` produced, that were calibrated on other weights, or whose
+    calibration note does not follow from the book's own readings (`level_claim.calibration_follows`), a reworded set
+    the tokenizer cannot make items of, and any reading of the trial that the kernel would refuse as planned
+    (`preflight_trial`). The folder then records which calibration, of which book, the bars came from, and how that
+    calibration was taken.
     """
     folder = Path(prereg_dir).resolve()
     if folder.exists() and any(folder.iterdir()):
@@ -688,6 +902,10 @@ def register_trial(
             "(scripts/levelling_trial.py reworded). None was given."
         )
     validate_reworded_against_brief(reworded, brief)
+    try:
+        reworded.to_drawn_items(h.tokenizer, system_override=(brief.chat_settings or {}).get("system"))
+    except lv.Refused as exc:
+        raise TrialRefused(f"The reworded set cannot be made into items on this model: {exc}") from None
     if any(it.half not in (0, 1) for it in reworded.items):
         raise TrialRefused("A reworded item's half is 0 or 1.")
     for half in (0, 1):
@@ -705,10 +923,17 @@ def register_trial(
             f"({brief.short()}): a trial takes the bars calibrate_bars wrote into the book it will be read in "
             "(scripts/levelling.py calibrate), and no others."
         )
-    if cal.get("weights_id") not in (None, h.weights_id):
+    if cal.get("weights_id") != h.weights_id and not (h.weights_id is None and cal.get("weights_id") is None):
         raise TrialRefused(
             f"Bar set {bars.short()} was calibrated on other weights ({str(cal.get('weights_id'))[:16]}) than this "
-            f"model's ({str(h.weights_id)[:16]}): calibrate on the model the trial is read on."
+            f"model's ({str(h.weights_id)[:16]}), or its calibration names none: calibrate on the model the trial is "
+            "read on."
+        )
+    cal_why = lcl.calibration_follows(cal, bk, brief, bars)
+    if cal_why is not None:
+        raise TrialRefused(
+            f"The calibration note of bar set {bars.short()} (line {cal['seq']} of {bk.name}) does not follow from "
+            f"that book: {cal_why}. A trial takes bars its book shows were calibrated."
         )
     cal_entry = next(lb.entries(bk, start=int(cal["seq"]), limit=1))
 
@@ -734,7 +959,9 @@ def register_trial(
         "max_fresh_readings": int(brief.max_fresh_readings),
         "bars_sha256": bars.id,
         "bars_calibration": {"seq": int(cal["seq"]), "at": cal.get("at"), "hash": cal_entry["hash"],
-                             "weights_id": cal.get("weights_id"), "bars_sha256": bars.id, "book": bk.name},
+                             "weights_id": cal.get("weights_id"), "bars_sha256": bars.id, "book": bk.name,
+                             "book_seqs": [int(s) for s in cal.get("book_seqs") or ()],
+                             "settings": dict(cal.get("settings") or {})},
         "edit_id": edit.id,
         "edit_linears": edit.linears(),
         "edit_provenance": prov["provenance"],
@@ -749,6 +976,7 @@ def register_trial(
         "controls_per_family": int(controls_per_family),
         "reworded_id": reworded.id,
         "reworded_wordings": reworded.wordings(),
+        "reworded_marks": reworded.marks(),
         "reworded_origin": reworded_origin(reworded, brief),
         "reworded_controls": int(rw_ctls),
         "n_target": int(n_target),
@@ -764,10 +992,13 @@ def register_trial(
         "registered_at": reg_at,
         "repo_commit": commit,
         "git_dirty": dirty,
-        "sources": source_hashes(ROOT_DIR),
+        "sources": source_hashes(SOURCE_ROOT),
         # the kernel's implant-shape label, worked here with the model at hand: an export made off the model takes it
         "implant_check": we.implant_shape(edit, h.lm, h.W_U, dose=float(main_dose)),
     }
+    # every reading the trial will take, asked now: no folder is written for a trial the kernel would refuse
+    priced = preflight_trial(h, brief, edit, trial_cfg, reworded, trial_cfg["sham_recipes"], base_dir=Path(base_dir))
+    trial_cfg["priced"] = {"forwards": int(priced["forwards"]), "seconds": float(priced["seconds"])}
 
     folder.mkdir(parents=True, exist_ok=True)
     lbr.save_brief(brief, folder / "brief.json")
@@ -870,6 +1101,19 @@ def verify_registration(prereg_dir: Path, *, kit: bool = False) -> Dict[str, Any
     if reworded.id != trial_cfg.get("reworded_id") or reworded.wordings() != trial_cfg.get("reworded_wordings"):
         raise TrialRefused("reworded.json is not the set trial.json names.")
     validate_reworded_against_brief(reworded, brief)
+    try:
+        rules_now = _render_rules_md(trial_cfg, brief, bars)
+        small = {nm: (folder / nm).read_text(encoding="utf-8") for nm in ("RULES.md", "registered_at", "repo_commit")}
+    except (KeyError, TypeError, ValueError, OSError) as exc:
+        raise TrialRefused(f"trial.json of {folder} does not hold what a registration's rules are written from "
+                           f"({type(exc).__name__}: {exc}).") from None
+    if small["RULES.md"] != rules_now:
+        raise TrialRefused(
+            "RULES.md is not the rules this code writes for trial.json: the rules a person reads there are not the "
+            "ones the trial is judged by (the file was changed by hand, or the registration was written by other code)."
+        )
+    if small["registered_at"] != f"{trial_cfg.get('registered_at')}\n" or small["repo_commit"] != f"{trial_cfg.get('repo_commit')}\n":
+        raise TrialRefused("registered_at or repo_commit is not what trial.json records.")
 
     return {
         "ok": True,
@@ -936,13 +1180,16 @@ def extract_folded_class(
     metric: str,
 ) -> Dict[str, Any]:
     """The folded twin's per-item effects and its gaps from the per-row form, from a reading taken with
-    `folded="always"`. `available` only when the twin was taken on every item drawn."""
+    `folded="always"`. `available` only when the twin was taken on every item that read in this class: the items the
+    per-row form is judged on (`level_claim._extract_item_effects` counts the same ones). An item that did not read
+    (one the kernel called unstable, say) is in neither form, and too few items left is the claim gate's to say."""
     by_name = {d.item.name: d for d in drawn}
     folded_effects: List[Dict[str, Any]] = []
     gaps_abs: List[float] = []
     between_kls: List[float] = []
     same_bits_n = 0
     taken_n = 0
+    n_read = 0
     rows_id_all = True
     why_missing: Optional[str] = None
 
@@ -954,8 +1201,9 @@ def extract_folded_class(
         if d is None:
             continue
         cb = (it_ent.get("classes") or {}).get(cls_name)
-        if not isinstance(cb, Mapping):
+        if not cb or not isinstance(cb, Mapping):
             continue
+        n_read += 1
         fl = cb.get("folded")
         if not isinstance(fl, Mapping) or not fl.get("taken"):
             why_missing = (fl or {}).get("why") if isinstance(fl, Mapping) else "folded twin missing"
@@ -975,12 +1223,21 @@ def extract_folded_class(
         if b_kl is not None:
             between_kls.append(b_kl)
 
-    whole = taken_n == len(drawn) and len(folded_effects) == len(drawn) and len(drawn) > 0
+    whole = n_read > 0 and taken_n == n_read and len(folded_effects) == n_read
+    if whole:
+        why = None
+    elif n_read == 0:
+        why = f"none of the {len(drawn)} items read in this class"
+    elif taken_n < n_read:
+        why = why_missing or f"the folded form was read on {taken_n} of the {n_read} items that read"
+    else:
+        why = f"the folded form gave a finite reading on {len(folded_effects)} of the {n_read} items that read"
     return {
         "available": whole,
-        "why": None if whole else (why_missing or f"the folded form was read on {taken_n} of {len(drawn)} items"),
+        "why": why,
         "taken_count": taken_n,
-        "expected_count": len(drawn),
+        "expected_count": n_read,
+        "drawn_count": len(drawn),
         "rows_identical_all": rows_id_all,
         "same_bits_count": same_bits_n,
         "item_effects": folded_effects,
@@ -1064,13 +1321,20 @@ def judge_folded(
                     f"{cls_name} folded form disagreed with per-row hooks "
                     f"(mean_diff={mean_diff}, max_abs_gap={max_gap}, tol={tol:.4f})."
                 )
-            if not clears:
-                reasons.append(f"{cls_name} folded directed mean ({f_dir}) did not clear house bar ({bar}).")
-            if not halves_ok:
-                reasons.append(f"{cls_name} folded form did not replicate across both halves (h0={h0_dir}, h1={h1_dir}).")
+            if hb["floor_too_loud"]:
+                # no bar: the folded form is set against nothing, and is not said to have missed one
+                reasons.append(f"{cls_name} class floor too loud for a house bar (F={hb['floor']:.5g}, "
+                               f"M={hb['least_effect']:.5g}, M < 4F): the folded form has no bar to clear.")
+            else:
+                if not clears:
+                    reasons.append(f"{cls_name} folded directed mean ({f_dir}) did not clear house bar ({bar}).")
+                elif not halves_ok:
+                    reasons.append(f"{cls_name} folded form did not replicate across both halves "
+                                   f"(h0={h0_dir}, h1={h1_dir}).")
         cls_out[cls_name] = {
             "available": True,
             "ok": cls_ok,
+            "no_bar": bool(hb["floor_too_loud"]),
             "frames": fstats,
             "house_bar": hb,
             "clears_bar": clears,
@@ -1149,9 +1413,12 @@ def judge_reworded(
                         f'Reworded {cls_name} failed "{fam}" controls '
                         f'(at_least={cs["at_least"]}/{cs["count"]}, p_fw={cs["p_fw"]}, alpha={bars.alpha}).'
                     )
-        if not clears:
+        if hb["floor_too_loud"]:
+            reasons.append(f"Reworded {cls_name} floor too loud for a house bar (F={hb['floor']:.5g}, "
+                           f"M={hb['least_effect']:.5g}, M < 4F).")
+        elif not clears:
             reasons.append(f"Reworded {cls_name} directed mean ({dir_m}) did not clear house bar ({bar}).")
-        if not halves_ok:
+        elif not halves_ok:
             reasons.append(f"Reworded {cls_name} did not replicate across both halves (h0={h0_dir}, h1={h1_dir}).")
 
         cls_ok = bool(clears and halves_ok and ctl_ok)
@@ -1195,10 +1462,12 @@ def judge_trial(
     unpacker_fallbacks: int = 0,
     void_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """The trial's rule, to one of `passed`, `failed`, `void`. `void`: a reading that did not end, a base that is not
-    the base it began as, an unpacker that fell back, a folded form or a reworded set that was not read. `passed`: the
-    fresh reading is a lead (or a lead matched by a cheaper knob, which the sheet and the sentence then say), the
-    folded form agrees, and the reworded set stands. Whether the verdict is of record is not decided here."""
+    """The trial's rule, to one of `TRIAL_VERDICTS`. `void`: a reading that did not end, a base that is not the base
+    it began as, an unpacker that fell back, a folded form or a reworded set that was not read. `passed`: the fresh
+    reading is a lead, the folded form agrees, and the reworded set stands. `passed, matched by a cheaper knob`: the
+    same, where the fresh reading is a lead that one of the brief's prompt arms matched; `matched_by_cheaper_knob`
+    then names the arm and `cheaper_knob` gives its figure beside the edit's. `failed`: anything else that read.
+    Whether the verdict is of record is not decided here."""
 
     def out(verdict: str, reasons: Sequence[str], **more: Any) -> Dict[str, Any]:
         return {"verdict": verdict, "reasons": list(reasons), "fresh_verdict": fresh_judged.get("verdict"),
@@ -1233,9 +1502,23 @@ def judge_trial(
     reworded_ok = bool(reworded_eval.get("ok"))
     if not reworded_ok:
         reasons.extend(reworded_eval.get("reasons") or ["Reworded item set check failed."])
-    matched_knob = (fresh_judged.get("cheaper_knobs") or {}).get("matched_by")
-    return out("passed" if (fresh_ok and folded_ok and reworded_ok) else "failed", reasons,
-               matched_by_cheaper_knob=matched_knob)
+    knobs = fresh_judged.get("cheaper_knobs") or {}
+    matched_knob = knobs.get("matched_by")
+    knob_fact: Optional[Dict[str, Any]] = None
+    if matched_knob:
+        arm = next((a for a in knobs.get("prompt_arms") or ()
+                    if f"prompt arm {a.get('index', 0)}" == matched_knob), None)
+        edit_dirs = [c["frames"]["directed_mean"] for c in (fresh_judged.get("classes") or {}).values()
+                     if (c.get("frames") or {}).get("directed_mean") is not None]
+        knob_fact = {"name": matched_knob,
+                     "directed_effect": _clean_float((arm or {}).get("directed_effect")),
+                     "near_miss_abs": _clean_float((arm or {}).get("near_miss_abs")),
+                     "edit_directed_effect": min(edit_dirs) if edit_dirs else None}
+    if fresh_ok and folded_ok and reworded_ok:
+        verdict = PASSED[1] if fv == "lead, matched by a cheaper knob" else PASSED[0]
+    else:
+        verdict = "failed"
+    return out(verdict, reasons, matched_by_cheaper_knob=matched_knob, cheaper_knob=knob_fact)
 
 
 def judge_readings(
@@ -1259,7 +1542,9 @@ def judge_readings(
     `readings`: the results (or the book's bodies) of the readings "matched", "same_site", "sham" (None unless the
     site was chosen by a declared rule), "reworded", "neutral", "nearmiss" and "panel". `drawn`: "target" and
     "reworded", each a list of things with `.item.name`, `.item.id`, `.frame_id` and `.half`. Returns
-    {"fresh_judged", "folded", "reworded", "trial"}."""
+    {"fresh_judged", "folded", "reworded", "trial", "inputs"}: `inputs` is every figure the judgement was made from
+    (per class the items' effects, the floor, the reversed dose and each control edit's mean; the folded items; the
+    reworded set's the same; the batteries), which is what an intake sets beside the home trial's (`trial_figures`)."""
     main_dose = float(trial_cfg["main_dose"])
     tol = float(trial_cfg["match_tolerance"])
     selection_mode = str(trial_cfg["selection_mode"])
@@ -1288,6 +1573,8 @@ def judge_readings(
     folded_by_class: Dict[str, Dict[str, Any]] = {}
     bat_payload: Dict[str, Dict[str, Any]] = {}
     reworded_eval: Optional[Dict[str, Any]] = None
+    rw_classes: Dict[str, Dict[str, Any]] = {}
+    rw_folded: Dict[str, Dict[str, Any]] = {}
     if void_reason is None:
         for cls_name in ("small", "large"):
             it_effs, fl_m, rev_m, ctl_m = lcl._extract_item_effects(r_matched, target_drawn, cls_name, brief.metric, main_dose)
@@ -1320,8 +1607,6 @@ def judge_readings(
                                          "controls": ctls_cls, "delivered": deliv_cls}
             folded_by_class[cls_name] = extract_folded_class(r_matched, target_drawn, cls_name, brief.metric)
 
-        rw_classes: Dict[str, Dict[str, Any]] = {}
-        rw_folded: Dict[str, Dict[str, Any]] = {}
         for cls_name in ("small", "large"):
             it_effs, fl_rw, _, ctl_rw = lcl._extract_item_effects(r_rw, rw_drawn, cls_name, brief.metric, main_dose)
             rw_classes[cls_name] = {"item_effects": it_effs, "floor": fl_rw, "controls": {"other_sites_matched": ctl_rw}}
@@ -1354,7 +1639,38 @@ def judge_readings(
         base_checksum_unchanged=base_checksum_unchanged, base_after=base_after,
         unpacker_fallbacks=unpacker_fallbacks, void_reason=void_reason,
     )
-    return {"fresh_judged": fresh_judged, "folded": folded_eval, "reworded": reworded_eval, "trial": trial_judged}
+    inputs = {"classes": classes_payload, "folded": folded_by_class, "reworded_classes": rw_classes,
+              "reworded_folded": rw_folded, "batteries": bat_payload}
+    return {"fresh_judged": fresh_judged, "folded": folded_eval, "reworded": reworded_eval, "trial": trial_judged,
+            "inputs": inputs}
+
+
+def trial_figures(inputs: Mapping[str, Any]) -> Dict[str, Optional[float]]:
+    """Every figure a trial's judgement was made from, by name: what one trial is set beside another by.
+
+    `target:<class>:item:<item id>` and `reworded:<class>:item:<item id>` (each item's effect at the main dose),
+    `...:folded:<item id>` (the same in the folded form), `...:control:<family>:<n>` (each control edit's mean; None
+    for one with no finite reading on every item), `...:floor`, `target:<class>:reversed`, and `battery:<name>:<key>`
+    for each number a battery gave."""
+    out: Dict[str, Optional[float]] = {}
+    for group, key_c, key_f in (("target", "classes", "folded"), ("reworded", "reworded_classes", "reworded_folded")):
+        for cls_name, cd in (inputs.get(key_c) or {}).items():
+            for e in cd.get("item_effects") or ():
+                out[f"{group}:{cls_name}:item:{e['item_id']}"] = _clean_float(e.get("value"))
+            out[f"{group}:{cls_name}:floor"] = _clean_float(cd.get("floor"))
+            if "reversed_mean" in cd:
+                out[f"{group}:{cls_name}:reversed"] = _clean_float(cd.get("reversed_mean"))
+            for fam, vals in sorted((cd.get("controls") or {}).items()):
+                for c, v in enumerate(vals or ()):
+                    out[f"{group}:{cls_name}:control:{fam}:{c}"] = _clean_float(v)
+        for cls_name, fd in (inputs.get(key_f) or {}).items():
+            for e in fd.get("item_effects") or ():
+                out[f"{group}:{cls_name}:folded:{e['item_id']}"] = _clean_float(e.get("value"))
+    for bname, bd in sorted((inputs.get("batteries") or {}).items()):
+        for k, v in sorted(bd.items()):
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                out[f"battery:{bname}:{k}"] = _clean_float(v)
+    return out
 
 
 # --------------------------------------------------------------------------------------------- the sheet & the sentence
@@ -1382,39 +1698,74 @@ def trial_sentence(
     """The bounded sentence of a trial of record that passed, and of nothing else (a dry run and a re-run have none).
 
     It is the fresh reading's own sentence, as the claim gate writes it (dose, items and frames, interval, floor and
-    bar, control edits, selection, which fresh reading of how many, batteries, cheaper knobs), with what the trial
-    adds: the conditions it was of record under, each as it was found; the folded form; the reworded set and where it
-    came from; and the claim reading it follows, if the book holds one."""
-    if trial_judged.get("verdict") != "passed" or not meta.get("of_record") or meta.get("rerun_of"):
+    bar, control edits, selection, which fresh reading of how many, batteries, cheaper knobs) without the two
+    sentences that are a claim's alone, with what the trial adds: the conditions it was of record under, each as it
+    was found; the small batch class beside the large one; the folded form in both; the reworded set and where it
+    came from; the claim reading it follows, if the book holds one; the cheaper knob's own figure when one matched;
+    and that it was read once in one book."""
+    verdict = trial_judged.get("verdict")
+    if verdict not in PASSED or not meta.get("of_record") or meta.get("rerun_of"):
         return None
-    base = lcl.claim_sentence(brief, fresh_judged, meta)
+    base = lcl.claim_sentence(brief, fresh_judged, meta, tail=False)
     if base is None:
         return None
-    base = base.replace(" This is a lead, not a finding of record.", "")
-    fl = ((trial_judged.get("folded") or {}).get("classes") or {}).get("large") or {}
+    rows = (meta.get("design") or {}).get("rows") or {}
+    sm = (fresh_judged.get("classes") or {}).get("small") or {}
+    sm_fr, sm_hb = sm.get("frames") or {}, sm.get("house_bar") or {}
+    sm_osm = (sm.get("controls") or {}).get("other_sites_matched") or {}
+    small_part = (
+        f" Those figures are of the large batch class (rows {rows.get('large')}); in the small one (rows "
+        f"{rows.get('small')}) it moved {brief.metric} by {_fmt(sm_fr.get('mean'))} (floor {_fmt(sm_hb.get('floor'))}, "
+        f"house bar {_fmt(sm_hb.get('bar'))}; {sm_osm.get('at_least')} of {sm_osm.get('count')} matched other-site "
+        "control edits moved as much)."
+    )
+    fl_all = (trial_judged.get("folded") or {}).get("classes") or {}
+    fl, fl_s = fl_all.get("large") or {}, fl_all.get("small") or {}
     rw = trial_judged.get("reworded") or {}
     rw_cls = (rw.get("classes") or {}).get("large") or {}
     rw_fr = rw_cls.get("frames") or {}
     rw_ctl = (rw_cls.get("controls") or {}).get("other_sites_matched") or {}
     rw_fl = ((rw.get("folded") or {}).get("classes") or {}).get("large") or {}
+    rw_sm = ((rw.get("classes") or {}).get("small") or {}).get("frames") or {}
     src = meta.get("source_claim")
     src_part = (f" It follows the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})."
                 if isinstance(src, Mapping) else " No claim reading of this edit stands in this book before it.")
+    kf = trial_judged.get("cheaper_knob")
+    knob_part = (
+        f" The cheaper knob: {kf.get('name')}, one of the brief's own prompts and no change to the weights, moved "
+        f"{brief.metric} by {_fmt(kf.get('directed_effect'))} in the brief's direction, against the edit's "
+        f"{_fmt(kf.get('edit_directed_effect'))}."
+        if isinstance(kf, Mapping) else ""
+    )
+    k = int(meta.get("earlier_fresh_readings") or 0)
+    frames_part = (
+        f" The fresh items are new fillings of the brief's kept-back frames, which {k} earlier fresh "
+        f"reading{'s' if k != 1 else ''} of the brief in this book had already read."
+        if k else
+        " The fresh items are new fillings of the brief's kept-back frames, which no earlier fresh reading in this "
+        "book had read."
+    )
     return (
         f'Trial of record "{trial_cfg.get("trial_name")}" (registration {str(meta.get("trial_sha256"))[:12]}, read at '
-        f"commit {str(meta.get('repo_commit'))[:12]} from a clean checkout, in a process that had read nothing before "
-        f"it, the registration folder committed and the runner and reader as registered): {base} "
+        f"commit {str(meta.get('repo_commit'))[:12]} from a clean checkout, in a process that had asked nothing of the "
+        f"model before it, the registration folder committed, the runner and reader as registered, in the level book "
+        f"at line {meta.get('registration_seq')}): {base}{small_part} "
         f"The folded form of the edit, the change written into the weights, read {_fmt((fl.get('frames') or {}).get('mean'))} "
         f"on the same items (largest gap from the per-row form {_fmt(fl.get('max_abs_gap'))}, tolerance "
-        f"{_fmt(fl.get('tolerance'))}; the same bits on {fl.get('same_bits_count')} of {fl.get('taken_count')} items). "
+        f"{_fmt(fl.get('tolerance'))}; the same bits on {fl.get('same_bits_count')} of {fl.get('taken_count')} items), "
+        f"and {_fmt((fl_s.get('frames') or {}).get('mean'))} in the small class (largest gap "
+        f"{_fmt(fl_s.get('max_abs_gap'))}). "
         f"On reworded set {str(trial_cfg.get('reworded_id'))[:12]} ({trial_cfg.get('reworded_origin')}; read "
         f"{meta.get('reworded_use_index')} of at most {MAX_REWORDED_USES} times in this book) it moved {brief.metric} by "
         f"{_fmt(rw_fr.get('mean'))} (half 0 {_fmt((rw_fr.get('half_0') or {}).get('mean'))}, half 1 "
         f"{_fmt((rw_fr.get('half_1') or {}).get('mean'))}; {rw_ctl.get('at_least')} of {rw_ctl.get('count')} matched "
-        f"control edits moved as much, p {_fmt(rw_ctl.get('p_fw'), 3)}; folded {_fmt((rw_fl.get('frames') or {}).get('mean'))})."
-        f"{src_part} The fresh items are new fillings of the brief's kept-back frames, which a claim reading of the "
-        "brief has already read. Passed. It is of this base checkpoint and these items: an adapter made from the edit "
-        "and served over another quantisation is another object, to be measured there."
+        f"control edits moved as much, p {_fmt(rw_ctl.get('p_fw'), 3)}; folded {_fmt((rw_fl.get('frames') or {}).get('mean'))}; "
+        f"small class {_fmt(rw_sm.get('mean'))})."
+        f"{src_part}{knob_part}{frames_part} It was read once in that book, and the harness cannot see another book, "
+        "a copy of that one, or that one cut back to an earlier line. "
+        f"{'Passed' if verdict == PASSED[0] else 'Passed, matched by a cheaper knob'}. It is of this base checkpoint "
+        "and these items: an adapter made from the edit and served over another quantisation is another object, to "
+        "be measured there."
     )
 
 
@@ -1427,9 +1778,10 @@ def render_trial_sheet(
     meta: Mapping[str, Any],
     sentence: Optional[str],
 ) -> str:
-    """The trial's sheet: what kind of trial it was and why, the conditions as found, the fresh reading as the claim
-    gate's own sheet prints it (with every earlier fresh reading and trial of the brief), the folded form, the
-    reworded set, and the sentence when there is one."""
+    """The trial's sheet: what kind of trial it was and why, the conditions as found, the book it is counted in, the
+    calibration its bars came from and how that was taken, the fresh reading as the claim gate's own sheet prints it
+    (with every earlier fresh reading and trial of the brief), the folded form, the reworded set, and the sentence
+    when there is one."""
     kind = _kind_words(meta)
     head = {"of record": "TRIAL OF RECORD", "a dry run": "DRY RUN OF A TRIAL (not of record)",
             "a volunteer's re-run": "RE-RUN OF A TRIAL (a volunteer's; not of record)"}[kind]
@@ -1441,8 +1793,18 @@ def render_trial_sheet(
     for why in meta.get("not_of_record") or ():
         out.append(f"  not of record: {why}")
     proc = meta.get("process") or {}
-    n_before = int(proc.get("readings", 0)) + int(proc.get("captures", 0))
+    n_before = int(proc.get("readings", 0)) + int(proc.get("captures", 0)) + int(proc.get("forwards", 0))
     co = meta.get("checkout") or {}
+    bkn = meta.get("book") if isinstance(meta.get("book"), Mapping) else {}
+    fb = meta.get("unpacker_fallbacks")
+    cs = meta.get("calibration_settings") if isinstance(meta.get("calibration_settings"), Mapping) else {}
+    cal_where = meta.get("bars_calibration_where") or "this book"
+    if cs and isinstance(cs.get("layer"), int):
+        cal_how = (f": a probe of {cs.get('n_cols')} columns at layer {cs['layer']} (page layer {cs['layer'] + 1}) "
+                   f"against {cs.get('n_controls')} control edits, each bar {cs.get('mult')} times the largest figure "
+                   f"they gave (seed {cs.get('seed')})")
+    else:
+        cal_how = ": how it was taken is not recorded"
     out += [
         f"registration: {str(meta.get('trial_sha256') or '')[:16]} (registered {trial_cfg.get('registered_at')} at commit "
         f"{str(trial_cfg.get('repo_commit'))[:12]})"
@@ -1450,24 +1812,38 @@ def render_trial_sheet(
         f"read at commit {str(meta.get('repo_commit'))[:12]}: checkout "
         + ("clean" if co.get("dirty") is False else ("not known to git" if co.get("dirty") is None else
                                                      f"with {co.get('changed')} path(s) changed"))
+        + (f", {co.get('hidden')} file(s) git is told to overlook" if co.get("hidden") else "")
         + f" | registration folder committed: {'yes' if co.get('folder_committed') else 'no'}"
         + f" | runner and reader as registered: {'yes' if co.get('sources_match') else 'no'}",
-        "process: " + ("had read nothing before the trial" if n_before == 0 else
-                       f"had begun {proc.get('readings', 0)} reading(s) and {proc.get('captures', 0)} capture(s) before the trial"),
+        "process: " + ("had asked nothing of the model before the trial" if n_before == 0 else
+                       f"had begun {proc.get('readings', 0)} reading(s) and {proc.get('captures', 0)} capture(s) and "
+                       f"run the model forward {proc.get('forwards', 0)} time(s) before the trial"),
+        f"book: {meta.get('book_name')} ("
+        + ("the level book" if bkn.get("default") else "a side book, not the level book")
+        + f"); the trial was entered at line {meta.get('registration_seq')}, after the line that hashes to "
+        f"{str(meta.get('book_head_before'))[:12]}. Read once and counted in this book: the harness cannot see another "
+        "book, a copy of this one, or this one cut back to an earlier line",
+        f"bars: {bars.short()} from the calibration at line {meta.get('bars_calibration_seq')} of {cal_where}{cal_how}",
         f"base: checksum unchanged={meta.get('base_checksum_unchanged')} over {meta.get('base_linears_checked')} linears "
         f"({meta.get('base_tensors_checked')} tensors); overlays {meta.get('overlays_in_force')}, unpacker fallbacks "
-        f"{meta.get('unpacker_fallbacks')}",
+        f"{fb if fb is not None else 'not counted (no compiled unpacker to count them)'}",
         f"edit: {str(trial_cfg['edit_id'])[:16]} ({trial_cfg['edit_provenance']}) at dose {trial_cfg['main_dose']:g} | "
         f"linears: {', '.join(trial_cfg.get('edit_linears') or ())}",
     ]
     src = meta.get("source_claim")
     out.append(f"follows: the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})"
                if isinstance(src, Mapping) else "follows: no claim reading of this edit stands in this book")
-    out.append("fresh items: new fillings of the brief's kept-back frames, the frames a claim reading of this brief "
-               "has already read; the reworded set below is what stands outside them")
-    if trial_judged.get("matched_by_cheaper_knob"):
-        out.append(f"cheaper knob: matched by {trial_judged['matched_by_cheaper_knob']} (the verdict stands; the "
-                   "sentence says so)")
+    k = int(meta.get("earlier_fresh_readings") or 0)
+    out.append("fresh items: new fillings of the brief's kept-back frames, which "
+               + (f"{k} earlier fresh reading{'s' if k != 1 else ''} of the brief in this book had already read"
+                  if k else "no earlier fresh reading in this book had read")
+               + "; the reworded set below is what stands outside them")
+    kf = trial_judged.get("cheaper_knob")
+    if isinstance(kf, Mapping):
+        out.append(f"cheaper knob: {kf.get('name')}, one of the brief's own prompts and no change to the weights, moved "
+                   f"{brief.metric} by {_fmt(kf.get('directed_effect'))} in the brief's direction, against the edit's "
+                   f"{_fmt(kf.get('edit_directed_effect'))}: a trial that meets every test then reads "
+                   f'"{PASSED[1]}", not "{PASSED[0]}"')
 
     out += ["", "--- the fresh reading, as the claim gate's sheet prints a fresh reading ---"]
     out += ["  " + ln for ln in lcl.render_sheet(brief, bars, fresh_judged, meta, None).splitlines()]
@@ -1483,14 +1859,18 @@ def render_trial_sheet(
                 f"  [{cls_name}] folded mean {_fmt(ffr['mean'])} | h0 {_fmt(ffr['half_0']['mean'])}, "
                 f"h1 {_fmt(ffr['half_1']['mean'])} | from the per-row mean {_fmt(fc.get('mean_diff_vs_per_row'))}, largest "
                 f"item gap {_fmt(fc.get('max_abs_gap'))} (tolerance {_fmt(fc.get('tolerance'))}) | same bits "
-                f"{fc.get('same_bits_count')}/{fc.get('taken_count')} | ok={fc.get('ok')}"
+                f"{fc.get('same_bits_count')}/{fc.get('taken_count')} | agrees with the per-row form: {fc.get('gap_ok')} | "
+                + ("no house bar in this class (floor too loud), so it clears none" if fc.get("no_bar")
+                   else f"clears the bar: {fc.get('clears_bar')}, both halves: {fc.get('halves_ok')}")
+                + f" | ok={fc.get('ok')}"
             )
         else:
             out.append(f"  [{cls_name}] folded form not read ({fc.get('why')})")
 
     out += ["", f"--- the reworded set {str(trial_cfg.get('reworded_id') or '')[:12]} ({trial_cfg.get('reworded_origin')}; "
                 f"read {meta.get('reworded_use_index')} of at most {MAX_REWORDED_USES} times in this book; "
-                f"{trial_cfg.get('reworded_controls')} matched control edits, judged alone at the level) ---"]
+                f"{trial_cfg.get('reworded_controls')} matched control edits, judged alone at the level; it sits in the "
+                "registration folder, as public as the commit that holds it) ---"]
     rw = trial_judged.get("reworded")
     if not isinstance(rw, Mapping):
         out.append("  not read")
@@ -1509,7 +1889,9 @@ def render_trial_sheet(
             if rfc.get("available"):
                 out.append(
                     f"  [{cls_name}] folded mean {_fmt((rfc.get('frames') or {}).get('mean'))} | largest item gap "
-                    f"{_fmt(rfc.get('max_abs_gap'))} (tolerance {_fmt(rfc.get('tolerance'))}) | ok={rfc.get('ok')}"
+                    f"{_fmt(rfc.get('max_abs_gap'))} (tolerance {_fmt(rfc.get('tolerance'))}) | "
+                    + ("no house bar in this class (floor too loud) | " if rfc.get("no_bar") else "")
+                    + f"ok={rfc.get('ok')}"
                 )
             else:
                 out.append(f"  [{cls_name}] folded form not read ({rfc.get('why')})")
@@ -1537,34 +1919,63 @@ def _trial_seen_in_book(trial_sha256: str, book_path: Path) -> Optional[int]:
     return None
 
 
-def record_conditions(prereg_dir: Path, trial_cfg: Mapping[str, Any], *, repo_root: Path = ROOT_DIR) -> Dict[str, Any]:
+def record_conditions(prereg_dir: Path, trial_cfg: Mapping[str, Any], *, repo_root: Optional[Path] = None,
+                      book: Optional[Path] = None, seed_given: bool = False) -> Dict[str, Any]:
     """What a trial must find to be of record, each as it is found now: `reasons` lists, in words, every one that
-    does not hold (empty when the trial may be of record)."""
+    does not hold (empty when the trial may be of record).
+
+    The process has asked nothing of the model through the kernel before it (`levelling.asked_in_process`: readings,
+    captures and forwards; code that calls the model itself is not seen). The checkout (`ROOT_DIR`, or `repo_root`
+    for a caller that only wants to look) is one git knows, with nothing changed, nothing untracked and no file git
+    is told to overlook. The registration folder is in the commit, byte for byte. The runner and the reader are the
+    files hashed at registration. With `book`: it is the level book (`level_book.default_book_path`), the one book
+    fresh readings are counted in, and not a side book. And the seed of the draw was not handed in (`seed_given`).
+
+    What none of this shows: that the level book is the only book there has been. A copy of it, or the book cut back
+    to an earlier line, would take the same trial again, and the harness cannot see either."""
+    root = Path(repo_root) if repo_root is not None else ROOT_DIR
     asked = lv.asked_in_process()
-    commit, dirty = git_state(repo_root)
-    changed = checkout_changes(repo_root)
-    not_committed = folder_committed(Path(prereg_dir), repo_root)
-    now, then = source_hashes(ROOT_DIR), dict(trial_cfg.get("sources") or {})
-    moved = sorted(k for k in SOURCE_FILES if now.get(k) != then.get(k))
+    commit, dirty = git_state(root)
+    changed = checkout_changes(root)
+    tracked = checkout_changes(root, tracked_only=True)
+    hidden = hidden_from_status(root)
+    not_committed = folder_committed(Path(prereg_dir), root)
+    moved = sources_moved(source_hashes(SOURCE_ROOT), dict(trial_cfg.get("sources") or {}))
     reasons: List[str] = []
-    if asked["readings"] or asked["captures"]:
+    if asked["readings"] or asked["captures"] or asked.get("forwards"):
         reasons.append(f"this process had already begun {asked['readings']} reading(s) and {asked['captures']} "
-                       "capture(s): a trial of record is the first thing its process reads")
+                       f"capture(s) and run the model forward {asked.get('forwards', 0)} time(s): a trial of record "
+                       "is the first thing its process asks of the model")
     if dirty is None:
         reasons.append("the checkout is not one git can be asked about, so it cannot be shown clean")
     elif dirty:
         some = ", ".join((changed or [])[:3])
         reasons.append(f"the checkout has {len(changed or [])} uncommitted path(s) ({some}"
                        + (", ..." if changed and len(changed) > 3 else "") + ")")
+    if hidden:
+        reasons.append(f"git is told to overlook changes to {len(hidden)} file(s) of the checkout ({', '.join(hidden[:3])}"
+                       + (", ..." if len(hidden) > 3 else "") + "), so it cannot be shown clean")
     if not_committed is not None:
         reasons.append(not_committed)
     if moved:
-        reasons.append("the runner or reader is not the one registered (" + ", ".join(moved) + ")")
+        reasons.append("the runner or reader is not the one registered (" + ", ".join(moved[:6])
+                       + (", ..." if len(moved) > 6 else "") + ")")
+    default_book: Optional[bool] = None
+    if book is not None:
+        default_book = Path(book).expanduser().resolve() == lb.default_book_path().resolve()
+        if not default_book:
+            reasons.append(f"it is read in {Path(book).name}, a side book and not the level book: a trial of record "
+                           "is counted in the one book fresh readings are counted in")
+    if seed_given:
+        reasons.append("the seed of its draw was handed in, not drawn after the trial was entered in the book")
     return {
         "reasons": reasons,
         "process": asked,
         "checkout": {"commit": commit, "dirty": dirty, "changed": len(changed) if changed is not None else None,
-                     "folder_committed": not_committed is None, "sources_match": not moved},
+                     "tracked_changed": len(tracked) if tracked is not None else None,
+                     "hidden": len(hidden) if hidden is not None else None,
+                     "folder_committed": not_committed is None, "sources_match": not moved,
+                     "sources_moved": moved[:12], "default_book": default_book, "seed_given": bool(seed_given)},
     }
 
 
@@ -1578,6 +1989,20 @@ def _drawn_rows(drawn: Sequence[Any]) -> List[Dict[str, Any]]:
     return [{"name": d.item.name, "item_id": d.item.id, "frame_id": d.frame_id, "half": int(d.half)} for d in drawn]
 
 
+def _plain(obj: Any) -> Any:
+    """A value as the book takes it: a number that is not finite as None, a tuple as a list, a float of any kind as a
+    float. A figure that came out as an infinity must not be what stops a verdict from being written."""
+    if isinstance(obj, bool) or obj is None:
+        return obj
+    if isinstance(obj, float):
+        return float(obj) if math.isfinite(obj) else None
+    if isinstance(obj, Mapping):
+        return {str(k): _plain(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_plain(v) for v in obj]
+    return obj
+
+
 def run_trial_of_record(
     h: lv.Handle,
     prereg_dir: Path,
@@ -1587,31 +2012,37 @@ def run_trial_of_record(
     book_path: Optional[Path] = None,
     dry_run: bool = False,
     rerun: Optional[Mapping[str, Any]] = None,
-    _repo_root: Optional[Path] = None,
     _seed_override: Optional[bytes] = None,
 ) -> Dict[str, Any]:
     """Read one registered trial.
 
     Before anything is written: the folder is verified (`verify_registration`); the trial is refused if this
-    registration is already in the book or `out_dir` holds a result; the registered edit is built again on `h` and
-    kept to its id; the fresh-reading gate is asked (`level_claim.fresh_reading_gate`, as for a claim, with the
-    brief's budget counting claims and trials together and one trial an edit); the bars must be the calibration the
+    registration is already in the book or `out_dir` holds a trial's seed or result; the registered edit is built
+    again on `h` and kept to its id; the fresh-reading gate is asked (`level_claim.fresh_reading_gate`, as for a
+    claim, with the brief's budget counting claims and trials together, one trial an edit, a trial only after a
+    claim that read a lead, and a calibration that follows from the book); the bars must be the calibration the
     folder records, in this book; the reworded set must not be worn out (`MAX_REWORDED_USES`) or read in practice
-    here; and the conditions of record are looked at (`record_conditions`). If any of those does not hold the trial
-    is refused, unless `dry_run`: then it is read as a dry run, which is judged and counted as a trial is and is
-    never of record. (`dry_run=True` makes a dry run of a trial that could have been of record, too.)
+    here, and must make items on this model; every reading the trial will take is asked of the kernel with no
+    forward (`preflight_trial`); the conditions of record are looked at (`record_conditions`); and `out_dir` is made
+    and written to. If the conditions of record do not hold the trial is refused, unless `dry_run`: then it is read
+    as a dry run, which is judged and counted as a trial is and is never of record. (`dry_run=True` makes a dry run
+    of a trial that could have been of record, too.)
 
     Then: the checksum of the base (`weight_edits.base_checksum`), the registration note, the draw from
-    `os.urandom(32)`, the readings (the fresh items against matched other-site control edits with the folded form
-    beside, against same-site ones, against sham-target ones for a declared rule; the reworded set with the folded
-    form beside; the three gating batteries; the brief's prompt arms), the checksum again, the judgement
-    (`judge_readings`), the verdict note (`trial_of_record`, `trial_dry_run` or `trial_rerun`), and
-    `trial_result.json` and `TRIAL_SHEET.md` in `out_dir`. The result file holds the seed of the draw, so that a
-    volunteer's kit can ask for the same items; the book does not.
+    `os.urandom(32)` (its seed written to `trial_seed.json` in `out_dir` at once), the readings (`_trial_steps`: the
+    fresh items against matched other-site control edits with the folded form beside, against same-site ones,
+    against sham-target ones for a declared rule; the reworded set with the folded form beside; the three gating
+    batteries), the brief's prompt arms, the checksum again, the judgement (`judge_readings`), the verdict note
+    (`trial_of_record`, `trial_dry_run` or `trial_rerun`), and `trial_result.json` and `TRIAL_SHEET.md` in
+    `out_dir`. Once the trial is entered in the book it always gets a verdict note: if anything raises after that,
+    a `void` note saying so is written and the error is raised again. The result file holds the seed of the draw,
+    so that a volunteer's kit can ask for the same items; the book does not.
 
     `rerun`: a volunteer's re-run of a kit (`level_rerun.run_volunteer_rerun`), {"of": the home registration's hash,
     "seed": the home draw's seed}: the folder is a kit, the bars' calibration is the one the registration records
-    (a volunteer's book has none), the items are the home's, and the result is a re-run, never of record."""
+    (a volunteer's book has none), the items are the home's, and the result is a re-run, never of record.
+
+    `_seed_override`: a seed handed in, for the checks. A trial read with one is never of record."""
     is_rerun = rerun is not None
     reg = verify_registration(prereg_dir, kit=is_rerun)
     trial_cfg: Dict[str, Any] = reg["trial"]
@@ -1624,11 +2055,16 @@ def run_trial_of_record(
                      or len(rerun["seed"]) != 32):
         raise TrialRefused("A re-run names the home registration it is of and carries the 32 bytes of its draw.")
 
+    reg_folder = Path(prereg_dir).resolve()
     out_path = Path(out_dir).resolve()
-    if (out_path / "trial_result.json").exists():
+    if out_path == reg_folder or reg_folder in out_path.parents:
         raise TrialRefused(
-            f"Read once: {out_path / 'trial_result.json'} already exists. A trial of record is read once."
+            f"{out_path} is inside the registration folder: a registration is a flat folder of the files it was "
+            "registered with, and a result written into it would leave it unverifiable. Give the result a folder of its own."
         )
+    for nm in ("trial_result.json", "trial_seed.json"):
+        if (out_path / nm).exists():
+            raise TrialRefused(f"Read once: {out_path / nm} already exists. A trial is read once, into a folder of its own.")
     bk = Path(book_path).expanduser().resolve() if book_path is not None else lb.book_path().resolve()
     seen_at = _trial_seen_in_book(trial_sha, bk)
     if seen_at is not None:
@@ -1641,15 +2077,15 @@ def run_trial_of_record(
     no_fold = we.can_fold(h.lm, edit)
     if no_fold is not None:
         raise TrialRefused(f"A trial reads the folded form of its edit, and this edit has none on this model: {no_fold}")
+    cal_reg = trial_cfg["bars_calibration"]
     try:
         lcl._check_edit_allowed_by_brief(edit, brief)
         gate = lcl.fresh_reading_gate(h, brief, bars, edit, bk, what="trial",
-                                      calibration=dict(trial_cfg["bars_calibration"]) if is_rerun else None)
+                                      calibration=dict(cal_reg) if is_rerun else None)
     except lcl.ClaimRefused as exc:
         raise TrialRefused(str(exc)) from None
     hist, cal_note = gate["hist"], gate["cal_note"]
     if not is_rerun:
-        cal_reg = trial_cfg["bars_calibration"]
         cal_here = next(lb.entries(bk, start=int(cal_note["seq"]), limit=1))
         if int(cal_note["seq"]) != int(cal_reg["seq"]) or cal_here["hash"] != cal_reg.get("hash"):
             raise TrialRefused(
@@ -1688,8 +2124,15 @@ def run_trial_of_record(
             f'{"s" if len(rw_practised) > 1 else ""} {", ".join(str(s) for s in rw_practised[:8])}): a set the edit '
             "may have been picked on is not outside what it was picked on. Write a new set."
         )
+    # the reworded items, and every reading the trial will take, asked before anything is entered in the book
+    sys_turn = (brief.chat_settings or {}).get("system")
+    try:
+        rw_drawn = reworded.to_drawn_items(h.tokenizer, system_override=sys_turn)
+    except lv.Refused as exc:
+        raise TrialRefused(f"The reworded set cannot be made into items on this model: {exc}") from None
+    priced = preflight_trial(h, brief, edit, trial_cfg, reworded, sham_recipes, base_dir=Path(prereg_dir))
 
-    cond = record_conditions(Path(prereg_dir), trial_cfg, repo_root=Path(_repo_root) if _repo_root else ROOT_DIR)
+    cond = record_conditions(Path(prereg_dir), trial_cfg, book=bk, seed_given=_seed_override is not None)
     not_of_record = list(cond["reasons"])
     if is_rerun:
         # a re-run is never of record; what a home trial needs of its checkout and folder is not asked of it, and
@@ -1704,6 +2147,20 @@ def run_trial_of_record(
     elif dry_run and not not_of_record:
         not_of_record = ["asked for as a dry run"]
     of_record = not not_of_record
+
+    # the folder the result goes into: made and written to now, so that a folder that cannot take the result is
+    # found before a fresh reading is spent (it is made after the checkout is looked at: an empty folder is not a
+    # change git lists)
+    try:
+        out_path.mkdir(parents=True, exist_ok=True)
+        probe = out_path / ".trial_write_probe"
+        probe.write_bytes(b"probe\n")
+        probe.unlink()
+    except OSError as exc:
+        raise TrialRefused(
+            f"{out_path} cannot be written to ({exc.strerror or type(exc).__name__}): a trial's result and the seed "
+            "of its draw are written there, so it is asked before anything is entered in the book."
+        ) from None
 
     C = int(trial_cfg["controls_per_family"])
     rows_cfg = dict(trial_cfg["rows"])
@@ -1732,7 +2189,11 @@ def run_trial_of_record(
         sham_ids = list(trial_cfg.get("sham_edit_ids") or ())
         shams_note = {"count": len(sham_ids), "edit_ids": sham_ids,
                       "sha256": hashlib.sha256(lb.canonical(sham_ids)).hexdigest(),
-                      "from": "registered with the trial; checked for shape only"}
+                      "from": "registered with the trial; checked for shape only",
+                      "source": "registered with the trial"}
+    cal_settings = dict(cal_note.get("settings") or {}) if isinstance(cal_note.get("settings"), Mapping) else {}
+    cal_where = f"the home book ({cal_reg.get('book')})" if is_rerun else None
+    note_type = NOTE_RERUN if is_rerun else (NOTE_OF_RECORD if of_record else NOTE_DRY_RUN)
 
     # The base, before anything is read of it
     t_start = time.perf_counter()
@@ -1766,18 +2227,22 @@ def run_trial_of_record(
             "rule_version": trial_cfg["v"],
             "bars_sha256": bars.id,
             "bars_calibration_seq": int(cal_note["seq"]),
+            "bars_calibration_where": cal_where,
+            "calibration_settings": cal_settings,
             "selection_mode": selection_mode,
             "declared_rule": trial_cfg.get("declared_rule"),
             "practice_count": int(hist["practice_readings"]),
             "practice_best": practice_best,
             "source_claim": source_claim,
             "design": design,
+            "priced": {"forwards": int(priced["forwards"]), "seconds": float(priced["seconds"])},
             "shams": shams_note,
             "kept_back": kept_back_note,
             "book": gate["book"],
             "book_fresh_readings": dict(hist["book_fresh_readings"]),
             "reworded_id": reworded.id,
             "reworded_wordings": reworded.wordings(),
+            "reworded_marks": reworded.marks(),
             "reworded_origin": reworded_origin(reworded, brief),
             "reworded_use_index": rw_uses_before + 1,
             "prior_verdicts": [
@@ -1793,327 +2258,349 @@ def run_trial_of_record(
             "base_tensors_checked": ck_before["tensors_checked"],
             "repo_commit": commit_now,
         }
-        reg_entry = lb.append("note", reg_body, path=bk)
+        reg_entry = lb.append("note", _plain(reg_body), path=bk)
         book_seqs: List[int] = [int(reg_entry["seq"])]
-
-        # Step 2: the draw, after the registration
-        if is_rerun:
-            seed_bytes = bytes(rerun["seed"])
-        else:
-            seed_bytes = bytes(_seed_override) if _seed_override is not None else os.urandom(32)
-        seed_sha = _sha_bytes(seed_bytes)
-        seed_u32 = int.from_bytes(seed_bytes[:4], "little") & 0x7FFFFFFF
-
-        void_reason: Optional[str] = None
-        try:
-            target_drawn = brief.generator.draw(
-                "kept_back", int(trial_cfg["n_target"]), seed_bytes=seed_bytes + b":trial_target",
-                tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"),
-                forbid_item_ids=gate["forbid_items"], forbid_frame_ids=gate["forbid_frames"],
-                name_prefix="trial_target",
-            )
-            near_drawn = brief.near_miss_generator.draw(
-                "kept_back", int(trial_cfg["n_near"]), seed_bytes=seed_bytes + b":trial_near",
-                tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"),
-                name_prefix="trial_near",
-            )
-            neu_drawn = lbr.neutral_chat_generator().draw(
-                "kept_back", int(trial_cfg["n_neutral"]), seed_bytes=seed_bytes + b":trial_neu",
-                tokenizer=h.tokenizer, name_prefix="trial_neu",
-            )
-            panel = lbr.draw_labelled_sanity_panel(int(trial_cfg["n_panel"]), seed_bytes=seed_bytes + b":trial_panel",
-                                                   tokenizer=h.tokenizer)
-        except lbr.BriefError as exc:
-            void_reason = f"Fresh draw refused: {exc}"
-            target_drawn, near_drawn, neu_drawn, panel = [], [], [], []
-        rw_drawn = reworded.to_drawn_items(h.tokenizer, system_override=(brief.chat_settings or {}).get("system"))
-
-        target_items = {d.item.name: d.item for d in target_drawn}
-        near_items = {d.item.name: d.item for d in near_drawn}
-        neu_items = {d.item.name: d.item for d in neu_drawn}
-        panel_items = {p["item"].name: p["item"] for p in panel}
-        rw_items = {d.item.name: d.item for d in rw_drawn}
-
         readings: Dict[str, Optional[Dict[str, Any]]] = {k: None for k in
                                                          ("matched", "same_site", "sham", "reworded", "neutral",
                                                           "nearmiss", "panel")}
-        tname = trial_cfg["trial_name"]
-        unpacker_mode: Optional[str] = None
-
-        def take(role: str, plan: Dict[str, Any], items: Mapping[str, Any]) -> bool:
-            """One reading of the trial; False once one has not ended ok (the rest are then not taken)."""
-            nonlocal void_reason
-            r = lv.read(h, plan, items, edit=edit)
-            readings[role] = r
-            book_seqs.append(int(r["book"]["seq"]))
-            if r.get("status") != "ok":
-                void_reason = f'The trial\'s {role} reading ended "{r.get("status")}": {r.get("why")}'
-                return False
-            return True
-
-        if void_reason is None:
-            base_plan = {"kind": "paired", "edit": {"built": edit.id}, "doses": doses, "main_dose": main_dose,
-                         "rows": rows_cfg, "readouts": dict(brief.readouts), "rank_by": brief.metric}
-            light = {"kind": "paired", "edit": {"built": edit.id}, "doses": [main_dose, 0.0], "rows": rows_cfg,
-                     "folded": "never"}
-            plain = {"kl": True, "own": True, "odds": None}
-            bat_n = min(C, 3)
-            steps = [
-                ("matched", {**base_plan, "name": f"trial_{tname}_matched", "folded": "always",
-                             "controls": {"family": "other_sites_matched", "count": C, "seed": seed_u32,
-                                          "tolerance": tol}}, target_items),
-                ("same_site", {**base_plan, "name": f"trial_{tname}_same_site", "folded": "never",
-                               "controls": {"family": "same_site", "count": C, "seed": seed_u32 + 1}}, target_items),
-            ]
-            if selection_mode == "declared_rule" and sham_recipes:
-                steps.append(("sham", {**base_plan, "name": f"trial_{tname}_sham", "folded": "never",
-                                       "controls": {"family": "sham_target", "shams": sham_recipes,
-                                                    "seed": seed_u32 + 2}}, target_items))
-            steps += [
-                ("reworded", {"name": f"trial_{tname}_reworded", "kind": "paired", "edit": {"built": edit.id},
-                              "doses": [main_dose, 0.0], "main_dose": main_dose, "rows": rows_cfg,
-                              "readouts": dict(brief.readouts), "rank_by": brief.metric, "folded": "always",
-                              "controls": {"family": "other_sites_matched", "count": int(trial_cfg["reworded_controls"]),
-                                           "seed": seed_u32 + 11, "tolerance": tol}}, rw_items),
-                ("neutral", {**light, "name": f"trial_{tname}_neutral", "readouts": plain,
-                             "controls": {"family": "other_sites", "count": bat_n, "seed": seed_u32 + 3}}, neu_items),
-                ("nearmiss", {**light, "name": f"trial_{tname}_nearmiss", "readouts": dict(brief.readouts),
-                              "controls": {"family": "other_sites", "count": bat_n, "seed": seed_u32 + 4}}, near_items),
-                ("panel", {**light, "name": f"trial_{tname}_panel", "readouts": plain,
-                           "controls": {"family": "other_sites", "count": bat_n, "seed": seed_u32 + 5}}, panel_items),
-            ]
-            for role, plan, items in steps:
-                if not take(role, plan, items):
-                    break
-            if readings["matched"] is not None:
-                unpacker_mode = (readings["matched"].get("runtime") or {}).get("unpacker", {}).get("mode")
-
-        # Step 3: the brief's prompt arms beside the edit (cheaper knobs)
-        prompt_arm_res = (
-            lcl._prompt_arm_eval(h, brief, target_drawn, near_drawn)
-            if (void_reason is None and brief.prompt_arms and brief.metric in ("odds", "own"))
-            else []
-        )
-        if not brief.prompt_arms:
-            arms_state = lcl.PROMPT_ARMS_NONE
-        elif brief.metric not in ("odds", "own"):
-            arms_state = f'no prompt read-out for metric "{brief.metric}"'
-        elif void_reason is not None:
-            arms_state = "the reading is void"
-        else:
-            arms_state = lcl.PROMPT_ARMS_RUN
-        cheaper_knobs = {
-            "prompt_arms": prompt_arm_res,
-            "prompt_arms_state": arms_state,
-            "decoding_bias": {"available": brief.metric == "odds", "gating": False,
-                              "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"},
-            "activation_twin": {
-                "is_exact_mul": all(t.kind == "cols" and t.which == "down_proj" and all(op == 0 for op in t.op)
-                                    for t in edit.terms),
-                "note": "no search over cheaper knobs; not compared with a trained adapter",
-            },
-        }
-
-        # Step 4: the base again, and the unpacker
+        seed_sha: Optional[str] = None
+        verdict_written = False
         try:
-            ck_after = we.base_checksum(h.lm, hooks_at_load=h.hooks_at_load)
-            base_after = True
-        except Exception:
-            ck_after = {"sha256": None, "linears_checked": 0, "tensors_checked": 0, "overlays_in_force": -1,
-                        "hooks_now": -1}
-            base_after = False
-        base_checksum_unchanged = bool(
-            base_after
-            and ck_after["sha256"] == ck_before["sha256"]
-            and ck_after["linears_checked"] == ck_before["linears_checked"]
-            and ck_after["tensors_checked"] == ck_before["tensors_checked"]
-        )
-        fb_after = lv._fell_back()
-        unpacker_fallbacks = int(fb_after or 0) - int(fb_before or 0)
+            # Step 2: the draw, after the registration; its seed kept at once, in the owner's folder and not the book
+            if is_rerun:
+                seed_bytes = bytes(rerun["seed"])
+            else:
+                seed_bytes = bytes(_seed_override) if _seed_override is not None else os.urandom(32)
+            seed_sha = _sha_bytes(seed_bytes)
+            seed_u32 = int.from_bytes(seed_bytes[:4], "little") & 0x7FFFFFFF
+            seed_file = out_path / "trial_seed.json"
+            write_json_atomic(seed_file, {
+                "v": TRIAL_VERSION, "trial_name": trial_cfg["trial_name"], "trial_sha256": trial_sha,
+                "book": bk.name, "registration_seq": int(reg_entry["seq"]), "seed_hex": seed_bytes.hex(),
+                "seed_sha256": seed_sha,
+                "note": "The seed of this trial's draw, written when it was drawn and before anything was read. "
+                        "trial_result.json holds it too once the trial has ended.",
+            }, indent=2)
+            try:
+                os.chmod(seed_file, 0o600)
+            except OSError:
+                pass
 
-        # Step 5: the judgement, by the one path a book's readings are judged again by
-        drawn = {"target": target_drawn, "reworded": rw_drawn}
-        judged = judge_readings(
-            brief, bars, trial_cfg, readings, drawn, cheaper_knobs=cheaper_knobs,
-            practice_count=int(hist["practice_readings"]), practice_best=practice_best,
-            base_checksum_unchanged=base_checksum_unchanged, base_after=base_after,
-            unpacker_fallbacks=unpacker_fallbacks, void_reason=void_reason,
-        )
-        fresh_judged, folded_eval = judged["fresh_judged"], judged["folded"]
-        reworded_eval, trial_judged = judged["reworded"], judged["trial"]
+            void_reason: Optional[str] = None
+            try:
+                target_drawn = brief.generator.draw(
+                    "kept_back", int(trial_cfg["n_target"]), seed_bytes=seed_bytes + b":trial_target",
+                    tokenizer=h.tokenizer, system_override=sys_turn,
+                    forbid_item_ids=gate["forbid_items"], forbid_frame_ids=gate["forbid_frames"],
+                    name_prefix="trial_target",
+                )
+                near_drawn = brief.near_miss_generator.draw(
+                    "kept_back", int(trial_cfg["n_near"]), seed_bytes=seed_bytes + b":trial_near",
+                    tokenizer=h.tokenizer, system_override=sys_turn, name_prefix="trial_near",
+                )
+                neu_drawn = lbr.neutral_chat_generator().draw(
+                    "kept_back", int(trial_cfg["n_neutral"]), seed_bytes=seed_bytes + b":trial_neu",
+                    tokenizer=h.tokenizer, name_prefix="trial_neu",
+                )
+                panel = lbr.draw_labelled_sanity_panel(int(trial_cfg["n_panel"]), seed_bytes=seed_bytes + b":trial_panel",
+                                                       tokenizer=h.tokenizer)
+            except (lbr.BriefError, lv.Refused) as exc:
+                void_reason = f"Fresh draw refused: {exc}"
+                target_drawn, near_drawn, neu_drawn, panel = [], [], [], []
 
-        elapsed_s = round(time.perf_counter() - t_start, 3)
-        meta = {
-            # what the claim gate's sheet and sentence read of a fresh reading
-            "date": _utc_now(),
-            "model_id": h.model_id,
-            "weights_id": h.weights_id,
-            "unpacker": unpacker_mode or "none",
-            "edit_id": edit.id,
-            "edit_linears": edit.linears(),
-            "main_dose": main_dose,
-            "brief_id": brief.id,
-            "brief_name": brief.name,
-            "bars_sha256": bars.id,
-            "bars_calibration_seq": int(cal_note["seq"]),
-            "bars_calibrations_in_book": len(hist["calibrations"]),
-            "declared_rule": trial_cfg.get("declared_rule"),
-            "reading_index": reading_index,
-            "max_fresh_readings": int(brief.max_fresh_readings),
-            "draw_seed_sha256": seed_sha,
-            "n_target_items": len(target_drawn),
-            "registration_seq": int(reg_entry["seq"]),
-            "book_seqs": book_seqs,
-            "prior_verdicts": reg_body["prior_verdicts"],
-            "prior_trials": reg_body["prior_trials"],
-            "prompt_named_site": brief.prompt_named_site,
-            "chat_settings": dict(brief.chat_settings),
-            "forecast": dict(trial_cfg.get("forecast") or {}),
-            "design": design,
-            "shams": shams_note,
-            "kept_back": kept_back_note,
-            "book": gate["book"],
-            "book_fresh_readings": dict(hist["book_fresh_readings"]),
-            "written_strata": None,
-            "settings_audit": None,
-            # what is the trial's own
-            "finished_at": _utc_now(),
-            "device": str(h.runtime.get("device") or h.device),
-            "trial_sha256": trial_sha,
-            "of_record": of_record,
-            "not_of_record": not_of_record,
-            "rerun_of": str(rerun["of"]) if is_rerun else None,
-            "process": cond["process"],
-            "checkout": cond["checkout"],
-            "repo_commit": commit_now,
-            "source_claim": source_claim,
-            "book_name": bk.name,
-            "base_checksum_before": ck_before["sha256"],
-            "base_checksum_after": ck_after["sha256"],
-            "base_checksum_unchanged": base_checksum_unchanged,
-            "base_linears_checked": ck_before["linears_checked"],
-            "base_tensors_checked": ck_before["tensors_checked"],
-            "overlays_in_force": ck_after["overlays_in_force"],
-            "base_after": base_after,
-            "unpacker_fallbacks": unpacker_fallbacks,
-            "reworded_use_index": rw_uses_before + 1,
-            "seconds": elapsed_s,
-        }
-        sentence = trial_sentence(brief, trial_cfg, fresh_judged, trial_judged, meta)
-        sheet = render_trial_sheet(brief, bars, trial_cfg, fresh_judged, trial_judged, meta, sentence)
-
-        summary_compact = {
-            cls: {
-                "n_frames": fresh_judged["classes"][cls]["frames"]["n_frames"],
-                "mean": fresh_judged["classes"][cls]["frames"]["mean"],
-                "directed_mean": fresh_judged["classes"][cls]["frames"]["directed_mean"],
-                "ci95": fresh_judged["classes"][cls]["frames"]["ci95"],
-                "half_0": fresh_judged["classes"][cls]["frames"]["half_0"],
-                "half_1": fresh_judged["classes"][cls]["frames"]["half_1"],
-                "house_bar": fresh_judged["classes"][cls]["house_bar"],
-                "controls": fresh_judged["classes"][cls]["controls"],
+            items_of: Dict[str, Dict[str, Any]] = {
+                "target": {d.item.name: d.item for d in target_drawn},
+                "near": {d.item.name: d.item for d in near_drawn},
+                "neutral": {d.item.name: d.item for d in neu_drawn},
+                "panel": {p["item"].name: p["item"] for p in panel},
+                "reworded": {d.item.name: d.item for d in rw_drawn},
             }
-            for cls in (fresh_judged.get("classes") or {})
-        }
-        verdict_body = {
-            "note_type": NOTE_RERUN if is_rerun else (NOTE_OF_RECORD if of_record else NOTE_DRY_RUN),
-            "trial_name": trial_cfg["trial_name"],
-            "trial_sha256": trial_sha,
-            "of_record": of_record,
-            "not_of_record": not_of_record,
-            "rerun_of": str(rerun["of"]) if is_rerun else None,
-            "brief_id": brief.id,
-            "brief_name": brief.name,
-            "edit_id": edit.id,
-            "edit_linears": edit.linears(),
-            "edit_provenance": trial_cfg["edit_provenance"],
-            "main_dose": main_dose,
-            "reading_index": reading_index,
-            "max_fresh_readings": int(brief.max_fresh_readings),
-            "verdict": trial_judged["verdict"],
-            "fresh_verdict": trial_judged["fresh_verdict"],
-            "reasons": trial_judged["reasons"],
-            "bars_sha256": bars.id,
-            "registration_seq": int(reg_entry["seq"]),
-            "book_seqs": book_seqs,
-            "readings": {role: (int(r["book"]["seq"]) if r is not None else None) for role, r in readings.items()},
-            "drawn": {"target": _drawn_rows(target_drawn), "reworded": _drawn_rows(rw_drawn)},
-            "draw_seed_sha256": seed_sha,
-            "claim_sentence": sentence,
-            "summary": summary_compact,
-            "folded": {
-                "ok": folded_eval["ok"],
-                "status": folded_eval["status"],
-                "classes": {
-                    cls: {
-                        "ok": fc.get("ok"),
-                        "available": fc.get("available"),
-                        "mean": (fc.get("frames") or {}).get("mean"),
-                        "max_abs_gap": fc.get("max_abs_gap"),
-                        "tolerance": fc.get("tolerance"),
-                        "same_bits_count": fc.get("same_bits_count"),
-                        "taken_count": fc.get("taken_count"),
-                    }
-                    for cls, fc in (folded_eval.get("classes") or {}).items()
-                },
-            },
-            "reworded": (
-                {
-                    "ok": reworded_eval["ok"],
-                    "status": reworded_eval["status"],
-                    "reworded_id": reworded.id,
-                    "origin": reworded_origin(reworded, brief),
-                    "classes": {
-                        cls: {"ok": rc.get("ok"), "mean": (rc.get("frames") or {}).get("mean")}
-                        for cls, rc in (reworded_eval.get("classes") or {}).items()
-                    },
-                }
-                if reworded_eval is not None else None
-            ),
-            "batteries": fresh_judged.get("batteries"),
-            "cheaper_knobs": fresh_judged.get("cheaper_knobs"),
-            "practice_count": int(hist["practice_readings"]),
-            "practice_best": practice_best,
-            "base_checksum_unchanged": base_checksum_unchanged,
-            "base_after": base_after,
-            "unpacker_fallbacks": unpacker_fallbacks,
-            "seconds": elapsed_s,
-        }
-        v_entry = lb.append("note", verdict_body, path=bk)
-        we.assert_base(h.lm, h.hooks_at_load)
+            unpacker_mode: Optional[str] = None
+            if void_reason is None:
+                for role, plan, which in _trial_steps(trial_cfg, brief, {"built": edit.id}, seed_u32, sham_recipes):
+                    r = lv.read(h, plan, items_of[which], edit=edit)
+                    readings[role] = r
+                    book_seqs.append(int(r["book"]["seq"]))
+                    if r.get("status") != "ok":  # the rest are then not taken
+                        void_reason = f'The trial\'s {role} reading ended "{r.get("status")}": {r.get("why")}'
+                        break
+                if readings["matched"] is not None:
+                    unpacker_mode = (readings["matched"].get("runtime") or {}).get("unpacker", {}).get("mode")
 
-        result = {
-            "v": TRIAL_VERSION,
-            "trial_name": trial_cfg["trial_name"],
-            "trial_sha256": trial_sha,
-            "of_record": of_record,
-            "not_of_record": not_of_record,
-            "rerun_of": str(rerun["of"]) if is_rerun else None,
-            "verdict": trial_judged["verdict"],
-            "fresh_verdict": trial_judged["fresh_verdict"],
-            "reasons": trial_judged["reasons"],
-            "claim_sentence": sentence,
-            "sheet": sheet,
-            "trial_config": trial_cfg,
-            "fresh_judged": fresh_judged,
-            "folded": folded_eval,
-            "reworded": reworded_eval,
-            "meta": meta,
-            # the seed of the draw: in this file, which is the owner's, and not in the book
-            "seed_hex": seed_bytes.hex(),
-            "book": {
-                "path": str(bk),
-                "name": bk.name,
+            # Step 3: the brief's prompt arms beside the edit (cheaper knobs)
+            prompt_arm_res = (
+                lcl._prompt_arm_eval(h, brief, target_drawn, near_drawn)
+                if (void_reason is None and brief.prompt_arms and brief.metric in ("odds", "own"))
+                else []
+            )
+            if not brief.prompt_arms:
+                arms_state = lcl.PROMPT_ARMS_NONE
+            elif brief.metric not in ("odds", "own"):
+                arms_state = f'no prompt read-out for metric "{brief.metric}"'
+            elif void_reason is not None:
+                arms_state = "the reading is void"
+            else:
+                arms_state = lcl.PROMPT_ARMS_RUN
+            cheaper_knobs = {
+                "prompt_arms": prompt_arm_res,
+                "prompt_arms_state": arms_state,
+                "decoding_bias": {"available": brief.metric == "odds", "gating": False,
+                                  "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"},
+                "activation_twin": {
+                    "is_exact_mul": all(t.kind == "cols" and t.which == "down_proj" and all(op == 0 for op in t.op)
+                                        for t in edit.terms),
+                    "note": "no search over cheaper knobs; not compared with a trained adapter",
+                },
+            }
+
+            # Step 4: the base again, and the unpacker
+            try:
+                ck_after = we.base_checksum(h.lm, hooks_at_load=h.hooks_at_load)
+                base_after = True
+            except Exception:
+                ck_after = {"sha256": None, "linears_checked": 0, "tensors_checked": 0, "overlays_in_force": -1,
+                            "hooks_now": -1}
+                base_after = False
+            base_checksum_unchanged = bool(
+                base_after
+                and ck_after["sha256"] == ck_before["sha256"]
+                and ck_after["linears_checked"] == ck_before["linears_checked"]
+                and ck_after["tensors_checked"] == ck_before["tensors_checked"]
+            )
+            fb_after = lv._fell_back()
+            # None: there is no counter to read (no compiled unpacker on this model), which is not "it never fell back"
+            unpacker_fallbacks: Optional[int] = (None if fb_before is None or fb_after is None
+                                                 else int(fb_after) - int(fb_before))
+
+            # Step 5: the judgement, by the one path a book's readings are judged again by
+            drawn = {"target": target_drawn, "reworded": rw_drawn}
+            judged = judge_readings(
+                brief, bars, trial_cfg, readings, drawn, cheaper_knobs=cheaper_knobs,
+                practice_count=int(hist["practice_readings"]), practice_best=practice_best,
+                base_checksum_unchanged=base_checksum_unchanged, base_after=base_after,
+                unpacker_fallbacks=int(unpacker_fallbacks or 0), void_reason=void_reason,
+            )
+            fresh_judged, folded_eval = judged["fresh_judged"], judged["folded"]
+            reworded_eval, trial_judged = judged["reworded"], judged["trial"]
+
+            elapsed_s = round(time.perf_counter() - t_start, 3)
+            meta = {
+                # what the claim gate's sheet and sentence read of a fresh reading
+                "date": _utc_now(),
+                "model_id": h.model_id,
+                "weights_id": h.weights_id,
+                "unpacker": unpacker_mode or "none",
+                "edit_id": edit.id,
+                "edit_linears": edit.linears(),
+                "main_dose": main_dose,
+                "brief_id": brief.id,
+                "brief_name": brief.name,
+                "bars_sha256": bars.id,
+                "bars_calibration_seq": int(cal_note["seq"]),
+                "bars_calibration_where": cal_where,
+                "bars_calibrations_in_book": len(hist["calibrations"]),
+                "calibration_settings": cal_settings,
+                "declared_rule": trial_cfg.get("declared_rule"),
+                "reading_index": reading_index,
+                "max_fresh_readings": int(brief.max_fresh_readings),
+                "earlier_fresh_readings": int(hist["fresh_count"]),
+                "draw_seed_sha256": seed_sha,
+                "n_target_items": len(target_drawn),
                 "registration_seq": int(reg_entry["seq"]),
-                "verdict_seq": int(v_entry["seq"]),
-                "verdict_hash": v_entry["hash"],
-                "all_seqs": book_seqs + [int(v_entry["seq"])],
-            },
-        }
-        out_path.mkdir(parents=True, exist_ok=True)
-        write_json_atomic(out_path / "trial_result.json", result, indent=2)
-        (out_path / "TRIAL_SHEET.md").write_text(sheet, encoding="utf-8")
-        return result
+                "book_head_before": reg_entry["prev"],
+                "book_seqs": book_seqs,
+                "prior_verdicts": reg_body["prior_verdicts"],
+                "prior_trials": reg_body["prior_trials"],
+                "prompt_named_site": brief.prompt_named_site,
+                "chat_settings": dict(brief.chat_settings),
+                "forecast": dict(trial_cfg.get("forecast") or {}),
+                "design": design,
+                "priced": reg_body["priced"],
+                "shams": shams_note,
+                "kept_back": kept_back_note,
+                "book": gate["book"],
+                "book_fresh_readings": dict(hist["book_fresh_readings"]),
+                "written_strata": None,
+                "settings_audit": None,
+                # what is the trial's own
+                "finished_at": _utc_now(),
+                "device": str(h.runtime.get("device") or h.device),
+                "trial_sha256": trial_sha,
+                "of_record": of_record,
+                "not_of_record": not_of_record,
+                "rerun_of": str(rerun["of"]) if is_rerun else None,
+                "process": cond["process"],
+                "checkout": cond["checkout"],
+                "repo_commit": commit_now,
+                "source_claim": source_claim,
+                "book_name": bk.name,
+                "base_checksum_before": ck_before["sha256"],
+                "base_checksum_after": ck_after["sha256"],
+                "base_checksum_unchanged": base_checksum_unchanged,
+                "base_linears_checked": ck_before["linears_checked"],
+                "base_tensors_checked": ck_before["tensors_checked"],
+                "overlays_in_force": ck_after["overlays_in_force"],
+                "base_after": base_after,
+                "unpacker_fallbacks": unpacker_fallbacks,
+                "reworded_use_index": rw_uses_before + 1,
+                "seconds": elapsed_s,
+            }
+            sentence = trial_sentence(brief, trial_cfg, fresh_judged, trial_judged, meta)
+            sheet = render_trial_sheet(brief, bars, trial_cfg, fresh_judged, trial_judged, meta, sentence)
+
+            summary_compact = {
+                cls: {
+                    "n_frames": fresh_judged["classes"][cls]["frames"]["n_frames"],
+                    "mean": fresh_judged["classes"][cls]["frames"]["mean"],
+                    "directed_mean": fresh_judged["classes"][cls]["frames"]["directed_mean"],
+                    "ci95": fresh_judged["classes"][cls]["frames"]["ci95"],
+                    "half_0": fresh_judged["classes"][cls]["frames"]["half_0"],
+                    "half_1": fresh_judged["classes"][cls]["frames"]["half_1"],
+                    "house_bar": fresh_judged["classes"][cls]["house_bar"],
+                    "controls": fresh_judged["classes"][cls]["controls"],
+                }
+                for cls in (fresh_judged.get("classes") or {})
+            }
+            verdict_body = {
+                "note_type": note_type,
+                "trial_name": trial_cfg["trial_name"],
+                "trial_sha256": trial_sha,
+                "of_record": of_record,
+                "not_of_record": not_of_record,
+                "rerun_of": str(rerun["of"]) if is_rerun else None,
+                "brief_id": brief.id,
+                "brief_name": brief.name,
+                "edit_id": edit.id,
+                "edit_linears": edit.linears(),
+                "edit_provenance": trial_cfg["edit_provenance"],
+                "main_dose": main_dose,
+                "reading_index": reading_index,
+                "max_fresh_readings": int(brief.max_fresh_readings),
+                "verdict": trial_judged["verdict"],
+                "fresh_verdict": trial_judged["fresh_verdict"],
+                "matched_by_cheaper_knob": trial_judged.get("matched_by_cheaper_knob"),
+                "cheaper_knob": trial_judged.get("cheaper_knob"),
+                "reasons": trial_judged["reasons"],
+                "bars_sha256": bars.id,
+                "registration_seq": int(reg_entry["seq"]),
+                "book_seqs": book_seqs,
+                "readings": {role: (int(r["book"]["seq"]) if r is not None else None) for role, r in readings.items()},
+                "drawn": {"target": _drawn_rows(target_drawn), "reworded": _drawn_rows(rw_drawn)},
+                "draw_seed_sha256": seed_sha,
+                "claim_sentence": sentence,
+                "summary": summary_compact,
+                "folded": {
+                    "ok": folded_eval["ok"],
+                    "status": folded_eval["status"],
+                    "classes": {
+                        cls: {
+                            "ok": fc.get("ok"),
+                            "available": fc.get("available"),
+                            "no_bar": fc.get("no_bar"),
+                            "mean": (fc.get("frames") or {}).get("mean"),
+                            "max_abs_gap": fc.get("max_abs_gap"),
+                            "tolerance": fc.get("tolerance"),
+                            "same_bits_count": fc.get("same_bits_count"),
+                            "taken_count": fc.get("taken_count"),
+                        }
+                        for cls, fc in (folded_eval.get("classes") or {}).items()
+                    },
+                },
+                "reworded": (
+                    {
+                        "ok": reworded_eval["ok"],
+                        "status": reworded_eval["status"],
+                        "reworded_id": reworded.id,
+                        "origin": reworded_origin(reworded, brief),
+                        "classes": {
+                            cls: {"ok": rc.get("ok"), "mean": (rc.get("frames") or {}).get("mean")}
+                            for cls, rc in (reworded_eval.get("classes") or {}).items()
+                        },
+                    }
+                    if reworded_eval is not None else None
+                ),
+                "batteries": fresh_judged.get("batteries"),
+                "cheaper_knobs": fresh_judged.get("cheaper_knobs"),
+                "practice_count": int(hist["practice_readings"]),
+                "practice_best": practice_best,
+                "base_checksum_unchanged": base_checksum_unchanged,
+                "base_after": base_after,
+                "unpacker_fallbacks": unpacker_fallbacks,
+                "seconds": elapsed_s,
+            }
+            v_entry = lb.append("note", _plain(verdict_body), path=bk)
+            verdict_written = True
+            we.assert_base(h.lm, h.hooks_at_load)
+
+            result = _plain({
+                "v": TRIAL_VERSION,
+                "trial_name": trial_cfg["trial_name"],
+                "trial_sha256": trial_sha,
+                "of_record": of_record,
+                "not_of_record": not_of_record,
+                "rerun_of": str(rerun["of"]) if is_rerun else None,
+                "verdict": trial_judged["verdict"],
+                "fresh_verdict": trial_judged["fresh_verdict"],
+                "reasons": trial_judged["reasons"],
+                "claim_sentence": sentence,
+                "sheet": sheet,
+                "trial_config": trial_cfg,
+                "fresh_judged": fresh_judged,
+                "folded": folded_eval,
+                "reworded": reworded_eval,
+                "meta": meta,
+                # the seed of the draw: in this file, which is the owner's, and not in the book
+                "seed_hex": seed_bytes.hex(),
+                "book": {
+                    "path": str(bk),
+                    "name": bk.name,
+                    "registration_seq": int(reg_entry["seq"]),
+                    "verdict_seq": int(v_entry["seq"]),
+                    "verdict_hash": v_entry["hash"],
+                    "all_seqs": book_seqs + [int(v_entry["seq"])],
+                },
+            })
+            write_json_atomic(out_path / "trial_result.json", result, indent=2)
+            (out_path / "TRIAL_SHEET.md").write_text(sheet, encoding="utf-8")
+            return result
+        except BaseException as exc:
+            # The trial is in the book and a fresh reading is spent: it gets a verdict note whatever ended it, so
+            # that no registration stands with nothing after it, and the error is raised again.
+            if not verdict_written:
+                ended = "interrupted" if isinstance(exc, KeyboardInterrupt) else "error"
+                try:
+                    lb.append("note", _plain({
+                        "note_type": note_type,
+                        "trial_name": trial_cfg["trial_name"],
+                        "trial_sha256": trial_sha,
+                        "of_record": of_record,
+                        "not_of_record": not_of_record,
+                        "rerun_of": str(rerun["of"]) if is_rerun else None,
+                        "brief_id": brief.id,
+                        "brief_name": brief.name,
+                        "edit_id": edit.id,
+                        "edit_linears": edit.linears(),
+                        "edit_provenance": trial_cfg["edit_provenance"],
+                        "main_dose": main_dose,
+                        "reading_index": reading_index,
+                        "max_fresh_readings": int(brief.max_fresh_readings),
+                        "verdict": "void",
+                        "fresh_verdict": "void",
+                        "ended": ended,
+                        "reasons": [f"The trial ended on an error after it was entered in the book "
+                                    f"({type(exc).__name__}: {str(exc)[:300]}): a fresh reading of the brief is spent, "
+                                    "and nothing is read of it."],
+                        "bars_sha256": bars.id,
+                        "registration_seq": int(reg_entry["seq"]),
+                        "book_seqs": book_seqs,
+                        "readings": {role: (int(r["book"]["seq"]) if r is not None else None)
+                                     for role, r in readings.items()},
+                        "draw_seed_sha256": seed_sha,
+                        "claim_sentence": None,
+                    }), path=bk)
+                except Exception:
+                    pass
+            raise
     finally:
         if prev_bk is None:
             os.environ.pop(lb.BOOK_ENV, None)
@@ -2148,6 +2635,26 @@ def find_trial(book_path: Path, trial_sha256: str) -> Optional[Dict[str, Any]]:
     return {"registration": reg, "registration_seq": reg_seq, "verdict": None, "verdict_seq": None}
 
 
+# the most items a reading in a book is taken to hold when it is judged again: a book that says more is not a trial's
+MAX_BOOK_ITEMS = 4096
+
+
+def _reading_shape(body: Mapping[str, Any]) -> Optional[str]:
+    """None when a reading's body has the sizes the judging code can walk, else why not. Asked before a book that
+    may not be this machine's is judged: a count of control edits is used to lay out a list, and one typed by hand
+    could ask for a billion."""
+    ctl = body.get("controls")
+    if not isinstance(ctl, Mapping):
+        return "its controls are not an object"
+    n = ctl.get("count")
+    if isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= lv.MAX_CONTROLS:
+        return f"its count of control edits is {n!r} (a reading takes 0 to {lv.MAX_CONTROLS})"
+    items = body.get("items")
+    if not isinstance(items, list) or len(items) > MAX_BOOK_ITEMS or not all(isinstance(it, Mapping) for it in items):
+        return f"its items are not a list of at most {MAX_BOOK_ITEMS} objects"
+    return None
+
+
 def rejudge_trial(book_path: Path, trial_sha256: str, reg: Mapping[str, Any]) -> Dict[str, Any]:
     """Judge a trial again from its book, with this module's code.
 
@@ -2158,9 +2665,11 @@ def rejudge_trial(book_path: Path, trial_sha256: str, reg: Mapping[str, Any]) ->
     whether the base and the unpacker were as they should be.
 
     Returns {"verdict", "fresh_verdict", "as_noted" (whether the verdict judged again is the note's), "noted_verdict",
-    "items" (per class, each fresh item's effect by item id; and the reworded items'), "readings" (for each role its
-    line, name, status, base, edit id, control seed and count, and item ids), "judged"}. Raises `TrialRefused` when
-    the book does not hold the trial whole."""
+    "items" (per class, each fresh item's effect by item id; and the reworded items'), "figures" (`trial_figures`:
+    every figure the judgement was made from), "drawn" (the note's record of which item is which frame and half),
+    "registration" (the registration note), "readings" (for each role its line, name, status, base, edit id, plan,
+    control seed and count, and item ids), "judged"}. Raises `TrialRefused` when the book does not hold the trial
+    whole, or holds it in a shape a trial does not write (nothing else is raised for a book typed by hand)."""
     p = Path(book_path)
     found = find_trial(p, trial_sha256)
     if found is None:
@@ -2175,52 +2684,61 @@ def rejudge_trial(book_path: Path, trial_sha256: str, reg: Mapping[str, Any]) ->
         raise TrialRefused("The trial's verdict note does not name its readings and its drawn items.")
     readings: Dict[str, Optional[Dict[str, Any]]] = {}
     facts: Dict[str, Any] = {}
-    for role in ("matched", "same_site", "sham", "reworded", "neutral", "nearmiss", "panel"):
-        seq = roles.get(role)
-        if seq is None:
-            readings[role] = None
-            continue
-        if isinstance(seq, bool) or not isinstance(seq, int) or not found["registration_seq"] < seq < found["verdict_seq"]:
-            raise TrialRefused(f"The trial's {role} reading is not a line between its registration and its verdict.")
-        ent = next(lb.entries(p, start=int(seq), limit=1), None)
-        if ent is None or ent.get("kind") != "paired" or not isinstance(ent.get("body"), Mapping):
-            raise TrialRefused(f"Line {seq} of {p.name} is not the paired reading the trial names as its {role}.")
-        body = dict(ent["body"])
-        readings[role] = body
-        ctl = body.get("controls") if isinstance(body.get("controls"), Mapping) else {}
-        facts[role] = {
-            "seq": int(seq), "name": body.get("name"), "status": body.get("status"),
-            "base": dict(body.get("base") or {}), "edit_id": (body.get("edit") or {}).get("id"),
-            "controls": {"family": ctl.get("family"), "count": ctl.get("count"), "seed": ctl.get("seed")},
-            "item_ids": sorted(str(((it.get("item") or {}).get("id"))) for it in body.get("items") or ()
-                               if isinstance(it, Mapping)),
-            "git": (body.get("runtime") or {}).get("git"), "git_clean": (body.get("runtime") or {}).get("git_clean"),
-            "device": (body.get("runtime") or {}).get("device"),
-        }
     try:
+        for role in ("matched", "same_site", "sham", "reworded", "neutral", "nearmiss", "panel"):
+            seq = roles.get(role)
+            if seq is None:
+                readings[role] = None
+                continue
+            if isinstance(seq, bool) or not isinstance(seq, int) \
+                    or not found["registration_seq"] < seq < found["verdict_seq"]:
+                raise TrialRefused(f"The trial's {role} reading is not a line between its registration and its verdict.")
+            ent = next(lb.entries(p, start=int(seq), limit=1), None)
+            if ent is None or ent.get("kind") != "paired" or not isinstance(ent.get("body"), Mapping):
+                raise TrialRefused(f"Line {seq} of {p.name} is not the paired reading the trial names as its {role}.")
+            body = dict(ent["body"])
+            bad = _reading_shape(body)
+            if bad is not None:
+                raise TrialRefused(f"Line {seq} of {p.name}, the trial's {role} reading, is not one a trial writes: {bad}.")
+            readings[role] = body
+            ctl = body["controls"]
+            runtime = body.get("runtime") if isinstance(body.get("runtime"), Mapping) else {}
+            facts[role] = {
+                "seq": int(seq), "name": body.get("name"), "status": body.get("status"),
+                "base": dict(body.get("base") or {}), "edit_id": (body.get("edit") or {}).get("id"),
+                "plan": body.get("plan"),
+                "controls": {"family": ctl.get("family"), "count": ctl.get("count"), "seed": ctl.get("seed")},
+                "item_ids": sorted(str(((it.get("item") or {}).get("id"))) for it in body["items"]),
+                "git": runtime.get("git"), "git_clean": runtime.get("git_clean"), "device": runtime.get("device"),
+            }
+        if any(not isinstance(drawn_rows.get(k) or [], list) or len(drawn_rows.get(k) or []) > MAX_BOOK_ITEMS
+               for k in ("target", "reworded")):
+            raise TrialRefused("The trial's verdict note does not record its drawn items as a trial writes them.")
         drawn = {"target": _as_drawn(drawn_rows.get("target") or ()),
                  "reworded": _as_drawn(drawn_rows.get("reworded") or ())}
-    except (KeyError, TypeError, ValueError):
-        raise TrialRefused("The trial's verdict note does not record its drawn items as a trial writes them.") from None
-    knobs = {k: v for k, v in dict(note.get("cheaper_knobs") or {}).items() if k != "matched_by"}
-    judged = judge_readings(
-        brief, bars, trial_cfg, readings, drawn, cheaper_knobs=knobs,
-        practice_count=int(note.get("practice_count") or 0),
-        practice_best=_clean_float(note.get("practice_best")),
-        base_checksum_unchanged=bool(note.get("base_checksum_unchanged")),
-        base_after=bool(note.get("base_after", True)),
-        unpacker_fallbacks=int(note.get("unpacker_fallbacks") or 0),
-    )
+        knobs = {k: v for k, v in dict(note.get("cheaper_knobs") or {}).items() if k != "matched_by"}
+        judged = judge_readings(
+            brief, bars, trial_cfg, readings, drawn, cheaper_knobs=knobs,
+            practice_count=int(note.get("practice_count") or 0),
+            practice_best=_clean_float(note.get("practice_best")),
+            base_checksum_unchanged=bool(note.get("base_checksum_unchanged")),
+            base_after=bool(note.get("base_after", True)),
+            unpacker_fallbacks=int(note.get("unpacker_fallbacks") or 0),
+        )
+        figures = trial_figures(judged["inputs"])
+    except TrialRefused:
+        raise
+    except (KeyError, TypeError, ValueError, AttributeError, IndexError, RecursionError, OverflowError) as exc:
+        raise TrialRefused(
+            f"The trial {trial_sha256[:12]} in {p.name} is not in the shape a trial writes "
+            f"({type(exc).__name__}: {str(exc)[:200]})."
+        ) from None
     tj = judged["trial"]
-
-    def by_item(r: Optional[Mapping[str, Any]], dr: Sequence[Any]) -> Dict[str, Dict[str, float]]:
-        out: Dict[str, Dict[str, float]] = {}
-        if r is None or r.get("status") != "ok":
-            return out
-        for cls_name in ("small", "large"):
-            effs, _, _, _ = lcl._extract_item_effects(r, dr, cls_name, brief.metric, float(trial_cfg["main_dose"]))
-            out[cls_name] = {str(e["item_id"]): float(e["value"]) for e in effs}
-        return out
+    items: Dict[str, Dict[str, Dict[str, float]]] = {"target": {}, "reworded": {}}
+    for key, val in figures.items():
+        group, cls_name, kind, *rest = key.split(":")
+        if kind == "item" and val is not None:
+            items[group].setdefault(cls_name, {})[rest[0]] = float(val)
 
     return {
         "verdict": tj["verdict"],
@@ -2230,8 +2748,10 @@ def rejudge_trial(book_path: Path, trial_sha256: str, reg: Mapping[str, Any]) ->
         "note_type": note.get("note_type"),
         "registration_seq": found["registration_seq"],
         "verdict_seq": found["verdict_seq"],
-        "items": {"target": by_item(readings.get("matched"), drawn["target"]),
-                  "reworded": by_item(readings.get("reworded"), drawn["reworded"])},
+        "registration": found["registration"],
+        "drawn": {k: list(drawn_rows.get(k) or ()) for k in ("target", "reworded")},
+        "items": items,
+        "figures": figures,
         "readings": facts,
         "judged": judged,
     }

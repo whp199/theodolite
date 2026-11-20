@@ -76,6 +76,7 @@ def _written_rows(written_rows: int, n_doses: int) -> Tuple[int, int]:
     rows = min(max(int(written_rows), lv.WRITTEN_ROWS_MIN, need), lv.WRITTEN_ROWS_MAX)
     return rows, max(1, rows - 2 - len(lv.NULL_E_WRITTEN) - int(n_doses))
 
+LEADS = ("lead", "lead, matched by a cheaper knob")  # the verdicts a trial of record may follow
 VERDICTS = (
     "lead",
     "lead, matched by a cheaper knob",
@@ -1005,12 +1006,21 @@ def fresh_reading_gate(
     name since its first fresh reading; a kept-back frame seen in practice (by id or by template); a kept-back frame
     already read under another brief; bars that no calibration reading in this book produced, or that were
     calibrated on other weights; an edit already read (a claim reads an edit once; a trial reads an edit once, and
-    may follow that edit's claim, which is what promotes it; nothing follows a trial); and a brief whose `m` fresh
-    readings, claims and trials together, are spent.
+    may follow that edit's claim when the claim read a lead, which is what a trial promotes; nothing follows a
+    trial); and a brief whose `m` fresh readings, claims and trials together, are spent.
+
+    A trial is asked two things more of its bars. The calibration note must name the weights it was taken on (a
+    note that names none is taken for a claim, as it always was, and not for a trial). And the note must follow from
+    the book (`calibration_follows`): its three readings stand before it and give the bars by the note's own
+    settings, so a note written into the book with bars of someone's choosing is not a calibration.
 
     `calibration`: for a volunteer's re-run alone, whose book is its own and holds no calibration: the home
     registration's record of the calibration the bars came from ({"seq", "weights_id", ...}), taken in place of this
     book's note and checked against this model's weights all the same.
+
+    All of this is asked of ONE book, the one at `bk`. The harness cannot see another book, a copy of this one, or
+    this one cut back to an earlier line: "read once" and the budget `m` are facts about the book a reading is
+    taken in.
 
     Returns {"hist", "cal_note", "reading_index", "forbid_items", "forbid_frames", "kb_tids", "book"}. Raises
     `ClaimRefused`, in words that name the reading asked for."""
@@ -1071,6 +1081,20 @@ def fresh_reading_gate(
             f"Bar set {bars.short()} was calibrated on other weights ({str(cal_note.get('weights_id'))[:16]}) than "
             f"this model's ({str(h.weights_id)[:16]}): calibrate on the model the {noun} is read on."
         )
+    if what == "trial":
+        if h.weights_id is not None and cal_note.get("weights_id") is None:
+            raise ClaimRefused(
+                f"The calibration of bar set {bars.short()} (line {cal_note.get('seq')}) does not name the weights it "
+                "was taken on, so it cannot be shown to be this model's: calibrate again (scripts/levelling.py "
+                "calibrate) for a trial of record."
+            )
+        if calibration is None:
+            why_not = calibration_follows(cal_note, bk, brief, bars)
+            if why_not is not None:
+                raise ClaimRefused(
+                    f"The calibration note of bar set {bars.short()} (line {cal_note.get('seq')}) does not follow "
+                    f"from this book: {why_not}. A trial of record takes bars its book shows were calibrated."
+                )
     k_prior = int(hist["fresh_count"])
     if edit.id in hist["tried_edit_ids"]:
         at_line = next((t["seq"] for t in hist["trials"] if t.get("edit_id") == edit.id), None)
@@ -1083,6 +1107,19 @@ def fresh_reading_gate(
         raise ClaimRefused(
             f'Read once: edit {edit.short()} has already been read on brief "{brief.name}" ({brief.short()}).'
         )
+    if what == "trial" and edit.id in hist["seen_edit_ids"]:
+        # a trial promotes a lead. An edit whose claim reading here read anything else has nothing to promote, and a
+        # trial of it would be a second draw at the same question on the same frames
+        claim_reg = next(r for r in hist["registrations"] if r.get("edit_id") == edit.id)
+        claim_said = next((v.get("verdict") for v in hist["verdicts"]
+                           if v.get("registration_seq") == claim_reg["seq"]), None)
+        if claim_said not in LEADS:
+            raise ClaimRefused(
+                f"Edit {edit.short()}'s claim reading on brief \"{brief.name}\" in this book (line {claim_reg['seq']}) "
+                + (f'read "{claim_said}"' if claim_said is not None else "was registered and never ended")
+                + ": a trial of record follows a lead, and a second reading of the same edit on the same frames "
+                "after anything else would be a second draw at one question."
+            )
     if k_prior >= brief.max_fresh_readings:
         raise ClaimRefused(
             f'Brief "{brief.name}" has already spent all {brief.max_fresh_readings} of its fresh readings.'
@@ -1343,6 +1380,67 @@ def _prompt_arm_eval(
     return results
 
 
+_CAL_STEMS = ("cal_neutral_", "cal_nearmiss_", "cal_panel_")
+
+
+def _bars_from_readings(brief: lbr.Brief, r_neu: Mapping[str, Any], r_nm: Mapping[str, Any],
+                        r_pan: Mapping[str, Any], mult: float) -> Dict[str, float]:
+    """The four bars a calibration gives, from its three readings (their results, or their bodies in the book):
+    each `mult` times the largest figure its probe edit and its control edits gave, never under the registered
+    least, to six places."""
+    e_nkl, c_nkl = _mean_metric_from_read(r_neu, "kl", 1.0, cls_name="large")
+    e_nm, c_nm = _mean_metric_from_read(r_nm, brief.metric if brief.metric != "written_loop" else "kl", 1.0,
+                                        cls_name="large")
+    e_pkl, c_pkl = _mean_metric_from_read(r_pan, "kl", 1.0, cls_name="large")
+    e_pown, c_pown = _mean_metric_from_read(r_pan, "own", 1.0, cls_name="large")
+    m = float(mult)
+    return {
+        "neutral_kl_max": round(max(0.05, m * max(float(c_nkl or 0.0), float(e_nkl or 0.0))), 6),
+        "near_miss_abs_max": round(max(0.25, m * max(float(c_nm or 0.0), abs(float(e_nm or 0.0)))), 6),
+        "panel_kl_max": round(max(0.05, m * max(float(c_pkl or 0.0), float(e_pkl or 0.0))), 6),
+        "panel_own_drop_max": round(max(0.10, m * max(float(c_pown or 0.0), abs(float(e_pown or 0.0)))), 6),
+    }
+
+
+def calibration_follows(cal_note: Mapping[str, Any], book_path: Path, brief: lbr.Brief, bars: BarSet) -> Optional[str]:
+    """None when a `brief_calibration` note follows from its book, else why not, in words.
+
+    It follows when the three readings it names stand in the book before it, each the harness's own calibration
+    reading of this brief (by name: a session's practice gates refuse such a name) that ended ok, and when those
+    readings, by the note's own `mult`, give exactly the bar set the note records (every other field of the set
+    being the one `calibrate_bars` writes). So bars typed into a note by hand are not a calibration, and neither is
+    a note that names another brief's readings. What it does not show: that the probe, the layer and `mult` were
+    well chosen; a sheet prints them."""
+    seqs, settings = cal_note.get("book_seqs"), cal_note.get("settings")
+    if not (isinstance(seqs, list) and len(seqs) == len(_CAL_STEMS)
+            and all(isinstance(s, int) and not isinstance(s, bool) for s in seqs)):
+        return "it does not name its three readings"
+    if not isinstance(settings, Mapping) or _clean_float(settings.get("mult")) is None:
+        return "it does not record the settings it was taken with (calibrations before 19 November 2026 do not)"
+    if not isinstance(cal_note.get("seq"), int) or not all(0 <= s < int(cal_note["seq"]) for s in seqs):
+        return "the readings it names are not lines before it"
+    bodies: List[Mapping[str, Any]] = []
+    for s, stem in zip(seqs, _CAL_STEMS):
+        ent = next(lb.entries(book_path, start=int(s), limit=1), None)
+        body = ent.get("body") if isinstance(ent, Mapping) else None
+        if ent is None or ent.get("kind") != "paired" or not isinstance(body, Mapping) \
+                or body.get("name") != stem + brief.name:
+            return f"line {s} is not the reading {stem}{brief.name} it names"
+        if body.get("status") != "ok":
+            return f'its reading at line {s} ended "{body.get("status")}"'
+        bodies.append(body)
+    want = _bars_from_readings(brief, bodies[0], bodies[1], bodies[2], float(settings["mult"]))
+    made = BarSet(brief_id=brief.id, calibration_book_seqs=tuple(int(s) for s in seqs),
+                  calibrated_at=bars.calibrated_at, **want)
+    if made.id != bars.id:
+        other = [k for k in want if abs(float(want[k]) - float(getattr(bars, k))) > 1e-12]
+        return ("its readings give other bars than it records (" + ", ".join(
+            f"{k} {want[k]:g}, recorded {float(getattr(bars, k)):g}" for k in other) + ")" if other else
+            "the bar set it records is not the one calibrate_bars writes from its readings (a field beside the four "
+            "calibrated bars differs)")
+    return None
+
+
 def calibrate_bars(
     h: lv.Handle,
     brief: lbr.Brief,
@@ -1391,26 +1489,13 @@ def calibrate_bars(
             "rows": rows_cfg, "readouts": {"kl": True, "own": True, "odds": None}, "folded": "never",
         }, {p["item"].name: p["item"] for p in panel})
 
-        e_nkl, c_nkl = _mean_metric_from_read(r_neu, "kl", 1.0, cls_name="large")
-        e_nm, c_nm = _mean_metric_from_read(r_nm, brief.metric if brief.metric != "written_loop" else "kl", 1.0, cls_name="large")
-        e_pkl, c_pkl = _mean_metric_from_read(r_pan, "kl", 1.0, cls_name="large")
-        e_pown, c_pown = _mean_metric_from_read(r_pan, "own", 1.0, cls_name="large")
-
-        neu_bar = max(0.05, float(mult) * max(float(c_nkl or 0.0), float(e_nkl or 0.0)))
-        nm_bar = max(0.25, float(mult) * max(float(c_nm or 0.0), abs(float(e_nm or 0.0))))
-        pan_kl_bar = max(0.05, float(mult) * max(float(c_pkl or 0.0), float(e_pkl or 0.0)))
-        pan_own_bar = max(0.10, float(mult) * max(float(c_pown or 0.0), abs(float(e_pown or 0.0))))
-
         now = _utc_now()
         cal_seqs = (int(r_neu["book"]["seq"]), int(r_nm["book"]["seq"]), int(r_pan["book"]["seq"]))
         bars = BarSet(
             brief_id=brief.id,
-            neutral_kl_max=round(neu_bar, 6),
-            near_miss_abs_max=round(nm_bar, 6),
-            panel_kl_max=round(pan_kl_bar, 6),
-            panel_own_drop_max=round(pan_own_bar, 6),
             calibration_book_seqs=cal_seqs,
             calibrated_at=now,
+            **_bars_from_readings(brief, r_neu, r_nm, r_pan, float(mult)),
         )
         note_body = {
             "note_type": "brief_calibration",
@@ -2396,11 +2481,18 @@ def _fmt(x: Optional[float], digits: int = 4) -> str:
     return f"{float(x):.{digits}f}"
 
 
-def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[str, Any]) -> Optional[str]:
-    """Bounded claim sentence issued strictly by the harness when verdict is `lead` or `lead, matched by a cheaper knob`."""
+def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[str, Any], *,
+                   tail: bool = True) -> Optional[str]:
+    """Bounded claim sentence issued strictly by the harness when verdict is `lead` or `lead, matched by a cheaper knob`.
+
+    `tail=False` (a trial's sentence, which is built on this one): without the two sentences that are a claim's own,
+    whether the driver's prompt named a site (a trial has no driver) and "This is a lead, not a finding of record".
+    `meta["shams"]["source"]` says in words where sham-target controls came from ("supplied with the claim" when it
+    says nothing)."""
     verdict = judged.get("verdict")
-    if verdict not in ("lead", "lead, matched by a cheaper knob"):
+    if verdict not in LEADS:
         return None
+    sham_src = str((meta.get("shams") or {}).get("source") or "supplied with the claim")
     primary_key = "written" if brief.metric == "written_loop" else "large"
     lg = (judged.get("classes") or {}).get(primary_key) or {}
     fr = lg.get("frames") or {}
@@ -2411,7 +2503,7 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     ss = ctls.get("same_site") or {}
     sh = ctls.get("sham_target") or {}
     sham_part = (
-        f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits, supplied with the claim and checked "
+        f"; {sh.get('at_least')} of {sh.get('count')} sham-target control edits, {sham_src} and checked "
         + ("for shape only" if brief.metric == "written_loop" else
            "for shape and for moving the stream as the edit does")
         + f", moved as much (p_fw {_fmt(sh.get('p_fw'), 3)})"
@@ -2450,7 +2542,9 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
     else:
         loop_part = ""
     cal_seq = meta.get("bars_calibration_seq")
-    bars_from = f" (calibrated at book line {cal_seq})" if cal_seq is not None else ""
+    cal_where = meta.get("bars_calibration_where")  # a volunteer's re-run: the line is the home book's, not its own
+    bars_from = ((f" (calibrated at line {cal_seq} of {cal_where})" if cal_where else
+                  f" (calibrated at book line {cal_seq})") if cal_seq is not None else "")
     return (
         f"On {meta.get('date')}, model {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}), "
         f"unpacker {meta.get('unpacker')}, per-row form: edit {str(meta.get('edit_id'))[:12]} at dose "
@@ -2464,8 +2558,9 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
         f"{sham_part} (fresh reading {meta.get('reading_index')} of {meta.get('max_fresh_readings')} on brief "
         f'"{brief.name}"{side_part}); reversed dose moved {_fmt(lg.get("reversed_mean"))}; '
         f"gating batteries passed against hashed bar set {str(meta.get('bars_sha256'))[:12]}{bars_from}{knob_part} "
-        f"(no search over cheaper knobs; not compared with a trained adapter). "
-        f"Driver prompt {named} a suspected site.{loop_part} This is a lead, not a finding of record."
+        f"(no search over cheaper knobs; not compared with a trained adapter)."
+        + (f" Driver prompt {named} a suspected site.{loop_part} This is a lead, not a finding of record." if tail
+           else loop_part)
     )
 
 
@@ -2483,7 +2578,9 @@ def render_sheet(
         f"edit: {str(meta.get('edit_id'))[:16]} (dose {meta.get('main_dose'):g}, linears: {', '.join(meta.get('edit_linears') or [])})",
         f"base: {meta.get('model_id')} (weights {str(meta.get('weights_id'))[:16]}, unpacker {meta.get('unpacker')})",
         f"rule: {RULE_PRESET} v{RULE_VERSION} | bars {bars.short()}"
-        + (f" from the calibration at book line {meta['bars_calibration_seq']}"
+        + ((f" from the calibration at line {meta['bars_calibration_seq']} of {meta['bars_calibration_where']}"
+            if meta.get("bars_calibration_where") else
+            f" from the calibration at book line {meta['bars_calibration_seq']}")
            + (f" (one of {meta['bars_calibrations_in_book']} calibrations of this brief in the book)"
               if (meta.get("bars_calibrations_in_book") or 0) > 1 else "")
            if meta.get("bars_calibration_seq") is not None else "")
@@ -2528,7 +2625,8 @@ def render_sheet(
     sz = meta.get("shams")
     if isinstance(sz, Mapping):
         lines.append(
-            f"sham-target controls: {sz.get('count')} supplied with the claim [{str(sz.get('sha256'))[:12]}]; the "
+            f"sham-target controls: {sz.get('count')} {sz.get('source') or 'supplied with the claim'} "
+            f"[{str(sz.get('sha256'))[:12]}]; the "
             "harness did not make them. It checked that each has the edit's shape and, in a paired reading, counts "
             "one that does not move the stream as the edit does as no control (as moving as much); it cannot check "
             "that they follow the declared rule"

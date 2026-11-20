@@ -2851,6 +2851,21 @@ def check_book() -> None:
             check(words_of(lambda: lb.append("note", {}, path=odd), lb.BookBroken) is not None, f"12: and append will not write after it ({label})")
         v = lb.verify(TMP / "book12")  # a folder where the book should be
         check(v["ok"] is False and v["first_bad"] == 0 and isinstance(v["why"], str), f"12: verify of a path that cannot be read as a book does not raise: it says so ({v})")
+        # a number written past a float's reach reads as an infinity, which no line is written with: such a line is
+        # not an entry, wherever it stands, and no reader of the book raises anything but BookBroken for it
+        for at_line, label in ((1, "a middle line"), (2, "the last line")):
+            raw = [lines[0], lines[1], lines[2]]
+            raw[at_line] = raw[at_line].replace(b'"body":{', b'"body":{"a_number":1e999,', 1)
+            odd.write_bytes(b"\n".join(raw + [b""]))
+            v = words_of(lambda: lb.verify(odd), Exception) or lb.verify(odd)
+            check(isinstance(v, dict) and v["ok"] is False and v["first_bad"] == at_line and "not finite" in str(v["why"]),
+                  f"12: {label} that holds a number past a float's reach is named by verify, which does not raise ({v})")
+            got = words_of(lambda: list(lb.entries(odd)), lb.BookBroken)
+            check(got is not None and not got.startswith("<") and f"Line {at_line} of the book" in got,
+                  f"12: and reading the book's entries raises BookBroken at it, and nothing else ({label}: {got!r})")
+        got_h, got_a = words_of(lambda: lb.head(odd), lb.BookBroken), words_of(lambda: lb.append("note", {}, path=odd), lb.BookBroken)
+        check(got_h is not None and not got_h.startswith("<") and got_a is not None and not got_a.startswith("<"),
+              f"12: with such a line last, head raises BookBroken and append will not write after it ({got_h!r})")
         cut = TMP / "book12" / "cut.jsonl"
         cut.write_bytes(b"\n".join([lines[0], lines[1], b""]))
         v = lb.verify(cut)

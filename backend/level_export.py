@@ -17,10 +17,16 @@ What holds, and where:
   through llama.cpp's Gemma 4 graph.
 
 What the adapter's keys say is what was checked, and no more:
-- a trial's verdict goes into the file only for a trial of THIS edit at THIS dose, with whether it was of record, a
-  dry run or a re-run, and whether the base it read is the base the adapter is compiled against;
+- a trial's verdict is read from the trial's BOOK, never from its result file (which only says where to look): the
+  book must verify and hold the trial's verdict note for THIS edit at THIS dose; the keys then say whether it was of
+  record, a dry run or a re-run, the brief, the fresh reading's own verdict, whether the book's readings were judged
+  again with the registration and gave that verdict, and whether the base the trial read is the base served;
+- whether the served base is the edit's base says how far that was compared: the whole base (by its weights id), or
+  only the linears the edit touches (by their pins);
 - the implant label is "true", "false", "not checked" or "nothing in reach of the check", with where it was checked
-  (at export, with the model at hand; or at the trial's registration);
+  (at export, with the model at hand; or at the trial's registration, for the dose registered);
+- how the edit came to be exported: built and gated on the model here, or rebuilt off the model, which is allowed
+  only for an edit a level book shows the kernel has read;
 - where the file's numbers came from is said term by term.
 
 `verify_exported_lora` reads an adapter back and sets its numbers beside the edit's own arithmetic on the target,
@@ -172,12 +178,16 @@ class TargetBase:
         lm: Optional[nn.Module] = None,
         reader: Any = None,
         label: Optional[str] = None,
+        weights_id: Optional[str] = None,
     ) -> None:
         chosen = sum(x is not None for x in (gguf_path, weights_dir, lm, reader))
         if chosen != 1:
             raise ExportRefused("TargetBase requires exactly one of gguf_path, weights_dir, reader, or lm.")
         self.kind: str
         self.record: str
+        # the id of the whole base, where there is one to know: a checkpoint's own, or the one given with a loaded
+        # model (its handle's). A GGUF has none of this kind.
+        self.weights_id: Optional[str] = None
         self.gguf_path: Optional[Path] = None
         self.gguf_sha256: Optional[str] = None
         self._gguf_reader: Any = None
@@ -216,11 +226,13 @@ class TargetBase:
                 except (WeightReadError, OSError, ValueError) as exc:
                     raise ExportRefused(f"{p} cannot be read as a checkpoint folder: {exc}") from None
             wid = getattr(self._weight_reader, "weights_id", None)
+            self.weights_id = str(wid) if wid else None
             self.record = label or (f"checkpoint {Path(self._weight_reader.root).name}"
                                     + (f" (weights {str(wid)[:16]})" if wid else ""))
         else:
             self.kind = "module"
             self._lm = lm
+            self.weights_id = str(weights_id) if weights_id else None
             self.record = label or "loaded module"
 
     @classmethod
@@ -257,6 +269,24 @@ class TargetBase:
             if not pins.get(t.linear) or self.pin(t.layer, t.which) != pins.get(t.linear):
                 return False
         return True
+
+    def standing(self, edit: we.Edit, other_weights_id: Optional[str] = None) -> Tuple[Optional[bool], str]:
+        """Whether this base is the base of `edit` (or, with `other_weights_id`, the base a trial of it read), and
+        how far that was compared, as `(whole, words)`. `whole` is True only when the whole base was shown the same:
+        both weights ids known and equal, and every touched linear by its pin. Touched linears that agree by their
+        pins with an id unknown give `(None, ...)`: the adapter's own arithmetic is on those linears, and the rest
+        of the base was not compared. A GGUF is another object: `(None, ...)`."""
+        if self.kind == "gguf":
+            return None, "another object (a GGUF)"
+        if not self.is_base_of(edit):
+            return False, "no: a linear the edit touches has other weights here (by its pin)"
+        want = other_weights_id if other_weights_id is not None else (edit.base or {}).get("weights_id")
+        if self.weights_id is not None and want is not None:
+            if str(self.weights_id) == str(want):
+                return True, "yes: the same weights id, and every touched linear by its pin"
+            return False, ("no: the linears the edit touches agree by their pins, and the weights id is another "
+                           f"({str(self.weights_id)[:16]}, not {str(want)[:16]})")
+        return None, "its touched linears are, by their pins; the rest of the base was not compared (no weights id to go by)"
 
     def shape(self, layer: int, which: str) -> Tuple[int, int]:
         """Return `(out_features, in_features)` of `layers.<layer>.mlp.<which>` on this target base."""
@@ -361,7 +391,14 @@ def implant_words(imp: Mapping[str, Any]) -> str:
 # --------------------------------------------------------------------------------------------- an edit, off the model
 
 
+OFF_THE_MODEL = "rebuilt off the model"  # the mark on an edit this module put together with no model at hand
+
+
 def _kept_to_id(terms: List[we.Term], base: Mapping[str, Any], want_id: str, what: str, note: str = "") -> we.Edit:
+    """The terms as an edit, when they hash to the id named. That shows the terms are the ones the id names, and no
+    more: an id is a hash anyone can work, so it does not show the kernel ever built or gated these terms. The edit
+    is marked `OFF_THE_MODEL`, and an export of one so marked asks the rest (`export_lora_adapter`: the kernel's
+    caps that need no weights, and a level book that holds a reading of the edit)."""
     terms = sorted(terms, key=lambda t: (t.linear, t.kind))
     got = we._edit_id(dict(base), terms)
     if got != want_id:
@@ -369,13 +406,32 @@ def _kept_to_id(terms: List[we.Term], base: Mapping[str, Any], want_id: str, wha
             f"{what} does not rebuild the edit it names: its terms hash to {got[:12]}, and it says {str(want_id)[:12]}. "
             "An edit is exported as the kernel built and hashed it, or not at all."
         )
-    return we.Edit(want_id, tuple(terms), dict(base), note, {})
+    return we.Edit(want_id, tuple(terms), dict(base), note, {"made": OFF_THE_MODEL})
+
+
+def gate_evidence(edit_id: str, book: Optional[Path]) -> Optional[Dict[str, Any]]:
+    """The first reading of the edit in a level book that ended ok, as {"seq", "name", "book"}; None when the book
+    holds none. A reading is the kernel's own line: the edit went through its gate on a loaded model to be read.
+    (The book is a hash chain with no secret in it: this is the kernel's record, not a signature.)"""
+    p = Path(book) if book is not None else lb.book_path()
+    if not p.is_file():
+        return None
+    try:
+        for ent in lb.entries(p):
+            body = ent.get("body")
+            if ent.get("kind") in ("paired", "written") and isinstance(body, Mapping) and body.get("status") == "ok" \
+                    and isinstance(body.get("edit"), Mapping) and body["edit"].get("id") == edit_id:
+                return {"seq": int(ent["seq"]), "name": body.get("name"), "book": p.name}
+    except lb.BookBroken as exc:
+        raise ExportRefused(f"{p.name} cannot be read for a reading of the edit: {exc}") from None
+    return None
 
 
 def edit_from_saved(folder: Path) -> we.Edit:
     """A saved edit (`weight_edits.save`: `manifest.json` and, for carried arrays, `payload.safetensors`) rebuilt
-    with no model loaded, and kept to its id: the id hashes the base's pins and every term's arrays, so a payload or
-    a manifest changed since the kernel saved it is refused."""
+    with no model loaded, and kept to its id: the id hashes the base's pins and every term's arrays, so a payload
+    changed under a manifest, or a manifest whose terms are not its id's, is refused. A folder written whole by
+    hand, id and all, is not refused here (`_kept_to_id` says what an id shows)."""
     folder = Path(folder)
     try:
         man = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
@@ -606,65 +662,126 @@ def build_lora_tensors(
 # --------------------------------------------------------------------------------------------- what a trial lends
 
 
-def trial_standing(edit: we.Edit, dose: float, target: TargetBase, same_base: Optional[bool],
-                   trial_result: Optional[Mapping[str, Any]], book_path: Optional[Path]) -> Dict[str, Any]:
-    """What an adapter may say of a trial: nothing when none is given; otherwise the trial must be of this edit at
-    this dose (refused if not), and the words say what kind it was (of record, a dry run, a volunteer's re-run),
-    whether the book it names holds its verdict line, and whether the base it read is the base served."""
+_NO_TRIAL = {"verdict": "none given", "fresh_verdict": "none given", "kind": "none", "brief": "none",
+             "trial_sha256": "none", "book_seq": None, "book_hash": None, "book": "no trial given",
+             "judged_again": "no trial given", "applies_to_served_base": "no trial given",
+             "book_before_it": "not given"}
+
+
+def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result: Optional[Mapping[str, Any]],
+                   book_path: Optional[Path], registration: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+    """What an adapter may say of a trial: nothing when none is given. Otherwise everything it says is read from the
+    trial's BOOK. The result file (`trial_result.json`) only says which registration and which book to look in: a
+    file a hand can change is not where a verdict is taken from.
+
+    Refused: a book that is not at hand or does not verify; a book that does not hold the trial's verdict note; a
+    trial of another edit or at another dose; a result file that names another registration than the one given
+    (`registration`, as `level_trial.verify_registration` returns it) or another verdict line than the book's; and,
+    when the registration is given, a verdict note that the book's own readings, judged again
+    (`level_trial.rejudge_trial`), do not bear out. With no registration the verdict is the book's note as it
+    stands, and the words say it was not judged again.
+
+    Whether the trial "applies to the served base" is said for the whole base only when its weights id is known to
+    be the one the trial's readings name; touched linears that agree by their pins are said to be that and no more."""
     if trial_result is None:
-        return {"verdict": "none given", "kind": "none", "trial_sha256": "none", "book_seq": None, "book_hash": None,
-                "book": "no trial given", "applies_to_served_base": "no trial given", "book_before_it": "not given"}
+        return dict(_NO_TRIAL)
     if not isinstance(trial_result, Mapping):
         raise ExportRefused("A trial result is the trial's own trial_result.json.")
-    cfg = trial_result.get("trial_config") if isinstance(trial_result.get("trial_config"), Mapping) else {}
-    if cfg.get("edit_id") != edit.id:
+    from backend import level_trial as lt
+
+    sha = trial_result.get("trial_sha256")
+    if not isinstance(sha, str) or len(sha) != 64:
+        raise ExportRefused("The trial result given names no registration (trial_sha256).")
+    if registration is not None and registration.get("trial_sha256") != sha:
         raise ExportRefused(
-            f"The trial result given is of edit {str(cfg.get('edit_id'))[:12]}, not of the edit exported "
+            f"The trial result given is of registration {sha[:12]}, and the registration given is "
+            f"{str(registration.get('trial_sha256'))[:12]}: a result goes with its own registration."
+        )
+    bk = trial_result.get("book") if isinstance(trial_result.get("book"), Mapping) else {}
+    book = Path(book_path) if book_path is not None else (Path(str(bk.get("path"))) if bk.get("path") else None)
+    if book is None or not book.is_file():
+        raise ExportRefused(
+            "A trial's verdict is read from its book, not from its result file, and the book "
+            + (f"({book})" if book is not None else "the result names") + " is not at hand: give the book (--book), "
+            "or export with no trial result (the adapter then says no trial was given)."
+        )
+    bv = lb.verify(book)
+    if not bv["ok"]:
+        raise ExportRefused(f"{book.name} does not verify (line {bv['first_bad']}: {bv['why']}): no verdict is taken from it.")
+    try:
+        found = lt.find_trial(book, sha)
+    except lb.BookBroken as exc:
+        raise ExportRefused(f"{book.name} cannot be read: {exc}") from None
+    if found is None or found["verdict"] is None:
+        raise ExportRefused(
+            f"{book.name} holds no ended trial registered as {sha[:12]}: the result and the book do not belong together."
+        )
+    note, seq = found["verdict"], int(found["verdict_seq"])
+    ent = next(lb.entries(book, start=seq, limit=1))
+    vhash = ent["hash"]
+    if bk.get("verdict_seq") not in (None, seq) or bk.get("verdict_hash") not in (None, vhash):
+        raise ExportRefused(
+            f"The trial result names line {bk.get('verdict_seq')} of its book as its verdict, and the verdict of "
+            f"trial {sha[:12]} in {book.name} is line {seq}: the result and the book do not belong together."
+        )
+    if note.get("edit_id") != edit.id:
+        raise ExportRefused(
+            f"The trial in {book.name} is of edit {str(note.get('edit_id'))[:12]}, not of the edit exported "
             f"({edit.short()}): an adapter carries the verdict of its own edit's trial or of none."
         )
     try:
-        t_dose = float(cfg.get("main_dose"))
+        t_dose = float(note.get("main_dose"))
     except (TypeError, ValueError):
         t_dose = float("nan")
     if not math.isfinite(t_dose) or t_dose != float(dose):
         raise ExportRefused(
-            f"The trial read the edit at dose {cfg.get('main_dose')!r}; the adapter is asked at dose {float(dose):g}. "
+            f"The trial read the edit at dose {note.get('main_dose')!r}; the adapter is asked at dose {float(dose):g}. "
             "A trial's verdict goes with the dose it read."
         )
-    verdict = str(trial_result.get("verdict"))
-    if trial_result.get("rerun_of"):
-        kind = "a volunteer's re-run"
-    elif trial_result.get("of_record"):
-        kind = "of record"
-    else:
-        kind = "a dry run"
-    bk = trial_result.get("book") if isinstance(trial_result.get("book"), Mapping) else {}
-    seq, vhash = bk.get("verdict_seq"), bk.get("verdict_hash")
-    book = Path(book_path) if book_path is not None else (Path(str(bk.get("path"))) if bk.get("path") else None)
-    if book is None or not book.is_file() or not isinstance(seq, int):
-        book_words = "not looked up: the trial's book was not at hand"
-    else:
-        ent = next(lb.entries(book, start=int(seq), limit=1), None)
-        if ent is None or ent.get("hash") != vhash:
+    kind = {lt.NOTE_RERUN: "a volunteer's re-run", lt.NOTE_OF_RECORD: "of record",
+            lt.NOTE_DRY_RUN: "a dry run"}.get(str(note.get("note_type")))
+    if kind is None or bool(note.get("of_record")) != (kind == "of record"):
+        raise ExportRefused(f"The verdict note at line {seq} of {book.name} does not say what kind of trial it was.")
+    if registration is not None:
+        try:
+            again = lt.rejudge_trial(book, sha, registration)
+        except lt.TrialRefused as exc:
+            raise ExportRefused(f"The trial cannot be judged again from {book.name}: {exc}") from None
+        if not again["as_noted"]:
             raise ExportRefused(
-                f"The trial result names line {seq} of {book.name} as its verdict, and that line is not it: the "
-                "result and the book do not belong together."
+                f'The verdict note in {book.name} says "{note.get("verdict")}", and its readings, judged again with '
+                f'the registration, give "{again["verdict"]}": an adapter does not carry a verdict its book does not bear out.'
             )
-        book_words = f"line {seq} of {book.name} is the trial's verdict"
-    meta = trial_result.get("meta") if isinstance(trial_result.get("meta"), Mapping) else {}
-    read_on = str(meta.get("weights_id") or "unknown")
-    if same_base is True and target.kind != "gguf":
-        applies = "yes: the adapter is compiled against the base the trial read"
+        judged = "yes: the book's readings, judged again with the registration, give this verdict"
     else:
-        applies = (f"no: the trial read {read_on[:16]}, and the adapter is compiled against {target.record}"
-                   + (", another quantisation" if target.kind == "gguf" else ""))
-    fj = trial_result.get("fresh_judged") if isinstance(trial_result.get("fresh_judged"), Mapping) else {}
-    before = (f"practice readings {fj.get('practice_count', 'unknown')}, earlier fresh readings "
-              f"{len(meta.get('prior_verdicts') or [])}, earlier trials {len(meta.get('prior_trials') or [])}, as the "
-              "trial's book had them")
-    return {"verdict": verdict, "kind": kind, "trial_sha256": str(trial_result.get("trial_sha256") or "none"),
-            "book_seq": seq, "book_hash": vhash, "book": book_words, "applies_to_served_base": applies,
-            "book_before_it": before}
+        judged = "no: no registration was given to judge the book's readings by; the verdict is the book's note as it stands"
+    # the weights the trial read, from its own first reading in the book
+    read_on: Optional[str] = None
+    m_seq = (note.get("readings") or {}).get("matched") if isinstance(note.get("readings"), Mapping) else None
+    if isinstance(m_seq, int) and not isinstance(m_seq, bool):
+        m_ent = next(lb.entries(book, start=int(m_seq), limit=1), None)
+        base_blk = ((m_ent or {}).get("body") or {}).get("base") if isinstance((m_ent or {}).get("body"), Mapping) else None
+        if isinstance(base_blk, Mapping) and base_blk.get("weights_id"):
+            read_on = str(base_blk["weights_id"])
+    whole, words = target.standing(edit, read_on)
+    if target.kind == "gguf":
+        applies = (f"no: the trial read {str(read_on)[:16] if read_on else 'its own base'}, and the adapter is compiled "
+                   f"against {target.record}, another quantisation")
+    elif whole is True and read_on is not None:
+        applies = "yes: the adapter is compiled against the base the trial read (the same weights id)"
+    elif whole is None:
+        applies = ("not shown for the whole base: the linears the edit touches are the ones the trial read, by their "
+                   "pins, and the rest of the served base was not compared")
+    else:
+        applies = f"no: the adapter is compiled against {target.record}, which is not the base the trial read"
+    reg_note = found["registration"] if isinstance(found.get("registration"), Mapping) else {}
+    before = (f"practice readings {reg_note.get('practice_count', 'unknown')}, earlier fresh readings "
+              f"{len(reg_note.get('prior_verdicts') or [])}, earlier trials {len(reg_note.get('prior_trials') or [])}, as "
+              "the trial's book had them")
+    return {"verdict": str(note.get("verdict")), "fresh_verdict": str(note.get("fresh_verdict")), "kind": kind,
+            "brief": str(note.get("brief_name") or "unknown"), "trial_sha256": sha, "book_seq": seq,
+            "book_hash": vhash, "book": f"line {seq} of {book.name} is the trial's verdict; the book verifies",
+            "judged_again": judged, "applies_to_served_base": applies, "book_before_it": before}
 
 
 # --------------------------------------------------------------------------------------------- writing an adapter
@@ -682,16 +799,49 @@ def export_lora_adapter(
     saved_edit_dir: Optional[Path] = None,
     lm_for_implant: Optional[nn.Module] = None,
     W_U_for_implant: Optional[torch.Tensor] = None,
-    implant_at_registration: Optional[Mapping[str, Any]] = None,
+    registration: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Write a llama.cpp LoRA `.gguf` adapter and its `.manifest.json`.
 
     The licence and origin keys are the house's (`scripts/export_lora.write_lora`: `general.license`,
     `general.license.link`, `general.base_model.*`, `theodolite.derived_from`), with `theodolite.levelling.*` beside
-    them. `trial_result`: the `trial_result.json` of a trial of this edit at this dose (refused otherwise,
-    `trial_standing`). The implant label is worked here when `lm_for_implant` and `W_U_for_implant` are given, else
-    taken from `implant_at_registration` (what the trial's registration recorded), else "not checked"."""
+    them.
+
+    The edit must be the one its id names (its terms are hashed again here). One rebuilt off the model
+    (`edit_from_saved`, `edit_from_registration`) must also meet the kernel's caps that need no weights
+    (`weight_edits.static_caps`) and be an edit the kernel has read: `book_path`, or the level book, must hold a
+    reading of it that ended ok (`gate_evidence`). The adapter's `levelling.gate` key says which.
+
+    `trial_result`: the `trial_result.json` of a trial of this edit at this dose; what the adapter says of the trial
+    is read from the trial's book (`trial_standing`), with `registration` (the trial's verified registration, as
+    `level_trial.verify_registration` returns it) to judge the book's readings again by. The implant label is worked
+    here when `lm_for_implant` and `W_U_for_implant` are given; else it is the one the registration recorded, taken
+    only when the registration is of this edit and this dose; else "not checked"."""
     ecv, el = _writers()
+    if we._edit_id(dict(edit.base), list(edit.terms)) != edit.id:
+        raise ExportRefused(
+            f"The edit handed in says it is {str(edit.id)[:12]} and its terms hash to another id: an adapter names "
+            "the edit its tensors are."
+        )
+    if isinstance(edit.report, Mapping) and edit.report.get("made") == OFF_THE_MODEL:
+        why_not = we.static_caps(edit)
+        if why_not is not None:
+            raise ExportRefused(f"This edit would not pass the kernel's gate, so it is not exported: {why_not}")
+        named = (trial_result.get("book") or {}).get("path") if isinstance(trial_result, Mapping) \
+            and isinstance(trial_result.get("book"), Mapping) else None
+        evidence_book = Path(book_path) if book_path is not None else (Path(str(named)) if named else None)
+        seen = gate_evidence(edit.id, evidence_book)
+        if seen is None:
+            where = evidence_book.name if evidence_book is not None else lb.book_path().name
+            raise ExportRefused(
+                f"Edit {edit.short()} was rebuilt with no model at hand, and {where} holds no reading of it: off the "
+                "model an edit is exported only once the kernel has read it (give the book that holds its readings "
+                "with --book, or export on the model)."
+            )
+        gate_words = (f"rebuilt off the model, kept to its id and to the kernel's caps that need no weights; the kernel "
+                      f"read it at line {seen['seq']} of {seen['book']}")
+    else:
+        gate_words = "built and gated by the kernel on a loaded model for this export"
 
     if out_path is None:
         base_dir = exports_dir()
@@ -714,15 +864,19 @@ def export_lora_adapter(
 
     compiled = build_lora_tensors(edit, target, dose=dose)
     prov = we.edit_provenance(edit, saved_dir=saved_edit_dir)
+    reg_trial = registration.get("trial") if isinstance(registration, Mapping) else None
+    reg_imp = reg_trial.get("implant_check") if isinstance(reg_trial, Mapping) else None
     if lm_for_implant is not None and W_U_for_implant is not None:
         imp = {**implant_check(edit, lm_for_implant, W_U_for_implant, dose=dose), "checked_at": "export"}
-    elif isinstance(implant_at_registration, Mapping) and implant_at_registration.get("checked"):
-        imp = {**dict(implant_at_registration), "checked_at": "the trial's registration"}
+    elif isinstance(reg_imp, Mapping) and reg_imp.get("checked") and reg_trial.get("edit_id") == edit.id \
+            and isinstance(reg_trial.get("main_dose"), (int, float)) and float(reg_trial["main_dose"]) == float(dose):
+        # the label a registration recorded is of that edit at that dose, and of no other
+        imp = {**dict(reg_imp), "checked_at": "the trial's registration"}
     else:
         imp = {**implant_check(edit), "checked_at": "never"}
-    trial = trial_standing(edit, dose, target, compiled["served_base_is_edit_base"], trial_result, book_path)
+    trial = trial_standing(edit, dose, target, trial_result, book_path, registration)
     same = compiled["served_base_is_edit_base"]
-    same_words = {True: "yes", False: "no", None: "another object (a GGUF)"}[same]
+    whole_same, same_words = target.standing(edit)
 
     adapter_name = f"theodolite-levelling-{edit.short()}-derived-from-gemma"
     record: Dict[str, Any] = {
@@ -750,9 +904,13 @@ def export_lora_adapter(
         "levelling.provenance": prov["provenance"],
         "levelling.recompiled_from_recipe": "true" if compiled["recompiled_all"] else "false",
         "levelling.unverified_tensors": json.dumps(compiled["unverified_tensors"]),
+        "levelling.gate": gate_words,
         "levelling.trial_verdict": trial["verdict"],
+        "levelling.trial_fresh_verdict": trial["fresh_verdict"],
         "levelling.trial_kind": trial["kind"],
+        "levelling.trial_brief": trial["brief"],
         "levelling.trial_sha256": trial["trial_sha256"],
+        "levelling.trial_judged_again": trial["judged_again"],
         "levelling.trial_applies_to_served_base": trial["applies_to_served_base"],
         "levelling.book_seq": str(trial["book_seq"]) if trial["book_seq"] is not None else "none",
         "levelling.book_hash": str(trial["book_hash"] or "none"),
@@ -782,8 +940,12 @@ def export_lora_adapter(
             "kind": target.kind,
             "record": target.record,
             "gguf_sha256": target.gguf_sha256,
-            "is_edit_base": same,
+            "weights_id": target.weights_id,
+            "touched_linears_are_the_edits": same,
+            "whole_base_is_the_edits": whole_same,
+            "is_edit_base": same_words,
         },
+        "gate": gate_words,
         "recompiled_from_recipe": bool(compiled["recompiled_all"]),
         "ranks": compiled["ranks"],
         "made_of": compiled["made_of"],
@@ -842,6 +1004,7 @@ def verify_exported_lora(
     target: Optional[TargetBase] = None,
     dose: Optional[float] = None,
     tol: float = 1e-4,
+    atol: float = 1e-9,
 ) -> Dict[str, Any]:
     """Read an adapter back and check it.
 
@@ -852,8 +1015,12 @@ def verify_exported_lora(
     With `edit` and `target`: the file IS the edit on that target. Its `lora_b @ lora_a`, multiplied out, is set
     beside the edit's own arithmetic on the target's numbers (`term_change`, and a low-rank term's own pair), which
     does not go through the compiler that wrote the file: every touched column and row, the columns and rows the
-    edit does not touch (which must be nought), and what the whole does to a few random vectors. `max_abs_err` is
-    the largest difference found. This shows the file is the edit; what the edit does is a reading's to show."""
+    edit does not touch (which must be nought), and what the whole does to a few random vectors. Each comparison
+    passes when the difference is at most `tol` times the largest figure it is a difference from, and `atol` over
+    (a change of a millionth is not shown by a file of noughts, and a change of thousands is not failed for float32
+    rounding); a number in the file that is not finite fails outright. `max_abs_err` is the largest difference
+    found and `max_rel_err` the largest as a share of its own figures. This shows the file is the edit; what the
+    edit does is a reading's to show."""
     _ecv, el = _writers()
 
     p = Path(gguf_path).expanduser().resolve()
@@ -893,6 +1060,7 @@ def verify_exported_lora(
         )
 
     max_err: Optional[float] = None
+    max_rel: Optional[float] = None
     if edit is not None and target is not None:
         _rec("file_names_this_edit", meta.get("theodolite.levelling.edit_id") == edit.id,
              {"file": str(meta.get("theodolite.levelling.edit_id"))[:12], "edit": edit.short()})
@@ -903,11 +1071,32 @@ def verify_exported_lora(
         _rec("tensor_names_match", set(tensors) <= set(by_tensor),
              {"got": sorted(tensors), "edit touches": sorted(by_tensor)})
         worst = 0.0
+        worst_rel = 0.0
+        outside = 0
+        finite = True
         rng = np.random.default_rng(2026)
+
+        def fold(diff: np.ndarray, want: np.ndarray) -> None:
+            """Take one comparison in: the file's figures less the edit's (`diff`), beside the edit's (`want`)."""
+            nonlocal worst, worst_rel, outside, finite
+            if diff.size == 0:
+                return
+            if not np.isfinite(diff).all():
+                finite = False
+                return
+            err, scale = float(np.max(np.abs(diff))), (float(np.max(np.abs(want))) if want.size else 0.0)
+            worst = max(worst, err)
+            worst_rel = max(worst_rel, err / scale if scale > 0.0 else (0.0 if err == 0.0 else float("inf")))
+            if err > float(tol) * scale + float(atol):
+                outside += 1
+
         for tname, terms in sorted(by_tensor.items()):
             n_out, n_in = target.shape(terms[0].layer, terms[0].which)
             A, B = tensors.get(tname, (np.zeros((0, n_in), np.float32), np.zeros((n_out, 0), np.float32)))
             A64, B64 = A.astype(np.float64), B.astype(np.float64)
+            if not (np.isfinite(A64).all() and np.isfinite(B64).all()):
+                finite = False
+                continue
             changes = [(t, None if t.kind == "lowrank" else term_change(t, target, d)) for t in terms]
             cols_touched = sorted({int(i) for t in terms if t.kind == "cols" for i in t.idx})
             rows_touched = sorted({int(i) for t in terms if t.kind == "rows" for i in t.idx})
@@ -926,34 +1115,39 @@ def verify_exported_lora(
                         out += (x @ t.A.astype(np.float64).T) @ (d * t.B.astype(np.float64)).T
                 return out
 
-            def gap(x: np.ndarray) -> float:
-                return float(np.max(np.abs((x @ A64.T) @ B64.T - want_of(x)))) if x.size else 0.0
+            def gap(x: np.ndarray) -> None:
+                if x.size:
+                    want = want_of(x)
+                    fold((x @ A64.T) @ B64.T - want, want)
 
-            worst = max(worst, gap(rng.standard_normal((6, n_in))))
+            gap(rng.standard_normal((6, n_in)))
             # every touched input on its own: column n of the file's change is the edit's change to column n
             for at in range(0, len(cols_touched), 64):
                 part = cols_touched[at:at + 64]
                 one_hot = np.zeros((len(part), n_in))
                 one_hot[np.arange(len(part)), part] = 1.0
-                worst = max(worst, gap(one_hot))
+                gap(one_hot)
             # every touched output on its own: row n of the file's change is the edit's change to row n
             for t, delta in changes:
-                if t.kind == "rows":
+                if t.kind == "rows" and not cols_touched and not lowrank:
                     for k, n in enumerate(int(i) for i in t.idx):
-                        worst = max(worst, float(np.max(np.abs(B64[n, :] @ A64 - delta[k]))))
+                        fold(B64[n, :] @ A64 - delta[k], delta[k])
             if not lowrank and A64.size and B64.size:
                 # nothing the edit does not touch is changed: with column terms alone lora_a is nought off the touched
                 # inputs; with row terms alone lora_b is nought off the touched outputs
                 if cols_touched and not rows_touched:
                     off = np.ones(n_in, dtype=bool)
                     off[cols_touched] = False
-                    worst = max(worst, float(np.max(np.abs(A64[:, off]))) if off.any() else 0.0)
+                    fold(A64[:, off], np.zeros(0))
                 if rows_touched and not cols_touched:
                     off = np.ones(n_out, dtype=bool)
                     off[rows_touched] = False
-                    worst = max(worst, float(np.max(np.abs(B64[off, :]))) if off.any() else 0.0)
-        max_err = worst
-        _rec("file_is_the_edit_on_the_target", worst <= tol, {"max_abs_err": worst, "tol": tol})
+                    fold(B64[off, :], np.zeros(0))
+        max_err = worst if finite else None
+        max_rel = worst_rel if finite else None
+        _rec("file_is_the_edit_on_the_target", finite and outside == 0,
+             {"max_abs_err": worst, "max_rel_err": worst_rel, "comparisons_outside": outside, "all_finite": finite,
+              "rtol": float(tol), "atol": float(atol)})
 
     ok_all = all(c["ok"] for c in checks)
     return {
@@ -961,6 +1155,7 @@ def verify_exported_lora(
         "gguf_path": str(p),
         "tensors": {k: {"A_shape": list(v[0].shape), "B_shape": list(v[1].shape)} for k, v in tensors.items()},
         "max_abs_err": max_err,
+        "max_rel_err": max_rel,
         "checks": checks,
         "meta_summary": {k: v for k, v in meta.items() if k.startswith(("general.", "adapter.", "theodolite."))},
     }
