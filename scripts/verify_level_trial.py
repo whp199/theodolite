@@ -13,7 +13,8 @@ On `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens freed, server s
    silence; 39 control edits a family, 16 fresh items, the starter reworded set with 19 control edits).
 3. `run_trial_of_record`: refused as it stands (the reasons are recorded), then read with `dry_run=True`. Checked: it
    is not void; the base checksum is unchanged over every stored weight; the folded form is the per-row form to the
-   bit on every item in both classes (a silence is exact); the reworded set was read, with its folded form; the sheet
+   bit on every item that read, in both classes (a silence is exact; a draw now and then holds an item the kernel
+   leaves out, and the record says how many read); the reworded set was read, with its folded form; the sheet
    says dry run and why; judged again from its book it gives its note's verdict; it is read once; the same edit,
    registered a second time before the trial was read, is refused at its read, and a registration asked after the
    trial is refused itself, with no folder and no look; the brief's history counts it as a fresh reading. How many
@@ -224,11 +225,15 @@ def main() -> int:
                "sha256": str(meta["base_checksum_before"])[:16]})
         fl = t_res["folded"]["classes"] if t_res["folded"].get("classes") else {}
         fl_sm, fl_lg = fl.get("small") or {}, fl.get("large") or {}
+        # how many of the 16 fresh items read: the kernel leaves out an item whose two row counts disagree, which a
+        # draw now and then holds, and every figure of the trial is then of the items that read
+        n_fresh = int(((t_res["fresh_judged"]["classes"].get("large") or {}).get("frames") or {}).get("n_items") or 0)
         check("folded_same_bits_31b",
-              t_res["folded"]["available"] is True
-              and fl_sm.get("same_bits_count") == fl_sm.get("taken_count") == 16
-              and fl_lg.get("same_bits_count") == fl_lg.get("taken_count") == 16,
-              {"small_same_bits": f"{fl_sm.get('same_bits_count')}/{fl_sm.get('taken_count')}",
+              t_res["folded"]["available"] is True and 0 < n_fresh <= 16
+              and fl_sm.get("same_bits_count") == fl_sm.get("taken_count") == n_fresh
+              and fl_lg.get("same_bits_count") == fl_lg.get("taken_count") == n_fresh,
+              {"fresh_items_that_read": f"{n_fresh} of 16",
+               "small_same_bits": f"{fl_sm.get('same_bits_count')}/{fl_sm.get('taken_count')}",
                "large_same_bits": f"{fl_lg.get('same_bits_count')}/{fl_lg.get('taken_count')}",
                "small_mean": (fl_sm.get("frames") or {}).get("mean"), "large_mean": (fl_lg.get("frames") or {}).get("mean"),
                "tolerance": [fl_sm.get("tolerance"), fl_lg.get("tolerance")], "folded_ok": t_res["folded"]["ok"]})
@@ -343,8 +348,8 @@ def main() -> int:
                  "batteries": {b: (v.get("items") or {}) for b, v in (t_res["fresh_judged"].get("batteries") or {}).items()
                                if isinstance(v, dict) and isinstance(v.get("items"), dict)}}
         check("items_under_the_item_gate_said_31b",
-              isinstance(gates["fresh"], dict) and gates["fresh"]["items"] == 16 and isinstance(gates["reworded"], dict)
-              and f"item gate: {gates['fresh']['under_bar']} of the 16 fresh items that read are under the kernel's bar"
+              isinstance(gates["fresh"], dict) and gates["fresh"]["items"] == n_fresh and isinstance(gates["reworded"], dict)
+              and f"item gate: {gates['fresh']['under_bar']} of the {n_fresh} fresh items that read are under the kernel's bar"
                   in t_res["sheet"]
               and "reworded items that read are under the kernel's bar" in t_res["sheet"]
               and all(set(b) == {"read", "given", "under_item_gate"} and b["under_item_gate"] <= b["read"] <= b["given"]
@@ -485,7 +490,7 @@ def main() -> int:
         rr_s = round(time.perf_counter() - t_rr, 2)
         check("same_card_rerun_reads_the_home_items",
               intake_res["outcome"] == "accepted" and intake_res["match_class"] == "same_figures"
-              and intake_res["class_diffs"]["target:large"]["items"] == 16
+              and intake_res["class_diffs"]["target:large"]["items"] == n_fresh
               and intake_res["class_diffs"]["reworded:large"]["items"] == 8
               and intake_res["class_diffs"]["target:large:controls"]["items"] == 78
               and intake_res["figures_compared"] + intake_res["figures_neither_trial_has"] == len(rj["figures"])

@@ -1684,12 +1684,13 @@ def main() -> int:
 
             # Each rule that sets a control edit aside, or counts the sets as fewer draws, decides a verdict: the book
             # that would pass, written again with one thing changed, no longer passes, and says why.
-            def judged_with(tag: str, more: Callable[[Dict[str, Any], Dict[str, Any]], None]) -> Dict[str, Any]:
+            def judged_with(tag: str, more: Callable[[Dict[str, Any], Dict[str, Any]], None],
+                            which: str = "_matched") -> Dict[str, Any]:
                 bk_x = tmp / f"would_pass_{tag}.jsonl"
                 for ent in lb.entries(real_book):
                     body = json.loads(json.dumps(ent["body"]))
                     would_pass(ent, body)
-                    if ent["kind"] == "paired" and str(body.get("name", "")).endswith("_matched"):
+                    if ent["kind"] == "paired" and str(body.get("name", "")).endswith(which):
                         more(ent, body)
                     lb.append(ent["kind"], body, path=bk_x)
                 return lt.rejudge_trial(bk_x, reg_real["trial_sha256"], reg_real)
@@ -1753,6 +1754,8 @@ def main() -> int:
                 ("louder", louder), ("no_disjoint", no_disjoint), ("count_no_whole_number", count_no_whole_number),
                 ("count_a_truth", count_a_truth))}
 
+            got_x["reworded_quiet_at_end"] = judged_with("reworded_quiet_at_end", quiet_at_end, which="_reworded")
+
             def small_of(tag: str) -> Dict[str, Any]:
                 return got_x[tag]["judged"]["fresh_judged"]["classes"]["small"]
 
@@ -1774,7 +1777,14 @@ def main() -> int:
                   and "of the control edits that were read and count, 0 moved the metric as much" in why_x("quiet_at_end")
                   and small_of("quiet_at_end")["controls"]["other_sites_matched"]["as_read_at_least"] == 0
                   and got_x["quiet_over_the_prompt"]["verdict"] == "failed"
-                  and small_of("quiet_over_the_prompt")["delivered"]["other_sites_matched"]["as_loud"] == 0,
+                  and small_of("quiet_over_the_prompt")["delivered"]["other_sites_matched"]["as_loud"] == 0
+                  # the reworded set's control edits, quiet at the last position: the same words in its reason
+                  and got_x["reworded_quiet_at_end"]["verdict"] == "failed"
+                  and got_x["reworded_quiet_at_end"]["fresh_verdict"] in lcl.LEADS
+                  and 'Reworded small failed "other_sites_matched" controls (at_least=19/19' in why_x("reworded_quiet_at_end")
+                  and "19 of them gave no finite reading, or did not change the stream as much as the edit did, and are "
+                      "counted as moving as much: of the control edits that were read and count, 0 moved the metric as "
+                      "much" in why_x("reworded_quiet_at_end"),
                   "5: control edits as loud as the edit over the answer and a hundredth as loud at the last position, "
                   "where the metric is read, or one part in a hundred quieter over the prompt, are each counted as moving "
                   "as much: a book that would pass then fails, with every other figure as read the same "

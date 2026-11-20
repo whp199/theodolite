@@ -1689,9 +1689,13 @@ def judge_reworded(
                 ctl_eval[fam] = cs
                 if not cs["passes_alpha"]:
                     ctl_ok = False
+                    lost = (f"; {cs['non_finite']} of them gave no finite reading, or did not change the stream as "
+                            "much as the edit did, and are counted as moving as much: of the control edits that "
+                            f"were read and count, {cs['as_read_at_least']} moved the metric as much"
+                            if cs["non_finite"] else "")
                     reasons.append(
                         f'Reworded {cls_name} failed "{fam}" controls '
-                        f'(at_least={cs["at_least"]}/{cs["count"]}, p_fw={cs["p_fw"]}, alpha={bars.alpha}'
+                        f'(at_least={cs["at_least"]}/{cs["count"]}, p_fw={cs["p_fw"]}, alpha={bars.alpha}{lost}'
                         + lcl.draws_words(cs, 1, bars.alpha) + ")."
                     )
         if hb["floor_too_loud"]:
