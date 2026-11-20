@@ -128,7 +128,7 @@ _STATUS = ("status", "--porcelain=v1", "--untracked-files=all", "--ignore-submod
 def _git(root: Path, *args: str, text: bool = True) -> Optional[subprocess.CompletedProcess]:
     try:
         return subprocess.run([*_GIT, *args], cwd=str(root), capture_output=True, text=text, timeout=60)
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):  # UnicodeError: a path that is not UTF-8
         return None
 
 
@@ -165,6 +165,23 @@ def hidden_from_status(root: Path = ROOT_DIR) -> Optional[List[str]]:
     return [ln[2:] for ln in ls.stdout.splitlines() if len(ln) > 2 and (ln[0].islower() or ln[0] == "S")]
 
 
+def unlisted_code(root: Path = ROOT_DIR) -> Optional[List[str]]:
+    """Python the runner would import that no commit holds: `*.py` files and packages at the checkout's root and in
+    `scripts/` (both are put first on the import path by the command lines) and any `*.py` under `backend/`, that
+    git does not track. A status does not list a file git was told to ignore (`.gitignore`, `.git/info/exclude`, a
+    user's own ignore file), and an ignored `numpy.py` at the root would be the `numpy` the trial runs. None where
+    git cannot be asked."""
+    ls = _git(root, "ls-files", "-z")
+    if ls is None or ls.returncode != 0:
+        return None
+    tracked = {p for p in ls.stdout.split("\0") if p}
+    base = Path(root)
+    there: List[Path] = list(base.glob("*.py")) + list(base.glob("*/__init__.py"))
+    there += list((base / "scripts").glob("*.py")) + list((base / "scripts").glob("*/__init__.py"))
+    there += [p for p in (base / "backend").rglob("*.py") if "__pycache__" not in p.parts]
+    return sorted({p.relative_to(base).as_posix() for p in there} - tracked)
+
+
 def folder_committed(folder: Path, root: Path = ROOT_DIR) -> Optional[str]:
     """None when `folder` is, file for file and byte for byte, what the commit the checkout at `root` stands at holds
     of it; else why not, in words: the folder is outside the checkout, it is in no commit, the commit holds other
@@ -175,10 +192,10 @@ def folder_committed(folder: Path, root: Path = ROOT_DIR) -> Optional[str]:
         return "the registration folder is outside the checkout, so it is in no commit"
     rel = f.relative_to(r).as_posix()
     names = sorted(p.name for p in f.iterdir())
-    tree = _git(r, "ls-tree", "--name-only", "HEAD", f"{rel}/")
-    if tree is None or tree.returncode != 0 or not tree.stdout.strip():
+    tree = _git(r, "ls-tree", "-z", "--name-only", "HEAD", f"{rel}/")  # -z: names as they are, none quoted
+    if tree is None or tree.returncode != 0 or not tree.stdout.strip("\0"):
         return "the registration folder is in no commit"
-    in_commit = sorted(Path(ln).name for ln in tree.stdout.splitlines() if ln.strip())
+    in_commit = sorted(Path(ln).name for ln in tree.stdout.split("\0") if ln)
     if in_commit != names:
         return ("the registration folder holds files that are in no commit" if set(names) - set(in_commit)
                 else "the commit holds files of the registration folder that are no longer in it")
@@ -414,23 +431,41 @@ def load_reworded(path: Path) -> RewordedSet:
 
 
 def reworded_uses_in_book(rset: RewordedSet, book_path: Optional[Path] = None) -> int:
-    """How many trials registered in the book have read an item of `rset`: the most any one of its items has been
-    read. An item is the same item by its question, or by the start of its answer (`RewordedItem.marks`), so a set
-    renamed or re-noted, an item moved to another set, and an item given another system turn or another answer do
-    not start a new count; a registration written before items had marks is counted by the item's whole wording.
-    Counted in this book alone: the harness cannot see another book."""
+    """How many trials in the book have read an item of `rset`: the most any one of its items has been read.
+
+    A trial counts for an item when its registration records the item's marks (its question, or the start of its
+    answer: `RewordedItem.marks`), or when its reworded reading in the book holds the item or a near wording of it
+    (`_same_item`: the reading keeps its items' text). So a set renamed or re-noted, an item moved to another set, an
+    item given another system turn or answer, and an item with a word or two changed do not start a new count; an
+    item put in other words does. A registration written before items had marks is counted by the item's whole
+    wording. Counted in this book alone: the harness cannot see another book."""
     p = Path(book_path) if book_path is not None else lb.book_path()
     if not p.exists():
         return 0
-    counts = [0] * len(rset.items)
+    counted: Dict[int, set] = {}  # a trial (by its registration's line) -> the items of `rset` it read
+    reg_line: Optional[int] = None
     for ent in lb.entries(p):
         body = ent.get("body")
-        if ent.get("kind") == "note" and isinstance(body, Mapping) and body.get("note_type") == "trial_registration":
-            marks = set(body.get("reworded_marks") or ())
-            whole = set(body.get("reworded_wordings") or ())
+        if not isinstance(body, Mapping):
+            continue
+        if ent.get("kind") == "note" and body.get("note_type") == "trial_registration":
+            reg_line = int(ent["seq"])
+            marks, whole = set(body.get("reworded_marks") or ()), set(body.get("reworded_wordings") or ())
             for i, it in enumerate(rset.items):
                 if marks.intersection(it.marks) or it.wording in whole:
-                    counts[i] += 1
+                    counted.setdefault(reg_line, set()).add(i)
+        elif ent.get("kind") == "paired" and str(body.get("name") or "").startswith("trial_") \
+                and str(body.get("name")).endswith("_reworded"):
+            key = reg_line if reg_line is not None else -1 - int(ent["seq"])
+            for row in body.get("items") or ():
+                blk = (row.get("item") or {}) if isinstance(row, Mapping) else {}
+                for i, it in enumerate(rset.items):
+                    if _same_item(it.question, it.answer, blk.get("question"), blk.get("answer")):
+                        counted.setdefault(key, set()).add(i)
+    counts = [0] * len(rset.items)
+    for items_read in counted.values():
+        for i in items_read:
+            counts[i] += 1
     return max(counts, default=0)
 
 
@@ -573,9 +608,9 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
     cal = trial_cfg["bars_calibration"]
     cs = cal.get("settings") if isinstance(cal.get("settings"), Mapping) else {}
     cal_how = (f"a probe of `{cs.get('n_cols')}` columns at layer `{cs.get('layer')}` (page layer "
-               f"`{int(cs['layer']) + 1}`) against `{cs.get('n_controls')}` control edits, each bar `{cs.get('mult')}` "
-               "times the largest figure they gave"
-               if cs and isinstance(cs.get("layer"), int) else "its settings not recorded")
+               f"`{int(cs['layer']) + 1}`) against `{cs.get('n_controls')}` control edits; each bar is the larger of "
+               f"its registered least and `{cs.get('mult')}` times the largest figure they gave: {lcl.bars_in_words(bars)}"
+               if cs and isinstance(cs.get("layer"), int) else f"its settings not recorded; {lcl.bars_in_words(bars)}")
     lines = [
         f"# Rules of the trial: {trial_cfg['trial_name']}",
         "",
@@ -587,15 +622,18 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         f"- bars sha256: `{bars.id}` (alpha `{bars.alpha:g}`, gating batteries: `{', '.join(bars.gating_batteries)}`), "
         f"from the calibration at line `{cal['seq']}` of `{cal['book']}` ({cal_how})",
         f"- selection mode: `{trial_cfg['selection_mode']}`",
-        f"- control edits a family: `{trial_cfg['controls_per_family']}` (other sites whose delivered change is within "
-        f"a factor of `{trial_cfg['match_tolerance']:g}` of the edit's; the same site"
-        + ("; sham targets, registered here" if trial_cfg["selection_mode"] == "declared_rule" else "") + ")",
+        f"- control edits a family: `{trial_cfg['controls_per_family']}` (other sites matched, neuron for neuron, on "
+        f"what a base pre-pass expects each to deliver, within a factor of `{trial_cfg['match_tolerance']:g}`; the same "
+        "site" + ("; sham targets, registered here" if trial_cfg["selection_mode"] == "declared_rule" else "") + "). "
+        "A matched or sham control edit that, as read, did not change the stream within that factor of what the edit "
+        "changed it is counted as moving as much, and control sets are counted as no more separate draws than the "
+        "fewest sites that were eligible to stand in for one neuron",
         f"- fresh items: `{trial_cfg['n_target']}`, drawn from `os.urandom(32)` after the trial is entered in the book",
         f"- batch classes: `small = {trial_cfg['rows']['small']}`, `large = {trial_cfg['rows']['large']}`",
         f"- folded form: read on every item in both classes. Its mean, and the largest gap of any one item's folded "
         f"effect from its per-row effect, are within max({trial_cfg['folded_tol_floor_mult']:g} x floor, "
         f"{trial_cfg['folded_tol_rel']:g} x |per-row mean|, {trial_cfg['folded_tol_min']:g}) of the per-row form's "
-        "(never more than half the house bar), and its rows where nothing is edited are the base's",
+        "(never more than half the house bar), and the folded forward's own repeated rows agree to the bit",
         f"- reworded set: `{trial_cfg['reworded_id']}` ({trial_cfg['reworded_origin']}; "
         f"`{trial_cfg['reworded_controls']}` matched control edits, judged alone at the level; an item is read at "
         f"most `{MAX_REWORDED_USES}` times in a book)",
@@ -629,8 +667,9 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         "   - the reworded set clears the house bar, replicates across its halves and stands above its control",
         "     edits, per-row and folded, in both classes.",
         "3. **`passed, matched by a cheaper knob`**: all of that, and one of the brief's own prompt arms moved the",
-        f"   metric at least `{bars.knobs_match_fraction:g}` times as far as the edit, with no worse a near-miss",
-        "   effect and no change to the weights. The verdict line, the sentence and an adapter's keys say so.",
+        f"   metric at least `{bars.knobs_match_fraction:g}` times as far as the edit, with a near-miss effect no worse",
+        "   than the edit's (in size, or as a share of its own effect) and no change to the weights. The verdict",
+        "   line, the sentence and an adapter's keys say so.",
         "4. **`failed`**: read cleanly, and one or more of the above did not hold.",
         "",
         "The fresh items are new fillings of the brief's kept-back frames, the frames every fresh reading of the",
@@ -722,6 +761,17 @@ def preflight_trial(
                 int(trial_cfg["n_panel"]), seed_bytes=seed + b":panel", tokenizer=h.tokenizer)],
             "reworded": [d.item for d in reworded.to_drawn_items(h.tokenizer, system_override=sys_turn)],
         }
+        if brief.prompt_arms and brief.metric in ("odds", "own"):
+            # the arms are read after every reading of the trial: one too long to make an item of would end the
+            # trial void then, with everything read (`level_claim._prompt_arm_eval` makes them this way)
+            for arm in brief.prompt_arms:
+                for it in items["target"] + items["near"]:
+                    if it.question is not None and it.answer is not None:
+                        lv.make_item(h.tokenizer, it.question, it.answer, system=arm, name=it.name)
+        for which, its in items.items():
+            if not 1 <= len(its) <= lv.MAX_ITEMS:
+                raise lv.Refused(f"A reading takes 1 to {lv.MAX_ITEMS} items; the trial's {which} reading would be given "
+                                 f"{len(its)}.")
         facts = we.edit_facts(edit)
         sham_facts = dict(facts)
         if sham_recipes:
@@ -1405,7 +1455,9 @@ def judge_reworded(
             reasons.append(f"Reworded {cls_name} has no control edits to stand against.")
         for fam, vals in ctls_in.items():
             if vals:
-                cs = lcl.control_standing(fstats["mean"], vals, max_fresh_readings=1, alpha=bars.alpha)
+                cs = lcl.control_standing(fstats["mean"], vals, max_fresh_readings=1, alpha=bars.alpha,
+                                          effective_count=(cdata.get("controls_effective") or {}).get(fam))
+                cs["not_comparable"] = (cdata.get("delivered") or {}).get("not_comparable")
                 ctl_eval[fam] = cs
                 if not cs["passes_alpha"]:
                     ctl_ok = False
@@ -1521,6 +1573,21 @@ def judge_trial(
     return out(verdict, reasons, matched_by_cheaper_knob=matched_knob, cheaper_knob=knob_fact)
 
 
+def _count_apart(dv: Mapping[str, Any], ctl_means: List[Optional[float]], tol: float) -> int:
+    """Count the control edits that, as read, did not change the stream within a factor of `tol` of what the edit
+    changed it, and take each out of the edit's favour (its mean set to None, which `control_standing` counts as
+    moving as much). "Matched" other sites are matched on a base pre-pass's expectation, and on the 31B most of them
+    then delivered under half of what the edit did: a control edit that hardly touched the stream is no control."""
+    e_d, apart = dv.get("edit"), 0
+    if e_d is None or not e_d > 0.0:
+        return 0
+    for c, d_c in enumerate(dv.get("per_control") or []):
+        if c < len(ctl_means) and (d_c is None or not e_d / tol <= d_c <= e_d * tol):
+            ctl_means[c] = None
+            apart += 1
+    return apart
+
+
 def judge_readings(
     brief: lbr.Brief,
     bars: lcl.BarSet,
@@ -1581,8 +1648,14 @@ def judge_readings(
             _, fl_s, _, ctl_s = lcl._extract_item_effects(r_same, target_drawn, cls_name, brief.metric, main_dose)
             fl_both = max([x for x in (fl_m, fl_s) if x is not None], default=None)
             ctls_cls: Dict[str, Any] = {"other_sites_matched": ctl_m, "same_site": ctl_s}
+            dv_m = lcl._delivered_of(r_matched, target_drawn, cls_name, main_dose, tolerance=tol)
+            eff_cls: Dict[str, Any] = {}
+            if dv_m is not None:
+                dv_m["not_comparable"] = _count_apart(dv_m, ctl_m, tol)
+                if dv_m.get("fewest_eligible") is not None:
+                    eff_cls["other_sites_matched"] = int(dv_m["fewest_eligible"])
             deliv_cls: Dict[str, Any] = {
-                "other_sites_matched": lcl._delivered_of(r_matched, target_drawn, cls_name, main_dose),
+                "other_sites_matched": dv_m,
                 "same_site": lcl._delivered_of(r_same, target_drawn, cls_name, main_dose),
             }
             if r_sham is not None:
@@ -1604,12 +1677,19 @@ def judge_readings(
                 if isinstance(dv, dict):
                     dv.pop("per_control", None)
             classes_payload[cls_name] = {"item_effects": it_effs, "floor": fl_both, "reversed_mean": rev_m,
-                                         "controls": ctls_cls, "delivered": deliv_cls}
+                                         "controls": ctls_cls, "controls_effective": eff_cls, "delivered": deliv_cls}
             folded_by_class[cls_name] = extract_folded_class(r_matched, target_drawn, cls_name, brief.metric)
 
         for cls_name in ("small", "large"):
             it_effs, fl_rw, _, ctl_rw = lcl._extract_item_effects(r_rw, rw_drawn, cls_name, brief.metric, main_dose)
-            rw_classes[cls_name] = {"item_effects": it_effs, "floor": fl_rw, "controls": {"other_sites_matched": ctl_rw}}
+            dv_rw = lcl._delivered_of(r_rw, rw_drawn, cls_name, main_dose, tolerance=tol)
+            if dv_rw is not None:
+                dv_rw["not_comparable"] = _count_apart(dv_rw, ctl_rw, tol)
+                dv_rw.pop("per_control", None)
+            rw_classes[cls_name] = {"item_effects": it_effs, "floor": fl_rw, "controls": {"other_sites_matched": ctl_rw},
+                                    "controls_effective": ({"other_sites_matched": int(dv_rw["fewest_eligible"])}
+                                                           if dv_rw and dv_rw.get("fewest_eligible") is not None else {}),
+                                    "delivered": dv_rw}
             rw_folded[cls_name] = extract_folded_class(r_rw, rw_drawn, cls_name, brief.metric)
         reworded_eval = judge_reworded(brief, bars, rw_classes, rw_folded, **ftol)
 
@@ -1617,15 +1697,20 @@ def judge_readings(
             got = [lcl._mean_metric_from_read(r, metric, main_dose, cls_name=c)[which] for c in ("small", "large")]
             return [v for v in got if v is not None]
 
+        def counted(r: Mapping[str, Any]) -> Dict[str, int]:
+            """Of the items a battery was given, how many read: one that did not is in none of its figures."""
+            its = [it for it in (r.get("items") or ()) if isinstance(it, Mapping)]
+            return {"read": sum(1 for it in its if it.get("status") == "ok"), "given": len(its)}
+
         neu_kls, neu_ctls = both(r_neu, "kl", 0), both(r_neu, "kl", 1)
         bat_payload["neutral_text"] = {"mean_kl": max(neu_kls) if neu_kls else None,
-                                       "control_kl_max": max(neu_ctls) if neu_ctls else None}
+                                       "control_kl_max": max(neu_ctls) if neu_ctls else None, "items": counted(r_neu)}
         nm_vals = both(r_nm, brief.metric, 0)
         bat_payload["near_misses"] = {"mean_effect": nm_vals[-1] if nm_vals else None,
-                                      "abs_effect": max((abs(v) for v in nm_vals), default=None)}
+                                      "abs_effect": max((abs(v) for v in nm_vals), default=None), "items": counted(r_nm)}
         p_owns, p_kls = both(r_pan, "own", 0), both(r_pan, "kl", 0)
         bat_payload["labelled_panel"] = {"own_drop": max((max(0.0, -v) for v in p_owns), default=None),
-                                         "mean_kl": max(p_kls) if p_kls else None}
+                                         "mean_kl": max(p_kls) if p_kls else None, "items": counted(r_pan)}
         bat_payload["habitat"] = {"available": False, "note": "no atlas passages index mounted"}
 
     fresh_judged = lcl.judge_claim(
@@ -1801,10 +1886,10 @@ def render_trial_sheet(
     cal_where = meta.get("bars_calibration_where") or "this book"
     if cs and isinstance(cs.get("layer"), int):
         cal_how = (f": a probe of {cs.get('n_cols')} columns at layer {cs['layer']} (page layer {cs['layer'] + 1}) "
-                   f"against {cs.get('n_controls')} control edits, each bar {cs.get('mult')} times the largest figure "
-                   f"they gave (seed {cs.get('seed')})")
+                   f"against {cs.get('n_controls')} control edits (seed {cs.get('seed')}); each bar is the larger of its "
+                   f"registered least and {cs.get('mult')} times the largest figure they gave: {lcl.bars_in_words(bars)}")
     else:
-        cal_how = ": how it was taken is not recorded"
+        cal_how = f": how it was taken is not recorded; {lcl.bars_in_words(bars)}"
     out += [
         f"registration: {str(meta.get('trial_sha256') or '')[:16]} (registered {trial_cfg.get('registered_at')} at commit "
         f"{str(trial_cfg.get('repo_commit'))[:12]})"
@@ -1819,7 +1904,7 @@ def render_trial_sheet(
                        f"had begun {proc.get('readings', 0)} reading(s) and {proc.get('captures', 0)} capture(s) and "
                        f"run the model forward {proc.get('forwards', 0)} time(s) before the trial"),
         f"book: {meta.get('book_name')} ("
-        + ("the level book" if bkn.get("default") else "a side book, not the level book")
+        + ("the level book of the environment this ran in" if bkn.get("default") else "a side book, not the level book")
         + f"); the trial was entered at line {meta.get('registration_seq')}, after the line that hashes to "
         f"{str(meta.get('book_head_before'))[:12]}. Read once and counted in this book: the harness cannot see another "
         "book, a copy of this one, or this one cut back to an earlier line",
@@ -1831,7 +1916,8 @@ def render_trial_sheet(
         f"linears: {', '.join(trial_cfg.get('edit_linears') or ())}",
     ]
     src = meta.get("source_claim")
-    out.append(f"follows: the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})"
+    out.append(f"follows: the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')}"
+               + (f", read at dose {src['main_dose']:g}" if isinstance(src.get("main_dose"), (int, float)) else "") + ")"
                if isinstance(src, Mapping) else "follows: no claim reading of this edit stands in this book")
     k = int(meta.get("earlier_fresh_readings") or 0)
     out.append("fresh items: new fillings of the brief's kept-back frames, which "
@@ -1883,7 +1969,11 @@ def render_trial_sheet(
             out.append(
                 f"  [{cls_name}] per-row mean {_fmt(fr.get('mean'))} | h0 {_fmt((fr.get('half_0') or {}).get('mean'))}, "
                 f"h1 {_fmt((fr.get('half_1') or {}).get('mean'))} | floor {_fmt(hb.get('floor'))}, bar {_fmt(hb.get('bar'))} | "
-                f"matched {ctl.get('at_least')}/{ctl.get('count')} (p {_fmt(ctl.get('p_fw'), 3)}) | ok={rc.get('ok')}"
+                f"matched {ctl.get('at_least')}/{ctl.get('count')} (p {_fmt(ctl.get('p_fw'), 3)}"
+                + (f"; {ctl['not_comparable']} of them did not deliver as the edit did and are counted as moving as much"
+                   if ctl.get("not_comparable") else "")
+                + (f"; counted as {ctl['effective_count']} draws" if ctl.get("effective_count") not in (None, ctl.get("count")) else "")
+                + f") | ok={rc.get('ok')}"
             )
             rfc = rw_fl_classes.get(cls_name) or {}
             if rfc.get("available"):
@@ -1939,6 +2029,7 @@ def record_conditions(prereg_dir: Path, trial_cfg: Mapping[str, Any], *, repo_ro
     changed = checkout_changes(root)
     tracked = checkout_changes(root, tracked_only=True)
     hidden = hidden_from_status(root)
+    unlisted = unlisted_code(root)
     not_committed = folder_committed(Path(prereg_dir), root)
     moved = sources_moved(source_hashes(SOURCE_ROOT), dict(trial_cfg.get("sources") or {}))
     reasons: List[str] = []
@@ -1955,6 +2046,13 @@ def record_conditions(prereg_dir: Path, trial_cfg: Mapping[str, Any], *, repo_ro
     if hidden:
         reasons.append(f"git is told to overlook changes to {len(hidden)} file(s) of the checkout ({', '.join(hidden[:3])}"
                        + (", ..." if len(hidden) > 3 else "") + "), so it cannot be shown clean")
+    if unlisted:
+        reasons.append(f"the checkout holds {len(unlisted)} Python file(s) the runner would import that are in no commit "
+                       f"({', '.join(unlisted[:3])}" + (", ..." if len(unlisted) > 3 else "")
+                       + "): git does not track them, whether or not it was told to ignore them")
+    # a question git could not be asked is not a condition that was found to hold
+    if dirty is not None and (hidden is None or unlisted is None or tracked is None):
+        reasons.append("git could not be asked which files it overlooks or tracks, so the checkout cannot be shown clean")
     if not_committed is not None:
         reasons.append(not_committed)
     if moved:
@@ -1974,6 +2072,7 @@ def record_conditions(prereg_dir: Path, trial_cfg: Mapping[str, Any], *, repo_ro
         "checkout": {"commit": commit, "dirty": dirty, "changed": len(changed) if changed is not None else None,
                      "tracked_changed": len(tracked) if tracked is not None else None,
                      "hidden": len(hidden) if hidden is not None else None,
+                     "unlisted_code": len(unlisted) if unlisted is not None else None,
                      "folder_committed": not_committed is None, "sources_match": not moved,
                      "sources_moved": moved[:12], "default_book": default_book, "seed_given": bool(seed_given)},
     }
@@ -2081,7 +2180,8 @@ def run_trial_of_record(
     try:
         lcl._check_edit_allowed_by_brief(edit, brief)
         gate = lcl.fresh_reading_gate(h, brief, bars, edit, bk, what="trial",
-                                      calibration=dict(cal_reg) if is_rerun else None)
+                                      calibration=dict(cal_reg) if is_rerun else None,
+                                      main_dose=float(trial_cfg["main_dose"]))
     except lcl.ClaimRefused as exc:
         raise TrialRefused(str(exc)) from None
     hist, cal_note = gate["hist"], gate["cal_note"]
@@ -2171,6 +2271,8 @@ def run_trial_of_record(
                     if src else None)
     src_reg = next((r for r in hist["registrations"] if r.get("edit_id") == edit.id), None)
     practice_best = _clean_float((src_reg or {}).get("practice_best"))
+    if source_claim is not None:
+        source_claim["main_dose"] = _clean_float((src_reg or {}).get("main_dose"))
     kb_frames = brief.generator.frames_for("kept_back")
     published = lbr.published_template_ids(h.tokenizer)
     kept_back_note = {"frames": len(kb_frames),
@@ -2386,6 +2488,7 @@ def run_trial_of_record(
             elapsed_s = round(time.perf_counter() - t_start, 3)
             meta = {
                 # what the claim gate's sheet and sentence read of a fresh reading
+                "reading_kind": "trial",
                 "date": _utc_now(),
                 "model_id": h.model_id,
                 "weights_id": h.weights_id,
@@ -2708,6 +2811,7 @@ def rejudge_trial(book_path: Path, trial_sha256: str, reg: Mapping[str, Any]) ->
                 "base": dict(body.get("base") or {}), "edit_id": (body.get("edit") or {}).get("id"),
                 "plan": body.get("plan"),
                 "controls": {"family": ctl.get("family"), "count": ctl.get("count"), "seed": ctl.get("seed")},
+                "control_ids": [str(x) for x in ctl.get("ids") or ()] if isinstance(ctl.get("ids"), list) else None,
                 "item_ids": sorted(str(((it.get("item") or {}).get("id"))) for it in body["items"]),
                 "git": runtime.get("git"), "git_clean": runtime.get("git_clean"), "device": runtime.get("device"),
             }
@@ -2726,6 +2830,11 @@ def rejudge_trial(book_path: Path, trial_sha256: str, reg: Mapping[str, Any]) ->
             unpacker_fallbacks=int(note.get("unpacker_fallbacks") or 0),
         )
         figures = trial_figures(judged["inputs"])
+        # the prompt arms' figures are the note's (they are no reading's), and they decide a pass against a pass a
+        # cheaper knob matched: they are set beside the home's with the rest
+        for arm in knobs.get("prompt_arms") or ():
+            for key in ("directed_effect", "near_miss_abs"):
+                figures[f"knob:prompt_arm:{key}:{int(arm.get('index', 0))}"] = _clean_float(arm.get(key))
     except TrialRefused:
         raise
     except (KeyError, TypeError, ValueError, AttributeError, IndexError, RecursionError, OverflowError) as exc:

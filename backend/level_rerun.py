@@ -98,6 +98,18 @@ def _clean_float(x: Any) -> Optional[float]:
     return v if math.isfinite(v) else None
 
 
+def _writable(obj: Any) -> Any:
+    """A value as a JSON file takes it whatever a bundle put in it: a string that is not valid Unicode (half of a
+    surrogate pair, which JSON can spell and UTF-8 cannot hold) is written with the odd part escaped."""
+    if isinstance(obj, str):
+        return obj.encode("utf-8", "backslashreplace").decode("utf-8")
+    if isinstance(obj, Mapping):
+        return {_writable(str(k)): _writable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_writable(v) for v in obj]
+    return obj
+
+
 def _seed_of(text: Any) -> Optional[bytes]:
     if not isinstance(text, str) or len(text) != 64:
         return None
@@ -233,6 +245,8 @@ def run_volunteer_rerun(
     tar_path = Path(out_tar).expanduser().resolve()
     if tar_path.exists():
         raise RerunRefused(f"Output bundle already exists: {tar_path} (refusing to overwrite).")
+    # a name that cannot be written is found now, not after the trial has been read
+    volunteer_name = _writable(str(volunteer_name))
 
     own_tmp = work_dir is None
     run_root = Path(tempfile.mkdtemp(prefix="levelling-rerun-")) if own_tmp else Path(work_dir).resolve()
@@ -423,10 +437,13 @@ def _figure_tolerance(key: str, home_value: Optional[float], floors: Mapping[str
 def _bucket(key: str) -> str:
     """Which row of an intake's comparison a figure is counted in: `target:small` and `reworded:large` are the items'
     own effects (the per-row form), `...:folded` the folded form's, `...:controls` the control edits' means,
-    `...:other` the floor and the reversed dose, `batteries` the batteries' figures."""
+    `...:other` the floor and the reversed dose, `batteries` the batteries' figures, `prompt_arms` what the note
+    records of the brief's prompt arms."""
     parts = key.split(":")
     if parts[0] == "battery":
         return "batteries"
+    if parts[0] == "knob":
+        return "prompt_arms"
     kind = parts[2]
     head = f"{parts[0]}:{parts[1]}"
     return head if kind == "item" else f"{head}:{'folded' if kind == 'folded' else 'controls' if kind == 'control' else 'other'}"
@@ -459,6 +476,10 @@ def intake_rerun_bundle(
 
     Raises `RerunRefused` when the intake cannot begin (no such bundle, an unsafe tar, a home book that does not hold
     the home trial as its note says). Nothing in the bundle itself makes it raise."""
+    home_whole = lb.verify(Path(home_book))
+    if not home_whole["ok"]:
+        raise RerunRefused(f"The home book {Path(home_book).name} does not verify (line {home_whole['first_bad']}: "
+                           f"{home_whole['why']}): a re-run is not judged against it.")
     try:
         reg = lt.verify_registration(prereg_dir)
         home_sha = reg["trial_sha256"]
@@ -556,6 +577,17 @@ def intake_rerun_bundle(
                     "controls": vf["controls"] == hf["controls"], "items": vf["item_ids"] == hf["item_ids"],
                     "name": vf["name"] == hf["name"]}
             _chk(f"reading_{role}_is_the_home_reading", all(same.values()), same)
+            # Which control edits a card draws from a seed rests on a base pre-pass on that card: another card's
+            # rounding can carry a site across the matching threshold and draw other edits. Their means are then
+            # not the home's one for one, and the intake says that this is why.
+            h_ids, v_ids = hf.get("control_ids"), vf.get("control_ids")
+            if h_ids is not None and h_ids != v_ids:
+                other = (sum(1 for a, b in zip(h_ids, v_ids) if a != b) + abs(len(h_ids) - len(v_ids))
+                         if isinstance(v_ids, list) else len(h_ids))
+                _chk(f"control_edits_of_{role}_drawn_as_at_home", False,
+                     {"differ": other, "of": len(h_ids),
+                      "says": "the same seed drew other control edits on this card: their figures are not the home's one for one"},
+                     kind="disagree")
         _chk("drawn_items_recorded_as_at_home", vol["drawn"] == home["drawn"],
              {k: vol["drawn"].get(k) == home["drawn"].get(k) for k in ("target", "reworded")})
         _chk("base_checksum_is_the_home_base",
@@ -569,7 +601,8 @@ def intake_rerun_bundle(
         #    reader were the files hashed at registration. Each has its own leave, named in the verdict when given.
         co = vol_reg.get("checkout") if isinstance(vol_reg.get("checkout"), Mapping) else {}
         runner_ok = co.get("sources_match") is True
-        tracked_ok = co.get("tracked_changed") == 0 and not co.get("hidden")
+        # each must be a count of nought: one that could not be asked (None) is not one that was found clean
+        tracked_ok = co.get("tracked_changed") == 0 and co.get("hidden") == 0 and co.get("unlisted_code") in (0, None)
         if not runner_ok and allow_other_runner:
             allowances.append("its runner or reader was not the registered one (allow_other_runner)")
         if not tracked_ok and allow_dirty:
@@ -660,5 +693,6 @@ def intake_rerun_bundle(
         "disagree_reasons": disagree_reasons,
         "checks": checks,
     }
+    verdict_doc = _writable(verdict_doc)  # it quotes what the bundle said of itself
     write_json_atomic(stage / "intake_verdict.json", verdict_doc, indent=2)
     return verdict_doc

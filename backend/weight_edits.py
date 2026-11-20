@@ -1235,10 +1235,12 @@ def _assemble(lm: nn.Module, specs: Sequence[TermSpec], *, model_id: str, weight
     # normalize -0.0 -> 0.0 before sorting low-rank parts so -0.0 never changes merge order or edit id
     low_ab = [(A + np.float32(0.0), B + np.float32(0.0)) for A, B in low_ab]
 
-    for (_s, _name, _L, _neurons_), (f, _v) in zip(col, given):
+    # the cap on a factor is one of the tests a whole made of a plant and an edit is not asked again (`sized`): a
+    # plant's 8 and an edit's 60 add to 67, and an edit's 64 at dose 1.01 is 64.63, where each part met the cap alone
+    for (_s, _name, _L, _neurons_), (f, _v) in zip(col, given) if sized else ():
         if f is not None and (np.abs(f) > MAX_FACTOR).any():
             raise Refused(_SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0])))
-    for (_s, _name, _L, _w, _neurons_), (f, _v) in zip(row, given_rows):
+    for (_s, _name, _L, _w, _neurons_), (f, _v) in zip(row, given_rows) if sized else ():
         if f is not None and (np.abs(f) > MAX_FACTOR).any():
             raise Refused(_SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0])))
     for (_s, name, L, neurons), (_f, v) in zip(col, given):
@@ -1602,12 +1604,17 @@ def static_caps(edit: Edit) -> Optional[str]:
     factors within the cap on one; a kind of term this kernel builds, on a linear that takes it; no neuron named
     twice. What cannot be asked without the weights, and so is not: how far a column, a row or a low-rank term moves
     its linear (`MAX_REL_CHANGE`), whether a scaling of every column is the no-op the norm undoes, and whether a
-    neuron exists."""
+    neuron exists. (How far a set or added vector moves its column, and a low-rank term's bound, need the weights:
+    not asked here.)"""
     try:
         low_names = {t.linear for t in edit.terms if t.kind == "lowrank"}
         n_terms = sum(1 for t in edit.terms if t.kind in ("cols", "rows")) + len(low_names)
         if n_terms > MAX_TERMS:
             return _SAY_CAP.format(cap=MAX_TERMS, what="terms", k=n_terms)
+        for name in sorted(low_names):  # the gate joins the low-rank terms of one linear before it asks their rank
+            rank = sum(int(np.asarray(t.A).shape[0]) for t in edit.terms if t.kind == "lowrank" and t.linear == name)
+            if rank > MAX_RANK:
+                return _SAY_RANK.format(cap=MAX_RANK, r=rank)
         seen: Dict[Tuple[str, str], set] = {}
         carried = 0
         for t in edit.terms:
@@ -1631,6 +1638,11 @@ def static_caps(edit: Edit) -> Optional[str]:
                     return _SAY_NOT_FINITE.format(where=f"a factor on {t.linear}")
                 if (np.abs(f) > MAX_FACTOR).any():
                     return _SAY_FACTOR.format(cap=MAX_FACTOR, f=float(f[np.abs(f) > MAX_FACTOR][0]))
+                # a scaled column or row changes by |f - 1| times its own length, whatever the weights are
+                far = (op == 0) & (np.abs(f - 1.0) > MAX_REL_CHANGE)
+                if far.any():
+                    return (f"A neuron of {t.linear} would change by {float(np.abs(f - 1.0)[far][0]):.0f} times its own "
+                            f"length; an edit takes at most {MAX_REL_CHANGE:g}.")
                 if (op != 0).any() and t.vectors is None:
                     return f"A term on {t.linear} sets or adds {what} and carries no vectors."
                 if t.vectors is not None:
@@ -1662,7 +1674,7 @@ def static_caps(edit: Edit) -> Optional[str]:
     return None
 
 
-def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional[str]) -> Edit:
+def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional[str], sized: bool = True) -> Edit:
     """An edit that was not built here and now (one handed to a reading as an object), passed through the gate as a
     loaded one is: its terms are taken as recipe terms and built again against `lm`, and the id that comes out must be
     the id the object carries. So the ledger never holds an id that is not the hash of what ran, and an object made by
@@ -1677,8 +1689,11 @@ def gate_again(lm: nn.Module, edit: Edit, *, model_id: str, weights_id: Optional
     except (ValueError, TypeError, AttributeError, IndexError):
         raise Refused(f"The edit {str(edit.id)[:12]} is not laid out as an edit's terms are: build it with "
                       "weight_edits.build.") from None
+    # `sized` false: a part of a whole made under a plant (`stack(plant_first=True)`). The kernel built it in this
+    # reading; a control edit is gated a second time only when there is a plant, so asking it the tests on an edit's
+    # size again would refuse under a plant what reads without one.
     again = _assemble(lm, specs, model_id=model_id, weights_id=weights_id, note=str(edit.note or ""),
-                      caps=report.get("caps") != CONTROL_CAPS)
+                      caps=report.get("caps") != CONTROL_CAPS, sized=sized)
     if again.id != edit.id:
         raise Refused(f"The edit handed in says it is {str(edit.id)[:12]} and hashes to {again.id[:12]}.")
     _carry_info_report(again.report, report)
@@ -2262,7 +2277,7 @@ def stack(
             a = e.base.get("model") if isinstance(e.base, dict) else None
             ia = e.base.get("weights_id") if isinstance(e.base, dict) else None
             raise Refused(_SAY_OTHER_BASE.format(a=a, ia=ia, b=model_id, ib=weights_id))
-        checked.append(gate_again(lm, e, model_id=model_id, weights_id=weights_id))
+        checked.append(gate_again(lm, e, model_id=model_id, weights_id=weights_id, sized=not plant_first))
     # per (linear, kind) -> idx -> (op_code, factor, vector_or_None)
     slices: Dict[Tuple[str, str, int, str], Dict[int, Tuple[int, float, Optional[np.ndarray]]]] = {}
     low_specs: List[TermSpec] = []
@@ -2966,24 +2981,8 @@ def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float =
     d = float(dose)
     hits: List[Dict[str, Any]] = []
     not_examined: List[str] = []
-    examined = 0
 
-    def nearest(v: torch.Tensor) -> Tuple[int, float, Optional[float]]:
-        """The unembedding row nearest `v` by cosine, its cosine, and the next row's size of cosine: read
-        `IMPLANT_CHUNK` rows at a time on the CPU, so the 31B's table (262,144 by 5,376) is never copied whole."""
-        v = v.float().cpu()
-        vn = float(torch.linalg.norm(v))
-        best: List[Tuple[float, int, float]] = []
-        step = max(1, int(IMPLANT_CHUNK))
-        for at in range(0, int(W_U.shape[0]), step):
-            part = W_U[at:at + step].detach().float().cpu()
-            dots = (part @ v) / (torch.linalg.norm(part, dim=1).clamp_min(1e-8) * vn)
-            top = torch.topk(dots.abs(), k=min(2, int(dots.shape[0])))
-            best += [(float(top.values[k]), at + int(top.indices[k]), float(dots[int(top.indices[k])]))
-                     for k in range(int(top.values.shape[0]))]
-        best.sort(reverse=True)
-        return best[0][1], best[0][2], (best[1][0] if len(best) > 1 else None)
-
+    cand: List[Tuple[int, str, torch.Tensor]] = []  # (layer, what, the direction it writes into the stream)
     for t in edit.terms:
         if t.which != "down_proj":
             not_examined.append(f"{t.linear} ({t.kind}): a row term changes what a neuron reads and writes nothing "
@@ -3007,15 +3006,35 @@ def implant_shape(edit: Edit, lm: nn.Module, W_U: torch.Tensor, *, dose: float =
             names = [f"low-rank direction {k}" for k in range(delta.shape[0])]
         dS = torch.from_numpy((delta * w_post[None, :]).astype(np.float32))
         for j in range(dS.shape[0]):
-            v = dS[j]
-            if float(torch.linalg.norm(v)) <= 1e-8:
-                continue
-            examined += 1
-            top_idx, top_cos, next_cos = nearest(v)
+            if float(torch.linalg.norm(dS[j])) > 1e-8:
+                cand.append((int(t.layer), names[j], dS[j]))
+    examined = len(cand)
+    if cand:
+        # every direction against every unembedding row, the table read once, `IMPLANT_CHUNK` rows at a time on the
+        # CPU (the 31B's is 262,144 by 5,376: it is never copied whole, and not once a direction)
+        V = torch.stack([v for _l, _n, v in cand]).float().cpu()
+        V = V / torch.linalg.norm(V, dim=1, keepdim=True)
+        K = int(V.shape[0])
+        best_abs, best_cos = torch.full((K, 2), -1.0), torch.zeros((K, 2))
+        best_idx = torch.zeros((K, 2), dtype=torch.long)
+        step = max(1, int(IMPLANT_CHUNK))
+        for at in range(0, int(W_U.shape[0]), step):
+            part = W_U[at:at + step].detach().float().cpu()
+            part = part / torch.linalg.norm(part, dim=1, keepdim=True).clamp_min(1e-8)
+            dots = V @ part.T  # [directions, rows of this part]
+            top = torch.topk(dots.abs(), k=min(2, int(dots.shape[1])), dim=1)
+            all_abs = torch.cat([best_abs, top.values], dim=1)
+            all_idx = torch.cat([best_idx, top.indices + at], dim=1)
+            all_cos = torch.cat([best_cos, torch.gather(dots, 1, top.indices)], dim=1)
+            keep = torch.topk(all_abs, k=2, dim=1).indices
+            best_abs, best_idx, best_cos = (torch.gather(x, 1, keep) for x in (all_abs, all_idx, all_cos))
+        for j, (layer, what, _v) in enumerate(cand):
+            top_cos = float(best_cos[j, 0])
             if abs(top_cos) >= IMPLANT_COSINE:
-                hits.append({"layer": int(t.layer), "page_layer": int(t.layer) + 1, "what": names[j],
-                             "top_piece_id": top_idx, "top_cosine": round(top_cos, 4),
-                             "next_cosine": round(next_cos, 4) if next_cos is not None else None})
+                nxt = float(best_abs[j, 1])
+                hits.append({"layer": layer, "page_layer": layer + 1, "what": what,
+                             "top_piece_id": int(best_idx[j, 0]), "top_cosine": round(top_cos, 4),
+                             "next_cosine": round(nxt, 4) if nxt >= 0.0 else None})
     return {"checked": True, "flagged": bool(hits), "late_layer_cutoff": late_cut, "cosine_bar": IMPLANT_COSINE,
             "examined": examined, "not_examined": not_examined, "hits": hits[:16]}
 

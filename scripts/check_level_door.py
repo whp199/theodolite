@@ -783,6 +783,46 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
           and np.array_equal(whole.terms[0].vectors[0], v_mine[0]),
           f"5: an edit that sets the column a plant set reads as it reads alone ({rs_p['status']}: {rs_p.get('why')}), "
           "and its own set is the one that stands")
+    # the cap on a factor: a plant's own factor adds to the driver's, and a dose stretches a factor, and neither
+    # may make a planted reading refuse what a canary reads (one such call told the two apart, and gave the plant's factor)
+    plant_f8 = we.build(hP.lm, [we.scale(2, [7], 8.0)], **kw)
+    big = we.build(hP.lm, [we.scale(4, [4], we.MAX_FACTOR)], **kw)
+    on_plant = we.build(hP.lm, [we.scale(2, [7], 60.0)], **kw)
+
+    def rd_dose(e: Any, pl: Any, name: str, dose: float) -> str:
+        try:
+            r = lv.read(hP, {"name": name, "kind": "paired", "edit": {"built": e.id}, "items": ["alpha"], "doses": [dose, 0.0],
+                             "main_dose": dose, "controls": {"count": 2, "seed": 0}, "rows": {"small": 8, "large": 16},
+                             "folded": "never", "lower": "whole"}, items, edit=e, _plant=pl)
+            return str(r["status"])
+        except Exception as exc:  # noqa: BLE001
+            return f"raised {type(exc).__name__}: {str(exc)[:80]}"
+
+    # a control edit is gated a second time only under a plant: the tests on an edit's size must not be asked of it
+    # then (a same-site control of 8 silenced columns is 8 added columns; with the cap on those set to 4 for the check)
+    wide_cols = we.build(hP.lm, [we.silence(4, list(range(8)))], **kw)
+    cap_was = we.MAX_VECTOR_COLUMNS
+    we.MAX_VECTOR_COLUMNS = 4
+    try:
+        got_ctl = []
+        for i, pl in enumerate((plant, None)):
+            try:
+                r = lv.read(hP, {"name": f"same_site_under_{i}", "kind": "paired", "edit": {"built": wide_cols.id}, "items": ["alpha"],
+                                 "controls": {"family": "same_site", "count": 2, "seed": 0}, "rows": {"small": 8, "large": 16},
+                                 "folded": "never", "lower": "whole"}, items, edit=wide_cols, _plant=pl)
+                got_ctl.append(str(r["status"]))
+            except Exception as exc:  # noqa: BLE001
+                got_ctl.append(f"raised {type(exc).__name__}: {str(exc)[:80]}")
+    finally:
+        we.MAX_VECTOR_COLUMNS = cap_was
+    check(got_ctl[0] == got_ctl[1] == "ok",
+          f"5: a same-site control edit past a cap on an edit's size reads under a plant as it reads without ({got_ctl})")
+    got_big = [rd_dose(big, pl, f"factor_cap_{i}", 1.01) for i, pl in enumerate((plant, None))]
+    got_on = [rd_dose(on_plant, pl, f"on_the_plant_{i}", 1.0) for i, pl in enumerate((plant_f8, None))]
+    check(got_big[0] == got_big[1] and not got_big[0].startswith("raised") and got_on[0] == got_on[1]
+          and not got_on[0].startswith("raised") and stack_refused([plant_f8, on_plant], "at most 64"),
+          f"5: a scaling at the cap read at dose 1.01, and a scaling of a neuron the plant scaled, read with a plant as "
+          f"without ({got_big}; {got_on})")
     we.assert_base(hP.lm, hP.hooks_at_load)
 
 

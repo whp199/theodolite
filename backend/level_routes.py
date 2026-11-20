@@ -110,9 +110,9 @@ def _book_catalog() -> Dict[str, Dict[str, Any]]:
         }
     }
     candidates = [
-        ("verify_trial", "31B trial dry run check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
+        ("verify_trial", "31B trial dry run check (20 Nov 2026)", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
         ("verify_claim", "31B claim gate check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_claim_book.jsonl"),
-        ("verify_door", "31B agent door check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
+        ("verify_door", "31B agent door check (20 Nov 2026)", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
         ("verify_1b", "31B slice 1b check (18 Nov 2026)", RECORDED_BOOKS_DIR / "verify_1b_book.jsonl"),
     ]
     for bid, label, p in candidates:

@@ -28,7 +28,9 @@ page server answers. "Read once" and the brief's budget are facts about the one 
 
 With `--stand-in` (the float32 stand-in) or `--packed-stand-in` (the packed one, which has a folded form) the model is
 a small random one on the CPU and `--book` must be given: a stand-in's readings do not go into the level book, so a
-trial on a stand-in is a dry run. It shows that the plumbing runs; its figures mean nothing.
+trial on a stand-in is a dry run from this command line. (The checks read one of record by naming a book of their
+own as the level book through the environment; the harness cannot tell a stand-in from a model, and a sheet names
+the model it read.) It shows that the plumbing runs; its figures mean nothing.
 """
 from __future__ import annotations
 

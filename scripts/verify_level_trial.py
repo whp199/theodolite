@@ -230,6 +230,26 @@ def main() -> int:
               "and kept in a file of its own from the draw on")
         check("unpacker_fallbacks_counted_31b", meta["unpacker_fallbacks"] == 0 and "unpacker fallbacks 0" in t_res["sheet"],
               {"unpacker_fallbacks": meta["unpacker_fallbacks"]})
+        # the matched control edits as read: how many changed the stream within the registered factor of what the
+        # edit changed it (the rest are counted as moving as much), and from how many eligible sites they were drawn
+        as_read = {}
+        for cls_name in ("small", "large"):
+            ce = t_res["fresh_judged"]["classes"].get(cls_name) or {}
+            dv = (ce.get("delivered") or {}).get("other_sites_matched") or {}
+            cs = (ce.get("controls") or {}).get("other_sites_matched") or {}
+            as_read[cls_name] = {k: dv.get(k) for k in ("edit", "controls_median", "controls_min", "controls_max",
+                                                        "within_tolerance", "not_comparable", "of_controls", "tolerance",
+                                                        "fewest_eligible")}
+            as_read[cls_name].update({"at_least": cs.get("at_least"), "effective_count": cs.get("effective_count"),
+                                      "p_fw": cs.get("p_fw")})
+        check("matched_controls_as_read_31b",
+              all(isinstance(v["within_tolerance"], int) and v["within_tolerance"] + v["not_comparable"] == v["of_controls"] == 39
+                  and v["at_least"] >= v["not_comparable"] for v in as_read.values()), as_read)
+        knobs = t_res["fresh_judged"].get("cheaper_knobs") or {}
+        check("prompt_arms_beside_the_edit_31b", knobs.get("prompt_arms_state") == lcl.PROMPT_ARMS_RUN and bool(knobs.get("prompt_arms")),
+              {"matched_by": knobs.get("matched_by"),
+               "arms": [{k: a.get(k) for k in ("index", "directed_effect", "near_miss_abs")} for a in knobs.get("prompt_arms") or []],
+               "edit_near_miss_abs": (t_res["fresh_judged"].get("batteries", {}).get("near_misses") or {}).get("abs_effect")})
         check("every_figure_of_the_judgement_31b", len(rj["figures"]) > 200,
               {"figures": len(rj["figures"]),
                "controls_small": sum(1 for k in rj["figures"] if k.startswith("target:small:control:"))})
@@ -271,19 +291,20 @@ def main() -> int:
         keys = el.read_lora(Path(exp_out["gguf_path"]))[1]
         said = {k.split("levelling.")[1]: keys[k] for k in sorted(keys) if k.startswith("theodolite.levelling.")
                 and any(s in k for s in ("trial_verdict", "trial_fresh", "trial_kind", "trial_brief", "trial_judged",
-                                         "applies_to", "implant", "served_base_is", ".book", ".gate"))}
+                                         "applies_to", "implant", "compiled_against_is", ".book", ".gate", ".serving"))}
         exp_s = round(time.perf_counter() - t_exp, 2)
         check("export_is_the_edit_on_the_model",
               ver_exp["ok"] and (ver_exp["max_abs_err"] or 0.0) < 1e-4 and exp_out["recompiled_from_recipe"] is True
-              and exp_out["served_base_is_edit_base"] is True,
+              and exp_out["compiled_against_is_edit_base"] is True,
               {"seconds": exp_s, "gguf_bytes": exp_out["gguf_bytes"], "max_abs_err": ver_exp["max_abs_err"]})
         check("export_keys_say_what_was_checked",
               said.get("trial_verdict") == t_res["verdict"] and said.get("trial_kind") == "a dry run"
               and said.get("trial_fresh_verdict") == t_res["fresh_verdict"] and said.get("trial_brief") == brief.name
               and str(said.get("trial_judged_again", "")).startswith("yes")
-              and str(said.get("trial_applies_to_served_base", "")).startswith("yes")
-              and str(said.get("served_base_is_edit_base", "")).startswith("yes: the same weights id")
+              and str(said.get("trial_applies_to_compiled_base", "")).startswith("yes")
+              and str(said.get("compiled_against_is_edit_base", "")).startswith("yes: the same weights id")
               and str(said.get("gate", "")).startswith("built and gated")
+              and "llama.cpp does not serve" in str(said.get("serving", ""))
               and said.get("implant_flagged") in ("true", "false", "nothing in reach of the check"), said)
         said_more = {**t_res, "verdict": "passed", "of_record": True}
         out_more = lex.export_lora_adapter(edit, target_31b, out_path=tmp / "exports" / "said_more.gguf", trial_result=said_more,
@@ -316,9 +337,9 @@ def main() -> int:
             keys_off = el.read_lora(Path(out_off["gguf_path"]))[1]
             off = {"ran": True, "ok": ver_off["ok"], "max_abs_err": ver_off["max_abs_err"], "max_rel_err": ver_off["max_rel_err"],
                    "edit_id_kept": edit_off.id == edit.id,
-                   "base_is_edit_base": out_off["served_base_is_edit_base"],
-                   "whole_base": out_off["manifest"]["served_base"]["whole_base_is_the_edits"],
-                   "served_base_words": keys_off["theodolite.levelling.served_base_is_edit_base"],
+                   "base_is_edit_base": out_off["compiled_against_is_edit_base"],
+                   "whole_base": out_off["manifest"]["compiled_against"]["whole_base_is_the_edits"],
+                   "compiled_against_words": keys_off["theodolite.levelling.compiled_against_is_edit_base"],
                    "gate": keys_off["theodolite.levelling.gate"],
                    "implant": out_off["implant_check"].get("checked_at"),
                    "same_numbers_as_the_model_export": same_file, "seconds": round(time.perf_counter() - t_off, 2)}

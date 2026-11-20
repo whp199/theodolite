@@ -505,8 +505,8 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     sh_lead = lcl.render_sheet(brief, bars, j_lead, meta, s_lead)
     SHEETS_COLLECTED.extend([sh_lead, s_lead or ""])
     check(j_lead["verdict"] == "lead", f"planted true signal -> lead (got {j_lead['verdict']})")
-    check(s_lead is not None and "selection not matched, 7 read in practice" in s_lead,
-          "free_pick claim_sentence carries 'selection not matched, 7 read in practice'")
+    check(s_lead is not None and "selection not matched, 7 practice readings in this book" in s_lead,
+          "free_pick claim_sentence carries 'selection not matched, 7 practice readings in this book'")
     check("This is a lead, not a finding of record." in (s_lead or ""), "claim_sentence is bounded as a lead")
 
     # 2. True lead (declared_rule with sham_target)
@@ -528,9 +528,10 @@ def run_section_3(tok: Any, tmp: Path) -> None:
     s_tol = lcl.claim_sentence(brief, j_decl, meta_d)
     sh_tol = lcl.render_sheet(brief, bars, j_decl, meta_d, s_tol)
     SHEETS_COLLECTED.extend([sh_tol, s_tol or ""])
-    check("matched other-site (within a factor of 4, p_fw" in (s_tol or ""),
-          "the sentence names the tolerance the matched controls were matched within")
-    check("other sites matched within a factor of 4 on delivered" in sh_tol
+    check("matched other-site (matched on what a base pre-pass expects each to deliver, within a factor of 4; p_fw" in (s_tol or "")
+          and "on delivered" not in (s_tol or ""),
+          "the sentence says what the matched controls were matched on (a base pre-pass's expectation) and within what factor")
+    check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 4" in sh_tol
           and "sham-target controls: 39 supplied with the claim" in sh_tol,
           "the sheet prints the registered design and that the shams were supplied, not made by the harness")
     check("kept-back frames, whose templates are published in the instrument's source, drawn from" in (s_tol or "")
@@ -1342,8 +1343,13 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
           and reg_mcp["design"]["controls_per_family"] == 4 and reg_mcp["design"]["prompt_arms"] is True
           and reg_mcp.get("shams") is None,
           "the registration records the reading's whole design before the draw (counts, rows, controls, tolerance)")
-    check("other sites matched within a factor of 20 on delivered" in r_claim["sheet"],
-          "the sheet prints the tolerance the matched controls were matched within")
+    as_read = re.findall(r"; (\d+) of (\d+) within a factor of 20 of the edit's", r_claim["sheet"])
+    drawn_from = re.findall(r"drawn from at least (\d+) eligible sites a neuron", r_claim["sheet"])
+    check("other sites matched on what a base pre-pass expects each to deliver, within a factor of 20" in r_claim["sheet"]
+          and len(as_read) == 2 and all(0 <= int(a) <= int(b) == 4 for a, b in as_read) and len(drawn_from) == 2
+          and "on delivered" not in r_claim["sheet"],
+          "the sheet prints what the matched controls were matched on and within what factor, how many delivered within it "
+          f"as read ({as_read}), and the fewest eligible sites a neuron ({drawn_from})")
     use_now = ses.status()["usage"]
     check(r_claim["forwards_charged"] == r_claim["estimated"]["forwards"] == use_now["claim_forwards"] > 0
           and use_now["forwards"] == fwd_before,
@@ -1484,7 +1490,7 @@ def run_section_6(h: lv.Handle, tmp: Path) -> None:
     SHEETS_COLLECTED.append(r_srv.get("sheet", ""))
     check(r_srv.get("verdict") in lcl.VERDICTS and r_srv.get("reading_index") == 2
           and r_srv.get("forwards_charged") == (r_srv.get("estimated") or {}).get("forwards")
-          and "other sites matched within a factor of 20 on delivered" in r_srv.get("sheet", "")
+          and "other sites matched on what a base pre-pass expects each to deliver, within a factor of 20" in r_srv.get("sheet", "")
           and "earlier fresh readings on this brief (1):" in r_srv.get("sheet", ""),
           f"a claim through the started server is the brief's second reading in the book, after the command line's "
           f"first, under the owner's design (verdict {r_srv.get('verdict')}, reading {r_srv.get('reading_index')})")

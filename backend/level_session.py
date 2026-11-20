@@ -54,7 +54,8 @@ PRACTICE_NOTE = "Practice door only: returns aggregates and ranks against contro
 # A blinded session's model call replies no sooner than its price times this factor, and this many seconds over,
 # after it began (`Session._wait_out`): what a plant costs (about 0.6% of a reading's seconds on the 31B) is then not
 # in WHEN the reply comes, so long as the call took less than that. A call that took longer replies when it is done.
-BLIND_PAD_FACTOR = 1.25
+# (Twice the price: on the card, readings with 39 control edits ran at 1.24 to 1.57 times theirs, 20 November 2026.)
+BLIND_PAD_FACTOR = 2.0
 BLIND_PAD_OVER_S = 0.25
 
 
@@ -625,6 +626,8 @@ class LevelSession:
         nothing (about 0.6% of a reading's seconds on the 31B, 12 readings of 12, measured 19 November 2026), so in
         a blinded session these would tell the two apart. The price (`seconds.predicted`, `parts`) stays."""
         body = row.get("body") if isinstance(row.get("body"), dict) else row
+        if "at" in row and "seq" in row:  # when the line was written is when the card was done with the reading
+            row["at"] = "not shown in a blinded session"
         if isinstance(body, dict):
             sec = body.get("seconds")
             if isinstance(sec, dict):

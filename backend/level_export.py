@@ -10,7 +10,7 @@ What holds, and where:
   given. Refused: any path inside a git checkout (this one or another), `atlas_data/`, a registration folder and an
   agent session's folder. Nothing stops the owner naming some other folder a tool can write to.
 - An adapter and its manifest are not written over unless asked (`overwrite=True`, `--force`).
-- A term that only scales or silences is compiled from the weights of the base the adapter will be served over (a
+- A term that only scales or silences is compiled from the weights of the base named for it (the GGUF it will be served over, a
   GGUF, a checkpoint folder, the loaded model): that is what "recompiled" means here. A term that sets or adds
   vectors, and a low-rank one, carries numbers worked on the edit's own base; over another base the file says so.
 - `ffn_gate` and `ffn_up` adapters are marked unverified: only `ffn_down` (and `attn_output`) have been read back
@@ -378,14 +378,18 @@ def implant_check(
 
 
 def implant_words(imp: Mapping[str, Any]) -> str:
-    """The implant label as an adapter's key says it: "true", "false", "not checked" (the model was not at hand), or
-    "nothing in reach of the check" (it ran and the edit writes nothing to the stream in the last tenth of the
-    layers, which is all it looks at: not a finding that the edit is clear)."""
+    """The implant label as an adapter's key says it: "true"; "false" (every term was in reach of the check and none
+    has the shape); "false for the part in reach of the check (N term(s) were not)" (some terms write below the last
+    tenth of the layers, or are row terms, and were not looked at); "not checked" (the model was not at hand); or
+    "nothing in reach of the check" (it ran and looked at nothing: not a finding that the edit is clear)."""
     if not imp.get("checked"):
         return "not checked"
     if imp.get("flagged"):
         return "true"
-    return "false" if int(imp.get("examined") or 0) > 0 else "nothing in reach of the check"
+    if int(imp.get("examined") or 0) <= 0:
+        return "nothing in reach of the check"
+    left = len(imp.get("not_examined") or ())
+    return "false" if left == 0 else f"false for the part in reach of the check ({left} term(s) were not)"
 
 
 # --------------------------------------------------------------------------------------------- an edit, off the model
@@ -416,6 +420,10 @@ def gate_evidence(edit_id: str, book: Optional[Path]) -> Optional[Dict[str, Any]
     p = Path(book) if book is not None else lb.book_path()
     if not p.is_file():
         return None
+    whole = lb.verify(p)
+    if not whole["ok"]:
+        raise ExportRefused(f"{p.name} does not verify (line {whole['first_bad']}: {whole['why']}): no reading is taken "
+                            "from it as the kernel's.")
     try:
         for ent in lb.entries(p):
             body = ent.get("body")
@@ -652,7 +660,7 @@ def build_lora_tensors(
         "tensors": tensors,
         "ranks": ranks,
         "recompiled_all": recompiled_all,
-        "served_base_is_edit_base": same_base,
+        "compiled_against_is_edit_base": same_base,
         "unverified_tensors": sorted(unverified),
         "made_of": made_of,
         "warnings": warnings,
@@ -664,7 +672,7 @@ def build_lora_tensors(
 
 _NO_TRIAL = {"verdict": "none given", "fresh_verdict": "none given", "kind": "none", "brief": "none",
              "trial_sha256": "none", "book_seq": None, "book_hash": None, "book": "no trial given",
-             "judged_again": "no trial given", "applies_to_served_base": "no trial given",
+             "judged_again": "no trial given", "applies_to_compiled_base": "no trial given",
              "book_before_it": "not given"}
 
 
@@ -768,10 +776,11 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
         applies = (f"no: the trial read {str(read_on)[:16] if read_on else 'its own base'}, and the adapter is compiled "
                    f"against {target.record}, another quantisation")
     elif whole is True and read_on is not None:
-        applies = "yes: the adapter is compiled against the base the trial read (the same weights id)"
+        applies = ("yes: the adapter is compiled against the base the trial read (the same weights id). That base is a "
+                   "checkpoint: served over a GGUF, the adapter is on another object than the trial read")
     elif whole is None:
         applies = ("not shown for the whole base: the linears the edit touches are the ones the trial read, by their "
-                   "pins, and the rest of the served base was not compared")
+                   "pins, and the rest of the base it is compiled against was not compared")
     else:
         applies = f"no: the adapter is compiled against {target.record}, which is not the base the trial read"
     reg_note = found["registration"] if isinstance(found.get("registration"), Mapping) else {}
@@ -781,7 +790,7 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
     return {"verdict": str(note.get("verdict")), "fresh_verdict": str(note.get("fresh_verdict")), "kind": kind,
             "brief": str(note.get("brief_name") or "unknown"), "trial_sha256": sha, "book_seq": seq,
             "book_hash": vhash, "book": f"line {seq} of {book.name} is the trial's verdict; the book verifies",
-            "judged_again": judged, "applies_to_served_base": applies, "book_before_it": before}
+            "judged_again": judged, "applies_to_compiled_base": applies, "book_before_it": before}
 
 
 # --------------------------------------------------------------------------------------------- writing an adapter
@@ -875,8 +884,18 @@ def export_lora_adapter(
     else:
         imp = {**implant_check(edit), "checked_at": "never"}
     trial = trial_standing(edit, dose, target, trial_result, book_path, registration)
-    same = compiled["served_base_is_edit_base"]
+    same = compiled["compiled_against_is_edit_base"]
     whole_same, same_words = target.standing(edit)
+    # llama.cpp serves a GGUF. An adapter compiled against anything else is exact to a base it will not be served
+    # over, and the keys must not be read as saying where it will run.
+    if target.kind == "gguf":
+        serving = (f"compiled against {target.record}: over that file its scaled and silenced terms are that file's own "
+                   "numbers; over any other file they are not")
+    else:
+        serving = ("compiled against a checkpoint llama.cpp does not serve: over any GGUF this adapter's numbers are "
+                   "another quantisation's (a silenced column is left with the difference between the two), and what it "
+                   "does there is to be measured there. To compile against the file it will be served over, give --gguf")
+        compiled["warnings"].append(serving[0].upper() + serving[1:] + ".")
 
     adapter_name = f"theodolite-levelling-{edit.short()}-derived-from-gemma"
     record: Dict[str, Any] = {
@@ -898,9 +917,10 @@ def export_lora_adapter(
         "levelling.edit_id": edit.id,
         "levelling.dose": f"{float(dose):g}",
         "levelling.base_weights_id": str(edit.base.get("weights_id") or "none"),
-        "levelling.served_base": target.record,
-        "levelling.served_gguf_sha256": str(target.gguf_sha256 or "none"),
-        "levelling.served_base_is_edit_base": same_words,
+        "levelling.compiled_against": target.record,
+        "levelling.compiled_against_gguf_sha256": str(target.gguf_sha256 or "none"),
+        "levelling.compiled_against_is_edit_base": same_words,
+        "levelling.serving": serving,
         "levelling.provenance": prov["provenance"],
         "levelling.recompiled_from_recipe": "true" if compiled["recompiled_all"] else "false",
         "levelling.unverified_tensors": json.dumps(compiled["unverified_tensors"]),
@@ -911,7 +931,7 @@ def export_lora_adapter(
         "levelling.trial_brief": trial["brief"],
         "levelling.trial_sha256": trial["trial_sha256"],
         "levelling.trial_judged_again": trial["judged_again"],
-        "levelling.trial_applies_to_served_base": trial["applies_to_served_base"],
+        "levelling.trial_applies_to_compiled_base": trial["applies_to_compiled_base"],
         "levelling.book_seq": str(trial["book_seq"]) if trial["book_seq"] is not None else "none",
         "levelling.book_hash": str(trial["book_hash"] or "none"),
         "levelling.book": trial["book"],
@@ -936,7 +956,7 @@ def export_lora_adapter(
         "gguf_sha256": gguf_sha,
         "gguf_bytes": gguf_bytes,
         "dose": float(dose),
-        "served_base": {
+        "compiled_against": {
             "kind": target.kind,
             "record": target.record,
             "gguf_sha256": target.gguf_sha256,
@@ -973,7 +993,7 @@ def export_lora_adapter(
         "gguf_bytes": gguf_bytes,
         "ranks": compiled["ranks"],
         "recompiled_from_recipe": bool(compiled["recompiled_all"]),
-        "served_base_is_edit_base": same,
+        "compiled_against_is_edit_base": same,
         "unverified_llama_cpp_tensors": compiled["unverified_tensors"],
         "warnings": compiled["warnings"],
         "implant_check": imp,
@@ -1084,11 +1104,17 @@ def verify_exported_lora(
             if not np.isfinite(diff).all():
                 finite = False
                 return
-            err, scale = float(np.max(np.abs(diff))), (float(np.max(np.abs(want))) if want.size else 0.0)
-            worst = max(worst, err)
-            worst_rel = max(worst_rel, err / scale if scale > 0.0 else (0.0 if err == 0.0 else float("inf")))
-            if err > float(tol) * scale + float(atol):
-                outside += 1
+            # row by row: each row is one probe (one touched column or row on its own, or one random vector), compared
+            # to the size of its own figures. Taken a block at a time, a column changed by a millionth would pass
+            # beside one changed by a tenth.
+            d2 = np.abs(diff).reshape(diff.shape[0], -1) if diff.ndim > 1 else np.abs(diff).reshape(1, -1)
+            w2 = (np.abs(want).reshape(d2.shape[0], -1) if want.size else np.zeros((d2.shape[0], 1)))
+            errs, scales = d2.max(axis=1), w2.max(axis=1)
+            worst = max(worst, float(errs.max()))
+            with np.errstate(divide="ignore", invalid="ignore"):
+                rel = np.where(scales > 0.0, errs / np.where(scales > 0.0, scales, 1.0), np.where(errs == 0.0, 0.0, np.inf))
+            worst_rel = max(worst_rel, float(rel.max()))
+            outside += int((errs > float(tol) * scales + float(atol)).sum())
 
         for tname, terms in sorted(by_tensor.items()):
             n_out, n_in = target.shape(terms[0].layer, terms[0].which)

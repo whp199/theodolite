@@ -18,7 +18,9 @@ level book holds a reading of it (`--book`, or the level book): the kernel has t
 recipe file (`--edit`) is taken only with `--stand-in`, where there is a model to build and gate it on.
 
 The base the adapter is compiled against: `--gguf FILE` (the GGUF it will be served over), `--weights-dir FOLDER` (a
-checkpoint), or, with neither, this machine's cached W4A16 checkpoint.
+checkpoint), or, with neither, this machine's cached W4A16 checkpoint. llama.cpp serves a GGUF: an adapter compiled
+against a checkpoint is exact to weights it will not be served over, its keys say so (`levelling.serving`), and what
+it does over a GGUF is to be measured there. Give `--gguf` to compile against the file that will be served.
 
 `--trial-result FILE` puts a trial's verdict into the adapter. The verdict is read from the trial's BOOK (`--book`,
 or the path the result names), which must verify and hold the trial's verdict for this edit at this dose; the result

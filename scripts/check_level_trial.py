@@ -290,6 +290,10 @@ def main() -> int:
                   and lex.implant_words(lex.implant_check(e_imp)) == "not checked"
                   and lex.implant_words(we.implant_shape(build([we.scale(last_L, [1], 0.5)]), hP.lm, hP.W_U)) == "false",
                   "1: the implant label is one of four words, and 'false' only when something in reach was looked at")
+            imp_part = we.implant_shape(build([we.scale(last_L, [1], 0.5), we.silence(2, [1])]), hP.lm, hP.W_U)
+            check(lex.implant_words(imp_part) == "false for the part in reach of the check (1 term(s) were not)"
+                  and imp_part["examined"] == 1 and len(imp_part["not_examined"]) == 1,
+                  "1: and when part of an edit was out of the check's reach the label says 'false' of the part it looked at alone")
             chunk_was = we.IMPLANT_CHUNK
             try:
                 we.IMPLANT_CHUNK = 7
@@ -371,6 +375,16 @@ def main() -> int:
             for i in range(lt.MAX_REWORDED_USES):
                 lb.append("note", {"note_type": "trial_registration", "reworded_marks": rset.marks(), "trial_sha256": f"m{i}"},
                           path=marks_book)
+                lb.append("paired", {"name": f"trial_m{i}_reworded", "items": [
+                    {"item": {"question": it.question, "answer": it.answer}} for it in rset.items]}, path=marks_book)
+            # every question with a word added and every answer changed: no mark of the starter set's is left, and
+            # only the text a trial's own reworded reading keeps can show these are its items
+            near_all = lt.RewordedSet("near_all", brief.id, brief.name, tuple(
+                lt.RewordedItem(i.item_id, i.half, i.question + " Please.", i.answer + " then") for i in rset.items))
+            marks_only = tmp / "marks_only_book.jsonl"  # registrations that never came to a reworded reading
+            for i in range(2):
+                lb.append("note", {"note_type": "trial_registration", "reworded_marks": rset.marks(), "trial_sha256": f"o{i}"},
+                          path=marks_only)
             resys = lt.RewordedSet("resys", brief.id, brief.name, tuple(
                 lt.RewordedItem(i.item_id, i.half, i.question, i.answer, "a system turn of its own") for i in rset.items))
             reans = lt.RewordedSet("reans", brief.id, brief.name, tuple(
@@ -378,8 +392,12 @@ def main() -> int:
             check(set(resys.wordings()).isdisjoint(rset.wordings())
                   and lt.reworded_uses_in_book(resys, marks_book) == lt.MAX_REWORDED_USES
                   and lt.reworded_uses_in_book(reans, marks_book) == lt.MAX_REWORDED_USES
-                  and lt.reworded_uses_in_book(own, marks_book) == 0 and len(rset.marks()) == 16,
-                  "2: an item given another system turn, or another answer, is the same item when its uses are counted")
+                  and lt.reworded_uses_in_book(own, marks_book) == 0 and len(rset.marks()) == 16
+                  and set(near_all.marks()).isdisjoint(rset.marks())
+                  and lt.reworded_uses_in_book(near_all, marks_only) == 0 and lt.reworded_uses_in_book(rset, marks_only) == 2
+                  and lt.reworded_uses_in_book(near_all, marks_book) == lt.MAX_REWORDED_USES,
+                  "2: an item given another system turn or another answer, or with a word changed, is the same item when "
+                  "its uses are counted (by its marks in a registration, or by a near wording in a trial's reworded reading)")
             prac_near = tmp / "prac_near_book.jsonl"
             lb.append("paired", {"name": "practice_near", "items": [{"item": {
                 "question": rset.items[0].question.replace("brief scene", "short scene"), "answer": " Somebody else did"}}]},
@@ -446,8 +464,10 @@ def main() -> int:
                                   sham_recipes=[{"terms": [{"layer": 2, "silence": [10, 11]}]}] * 2)
                   and reg_refused("declared_rule", sham_recipes=[{"terms": [{"layer": 2, "silence": [10, 11]}]}]),
                   "3: sham controls are checked as the claim gate checks them (the edit itself, a repeat, shams with a free pick)")
-            check(we.dose_refusal(e_trial, 5.0, hP.dtype) is None and reg_refused("cannot be read as registered", main_dose=5.0),
-                  "3: a reading the kernel would refuse as planned (a dose past its reach) is found before a folder is written")
+            check(we.dose_refusal(e_trial, 5.0, hP.dtype) is None and reg_refused("cannot be read as registered", main_dose=5.0)
+                  and reg_refused(f"1 to {lv.MAX_ITEMS} items", n_target=lv.MAX_ITEMS + 4),
+                  "3: a reading the kernel would refuse as planned (a dose past its reach, more items than a reading "
+                  "takes) is found before a folder is written")
             # bars whose calibration note does not follow from the book: a note written in by hand, with bars of choice
             real_cal = lcl.calibration_note(bars, cal_book)
             forged_book = tmp / "forged_cal_book.jsonl"
@@ -501,7 +521,11 @@ def main() -> int:
                            "the frames every fresh reading of the", "largest gap of any one item",
                            "within a factor of `20`", "`passed, matched by a cheaper knob`", "facts about ONE book",
                            "as public as that commit", "it is read in the level book", "only if that claim read",
-                           "each bar `2.0` times the largest figure they gave", "at layer `2` (page layer `3`)"):
+                           "its registered least and `2.0` times the largest figure they gave: neutral KL",
+                           "of the 4 are the least a bar can be", "at layer `2` (page layer `3`)",
+                           "on what a base pre-pass expects each to deliver", "is counted as moving as much",
+                           "the folded forward's own repeated rows agree to the bit",
+                           "in size, or as a share of its own effect"):
                 check(needle in rules_txt, f"3: RULES.md says \"{needle}\"")
             check(refuses(lambda: lt.register_trial(prereg_dir, hP, brief, bars, e_trial, trial_name="dup", **KW), lt.TrialRefused),
                   "3: register_trial refuses overwriting existing prereg/")
@@ -673,6 +697,22 @@ def main() -> int:
             fj_knob = lcl.judge_claim(brief=b_unit, bars=bars_unit, classes=_good_fresh_classes(), batteries=good_bats,
                                       cheaper_knobs=knobs_arm)
             tj_knob = lt.judge_trial(b_unit, bars_unit, fj_knob, folded_eval=fe_good, reworded_eval=rw_good)
+            knobs_strong = {"prompt_arms": [{"index": 0, "prompt_sha256": "cd34", "directed_effect": 8.72, "near_miss_abs": 1.38}],
+                            "prompt_arms_state": lcl.PROMPT_ARMS_RUN}
+            knobs_blunt = {"prompt_arms": [{"index": 0, "prompt_sha256": "ef56", "directed_effect": 8.72, "near_miss_abs": 6.0}],
+                           "prompt_arms_state": lcl.PROMPT_ARMS_RUN}
+            fj_strong = lcl.judge_claim(brief=b_unit, bars=bars_unit, classes=_good_fresh_classes(), batteries=good_bats,
+                                        cheaper_knobs=knobs_strong)
+            fj_blunt = lcl.judge_claim(brief=b_unit, bars=bars_unit, classes=_good_fresh_classes(), batteries=good_bats,
+                                       cheaper_knobs=knobs_blunt)
+            s_strong = lcl.claim_sentence(b_unit, fj_strong, {"main_dose": 1.0, "design": {"match_tolerance": 2.0}}) or ""
+            s_blunt = lcl.claim_sentence(b_unit, fj_blunt, {"main_dose": 1.0, "design": {"match_tolerance": 2.0}}) or ""
+            check(fj_strong["verdict"] == "lead, matched by a cheaper knob" and fj_blunt["verdict"] == "lead"
+                  and "matched by prompt arm 0 (the author's strongest prompt arm moved odds by 8.7200" in s_strong
+                  and "no author prompt arm matched it (the author's strongest prompt arm moved odds by 8.7200 in the "
+                      "brief's direction, near-miss 6.0000)" in s_blunt,
+                  "4: a prompt arm that moves the metric six times as far with a smaller share of near-miss effect matches "
+                  f"the edit, and the sentence gives the strongest arm's figures whether it matched or not ({fj_strong['verdict']})")
             check(fj_knob["verdict"] == "lead, matched by a cheaper knob" and tj_knob["verdict"] == "passed, matched by a cheaper knob"
                   and tj_knob["verdict"] in lt.PASSED and tj_knob["cheaper_knob"] == {
                       "name": "prompt arm 0", "directed_effect": 1.6, "near_miss_abs": 0.01, "edit_directed_effect": 1.5}
@@ -808,10 +848,25 @@ def main() -> int:
                            "follows: no claim reading of this edit stands in this book",
                            "book: trial_book.jsonl (a side book, not the level book); the trial was entered at line",
                            "Read once and counted in this book: the harness cannot see another book",
-                           "a probe of 2 columns at layer 2 (page layer 3) against 2 control edits, each bar 2.0 times",
+                           "a probe of 2 columns at layer 2 (page layer 3) against 2 control edits (seed 0); each bar is "
+                           "the larger of its registered least and 2.0 times the largest figure they gave: neutral KL",
+                           "practice readings in this book: 0 | practice best, as reported with the edit's claim reading: none",
+                           "other sites matched on what a base pre-pass expects each to deliver, within a factor of 20",
                            "agrees with the per-row form: True",
                            "process: had begun"):
                 check(needle in t_res["sheet"], f"5: the sheet prints \"{needle}\"")
+            dv_small = t_res["fresh_judged"]["classes"]["small"]["delivered"]["other_sites_matched"]
+            cs_small = t_res["fresh_judged"]["classes"]["small"]["controls"]["other_sites_matched"]
+            check("driver prompt named site" not in t_res["sheet"] and "as reported with the claim:" not in t_res["sheet"]
+                  and dv_small["within_tolerance"] + dv_small["not_comparable"] == dv_small["of_controls"] == 39
+                  and dv_small["tolerance"] == 20.0 and isinstance(dv_small["fewest_eligible"], int)
+                  and cs_small["effective_count"] == min(39, dv_small["fewest_eligible"])
+                  and f"{dv_small['within_tolerance']} of 39 within a factor of 20 of the edit's" in t_res["sheet"]
+                  and f"drawn from at least {dv_small['fewest_eligible']} eligible sites a neuron" in t_res["sheet"]
+                  and t_res["fresh_judged"]["batteries"]["labelled_panel"]["items"]["given"] == 2,
+                  "5: the sheet of a trial has no line that is a claim's alone, says how many matched control edits "
+                  f"delivered as the edit did when read ({dv_small['within_tolerance']} of 39) and from how many eligible "
+                  f"sites they were drawn ({dv_small['fewest_eligible']}), and how many of a battery's items read")
             check(t_res["meta"]["book_head_before"] == next(lb.entries(cal_book, start=t_res["book"]["registration_seq"] - 1,
                                                                         limit=1))["hash"]
                   and t_res["meta"]["book_head_before"][:12] in t_res["sheet"] and t_res["meta"]["priced"]["forwards"] > 0,
@@ -941,7 +996,8 @@ def main() -> int:
             def claimed_book(tag: str, said: Optional[str]) -> Any:
                 bk, bars_x = fresh_book(tag)
                 reg_c = lb.append("note", {"note_type": "claim_registration", "brief_id": brief.id, "brief_name": brief.name,
-                                           "edit_id": e_trial.id, "reading_index": 1}, path=bk)
+                                           "edit_id": e_trial.id, "reading_index": 1,
+                                           "main_dose": 2.0 if tag == "after_lead_other_dose" else 1.0}, path=bk)
                 if said is not None:
                     lb.append("note", {"note_type": "claim_verdict", "brief_id": brief.id, "brief_name": brief.name,
                                        "edit_id": e_trial.id, "verdict": said, "registration_seq": reg_c["seq"],
@@ -953,6 +1009,10 @@ def main() -> int:
             bk_nl, pre_nl = claimed_book("after_no_lead", "did not replicate")
             bk_ne, pre_ne = claimed_book("after_unended", None)
             bk_ld, pre_ld = claimed_book("after_lead", "lead")
+            bk_od, pre_od = claimed_book("after_lead_other_dose", "lead")
+            check(run_refused("read it at dose 2", pre_od, "after_other_dose_out", book=bk_od, dry_run=True)
+                  and "this trial is registered at dose 1" in msg[-1],
+                  "5: a trial follows its edit's claim at the dose the claim read: a lead at one dose does not promote another")
             n_nl = lb.verify(bk_nl)["entries"]
             check(run_refused("follows a lead", pre_nl, "after_no_lead_out", book=bk_nl, dry_run=True)
                   and 'read "did not replicate"' in msg[-1] and lb.verify(bk_nl)["entries"] == n_nl
@@ -961,12 +1021,22 @@ def main() -> int:
                   "a second reading after anything but a lead would be a second draw at one question")
             t_ld = lt.run_trial_of_record(hP, pre_ld, out_dir=tmp / "after_lead_out", book_path=bk_ld, dry_run=True)
             SHEETS.append(t_ld["sheet"])
-            check("follows: the claim reading of this edit at book line 5 (lead)" in t_ld["sheet"]
+            check("follows: the claim reading of this edit at book line 5 (lead, read at dose 1)" in t_ld["sheet"]
                   and t_ld["meta"]["reading_index"] == 2 and t_ld["meta"]["earlier_fresh_readings"] == 1
                   and "which 1 earlier fresh reading of the brief in this book had already read" in t_ld["sheet"]
                   and "earlier fresh readings on this brief (1)" in t_ld["sheet"],
                   "5: after a claim that read a lead the trial is read, as the brief's second fresh reading, and its sheet "
                   "says which claim it follows and that the frames had been read")
+
+            # a prompt arm too long for an item: found when the trial is registered, not after every reading of it
+            brief_arm = lbr.Brief.from_dict({**brief.to_dict(), "name": "pronoun_pull_long_arm",
+                                             "prompt_arms": [" ".join(["she"] * (lv.MAX_PIECES + 40))]})
+            bk_arm, bars_arm = fresh_book("long_arm", brief_arm)
+            rset_arm = lt.RewordedSet("for_long_arm", brief_arm.id, brief_arm.name, rset.items)
+            check(refuses(lambda: lt.register_trial(tmp / "long_arm" / "prereg", hP, brief_arm, bars_arm, e_trial,
+                                                    trial_name="long_arm", **{**KW, "book_path": bk_arm, "reworded": rset_arm}),
+                          lt.TrialRefused, "cannot be read as registered") and not (tmp / "long_arm" / "prereg").exists(),
+                  "5: a prompt arm too long to make an item of is found when the trial is registered, not after its readings")
 
             # a trial that is entered in the book always gets a verdict note, whatever ends it
             bk_err, bars_err = fresh_book("errors")
@@ -1063,6 +1133,30 @@ def main() -> int:
                   and why(cond()) == [],
                   "5: a file git is told to overlook, and a file git does not know where status is set to leave those "
                   f"out, are both found ({why(cond_hidden)}; {why(cond_untracked)})")
+            (repo / ".git" / "info" / "exclude").write_text("numpy.py\nscripts/\n")
+            (repo / "numpy.py").write_text("raise SystemExit('not the numpy the registration ran')\n")
+            (repo / "scripts").mkdir()
+            (repo / "scripts" / "levelling_trial.py").write_text("print('another runner')\n")
+            plain_ignored = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"],
+                                           capture_output=True, text=True).stdout
+            cond_ignored = cond()
+            (repo / "numpy.py").unlink()
+            shutil.rmtree(repo / "scripts")
+            (repo / ".git" / "info" / "exclude").write_text("")
+            hidden_was = lt.hidden_from_status
+            lt.hidden_from_status = lambda root=None: None
+            try:
+                cond_unasked = cond()
+            finally:
+                lt.hidden_from_status = hidden_was
+            check(plain_ignored == "" and cond_ignored["checkout"]["dirty"] is False
+                  and cond_ignored["checkout"]["unlisted_code"] == 2
+                  and any("2 Python file(s) the runner would import that are in no commit (numpy.py, scripts/levelling_trial.py)" in r
+                          for r in cond_ignored["reasons"])
+                  and any("could not be asked" in r for r in cond_unasked["reasons"]) and cond_unasked["checkout"]["hidden"] is None
+                  and why(cond()) == [] and cond()["checkout"]["unlisted_code"] == 0,
+                  "5: Python where the runner imports from that git was told to ignore is found (a status lists none of it), "
+                  f"and a question git could not be asked is not a condition met ({why(cond_ignored)}; {why(cond_unasked)})")
             outside = lt.record_conditions(prereg_dir, v_ok["trial"], repo_root=repo, book=level_book)
             check(any("outside the checkout" in r for r in outside["reasons"]),
                   "5: a registration folder outside the checkout is in no commit, and is not of record")
@@ -1151,7 +1245,7 @@ def main() -> int:
                   and rec_sheet.startswith("=== TRIAL OF RECORD: rec ===")
                   and "process: had asked nothing of the model before the trial" in rec_sheet
                   and "checkout clean | registration folder committed: yes | runner and reader as registered: yes" in rec_sheet
-                  and "book: level_book.jsonl (the level book)" in rec_sheet
+                  and "book: level_book.jsonl (the level book of the environment this ran in)" in rec_sheet
                   and "from a file given at registration" in rec_sheet
                   and Path(str(got.get("book"))) == real_book,
                   "5: read first in a process of its own, from a clean checkout of the code that holds its folder "
@@ -1176,12 +1270,17 @@ def main() -> int:
             def would_pass(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
                 if ent["kind"] != "paired" or not str(body.get("name", "")).startswith("trial_"):
                     return
+                for term in ((body.get("controls") or {}).get("coverage") or {}).get("terms") or ():
+                    if "min_eligible" in term:
+                        term["min_eligible"] = 500
                 for it in body["items"]:
                     for cb in it["classes"].values():
                         if isinstance((cb.get("floor") or {}).get("odds"), dict):
                             cb["floor"]["odds"]["mean_abs"] = 0.01
                         for arm in cb["arms"]:
                             key = str(arm["key"])
+                            if "delivered" in arm and (key.startswith("control:") or key == "edit:1.0"):
+                                arm["delivered"] = 0.01
                             if "odds" in arm["metrics"] and (key in ("edit:1.0", "edit:-1.0") or key.startswith("control:")):
                                 arm["metrics"]["odds"]["mean"] = -1.5 if key == "edit:1.0" else 1.4 if key == "edit:-1.0" else 0.01
                         fl = cb.get("folded")
@@ -1335,7 +1434,7 @@ def main() -> int:
             check(meta_ab.get("theodolite.levelling.trial_verdict") == "none given"
                   and meta_ab.get("theodolite.levelling.trial_judged_again") == "no trial given"
                   and str(meta_ab.get("theodolite.levelling.gate")).startswith("built and gated by the kernel")
-                  and meta_ab.get("theodolite.levelling.served_base_is_edit_base") == "another object (a GGUF)"
+                  and meta_ab.get("theodolite.levelling.compiled_against_is_edit_base") == "another object (a GGUF)"
                   and meta_ab.get("theodolite.levelling.implant_flagged") == "nothing in reach of the check"
                   and meta_ab.get("theodolite.levelling.implant_checked_at") == "export",
                   "6: with no trial given the file says none; a GGUF is another object; the implant label says what it looked at")
@@ -1413,6 +1512,30 @@ def main() -> int:
                   and ver_small["ok"] and ver_small["max_rel_err"] < 1e-6,
                   f"6: a change of {small_change:.1e} is not shown by a file of noughts: the tolerance goes with the size "
                   "of the change, and the true file of the same edit passes")
+            # a small change beside a large one in the same tensor: each column is set against its own size
+            e_two = build([we.silence(2, [3]), we.scale(2, [7], 0.99995)])
+
+            def one_column_dropped(edit: Any, tgt: Any, *, dose: float = 1.0) -> Dict[str, Any]:
+                r = good_compile(edit, tgt, dose=dose)
+                out_t = {}
+                for k, (A, B) in r["tensors"].items():
+                    B2 = B.copy()
+                    B2[:, int(np.argmax(A[:, 7]))] = 0.0 if A[:, 7].any() else B2[:, 0]
+                    out_t[k] = (A, B2)
+                r["tensors"] = out_t
+                return r
+
+            lex.build_lora_tensors = one_column_dropped
+            try:
+                out_two = lex.export_lora_adapter(e_two, target_mod, out_path=tmp / "owner_exports" / "one_dropped.gguf")
+            finally:
+                lex.build_lora_tensors = good_compile
+            ver_two = lex.verify_exported_lora(Path(out_two["gguf_path"]), edit=e_two, target=target_mod)
+            out_two_ok = lex.export_lora_adapter(e_two, target_mod, out_path=tmp / "owner_exports" / "two_right.gguf")
+            check(not ver_two["ok"] and ver_two["max_rel_err"] > 0.5
+                  and lex.verify_exported_lora(Path(out_two_ok["gguf_path"]), edit=e_two, target=target_mod)["ok"],
+                  "6: a file that leaves out a column's small change beside another column's large one is not the edit: "
+                  "every column is set against its own size")
             twice = we.Edit("x" * 64, (e_trial.terms[0], e_trial.terms[0]), dict(e_trial.base), "", {})
             check(refuses(lambda: lex.build_lora_tensors(twice, target_mod), lex.ExportRefused, "named twice")
                   and refuses(lambda: lex.export_lora_adapter(twice, target_mod, out_path=tmp / "owner_exports" / "twice.gguf"),
@@ -1441,16 +1564,21 @@ def main() -> int:
                   and m_own["theodolite.levelling.trial_kind"] == "a dry run"
                   and m_own["theodolite.levelling.trial_brief"] == brief.name
                   and m_own["theodolite.levelling.trial_judged_again"].startswith("yes: the book's readings, judged again")
-                  and m_own["theodolite.levelling.trial_applies_to_served_base"].startswith("not shown for the whole base")
-                  and m_own["theodolite.levelling.served_base_is_edit_base"].startswith("its touched linears are, by their pins")
+                  and m_own["theodolite.levelling.trial_applies_to_compiled_base"].startswith("not shown for the whole base")
+                  and m_own["theodolite.levelling.compiled_against_is_edit_base"].startswith("its touched linears are, by their pins")
                   and m_own["theodolite.levelling.book"] == f"line {t_res['book']['verdict_seq']} of {cal_book.name} is the trial's verdict; the book verifies"
                   and "earlier trials 0" in m_own["theodolite.levelling.book_before_it"]
-                  and m_own["theodolite.levelling.implant_checked_at"] == "the trial's registration",
+                  and m_own["theodolite.levelling.implant_checked_at"] == "the trial's registration"
+                  and m_own["theodolite.levelling.serving"].startswith("compiled against a checkpoint llama.cpp does not serve")
+                  and any("llama.cpp does not serve" in w for w in exp_own["warnings"])
+                  and el.read_lora(out_gguf)[1]["theodolite.levelling.serving"].startswith("compiled against gguf synthetic-gemma4.gguf")
+                  and not any("llama.cpp does not serve" in w for w in exp_res["warnings"]),
                   "6: its own trial's verdict goes in from the book, with its kind, its brief, that it was judged again, how "
-                  "far the served base was compared, and where the implant label was worked")
+                  "far the base it was compiled against was compared, where the implant label was worked, and that a "
+                  "checkpoint is not what llama.cpp serves")
             exp_gg = lex.export_lora_adapter(e_trial, target_gguf, out_path=tmp / "owner_exports" / "own_gguf.gguf", trial_result=t_res)
             _t, m_gg = el.read_lora(Path(exp_gg["gguf_path"]))
-            check(m_gg["theodolite.levelling.trial_applies_to_served_base"].startswith("no: the trial read")
+            check(m_gg["theodolite.levelling.trial_applies_to_compiled_base"].startswith("no: the trial read")
                   and m_gg["theodolite.levelling.trial_judged_again"].startswith("no: no registration was given")
                   and m_gg["theodolite.levelling.implant_flagged"] == "not checked",
                   "6: over a GGUF the file says the trial read another base; with no registration the verdict is the book's "
@@ -1539,6 +1667,26 @@ def main() -> int:
                 ordered = sorted(terms, key=lambda t: (t.linear, t.kind))
                 return lex._kept_to_id(list(terms), dict(e_trial.base), we._edit_id(dict(e_trial.base), ordered), "an edit typed by hand")
 
+            by_hand_edit = by_hand
+
+            far_f = we.Term(e_trial.terms[0].linear, "cols", 2, "down_proj", idx=we._ro([3], np.int64), op=we._ro([0], np.uint8),
+                            factor=we._ro([-64.0], np.float32))
+            low40 = [we.Term(we.linear_name(4, "down_proj"), "lowrank", 4, "down_proj",
+                             A=we._ro(np.zeros((40, N), np.float32), np.float32), B=we._ro(np.zeros((D, 40), np.float32), np.float32))
+                     for _ in range(2)]
+            typed_book = tmp / "typed_gate_book.jsonl"
+            typed_book.write_text(json.dumps({"v": 1, "seq": 0, "at": "2026-11-20T00:00:00Z", "kind": "paired", "prev": "not a hash",
+                                              "body": {"status": "ok", "name": "typed", "edit": {"id": e_reb.id}},
+                                              "hash": "not a hash"}) + "\n")
+            check("65 times its own length" in str(we.static_caps(by_hand_edit([far_f])))
+                  and "rank at most 64" in str(we.static_caps(by_hand_edit(low40)))
+                  and lb.verify(typed_book)["ok"] is False
+                  and refuses(lambda: lex.gate_evidence(e_reb.id, typed_book), lex.ExportRefused, "does not verify")
+                  and refuses(lambda: lex.export_lora_adapter(off_never, ckpt_target, book_path=typed_book,
+                                                              out_path=tmp / "owner_exports" / "typed_gate.gguf"),
+                              lex.ExportRefused, "does not verify"),
+                  "6: off the model a scaling the gate would refuse for its size, and low-rank terms that join past the "
+                  "cap on rank, are refused; and a reading is not taken as the kernel's from a book that does not verify")
             check(we.static_caps(e_trial) is None and we.static_caps(e_car) is None and we.static_caps(e_lr) is None
                   and "at most 64" in str(we.static_caps(by_hand([big_f])))
                   and len(many) == 17 and "at most 16 terms" in str(we.static_caps(by_hand(many)))
@@ -1554,7 +1702,7 @@ def main() -> int:
                                     "--trial-result", str(trial_out / "trial_result.json")])
             m_cli = el.read_lora(cli_gguf)[1] if cli_gguf.is_file() else {}
             check(rc_lora == 0 and m_cli.get("theodolite.levelling.edit_id") == e_trial.id
-                  and str(m_cli.get("theodolite.levelling.served_base_is_edit_base")).startswith("its touched linears are, by their pins")
+                  and str(m_cli.get("theodolite.levelling.compiled_against_is_edit_base")).startswith("its touched linears are, by their pins")
                   and m_cli.get("theodolite.levelling.implant_checked_at") == "the trial's registration"
                   and m_cli.get("theodolite.levelling.trial_kind") == "a dry run"
                   and str(m_cli.get("theodolite.levelling.trial_judged_again")).startswith("yes")
@@ -1786,11 +1934,37 @@ def main() -> int:
                     body["base_checksum_before"] = "0" * 64
 
             iv_ctl = intake_of("controls_moved", written_again("controls_moved", controls_moved))
-            check(iv_ctl["outcome"] != "accepted" and iv_ctl["class_diffs"]["target:small:controls"]["outside_tolerance"] == 39
+            n_comp = dv_small["within_tolerance"]  # the matched control edits that count as controls at all
+            check(iv_ctl["outcome"] != "accepted" and n_comp > 0
+                  and iv_ctl["class_diffs"]["target:small:controls"]["outside_tolerance"] == n_comp
                   and iv_ctl["class_diffs"]["target:small"]["outside_tolerance"] == 0
                   and failed(iv_ctl, "figures_agree_target_small_controls"),
                   f"7: control edits that read otherwise than at home are seen, with every item's own effect the same "
                   f"({iv_ctl['outcome']}: {(iv_ctl['disagree_reasons'] or iv_ctl['reject_reasons'])[:1]})")
+            def other_controls(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                if named("_matched", ent, body):
+                    body["controls"]["ids"][0] = "0" * 64
+
+            iv_ids = intake_of("other_controls", written_again("other_controls", other_controls))
+            check(iv_ids["outcome"] == "disagreed" and failed(iv_ids, "control_edits_of_matched_drawn_as_at_home")
+                  and not failed(iv_ids, "reading_matched_is_the_home_reading"),
+                  f"7: a card that drew other control edits from the same seed is a disagreement the intake names "
+                  f"({iv_ids['outcome']}: {iv_ids['disagree_reasons'][:1]})")
+            odd_name = tmp / "odd_name"
+            _bundle(odd_name, vol_book, {**ret_ok, "volunteer": "Ren\udce9", "says": "\ud800"})
+            try:
+                iv_name = intake_of("odd_name", odd_name)
+                check(iv_name["outcome"] == "accepted" and (tmp / "stage_odd_name" / "intake_verdict.json").is_file()
+                      and "\\udce9" in iv_name["volunteer"],
+                      "7: a return whose words a file cannot hold (half of a surrogate pair) is judged and written all the same")
+            except Exception as exc:  # noqa: BLE001
+                check(False, f"7: a return with half a surrogate pair in it is judged, not an error ({type(exc).__name__}: {exc})")
+            torn_home = tmp / "torn_home_book.jsonl"
+            torn_home.write_bytes(cal_book.read_bytes().replace(b'"note_type":"brief_calibration"', b'"note_type":"brief_calibratioN"', 1))
+            check(lb.verify(torn_home)["ok"] is False
+                  and refuses(lambda: lr.intake_rerun_bundle(vol_tar, prereg_dir, torn_home, tmp / "stage_torn_home"),
+                              lr.RerunRefused, "does not verify"),
+                  "7: an intake against a home book that does not verify does not begin")
             iv_plan = intake_of("other_plan", written_again("other_plan", other_plan))
             iv_half = intake_of("halves_swapped", written_again("halves_swapped", halves_swapped))
             iv_base = intake_of("other_base", written_again("other_base", other_base))
