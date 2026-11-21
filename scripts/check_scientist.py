@@ -397,6 +397,133 @@ for line in sys.stdin:
         send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": meth}})
 '''
 
+FAKE_GEMINI = r'''#!{PY} -I
+import json, os, queue, subprocess, sys, threading, time
+from pathlib import Path
+def log(kind, **kw):
+    with open(os.environ["FAKE_LOG"], "a") as f:
+        f.write(json.dumps({"kind": kind, **kw}) + "\n")
+def send(obj):
+    print(json.dumps(obj), flush=True)
+def note(upd):
+    send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": sid, "update": upd}})
+args = sys.argv[1:]
+ghome = Path(os.environ.get("GEMINI_CLI_HOME", ""))
+sys_md = os.environ.get("GEMINI_SYSTEM_MD", "")
+log("start", argv=args, cwd=os.getcwd(), gemini_home=str(ghome), trust=os.environ.get("GEMINI_CLI_TRUST_WORKSPACE"),
+    prompt=Path(sys_md).read_text(encoding="utf-8") if sys_md and Path(sys_md).exists() else "",
+    env=sorted(k for k in json.loads(os.environ.get("FAKE_WATCH", "[]")) if k in os.environ))
+mcp, rid, sid = None, [0], "gem_sess_1"
+def start_mcp(servers):
+    global mcp
+    if mcp is not None or not servers:
+        return
+    cfg = servers[0]
+    env_map = {e["name"]: e["value"] for e in (cfg.get("env") or [])}
+    mcp = subprocess.Popen([cfg["command"], *cfg["args"]], env={**os.environ, **env_map},
+                           stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+    mrpc("initialize", {"protocolVersion": "2025-06-18"})
+    log("tools", names=[t["name"] for t in mrpc("tools/list")["result"]["tools"]])
+def mrpc(method, params=None):
+    rid[0] += 1
+    mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "id": rid[0], "method": method, "params": params or {}}) + "\n")
+    mcp.stdin.flush()
+    return json.loads(mcp.stdout.readline())
+def sfile(session_id):
+    p = ghome / ".gemini" / "tmp" / "fakeproj" / "chats" / f"session-{session_id}.jsonl"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+inbox = queue.Queue()
+def reader():
+    for line in sys.stdin:
+        if line.strip():
+            inbox.put(json.loads(line))
+    inbox.put(None)
+threading.Thread(target=reader, daemon=True).start()
+while True:
+    m = inbox.get()
+    if m is None:
+        break
+    mid, meth, p = m.get("id"), m.get("method"), m.get("params") or {}
+    if not meth:
+        log("reply", msg=m)
+        continue
+    log("rpc", method=meth, params=p)
+    if meth == "initialize":
+        send({"jsonrpc": "2.0", "id": mid, "result": {"protocolVersion": 1, "agentCapabilities": {"loadSession": True}}})
+    elif meth == "session/new":
+        start_mcp(p.get("mcpServers") or [])
+        sf = sfile(sid)
+        if not sf.exists():
+            sf.write_text(json.dumps({"sessionId": sid, "projectHash": "fake"}) + "\n", encoding="utf-8")
+        send({"jsonrpc": "2.0", "id": mid, "result": {"sessionId": sid}})
+    elif meth == "session/load":
+        sid = p["sessionId"]
+        start_mcp(p.get("mcpServers") or [])
+        # Replay history during session/load (as real Gemini CLI 0.70.0 does): Theodolite must suppress these!
+        note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "REPLAYED_MUST_NOT_SHOW"}})
+        send({"jsonrpc": "2.0", "id": mid, "result": {"modes": {}, "models": {}}})
+    elif meth == "session/prompt":
+        parts = p.get("prompt") or []
+        text = parts[0].get("text", "") if parts else ""
+        log("prompt", text=text, types=[x.get("type") for x in parts], mimes=[x.get("mimeType") for x in parts])
+        with open(sfile(sid), "a", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "user", "content": text}) + "\n")
+        if "slow" in text:
+            stopped = False
+            for i in range(150):
+                note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": f"{i} "}})
+                time.sleep(0.03)
+                try:
+                    nxt = inbox.get_nowait()
+                except queue.Empty:
+                    continue
+                if nxt is None:
+                    break
+                if nxt.get("method") == "session/cancel":
+                    log("cancel", params=nxt.get("params"))
+                    stopped = True
+                    break
+                inbox.put(nxt)
+            send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "cancelled" if stopped else "end_turn"}})
+            continue
+        if "background" in text:
+            job = subprocess.Popen(["sleep", "60"])
+            log("job", pid=job.pid)
+        note({"sessionUpdate": "agent_thought_chunk", "content": {"type": "text", "text": "****\nChecking L3 N5."}})
+        # Send an unexpected permission request and verify Theodolite declines it cleanly
+        send({"jsonrpc": "2.0", "id": 902, "method": "session/request_permission", "params": {"sessionId": sid, "toolCall": {"toolCallId": "run_shell_command__1"}}})
+        while True:
+            rm = inbox.get()
+            if rm is None:
+                break
+            if not rm.get("method") and rm.get("id") == 902:
+                log("reply", msg=rm)
+                break
+            inbox.put(rm)
+        # Call real MCP neuron + select_neuron
+        note({"sessionUpdate": "tool_call", "toolCallId": "mcp_atlas_neuron__1", "status": "in_progress", "title": "neuron (atlas MCP Server)", "content": [], "locations": []})
+        res = mrpc("tools/call", {"name": "neuron", "arguments": {"layer": 3, "n": 5}})["result"]
+        note({"sessionUpdate": "tool_call_update", "toolCallId": "mcp_atlas_neuron__1", "status": "completed", "content": [{"type": "content", "content": {"type": "text", "text": res["content"][0]["text"]}}]})
+        # Also test a fast-failed read_file (tool_call_update without prior tool_call)
+        note({"sessionUpdate": "tool_call_update", "toolCallId": "read_file__2", "status": "failed", "locations": [{"path": "/etc/hostname"}], "content": [{"type": "content", "content": {"type": "text", "text": "Path not in workspace"}}]})
+        # And a write_file inside work/
+        note({"sessionUpdate": "tool_call", "toolCallId": "write_file__3", "status": "in_progress", "title": "Writing note.md", "locations": [{"path": "/work/note.md"}]})
+        note({"sessionUpdate": "tool_call_update", "toolCallId": "write_file__3", "status": "completed", "content": [{"type": "diff", "path": "/work/note.md", "oldText": "", "newText": "hi"}]})
+        mrpc("tools/call", {"name": "select_neuron", "arguments": {"layer": 3, "n": 5}})
+        note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Gemini checked L3 N5."}})
+        with open(sfile(sid), "a", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "gemini", "content": "Gemini checked L3 N5."}) + "\n")
+        send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}})
+    elif meth == "session/cancel":
+        log("cancel", params=p)
+    else:
+        send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": meth}})
+if mcp is not None:
+    mcp.stdin.close()
+    mcp.wait()
+'''
+
 
 def fake_openai_app(seen: List[Dict[str, Any]]) -> Any:
     """An OpenAI-compatible endpoint whose answers follow the person's last message."""
@@ -935,6 +1062,169 @@ def run_checks() -> int:
           f"without where its turns began, the log is cut at its last message, as before: {r}")
     ev7.stop = True
     section("Codex: its home, the thread, a turn, an approval declined, history, rewind, changed instructions, a steered turn rewound", before)
+
+    # --------------------------------------------------------------------------------------------- 5b. Gemini CLI
+    before = len(failures)
+    gem_log = TMP / "fake_gemini.log"
+    os.environ["FAKE_LOG"] = str(gem_log)
+    os.environ["THEODOLITE_GEMINI_BIN"] = str(write_exec(TMP / "fake-gemini", FAKE_GEMINI.replace("{PY}", PY)))
+    (TMP / "home" / ".gemini").mkdir(exist_ok=True)
+    (TMP / "home" / ".gemini" / "oauth_creds.json").write_text('{"access_token": "stub"}')
+    (TMP / "home" / ".gemini" / "settings.json").write_text(json.dumps({
+        "security": {"auth": {"selectedType": "oauth-personal"}},
+        "model": {"name": "gemini-2.5-pro"},
+        "general": {"previewFeatures": True},
+        "mcpServers": {"rogue": {"command": "echo"}},
+        "hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "echo evil"}]}]},
+    }))
+
+    def glog() -> List[Dict[str, Any]]:
+        return [json.loads(x) for x in gem_log.read_text().splitlines()] if gem_log.exists() else []
+
+    bk_g = hc.get("/api/atlas/scientist/backends").json()
+    check(bk_g["gemini"]["available"] is True and "no shell" in bk_g["reach"]["gemini"],
+          f"/backends reports gemini available and folder reach: {bk_g['gemini']} / {bk_g['reach']['gemini']}")
+    # child_env("gemini") keeps secrets out and passes GOOGLE_APPLICATION_CREDENTIALS only under GOOGLE_GENAI_USE_VERTEXAI
+    gem_env = sc.child_env("gemini")
+    check(not any(k in gem_env for k in SECRETS) and all(k in gem_env for k in LOGINS),
+          "gemini child_env: strips secrets, keeps logins")
+    os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+    try:
+        check(sorted(k for k in SECRETS if k in sc.child_env("gemini")) == ["GOOGLE_APPLICATION_CREDENTIALS"]
+              and not any(k in sc.child_env("codex") for k in SECRETS),
+              "under GOOGLE_GENAI_USE_VERTEXAI=true, Gemini gets GOOGLE_APPLICATION_CREDENTIALS and Codex still gets none")
+    finally:
+        os.environ.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
+
+    chat_g = str(uuid.uuid4())
+    evg = Events(srv.url, chat_g)
+    g0 = evg.mark()
+    r = hc.post("/api/atlas/scientist/send", json={"chat": chat_g, "message": "Check L3 N5.", "agent": "gemini", "layer": 2, "n": 5})
+    done = evg.wait(lambda e: e["t"] == "done", 60, g0)
+    seq = evg.since(g0)
+    gtext = "".join(e["text"] for e in seq if e["t"] == "text")
+    gthink = "".join(e["text"] for e in seq if e["t"] == "thinking")
+    check(r.json() == {"ok": True} and done is not None and gtext == "Gemini checked L3 N5." and gthink == "Checking L3 N5.",
+          f"gemini turn: text={gtext!r}, thinking={gthink!r}")
+    gtools = [e for e in seq if e["t"] == "tool"]
+    gres = [e for e in seq if e["t"] == "tool_result"]
+    check([t["name"] for t in gtools] == ["neuron", "Read", "Write"]
+          and gtools[1]["input"] == {"file_path": "/etc/hostname"}
+          and gtools[2]["input"] == {"file_path": "/work/note.md"}
+          and any("L3 N5" in x["output"] and not x["error"] for x in gres)
+          and any(x["error"] and "workspace" in x["output"] for x in gres)
+          and any(e["t"] == "ui" and e.get("action") == "select" for e in seq),
+          f"gemini tool calls, results, fast-failed Read, Write file_path and ui action: {[t['name'] for t in gtools]}")
+    gstart = next(x for x in glog() if x["kind"] == "start")
+    g_home = Path(gstart["gemini_home"])
+    g_cfg = json.loads((g_home / ".gemini" / "settings.json").read_text())
+    g_pol = (g_home / ".gemini" / "policies" / "theodolite.toml").read_text()
+    check(gstart["env"] == sorted(LOGINS) and gstart["trust"] == "true"
+          and (g_home / ".gemini" / "oauth_creds.json").is_symlink()
+          and g_cfg["security"]["auth"]["selectedType"] == "oauth-personal"
+          and g_cfg["model"]["name"] == "gemini-2.5-pro"
+          and g_cfg["tools"]["core"] == sc.GEMINI_FOLDER_TOOLS
+          and g_cfg["hooksConfig"]["enabled"] is False and g_cfg["skills"]["enabled"] is False
+          and g_cfg["context"]["memoryBoundaryMarkers"] == [] and g_cfg["mcpServers"] == {}
+          and g_cfg["mcp"]["allowed"] == ["atlas"] and 'mcpName = "*"' in g_pol
+          and (Path(gstart["cwd"]).stat().st_mode & 0o777) == 0o555
+          and "You are running as Gemini CLI with no shell" in gstart["prompt"],
+          f"gemini isolated home, read-only cwd, folder tools.core, policy and prompt: {g_cfg['tools']}")
+    check("--acp" in gstart["argv"] and "--extensions" in gstart["argv"] and "none" in gstart["argv"]
+          and "--allowed-mcp-server-names" in gstart["argv"] and "atlas" in gstart["argv"]
+          and "--include-directories" in gstart["argv"] and gstart["argv"][gstart["argv"].index("--include-directories") + 1] == str(sc.work_dir()),
+          f"gemini CLI args at folder reach: {gstart['argv']}")
+    greply = next(x for x in glog() if x["kind"] == "reply")["msg"]
+    check(greply["id"] == 902 and greply["result"] == {"outcome": {"outcome": "cancelled"}},
+          f"gemini unexpected permission prompt declined: {greply}")
+    gtools_seen = next(x for x in glog() if x["kind"] == "tools")["names"]
+    check(gtools_seen == names, "gemini's MCP server lists all 35 scientist tools")
+    # Attachments (text + image)
+    g1 = evg.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat_g, "message": "Check these.", "attachments": [up_txt["id"], up_png["id"]]})
+    evg.wait(lambda e: e["t"] == "done", 60, g1)
+    gp2 = [x for x in glog() if x["kind"] == "prompt"][-1]
+    check(gp2["types"] == ["text", "text", "image"] and gp2["mimes"][2] == "image/png", f"gemini attachments: {gp2}")
+    # Mid-turn queued message + interrupt (session/cancel)
+    g2 = evg.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat_g, "message": "Go slow please."})
+    evg.wait(lambda e: e["t"] == "text", 30, g2)
+    rq = hc.post("/api/atlas/scientist/send", json={"chat": chat_g, "message": "Queued follow-up."}).json()
+    ri = hc.post("/api/atlas/scientist/interrupt", json={"chat": chat_g}).json()
+    evg.wait(lambda e: e["t"] == "done", 30, g2)
+    check(rq == {"ok": True, "queued": True} and ri == {"ok": True, "running": True}
+          and any(x["kind"] == "cancel" for x in glog())
+          and not any(e["t"] == "error" for e in evg.since(g2)),
+          f"gemini mid-turn queue + interrupt via session/cancel: rq={rq} ri={ri}")
+    # Past chats & history
+    glst = hc.get("/api/atlas/scientist/chats").json()
+    gmine = next((x for x in glst if x["chat"] == chat_g), None)
+    ghist = hc.get("/api/atlas/scientist/history", params={"chat": chat_g}).json()
+    check(gmine is not None and gmine["agent"] == "gemini" and gmine["title"] == "Check L3 N5."
+          and ghist["agent"] == "gemini" and ghist["events"][0] == {"t": "user", "text": "Check L3 N5."},
+          f"gemini past chats and history: {gmine}")
+    # Changed instructions at folder reach: auto-restarts idle process and resumes session via session/load (suppressing replay!)
+    local = sc.scientist_dir() / "prompt.local.md"
+    local.write_text(local.read_text(encoding="utf-8") + "\nGemini folder auto-restart note.\n", encoding="utf-8")
+    g3 = evg.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat_g, "message": "After prompt change."})
+    evg.wait(lambda e: e["t"] == "done", 60, g3)
+    seq3 = evg.since(g3)
+    gstarts = [x for x in glog() if x["kind"] == "start"]
+    gloads = [x for x in glog() if x["kind"] == "rpc" and x["method"] == "session/load"]
+    check(len(gstarts) == 2 and len(gloads) == 1 and gloads[0]["params"]["sessionId"] == "gem_sess_1"
+          and "Gemini folder auto-restart note." in gstarts[1]["prompt"]
+          and any(e["t"] == "note" and e["text"] == sc.RESTARTED_WORDS for e in seq3)
+          and "REPLAYED_MUST_NOT_SHOW" not in "".join(e.get("text", "") for e in seq3 if e["t"] == "text"),
+          f"gemini folder reach auto-restarts on changed instructions, resumes via session/load and suppresses history replay")
+    # Rewind cuts both logs/<chat>.jsonl and Gemini's stored session-*.jsonl
+    gsf = sc._gemini_session_file("gem_sess_1")
+    check(gsf is not None and gsf.exists(), "gemini stored session file located")
+    n_users_before = sum(1 for _, e in sc._jsonl(gsf) if e.get("type") == "user")
+    rw = hc.post("/api/atlas/scientist/rewind", json={"chat": chat_g}).json()
+    n_users_after = sum(1 for _, e in sc._jsonl(gsf) if e.get("type") == "user")
+    check(rw == {"ok": True, "cut": True, "messages": 1}
+          and n_users_after == n_users_before - 1
+          and list(gsf.parent.glob(f"{gsf.name}.bak-*"))
+          and not any(e.get("text") == "After prompt change." for e in hc.get("/api/atlas/scientist/history", params={"chat": chat_g}).json()["events"]),
+          f"gemini rewind cuts both replay log and stored session file (backed up first): {rw}")
+    evg.stop = True
+    # Home reach: stale banner + manual /restart kills background job cleanly
+    os.environ[sc.REACH_ENV] = "home"
+    try:
+        chat_gh = str(uuid.uuid4())
+        evgh = Events(srv.url, chat_gh)
+        h0 = evgh.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_gh, "message": "Run background check.", "agent": "gemini"})
+        evgh.wait(lambda e: e["t"] == "done", 60, h0)
+        gstart_h = [x for x in glog() if x["kind"] == "start"][-1]
+        g_cfg_h = json.loads((Path(gstart_h["gemini_home"]) / ".gemini" / "settings.json").read_text())
+        check(g_cfg_h["tools"]["core"] == sc.GEMINI_HOME_TOOLS
+              and os.path.expanduser("~") in gstart_h["argv"][gstart_h["argv"].index("--include-directories") + 1]
+              and "run_shell_command" in gstart_h["prompt"],
+              "gemini home reach: shell tool enabled, home in include-directories, home prompt note")
+        local.write_text(local.read_text(encoding="utf-8") + "\nGemini home stale note.\n", encoding="utf-8")
+        h1 = evgh.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_gh, "message": "Still running?"})
+        evgh.wait(lambda e: e["t"] == "done", 60, h1)
+        seq_h = evgh.since(h1)
+        gjob = next((x["pid"] for x in glog() if x["kind"] == "job"), None)
+        check(any(e["t"] == "stale" and e["stale"] is True for e in seq_h)
+              and not any(e["t"] == "note" for e in seq_h)
+              and gjob is not None and alive(gjob),
+              "gemini home reach: marks stale instead of auto-restarting while background job lives")
+        rr = hc.post("/api/atlas/scientist/restart", json={"chat": chat_gh}).json()
+        end = time.time() + 10
+        while gjob is not None and alive(gjob) and time.time() < end:
+            time.sleep(0.05)
+        check(rr["ended"] is True and not alive(gjob), "gemini home reach /restart ends process group and background job")
+        evgh.stop = True
+    finally:
+        if old_reach is None:
+            os.environ.pop(sc.REACH_ENV, None)
+        else:
+            os.environ[sc.REACH_ENV] = old_reach
+    section("Gemini CLI: isolated home, ACP turn, MCP tools, attachments, interrupt, history, rewind, folder auto-restart & home stale", before)
 
     # --------------------------------------------------------------------------- 6. an OpenAI-compatible endpoint
     before = len(failures)

@@ -209,15 +209,16 @@ extreme (`--sample`). It is one forward a window, as `stats` is: on one RTX 5090
 word-pieces with `--unpacker compiled` (28 October 2026), where stats took 58 with `reference`. The windows it keeps are
 the corpus’s own text: they stay in the atlas folder and are never committed.
 
-The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model) or
-Codex (`codex`) where the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
+The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model),
+Codex (`codex`), or Gemini CLI (`gemini`, with `$GEMINI_API_KEY`, Vertex AI, or a Code Assist login; `$THEODOLITE_GEMINI_MODEL` picks the model) where
+the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
 or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODOLITE_OLLAMA_URL`), OpenRouter (its key in
 `$OPENROUTER_API_KEY`), or any other (`$THEODOLITE_OPENAI_BASE_URL`, `$THEODOLITE_OPENAI_API_KEY`,
 `$THEODOLITE_OPENAI_MODEL`, or `endpoints.json` in the scientist’s folder, ARCHITECTURE §4.8). Pick the backend, and for an
 endpoint its model, in the scientist’s tab; a key is read from the environment and never reaches a page. Choose a model
-that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code chat
-at the default reach with your next message to it while idle; any other chat says it runs the old ones and offers a
-restart, since that also ends its process group, with any commands it left running in it.
+that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code or
+Gemini chat at the default reach with your next message to it while idle; any other chat says it runs the old ones and
+offers a restart, since that also ends its process group, with any commands it left running in it.
 
 What the scientist makes for you, a page or a table say, it writes into its work folder and links in its reply; the
 link opens the file in a browser tab, shown with no scripts and no network. Its `steer` puts several prompts, or
@@ -229,8 +230,8 @@ already there is never written over: the export is refused, and says so); load i
 still differs, and the three recipes taken through llama.cpp on 11 November 2026).
 
 > [!WARNING]
-> By default, under Claude Code the scientist reads, writes and edits files only in its own work folder and has no
-> shell; under Codex its shell runs in a sandbox that has no network and writes there and in the temporary folders
+> By default, under Claude Code and Gemini CLI the scientist reads, writes and edits files only in its own work folder
+> and has no shell; under Codex its shell runs in a sandbox that has no network and writes there and in the temporary folders
 > (`/tmp` and `/dev/shm`), and it can read your other files, a credential kept in a file among them (the Hugging Face
 > token under `~/.cache/huggingface` was readable in it; SSH keys and Codex’s own login by the same rule). That was
 > measured in Codex’s own sandbox helper, not through a chat (codex-cli 0.166.0, 14 November 2026).
@@ -240,9 +241,13 @@ still differs, and the three recipes taken through llama.cpp on 11 November 2026
 > Claude Code loads no settings file, hook or CLAUDE.md (`--setting-sources ""`), so a CLAUDE.md it writes in its
 > folder, or one in any folder above it, is not taken up by a later chat, and a `.claude/settings.json` written there
 > runs no hook (under the old `project` setting it ran as a shell command, at either reach). These rules were tried on
-> Claude Code 2.1.312 against a stand-in API, not a live model (`scripts/verify_scientist_cli.py`). Over an endpoint it
-> has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a
-> third-party service).
+> Claude Code 2.1.312 against a stand-in API, not a live model (`scripts/verify_scientist_cli.py`). Gemini CLI runs in
+> an isolated `$GEMINI_CLI_HOME` and an empty read-only `0o555` working directory with `--extensions none`,
+> `hooksConfig.enabled = false`, `memoryBoundaryMarkers = []`, `tools.core` and a Policy Engine rule allowing only the
+> `atlas` MCP server, so planted workspace settings, hooks, skills, rogue MCP servers and ancestor `GEMINI.md` files do
+> not load (verified on Gemini CLI 0.70.0 against a stand-in API in `scripts/verify_scientist_gemini_cli.py`). Over an
+> endpoint it has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint
+> (OpenRouter is a third-party service).
 
 ## On a rented card
 

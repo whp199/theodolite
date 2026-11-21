@@ -2483,6 +2483,197 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                       f"${spend_r.get('dollars')}, {spend_r.get('driver_failure')!r})")
             dead.close()
 
+            # 4b. Gemini CLI driver: allowlist, refusals, mock CLI, extra-tool guard, and real `gemini` CLI under bwrap
+            os.environ["HF_TOKEN"] = "hf_secret_check"
+            os.environ["AWS_SECRET_ACCESS_KEY"] = "aws_secret_check"
+            os.environ["OPENROUTER_API_KEY"] = "or_secret_check"
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/tmp/fake_gcp_sa.json"
+            try:
+                genv = ldrv.gemini_child_env(tmp / "g_home", tmp / "g_sys.md")
+                check(all(k not in genv for k in ("HF_TOKEN", "AWS_SECRET_ACCESS_KEY", "OPENROUTER_API_KEY",
+                                                   "GOOGLE_APPLICATION_CREDENTIALS"))
+                      and genv["GEMINI_CLI_HOME"] == str(tmp / "g_home")
+                      and genv["GEMINI_SYSTEM_MD"] == str(tmp / "g_sys.md")
+                      and genv["GEMINI_CLI_TRUST_WORKSPACE"] == "true",
+                      "4b: gemini_child_env strips secrets and sets isolated GEMINI_CLI_HOME / GEMINI_SYSTEM_MD")
+            finally:
+                for k in ("HF_TOKEN", "AWS_SECRET_ACCESS_KEY", "OPENROUTER_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"):
+                    os.environ.pop(k, None)
+
+            s_gm_ref = lses.LevelSession(h, tmp / "s_gm_ref", reach="behaviour", backend="gemini",
+                                         book_path=tmp / "b_gm_ref.jsonl", probe_on_start=False)
+            check(refuses(lambda: ldrv.run_gemini_cli_driver(s_gm_ref, driver_budget=ldrv.DriverBudget(max_dollars=None)),
+                          ldrv.DriverRefused),
+                  "4b: run_gemini_cli_driver refuses missing max_dollars ceiling")
+            os.environ[lses.REACH_ENV] = "home"
+            try:
+                check(refuses(lambda: ldrv.run_gemini_cli_driver(s_gm_ref, driver_budget=ldrv.DriverBudget(max_dollars=1.0),
+                                                                 allow_mock_cli=True), ldrv.DriverRefused),
+                      "4b: run_gemini_cli_driver refuses home reach")
+            finally:
+                os.environ.pop(lses.REACH_ENV, None)
+            s_gm_ref.close()
+
+            # Mock Gemini CLI exercising stream-json + live socket bridge + extra-tool guard
+            mock_gem = tmp / "mock_gemini.py"
+            mock_gem.write_text(f"""#!{sys.executable} -I
+import json, os, subprocess, sys
+from pathlib import Path
+mode = os.environ.get("MOCK_GEM_MODE", "ok")
+ghome = Path(os.environ["GEMINI_CLI_HOME"])
+cfg = json.loads((ghome / ".gemini" / "settings.json").read_text())
+srv = cfg["mcpServers"]["levelling"]
+mcp = subprocess.Popen([srv["command"], *srv["args"]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+def rpc(i, m, p=None):
+    mcp.stdin.write(json.dumps({{"jsonrpc": "2.0", "id": i, "method": m, "params": p or {{}}}}) + "\\n")
+    mcp.stdin.flush()
+    return json.loads(mcp.stdout.readline())
+rpc(1, "initialize", {{"protocolVersion": "2025-06-18"}})
+print(json.dumps({{"type": "init", "session_id": "g1", "model": "gemini-mock"}}), flush=True)
+if mode == "extra":
+    print(json.dumps({{"type": "tool_use", "tool_name": "read_file", "tool_id": "t_bad", "parameters": {{}}}}), flush=True)
+    import time; time.sleep(5)
+else:
+    print(json.dumps({{"type": "tool_use", "tool_name": "mcp_levelling_status", "tool_id": "t1", "parameters": {{}}}}), flush=True)
+    r = rpc(2, "tools/call", {{"name": "status", "arguments": {{}}}})
+    print(json.dumps({{"type": "tool_result", "tool_id": "t1", "status": "success", "output": r["result"]["content"][0]["text"][:80]}}), flush=True)
+    print(json.dumps({{"type": "message", "role": "assistant", "content": "Keeping the base."}}), flush=True)
+    print(json.dumps({{"type": "result", "status": "success", "stats": {{"input_tokens": 120, "output_tokens": 30, "total_tokens": 150, "tool_calls": 1}}}}), flush=True)
+mcp.stdin.close(); mcp.wait()
+""", encoding="utf-8")
+            mock_gem.chmod(0o755)
+            s_gm_ok = lses.LevelSession(h, tmp / "s_gm_ok", reach="behaviour", backend="gemini",
+                                        book_path=tmp / "b_gm_ok.jsonl", probe_on_start=False)
+            gm_out = ldrv.run_driver(
+                s_gm_ok, "gemini", driver_model="gemini-mock",
+                driver_budget=ldrv.DriverBudget(max_turns=6, max_tokens=100_000, max_dollars=1.0,
+                                                input_usd_per_mtok=1.25, output_usd_per_mtok=5.0),
+                config={"gemini_bin": str(mock_gem), "allow_mock_cli": True},
+            )
+            check(gm_out["harness_card"]["driver_family"] == "gemini" and gm_out["harness_card"]["face"] == "mcp_stdio"
+                  and gm_out["stop_reason"] == "kept_base_abstention" and gm_out["driver_failure"] is None
+                  and gm_out["door"]["ok"] == 1 and gm_out["usage"]["prompt_tokens"] == 120
+                  and gm_out["usage"]["completion_tokens"] == 30 and gm_out["book"]["verified"],
+                  f"4b: mock Gemini CLI driver succeeds over socket bridge with exact usage: {gm_out['stop_reason']} {gm_out['door']}")
+            mock_gem_extra = tmp / "mock_gemini_extra.py"
+            mock_gem_extra.write_text(f"""#!{sys.executable} -I
+import json, time
+print(json.dumps({{"type": "init", "session_id": "g2", "model": "gemini-mock"}}), flush=True)
+print(json.dumps({{"type": "tool_use", "tool_name": "read_file", "tool_id": "t_bad", "parameters": {{}}}}), flush=True)
+print(json.dumps({{"type": "tool_result", "tool_id": "t_bad", "status": "success", "output": "leaked"}}), flush=True)
+time.sleep(5)
+""", encoding="utf-8")
+            mock_gem_extra.chmod(0o755)
+            s_gm_ex = lses.LevelSession(h, tmp / "s_gm_ex", reach="behaviour", backend="gemini",
+                                        book_path=tmp / "b_gm_ex.jsonl", probe_on_start=False)
+            gm_ex = ldrv.run_gemini_cli_driver(
+                s_gm_ex, gemini_bin=str(mock_gem_extra), allow_mock_cli=True,
+                driver_budget=ldrv.DriverBudget(max_turns=6, max_dollars=1.0, max_wall_seconds=30.0),
+            )
+            check(gm_ex["stop_reason"] == "driver_failure" and "read_file" in (gm_ex.get("driver_failure") or ""),
+                  f"4b: Gemini CLI driver kills session if a non-door tool succeeds: {gm_ex['stop_reason']} {gm_ex.get('driver_failure')}")
+
+            # Real Gemini CLI test (door tools only, zero built-ins, loopback-only under bwrap --unshare-net)
+            gemini_real = shutil.which("gemini")
+            if gemini_real is None:
+                skip("4b: the gemini CLI is not installed: real door-only run was skipped")
+            else:
+                real_gem_child = r'''
+import json, os, socket, subprocess, sys, threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+root, work, gem_bin, out_path = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], Path(sys.argv[4])
+sys.path.insert(0, str(root))
+from backend import level_drivers as ldrv, level_session as lses
+seen = {"errors": [], "interfaces": sorted(os.listdir("/sys/class/net")) if os.path.isdir("/sys/class/net") else []}
+with socket.socket() as s:
+    s.bind(("127.0.0.1", 0))
+    gp = s.getsockname()[1]
+reqs = []
+class GemStub(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        b = json.loads(self.rfile.read(int(self.headers.get("content-length") or 0)))
+        reqs.append(b)
+        contents = b.get("contents") or []
+        n_res = sum(1 for c in contents for p in (c.get("parts") or []) if isinstance(p, dict) and "functionResponse" in p)
+        if b.get("tools") and n_res == 0:
+            parts = [{"functionCall": {"name": "mcp_levelling_status", "args": {}}}]
+        elif b.get("tools") and n_res == 1:
+            parts = [{"functionCall": {"name": "read_file", "args": {"file_path": "/etc/hostname"}}}]
+        else:
+            parts = [{"text": "Stopping and keeping the base."}]
+        chunk = {"candidates": [{"content": {"role": "model", "parts": parts}, "finishReason": "STOP", "index": 0}],
+                 "usageMetadata": {"promptTokenCount": 90, "candidatesTokenCount": 25, "totalTokenCount": 115}}
+        data = (f"data: {json.dumps(chunk)}\n\n" if "stream" in self.path else json.dumps(chunk)).encode()
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream" if "stream" in self.path else "application/json")
+        self.send_header("content-length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+srv = ThreadingHTTPServer(("127.0.0.1", gp), GemStub)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+fake_home = work / "fake_home"
+(fake_home / ".gemini").mkdir(parents=True, exist_ok=True)
+(fake_home / ".gemini" / "GEMINI.md").write_text("MARK_HOME_GEMINI_MD_LEAK\n", encoding="utf-8")
+os.environ.update({
+    "HOME": str(fake_home),
+    "GEMINI_API_KEY": "stub-gemini-key",
+    "GOOGLE_GEMINI_BASE_URL": f"http://127.0.0.1:{gp}",
+    "NO_PROXY": "127.0.0.1,localhost",
+})
+seen["version"] = subprocess.run([gem_bin, "--version"], capture_output=True, text=True, timeout=30).stdout.strip() or "unknown"
+try:
+    sess = lses.LevelSession(None, work / "gm_proj", reach="behaviour", backend="gemini",
+                             book_path=work / "b_gm_real.jsonl", probe_on_start=False)
+    out = ldrv.run_gemini_cli_driver(
+        sess, model="gemini-2.5-pro", gemini_bin=gem_bin,
+        driver_budget=ldrv.DriverBudget(max_turns=6, max_tokens=1_000_000, max_dollars=0.5, max_wall_seconds=120.0),
+    )
+    door_tools = sorted("mcp_levelling_" + t for t in sess.allowed_tools())
+    tool_sets = [sorted(fn["name"] for t in (r.get("tools") or []) for fn in (t.get("functionDeclarations") or []))
+                 for r in reqs if r.get("tools")]
+    fres = [p["functionResponse"] for c in (reqs[-1].get("contents") or []) for p in (c.get("parts") or [])
+            if isinstance(p, dict) and "functionResponse" in p] if reqs else []
+    seen["door_tools"] = door_tools
+    seen["tool_sets"] = tool_sets
+    seen["status_ok"] = bool(fres) and "harness_card" in json.dumps(fres[0])
+    seen["read_refused"] = len(fres) >= 2 and "error" in (fres[1].get("response") or {})
+    seen["md_leaked"] = "MARK_HOME_GEMINI_MD_LEAK" in json.dumps(reqs)
+    seen["out"] = {"stop_reason": out["stop_reason"], "driver_failure": out.get("driver_failure"),
+                   "door_ok": (out.get("door") or {}).get("ok"), "book_ok": (out.get("book") or {}).get("verified")}
+except Exception as exc:
+    seen["errors"].append(f"{type(exc).__name__}: {exc}")
+finally:
+    srv.shutdown()
+    srv.server_close()
+out_path.write_text(json.dumps(seen), encoding="utf-8")
+'''
+                real_gdir = tmp / "real_gemini_cli"
+                real_gdir.mkdir()
+                (real_gdir / "real_gem_child.py").write_text(real_gem_child, encoding="utf-8")
+                gseen_p = real_gdir / "seen.json"
+                gcmd = [sys.executable, "-I", str(real_gdir / "real_gem_child.py"), str(ROOT_DIR), str(real_gdir),
+                        gemini_real, str(gseen_p)]
+                if has_bwrap:
+                    gcmd = [str(shutil.which("bwrap")), "--dev-bind", "/", "/", "--unshare-net", "--die-with-parent",
+                            "--", *gcmd]
+                grun = subprocess.run(gcmd, capture_output=True, text=True, timeout=300)
+                try:
+                    gseen = json.loads(gseen_p.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    gseen = {"errors": [f"child wrote nothing (exit {grun.returncode}): {grun.stderr[-300:]}"]}
+                g_sets = gseen.get("tool_sets") or []
+                g_out = gseen.get("out") or {}
+                check(bool(g_sets) and all(ts == gseen.get("door_tools") for ts in g_sets),
+                      f"4b: real gemini CLI ({gseen.get('version')}) sends the model ONLY mcp_levelling_* door tools "
+                      f"(0 built-ins; got {g_sets[0] if g_sets else 'none'}; errors={gseen.get('errors')})")
+                check(gseen.get("status_ok") is True and gseen.get("read_refused") is True
+                      and gseen.get("md_leaked") is False
+                      and (g_out.get("door_ok") or 0) >= 1 and g_out.get("stop_reason") == "kept_base_abstention"
+                      and g_out.get("driver_failure") is None and g_out.get("book_ok") is True,
+                      f"4b: real gemini CLI door call succeeded, built-in read_file refused, no GEMINI.md leaked: {g_out}")
+
             # ========================================================================= 5. Multi-session study & exact stats
             section("5. Multi-session Phase 6 study, isolation, unpooled aggregation, and exact statistics")
             import math as _m567  # noqa: E402  (sections 5 to 7 use it under this name; the header is shared)

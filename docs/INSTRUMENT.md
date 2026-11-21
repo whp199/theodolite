@@ -112,7 +112,7 @@ neuron. Every layer with a census is inked on the map at once, a strip of bars s
 singles out, and the neurons opened lately stay within a click. Its **passages** keep each face’s strongest windows of a corpus
 whole, with what the face reads and what follows it (gathered on the 31B over two million word-pieces, not yet validated
 as labels). A **scientist** in the side panel reads the atlas with the same tools, runs pushes and texts, names what it
-finds and points at it on the map; it runs on Claude Code or Codex where they are installed, or on any OpenAI-compatible
+finds and points at it on the map; it runs on Claude Code, Codex or Gemini CLI where they are installed, or on any OpenAI-compatible
 endpoint: LM Studio or Ollama on this machine, OpenRouter, or one you name.
 
 The atlas follows [lyramakesmusic’s neuron-explorer](https://github.com/lyramakesmusic/neuron-explorer) [47], made for
@@ -130,7 +130,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | lens, connections, a name | the details: both faces under the gate, the steer lens, the activation range with GeGLU’s four sign regimes, wiring and head tables; a name and a note kept on the server; and each face’s stored passages in a tab of their own, with the regime at each and the word-pieces each face reads and that follow, which the reference does not keep |
 | embeddings: UMAP of a layer’s rollouts by neuron, prompt, dose or kind | the spread, the same colourings |
 | attention heads with q / k / v / o roles; head tools | the same, with each head’s profile over eight texts, its pattern on a text and the heads driving a neuron at a word-piece |
-| a Claude chat (the `claude` CLI with the explorer as an MCP server), Codex as an option, past chats, attachments, edit and reroll, “explain” | the same with 35 tools, plus any OpenAI-compatible endpoint (the server runs the tool loop); the tools count layers as the pages do |
+| a Claude chat (the `claude` CLI with the explorer as an MCP server), Codex as an option, past chats, attachments, edit and reroll, “explain” | the same with 35 tools on Claude Code, Codex or Gemini CLI (`gemini --acp`), plus any OpenAI-compatible endpoint (the server runs the tool loop); the tools count layers as the pages do |
 | the sweep’s tools: neuron stats, steer lens, rank, depth report, word shift, merge | `scripts/atlas_build.py` and `scripts/census_run.py` on the GPU, `scripts/census_tools.py` (rank with the word shift, merge, depth, spread) |
 | — | a CPU stand-in of Gemma 4 for every check and for trying the page without the weights (`scripts/atlas_stand_in.py`) |
 

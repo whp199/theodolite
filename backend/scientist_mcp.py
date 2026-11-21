@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The scientist's tools as a stdio MCP server (`backend/scientist_mcp.py`), for the atlas's scientist chat when it runs
-on Claude Code or Codex (backend/scientist_chat.py starts them with this server in their MCP config).
+on Claude Code, Codex or Gemini CLI (backend/scientist_chat.py starts them with this server in their MCP config).
 
 It reads and acts through the instrument's server over HTTP (`$THEODOLITE_URL`, the server that started the chat), and
 its screen actions go to that chat (`$THEODOLITE_CHAT`). The tools are backend/scientist_tools.py's: layers count from

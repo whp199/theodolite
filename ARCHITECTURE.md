@@ -38,10 +38,10 @@ theodolite2/
 │   ├── atlas_build.py               # building those indexes on the GPU (lens, stats, wiring, steer lens, layout, passages)
 │   ├── census.py                    # the census: every neuron of a layer pushed on fixed questions, ranked vs controls
 │   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat; the folio's field book
-│   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex or an OpenAI-compatible endpoint (§4.8)
+│   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex, Gemini CLI or an OpenAI-compatible endpoint (§4.8)
 │   ├── control_vector.py            # a push or a recipe as a llama.cpp control vector, from the running server (§6)
 │   ├── scientist_tools.py           # the scientist's 35 tools, in the pages' count of layers (stdlib only)
-│   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code and Codex
+│   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code, Codex and Gemini CLI
 │   ├── scientist_prompt.md          # the scientist's instructions (with scientist_methodology.md)
 │   └── scientist_methodology.md
 ├── scripts/
@@ -1149,18 +1149,29 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   nothing the instrument passes says otherwise, in the temporary folders too, `/tmp` and `/dev/shm`; it can read
   elsewhere: measured in Codex's sandbox helper, not through the app-server, codex-cli 0.166.0, 14 November 2026),
   `"danger-full-access"` under "home" (the same caution).
-- Neither process gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
-  (`reach`); under "home" the page asks once, per browser, before the first Claude Code or Codex chat.
-- Nor does either get the Hugging Face or cloud credentials in the server's environment (`SECRET_ENV`: `HF_TOKEN`,
+- `gemini`: Gemini CLI (`gemini --acp`, JSON-RPC over stdio) with the same MCP tools (passed per chat in `session/new`
+  and `session/load`, `--allowed-mcp-server-names atlas`, Policy Engine TOML allowing MCP tools at priority 500 above
+  `tools.core`'s deny-all), in an isolated `$GEMINI_CLI_HOME` (only the person's login files and model preference;
+  `--extensions none`, `hooksConfig.enabled: false`, `skills.enabled: false`, `memoryBoundaryMarkers: []`) and an empty
+  read-only `0o555` working folder so no planted `work/.gemini/settings.json`, hook, skill or rogue MCP server loads.
+  At the default "folder" reach, `tools.core` allows only `read_file`, `write_file`, `replace` and `list_directory` over
+  `--include-directories <work>` (no shell); under "home", it adds `glob`, `grep_search` and `run_shell_command` over
+  `work` and `~`. `$THEODOLITE_GEMINI_MODEL` picks the model. Verified on Gemini CLI 0.70.0 against a stand-in API
+  (`scripts/verify_scientist_gemini_cli.py`).
+- None of the CLI processes gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
+  (`reach`); under "home" the page asks once, per browser, before the first Claude Code, Codex or Gemini chat.
+- Nor do they get the Hugging Face or cloud credentials in the server's environment (`SECRET_ENV`: `HF_TOKEN`,
   `HUGGING_FACE_HUB_TOKEN`, `HF_API_TOKEN`, `RUNPOD_API_KEY`, `VAST_API_KEY`, `LAMBDA_API_KEY`, `MODAL_TOKEN_ID`,
   `MODAL_TOKEN_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS`, `NEURONARY_TOKEN`, and every `AWS_*` and `AZURE_*`). Each
   keeps its own login: Claude Code's `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` or
   `~/.claude`, and the cloud's variables when `CLAUDE_CODE_USE_BEDROCK`, `_VERTEX` or `_FOUNDRY` is on (1, true, yes or
-  on, as Claude Code reads it; to Claude Code only); Codex's `OPENAI_API_KEY`, `CODEX_*` or its `auth.json`. A
-  credential in a file (`~/.cache/huggingface/token`, say) is bounded only by the reach, and under Codex not by that:
-  Claude Code at the folder reach is refused a file outside its work folder (tried on 2.1.312,
-  `scripts/verify_scientist_cli.py`), and Codex's shell can read it at either reach (the token file was readable in
-  Codex's sandbox helper, 14 November 2026).
+  on, as Claude Code reads it; to Claude Code only); Codex's `OPENAI_API_KEY`, `CODEX_*` or its `auth.json`; Gemini
+  CLI's `GEMINI_API_KEY`, `GOOGLE_API_KEY`, `~/.gemini/` OAuth login files, or `GOOGLE_APPLICATION_CREDENTIALS` when
+  `GOOGLE_GENAI_USE_VERTEXAI` is on (to Gemini only). A credential in a file (`~/.cache/huggingface/token`, say) is
+  bounded only by the reach, and under Codex not by that: Claude Code and Gemini CLI at the folder reach are refused a
+  file outside their work folder (tried on Claude Code 2.1.312 in `scripts/verify_scientist_cli.py` and Gemini CLI
+  0.70.0 in `scripts/verify_scientist_gemini_cli.py`), and Codex's shell can read it at either reach (the token file was
+  readable in Codex's sandbox helper, 14 November 2026).
 - `openai`: any OpenAI-compatible Chat Completions endpoint that takes tool calls (LM Studio, Ollama, OpenRouter, vLLM,
   llama.cpp's server). The server runs the loop: it streams the reply, runs each tool call through the atlas's routes in
   this process (`InProcessApi`, an ASGI client), sends the results back (each cut to 16,000 characters) and goes on until
@@ -1181,16 +1192,17 @@ writing it, is left out wherever a log or a Claude Code session is read, and cut
 `backend/scientist_prompt.md`, `backend/scientist_methodology.md` and the person's own `prompt.local.md` there (for
 `openai`, without the shell's section).
 
-A Claude Code or Codex chat reads those files, `scientist_mcp.py` and `scientist_tools.py` when its process starts, and
-the server watches them by modification time. At the person's next message to a live, idle chat that started before
-they last changed, a Claude Code chat at the folder reach is ended and started again, resuming its session, with a
-`note` event: it has no shell, so only its MCP server lives in its process group. Any other chat (Codex at either
-reach, Claude Code at "home") is not started again unasked, since ending its process group would also end any commands
-it left running in the background in that group: it is marked stale (a `stale` event, which the first `state` event of
-a stream also carries, until its process ends), and the page offers `POST /restart`. A chat mid-turn is never ended, as
-far as its events tell: Claude Code answers from its first streamed event, thinking included, and one whose last turn
-took a message mid-turn may yet run that message as a turn of its own, so until its next turn begins it is marked stale
-instead. An `openai` chat's prompt is built afresh every round; its tools change only when the server starts again.
+A Claude Code, Codex or Gemini chat reads those files, `scientist_mcp.py` and `scientist_tools.py` when its process
+starts, and the server watches them by modification time. At the person's next message to a live, idle chat that started
+before they last changed, a Claude Code or Gemini chat at the folder reach is ended and started again, resuming its
+session, with a `note` event: neither has a shell, so only its MCP server lives in its process group. Any other chat
+(Codex at either reach, Claude Code or Gemini at "home") is not started again unasked, since ending its process group
+would also end any commands it left running in the background in that group: it is marked stale (a `stale` event, which
+the first `state` event of a stream also carries, until its process ends), and the page offers `POST /restart`. A chat
+mid-turn is never ended, as far as its events tell: Claude Code answers from its first streamed event, thinking
+included, and one whose last turn took a message mid-turn may yet run that message as a turn of its own, so until its
+next turn begins it is marked stale instead. An `openai` chat's prompt is built afresh every round; its tools change
+only when the server starts again.
 
 The routes answer only this machine's pages and scripts (§4), and on Linux only the account the server runs as (a
 request whose sender has gone before the guard could look is refused too), so another account on the machine can no
@@ -1199,7 +1211,7 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 
 | route | |
 |---|---|
-| `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach`; `work` `{folder, route}`: the work folder and the route the page opens its files through |
+| `GET /backends` | whether `claude`, `codex` and `gemini` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach`; `work` `{folder, route}`: the work folder and the route the page opens its files through |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
 | `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
 | `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, docs/SETUP.md), or a stop would wait on every page left open |
@@ -2055,7 +2067,7 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/level_rerun.py` | Phase 5 re-run: a kit of a registration with the home draw's seed (rebuilt edits only), the volunteer's run of the home items into a book of its own, and an intake that unpacks a plain tar without trusting it and judges the returned book against the home book |
 | `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`); binds the index's own files only and refuses a symlink; marks each lens or eye label with the label gate's check in the gate's own words (`gate_check`, checked equal to `label_gate.label_check`), and sets steer words aside by the steer lens's own check |
 | `backend/level_knobs.py` | Phase 6 cheaper knobs (`KnobSpec`: a system prompt; decoding `thinking`, `sampler`, `logit_bias`; transient `direction`, `neuron_add`, `neuron_mul` steering), `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (asked `fresh_reading_gate`, spends one of the brief's m, needs a steering part; a `neuron_mul` knob faces its weight-edit twin's control edits and is read once with it; judged by `judge_claim`, with the knob gate's stricter frame interval and panel figure), `render_knob_sheet` |
-| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `ClaudeCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, the CLI's own spending cap; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
+| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `ClaudeCLIDriver` and `GeminiCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, caps and extra-tool guard; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
 | `backend/level_eval.py` | Phase 6 studies (`EvalStudyPlan`; `run_eval_study`: one calibration, each session in a side book of its own scored on its own lines, arms in turn, a session counted only when it ran to an end; `summarize_study`: Wilson intervals, exact Fisher and permutation tests, never pooled, no arm named ahead without p < 0.05; `load_study_from_book`, which works each outcome out again from its side book; `render_study_report`; `run_blinded_benchmark`, plumbing checks with neutral case ids and `repair_composition`; `render_cold_driver_page`; `make_rebuild_description` and `run_rebuild_replay`) |
 | `docs/SCAFFOLD.md` | Phase 6 register of the trust boundaries a driver never loses and the conveniences a study can take away (`--bare` takes away the page's two convenience paragraphs) |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
@@ -2462,13 +2474,15 @@ measured.
   Every knob sheet says what its control edits are and are not matched on, and what a knob claim does not read.
 - **Drivers** (`backend/level_drivers.py`). Two scripted baselines (a weight one and a knob one; each a fixed program,
   not the same program, so they are lower bounds, and each puts forward only what the gate can take), a replay driver,
-  an OpenAI-compatible driver, and Claude Code; Codex stays refused. Every outcome says whether the driver worked the
-  door (`door`, `driver_failure`), why it stopped, and a refusal's own words.
-  - Claude Code gets the door's tools and nothing else (the owner's ruling, 20 November 2026): no built-in tool, no
-    settings, memory or CLAUDE.md, no saved session, an environment of named variables, and the CLI's own spending
-    cap. It reaches the door over a Unix socket in a private folder, one call at a time; when it is stopped, a running
-    cell is killed and a running reading is waited for and recorded. A CPU check runs the real CLI with no network
-    against a stub of the model's API on this machine.
+  an OpenAI-compatible driver, Claude Code, and Gemini CLI; Codex stays refused. Every outcome says whether the driver
+  worked the door (`door`, `driver_failure`), why it stopped, and a refusal's own words.
+  - Claude Code and Gemini CLI get the door's tools and nothing else (the owner's ruling, 20 November 2026): no
+    built-in tool, no settings, memory or workspace hooks/skills, no saved session, and an environment of named
+    variables (plus `--max-budget-usd` for Claude Code; `tools.core = []`, empty read-only `0o555` cwd, isolated
+    `$GEMINI_CLI_HOME`, and Policy Engine allowlisting only MCP tools for Gemini CLI). Each reaches the door over a
+    Unix socket in a private folder, one call at a time; when stopped, a running cell is killed and a running reading
+    is waited for and recorded. CPU checks run both real CLIs with no network (`bwrap --unshare-net`) against local
+    stubs of their model APIs.
   - An OpenAI-compatible endpoint is on this machine only by its parsed host, and is then reached directly, never
     through a proxy; a remote one only through its profile in `backend/scientist_chat.py`, over https, with that
     profile's key variable and its prices. Redirects are refused. Spend is counted as the run goes, each request at no

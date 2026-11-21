@@ -23,7 +23,7 @@ export type Part =
   | { t: "stopped" }
   | { t: "usename"; name: string; layer: number; n: number };
 export type Item = { kind: "user"; msg: string; shown: string; atts: Att[] } | { kind: "assistant"; parts: Part[] };
-export type Agent = "claude" | "codex" | "openai";
+export type Agent = "claude" | "codex" | "gemini" | "openai";
 export interface Pick {
   agent: Agent;
   profile: string | null;
@@ -72,7 +72,7 @@ const keptPick = loadJson<Pick>(PICK_KEY);
 export const useScientist = create<SciState>(() => ({
   backends: null,
   backendsError: null,
-  pick: keptPick && ["claude", "codex", "openai"].includes(keptPick.agent) ? keptPick : { agent: "claude", profile: null, model: null },
+  pick: keptPick && ["claude", "codex", "gemini", "openai"].includes(keptPick.agent) ? keptPick : { agent: "claude", profile: null, model: null },
   chat: kept?.chat ?? null,
   chatPick: kept?.chatPick ?? null,
   // a reply that was being written when the page closed is replayed by the server into a fresh box
@@ -123,7 +123,12 @@ export async function loadBackends() {
     set({ backends: b, backendsError: null });
     const p = st().pick;
     if (p.agent === "openai" && p.profile && b.openai.some((x) => x.name === p.profile)) void loadModels(p.profile);
-    else if (p.agent === "openai") setPick({ agent: b.claude.available ? "claude" : "codex", profile: null, model: null });
+    else if (p.agent === "openai")
+      setPick({
+        agent: b.claude.available ? "claude" : b.codex.available ? "codex" : b.gemini?.available ? "gemini" : "claude",
+        profile: null,
+        model: null,
+      });
   } catch (e) {
     set({ backendsError: errText(e) });
   }

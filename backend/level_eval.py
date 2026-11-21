@@ -198,7 +198,7 @@ class EvalArm:
     """One experimental arm of a Phase 6 driver evaluation study."""
 
     arm_id: str
-    driver_family: str  # "scripted" | "replay" | "openai" | "claude" | "codex"
+    driver_family: str  # "scripted" | "replay" | "openai" | "claude" | "gemini" | "codex"
     reach: str = "weights"
     mode: str = "weight_edit"  # "weight_edit" | "knobs_only"
     bare: bool = False

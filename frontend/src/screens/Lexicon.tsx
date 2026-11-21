@@ -1405,17 +1405,17 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             “explain” for a short report on the open neuron or head.
           </Body>
           <Note>
-            It runs on Claude Code or Codex where they are installed beside the server, or on any service that speaks
+            It runs on Claude Code, Codex or Gemini CLI where they are installed beside the server, or on any service that speaks
             OpenAI’s chat completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. Under Claude Code
-            it reads and writes files only in its own work folder and has no shell; under Codex it runs commands in a
-            sandbox with no network that writes there and in the temporary folders and can read your other files. Either
+            and Gemini it reads and writes files only in its own work folder and has no shell; under Codex it runs commands in a
+            sandbox with no network that writes there and in the temporary folders and can read your other files. Each
             has a shell over your home folder when the server is started to give it one, which it then uses without
             asking; the page says which, and asks first.
             What it says is a lead to check: it cites the neurons it read, so open them, and a name it gives is marked as
             its own guess.
           </Note>
           <EntryApparatus title="the scientist">
-            35 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (
+            35 tools (<M>backend/scientist_tools.py</M>), served to Claude Code, Codex and Gemini CLI over MCP (
             <M>backend/scientist_mcp.py</M>) and to an OpenAI-compatible endpoint as functions, the tool loop then run by
             the server; its instructions are <M>backend/scientist_prompt.md</M> and <M>scientist_methodology.md</M>.
             Endpoints come from the environment or <M>endpoints.json</M>, their keys only from environment variables.

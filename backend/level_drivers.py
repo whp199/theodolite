@@ -18,6 +18,11 @@ Supported driver families:
   CLAUDE.md, auto-memory or saved transcript; an allowlisted environment, `claude_child_env`), connected to the live
   `LevelSession` via `level_mcp.session_socket_bridge` so multi-session studies do not reload the 31B checkpoint per
   run.
+- `gemini`: Gemini CLI (`gemini -p --output-format stream-json`) with the session's door tools and nothing else
+  (`gemini_cli_args`: `tools.core = []`, Policy Engine allowlisting MCP tools over `tools.core` with
+  `--allowed-mcp-server-names levelling`, `--extensions none`, empty read-only `0o555` cwd, isolated `$GEMINI_CLI_HOME`,
+  no workspace settings, hooks, skills or ancestor GEMINI.md; an allowlisted environment, `gemini_child_env`), connected
+  to the live `LevelSession` via `level_mcp.session_socket_bridge`.
 - `codex`: refused unless `codex_probed=True` and `TORCHINDUCTOR_CACHE_DIR` is outside `/tmp`.
 
 Hard unattended caps (`verify/arbiter.md` row 34, `verify/skeptic_safety.md:271`), kept during the run:
@@ -68,8 +73,8 @@ from backend import weight_edits as we
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DRIVER_VERSION = 1
-DRIVER_FAMILIES = ("scripted", "replay", "openai", "claude", "codex")
-PAID_DRIVER_FAMILIES = ("claude", "codex")
+DRIVER_FAMILIES = ("scripted", "replay", "openai", "claude", "gemini", "codex")
+PAID_DRIVER_FAMILIES = ("claude", "gemini", "codex")
 
 
 class DriverRefused(ValueError):
@@ -2192,6 +2197,397 @@ def run_codex_cli_driver(
     )
 
 
+GEMINI_AUTH_FILES = ("oauth_creds.json", "google_accounts.json", "google_account_id", "installation_id", "state.json")
+GEMINI_ENV_PASS = frozenset({
+    "PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TZ", "TERM", "TMPDIR",
+    "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_RUNTIME_DIR",
+    # Gemini CLI sign-in and custom base URL (never cloud service-account files or third-party keys)
+    "GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GEMINI_BASE_URL", "GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION",
+    "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "ALL_PROXY", "https_proxy", "http_proxy", "no_proxy", "all_proxy",
+    "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS",
+})
+
+
+def gemini_child_env(gemini_home: Path, system_md: Path) -> Dict[str, str]:
+    """The environment `gemini` starts with in Levelling: an allowlist (`GEMINI_ENV_PASS` and `LC_*`), isolated
+    `GEMINI_CLI_HOME`, read-only trusted cwd flag, and `GEMINI_SYSTEM_MD`."""
+    env = {k: v for k, v in os.environ.items() if k in GEMINI_ENV_PASS or k.startswith("LC_")}
+    env.update({
+        "GEMINI_CLI_HOME": str(gemini_home),
+        "GEMINI_CLI_TRUST_WORKSPACE": "true",
+        "GEMINI_SYSTEM_MD": str(system_md),
+        "GEMINI_TELEMETRY_ENABLED": "false",
+    })
+    return env
+
+
+def gemini_cli_args(
+    exe: str,
+    prompt_info: Mapping[str, Any],
+    policy_path: Path,
+    *,
+    model: Optional[str] = None,
+) -> List[str]:
+    """The `gemini` command line of a Levelling driver session (stream-json headless mode, door tools only)."""
+    cmd = [
+        exe, "-p", str(prompt_info["user"]),
+        "--output-format", "stream-json",
+        "--approval-mode", "yolo",
+        "--extensions", "none",
+        "--allowed-mcp-server-names", DOOR_SERVER,
+        "--policy", str(policy_path),
+    ]
+    if model:
+        cmd += ["--model", str(model)]
+    return cmd
+
+
+def _prepare_gemini_session_home(
+    session_dir: Path,
+    mcp_servers: Mapping[str, Any],
+    *,
+    max_turns: int,
+) -> Tuple[Path, Path, Path]:
+    """Build an isolated `$GEMINI_CLI_HOME`, read-only empty `0o555` cwd, and Policy Engine file for one Levelling
+    driver run (`tools.core = []`, zero built-in tools, only the `levelling` door MCP server allowed)."""
+    ghome = session_dir / "_gemini_home"
+    gdir = ghome / ".gemini"
+    pdir = gdir / "policies"
+    ro_cwd = ghome / "cwd"
+    pdir.mkdir(parents=True, exist_ok=True)
+    if ro_cwd.exists():
+        os.chmod(ro_cwd, 0o700)
+        shutil.rmtree(ro_cwd, ignore_errors=True)
+    ro_cwd.mkdir(parents=True, exist_ok=True)
+    os.chmod(ro_cwd, 0o555)
+
+    user_gdir = Path(os.path.expanduser("~/.gemini"))
+    for fname in GEMINI_AUTH_FILES:
+        dst, src = gdir / fname, user_gdir / fname
+        if not os.path.lexists(dst) and src.exists():
+            os.symlink(src, dst)
+
+    try:
+        user_cfg = json.loads((user_gdir / "settings.json").read_text(encoding="utf-8"))
+        if not isinstance(user_cfg, dict):
+            user_cfg = {}
+    except (OSError, ValueError):
+        user_cfg = {}
+
+    user_auth = ((user_cfg.get("security") or {}).get("auth") or {}).get("selectedType")
+    if os.environ.get("GEMINI_API_KEY"):
+        selected_auth: Optional[str] = "gemini-api-key"
+    elif isinstance(user_auth, str) and user_auth:
+        selected_auth = user_auth
+    else:
+        selected_auth = None
+    preview = (user_cfg.get("general") or {}).get("previewFeatures")
+
+    settings: Dict[str, Any] = {
+        "security": {
+            "auth": {"selectedType": selected_auth} if selected_auth else {},
+            "folderTrust": {"enabled": True},
+        },
+        "context": {
+            "memoryBoundaryMarkers": [],
+            "loadMemoryFromIncludeDirectories": False,
+            "includeDirectoryTree": False,
+        },
+        "hooksConfig": {"enabled": False},
+        "hooks": {},
+        "skills": {"enabled": False},
+        "general": {
+            **({"previewFeatures": preview} if isinstance(preview, bool) else {}),
+            "enableAutoUpdate": False,
+            "enableAutoUpdateNotification": False,
+            "enablePromptCompletion": False,
+        },
+        "model": {"maxSessionTurns": int(max_turns)},
+        "tools": {
+            "core": [],
+            "discoveryCommand": "",
+            "callCommand": "",
+        },
+        "mcp": {"allowed": [DOOR_SERVER]},
+        "mcpServers": dict(mcp_servers),
+    }
+    (gdir / "settings.json").write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+
+    policy_path = pdir / "theodolite.toml"
+    policy_path.write_text(
+        '[[rule]]\nmcpName = "*"\ntoolName = "*"\ndecision = "allow"\npriority = 500\n',
+        encoding="utf-8",
+    )
+    return ghome, ro_cwd, policy_path
+
+
+class _GeminiStream:
+    """What a `gemini -p --output-format stream-json` run says of itself, read line by line."""
+
+    def __init__(self, door_tools: Sequence[str]) -> None:
+        self.door = set(door_tools)
+        self.model: Optional[str] = None
+        self.door_uses = 0
+        self.other_uses: List[str] = []  # non-door tools asked for (even when refused by the CLI)
+        self.other_succeeded: List[str] = []  # non-door tools whose tool_result did not report an error
+        self._tool_names: Dict[str, str] = {}
+        self.tool_errors = 0
+        self.assistant_chunks: List[str] = []
+        self.errors: List[str] = []
+        self.result: Optional[Dict[str, Any]] = None
+        self._turns = 0
+
+    def feed(self, ev: Mapping[str, Any]) -> None:
+        etype = ev.get("type")
+        if etype == "init":
+            if isinstance(ev.get("model"), str) and ev["model"]:
+                self.model = str(ev["model"])
+        elif etype == "tool_use":
+            self._turns += 1
+            name = str(ev.get("tool_name") or "")
+            tid = str(ev.get("tool_id") or "")
+            if tid and name:
+                self._tool_names[tid] = name
+            if name in self.door:
+                self.door_uses += 1
+            elif name:
+                self.other_uses.append(name)
+        elif etype == "tool_result":
+            status = str(ev.get("status") or "").lower()
+            tid = str(ev.get("tool_id") or "")
+            if status == "error":
+                self.tool_errors += 1
+            else:
+                tname = self._tool_names.get(tid, "")
+                if tname and tname not in self.door:
+                    self.other_succeeded.append(tname)
+        elif etype == "message" and ev.get("role") == "assistant":
+            txt = ev.get("content")
+            if isinstance(txt, str) and txt:
+                self.assistant_chunks.append(txt)
+        elif etype == "error":
+            msg = ev.get("message") or ev.get("error") or str(ev)
+            self.errors.append(str(msg)[:400])
+        elif etype == "result":
+            self.result = dict(ev)
+
+    def turns(self) -> int:
+        tc = _count(((self.result or {}).get("stats") or {}).get("tool_calls")) or 0
+        return max(self._turns, tc) + (1 if self.assistant_chunks else 0)
+
+    def tokens(self) -> Tuple[int, int]:
+        st = (self.result or {}).get("stats") or {}
+        pt = _count(st.get("input_tokens")) or _count(st.get("input")) or 0
+        ct = _count(st.get("output_tokens")) or 0
+        return pt, ct
+
+
+def run_gemini_cli_driver(
+    session: lses.LevelSession,
+    *,
+    model: Optional[str] = None,
+    driver_budget: Optional[DriverBudget] = None,
+    kill_switch: Optional[KillSwitch] = None,
+    gemini_bin: Optional[str] = None,
+    allow_mock_cli: bool = False,
+    extra_instructions: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Launch Gemini CLI (`gemini -p`, stream-json) against `session` with the session's door tools and nothing else
+    ("Door tools only": free code goes through the door's `cell`, inside bwrap).
+
+    - Built-in tools are disabled (`tools.core = []`), workspace settings/hooks/skills/extensions/ancestor memory are
+      locked out (`--extensions none`, empty read-only `0o555` cwd, isolated `$GEMINI_CLI_HOME`), and only the
+      `levelling` MCP server over `session_socket_bridge` is allowed (`--allowed-mcp-server-names levelling` +
+      Policy Engine allow rule for MCP tools).
+    - Stopped (process group SIGKILLed) at the wall clock, token cap, dollar cap (when prices are given), STOP, or
+      if any tool outside the door's list is invoked.
+    - Refused at `$THEODOLITE_SCIENTIST_REACH=home`, and without an owner-approved `max_dollars > 0` (unless
+      `allow_mock_cli=True` in CPU checks)."""
+    if os.environ.get(lses.REACH_ENV, "").strip().lower() == "home":
+        raise DriverRefused(f"Gemini CLI driver is refused at the home reach (${lses.REACH_ENV}=home).")
+    db = driver_budget or DriverBudget()
+    if not allow_mock_cli and (db.max_dollars is None or db.max_dollars <= 0.0):
+        raise DriverRefused("Gemini CLI driver requires an explicit owner-approved max_dollars > 0 ceiling.")
+    budget_usd: Optional[float] = round(float(db.max_dollars), 6) if (db.max_dollars is not None and db.max_dollars > 0.0) else None
+    exe = gemini_bin or os.environ.get("THEODOLITE_GEMINI_BIN", "gemini")
+    if not allow_mock_cli and shutil.which(exe) is None and not Path(exe).is_file():
+        raise DriverRefused(f"Gemini CLI executable {exe!r} was not found on PATH.")
+
+    ks = kill_switch or KillSwitch()
+    prompt_info = build_driver_prompt(session, extra_instructions=extra_instructions)
+    door_tools = [f"mcp_{DOOR_SERVER}_{t}" for t in session.allowed_tools()]
+    stream = _GeminiStream(door_tools)
+    priced = db.input_usd_per_mtok is not None and db.output_usd_per_mtok is not None
+    stop_reason: Optional[str] = None
+    stop_note = ""
+    system_md = session.session_dir / "_gemini_system.md"
+    system_md.write_text(str(prompt_info["system"]) + "\n", encoding="utf-8")
+    ghome: Optional[Path] = None
+    ro_cwd: Optional[Path] = None
+
+    with lmcp.session_socket_bridge(session) as bridge:
+        mcp_servers = {
+            DOOR_SERVER: {
+                "command": sys.executable,
+                "args": ["-I", str(ROOT_DIR / "backend" / "level_mcp.py"), "--socket", str(bridge.path)],
+                "trust": True,
+            }
+        }
+        ghome, ro_cwd, policy_path = _prepare_gemini_session_home(
+            session.session_dir, mcp_servers, max_turns=db.max_turns,
+        )
+        cmd = gemini_cli_args(exe, prompt_info, policy_path, model=model or os.environ.get("THEODOLITE_GEMINI_MODEL"))
+        stderr_log = open(session.session_dir / "cli_stderr.log", "w", encoding="utf-8")
+        t0 = time.monotonic()
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(ro_cwd),
+            env=gemini_child_env(ghome, system_md),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=stderr_log,
+            start_new_session=True,
+        )
+        try:
+            assert proc.stdout is not None
+            fd = proc.stdout.fileno()
+            buf = b""
+            while True:
+                pt, ct = stream.tokens()
+                if ks.triggered():
+                    stop_reason = "killed"
+                elif (time.monotonic() - t0) >= db.max_wall_seconds:
+                    stop_reason = "budget_wall"
+                elif pt + ct >= db.max_tokens:
+                    stop_reason = "budget_tokens"
+                elif priced and budget_usd is not None and (pt * float(db.input_usd_per_mtok or 0.0)
+                                                           + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6 >= budget_usd:
+                    stop_reason = "budget_dollars"
+                elif stream.other_succeeded:
+                    stop_reason = "driver_failure"
+                    stop_note = (f"The CLI ran tools that are not the door's "
+                                 f"({', '.join(stream.other_succeeded[:12])}): the session was stopped.")
+                elif len(buf) > MAX_CLI_LINE_BYTES:
+                    stop_reason = "error"
+                    stop_note = f"A line of the CLI's output passed {MAX_CLI_LINE_BYTES >> 20} MB."
+                if stop_reason is not None:
+                    _kill_pgrp(proc)
+                    break
+                rlist, _, _ = select.select([fd], [], [], 0.2)
+                if not rlist:
+                    if proc.poll() is not None:
+                        break
+                    continue
+                chunk = os.read(fd, 1 << 16)
+                if not chunk:
+                    break
+                buf += chunk
+                while b"\n" in buf:
+                    raw, buf = buf.split(b"\n", 1)
+                    ev = _json_line(raw)
+                    if ev is not None:
+                        stream.feed(ev)
+            ev = _json_line(buf) if stop_reason is None else None
+            if ev is not None:
+                stream.feed(ev)
+            try:
+                proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                pass
+        finally:
+            if proc.poll() is None:
+                _kill_pgrp(proc)
+                try:
+                    proc.wait(timeout=3.0)
+                except subprocess.TimeoutExpired:
+                    pass
+            try:
+                stderr_log.close()
+            except OSError:
+                pass
+            if system_md.exists():
+                try:
+                    system_md.unlink()
+                except OSError:
+                    pass
+            if ro_cwd is not None and ro_cwd.exists():
+                try:
+                    os.chmod(ro_cwd, 0o700)
+                except OSError:
+                    pass
+            if ghome is not None and ghome.exists():
+                shutil.rmtree(ghome, ignore_errors=True)
+        t_cli_end = time.monotonic()
+    door = bridge.close()
+    waited_after_cli = round(time.monotonic() - t_cli_end, 3)
+
+    res = stream.result
+    if stop_reason is None:
+        if stream.other_succeeded:
+            stop_reason = "driver_failure"
+            stop_note = (f"The CLI ran tools that are not the door's "
+                         f"({', '.join(stream.other_succeeded[:12])}): the session was stopped.")
+        elif res is None:
+            stop_reason, stop_note = "error", "The CLI ended without its result line."
+        elif str(res.get("status") or "").lower() != "success":
+            err_obj = res.get("error")
+            stop_reason = "error"
+            stop_note = str(err_obj.get("message", err_obj) if isinstance(err_obj, dict) else (err_obj or res.get("status")))[:400]
+        else:
+            stop_reason = "kept_base_abstention"
+
+    other = stop_note if stop_reason == "driver_failure" else None
+    failure = _door_failure(int(door["ok"]), int(door["errors"]), stop_reason=stop_reason, other=other)
+    if failure and stop_reason in ("kept_base_abstention", "error"):
+        stop_reason = "driver_failure"
+
+    wait_note = None
+    if door.get("wait_note"):
+        wait_note = (f"The CLI ended {t_cli_end - t0:.1f} s into the session ({stop_reason}), and the outcome was read "
+                     f"{waited_after_cli:g} s after that. {door['wait_note']}")
+
+    proposed_edit = None
+    proposed_knob = None
+    claim_refused: Optional[str] = None
+    for c in bridge.calls:
+        if c.get("ok") and c.get("tool") == "claim":
+            proposed_edit = c.get("proposed")
+        elif c.get("ok") and c.get("tool") == "claim_knob":
+            proposed_knob = c.get("proposed")
+        elif c.get("ok") and c.get("tool") == "propose_repair":
+            proposed_edit = c.get("proposed")
+        elif c.get("ok") is False and c.get("tool") in CLAIM_TOOLS:
+            claim_refused = _refusal_words(c.get("error") or "")
+
+    pt, ct = stream.tokens()
+    est_usd = (pt * float(db.input_usd_per_mtok or 0.0) + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6 if priced else 0.0
+    notes = ["".join(stream.assistant_chunks).strip()] if stream.assistant_chunks else []
+    notes += [t for t in dict.fromkeys((*stream.errors, stop_note, failure, wait_note)) if t]
+    return _extract_outcome_from_book(
+        session,
+        driver_family="gemini",
+        driver_model=stream.model or model or "gemini-cli",
+        face="mcp_stdio",
+        reasoning_effort=None,
+        prompt_info=prompt_info,
+        driver_budget=db,
+        stop_reason=stop_reason,
+        turns=stream.turns(),
+        prompt_tokens=pt,
+        completion_tokens=ct,
+        reasoning_tokens=0,
+        estimated_dollars=est_usd,
+        tool_errors=max(stream.tool_errors, int(door["errors"])),
+        notes="\n".join(notes),
+        proposed_edit=proposed_edit,
+        proposed_knob=proposed_knob,
+        driver_failure=failure,
+        claim_refused=claim_refused,
+        door={**door, "other_tools_asked": stream.other_uses[:20], "door_uses_seen": stream.door_uses,
+              "cli_ended_at_seconds": round(t_cli_end - t0, 3), "outcome_after_cli_seconds": waited_after_cli},
+    )
+
+
 def _kill_pgrp(proc: subprocess.Popen[Any]) -> None:
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
@@ -2266,6 +2662,16 @@ def run_driver(
             driver_budget=driver_budget,
             kill_switch=kill_switch,
             claude_bin=cfg.get("claude_bin"),
+            allow_mock_cli=bool(cfg.get("allow_mock_cli", False)),
+            extra_instructions=cfg.get("extra_instructions"),
+        )
+    if driver_family == "gemini":
+        return run_gemini_cli_driver(
+            session,
+            model=driver_model,
+            driver_budget=driver_budget,
+            kill_switch=kill_switch,
+            gemini_bin=cfg.get("gemini_bin"),
             allow_mock_cli=bool(cfg.get("allow_mock_cli", False)),
             extra_instructions=cfg.get("extra_instructions"),
         )
