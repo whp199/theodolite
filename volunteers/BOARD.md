@@ -6,7 +6,7 @@ Kit 7 (census-kit-7). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 |---:|---:|---|---|---|---|---|
 | 0–28 | 1–29 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
 | 29 | 30 | not taken |  |  |  | its trial failed, 18 November 2026 (match_things): not taken |
-| 30 | 31 | done | anon 6413bb68 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 18-20 Nov 2026, its own card class, spot-checked; read whole, it missed both of its trial's gates on one figure, how its |
+| 30 | 31 | done | anon 6413bb68 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 18-20 Nov 2026, its own card class, spot-checked; read whole, missed both its trial's gates on one figure, 0.553 vs 0.57 |
 | 31 | 32 | done | anon eda6b586 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 18 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole |
 | 32 | 33 | done | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 17-18 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 33 | 34 | done | anon 280c6dc2 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
@@ -55,4 +55,4 @@ Judged:
 - L30 anon 6413bb68: accepted (own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked)
 - L53 anon 7ce4c92d: accepted (home bits (NVIDIA GeForce RTX 5090), spot-checked)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-21T16:45Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-21T17:03Z.

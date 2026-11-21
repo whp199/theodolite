@@ -1542,7 +1542,7 @@
    "state": "done",
    "by": "anon 6413bb68",
    "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
-   "note": "18-20 Nov 2026, its own card class, spot-checked; read whole, it missed both of its trial's gates on one figure, how its words carry between question halves (0.553 against 0.57)"
+   "note": "18-20 Nov 2026, its own card class, spot-checked; read whole, missed both its trial's gates on one figure, 0.553 vs 0.57"
   },
   "31": {
    "state": "done",
@@ -1641,5 +1641,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-21T16:45Z"
+ "updated_at": "2026-11-21T17:03Z"
 }
