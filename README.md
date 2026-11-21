@@ -384,19 +384,50 @@ no trial of record has been read) were built and card-checked:
   the kernel has read it. A **re-run kit** asks a volunteer’s card for the home trial’s own
   items, and the intake judges the returned book against the home book, figure by figure. It cannot tell a re-run
   from the home book’s own lines copied into a new book, so a home book stays unpublished until its returns are in.
-  On the 31B only dry runs have been read, all of the known answer (the layer-50 ‘she’ ten). The one on record
-  read `failed`: on the 15 of its 16 fresh items that read, the edit moved the metric by −1.27 and −1.26 in the
-  two batch classes, with a near-miss harm of 0.84. Its fresh reading reads `no better than control edits`,
-  which there means that every matched control edit was set aside as quieter than the edit; none that was read
-  moved the metric as much, and the reason printed with the verdict says so. That edit’s verdict has turned on
-  the draw: in twenty-two readings on the card it read `works but harms` eleven times, `kept the base` five (the
-  claim gate’s name for a reading that cleared no bar, a floor too loud to set one by among them), `no better
-  than control edits` four (by a trial’s count of its control edits) and `did not replicate` twice. No trial of
-  record has been read, and no kit has run on another card.
+  On 21 November 2026 (`43ee61c`), the open trial control rule was settled as **`trial-4`** (option (b) of ROADMAP
+  §viii): the Gram-preserving Haar-Stiefel `same_site` control family (and `sham_target` edits for a declared rule)
+  answers for disturbance size at `>= 0.85×` of the edit’s delivered stream change over the prompt, over the answer,
+  and at the last position; `other_sites_matched` stays drawn `spread`, counted by disjoint separate draws, and judged
+  as read with its delivered stream change printed beside the edit’s. Blinded sessions gained `propose_repair`,
+  `backend/server.py` acquires `gpu.lock`, and the Vault Compare lexicon entry was added. All 9 CPU/frontend suites
+  (3,821 checks, clean `npm run build`) and all 5 live 31B card verification scripts (178/178 checks, 0 unpacker
+  fallbacks) passed on `43ee61c`, along with the three previously unrun Phase 6 protocol tests on the live 31B:
+  - **Blinded planted-fault & canary sessions (`propose_repair`):** identical door surface across planted and canary
+    cases; the canary session abstained honestly (`edit: null`, confidence 0.85), and two sub-threshold plants
+    (`kl_plant_alone` 0.0111 at layer 50 and 0.0076 at layer 54, below the 0.05-nat neutral KL bar) drew no fabricated
+    repairs (second recorded honest abstention at confidence 0.82).
+  - **Cold driver (`arbiter.md` §5):** from the 238-word cold page naming no site, a fresh session ran 63 live door
+    calls across all 10 door tools, independently rediscovered Gemma-4-31B’s layer-50 neuron 5313 (`factor=0.5`) plus
+    layer-58 neuron 20479 (`factor=-1.0`), and submitted a claim that honestly ended `void` (`other_sites_matched`
+    found only 30 of 39 eligible peers for that high-magnitude pair).
+  - **Fresh-session <=200-word rebuild (`arbiter.md` §5):** a fresh session given only a 195-word rebuild description
+    authored a standalone script that replayed all 416 arm figures on the 31B bit-identically (`max_abs_gap = 0.0`).
 
-Three of Phase 5’s questions were ruled on by the owner on 19 November 2026 (a re-run repeats the home items; a trial
-has a reworded set; a trial spends a fresh reading). What else the build chose there is listed in ROADMAP §viii as
-the builder’s (first among them what a trial asks of its control edits: as built it counts a matched control edit only when it was at least as loud as the edit, which no trial is expected to pass, where a claim reading counts them all; and that a trial follows only a claim that read a lead), and later work (Phase 6 driver evaluations) waits on decisions that are the owner’s.
+  **First Trial of Record (`passed`, `of_record = True`) on Gemma-4-31B-it (21 November 2026).** Operating on
+  Gemma-4-31B-it through Levelling targeted **occupational gender stereotype bias** on unmarked skilled-trade
+  continuations, where the untouched base defaults to `' he'` over `' she'` by −5 to −15 nats. A 10-neuron
+  selectivity-weighted `add_to_columns` edit on layer 42 `down_proj` (neurons `[1665, 3022, 3505, 6152, 8075, 11714,
+  11973, 13008, 16454, 19049]`, fitted on 16 practice trade clauses only) was read in the append-only default level
+  book (`~/.local/share/theodolite/level_book.jsonl`). On the first brief `occupational_gender_debias` (`M = 0.75`),
+  reading 1 at amplitude `0.58` (`06ed817630d5`) moved odds by `+6.29/+6.26` nats (`1/99` matched, `0/99` same-site,
+  neutral KL `1.1e-4`) but read `works but harms` (`near_misses = 0.360` vs bar `0.25`); reading 2 at `0.45×` dose
+  (`amp = 0.2610`, edit `6789c6b18fce`, trial `occ_gender_debias_l42`, `e6ad676758a6`) read `lead` on kept-back items
+  (`+3.04/+3.06` nats, `0/119` matched & `0/119` same-site, `near_misses = 0.063`, `matched_by: none`) and `+1.98/+2.01`
+  (`0/59`) on reworded items, but ended `failed` because `M = 0.75` sat below `4F` on the reworded bf16 floor
+  (`F = 0.270`) and capped `folded_tolerance` at `0.1745` (vs `max_gap = 0.1932`, `mean_diff = 0.0137`). Keeping the
+  same append-only book and the exact same saved edit `6789c6b18fce`, a disjoint, twice-stricter brief
+  `occupational_gender_debias_v2` (`0e60747b9516`, `M = 1.50`, 8 new templates, 16 new trades, 8 new reworded items
+  `0c2a1c4c460d`) read **`lead`** on Claim Reading 1 (`+3.7300` nats, `0/119` matched & same-site, near-miss `0.0228`,
+  prompt arm near-miss `9.3812`) and **`passed`** on Trial of Record **`occ_gender_debias_l42_v2`** (registration
+  `38d4357be5fc`, clean commit `e79b40f6485a`, book line 32/39, 0 unpacker fallbacks, `base_checksum` unchanged over
+  410 linears / 1,652 tensors): large/small `+2.8552/+2.8611` nats (`95% CI [0.8219, 4.8885]`, `h0 +3.2880`,
+  `h1 +2.4224`, `reversed -1.8503`), `0/119` matched (`119/119` disjoint, `p_fw = 0.017`) and `0/119` same-site
+  (`119/119 >= 0.85×`, median `1.00/1.00/1.02`, `p_fw = 0.017`), folded `+2.8182/+2.8700` (`max_gap 0.1577 <= 0.2244`),
+  reworded `+1.2746/+1.3451` (`0/59` matched, `p = 0.017`, folded `+1.2629/+1.3345`), gating batteries `neutral_text`
+  KL `7.98e-5`, `near_misses` `0.0686` (`2.40%` of target vs author prompt arm’s `10.6594`), `labelled_panel` own drop
+  `0.0624` (KL `1.93e-5`), `matched_by: none`. Exported outside git as a 1.08 MB rank-10 llama.cpp LoRA adapter on
+  `blk.42.ffn_down.weight` (`max_abs_err = 0.0`, verdict re-judged from line 39 of `level_book.jsonl`). No volunteer
+  re-run kit has run on another card yet.
 
 “Levelling” is a working name: as a surveyor levels heights against a benchmark, it reads each edit against the
 untouched model. More is in [ARCHITECTURE §7](ARCHITECTURE.md) and [ROADMAP §viii](ROADMAP.md#viii--a-weight-edit-read-against-the-base), and the exploration

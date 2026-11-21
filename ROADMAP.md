@@ -2971,12 +2971,40 @@ in order:
     hang a study);
   - the rebuild’s 200 words count every word and number of its record.
 
-  Open:
-  - whether a blinded session should have a way to propose a repair (without one, the benchmark measures no driver);
-  - the ruling’s two driver tests, a cold driver of two families and a rebuild in a fresh session, which were never
-    run;
-  - how a dollar ceiling is approved (today it is the figure in the owner’s plan);
-  - the first study with an agent driver, which at three sessions an arm could separate nothing.
+  **Settled and verified on the live 31B (21 November 2026, `43ee61c`–`e79b40f`):**
+  - **Trial control rule settled as `trial-4` (option (b) above):** Gram-preserving Haar-Stiefel multi-column
+    `same_site` controls (`SAME_SITE_MIN_RATIO = 0.85` over prompt, answer, and end; same bar for `sham_target` under
+    `declared_rule`), with `other_sites_matched` drawn `spread`, counted by disjoint sets (`separate_draws`), and
+    judged as read with delivered loudness printed beside the edit’s. `backend/server.py` takes `gpu.lock`, `Lexicon`
+    documents `trial-of-record`, and `pronoun_pull` leading-space stems were corrected. Verified 3,821/3,821 CPU &
+    frontend checks (clean `npm run build`) and 178/178 live 31B card checks across all 5 verification scripts (0
+    unpacker fallbacks).
+  - **Blinded repair (`propose_repair`) and Phase 6 protocol tests run on live 31B:** blinded sessions now offer
+    `propose_repair(edit=None, diagnosis="", confidence=None)` over an identical door surface. On live 31B: canary
+    abstained honestly (`edit: null`, confidence 0.85) and two sub-threshold plants (`kl_plant_alone = 0.0111` at L50,
+    `0.0076` at L54) drew no fabricated repairs; a cold driver given only the 238-word page with no site named ran 63
+    calls across all 10 door tools, independently rediscovered `L50:5313` (`0.5`) + `L58:20479` (`-1.0`), and
+    submitted a claim honestly judged `void` (30/39 matched peers); a fresh session given only a 195-word rebuild
+    description replayed all 416 arm figures bit-identically (`max_abs_gap = 0.0`).
+  - **First live `passed` Trial of Record on Gemma-4-31B-it (`occ_gender_debias_l42_v2`):** 10-neuron
+    selectivity-weighted `add_to_columns` edit on layer 42 `down_proj` (`6789c6b18fce`, `amp = 0.2610`, fitted on 16
+    practice trade clauses). In the append-only default level book (`~/.local/share/theodolite/level_book.jsonl`),
+    earlier brief `occupational_gender_debias` (`M = 0.75`) recorded `works but harms` at `amp = 0.58` (`near_misses
+    0.360 > 0.25`) and a `failed` Trial of Record at `amp = 0.2610` (`lead` on kept-back `+3.04/+3.06`, `0/119`,
+    near-miss `0.063`, but `M = 0.75 < 4F` on reworded `F = 0.270` and one `0.1932 vs 0.1745` large folded gap). On
+    disjoint `occupational_gender_debias_v2` (`M = 1.50`), the same edit `6789c6b18fce` read `lead` on Claim Reading 1
+    (`+3.7300`, `0/119`, near-miss `0.0228`) and **`passed`** (`of_record = True`, registration `38d4357be5fc`, clean
+    commit `e79b40f6485a`, book lines 32–39, 0 fallbacks) on Trial of Record `occ_gender_debias_l42_v2`: `+2.8552/+2.8611`
+    (`0/119` matched `119/119` disjoint `p_fw = 0.017`, `0/119` same-site `119/119 >= 0.85×`, folded `+2.8182/+2.8700`),
+    reworded `+1.2746/+1.3451` (`0/59`, `p = 0.017`, folded `+1.2629/+1.3345`), neutral KL `7.98e-5`, near-miss
+    `0.0686` (`2.40%` of target vs author prompt arm `10.6594`), `matched_by: none`. Exported outside git as a 1.08 MB
+    rank-10 llama.cpp LoRA adapter (`max_abs_err = 0.0`, verdict re-judged from book line 39).
+
+  Still open:
+  - running a second cold-driver model family and a multi-session agent study across reaches (more than 3 sessions an
+    arm so Fisher/permutation comparisons can separate arms at `p < 0.05`);
+  - running a volunteer re-run kit on a second card, and re-measuring an exported LoRA adapter over a served GGUF;
+  - how a dollar ceiling is approved (today it is the figure in the owner’s plan).
   The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
