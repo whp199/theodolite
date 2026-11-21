@@ -34,9 +34,11 @@ from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Seque
 
 import numpy as np
 
+from backend import level_atlas as la
 from backend import level_book as lb
 from backend import level_briefs as lbr
 from backend import level_claim as lcl
+from backend import level_knobs as lkn
 from backend import level_sandbox as ls
 from backend import levelling as lv
 from backend import weight_edits as we
@@ -44,8 +46,14 @@ from backend.weight_reader import save_array as save_f32_array
 
 SESSION_VERSION = 1
 REACH_ENV = "THEODOLITE_SCIENTIST_REACH"
-VALID_REACHES = ("sandbox", "sandbox_no_weights", "tools_only", "attended")
-VALID_BACKENDS = ("claude", "openai", "local", "script", "codex")
+EVAL_REACHES = ("behaviour", "activations", "weights", "atlas")
+VALID_REACHES = ("sandbox", "sandbox_no_weights", "tools_only", "attended", "behaviour", "activations", "weights", "atlas")
+VALID_MODES = ("weight_edit", "knobs_only")
+VALID_BACKENDS = ("claude", "openai", "local", "script", "replay", "codex")
+_SANDBOX_REACHES = ("sandbox", "sandbox_no_weights", "activations", "weights", "atlas")
+_WEIGHTS_REACHES = ("sandbox", "weights", "atlas")
+_CAPTURE_REACHES = ("sandbox", "sandbox_no_weights", "tools_only", "attended", "activations", "weights", "atlas")
+_ATLAS_ALLOWED_REACHES = ("sandbox", "tools_only", "attended", "atlas")
 # What the owner may fix about a session's fresh readings when the session is made (`claim_design`); the names are
 # `level_claim.run_fresh_claim`'s own. Nothing here is the driver's to set: the claim tool takes none of them.
 CLAIM_DESIGN_KEYS = ("n_target", "n_neutral", "n_near", "n_panel", "rows", "written_rows", "controls_override",
@@ -211,9 +219,19 @@ class LevelSession:
         brief: Optional[lbr.Brief] = None,
         bars: Optional[lcl.BarSet] = None,
         claim_design: Optional[Mapping[str, Any]] = None,
+        mode: str = "weight_edit",
+        bare: bool = False,
         session_id: Optional[str] = None,
     ) -> None:
         _check_reach_and_backend(reach, backend, codex_probed=codex_probed, ignore_reach_env=ignore_reach_env)
+        if mode not in VALID_MODES:
+            raise SessionRefused(f"mode must be one of {', '.join(VALID_MODES)}; {mode!r} is not.")
+        if mode == "knobs_only" and (plant is not None or canary):
+            raise SessionRefused('Blinded planted-fault and canary sessions require mode "weight_edit".')
+        if reach in ("weights", "atlas") and (weights_dir is None or not Path(weights_dir).is_dir()):
+            raise SessionRefused(f'Reach "{reach}" requires a readable weights_dir (got {weights_dir!r}).')
+        if reach == "atlas" and atlas_dir is None:
+            raise SessionRefused('Reach "atlas" requires a readable atlas_dir holding atlas index files.')
         design = dict(claim_design or {})
         unknown = sorted(k for k in design if k not in CLAIM_DESIGN_KEYS)
         if unknown:
@@ -244,6 +262,8 @@ class LevelSession:
         self.session_id = session_id or _new_session_id()
         self.reach = reach
         self.backend = backend
+        self.mode = mode
+        self.bare = bool(bare)
         self.budget = budget or SessionBudget()
         self._handle = handle
         self._gpu_lock = gpu_lock
@@ -254,12 +274,9 @@ class LevelSession:
         self._claim_design: Dict[str, Any] = {k: v for k, v in design.items() if v is not None}
         # Kept-back frames are kept from practice here, at the gates to the model: those of every starter brief (their
         # text is in the published source, and a session with no brief bound may be practising for one) and of the
-        # bound brief.
-        self._kept_back = lbr.KeptBack(
-            list(lbr.starter_briefs(handle.tokenizer if handle is not None else None).values())
-            + ([brief] if brief is not None else []),
-            batteries=True,  # the harm batteries' own questions too: they are few, fixed and published
-        )
+        # bound brief, and the harm batteries' own questions (they are few, fixed and published). A knob claim asks
+        # its prompt of the same guard (`level_knobs.kept_back_guard`), by whichever door it comes in.
+        self._kept_back = lkn.kept_back_guard(handle.tokenizer if handle is not None else None, brief)
         self.gate_refusals: int = 0
         self._practice_reads: int = 0
 
@@ -293,15 +310,25 @@ class LevelSession:
         self._cell_seq: int = 0
         self._book_seqs: List[int] = []
 
+        # Read-only atlas reader (only for reaches that permit atlas access and when atlas_dir is given)
+        self._atlas_reader: Optional[la.AtlasReader] = None
+        effective_atlas: Optional[Path] = None
+        if reach in _ATLAS_ALLOWED_REACHES and atlas_dir is not None:
+            try:
+                effective_atlas = la.resolve_atlas_index_dir(Path(atlas_dir))
+                self._atlas_reader = la.AtlasReader(effective_atlas)
+            except la.AtlasReaderError as exc:
+                raise SessionRefused(f"Atlas index unavailable for reach {reach!r}: {exc}") from None
+
         # Sandbox setup (for sandbox reaches only)
         self._sandbox_cfg: Optional[ls.SandboxConfig] = None
         self._sandbox_probe: Optional[Dict[str, Any]] = None
-        if reach in ("sandbox", "sandbox_no_weights"):
-            effective_weights = weights_dir if reach == "sandbox" else None
+        if reach in _SANDBOX_REACHES:
+            effective_weights = weights_dir if reach in _WEIGHTS_REACHES else None
             self._sandbox_cfg = ls.SandboxConfig(
                 work_dir=self.work_dir,
                 weights_dir=Path(effective_weights).resolve() if effective_weights is not None else None,
-                atlas_dir=Path(atlas_dir).resolve() if atlas_dir is not None else None,
+                atlas_dir=effective_atlas,
                 timeout_s=float(self.budget.max_cell_seconds),
                 max_mem_gib=float(self.budget.max_cell_mem_gib),
                 bwrap_bin=bwrap_bin,
@@ -327,7 +354,10 @@ class LevelSession:
             "started_at": self._started_at,
             "reach": self.reach,
             "backend": self.backend,
+            "mode": self.mode,
+            "bare": self.bare,
             "with_healthy_reference": bool(self._sandbox_cfg is not None and self._sandbox_cfg.weights_dir is not None),
+            "atlas_mounted": bool(self._atlas_reader is not None),
             "budget": self.budget.to_dict(),
             "allowed_tools": self.allowed_tools(),
             "book_path": str(self.book_path),
@@ -342,11 +372,32 @@ class LevelSession:
 
     def allowed_tools(self) -> List[str]:
         """Filtered tool list named on the harness card."""
+        if self.mode == "knobs_only":
+            tools = ["status", "book_view"]
+            if self.reach in _SANDBOX_REACHES:
+                tools.append("cell")
+            if self._atlas_reader is not None:
+                tools.append("atlas_query")
+            if self._handle is not None:
+                tools.append("knob_estimate")
+                if self.reach in _CAPTURE_REACHES:
+                    tools.append("capture")
+                tools += ["knob_read", "knob_write"]
+            if self._brief is not None:
+                tools += ["brief_info", "draw_practice"]
+                if self._bars is not None and self._handle is not None and not self._blinded:
+                    tools.append("claim_knob")
+            return tools
+
         tools = ["status", "estimate", "book_view"]
-        if self.reach in ("sandbox", "sandbox_no_weights"):
+        if self.reach in _SANDBOX_REACHES:
             tools.append("cell")
+        if self._atlas_reader is not None:
+            tools.append("atlas_query")
         if self._handle is not None:
-            tools += ["capture", "read", "write"]
+            if self.reach in _CAPTURE_REACHES:
+                tools.append("capture")
+            tools += ["read", "write"]
         if self._brief is not None:
             tools += ["brief_info", "draw_practice"]
             if self._bars is not None and self._handle is not None and not self._blinded:
@@ -361,12 +412,16 @@ class LevelSession:
             "session_id": self.session_id,
             "reach": self.reach,
             "backend": self.backend,
+            "mode": self.mode,
+            "bare": self.bare,
             "with_healthy_reference": bool(self._sandbox_cfg is not None and self._sandbox_cfg.weights_dir is not None),
-            "atlas_mounted": bool(self._sandbox_cfg is not None and self._sandbox_cfg.atlas_dir is not None),
+            "atlas_mounted": bool(self._atlas_reader is not None),
             "allowed_tools": self.allowed_tools(),
             "practice_only": not has_claim,
             "note": (
-                "Claim gate enabled on bound brief; practice tools return ranks only, claim issues harness verdicts."
+                ("Cheaper-knob claim gate enabled on bound brief (prompts, decoding, and steering only; zero weight edits)."
+                 if self.mode == "knobs_only"
+                 else "Claim gate enabled on bound brief; practice tools return ranks only, claim issues harness verdicts.")
                 if has_claim else PRACTICE_NOTE
             ),
         }
@@ -397,7 +452,7 @@ class LevelSession:
                     "controls_per_family": int(d["controls_override"] if d.get("controls_override") is not None
                                                else self._brief.default_controls),
                     "match_tolerance": float(d.get("match_tolerance", lv.DEFAULT_MATCH_TOL)),
-                    "prompt_arms": "always compared",
+                    "prompt_arms": "not compared with a knob" if self.mode == "knobs_only" else "always compared",
                 }
         return card
 
@@ -418,6 +473,35 @@ class LevelSession:
                     f'Item "{it.name}" holds the {got["how"]} of a kept-back frame {whose}. Those frames are for '
                     "fresh claim readings, not practice: draw practice items from the brief (draw_practice) or write "
                     "your own on other frames."
+                )
+
+    def _refuse_kept_back_knob(self, knob: Mapping[str, Any], items: Sequence[lv.Item], tool: str) -> None:
+        """`_refuse_kept_back` for the text a cheaper knob adds: its prompt, which is read in the system turn of every
+        item under it. Each item is asked of again as the knob reads it (`level_knobs.knob_texts`: its system turn
+        with the knob's prompt, its question, its answer), so wording that stands in the prompt, or in the prompt and
+        the item run together, is refused and counted as an item's is. With no items (a claim) the prompt is asked
+        of alone. A knob that does not build is left to the reading, which refuses it in its own words."""
+        if self._handle is None:
+            return
+        try:
+            kn = lkn.build_knob(self._handle, knob, base_dir=self.work_dir)
+        except lkn.KnobRefused:
+            return
+        if kn.prompt is None:
+            return
+        asked = ([(it.name, lkn.knob_texts(kn, it, self._brief)) for it in items] if items
+                 else [("the knob's prompt", (kn.prompt,))])
+        for name, texts in asked:
+            got = self._kept_back.hit(*texts)
+            if got is not None:
+                self.gate_refusals += 1
+                self._log("refused", {"tool": tool, "why": "kept_back", "whose": got["brief"], "frame": got["frame"],
+                                      "how": got["how"], "item_name": name, "in": "knob_prompt"})
+                whose = (f'of {got["brief"]}' if got["brief"] == lbr.BATTERIES else f'of brief "{got["brief"]}"')
+                where = f' (read in the system turn of item "{name}")' if items else ""
+                raise SessionRefused(
+                    f"The knob's prompt{where} holds the {got['how']} of a kept-back frame {whose}. A knob's text is "
+                    "kept from those frames as an item's is: they are for fresh claim readings, not practice."
                 )
 
     def _wall_seconds(self) -> float:
@@ -538,7 +622,9 @@ class LevelSession:
         out = {"cell_id": cell_id, **res, "remaining": self._remaining()}
         self._log("cell", {"cell_id": cell_id, "ok": res["ok"], "seconds": res["seconds"],
                            "timed_out": res["timed_out"], "oom_killed": res["oom_killed"],
-                           "files_written": res["files_written"]})
+                           "files_written": res["files_written"],
+                           # links, pipes and the like the cell left in /work, removed unread (level_sandbox)
+                           "removed": res.get("removed", [])})
         return out
 
     def capture(
@@ -554,6 +640,8 @@ class LevelSession:
         """Gated contrast-direction capture (`levelling.capture_direction`), persisted to `/work` with sha256."""
         self._check_open_and_wall()
         t_in = time.perf_counter()
+        if self.reach not in _CAPTURE_REACHES:
+            raise SessionRefused(f'The capture tool is not available at reach "{self.reach}".')
         if self._handle is None:
             raise SessionRefused("No model handle is bound to this session.")
         a_items = _as_item_list(items_a, self._handle.tokenizer, "items_a")
@@ -654,6 +742,8 @@ class LevelSession:
     def estimate(self, plan: Mapping[str, Any], items: Mapping[str, Any]) -> Dict[str, Any]:
         """Estimate GPU-seconds, forwards, and memory for a plan without touching the GPU."""
         self._check_open_and_wall()
+        if self.mode != "weight_edit":
+            raise SessionRefused('Weight-edit estimate is disabled in "knobs_only" mode; use knob_estimate.')
         if self._handle is None:
             raise SessionRefused("No model handle is bound to this session.")
         h = self._handle
@@ -683,6 +773,8 @@ class LevelSession:
         save_edit: bool = False,
     ) -> Dict[str, Any]:
         self._check_open_and_wall()
+        if self.mode != "weight_edit":
+            raise SessionRefused(f'Weight-edit "{expected_kind}" reading is disabled in "knobs_only" mode.')
         t_in = time.perf_counter()
         if self._handle is None:
             raise SessionRefused("No model handle is bound to this session.")
@@ -813,8 +905,11 @@ class LevelSession:
             "practice_frame_count": len(self._brief.generator.frames_for("practice")),
             "bars_sha256": self._bars.id if self._bars is not None else None,
             "practice_reads_this_session": int(self._practice_reads),
-            "prior_verdicts": [
-                {"reading_index": v.get("reading_index"), "edit_id": v.get("edit_id"), "verdict": v.get("verdict")}
+            "prior_verdicts": [  # weight claims and knob claims: one budget a brief
+                {"reading_index": v.get("reading_index"), "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
+                 **({"knob_id": v["knob_id"]} if v.get("knob_id") else {}),
+                 # a neuron_mul knob's twin: the weight edit read with it, which a claim of it is refused
+                 **({"twin_edit_id": v["twin_edit_id"]} if v.get("twin_edit_id") else {})}
                 for v in hist["verdicts"]
             ],
             # the trials that spent a fresh reading too (of record, a dry run, a re-run), so the count above adds up
@@ -876,6 +971,8 @@ class LevelSession:
         fixed when the session was made (`claim_design`), and the brief's author prompt arms are always compared (the
         owner's command line can set these; this door cannot)."""
         self._check_open_and_wall()
+        if self.mode != "weight_edit":
+            raise SessionRefused('Weight-edit claim is disabled in "knobs_only" mode; use claim_knob.')
         if self._brief is None or self._bars is None:
             raise SessionRefused("Claim gate is not enabled on this session (requires both a bound brief and bar set).")
         if self._blinded:
@@ -941,6 +1038,248 @@ class LevelSession:
         })
         return drv
 
+    def atlas_query(self, op: str, args: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+        """Bounded read-only query against the mounted atlas index (available at reach 'atlas' or with atlas_dir)."""
+        self._check_open_and_wall()
+        if self._atlas_reader is None:
+            raise SessionRefused(f'The atlas_query tool is not available at reach "{self.reach}" without a mounted atlas.')
+        try:
+            res = self._atlas_reader.query(str(op), args)
+        except la.AtlasReaderError as exc:
+            raise SessionRefused(str(exc)) from None
+        self._log("atlas_query", {"op": str(op), "ok": True})
+        return res
+
+    def knob_estimate(
+        self,
+        knob: Mapping[str, Any],
+        items: Mapping[str, Any],
+        *,
+        kind: str = "paired",
+        controls: int = 3,
+        rows: Optional[Mapping[str, int]] = None,
+        max_new: int = 48,
+        samples: int = 1,
+    ) -> Dict[str, Any]:
+        """Dry cost estimate for a cheaper-knob reading (`mode='knobs_only'`)."""
+        self._check_open_and_wall()
+        if self.mode != "knobs_only":
+            raise SessionRefused('knob_estimate is only enabled in "knobs_only" mode.')
+        if self._handle is None:
+            raise SessionRefused("No model handle is bound to this session.")
+        item_map = _as_item_map(items, self._handle.tokenizer)
+        try:
+            est = lkn.estimate_knob_reading(
+                self._handle, knob, item_map, kind=kind, controls=int(controls), rows=rows,
+                max_new=int(max_new), samples=int(samples), base_dir=self.work_dir,
+            )
+        except lkn.KnobRefused as exc:
+            raise SessionRefused(str(exc)) from None
+        rem = self._remaining()
+        return {
+            "estimate": est,
+            "fits_budget": bool(
+                est["forwards"] <= rem["forwards"]
+                and est["seconds"] <= rem["gpu_seconds"]
+                and est["seconds"] <= rem["wall_seconds"]
+            ),
+            "remaining": rem,
+        }
+
+    def knob_read(
+        self,
+        knob: Mapping[str, Any],
+        items: Mapping[str, Any],
+        *,
+        readouts: Optional[Mapping[str, Any]] = None,
+        metric: str = "odds",
+        direction: int = 0,
+        controls: Optional[int] = None,
+        rows: Optional[Mapping[str, int]] = None,
+        seed: int = 0,
+        name: str = "knob_practice",
+    ) -> Dict[str, Any]:
+        """Gated paired practice reading of a cheaper knob (`mode='knobs_only'`; zero weight edits)."""
+        self._check_open_and_wall()
+        if self.mode != "knobs_only":
+            raise SessionRefused('knob_read is only enabled in "knobs_only" mode.')
+        if self._handle is None:
+            raise SessionRefused("No model handle is bound to this session.")
+        item_map = _as_item_map(items, self._handle.tokenizer)
+        self._refuse_kept_back(list(item_map.values()), "knob_read")
+        self._refuse_kept_back_knob(knob, list(item_map.values()), "knob_read")
+        n_ctl = int(self.budget.min_controls if controls is None else max(int(controls), self.budget.min_controls))
+        try:
+            est = lkn.estimate_knob_reading(
+                self._handle, knob, item_map, kind="paired", controls=n_ctl, rows=rows, base_dir=self.work_dir,
+            )
+        except lkn.KnobRefused as exc:
+            raise SessionRefused(str(exc)) from None
+        self._check_gpu_budget(int(est["forwards"]), float(est["seconds"]))
+
+        t0 = time.perf_counter()
+        try:
+            with self._hold_model() as mh:
+                res = lkn.read_knob_practice(
+                    mh, knob, item_map, readouts=readouts, metric=metric, direction=int(direction),
+                    controls=n_ctl, rows=rows, seed=int(seed), brief=self._brief,
+                    base_dir=self.work_dir, book_path=self.book_path, name=name,
+                )
+        except lkn.KnobRefused as exc:
+            raise SessionRefused(str(exc)) from None
+        finally:
+            elapsed = time.perf_counter() - t0
+        self.gpu_seconds_used += elapsed
+        self.forwards_used += int(res["forwards"])
+        self._practice_reads += 1
+        self._book_seqs.append(int(res["book"]["seq"]))
+        out = {
+            **res,
+            "forwards_charged": int(res["forwards"]),
+            "gpu_seconds_charged": round(elapsed, 3),
+            "remaining": self._remaining(),
+        }
+        self._log("knob_read", {
+            "knob_id": res["knob_id"],
+            "knob_classes": res["knob_classes"],
+            "seq": int(res["book"]["seq"]),
+            "status": res["status"],
+            "forwards_charged": int(res["forwards"]),
+            "gpu_seconds_charged": round(elapsed, 3),
+        })
+        return out
+
+    def knob_write(
+        self,
+        knob: Mapping[str, Any],
+        items: Mapping[str, Any],
+        *,
+        max_new: int = 48,
+        seeds: Sequence[int] = (1,),
+        controls: Optional[int] = None,
+        seed: int = 0,
+        name: str = "knob_write_practice",
+    ) -> Dict[str, Any]:
+        """Gated written practice reading of a cheaper knob (`mode='knobs_only'`; zero weight edits)."""
+        self._check_open_and_wall()
+        if self.mode != "knobs_only":
+            raise SessionRefused('knob_write is only enabled in "knobs_only" mode.')
+        if self._handle is None:
+            raise SessionRefused("No model handle is bound to this session.")
+        if self._brief is None:
+            raise SessionRefused("knob_write requires a bound brief.")
+        item_map = _as_item_map(items, self._handle.tokenizer)
+        self._refuse_kept_back(list(item_map.values()), "knob_write")
+        self._refuse_kept_back_knob(knob, list(item_map.values()), "knob_write")
+        n_ctl = int(self.budget.min_written_controls if controls is None else max(int(controls), self.budget.min_written_controls))
+        try:
+            est = lkn.estimate_knob_reading(
+                self._handle, knob, item_map, kind="written", controls=n_ctl,
+                max_new=int(max_new), samples=max(1, len(seeds)), base_dir=self.work_dir,
+            )
+        except lkn.KnobRefused as exc:
+            raise SessionRefused(str(exc)) from None
+        self._check_gpu_budget(int(est["forwards"]), float(est["seconds"]))
+
+        t0 = time.perf_counter()
+        try:
+            with self._hold_model() as mh:
+                res = lkn.write_knob_practice(
+                    mh, knob, item_map, self._brief, max_new=int(max_new), seeds=list(seeds),
+                    controls=n_ctl, seed=int(seed), base_dir=self.work_dir, book_path=self.book_path, name=name,
+                )
+        except lkn.KnobRefused as exc:
+            raise SessionRefused(str(exc)) from None
+        finally:
+            elapsed = time.perf_counter() - t0
+        self.gpu_seconds_used += elapsed
+        self.forwards_used += int(res["forwards"])
+        self._practice_reads += 1
+        self._book_seqs.append(int(res["book"]["seq"]))
+        out = {
+            **res,
+            "forwards_charged": int(res["forwards"]),
+            "gpu_seconds_charged": round(elapsed, 3),
+            "remaining": self._remaining(),
+        }
+        self._log("knob_write", {
+            "knob_id": res["knob_id"],
+            "knob_classes": res["knob_classes"],
+            "seq": int(res["book"]["seq"]),
+            "status": res["status"],
+            "forwards_charged": int(res["forwards"]),
+            "gpu_seconds_charged": round(elapsed, 3),
+        })
+        return out
+
+    def claim_knob(
+        self,
+        knob: Mapping[str, Any],
+        *,
+        forecast: Optional[Mapping[str, Any]] = None,
+        practice_best: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Run one registered Phase 6 fresh cheaper-knob claim on the bound brief's kept-back frames & calibrated bars."""
+        self._check_open_and_wall()
+        if self.mode != "knobs_only":
+            raise SessionRefused('claim_knob is only enabled in "knobs_only" mode.')
+        if self._brief is None or self._bars is None:
+            raise SessionRefused("Cheaper-knob claim gate requires both a bound brief and calibrated bar set.")
+        if self._blinded:
+            raise SessionRefused("Claim gate is disabled in blinded planted/canary practice sessions.")
+        if self._handle is None:
+            raise SessionRefused("No model handle is bound to this session.")
+        if self.gpu_seconds_used >= float(self.budget.max_gpu_seconds):
+            raise SessionRefused("GPU-second budget exhausted before knob claim reading.")
+        # the knob's own text is asked of the session's guard too (every starter brief's frames, the batteries'
+        # questions), and a refusal counted; the claim then asks it of the bound brief's (`level_knobs._claim_plan`)
+        self._refuse_kept_back_knob(knob, [], "claim_knob")
+        # how the reading is taken is the owner's, as for a weight claim (`claim_design`); a knob claim takes all of
+        # it, the controls a family and the matched controls' tolerance with the rest
+        knob_design = {
+            k: v for k, v in self._claim_design.items()
+            if k in ("n_target", "n_neutral", "n_near", "n_panel", "rows", "written_rows", "controls_override",
+                     "match_tolerance")
+        }
+        try:
+            est = lkn.estimate_knob_claim(
+                self._handle, self._brief, knob, base_dir=self.work_dir, **knob_design,
+            )
+        except (lkn.KnobRefused, lbr.BriefError, lv.Refused) as exc:
+            raise SessionRefused(f"The knob claim cannot be priced, so it is not started: {exc}") from None
+        self._check_gpu_budget(0, float(est["seconds"]))
+
+        t0 = time.perf_counter()
+        try:
+            with self._hold_model() as mh:
+                res = lkn.run_fresh_knob_claim(
+                    mh, self._brief, self._bars, knob, base_dir=self.work_dir,
+                    forecast=forecast, practice_count=self._practice_reads, practice_best=practice_best,
+                    book_path=self.book_path, **knob_design,
+                )
+        except (lkn.KnobRefused, lcl.ClaimRefused) as exc:
+            raise SessionRefused(str(exc)) from None
+        finally:
+            elapsed = time.perf_counter() - t0
+            self.gpu_seconds_used += elapsed
+        self.claim_forwards_used += int(res["cost"]["forwards"])
+        self._book_seqs.extend(res["book"]["all_seqs"])
+        drv = dict(res["driver_record"])
+        drv["gpu_seconds_charged"] = round(elapsed, 3)
+        drv["forwards_charged"] = int(res["cost"]["forwards"])
+        drv["estimated"] = {"forwards": int(est["forwards"]), "seconds": round(float(est["seconds"]), 2)}
+        drv["remaining"] = self._remaining()
+        self._log("claim_knob", {
+            "brief_id": self._brief.id,
+            "knob_id": drv["knob_id"],
+            "knob_classes": drv["knob_classes"],
+            "reading_index": drv["reading_index"],
+            "verdict": drv["verdict"],
+            "book": drv["book"],
+            "gpu_seconds_charged": drv["gpu_seconds_charged"],
+        })
+        return drv
+
     def book_view(self, *, seq: Optional[int] = None, tail: int = 10) -> Dict[str, Any]:
         """Read entries from the level book strictly through `level_book.driver_view` (redacted aggregates only)."""
         self._check_open_and_wall()
@@ -969,6 +1308,8 @@ class LevelSession:
 
     def close(self) -> Dict[str, Any]:
         """Close the session and copy its transcript into `<book_dir>/transcripts/<session_id>.jsonl`."""
+        if self._atlas_reader is not None:
+            self._atlas_reader.close()
         if not self._closed:
             self._log("session_close", {"book_seqs": list(self._book_seqs)})
             self._closed = True

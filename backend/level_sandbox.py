@@ -10,7 +10,12 @@ Containment model (verified actively by `probe_sandbox`):
   private `--tmpfs /tmp`, and ONE writable session scratch folder mounted at `/work`.
 - Environment: `--clearenv` with a minimal allowlist (zero host credentials, tokens, or API keys).
 - Resources: `RLIMIT_AS` (sized above the read-only weight mmap plus working budget), `RLIMIT_FSIZE`, parent-side
-  resident-RAM (`VmRSS`) monitor, and hard wall-clock timeout with process-group `SIGKILL`.
+  resident-RAM (`VmRSS`) monitor, and hard wall-clock timeout with process-group `SIGKILL`; a cell still running when
+  its session closes is killed the same way (`stop_cells`).
+- What a cell leaves: `/work` keeps regular files and folders only. A link, pipe or socket a cell leaves there is
+  removed, unread, as the cell ends (`_drop_not_files`), so nothing on the host that reads `/work` after a cell (the
+  list of files it wrote, with their sizes and sha256; a reading's term files) follows a link out of it or waits on a
+  pipe. The files a cell wrote are looked at without following a link (`_walk_work`, `_file_sha256`).
 
 No pinned or live runtime module is imported inside the sandbox; cells interact with weights strictly through the
 read-only `WeightReader` (`W`) and persist float32 arrays to `/work` via `save_array(name, arr)` with sha256 hashes.
@@ -22,16 +27,19 @@ import json
 import os
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEIGHT_READER_PATH = ROOT_DIR / "backend" / "weight_reader.py"
+LEVEL_ATLAS_PATH = ROOT_DIR / "backend" / "level_atlas.py"
 QUIET_DIMS_PATH = ROOT_DIR / "experiments" / "results" / "V6_quiet_dims_pers181.npy"
 
 DEFAULT_TIMEOUT_S = 30.0
@@ -43,6 +51,33 @@ DEFAULT_MAX_FILE_MB = 256
 
 class SandboxError(RuntimeError):
     """Raised when the `bwrap` sandbox cannot be launched or fails its containment check."""
+
+
+# A session that closes stops its cells: `stop_cells(work_dir)` marks the folder, and `run_cell`, which looks for the
+# mark between its polls, kills a cell running there and starts no new one until `release_cells(work_dir)`.
+_CELLS_LOCK = threading.Lock()
+_CELLS_STOPPING: Set[str] = set()
+_CELLS_RUNNING: Dict[str, int] = {}
+
+
+def stop_cells(work_dir: Path) -> int:
+    """Kill every cell running on `work_dir` (within about a fifth of a second) and start no new one there until
+    `release_cells`. Returns how many were running."""
+    key = str(Path(work_dir).resolve())
+    with _CELLS_LOCK:
+        _CELLS_STOPPING.add(key)
+        return int(_CELLS_RUNNING.get(key, 0))
+
+
+def release_cells(work_dir: Path) -> None:
+    """Let cells run on `work_dir` again (`stop_cells`)."""
+    with _CELLS_LOCK:
+        _CELLS_STOPPING.discard(str(Path(work_dir).resolve()))
+
+
+def _cells_stopping(key: str) -> bool:
+    with _CELLS_LOCK:
+        return key in _CELLS_STOPPING
 
 
 @dataclass(frozen=True)
@@ -120,6 +155,13 @@ def main() -> int:
 
     work = Path("/work")
     atlas = Path("/atlas") if Path("/atlas").is_dir() else None
+    A = None
+    if atlas is not None:
+        try:
+            from backend.level_atlas import AtlasReader
+            A = AtlasReader(atlas)
+        except Exception:
+            A = None
     weights_path = Path("/weights")
     quiet_path = Path("/opt/app/experiments/results/V6_quiet_dims_pers181.npy")
     W = None
@@ -160,6 +202,7 @@ def main() -> int:
     ns = {
         "__name__": "__main__",
         "W": W,
+        "A": A,
         "WORK": work,
         "ATLAS": atlas,
         "save_array": save_array,
@@ -177,6 +220,8 @@ def main() -> int:
         traceback.print_exc()
         return 1
     finally:
+        if A is not None:
+            A.close()
         if W is not None:
             W.close()
     return 0
@@ -229,24 +274,100 @@ def _resolve_weight_binds(weights_dir: Path) -> Tuple[List[Tuple[Path, str]], in
     return binds, total_st_bytes
 
 
-def _snapshot_work_files(work_dir: Path) -> Dict[str, Tuple[int, float]]:
-    out: Dict[str, Tuple[int, float]] = {}
-    root = Path(work_dir).resolve()
-    if not root.is_dir():
-        return out
-    for p in root.rglob("*"):
-        if p.is_file():
+def _kind_of(mode: int) -> str:
+    if stat.S_ISLNK(mode):
+        return "link"
+    if stat.S_ISFIFO(mode):
+        return "pipe"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    if stat.S_ISCHR(mode) or stat.S_ISBLK(mode):
+        return "device"
+    return "other"
+
+
+def _listable(d: Path, mode: int) -> None:
+    """Give this user read, write and search on folder `d` (its own, or a cell's, which runs as this user): a cell
+    can take the read bit off a folder, /work among them, and leave in it a link the host could still follow."""
+    if stat.S_IMODE(mode) & 0o700 != 0o700:
+        try:
+            os.chmod(d, stat.S_IMODE(mode) | 0o700)
+        except OSError:
+            pass
+
+
+def _walk_work(work_dir: Path) -> Tuple[Dict[str, Tuple[int, int]], List[Tuple[str, str]]]:
+    """What the work folder holds, looked at without following a link: its regular files `{rel_path: (bytes,
+    mtime_ns)}`, and every entry that is neither a regular file nor a folder (a link, a pipe, a socket) as `(rel_path,
+    kind)`. Nothing is opened, no link is followed or gone into, and a folder this user cannot list is made listable
+    first (`_listable`); one that still cannot be listed is named as `unlisted`."""
+    files: Dict[str, Tuple[int, int]] = {}
+    odd: List[Tuple[str, str]] = []
+    root = Path(work_dir)
+    try:
+        st_root = os.lstat(root)
+    except OSError:
+        return files, odd
+    if not stat.S_ISDIR(st_root.st_mode):
+        return files, odd
+    _listable(root, st_root.st_mode)
+    stack = [root]
+    while stack:
+        d = stack.pop()
+        try:
+            with os.scandir(d) as it:
+                entries = list(it)
+        except OSError:
+            odd.append((os.path.relpath(d, root), "unlisted"))
+            continue
+        for e in entries:
             try:
-                st = p.stat()
-                out[str(p.relative_to(root))] = (int(st.st_size), float(st.st_mtime_ns))
+                st = e.stat(follow_symlinks=False)
             except OSError:
-                pass
-    return out
+                continue
+            rel = os.path.relpath(e.path, root)
+            if stat.S_ISDIR(st.st_mode):
+                _listable(Path(e.path), st.st_mode)
+                stack.append(Path(e.path))
+            elif stat.S_ISREG(st.st_mode):
+                files[rel] = (int(st.st_size), int(st.st_mtime_ns))
+            else:
+                odd.append((rel, _kind_of(st.st_mode)))
+    return files, odd
 
 
-def _file_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
+def _drop_not_files(work_dir: Path) -> List[Dict[str, str]]:
+    """Remove, unread, everything in the work folder that is neither a regular file nor a folder: a link a cell left
+    there would otherwise be followed by whatever on the host reads the folder after it (this runner's own list of
+    the files a cell wrote, with their sizes and sha256, or a reading's term files), and a pipe would hang that read.
+    A link is removed itself; what it names is not touched. Returns what was removed."""
+    removed: List[Dict[str, str]] = []
+    for rel, kind in _walk_work(work_dir)[1]:
+        p = os.path.join(str(work_dir), rel)
+        try:
+            if kind == "unlisted" and rel == os.curdir:
+                raise OSError("the work folder itself cannot be listed")
+            if kind == "unlisted":  # a folder that cannot be looked into is not kept: what it holds is unknown
+                shutil.rmtree(p)
+            else:
+                os.unlink(p)
+            removed.append({"rel_path": rel, "kind": kind})
+        except OSError:
+            removed.append({"rel_path": rel, "kind": kind, "error": "could not be removed"})
+    return removed
+
+
+def _file_sha256(path: Path) -> Optional[str]:
+    """The sha256 of a regular file, opened without following a link (and without waiting on a pipe); None for
+    anything else."""
+    try:
+        fd = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return None
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            return None
+        h = hashlib.sha256()
         while True:
             chunk = f.read(1 << 20)
             if not chunk:
@@ -373,8 +494,12 @@ def run_cell(
         raise SandboxError(f"Cell timeout must lie between 0.5 and {MAX_TIMEOUT_S:g} s; got {wall_cap!r}.")
 
     work = Path(cfg.work_dir).resolve()
+    work_key = str(work)
+    if _cells_stopping(work_key):
+        raise SandboxError("The session is closing: no new cell is started.")
     work.mkdir(parents=True, exist_ok=True)
-    before_files = _snapshot_work_files(work)
+    removed = _drop_not_files(work)  # none should be there: each cell's own are removed as it ends (below)
+    before_files = _walk_work(work)[0]
 
     exe, py_base, site_dirs = _python_layout()
     rel_exe = exe.relative_to(py_base)
@@ -393,6 +518,7 @@ def run_cell(
     t0 = time.perf_counter()
     timed_out = False
     oom_killed = False
+    stopped = False
     stdout_full = ""
     stderr_full = ""
     exit_code = -1
@@ -432,7 +558,7 @@ def run_cell(
             cmd += ["--ro-bind", str(sd), dst]
             py_paths.append(dst)
 
-        # Minimal read-only app code (weight_reader only — never engine_runtime or host credentials)
+        # Minimal read-only app code (weight_reader + level_atlas only — never engine_runtime or host credentials)
         cmd += [
             "--tmpfs", "/opt/app",
             "--dir", "/opt/app/backend",
@@ -442,6 +568,8 @@ def run_cell(
             "--ro-bind", str(runner_file), "/opt/runner/cell_runner.py",
             "--ro-bind", str(code_file), "/opt/runner/cell_code.py",
         ]
+        if LEVEL_ATLAS_PATH.is_file():
+            cmd += ["--ro-bind", str(LEVEL_ATLAS_PATH), "/opt/app/backend/level_atlas.py"]
         if QUIET_DIMS_PATH.is_file():
             cmd += [
                 "--dir", "/opt/app/experiments",
@@ -458,9 +586,17 @@ def run_cell(
                 cmd += ["--ro-bind", str(src), dst]
             cmd += ["--remount-ro", "/weights"]
 
-        # Optional read-only atlas index folder (index-only, never scientist/ or level_book)
-        if cfg.atlas_dir is not None and Path(cfg.atlas_dir).is_dir():
-            cmd += ["--ro-bind", str(Path(cfg.atlas_dir).resolve()), "/atlas"]
+        # Optional read-only atlas index files ONLY (allowlisted; never scientist/, uploads/, logs/, or level_book)
+        if cfg.atlas_dir is not None:
+            from backend.level_atlas import collect_atlas_binds
+
+            atlas_binds = collect_atlas_binds(Path(cfg.atlas_dir))
+            cmd += ["--tmpfs", "/atlas"]
+            if any(dst.startswith("/atlas/passages.d/") for _src, dst in atlas_binds):
+                cmd += ["--dir", "/atlas/passages.d"]
+            for src, dst in atlas_binds:
+                cmd += ["--ro-bind", str(src), dst]
+            cmd += ["--remount-ro", "/atlas"]
 
         # Single writable scratch folder
         cmd += ["--bind", str(work), "/work", "--chdir", "/work"]
@@ -497,56 +633,68 @@ def run_cell(
         stdout_tmp = stage / "stdout.txt"
         stderr_tmp = stage / "stderr.txt"
         with open(stdout_tmp, "wb") as out_f, open(stderr_tmp, "wb") as err_f:
-            proc = subprocess.Popen(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                stdout=out_f,
-                stderr=err_f,
-                start_new_session=True,
-            )
-            deadline = time.perf_counter() + wall_cap
+            with _CELLS_LOCK:
+                if work_key in _CELLS_STOPPING:
+                    raise SandboxError("The session is closing: no new cell is started.")
+                _CELLS_RUNNING[work_key] = _CELLS_RUNNING.get(work_key, 0) + 1
             try:
-                while True:
-                    rc = proc.poll()
-                    if rc is not None:
-                        exit_code = int(rc)
-                        break
-                    now = time.perf_counter()
-                    if now >= deadline:
-                        timed_out = True
-                        _kill_group(proc.pid)
-                        proc.wait(timeout=5)
-                        exit_code = int(proc.returncode if proc.returncode is not None else -9)
-                        break
-                    rss = _proc_tree_rss_bytes(proc.pid)
-                    if rss > rss_cap_bytes:
-                        oom_killed = True
-                        _kill_group(proc.pid)
-                        proc.wait(timeout=5)
-                        exit_code = int(proc.returncode if proc.returncode is not None else -9)
-                        break
-                    time.sleep(0.05)
-            except BaseException:
-                _kill_group(proc.pid)
+                proc = subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.DEVNULL,
+                    stdout=out_f,
+                    stderr=err_f,
+                    start_new_session=True,
+                )
+                deadline = time.perf_counter() + wall_cap
                 try:
-                    proc.wait(timeout=5)
-                except Exception:
-                    pass
-                raise
+                    while True:
+                        rc = proc.poll()
+                        if rc is not None:
+                            exit_code = int(rc)
+                            break
+                        now = time.perf_counter()
+                        if now >= deadline:
+                            timed_out = True
+                        elif _cells_stopping(work_key):
+                            stopped = True  # its session is closing (`stop_cells`)
+                        elif _proc_tree_rss_bytes(proc.pid) > rss_cap_bytes:
+                            oom_killed = True
+                        if timed_out or stopped or oom_killed:
+                            _kill_group(proc.pid)
+                            proc.wait(timeout=5)
+                            exit_code = int(proc.returncode if proc.returncode is not None else -9)
+                            break
+                        time.sleep(0.05)
+                except BaseException:
+                    _kill_group(proc.pid)
+                    try:
+                        proc.wait(timeout=5)
+                    except Exception:
+                        pass
+                    raise
+            finally:
+                # the cell has ended (or been killed): before anything on the host looks in /work again, what it left
+                # there that is not a file or a folder goes, unread
+                removed += _drop_not_files(work)
+                with _CELLS_LOCK:
+                    left = _CELLS_RUNNING.get(work_key, 1) - 1
+                    if left > 0:
+                        _CELLS_RUNNING[work_key] = left
+                    else:
+                        _CELLS_RUNNING.pop(work_key, None)
 
         stdout_full = stdout_tmp.read_text(encoding="utf-8", errors="replace")
         stderr_full = stderr_tmp.read_text(encoding="utf-8", errors="replace")
 
     elapsed = time.perf_counter() - t0
-    after_files = _snapshot_work_files(work)
+    after_files = _walk_work(work)[0]  # regular files only, looked at without following a link
     files_written: List[Dict[str, Any]] = []
     for rel, meta in sorted(after_files.items()):
         if before_files.get(rel) != meta:
-            fp = work / rel
             files_written.append({
                 "rel_path": rel,
                 "bytes": meta[0],
-                "sha256": _file_sha256(fp) if fp.is_file() else None,
+                "sha256": _file_sha256(work / rel),
             })
 
     if cell_log_dir is not None:
@@ -563,20 +711,26 @@ def run_cell(
         error = f"Cell exceeded wall-clock timeout ({wall_cap:g} s) and was killed."
     elif oom_killed:
         error = f"Cell exceeded resident memory cap ({cfg.max_mem_gib:g} GiB) and was killed."
+    elif stopped:
+        error = "Cell was killed: its session closed while it ran."
     elif exit_code != 0:
         error = f"Cell exited with code {exit_code}."
 
     return {
-        "ok": (exit_code == 0 and not timed_out and not oom_killed),
+        "ok": (exit_code == 0 and not timed_out and not oom_killed and not stopped),
         "exit_code": exit_code,
         "timed_out": timed_out,
         "oom_killed": oom_killed,
+        "stopped": stopped,
         "seconds": round(elapsed, 4),
         "stdout": stdout_shown,
         "stderr": stderr_shown,
         "stdout_truncated": stdout_trunc,
         "stderr_truncated": stderr_trunc,
         "files_written": files_written,
+        # /work keeps regular files and folders only: a link, pipe or socket a cell leaves is removed as it ends,
+        # unread (what a link names is never opened, hashed or measured), and named here
+        "removed": removed,
         "error": error,
         "log_dir": str(cell_log_dir) if cell_log_dir is not None else None,
     }

@@ -2868,6 +2868,48 @@ in order:
     means −1.27 and −1.26; 0.84); and one more claim reading, `works but harms` (−1.33 and −1.36, near-miss
     harm 0.61). In twenty-two readings: eleven `works but harms`, five `kept the base`, four `no better than
     control edits`, two `did not replicate`.
+- **Phase 6 (whether agents help). Built, reviewed and mended twice; no driver that is an agent has been run, so
+  whether agents help is not yet measured** (20–21 November 2026; pull request whp199/theodolite#5).
+  - **What it adds:**
+    - an atlas reach;
+    - cheaper knobs: a system prompt, decoding settings and transient steering, claimed through the weight path’s
+      own gate;
+    - drivers: two scripted baselines, a replay driver, an OpenAI-compatible driver, and Claude Code with the door’s
+      tools only;
+    - studies of arms of drivers;
+    - three pieces that measure no driver yet: a blinded planted-fault benchmark, a rebuild description and a
+      cold-driver page.
+
+    `ARCHITECTURE.md` (Phase 6) says how each is built, and `docs/SCAFFOLD.md` says which parts a driver never loses.
+  - **The first review.** Four readers (the knobs, the study, containment, and the words against the records; 20
+    November 2026) found six blockers:
+    - knob claims spent no fresh reading on the weight path;
+    - three knob guards read keys that did not exist, so practice on kept-back wording and a changed brief were
+      accepted;
+    - a knob’s prompt skipped the kept-back guard;
+    - the Claude driver could reach none of the door’s tools, so a paid run would have scored as an honest abstention;
+    - the blinded benchmark’s figures were true by how it was built;
+    - the card record named main’s commit.
+
+    They also found some forty lesser defects, among them dollar caps checked only after the fact, a “local” endpoint
+    found by a substring, the key following redirects, comparisons naming a winner at p = 1, a rebuild check that was
+    a JSON round trip, and steer-lens words given the lens gate’s verdict. These were mended here on the owner’s word
+    (`d5e6848`).
+  - **The second review.** Three readers then went through those mends. They found one more blocker: sessions that
+    never worked were counted as runs with no lead. They also found some twenty-five lesser defects, among them:
+    - a knob and its weight-edit twin each read once;
+    - a claim still reading when its driver was stopped, recorded as no submission;
+    - a reply reporting zero tokens, believed;
+    - a blinded case’s kind shown in its session id;
+    - a cell able to learn the size and hash of any host file through a link left in `/work`, which was on `main`
+      too.
+
+    These were mended in `9f2dc6d`.
+  - **Checks.** CPU at `9f2dc6d`: `check_level_eval.py` 214 of 214; levelling 1,056, door 150, claim 307, trial
+    322, page 89, label gate 189, local-only 1,310, LoRA export 76, sampler mirror 6,691. Card at `9f2dc6d` (21
+    November 2026): 19 of 19, with the figures in `ARCHITECTURE.md`. On `pronoun_pull` the scripted baselines found
+    no lead at any reach in three sessions an arm. The knob twin of the known answer read “works but harms”, as the
+    weight edit does in most draws.
 - **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
   trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the
   builders there and the owner’s to change. **First, because nothing can pass until it is settled: what a trial
@@ -2915,7 +2957,27 @@ in order:
   figures to 1e-6) and its two leaves; that an adapter is exported off the model only for an edit a
   book shows the kernel has read, and with no trial behind it, saying so, and never past the kernel’s cap on a
   dose; a blinded reply’s wait of twice its
-  price; that the compare tab replays a trial at all. The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
+  price; that the compare tab replays a trial at all.
+  For Phase 6, ruled on 20 November 2026: Claude Code gets the door’s tools and nothing else. Chosen by the builders
+  in the mends, and the owner’s to change:
+  - a fresh knob claim needs a steering part;
+  - a knob that mixes `neuron_mul` with pushes, or puts `spare_bos` on `neuron_mul`, is refused;
+  - a `neuron_mul` knob is read once with its weight-edit twin, and a trial of the edit follows the knob’s lead only
+    when the knob was that arithmetic alone, at dose 1;
+  - a session counts in its arm only when its driver worked the door and it ended by the driver’s choice or a budget;
+  - a session whose claim the gate refused, but which worked the door, counts as a run with no lead;
+  - a plan’s per-session dollar cap of 0 means what the study has left;
+  - when a driver is stopped, a running reading is waited for however long it takes (a call that never ended would
+    hang a study);
+  - the rebuild’s 200 words count every word and number of its record.
+
+  Open:
+  - whether a blinded session should have a way to propose a repair (without one, the benchmark measures no driver);
+  - the ruling’s two driver tests, a cold driver of two families and a rebuild in a fresh session, which were never
+    run;
+  - how a dollar ceiling is approved (today it is the figure in the owner’s plan);
+  - the first study with an agent driver, which at three sessions an arm could separate nothing.
+  The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
   posture (5); budgets, and how many fresh readings a brief takes (6); the name and the words, “Levelling” and “level
@@ -2931,4 +2993,4 @@ in order:
   and that item now reads “ok”); and,
   from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved.
 - **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
-  terms; Phase 6 driver evals; gradients.
+  terms; fine-tuned LoRA adapters as a cheaper-knob arm; gradients.

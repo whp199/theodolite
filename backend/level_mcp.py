@@ -24,19 +24,65 @@ the load needs. `--stand-in` and `--no-model` touch no card and take no lock.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
 import json
 import os
+import shutil
 import signal
 import socket
 import sys
+import tempfile
+import threading
+import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+
+def serve_socket_bridge(sock_path: Path) -> int:
+    """Connect stdio JSON-RPC lines to a live parent `session_socket_bridge` Unix socket. It needs nothing past the
+    standard library, so `level_mcp.py --socket <path>` runs it before the session's modules (and torch) are imported:
+    a CLI driver's MCP child starts in a moment and small."""
+    sp = Path(sock_path).resolve()
+    cli = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        cli.connect(str(sp))
+    except OSError as exc:
+        raise SystemExit(f"Could not connect to MCP bridge socket {sp}: {exc}") from None
+    try:
+        rfile = cli.makefile("r", encoding="utf-8", errors="replace")
+        wfile = cli.makefile("w", encoding="utf-8")
+        with rfile, wfile:
+            for line in sys.stdin:
+                if not line.strip():
+                    continue
+                try:
+                    msg = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(msg, dict):
+                    continue
+                wfile.write(json.dumps(msg, ensure_ascii=True) + "\n")
+                wfile.flush()
+                if msg.get("id") is not None:
+                    resp_line = rfile.readline()
+                    if not resp_line:
+                        break
+                    sys.stdout.write(resp_line)
+                    sys.stdout.flush()
+    finally:
+        cli.close()
+    return 0
+
+
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--socket":
+    sys.exit(serve_socket_bridge(Path(sys.argv[2])))
+
+from backend import level_sandbox as ls  # noqa: E402
 from backend import level_session as lses  # noqa: E402
 
 _CARD_LOCK: Any = None  # the open file that holds the card's lock, kept until the process ends (`main`)
@@ -259,6 +305,99 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
             "additionalProperties": False,
         },
     },
+    "atlas_query": {
+        "name": "atlas_query",
+        "description": (
+            "Query the read-only atlas index (available at reach 'atlas' or when an atlas index is mounted): "
+            "op in info, search_words, neuron_card, top_wiring, layer_stats."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "op": {"type": "string", "enum": ["info", "search_words", "neuron_card", "top_wiring", "layer_stats"]},
+                "args": {"type": "object"},
+            },
+            "required": ["op"],
+            "additionalProperties": False,
+        },
+    },
+    "knob_estimate": {
+        "name": "knob_estimate",
+        "description": "Estimate forwards and GPU-seconds for a cheaper-knob reading (prompts, decoding, steering; zero weight edits).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "items": {"type": "object"},
+                "kind": {"type": "string", "enum": ["paired", "written"], "default": "paired"},
+                "controls": {"type": "integer", "minimum": 0, "default": 3},
+                "rows": {"type": "object"},
+                "max_new": {"type": "integer", "minimum": 1, "default": 48},
+                "samples": {"type": "integer", "minimum": 1, "default": 1},
+            },
+            "required": ["knob", "items"],
+            "additionalProperties": False,
+        },
+    },
+    "knob_read": {
+        "name": "knob_read",
+        "description": (
+            "Run a gated paired practice reading of a cheaper knob (prompts, decoding, and/or transient steering; "
+            "zero weight edits), returning aggregates and steering-control ranks only."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "items": {"type": "object"},
+                "readouts": {"type": "object"},
+                "metric": {"type": "string", "default": "odds"},
+                "direction": {"type": "integer", "default": 0},
+                "controls": {"type": "integer", "minimum": 1},
+                "rows": {"type": "object"},
+                "seed": {"type": "integer", "default": 0},
+                "name": {"type": "string", "default": "knob_practice"},
+            },
+            "required": ["knob", "items"],
+            "additionalProperties": False,
+        },
+    },
+    "knob_write": {
+        "name": "knob_write",
+        "description": "Run a gated written practice reading of a cheaper knob on practice items (zero weight edits).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "items": {"type": "object"},
+                "max_new": {"type": "integer", "minimum": 1, "default": 48},
+                "seeds": {"type": "array", "items": {"type": "integer"}},
+                "controls": {"type": "integer", "minimum": 1},
+                "seed": {"type": "integer", "default": 0},
+                "name": {"type": "string", "default": "knob_write_practice"},
+            },
+            "required": ["knob", "items"],
+            "additionalProperties": False,
+        },
+    },
+    "claim_knob": {
+        "name": "claim_knob",
+        "description": (
+            "Submit a cheaper knob (prompts, decoding, and/or transient steering; zero weight edits) for one registered "
+            "fresh claim reading on the bound brief's kept-back frames and calibrated bar set. A fresh claim needs a "
+            "steering part: a prompt or decoding setting alone has no control edits to be judged against and is refused."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "knob": {"type": "object"},
+                "forecast": {"type": "object"},
+                "practice_best": {"type": "number"},
+            },
+            "required": ["knob"],
+            "additionalProperties": False,
+        },
+    },
 }
 
 
@@ -313,6 +452,46 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             declared_rule=a.get("declared_rule"),
             practice_best=a.get("practice_best"),
         )
+    if name == "atlas_query":
+        return session.atlas_query(str(a["op"]), a.get("args"))
+    if name == "knob_estimate":
+        return session.knob_estimate(
+            a["knob"],
+            a["items"],
+            kind=str(a.get("kind", "paired")),
+            controls=int(a.get("controls", 3)),
+            rows=a.get("rows"),
+            max_new=int(a.get("max_new", 48)),
+            samples=int(a.get("samples", 1)),
+        )
+    if name == "knob_read":
+        return session.knob_read(
+            a["knob"],
+            a["items"],
+            readouts=a.get("readouts"),
+            metric=str(a.get("metric", "odds")),
+            direction=int(a.get("direction", 0)),
+            controls=a.get("controls"),
+            rows=a.get("rows"),
+            seed=int(a.get("seed", 0)),
+            name=str(a.get("name", "knob_practice")),
+        )
+    if name == "knob_write":
+        return session.knob_write(
+            a["knob"],
+            a["items"],
+            max_new=int(a.get("max_new", 48)),
+            seeds=a.get("seeds") or (1,),
+            controls=a.get("controls"),
+            seed=int(a.get("seed", 0)),
+            name=str(a.get("name", "knob_write_practice")),
+        )
+    if name == "claim_knob":
+        return session.claim_knob(
+            a["knob"],
+            forecast=a.get("forecast"),
+            practice_best=a.get("practice_best"),
+        )
     raise lses.SessionRefused(f'Unknown tool "{name}".')
 
 
@@ -333,17 +512,30 @@ def handle_request(msg: Mapping[str, Any], session: lses.LevelSession) -> Option
         return {"jsonrpc": "2.0", "id": id_, "result": {"tools": tools_for_session(session)}}
     if method == "tools/call":
         p = msg.get("params") or {}
-        try:
-            out = dispatch_tool(session, str(p.get("name", "")), p.get("arguments") or {})
-            text = json.dumps(out, ensure_ascii=True)
-            return {"jsonrpc": "2.0", "id": id_, "result": {"content": [{"type": "text", "text": text}]}}
-        except Exception as exc:
-            return {"jsonrpc": "2.0", "id": id_, "result": {
-                "content": [{"type": "text", "text": f"error: {exc}"}], "isError": True,
-            }}
+        ok, _out, text = _call_tool(session, str(p.get("name", "")), p.get("arguments") or {})
+        return _tool_reply(id_, ok, text)
     if method == "ping":
         return {"jsonrpc": "2.0", "id": id_, "result": {}}
     return {"jsonrpc": "2.0", "id": id_, "error": {"code": -32601, "message": f"method not found: {method}"}}
+
+
+def _call_tool(session: lses.LevelSession, name: str, args: Any) -> Tuple[bool, Any, str]:
+    """One door call: `(True, its reply, the reply as JSON text)`, or `(False, None, "error: <why>")` for any refusal
+    or failure (a reply that cannot be written as JSON among them)."""
+    if not isinstance(args, Mapping):
+        return False, None, f'error: Tool "{name}" takes its arguments as a JSON object, not {type(args).__name__}.'
+    try:
+        out = dispatch_tool(session, name, args)
+        return True, out, json.dumps(out, ensure_ascii=True)
+    except Exception as exc:
+        return False, None, f"error: {exc}"
+
+
+def _tool_reply(id_: Any, ok: bool, text: str) -> Dict[str, Any]:
+    result: Dict[str, Any] = {"content": [{"type": "text", "text": text}]}
+    if not ok:
+        result["isError"] = True
+    return {"jsonrpc": "2.0", "id": id_, "result": result}
 
 
 def serve_stdio(session: lses.LevelSession) -> int:
@@ -376,11 +568,261 @@ def serve_stdio(session: lses.LevelSession) -> int:
     return 0
 
 
+SOCKET_NAME = "door.sock"
+AF_UNIX_PATH_MAX = 107  # bytes a socket's path may take on Linux: sun_path holds 108, the last for its closing NUL
+CLOSING_WORDS = "the session is closing: the door takes no more calls."
+ERROR_WORDS_MAX = 2000  # characters of a failed or refused call's own words kept in its record (a claim's refusal)
+
+
+def _within(p: Path, root: Path) -> bool:
+    return p == root or str(p).startswith(str(root) + os.sep)
+
+
+def _private_socket_dir(work_dir: Path) -> Path:
+    """A new mode-0700 folder for the bridge's socket, under `$XDG_RUNTIME_DIR` when it is set and usable, else the
+    system's temporary folder, else /tmp: the first where the socket's path fits AF_UNIX and lies outside the work
+    folder. A cell's sandbox mounts none of these (it has a /tmp of its own), so no cell can reach the socket."""
+    work = Path(work_dir).resolve()
+    bases: List[str] = []
+    for base in (os.environ.get("XDG_RUNTIME_DIR", "").strip(), tempfile.gettempdir(), "/tmp"):
+        if base and base not in bases:
+            bases.append(base)
+    for base in bases:
+        try:
+            d = Path(tempfile.mkdtemp(prefix="lvl-", dir=base)).resolve()  # mkdtemp makes it mode 0700
+        except OSError:
+            continue
+        if len(os.fsencode(str(d / SOCKET_NAME))) <= AF_UNIX_PATH_MAX and not _within(d, work):
+            os.chmod(d, 0o700)
+            return d
+        shutil.rmtree(d, ignore_errors=True)
+    raise lses.SessionRefused(
+        f"No private folder for the door's socket: under {', '.join(bases)} each was too long a path for a Unix "
+        "socket, inside the session's work folder, or could not be made."
+    )
+
+
+def _call_facts(name: str, args: Mapping[str, Any], out: Any) -> Dict[str, Any]:
+    """What a door call left behind, for a driver's outcome: the files a cell or a capture wrote, the book line a
+    reading wrote, a claim's verdict and what it put forward."""
+    if not isinstance(out, Mapping):
+        return {}
+    if name == "cell":
+        return {"files_written": [str(f.get("rel_path")) for f in (out.get("files_written") or [])][:50],
+                "removed": [str(r.get("rel_path")) for r in (out.get("removed") or [])][:50],
+                "cell_ok": bool(out.get("ok")), "stopped": bool(out.get("stopped"))}
+    if name == "capture":
+        return {"files_written": [str(out.get("rel_path"))]}
+    if name in ("read", "write"):
+        return {"book_seq": (out.get("book") or {}).get("seq")}
+    if name == "claim":
+        return {"verdict": out.get("verdict"), "edit_id": out.get("edit_id"), "proposed": args.get("edit")}
+    if name == "claim_knob":
+        return {"verdict": out.get("verdict"), "knob_id": out.get("knob_id"), "proposed": args.get("knob")}
+    return {}
+
+
+class SocketBridge:
+    """`session` served over a private AF_UNIX socket to a CLI driver's stdio MCP child (`level_mcp.py --socket
+    <path>`), so the child reaches the model a study has already loaded.
+
+    - The socket (`path`) sits in a new mode-0700 folder of its own (`_private_socket_dir`), so no other user can
+      reach it whatever its own mode; it is made 0600 once bound (the process's umask is never changed: it is the
+      whole process's, not this thread's), and goes, with its folder, on `close`.
+    - One door call at a time, whatever connection it comes on, so each call's budget checks see every call before it.
+    - `close` takes no more calls (one that comes after is answered with an error), kills a cell that is running
+      (`level_sandbox.stop_cells`), and waits for any other call that is running until it ends, with no bound: a
+      reading on the model always ends, and one cut off, or a book read before its lines land, would record a claim
+      as no submission while its fresh reading was spent. So what the call puts in the book or the work folder is
+      there before an outcome is read. `calls` lists every call that reached the door; `close` returns what was
+      running at the stop, how it ended, and how long the door waited for it and why (`waited_seconds`,
+      `wait_note`)."""
+
+    def __init__(self, session: lses.LevelSession) -> None:
+        self.session = session
+        self.dir = _private_socket_dir(session.work_dir)
+        self.path = self.dir / SOCKET_NAME
+        self.calls: List[Dict[str, Any]] = []
+        self.refused_after_stop = 0
+        self._call_lock = threading.Lock()  # one door call at a time
+        self._state_lock = threading.Lock()  # `_stopping` and `_active` change together under it
+        self._stopping = False
+        self._active: Optional[Dict[str, Any]] = None
+        self._conns: List[socket.socket] = []
+        self._report: Optional[Dict[str, Any]] = None
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            srv.bind(str(self.path))  # inside the 0700 folder: reachable by this user only from the moment it exists
+            os.chmod(self.path, 0o600)
+        except OSError:
+            srv.close()
+            shutil.rmtree(self.dir, ignore_errors=True)
+            raise
+        srv.listen(4)
+        srv.settimeout(0.25)
+        self._srv = srv
+        self._accept_thread = threading.Thread(target=self._accept_loop, daemon=True)
+        self._accept_thread.start()
+
+    def _accept_loop(self) -> None:
+        while True:
+            try:
+                conn, _ = self._srv.accept()
+            except socket.timeout:
+                with self._state_lock:
+                    if self._stopping:
+                        return
+                continue
+            except OSError:
+                return
+            with self._state_lock:
+                if self._stopping:
+                    conn.close()
+                    return
+                self._conns.append(conn)
+            threading.Thread(target=self._serve_conn, args=(conn,), daemon=True).start()
+
+    def _serve_conn(self, conn: socket.socket) -> None:
+        try:
+            rfile = conn.makefile("r", encoding="utf-8", errors="replace")
+            wfile = conn.makefile("w", encoding="utf-8")
+            with rfile, wfile:
+                for line in rfile:
+                    if not line.strip():
+                        continue
+                    try:
+                        msg = json.loads(line)
+                    except ValueError:
+                        continue
+                    if not isinstance(msg, dict):
+                        continue
+                    resp = self._answer(msg)
+                    if resp is not None:
+                        wfile.write(json.dumps(resp, ensure_ascii=True) + "\n")
+                        wfile.flush()
+        except (OSError, ValueError):
+            pass
+        finally:
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+    def _answer(self, msg: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+        id_ = msg.get("id")
+        if id_ is None:
+            return None  # a notification
+        if msg.get("method") != "tools/call":
+            with self._state_lock:
+                closing = self._stopping
+                if closing:
+                    self.refused_after_stop += 1
+            if closing:
+                return {"jsonrpc": "2.0", "id": id_, "error": {"code": -32000, "message": CLOSING_WORDS}}
+            return handle_request(msg, self.session)
+        p = msg.get("params") or {}
+        name = str(p.get("name", ""))
+        args = p.get("arguments") or {}
+        with self._call_lock:
+            with self._state_lock:
+                if self._stopping:
+                    self.refused_after_stop += 1
+                    return _tool_reply(id_, False, f"error: {CLOSING_WORDS}")
+                rec: Dict[str, Any] = {"n": len(self.calls) + 1, "tool": name, "ok": None, "seconds": None,
+                                       "running_at_stop": False}
+                self.calls.append(rec)
+                self._active = rec
+            t0 = time.monotonic()
+            try:
+                ok, out, text = _call_tool(self.session, name, args)
+            finally:
+                with self._state_lock:
+                    self._active = None
+            rec["seconds"] = round(time.monotonic() - t0, 3)
+            rec["ok"] = ok
+            if ok:
+                rec.update(_call_facts(name, args if isinstance(args, Mapping) else {}, out))
+            else:
+                rec["error"] = text[:ERROR_WORDS_MAX]  # a refused claim's own words, for the driver's outcome
+        return _tool_reply(id_, ok, text)
+
+    def close(self) -> Dict[str, Any]:
+        """Stop taking calls, kill a running cell, wait for any other running call to end, with no bound (see the
+        class), then remove the socket and its folder. Returns what was running at the stop, how it ended, and how
+        long the door waited for it and why; a second call returns the same."""
+        if self._report is not None:
+            return self._report
+        t0 = time.monotonic()
+        with self._state_lock:
+            self._stopping = True
+            running = self._active
+            if running is not None:
+                running["running_at_stop"] = True
+        try:
+            self._srv.close()
+        except OSError:
+            pass
+        cells_stopped = ls.stop_cells(self.session.work_dir)
+        with self._call_lock:  # the running call, if any, has ended: a cell killed, anything else let finish
+            pass
+        ls.release_cells(self.session.work_dir)
+        waited = round(time.monotonic() - t0, 3)
+        wait_note: Optional[str] = None
+        if running is not None:
+            tool = str(running.get("tool") or "?")
+            if tool == "cell":
+                how = "it was killed" if running.get("stopped") else "it ended before it could be killed"
+                wait_note = f"A cell was running at the stop: {how}, and the door waited {waited:g} s for it to end."
+            else:
+                ended = "it answered" if running.get("ok") is True else "it failed"
+                wait_note = (f"A {tool} call was running at the stop: the door waited {waited:g} s for it to end "
+                             f"({ended}) before the outcome was read, as a reading is never cut off midway (only a "
+                             "cell is killed), so what it wrote is in the book.")
+        with self._state_lock:
+            conns = list(self._conns)
+        for c in conns:
+            for fn in (lambda: c.shutdown(socket.SHUT_RDWR), c.close):
+                try:
+                    fn()
+                except OSError:
+                    pass
+        self._accept_thread.join(timeout=2.0)
+        shutil.rmtree(self.dir, ignore_errors=True)
+        self._report = {
+            "calls": len(self.calls),
+            "ok": sum(1 for c in self.calls if c.get("ok") is True),
+            "errors": sum(1 for c in self.calls if c.get("ok") is False),
+            "refused_after_stop": int(self.refused_after_stop),
+            "running_at_stop": dict(running) if running is not None else None,
+            "cells_stopped": int(cells_stopped),
+            "waited_seconds": waited,
+            "wait_note": wait_note,
+            "socket_removed": not self.dir.exists(),
+        }
+        return self._report
+
+
+@contextlib.contextmanager
+def session_socket_bridge(session: lses.LevelSession) -> Iterator[SocketBridge]:
+    """Serve `session` to a CLI driver's MCP child over a private socket for the life of the block (`SocketBridge`;
+    its `path` is the socket's). Leaving the block closes it: no more calls, a running cell killed, any other running
+    call waited for until it ends."""
+    bridge = SocketBridge(session)
+    try:
+        yield bridge
+    finally:
+        bridge.close()
+
+
 def main(argv: Optional[List[str]] = None) -> int:
-    ap = argparse.ArgumentParser(description="Theodolite Levelling Phase 2 stdio MCP server (practice only).")
-    ap.add_argument("--session-dir", required=True, type=Path, help="Per-session directory (holds work/, cells/, transcript).")
+    ap = argparse.ArgumentParser(description="Theodolite Levelling stdio MCP server (practice and claim gates).")
+    ap.add_argument("--socket", type=Path, default=None,
+                    help="Forward stdio JSON-RPC to an existing session_socket_bridge Unix socket (no model load).")
+    ap.add_argument("--session-dir", type=Path, default=None, help="Per-session directory (holds work/, cells/, transcript).")
     ap.add_argument("--book", type=Path, default=None, help="Path to level_book.jsonl (must be outside work/).")
     ap.add_argument("--reach", default="sandbox", choices=list(lses.VALID_REACHES))
+    ap.add_argument("--mode", default="weight_edit", choices=list(lses.VALID_MODES))
+    ap.add_argument("--bare", action="store_true", help="Mark session as bare (minimal scaffolding) on harness card.")
     ap.add_argument("--backend", default="local", choices=list(lses.VALID_BACKENDS))
     ap.add_argument("--weights-dir", type=Path, default=None, help="Read-only safetensors folder mounted at /weights.")
     ap.add_argument("--atlas-dir", type=Path, default=None, help="Optional read-only atlas index folder mounted at /atlas.")
@@ -408,6 +850,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="The port the Theodolite server would answer on; the session is refused while it does.")
     args = ap.parse_args(argv)
 
+    if args.socket is not None:
+        return serve_socket_bridge(args.socket)
+    if args.session_dir is None:
+        ap.error("--session-dir is required unless --socket is supplied.")
+
     h = None
     weights_dir = args.weights_dir
     if not args.no_model:
@@ -422,7 +869,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             use_stand_in_atlas()
             rt, _vault = make_stand_in()
             h = lv.handle(rt)
-            if weights_dir is None and args.reach == "sandbox":
+            if weights_dir is None and args.reach in ("sandbox", "weights", "atlas"):
                 weights_dir = export_stand_in_safetensors(h.lm, args.session_dir / "_stand_in_weights", model_id=h.model_id)
         else:
             # the card is taken, and found free, before anything is loaded on it
@@ -442,7 +889,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 rt.jpp_lenses.clear()
             w4a16_fast.install(rt, "compiled")
             h = lv.handle(rt)
-            if weights_dir is None and args.reach == "sandbox":
+            if weights_dir is None and args.reach in ("sandbox", "weights", "atlas"):
                 weights_dir = checkpoint_snapshot(h.model_id.split("@", 1)[0])
 
     budget = lses.SessionBudget(
@@ -484,6 +931,8 @@ def _make_session(h: Any, args: Any, budget: Any, weights_dir: Any, brief_obj: A
         h,
         args.session_dir,
         reach=args.reach,
+        mode=args.mode,
+        bare=bool(args.bare),
         backend=args.backend,
         budget=budget,
         book_path=args.book,
