@@ -1,46 +1,48 @@
-# Levelling Scaffolding Register (`docs/SCAFFOLD.md`)
+# Levelling scaffolding register (`docs/SCAFFOLD.md`)
 
-Every component in a driver harness encodes an assumption about what today's frontier models cannot reliably do on their
-own (`experiments/results/weight_space_exploration/design/driver.md` §6, `design/synthesis.md` §vii). This register
-separates **fixed trust boundaries** (which stay regardless of driver capability) from **non-trust-boundary
-conveniences** (which `--bare` strips so Phase 6 ablations can measure whether each convenience still earns its keep).
+Every part of a driver harness encodes a guess about what today's drivers cannot do on their own
+(`experiments/results/weight_space_exploration/design/driver.md` §6, `design/synthesis.md` §vii). This register
+separates the **trust boundaries**, which stay whatever the driver, from the **conveniences**, which a study can
+take away to see whether each still earns its place.
 
-## Fixed Trust Boundaries (Never Stripped by `--bare`)
+## Trust boundaries (never taken away)
 
-These enforce measurement validity, containment, and cost safety — a stronger driver must never be able to bypass them:
+A stronger driver must not be able to get round any of these.
 
-| Boundary | Module | What it enforces |
+| Boundary | Module | What it keeps |
 |---|---|---|
-| Off-card `bwrap` sandbox | `backend/level_sandbox.py` | No GPU, no network, no `$HOME`, allowlisted read-only `/weights` and `/atlas`, single writable `/work`, `RLIMIT_AS` + `VmRSS` + wall kill |
-| Reach and backend policy | `backend/level_session.py` | Refuses `home` reach and unprobed `codex`; never mounts `/weights` in `activations`/`behaviour` or `/atlas` outside `atlas` |
-| Kept-back frame guard | `backend/level_briefs.py` | Refuses practice readings and captures matching kept-back frames or retention batteries |
-| Base invariant & null floors | `backend/weight_edits.py`, `backend/levelling.py`, `backend/level_knobs.py` | `assert_base` before and after every model call; untouched twin bit-identity; null-row floor `F`; two batch classes |
-| Post-freeze claim gates | `backend/level_claim.py`, `backend/level_knobs.py` | Registration in chained ledger before `os.urandom(32)` draw; calibrated `BarSet`s; read-once; fixed `m`; control standing; retention batteries |
-| Unattended caps & kill switch | `backend/level_drivers.py`, `backend/level_eval.py` | Hard GPU-second, practice-forward, cell, turn, token, owner-approved dollar, and wall-clock caps with process-group `SIGKILL` and `STOP` file |
-| Redacted driver views | `backend/level_book.py`, `backend/level_session.py` | Strips raw kept-back text and per-item rows; blinds planted vs canary harness cards and timings |
+| Off-card sandbox | `backend/level_sandbox.py` | A cell runs under `bwrap`: no GPU, no network, no `$HOME`, read-only `/weights` and `/atlas` (the index's own files only; a symlink among them is refused), one writable `/work`, memory and wall-clock caps. Links, pipes and the like a cell leaves in `/work` are removed unread before the host looks at the folder. |
+| Reach and backend | `backend/level_session.py` | `home` reach and Codex are refused. `/weights` is mounted only at the weights and atlas reaches, `/atlas` only at the atlas reach. |
+| Kept-back wording | `backend/level_briefs.py`, `backend/level_session.py`, `backend/level_knobs.py` | Practice readings, captures and knob text that hold a kept-back frame's wording, or a battery's, are refused, and counted. |
+| The base and the floors | `backend/weight_edits.py`, `backend/levelling.py`, `backend/level_knobs.py` | The model is asserted at its base before and after every call. The null-row floor and two batch classes apply to every reading. |
+| The claim gate | `backend/level_claim.py`, `backend/level_knobs.py` | A fresh reading is registered in the chained book before its items are drawn. Bars come from a calibration in the same book on the same weights. Each edit and knob is read once, and one budget of m fresh readings is spent by claims, knob claims and trials alike. Control edits and retention batteries judge every claim; a knob with no control family cannot be claimed. |
+| What a driver may run | `backend/level_drivers.py` | Claude Code gets the door's tools and nothing else (the owner's ruling, 20 November 2026): no built-in tool, settings, memory, CLAUDE.md or saved session, and an environment of named variables only. An OpenAI-compatible endpoint is local only by its parsed host, and then never through a proxy; a remote one is reached only through its profile, over https, with that profile's key variable and its prices. Redirects are refused. Codex stays refused. |
+| Caps and stops | `backend/level_drivers.py`, `backend/level_mcp.py`, `backend/level_eval.py` | Session caps on GPU seconds, forwards, cells, turns, tokens, dollars and wall time; a study's total dollar and wall caps; a `STOP` file. Spend is counted as the run goes, each request at no less than its size, each reply bounded by a completion limit. When a driver is stopped, a running cell is killed and a running reading is waited for and recorded. One reply can still pass a dollar cap, as its cost is known only when it comes. |
+| What a driver sees | `backend/level_book.py`, `backend/level_session.py`, `backend/level_eval.py` | Redacted book views: no kept-back text, no per-item rows. Blinded cases have neutral ids and folders, and a case whose words show anywhere the driver can see is scored "not blinded". |
 
-## Non-Trust-Boundary Conveniences (Measured & Retirable via `--bare`)
+## Conveniences (measured, and retirable)
 
-Running a Phase 6 arm with `bare=True` (`--bare` on `backend/level_mcp.py`, `--bare-ablation` on
-`scripts/levelling_eval.py plan`) strips the prompt-level conveniences below while keeping every trust boundary above
-intact.
+`bare=True` (`--bare` on `backend/level_mcp.py`, `--bare-ablation` on `scripts/levelling_eval.py plan`) changes the
+driver's page only. It takes away the first two rows below and keeps every trust boundary. The other conveniences are
+listed so a later study can measure them, but `--bare` does not yet take them away.
 
-| Convenience | Where | Assumption about today's driver | Retirement test (`scaffolding_ablations`) |
-|---|---|---|---|
-| Physical-facts & workflow guidance paragraph | `backend/level_drivers.py` (`build_driver_prompt`) | Today's drivers forget that practice ranks are not verdicts, skip floor checks, or forget `W`/`A` handle names inside `/work` | Retire when a driver family achieves equal or higher lead rate and equal or lower GPU-seconds with `bare=True` over `N >= 3` sessions per brief |
-| Cheaper-knob near-miss reminder | `backend/level_drivers.py` (`build_driver_prompt`, `knobs_only`) | Today's drivers try global `logit_bias` without realizing it shifts near-miss prompts equally and triggers `works but harms` | Retire when `bare=True` `knobs_only` sessions avoid naive `logit_bias` bleed at the same rate as standard sessions |
-| Typed `atlas_query` convenience beside sandbox `A` | `backend/level_session.py`, `backend/level_mcp.py` | Drivers without `cell` (e.g., `tools_only`) or drivers reluctant to inspect `.npz` files underuse `/atlas` unless offered typed lookup ops | Retire for sandbox reaches if `bare=True` drivers query `A` inside `cell` with equal lead rate and fewer turns |
-| Tool reply 16 KB truncation in OpenAI loop | `backend/level_drivers.py` (`run_openai_driver`) | Current chat-completion context windows bloat when large JSON tool replies stay verbatim in message history | Raise or remove when long-context drivers show no latency or accuracy regression on un-truncated replies |
-| Scripted baseline recipe heuristics | `backend/level_drivers.py` (`run_scripted_weight_driver`, `run_scripted_knob_driver`) | Serves strictly as a no-driver lower bound ("did agency pay?"), not a scaffold for LLM drivers | Retained permanently as the zero-dollar baseline in every Phase 6 comparison table |
+| Convenience | Where | The guess it encodes | Taken away by `--bare` | When to retire it |
+|---|---|---|---|---|
+| The page's paragraph of physical facts and workflow | `backend/level_drivers.py` (`build_driver_prompt`) | Drivers forget that practice ranks are not verdicts, skip floor checks, or forget the `W` and `A` handles in a cell | yes | When a driver family leads as often, at no more GPU-seconds, with `--bare`, over at least 3 sessions a brief |
+| The knobs mode's reminder that a blunt logit bias moves near-miss items too | `backend/level_drivers.py` (`build_driver_prompt`, knobs only) | Drivers try a global bias without seeing it harms near misses | yes | When `--bare` knobs sessions avoid it as often |
+| The typed `atlas_query` beside the sandbox's `A` | `backend/level_session.py`, `backend/level_mcp.py` | Drivers without `cell`, or reluctant to read `.npz` files, underuse the atlas | no | When `--bare` drivers query `A` in a cell as well, in fewer turns |
+| Cutting a tool's reply to 16 KB in the OpenAI-compatible loop | `backend/level_drivers.py` (`run_openai_driver`) | Long replies bloat a chat's context | no | When long-context drivers do no worse on whole replies |
+| The scripted baselines | `backend/level_drivers.py` | None: they are a fixed lower bound ("did agency pay?"), each its own program | n/a | Kept in every study as the no-driver row |
 
-## How to Run a Scaffolding Ablation
+## How to run a scaffolding ablation
 
 ```bash
-.venv/bin/python -I scripts/levelling_eval.py plan \
-  --brief pronoun_pull --sessions 3 --driver openai --model MODEL \
-  --max-dollars 5.0 --bare-ablation --out study_bare.json
-.venv/bin/python -I scripts/levelling_eval.py run study_bare.json --out /tmp/phase6_bare
+.venv/bin/python -I scripts/levelling_eval.py plan --brief pronoun_pull --sessions 3 \
+  --driver scripted --bare-ablation --out study_bare.json
+.venv/bin/python -I scripts/levelling_eval.py run study_bare.json --out /path/outside/the/checkout/phase6_bare
 ```
 
-The generated `report.md` prints a dedicated **Scaffolding Ablation (Standard vs `--bare`)** table beside the unpooled
-per-arm results.
+An arm of an OpenAI-compatible model needs its endpoint profile and its prices (dollars a million tokens) in the plan
+file's `driver_config`; the `plan` command does not take them yet. A remote endpoint without prices is refused. With
+3 sessions an arm no comparison can separate two arms (the smallest two-sided Fisher p is 0.1), and the report says
+so. Its `report.md` puts the `--bare` table beside the per-arm results.

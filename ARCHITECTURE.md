@@ -2044,25 +2044,25 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/weight_reader.py` | no-card CPU W4A16 / dense safetensors reader (`WeightReader`: `info`, `tensor_pin`, `dense_cols`, `dense_rows`, `quiet_mask`, `down_stream_norms`, `writers`, `save_array`), also mounted read-only inside the off-card sandbox |
 | `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading (short greedy or long sampled / thinking-on with loop & cut-off detectors), `capture_direction`, the read-outs, what a person reads (`lines`) |
 | `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before, plus `driver_view` redaction |
-| `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights`, allowlisted read-only `/atlas` index for `"atlas"` reach, read-only `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`) |
-| `backend/level_session.py` | Phase 2 & 6 practice-only Agent's Door (`LevelSession`: reach/backend enforcement across `behaviour`/`activations`/`weights`/`atlas` plus Phase 2 names, `mode="weight_edit"` vs matched-budget `mode="knobs_only"`, `--bare` ablation flag, GPU-second/forward/cell/wall budgets, `status`/`cell`/`capture`/`atlas_query`/`estimate`/`read`/`write`/`knob_*`/`book_view`/`claim`/`claim_knob` gates, blinded in-memory planted & canary sessions with matched `estimate`/`read` normalization, transcript copy on close) |
-| `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver, plus `--mode`, `--bare`, and `--socket` (`0o600` Unix-socket bridge outside `/work` so multi-session CLI drivers share one live model handle with zero reloads) |
+| `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights`, a read-only `/atlas` of the index's own files at the atlas reach, read-only `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`); links, pipes and the like a cell leaves in `/work` are removed unread before the host reads the folder |
+| `backend/level_session.py` | Phase 2 and 6 practice-only Agent's Door (`LevelSession`: the reaches `behaviour`, `activations`, `weights` and `atlas`, and Phase 2's names; `mode="weight_edit"` or `mode="knobs_only"`; `--bare`; GPU-second, forward, cell and wall budgets; the `status`, `cell`, `capture`, `atlas_query`, `estimate`, `read`, `write`, `knob_read`, `knob_write`, `book_view`, `claim` and `claim_knob` gates, the kept-back guard on items and on a knob's own text; blinded in-memory planted and canary sessions with matched `estimate`/`read` normalization; transcript copy on close) |
+| `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver, plus `--mode`, `--bare` and `--socket`: a Unix-socket bridge in a private folder outside `/work`, one call at a time, so a CLI driver's sessions share one loaded model; when the driver stops, it kills a running cell and waits for a running reading |
 | `backend/level_briefs.py` | Phase 3 versioned briefs, policy guard, disjoint practice/kept-back frame generators, wording-overlap `KeptBack`, retention battery generators, 4 starter briefs |
 | `backend/level_claim.py` | Phase 3 calibrated hashed `BarSet`s, the gate every fresh reading is asked before it is registered (`fresh_reading_gate`, a claim's and a trial's alike), post-freeze `os.urandom(32)` claim execution, dual-batch-class control/battery/knob judgement, bounded Claim Sheets |
 | `backend/level_routes.py` | Phase 4 FastAPI `/api/level/*` routes (status, estimate, compare with 409 vault-overlay guard, model-free live & recorded ledger replay) |
 | `backend/level_trial.py` | Phase 5 trial of record: the registration folder (exactly its files, `SHA256SUMS` read byte for byte), the reworded set (uses counted by an item's wording), the conditions of record (a process that has read nothing, a clean checkout, the folder committed, the runner and reader as hashed), `run_trial_of_record` (of record, refused, or a dry run), `judge_readings`, `rejudge_trial` from a book, the sheet and the sentence |
 | `backend/level_export.py` | Phase 5 owner's export: a llama.cpp LoRA adapter and its manifest outside every git checkout, compiled against the base served (`TargetBase`: a GGUF, a checkpoint, the loaded model), keys that say what was checked (`trial_standing`, the implant label), an edit rebuilt off the model and kept to its id, `verify_exported_lora` against the edit's own arithmetic, `llama_server_smoke` |
 | `backend/level_rerun.py` | Phase 5 re-run: a kit of a registration with the home draw's seed (rebuilt edits only), the volunteer's run of the home items into a book of its own, and an intake that unpacks a plain tar without trusting it and judges the returned book against the home book |
-| `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`) with allowlisted `/atlas` `bwrap` bind collection and label-gate provenance (`trusted=False` below layer 40 on 31B or zero lens/eye overlap) |
-| `backend/level_knobs.py` | Phase 6 matched-budget cheaper-knob kernel (`KnobSpec` for prompts, decoding `thinking`/`sampler`/`logit_bias`, and transient `direction`/`neuron_mul`/`neuron_add` steering hooks), matched random steering controls, `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (post-freeze OS-random draw, calibrated `BarSet`, read-once, fixed `m`, dual batch classes, retention batteries), `render_knob_sheet` |
-| `backend/level_drivers.py` | Phase 6 driver-neutral runner layer (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard vs `--bare`, `ScriptedWeightDriver`, `ScriptedKnobDriver`, `ReplayDriver`, `OpenAIChatDriver`, folder-reach `ClaudeCLIDriver` over Unix-socket MCP bridge with secret stripping and process-group `SIGKILL`, and gated `CodexCLIDriver` refused until probed with private compile cache) |
-| `backend/level_eval.py` | Phase 6 multi-session driver evaluation (`EvalStudyPlan`, `run_eval_study` with single calibration and strictly isolated per-session side books, unpooled `summarize_study` with Wilson 95% CIs, exact two-sided Fisher & permutation tests, `load_study_from_book`, `render_study_report`, `run_blinded_benchmark` at both healthy-reference and no-healthy-reference reaches, `<= 600`-word `render_cold_driver_page`, and `<= 200`-word `make_rebuild_description` / `run_rebuild_check`) |
-| `docs/SCAFFOLD.md` | Phase 6 thin scaffolding register separating fixed trust boundaries from `--bare`-retirable conveniences |
+| `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`); binds the index's own files only and refuses a symlink; marks each lens or eye label with the label gate's check in the gate's own words (`gate_check`, checked equal to `label_gate.label_check`), and sets steer words aside by the steer lens's own check |
+| `backend/level_knobs.py` | Phase 6 cheaper knobs (`KnobSpec`: a system prompt; decoding `thinking`, `sampler`, `logit_bias`; transient `direction`, `neuron_add`, `neuron_mul` steering), `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (asked `fresh_reading_gate`, spends one of the brief's m, needs a steering part; a `neuron_mul` knob faces its weight-edit twin's control edits and is read once with it; judged by `judge_claim`, with the knob gate's stricter frame interval and panel figure), `render_knob_sheet` |
+| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `ClaudeCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, the CLI's own spending cap; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
+| `backend/level_eval.py` | Phase 6 studies (`EvalStudyPlan`; `run_eval_study`: one calibration, each session in a side book of its own scored on its own lines, arms in turn, a session counted only when it ran to an end; `summarize_study`: Wilson intervals, exact Fisher and permutation tests, never pooled, no arm named ahead without p < 0.05; `load_study_from_book`, which works each outcome out again from its side book; `render_study_report`; `run_blinded_benchmark`, plumbing checks with neutral case ids and `repair_composition`; `render_cold_driver_page`; `make_rebuild_description` and `run_rebuild_replay`) |
+| `docs/SCAFFOLD.md` | Phase 6 register of the trust boundaries a driver never loses and the conveniences a study can take away (`--bare` takes away the page's two convenience paragraphs) |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
 | `scripts/levelling_trial.py` | `reworded`, `register`, `verify`, `run` (the owner's command line for a trial; `run --dry-run` reads what would not be of record) |
 | `scripts/levelling_export.py` | `lora`, `verify`, `show`, `smoke` (the owner's export; CPU, no model loaded) |
 | `scripts/levelling_rerun.py` | `pack`, `verify-kit`, `run`, `intake` (a volunteer's re-run and its intake) |
-| `scripts/levelling_eval.py` | `plan`, `run`, `knobs`, `rebuild`, `cold-page`, `report` (owner CLI for Phase 6 studies, cheaper-knob baselines, cold-driver sheets, and rebuild checks) |
+| `scripts/levelling_eval.py` | `plan`, `run`, `knobs`, `rebuild`, `cold-page`, `report` (the owner's command line for Phase 6 studies, knob claims, cold-driver pages and rebuild replays; each refuses before it loads the model) |
 
 **The edit.** A list of terms, each an additive difference from one feed-forward linear's shipped tensor, at dose d
 the weight W + d Δ (1 the edit, 0 the base, -1 its mirror). Four forms are built (slices 1a and 1b): a column term on
@@ -2423,44 +2423,75 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   new book. A home book whose trial is out for re-run stays unpublished until the returns are in.
 
 **Phase 6: whether agents help** (`backend/level_atlas.py`, `backend/level_knobs.py`, `backend/level_drivers.py`,
-`backend/level_eval.py`, `docs/SCAFFOLD.md`, `scripts/levelling_eval.py`; none of `level_eval` or `level_drivers` is
-imported or named by `level_mcp.py`, `level_session.py`, `level_routes.py`, `scientist_tools.py`, `scientist_mcp.py`,
-or `server.py`):
-- **Reach ladder and read-only atlas (`backend/level_atlas.py`, `backend/level_sandbox.py`, `backend/level_session.py`).**
-  Evaluations distinguish four explicit reaches: `behaviour` (practice/claim/book tools only; zero `cell`, `capture`,
-  weights, or atlas), `activations` (`cell` + `capture`, zero weights or atlas), `weights` (`cell` + `capture` +
-  read-only `/weights`), and `atlas` (adds allowlisted read-only `/atlas` index files as `A` inside `bwrap` and
-  `LevelSession.atlas_query`, never binding `scientist/`, `uploads/`, `logs/`, `endpoints.json`, or `level_book.jsonl`).
-  `AtlasReader` enforces Theodolite's label-gate provenance (`trusted=False` below layer 40 on 31B or when lens/eye
-  top-10 overlap is zero) and supports exact word lookup (with substring opt-in) over `vocab.json`.
-- **Matched-budget cheaper-knob mode (`backend/level_knobs.py`, `mode="knobs_only"`).** Same driver, same brief, same
-  kept-back frames, same calibrated `BarSet`, and same budget, with all weight-edit tools hidden and refused. Permits
-  only bounded system prompts, decoding (`thinking`, `sampler` mirroring `backend/sampler_request.py`, `logit_bias`),
-  and transient activation steering (`direction`, `neuron_mul`, `neuron_add`), leaving `weight_edits.assert_base` clean
-  after every call. `run_fresh_knob_claim` draws fresh kept-back frames post-freeze with `os.urandom(32)`, evaluates
-  matched random steering controls for steering knobs, checks dual batch classes and all three gating retention
-  batteries (`neutral_text`, `near_misses`, `labelled_panel`), enforces read-once per `knob_id` and fixed `m`, and
-  places null rows at the lowest steered layer (or the final layer for prompt/decoding knobs). Blinded `knobs_only`
-  sessions are refused because planted weight faults are not repairable without weight edits.
-- **Driver-neutral runners and kill switches (`backend/level_drivers.py`, `backend/level_mcp.py --socket`).** Supports
-  deterministic no-LLM baselines (`ScriptedWeightDriver`, `ScriptedKnobDriver`), `ReplayDriver`, `OpenAIChatDriver`
-  (reusing `backend/scientist_chat.py` profiles, env-var-only keys, refusing remote endpoints without an explicit
-  owner-approved `max_dollars`), folder-reach `ClaudeCLIDriver` (bridged to a live `LevelSession` over a `0o600` Unix
-  socket outside `work_dir` so multi-session studies never reload the 31B model, with `scientist_chat.child_env` secret
-  stripping, `cwd=work_dir`, `--disallowedTools Bash`, and process-group `SIGKILL` on wall/dollar/`STOP`-file caps),
-  and `CodexCLIDriver` (strictly refused until `codex_probed=True` with a private compile cache outside `/tmp`).
-  `docs/SCAFFOLD.md` registers every convenience prompt/tool wrapper and `--bare` ablates all non-safety scaffolding.
-- **Multi-session studies, blinded scoring, and protocol checks (`backend/level_eval.py`, `scripts/levelling_eval.py`).**
-  `run_eval_study` calibrates `BarSet` once and runs `N >= 3` independent sessions per arm in strictly isolated side
-  books seeded from the calibration book (never touching the owner's default book; never a trial of record), halting
-  cleanly on total dollar/wall caps or a study `STOP` file. `summarize_study` never pools across reaches or driver
-  families, reporting per-arm Wilson 95% CIs, exact two-sided Fisher and permutation tests, matched `weight_vs_knobs`,
-  `reach_ladders` (including `atlas_vs_weights`), `agent_vs_scripted`, and `scaffolding_ablations`; `load_study_from_book`
-  verifies `study_book.jsonl` and every isolated session book model-free. `run_blinded_benchmark` runs planted-fault
-  (both `with_healthy_reference=True` and `False`) and canary cases with identical harness cards and external
-  ground-truth scoring (localization, additive `stack` recovery, canary abstention). `render_cold_driver_page` emits
-  `<= 600`-word zero-spoiler sheets, and `make_rebuild_description` / `run_rebuild_check` verify `<= 200`-word
-  reproduction of any paired reading.
+`backend/level_eval.py`, `docs/SCAFFOLD.md`, `scripts/levelling_eval.py`, with changes to `level_session.py`,
+`level_mcp.py`, `level_sandbox.py`, `level_claim.py` and `level_trial.py`; `level_eval` and `level_drivers` are imported
+by none of `level_mcp.py`, `level_session.py`, `level_routes.py`, `scientist_tools.py`, `scientist_mcp.py` or
+`server.py`). As built it can run a driver that is an agent; none has been run, so whether agents help is not yet
+measured.
+- **Four reaches.** `behaviour` (the practice, claim and book tools, nothing else), `activations` (and `cell` and
+  `capture`), `weights` (and the read-only `/weights` in a cell), `atlas` (and the atlas index). A study never pools
+  them.
+- **The atlas reach** (`backend/level_atlas.py`). `AtlasReader` reads the index (lens, naked-eye and steer-lens words,
+  wiring, activation scales), through the door's `atlas_query` and in a cell as `A`. Only the index's own files are
+  bound, read-only, at `/atlas`; a symlink among them is refused. Each lens or eye label carries the label gate's check
+  in the gate's own words (`held_back`, `reasons`, `band`, `lens_validated`), restated from `backend/label_gate.py`
+  because the sandbox has no torch; a CPU check holds the restatement equal to `label_check` on all 11,880 cases of
+  layer, overlap, lens and silence, and the card on a sample of the real index. Nothing is called trusted: the gate
+  only sets labels aside. Steer-lens words are set aside by the steer lens's own check alone (`steer_check.json`, for
+  the same build of the lens): where it found the lens weak or did not check it, as the atlas pages do.
+- **Cheaper knobs** (`backend/level_knobs.py`, `mode="knobs_only"`). The same door, brief, kept-back frames, bars and
+  budget, with the weight-edit tools taken away. A knob is a system prompt, decoding settings (thinking, sampler,
+  logit bias) and transient steering: `direction` adds a fixed vector to the stream at a layer's output, `neuron_add`
+  a fixed push there along some neurons' summed write direction, `neuron_mul` multiplies some neurons' activations
+  where they enter the down projection (the same arithmetic as the weight edit that scales those columns: on the card
+  0.45484 nats both ways). A knob's fresh claim:
+  - is asked `level_claim.fresh_reading_gate`, the gate a weight claim and a trial are asked, and spends one of the
+    brief's m fresh readings (one budget a brief, whichever way it is spent); a `neuron_mul` knob counts as its
+    weight-edit twin for read-once, and a trial of the edit follows the knob's lead only when the knob was that
+    arithmetic alone, at dose 1;
+  - needs a steering part: a prompt or a decoding setting alone has no control edits to be judged against, and is
+    refused before anything is spent, as an edit with none is;
+  - faces, for `neuron_mul`, the control edits its weight-edit twin faces on the same draw (paired and written), and,
+    for a push, random pushes of its own size at its layer; its prompt, bias and sampler go to every control row and
+    to its reversed read, so those differ from it only in the steering;
+  - is judged by `judge_claim` (near-miss ratio, reversed read, batteries read as the bars were calibrated, in both
+    batch classes, the larger figure kept), with the knob gate's stricter frame interval and panel figure kept, and
+    the weight path's rule for unstable items and untouched rows;
+  - is refused before it registers when its text holds any brief's kept-back wording, when a part of it cannot act on
+    the brief's reading, or when its items would run past the reader's length.
+  Every knob sheet says what its control edits are and are not matched on, and what a knob claim does not read.
+- **Drivers** (`backend/level_drivers.py`). Two scripted baselines (a weight one and a knob one; each a fixed program,
+  not the same program, so they are lower bounds, and each puts forward only what the gate can take), a replay driver,
+  an OpenAI-compatible driver, and Claude Code; Codex stays refused. Every outcome says whether the driver worked the
+  door (`door`, `driver_failure`), why it stopped, and a refusal's own words.
+  - Claude Code gets the door's tools and nothing else (the owner's ruling, 20 November 2026): no built-in tool, no
+    settings, memory or CLAUDE.md, no saved session, an environment of named variables, and the CLI's own spending
+    cap. It reaches the door over a Unix socket in a private folder, one call at a time; when it is stopped, a running
+    cell is killed and a running reading is waited for and recorded. A CPU check runs the real CLI with no network
+    against a stub of the model's API on this machine.
+  - An OpenAI-compatible endpoint is on this machine only by its parsed host, and is then reached directly, never
+    through a proxy; a remote one only through its profile in `backend/scientist_chat.py`, over https, with that
+    profile's key variable and its prices. Redirects are refused. Spend is counted as the run goes, each request at no
+    less than its own size and each reply bounded by a completion limit; one reply can still pass a dollar cap, as its
+    cost is known only when it comes.
+- **Studies** (`backend/level_eval.py`, `scripts/levelling_eval.py`). An owner's plan of arms (driver, reach, mode,
+  effort) run in turn, replicate by replicate; each session works in a side book that starts as a copy of one
+  calibration book, is scored on its own lines, and is tied to the study book by its head and count. A session
+  counts in its arm only when its driver worked the door and it ended by the driver's choice or a budget; the rest
+  are listed apart. Arms are compared by Fisher's exact test and a permutation test with Wilson intervals, never
+  pooled; no arm is named ahead without a two-sided p under 0.05 with at least three sessions a side, and at three
+  sessions an arm none can be (the smallest such p is 0.1), which every report says.
+- **Built, measuring no driver yet.**
+  - The blinded planted-fault benchmark. No driver can yet propose a repair in a blinded session (there is no claim
+    tool there, and adding one is the owner's), so its rates are left unmeasured, and a replay given the answer is a
+    plumbing check. Where a plant-and-repair figure is read, the record says whether the repair would hold on a
+    checkpoint with the planted weights: the harness adds the two edits' deltas, so a scale repair of a planted
+    silence recovers in the harness and not on such a checkpoint.
+  - The rebuild description: a reading's plan, base and items in at most 200 words, counting every word and number,
+    and its same-process replay. The ruling's test, a fresh session rebuilding the reading from the description, has
+    not been run.
+  - The cold-driver page: at most 600 words, saying when it names a site. The ruling's test, two driver families
+    reaching the brief from it, has not been run.
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
@@ -2548,19 +2579,13 @@ checkout and another runner with and without their leaves, code no commit holds,
 control edit that counted on one card and not the other, control edits that delivered three times as much or were
 counted as other draws, a return nested 3,000 deep or stating a verdict of NaN, odd JSON and unsafe tars); and
 zero kept-out words (322/322 checks passing in 65 s).
-`scripts/check_level_eval.py` (CPU stand-ins + live `bwrap` sandbox + Unix-socket MCP bridge + mock OpenAI/Claude CLI
-subprocesses) verifies Phase 6 across 8 sections: read-only `AtlasReader` + allowlisted `/atlas` `bwrap` containment and
-label-gate provenance; cheaper-knob kernel validation, `neuron_mul(0)` matching `weight_edits.silence` per-row, blunt
-`logit_bias` triggering `works but harms`, matched random steering controls, read-once/`m`/same-book-calibration
-refusals, and `written_loop` knob claims; Phase 6 reach ladder (`behaviour`/`activations`/`weights`/`atlas`),
-`knobs_only` tool hiding, `KeptBack` enforcement on `knob_read`, and `0o600` Unix-socket `level_mcp.py --socket` bridge;
-`--bare` prompt stripping, `OpenAIChatDriver` tool loop and dollar/remote-cap refusals, `KillSwitch` `STOP` file,
-`CodexCLIDriver` unprobed refusal, and `ClaudeCLIDriver` socket bridge / secret stripping / `SIGKILL` wall cap; exact
-Wilson/Fisher/permutation statistics, `validate_study_plan` refusals, 7-arm × 3-session (21 isolated verified side
-books) unpooled study + model-free `load_study_from_book` + study-level `STOP` halt; blinded planted-fault (both
-healthy-ref and no-healthy-ref) & canary benchmark with identical cards and exact additive repair recovery; `<= 600`-word
-cold-driver pages, `<= 200`-word rebuild check (0.0 gap), and `scripts/levelling_eval.py` CLI; and agent-surface
-isolation + zero kept-out words across all Phase 6 modules, docs, and rendered outputs (84/84 checks passing in 59 s).
+`scripts/check_level_eval.py` (CPU stand-ins, a live `bwrap` sandbox, the Unix-socket bridge, mock OpenAI-compatible
+endpoints, and the real `claude` CLI run with no network against a stub of the model's API on this machine) checks
+Phase 6 in 8 sections: the atlas reader and its mount (the gate restated, against `label_check` on all 11,880 cases);
+the knob kernel and the knob claim; the reaches, `knobs_only` and the bridge; the drivers, their caps, endpoints and
+stops; studies and their statistics; the blinded benchmark; the cold page, the rebuild and the command line; and that
+no agent or page surface imports `level_eval` or `level_drivers`, with no kept-out words (214 of 214 at `9f2dc6d`,
+104 s).
 On the 31B card (RTX 5090; each record is of the code at its date: the door's and the trial's are of the sixth
 round of review mends of Phase 5, `9d8c836`, at which the other three scripts passed again without their records
 being kept):
@@ -2643,27 +2668,30 @@ being kept):
   checks failed for expecting all 16 fresh items to read, which that draw's did not either, and the script now
   counts those that read.
 
-- `scripts/verify_level_eval.py` (Phase 6 on the 31B, 20 November 2026, `verify_eval.json` and `verify_eval_book.jsonl`):
-  18 of 18 checks passed in 319.3 s, peak 18.27 GiB (rest 17.97 GiB), 0 unpacker fallbacks, ledger whole (12 entries),
-  zero kept-out words across all 9 rendered sheets, reports, cold-driver pages, and rebuild descriptions. Real 31B
-  `AtlasReader` (60×21,504, 262,144-token vocab) found 158 trusted `'she'` hits in 1.64 s (`L50 N5313` trusted with
-  `shared_top10 = 8`, `L10 N0` marked untrusted `below_layer_40`), and live `bwrap` mounted both the 23.26 GB checkpoint
-  and 1.5 GB atlas index read-only in 1.20 s with zero leaks. On `pronoun_pull`: `neuron_mul(0)` steering on the E6
-  layer-50 `'she'` ten matched `weight_edits.silence` identically (`0.45484` vs `0.45484`, gap `0.0`); blunt `logit_bias`
-  (`-4.0` on `' she'`, 11.82 s) read `works but harms` (`4.0`, `near_miss_abs = 4.0`); transient `neuron_mul(0)` steering
-  on E6 layer-50 `'she'` ten with `C = 59` matched random steering controls (51.82 s) beat all 59/59 controls
-  (`p_fw = 0.05`, `small = 1.650`, `large = 1.660`) and read `works but harms` (`near_miss_abs = 0.777`, mirroring Phase 3's
-  weight-edit verdict); a system-prompt knob (27.39 s) read `works but harms` (`small = 14.68`, `large = 14.71`,
-  `neutral_kl = 2.236`, `near_miss_abs = 6.306`); read-once and `m = 3` refusals passed live. A 5-arm × 3-session (15
-  isolated verified side books, `m = 1`, `C = 19`, 182.48 s, `unpacker: compiled`) comparison study left reaches and
-  families unpooled: scripted `behaviour` / `activations` / `weights` weight-edit arms abstained 3/3 (`no_submission`,
-  1.85–3.23 s mean GPU), scripted `atlas` weight-edit submitted 3/3 (`kept the base` 2, `void` 1, median directed
-  `+0.085` nats, 24.25 s mean GPU), and matched-budget `weights` `knobs_only` submitted 3/3 (`works but harms` 3/3,
-  median directed `+9.19` nats, 24.53 s mean GPU). Blinded layer-50 planted vs canary benchmark (3.67 s) confirmed
-  identical cards at both `weights` and `activations` reaches, `canary_abstention_rate = 1.0`, and exact additive repair
-  recovery (`kl_plant_alone = 0.004596`, `kl_after_repair = 0.0`, `recovery_fraction = 1.0`). Cold-driver pages were
-  220–242 words (zero site spoilers), and the live 31B `<= 200`-word rebuild test (36 words, 0.61 s) reproduced all 6
-  figures with `max_abs_gap = 0.0`.
+- `scripts/verify_level_eval.py` (Phase 6 on the 31B, 21 November 2026, `verify_eval.json` and
+  `verify_eval_book.jsonl`, of `9f2dc6d` with no path changed and the code's digests in the record): 19 of 19 checks
+  passed in 511 s, peak 18.55 GiB over the run (rest 17.97), no unpacker fallback.
+  - The atlas: on the real index (60 × 21,504, the jpp-base lens) the reader's gate equalled `label_check` on 4,800
+    sampled faces. 158 lens labels with 'she' among their words pass the gate (L50 N5313 shares 8 of 10). Of 16,588
+    steer hits for 'she', 1,271 are kept, all at layers 51 and 52, where the steer check agrees. A cell under `bwrap`
+    was refused writes to `/atlas` and `/weights`, and saw only the index's own files (2.12 GB bound).
+  - Knobs on `pronoun_pull`: a `neuron_mul(0)` knob on E6's layer-50 'she' ten read 0.45484 nats, the weight
+    silence's figure to the last digit. A bias alone, a prompt alone and 0 controls were refused with nothing spent.
+    The knob's claim, against its weight edit's own 59 control edits a family, read "works but harms": target 1.31 and
+    1.29 in the two batch classes, the reversed read −1.06 and −1.08, no control edit of either family as large, and
+    near misses moved 0.98 against a bar of 0.25. The same arithmetic plus a bias was refused as read once.
+    `neuron_mul(0.5)` with a bias read "kept the base": its floor, 0.20, is more than a quarter of the least effect of
+    0.75, and near misses moved 3.51. A weight claim after the two knob claims was the brief's third fresh reading.
+  - A study of five scripted arms, three sessions each (15 side books, all counted): the behaviour, activations and
+    weights weight-edit baselines and the weights knob baseline kept the base 3 of 3 (no submission). The atlas
+    baseline submitted 3 of 3: kept the base 2, void 1. There was no lead anywhere, and at three sessions an arm none
+    could have been told apart (p ≥ 0.1).
+  - The blinded benchmark (plumbing): neutral case ids, and the same door surface for planted and canary cases at
+    both reaches. Its rates are unmeasured, since no driver can propose. A scale ×2 repair of the planted silence
+    comes to the unedited model (KL 0 by arithmetic, not read), and would not hold on a checkpoint. A ×1.5 repair read
+    0.00118 against the plant's 0.00460, 0.74 of the way back, and would not hold on a checkpoint either.
+  - Cold pages ran 220 to 242 words and named no site. A rebuild description of 191 words (1,646 characters) was
+    replayed in the same process, with all 144 figures equal and the same runtime.
 
 **Not built:** attention, embedding and norm edits; a folded form for low-rank terms; fine-tuned LoRA adapters as a
 cheaper-knob arm; gradients. Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.

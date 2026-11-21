@@ -1,11 +1,27 @@
 {
- "date": "2026-11-20T16:38:06Z",
- "commit": "a9e2a4ff9b260434b71c1e3e4cb6209a4581f75e",
+ "date": "2026-11-21T07:36:25Z",
+ "commit": "9f2dc6db3f549615dcc00f622612673de5235cc6",
+ "changed_paths": 0,
+ "code_sha256": {
+  "backend/level_atlas.py": "6805cae31dc7bc5f906a8079147175b38c3d3992e7c9ee6fc7b4103063821df0",
+  "backend/level_knobs.py": "f6e0c7788175b8d8438bfd40d7a1aec2e8323e5f2164dbbe731ccd47e15178fe",
+  "backend/level_drivers.py": "6f563c74b7b88b0eedf7a27f8b86c51d1017c5028441be13b8586ee835ec13bb",
+  "backend/level_eval.py": "1aa29b6f7ca9798afd26ab0b84066342cf71f9ade14bf135627ac568c991c6b5",
+  "backend/level_mcp.py": "3d1a12c24c0ee76b37d0032c11ff2cbb9b3ef411bb9544c8efbf1e9878f56c86",
+  "backend/level_sandbox.py": "34655e2f2de473ccd7eac8272f6e22112fb68aa1622c172f23661201cf673c05",
+  "backend/level_session.py": "ed8ce96f76c3bfd5c8c3e58b65d7b748fecfcf0b06a3de5c5c2d6e027c4e480d",
+  "backend/level_claim.py": "afe6ef5b2c74af218c8106162e22685e3dcd614ffd6f40580790cb6de3f1153c",
+  "backend/level_briefs.py": "7d2891f5336955e528fdc3b306e80caca70720576e13fbf1d7890c744eff0cd9",
+  "backend/level_book.py": "817d2654f1602a34abb40cad81dc9eb2140173c32424b6f67ee1172d6b968e12",
+  "backend/levelling.py": "0421406125704b525c2a006e2c56ee22ce43d48640a0e52febe2514707eb471d",
+  "backend/weight_edits.py": "8088107cb6e9b17453dc45d4fd15fff06468eec3208e4ea0beec2051ecff617c",
+  "scripts/verify_level_eval.py": "04874c5e7aae32d2211737c4373fbdc9c6047efa0fa0d75646a91e792fdfe100"
+ },
  "environment": "measured on the 31B card",
  "gpu": "NVIDIA GeForce RTX 5090",
  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
  "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
- "load_seconds": 9.68,
+ "load_seconds": 8.76,
  "rest_gib": 17.97,
  "checks": [
   {
@@ -22,11 +38,12 @@
    "name": "atlas_reader_31b_live",
    "ok": true,
    "detail": {
-    "query_seconds": 1.64,
+    "query_seconds": 3.036,
     "n_layers": 60,
     "n_neurons": 21504,
     "vocab_size": 262144,
-    "she_trusted_total_hits": 158,
+    "lens_id": "jpp-base",
+    "she_gate_passes_total_hits": 158,
     "she_top3": [
      [
       59,
@@ -44,19 +61,67 @@
       3
      ]
     ],
-    "L50_N5313_trusted": true,
-    "L50_N5313_shared_top10": 8,
-    "L10_N0_trusted": false,
-    "L10_N0_reason": "below_layer_40",
+    "she_steer_total_hits": 16588,
+    "she_steer_kept_total_hits": 1271,
+    "she_steer_kept_layers": [
+     51,
+     52
+    ],
+    "L50_N5313_gate": {
+     "shared_top10": 8,
+     "held_back": false,
+     "reasons": [],
+     "band": "band",
+     "sampled_layer": true,
+     "in_measured_band": true,
+     "lens_validated": true,
+     "edited": false
+    },
+    "L50_N5313_steer_check": {
+     "standing": "agrees",
+     "set_aside": false,
+     "check_written": true
+    },
+    "L10_N0_gate": {
+     "shared_top10": 0,
+     "held_back": true,
+     "reasons": [
+      "below_layer_40",
+      "shares_nothing"
+     ],
+     "band": "chance_where_sampled",
+     "sampled_layer": true,
+     "in_measured_band": false,
+     "lens_validated": true,
+     "edited": false
+    },
+    "gate_vs_label_check": {
+     "faces": 4800,
+     "differ": 0
+    },
+    "atlas_bytes_bound": 2124716288,
     "bwrap_cell": {
      "ok": true,
-     "seconds": 1.2046,
+     "seconds": 1.0991,
      "w_layers": 60,
      "a_layers": 60,
      "hits": 5,
-     "ro_ok": true,
-     "sci_leaked": false,
-     "book_leaked": false
+     "atlas_write_refused": true,
+     "weights_write_refused": true,
+     "weights_overwrite_refused": true,
+     "atlas_entries": [
+      "act_scale.npz",
+      "layout_writes.npz",
+      "lens.npz",
+      "passages.d",
+      "steer_check.json",
+      "steer_dose.json",
+      "steer_lens.npz",
+      "vocab.json",
+      "wiring.npz",
+      "wiring_check.npz"
+     ],
+     "passages_entries": 23
     }
    }
   },
@@ -65,21 +130,34 @@
    "ok": true,
    "detail": {
     "ok": true,
-    "seconds": 1.2046,
+    "seconds": 1.0991,
     "w_layers": 60,
     "a_layers": 60,
     "hits": 5,
-    "ro_ok": true,
-    "sci_leaked": false,
-    "book_leaked": false
+    "atlas_write_refused": true,
+    "weights_write_refused": true,
+    "weights_overwrite_refused": true,
+    "atlas_entries": [
+     "act_scale.npz",
+     "layout_writes.npz",
+     "lens.npz",
+     "passages.d",
+     "steer_check.json",
+     "steer_dose.json",
+     "steer_lens.npz",
+     "vocab.json",
+     "wiring.npz",
+     "wiring_check.npz"
+    ],
+    "passages_entries": 23
    }
   },
   {
    "name": "calibrate_bars_31b",
    "ok": true,
    "detail": {
-    "seconds": 11.6,
-    "bars_sha256": "edf8ea1150c5"
+    "seconds": 8.86,
+    "bars_sha256": "1a256482d189"
    }
   },
   {
@@ -92,142 +170,403 @@
    }
   },
   {
-   "name": "knob_claim_1_logit_bias_harms",
+   "name": "knob_claims_without_controls_refused_before_registering_31b",
    "ok": true,
    "detail": {
-    "seconds": 11.82,
-    "verdict": "works but harms",
-    "small_dir": 4.0,
-    "large_dir": 4.0,
-    "near_miss_abs": 4.0
+    "fresh_readings_spent": 0,
+    "refused": {
+     "logit_bias_only": "A fresh knob claim needs a steering part: a prompt or a decoding setting alone has no family of controls to be read against, and a claim with none is refused (a",
+     "prompt_only": "A fresh knob claim needs a steering part: a prompt or a decoding setting alone has no family of controls to be read against, and a claim with none is refused (a",
+     "steering_controls_0": "A fresh reading takes controls a family as a whole number of 1 or more; 0 was given."
+    }
    }
   },
   {
-   "name": "knob_claim_2_steering_mul_with_controls",
+   "name": "knob_claim_1_mul_against_weight_edit_controls_31b",
    "ok": true,
    "detail": {
-    "seconds": 51.82,
+    "seconds": 76.73,
     "verdict": "works but harms",
-    "small_dir": 1.64953,
-    "large_dir": 1.66027,
-    "near_miss_abs": 0.77748,
-    "ctl_at_least": 0,
-    "ctl_count": 59,
-    "ctl_p_fw": 0.05
-   }
-  },
-  {
-   "name": "knob_claim_3_prompt_knob",
-   "ok": true,
-   "detail": {
-    "seconds": 27.39,
-    "verdict": "works but harms",
-    "small_dir": 14.6825,
-    "large_dir": 14.70749,
-    "near_miss_abs": 6.30632,
-    "neutral_kl": 2.23573,
     "reasons": [
-     "neutral_kl 2.235727220773697 > bar 0.05",
-     "near_miss_abs 6.306322693824768 > bar 0.25"
-    ]
+     "near_misses abs effect (0.9804089069366455, ratio 0.7612931302948976) exceeded bar (abs <= 0.25, ratio <= 0.35)."
+    ],
+    "small_dir": 1.30768,
+    "large_dir": 1.28782,
+    "house_bar": 0.28686,
+    "reversed": {
+     "small": {
+      "mean": 1.0640038422175817,
+      "directed": -1.0640038422175817,
+      "ok": true
+     },
+     "large": {
+      "mean": 1.0775888987949915,
+      "directed": -1.0775888987949915,
+      "ok": true
+     }
+    },
+    "controls": {
+     "small": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     },
+     "large": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     }
+    },
+    "coverage": {
+     "tolerance": 2.0,
+     "requested": 59,
+     "found": 59,
+     "sufficient": true,
+     "terms": [
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "count": 10,
+       "min_eligible": 45,
+       "min_distinct": 34,
+       "median_eligible": 9842.0,
+       "union_eligible": 21354,
+       "drawn": 59
+      }
+     ],
+     "draw": "independent",
+     "disjoint_sets": 31
+    },
+    "unstable_target": 1,
+    "batteries": {
+     "neutral_kl": 3.54879634869576e-05,
+     "near_miss_abs": 0.9804089069366455,
+     "near_miss_ratio": 0.7612931302948976,
+     "panel_kl": 5.302940420115476e-08,
+     "panel_own_drop": 0.0,
+     "harm_passed": false,
+     "harm_reasons": [
+      "near_misses: {'available': True, 'gating': True, 'mean_effect': 0.9467856884002686, 'abs_effect': 0.9804089069366455, 'ratio_to_target': 0.7612931302948976, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'passed': False, 'items': {'read': 4, 'given': 4}}"
+     ]
+    }
    }
   },
   {
-   "name": "knob_read_once_and_m_budget_refused",
+   "name": "knob_same_arithmetic_refused_read_once_31b",
    "ok": true,
    "detail": {
+    "refused": "Read once: the weight edit whose arithmetic this knob is (be4328fdb60d) has already been read on brief \"pronoun_pull\" (6df8484d9081) in this book by a knob claim of its arithmetic (knob 2b7191cc9709, line 6): a knob that is an edit's arithmetic and the edit are read once between them.",
+    "fresh_readings_spent": 0
+   }
+  },
+  {
+   "name": "knob_claim_2_mul_half_with_bias_31b",
+   "ok": true,
+   "detail": {
+    "seconds": 77.35,
+    "verdict": "kept the base",
+    "reasons": [
+     "small class floor too loud (F=0.20319, M=0.75, M < 4F).",
+     "large class floor too loud (F=0.20319, M=0.75, M < 4F).",
+     "near_misses abs effect (3.5126043558120728, ratio 0.7992530992564411) exceeded bar (abs <= 0.25, ratio <= 0.35)."
+    ],
+    "small_dir": 4.39486,
+    "large_dir": 4.41718,
+    "reversed": {
+     "small": {
+      "mean": -3.606269747018814,
+      "directed": 3.606269747018814,
+      "ok": true
+     },
+     "large": {
+      "mean": -3.6157351434230804,
+      "directed": 3.6157351434230804,
+      "ok": true
+     }
+    },
+    "controls": {
+     "small": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     },
+     "large": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     }
+    },
+    "unstable_target": 0,
+    "batteries": {
+     "neutral_kl": 3.642029014372383e-05,
+     "near_miss_abs": 3.5126043558120728,
+     "near_miss_ratio": 0.7992530992564411,
+     "panel_kl": -1.2021263540162863e-08,
+     "panel_own_drop": 0.0,
+     "harm_passed": false,
+     "harm_reasons": [
+      "near_misses: {'available': True, 'gating': True, 'mean_effect': -3.507855534553528, 'abs_effect': 3.5126043558120728, 'ratio_to_target': 0.7992530992564411, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'passed': False, 'items': {'read': 4, 'given': 4}}"
+     ]
+    }
+   }
+  },
+  {
+   "name": "knob_one_budget_and_read_once_31b",
+   "ok": true,
+   "detail": {
+    "weight_claim_reading_index_after_two_knob_claims": 3,
     "read_once": true,
-    "m_budget": true
+    "twin_edit_claim_refused": "Read once: edit be4328fdb60d has already been read on brief \"pronoun_pull\" (6df8484d9081) by a knob claim of its arithmetic (knob 2b7191cc9709, line 6): a knob that is an edit's arithmetic and the edit are read once between them."
    }
   },
   {
    "name": "study_31b_15_isolated_sessions",
    "ok": true,
    "detail": {
-    "seconds": 182.48,
+    "seconds": 103.07,
     "sessions": 15,
+    "counted_sessions": 15,
+    "not_run_to_an_end": [],
+    "what_a_comparison_can_show": "At these sizes no comparison in this study can separate two arms at p < 0.05, and none names an arm as ahead: here, with 3 and 3 sessions a side, the smallest two-sided Fisher p any result can give is 0.1, not below 0.05.",
     "arms": {
      "scr_wgt_knobs": {
       "reach": "weights",
       "mode": "knobs_only",
+      "driver_model": "scripted_knob_v1",
       "verdict_counts": {
-       "works but harms": 3
+       "no_submission": 3
       },
-      "median_directed": 9.19195,
-      "mean_gpu_s": 24.53
+      "leads": 0,
+      "median_of_leads": null,
+      "directed_effects_of_all_readings": [],
+      "mean_gpu_s": 5.94
      },
      "scr_beh": {
       "reach": "behaviour",
       "mode": "weight_edit",
+      "driver_model": "scripted_weight_v1",
       "verdict_counts": {
        "no_submission": 3
       },
-      "median_directed": null,
-      "mean_gpu_s": 2.77
+      "leads": 0,
+      "median_of_leads": null,
+      "directed_effects_of_all_readings": [],
+      "mean_gpu_s": 2.143
      },
      "scr_act": {
       "reach": "activations",
       "mode": "weight_edit",
+      "driver_model": "scripted_weight_v1",
       "verdict_counts": {
        "no_submission": 3
       },
-      "median_directed": null,
-      "mean_gpu_s": 1.85
+      "leads": 0,
+      "median_of_leads": null,
+      "directed_effects_of_all_readings": [],
+      "mean_gpu_s": 1.43
      },
      "scr_wgt": {
       "reach": "weights",
       "mode": "weight_edit",
+      "driver_model": "scripted_weight_v1",
       "verdict_counts": {
        "no_submission": 3
       },
-      "median_directed": null,
-      "mean_gpu_s": 3.231
+      "leads": 0,
+      "median_of_leads": null,
+      "directed_effects_of_all_readings": [],
+      "mean_gpu_s": 2.492
      },
      "scr_atl": {
       "reach": "atlas",
       "mode": "weight_edit",
+      "driver_model": "scripted_weight_v1",
       "verdict_counts": {
        "kept the base": 2,
        "void": 1
       },
-      "median_directed": 0.08519,
-      "mean_gpu_s": 24.253
+      "leads": 0,
+      "median_of_leads": null,
+      "directed_effects_of_all_readings": [
+       0.21361,
+       0.26222,
+       0.15234
+      ],
+      "mean_gpu_s": 18.674
      }
-    }
+    },
+    "weight_vs_knobs": [
+     {
+      "comparison": "neither_found_a_lead",
+      "why": "with 3 and 3 sessions the smallest two-sided Fisher p any result can give is 0.1, not below 0.05: no result at these sizes can separate the two arms",
+      "drivers_differ": "The two arms ran different scripted programs (scripted_weight_v1 and scripted_knob_v1): a difference between them is a difference between two programs as much as between weight edits and knobs."
+     }
+    ]
    }
   },
   {
-   "name": "blinded_benchmark_31b",
+   "name": "blinded_benchmark_31b_plumbing",
    "ok": true,
    "detail": {
-    "seconds": 3.67,
-    "cards": {
+    "seconds": 6.18,
+    "what": "plumbing checks, not measurements: no driver here can propose by its own choice in a blinded session",
+    "kind_or_id_words_shown": {},
+    "neutral_ids": {
+     "planted_ref_31b": "98a6c6b530ad7397",
+     "planted_ref_part_31b": "6a9709ac87b4a047",
+     "canary_ref_31b": "2f5a6b7d7a7fce43",
+     "planted_noref_31b": "3888f31ae01a99e3",
+     "canary_noref_31b": "b41953f171c21263"
+    },
+    "door_surface_equal_by_reach": {
      "weights": true,
      "activations": true
     },
-    "canary_abstention_rate": 1.0,
+    "canary_abstention": "unmeasured: no canary case had a driver that could propose and chose for itself (cannot propose: 2)",
+    "localization": "unmeasured: no planted case had a driver that chose what to propose (cannot propose: 1, plumbing check (answer given): 2)",
     "kl_plant_alone": 0.004596,
-    "kl_after_repair": 0.0,
-    "recovery_fraction": 1.0
+    "scale_x2_repair_reading": {
+     "status": "not read",
+     "what": "the composite is the unedited model, so its KL from the base is 0 by arithmetic, not read"
+    },
+    "scale_x2_kl_after_repair": [
+     0.0,
+     "arithmetic"
+    ],
+    "scale_x1.5_kl_after_repair": 0.001181,
+    "scale_x1.5_recovery_fraction": 0.743,
+    "recovery_holds_on_checkpoint": [
+     false,
+     false
+    ],
+    "composition_rule": "In the harness a repair is read on top of its plant by adding the two edits' weight deltas (weight_edits.stack, with the plant first); on a checkpoint carrying the planted weights the repair would act on those weights. On a neuron (a down_proj column, or a gate_proj or up_proj row) that both change, the two differ: two scales f1 and f2 give f1 + f2 - 1 of the base in the harness and f1 x f2 on a checkpoint (a scale x2 on a silenced neuron restores it in the harness, 0 + 2 - 1 = 1, and leaves it silenced on a checkpoint, 0 x 2 = 0); a set over a scaled or added neuron keeps the plant's change in the harness and stands alone on a checkpoint (a set back to the base on a silenced neuron leaves it silenced in the harness and restores it on a checkpoint); a scale over an added or set neuron scales the base in the harness and the planted weights on a checkpoint. Two compose the same both ways: an added vector, and a set over a set (the later set stands). So does a repair on neurons the plant did not change. Not known: a low-rank term on a linear the other edit changes, and a remove_direction on a planted neuron (its vector is worked out from the weights it is built on)."
    }
   },
   {
    "name": "cold_driver_pages_ok",
    "ok": true,
    "detail": {
-    "pronoun_pull": 242,
-    "spider_legs_bleed": 233,
-    "canary_null": 220,
-    "enumeration_loop": 229
+    "words": {
+     "pronoun_pull": 242,
+     "spider_legs_bleed": 233,
+     "canary_null": 220,
+     "enumeration_loop": 229
+    },
+    "sites_named": {
+     "pronoun_pull": [],
+     "spider_legs_bleed": [],
+     "canary_null": [],
+     "enumeration_loop": []
+    },
+    "ruling_test": "The ruling's cold-driver test (arbiter.md §5: drivers of two families, each given only this page, run a session) has not been run. This renders the page and counts its words.",
+    "site_finder": "The site finder (level_eval.sites_named_in) catches a layer or a neuron named by a number: layer 50, layers.50, layer=50, neuron 5313, neuron_5313, neuron id 5313, neurons [1, 2] or {1, 2}, the 5313th neuron, L50N5313 and L54 N15491, L3 to L999 alone, N with three or more digits alone, down_proj[5313] and down_proj[:, 5313], W_down[50], #/atlas/54/15491 and #/neuron/54/15491, and a unit, column or row numbered of a layer or a projection. It does not catch a number written in words (the fiftieth layer), L0, L1 or L2 alone (read as a norm's name), L3 cache and the like, N with one or two digits alone (N95), a unit, column or row numbered of anything else (column 2 of the table), or a site given only by an id or a hash."
    }
   },
   {
-   "name": "rebuild_check_31b",
+   "name": "rebuild_replay_31b",
    "ok": true,
    "detail": {
-    "seconds": 0.61,
-    "word_count": 36,
-    "figures_compared": 6,
+    "seconds": 0.95,
+    "what": "A same-process replay: the description was parsed and read again in this process, by this code, on this model, its items checked against the ids it gives, and every arm of every item compared with the original; the runtime it was read under is set beside the one the description gives. The ruling's rebuild test (arbiter.md §5: a fresh session, given only the description, rebuilds the reading) has not been run.",
+    "word_count": 191,
+    "characters": 1646,
+    "runtime_described": {
+     "compressed_tensors": "0.19.0",
+     "cuda": "13.0",
+     "device": "NVIDIA GeForce RTX 5090",
+     "dtype": "torch.bfloat16",
+     "git": "9f2dc6db3f549615dcc00f622612673de5235cc6",
+     "numpy": "2.5.4",
+     "threads": 8,
+     "torch": "2.14.1+cu130",
+     "transformers": "5.20.0",
+     "unpacker": "compiled"
+    },
+    "runtime_differs": [],
+    "figures_compared": 144,
+    "arms_compared": [
+     "control:0",
+     "edit:1.0",
+     "null:-0.03125",
+     "null:-0.125",
+     "null:0.03125",
+     "null:0.125"
+    ],
     "max_abs_gap": 0.0
    }
   },
@@ -249,8 +588,8 @@
    "name": "ledger_whole",
    "ok": true,
    "detail": {
-    "entries": 12,
-    "head": "43311ee978cb4607",
+    "entries": 10,
+    "head": "8b344a3127204fad",
     "why": null
    }
   },
@@ -258,17 +597,18 @@
    "name": "zero_kept_out_words_rendered",
    "ok": true,
    "detail": {
-    "docs": 9,
+    "docs": 8,
     "found": []
    }
   }
  ],
  "atlas_31b": {
-  "query_seconds": 1.64,
+  "query_seconds": 3.036,
   "n_layers": 60,
   "n_neurons": 21504,
   "vocab_size": 262144,
-  "she_trusted_total_hits": 158,
+  "lens_id": "jpp-base",
+  "she_gate_passes_total_hits": 158,
   "she_top3": [
    [
     59,
@@ -286,196 +626,701 @@
     3
    ]
   ],
-  "L50_N5313_trusted": true,
-  "L50_N5313_shared_top10": 8,
-  "L10_N0_trusted": false,
-  "L10_N0_reason": "below_layer_40",
+  "she_steer_total_hits": 16588,
+  "she_steer_kept_total_hits": 1271,
+  "she_steer_kept_layers": [
+   51,
+   52
+  ],
+  "L50_N5313_gate": {
+   "shared_top10": 8,
+   "held_back": false,
+   "reasons": [],
+   "band": "band",
+   "sampled_layer": true,
+   "in_measured_band": true,
+   "lens_validated": true,
+   "edited": false
+  },
+  "L50_N5313_steer_check": {
+   "standing": "agrees",
+   "set_aside": false,
+   "check_written": true
+  },
+  "L10_N0_gate": {
+   "shared_top10": 0,
+   "held_back": true,
+   "reasons": [
+    "below_layer_40",
+    "shares_nothing"
+   ],
+   "band": "chance_where_sampled",
+   "sampled_layer": true,
+   "in_measured_band": false,
+   "lens_validated": true,
+   "edited": false
+  },
+  "gate_vs_label_check": {
+   "faces": 4800,
+   "differ": 0
+  },
+  "atlas_bytes_bound": 2124716288,
   "bwrap_cell": {
    "ok": true,
-   "seconds": 1.2046,
+   "seconds": 1.0991,
    "w_layers": 60,
    "a_layers": 60,
    "hits": 5,
-   "ro_ok": true,
-   "sci_leaked": false,
-   "book_leaked": false
+   "atlas_write_refused": true,
+   "weights_write_refused": true,
+   "weights_overwrite_refused": true,
+   "atlas_entries": [
+    "act_scale.npz",
+    "layout_writes.npz",
+    "lens.npz",
+    "passages.d",
+    "steer_check.json",
+    "steer_dose.json",
+    "steer_lens.npz",
+    "vocab.json",
+    "wiring.npz",
+    "wiring_check.npz"
+   ],
+   "passages_entries": 23
   }
  },
  "knobs_31b": {
-  "calibration_seconds": 11.6,
+  "calibration_seconds": 8.86,
   "equiv_weight_vs_mul": {
    "weight": 0.45484,
    "mul": 0.45484,
    "gap": 0.0
   },
-  "claim_1_logit_bias": {
-   "seconds": 11.82,
-   "verdict": "works but harms",
-   "summary": {
-    "verdict": "works but harms",
-    "reasons": [
-     "near_miss_abs 3.999999761581421 > bar 0.25"
-    ],
-    "n_target_asked": 8,
-    "n_target_read": 8,
-    "unstable_target": 0,
-    "small_directed": 4.0,
-    "large_directed": 4.0,
-    "floor_small": 0.02086,
-    "floor_large": 0.019323,
-    "house_bar": 0.12508,
-    "house_bar_dropped": false,
-    "replicated": true,
-    "frame_stats": {
-     "n_items": 8,
-     "n_frames": 8,
-     "mean": -4.0,
-     "directed_mean": 4.0,
-     "se": 0.0,
-     "ci95": [
-      -4.0,
-      -4.0
-     ],
-     "directed_ci95": [
-      4.0,
-      4.0
-     ],
-     "sign_flip": {
-      "two_sided": 0.0078125,
-      "one_sided": 0.00390625,
-      "n": 8,
-      "exact": true
-     },
-     "half_0": {
-      "n_frames": 4,
-      "mean": -4.0,
-      "directed_mean": 4.0
-     },
-     "half_1": {
-      "n_frames": 4,
-      "mean": -4.0,
-      "directed_mean": 4.0
-     }
-    },
-    "controls_applicable": false,
-    "control_standing": null,
-    "batteries": {
-     "neutral_kl": 0.0,
-     "near_miss_abs": 4.0,
-     "panel_kl": 0.0,
-     "panel_own_drop": 0.0,
-     "harm_passed": false,
-     "harm_reasons": [
-      "near_miss_abs 3.999999761581421 > bar 0.25"
-     ]
-    }
-   }
+  "refused_before_registering": {
+   "logit_bias_only": "A fresh knob claim needs a steering part: a prompt or a decoding setting alone has no family of controls to be read against, and a claim with none is refused (a weight edit with no control family is refused the same way). Practice readings of such a knob are open (knob_read, knob_write).",
+   "prompt_only": "A fresh knob claim needs a steering part: a prompt or a decoding setting alone has no family of controls to be read against, and a claim with none is refused (a weight edit with no control family is refused the same way). Practice readings of such a knob are open (knob_read, knob_write).",
+   "steering_controls_0": "A fresh reading takes controls a family as a whole number of 1 or more; 0 was given."
   },
-  "claim_2_steering_mul": {
-   "seconds": 51.82,
+  "claim_1_mul": {
+   "seconds": 76.73,
    "verdict": "works but harms",
    "summary": {
     "verdict": "works but harms",
     "reasons": [
-     "near_miss_abs 0.7774783372879028 > bar 0.25"
+     "near_misses abs effect (0.9804089069366455, ratio 0.7612931302948976) exceeded bar (abs <= 0.25, ratio <= 0.35)."
     ],
+    "twin_edit_id": "be4328fdb60d05f8ad95d31326f3ae2b3482add121488206db2998e38b60312a",
     "n_target_asked": 8,
-    "n_target_read": 8,
-    "unstable_target": 0,
-    "small_directed": 1.64953,
-    "large_directed": 1.66027,
-    "floor_small": 0.166002,
-    "floor_large": 0.110712,
-    "house_bar": 0.35285,
+    "n_target_read": 7,
+    "unstable_target": 1,
+    "small_directed": 1.30768,
+    "large_directed": 1.28782,
+    "floor_small": 0.10077,
+    "floor_large": 0.109715,
+    "floor_worst": 0.109715,
+    "house_bar": 0.28686,
     "house_bar_dropped": false,
     "replicated": true,
     "frame_stats": {
-     "n_items": 8,
-     "n_frames": 8,
-     "mean": -1.660266935825348,
-     "directed_mean": 1.660266935825348,
-     "se": 0.3805914186775848,
+     "n_items": 7,
+     "n_frames": 7,
+     "mean": -1.287820509501866,
+     "directed_mean": 1.287820509501866,
+     "se": 0.2828809856186625,
      "ci95": [
-      -2.560365640997836,
-      -0.7601682306528598
+      -1.980030281310733,
+      -0.5956107376929989
      ],
      "directed_ci95": [
-      0.7601682306528598,
-      2.560365640997836
+      0.5956107376929989,
+      1.980030281310733
      ],
      "sign_flip": {
-      "two_sided": 0.0078125,
-      "one_sided": 0.00390625,
-      "n": 8,
+      "two_sided": 0.015625,
+      "one_sided": 0.0078125,
+      "n": 7,
       "exact": true
      },
      "half_0": {
-      "n_frames": 4,
-      "mean": -1.7336828708648682,
-      "directed_mean": 1.7336828708648682
+      "n_frames": 3,
+      "mean": -1.099710464477539,
+      "directed_mean": 1.099710464477539
      },
      "half_1": {
       "n_frames": 4,
-      "mean": -1.5868510007858276,
-      "directed_mean": 1.5868510007858276
+      "mean": -1.428903043270111,
+      "directed_mean": 1.428903043270111
      }
     },
     "controls_applicable": true,
+    "controls_per_family": 59,
+    "control_families": [
+     "other_sites_matched",
+     "same_site"
+    ],
+    "control_chunk": null,
+    "match_tolerance": 2.0,
     "control_standing": {
-     "count": 59,
-     "effective_count": 59,
-     "non_finite": 0,
-     "at_least": 0,
-     "as_read_at_least": 0,
-     "p_emp": 0.016666666666666666,
-     "p_fw": 0.05,
-     "tops_every_control": true,
-     "passes_alpha": true
+     "small": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     },
+     "large": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     }
+    },
+    "control_means": {
+     "small": {
+      "other_sites_matched": [
+       -0.006639174052647182,
+       0.03589667592729841,
+       0.009861571448189872,
+       -0.007994004658290319,
+       -0.018158572060721263,
+       -0.011635269437517439,
+       0.02933205877031599,
+       0.004435913903372628,
+       0.05846057619367327,
+       -0.03410005569458008,
+       -0.005680527005876813,
+       0.02625857080732073,
+       -0.0054961613246372765,
+       0.12166615894862584,
+       -0.04156725747244699,
+       -0.0020031247820172992,
+       0.13090859140668595,
+       -0.033777407237461636,
+       -0.03235105105808803,
+       -0.004591022218976702,
+       0.02862729345049177,
+       0.0066606998443603516,
+       0.034332684108189175,
+       0.01758732114519392,
+       0.012348413467407227,
+       0.03861352375575474,
+       0.17751223700387136,
+       0.010608809334891183,
+       0.011520215443202428,
+       0.011044297899518694,
+       -0.01057744026184082,
+       -0.018138647079467773,
+       -0.026707240513392856,
+       -0.021076577050345286,
+       -0.027402775628226145,
+       0.01201418467930385,
+       -0.033955471856253486,
+       -0.010533605303083147,
+       -0.021477324622017995,
+       -0.025467429842267717,
+       0.027931928634643555,
+       -0.008804457528250558,
+       -0.020361934389386858,
+       0.010333912713187081,
+       -0.004972526005336216,
+       -0.016591003962925503,
+       0.006290980747767857,
+       0.1725893361227853,
+       -0.015743868691580638,
+       0.00445246696472168,
+       -0.004058292933872768,
+       -0.047284024102347236,
+       0.03694673946925572,
+       -0.01346724373953683,
+       -0.01137958254132952,
+       -0.004977294376918248,
+       -0.03288517679486956,
+       -0.01857049124581473,
+       0.08923884800502233
+      ],
+      "same_site": [
+       -0.14801389830453054,
+       0.08610456330435616,
+       -0.03737139701843262,
+       -0.17156451089041574,
+       0.04753163882664272,
+       0.07448012488228935,
+       -0.03293578965323312,
+       0.12588047981262207,
+       -0.017223051616123745,
+       -0.058741978236607144,
+       -0.13272084508623397,
+       0.05180556433541434,
+       -0.17079813139779226,
+       -0.05986748422895159,
+       0.0034313201904296875,
+       0.11414129393441337,
+       -0.11403710501534599,
+       -0.17008686065673828,
+       -0.09275279726300921,
+       -0.13445724759783065,
+       0.012596743447440011,
+       0.09281713621956962,
+       -0.0829617977142334,
+       -0.20562679427010672,
+       -0.03211869512285505,
+       -0.1038569722856794,
+       -0.03497607367379325,
+       -0.004744904381888253,
+       0.18553900718688965,
+       -0.18283660071236746,
+       -0.03574534824916294,
+       -0.10390877723693848,
+       -0.17935732432774135,
+       -0.22218537330627441,
+       0.02658217293875558,
+       -0.17609473637172154,
+       -0.1957501002720424,
+       -0.15260553359985352,
+       0.08250222887311663,
+       -0.16648551395961217,
+       -0.1445507322038923,
+       -0.047209126608712335,
+       0.04654918398175921,
+       0.09741480009896415,
+       0.21695164271763392,
+       -0.09004790442330497,
+       -0.041764872414725165,
+       -0.038537842886788506,
+       -0.2299649715423584,
+       -0.02589116777692522,
+       0.00031062534877232144,
+       -0.3586838926587786,
+       -0.1151721818106515,
+       -0.25019911357334684,
+       0.15438485145568848,
+       0.09604883193969727,
+       -0.10797473362513951,
+       -0.19296605246407644,
+       -0.04094958305358887
+      ]
+     },
+     "large": {
+      "other_sites_matched": [
+       -0.013153212411063058,
+       0.016144003186907088,
+       0.009407860892159598,
+       0.005970614297049386,
+       -0.011187655585152763,
+       0.013643809727260045,
+       0.022198029926845005,
+       0.0190258366721017,
+       0.07764918463570732,
+       0.010361501148768834,
+       0.011756726673671178,
+       0.03996218953813825,
+       0.012872389384678431,
+       0.11258411407470703,
+       0.016386304582868303,
+       0.020245926720755442,
+       0.15119412967136928,
+       -0.0071043287004743305,
+       0.014839036124093192,
+       0.025994947978428433,
+       0.028425727571759905,
+       0.012575490134102958,
+       0.05389935629708426,
+       0.02507880755833217,
+       0.02569239480154855,
+       0.08187767437526158,
+       0.1588569368634905,
+       0.04400065967014858,
+       0.010739394596644811,
+       0.014892067228044783,
+       0.00114267213003976,
+       0.00698467663356236,
+       0.011531387056623186,
+       0.02221059799194336,
+       0.012381383350917272,
+       0.015969140189034597,
+       -0.0220552853175572,
+       0.038550921848842075,
+       0.028441565377371653,
+       0.04754948616027832,
+       0.04126405715942383,
+       -0.0036249501364571707,
+       0.003609044211251395,
+       0.012028898511614119,
+       0.008098159517560686,
+       0.01963850430079869,
+       0.0028934478759765625,
+       0.1682398659842355,
+       -0.005645377295357841,
+       0.02342820167541504,
+       -0.003988640648978097,
+       -0.011494125638689314,
+       0.02603558131626674,
+       0.024097510746547153,
+       -0.014031614576067244,
+       0.01003302846636091,
+       -0.005106585366385323,
+       -0.003076246806553432,
+       0.11877897807529994
+      ],
+      "same_site": [
+       -0.13416579791477748,
+       0.09363457134791783,
+       0.004898956843784877,
+       -0.14716281209673202,
+       0.05760250772748675,
+       0.07381119046892438,
+       -0.018743923732212613,
+       0.11117247172764369,
+       0.014737061091831751,
+       -0.036442688533238,
+       -0.11908834321158272,
+       0.012689488274710519,
+       -0.17262026241847447,
+       -0.06190456662859235,
+       0.009957926613943917,
+       0.0798936230795724,
+       -0.0474703311920166,
+       -0.16764061791556223,
+       -0.05126871381487165,
+       -0.12803176471165248,
+       0.013624123164585658,
+       0.11958629744393486,
+       -0.0665546144757952,
+       -0.19886398315429688,
+       -0.03717919758387974,
+       -0.08536420549665179,
+       -0.0012122903551374162,
+       -0.00985363551548549,
+       0.19402125903538295,
+       -0.14872564588274276,
+       -0.03902602195739746,
+       -0.06596922874450684,
+       -0.15604288237435476,
+       -0.22880806241716659,
+       0.0160414491380964,
+       -0.15345263481140137,
+       -0.1872366496494838,
+       -0.12349762235369001,
+       0.1333794253213065,
+       -0.14394872529166086,
+       -0.11440396308898926,
+       -0.025989634650094167,
+       0.07571438380650111,
+       0.1380807331630162,
+       0.2442286695752825,
+       -0.08367483956473214,
+       -0.010063069207327706,
+       -0.03157659939357212,
+       -0.17589797292436873,
+       -0.0025232860020228793,
+       -0.0061316149575369695,
+       -0.3225876944405692,
+       -0.09915821892874581,
+       -0.2362521035330636,
+       0.18941708973475865,
+       0.11637020111083984,
+       -0.058856419154575894,
+       -0.16376219476972306,
+       -0.02650761604309082
+      ]
+     }
+    },
+    "controls_coverage": {
+     "tolerance": 2.0,
+     "requested": 59,
+     "found": 59,
+     "sufficient": true,
+     "terms": [
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "count": 10,
+       "min_eligible": 45,
+       "min_distinct": 34,
+       "median_eligible": 9842.0,
+       "union_eligible": 21354,
+       "drawn": 59
+      }
+     ],
+     "draw": "independent",
+     "disjoint_sets": 31
+    },
+    "control_ids": {
+     "other_sites_matched": [
+      "1b3b12025e5c6e130645dee95be1d3eed37f9839dcda6a40e883bf9462b7edac",
+      "a7fbf4a2348c0f5f50d09684c6095825f94891dbd4a9c53a9daf73aacdb93328",
+      "dd589905850db53e78856be56e55b377319cc75752f979a0de1f049cb153b008",
+      "c013172afbeb3330ec939fb75fae0b6b7201eccb9ae34d3cf4dc759674a4a618",
+      "48d92e0e6b8ad190be676da02b2bcccc29cae4a6750fcf977eebf757dc84ae7a",
+      "7d51814f643d16b3b7d538be20b33c1d834b8db87584958626bfb0b3fca679d0",
+      "3ee014afe9a08faadfc8db196372671d775b5b0d85a61aba3cf1b74844e21029",
+      "5894db4506802462a167ac72214431337ef4d80bf1637a6adf63861071319327",
+      "90f2c203f813b6da0b89877148402c8e0ed7ff656eba068849022c7cdcb47b53",
+      "75fa077f48a78b7f9893b7ae720784b9f7c66c9dfba723ad7eeb1cc6a5fd5a25",
+      "4fbf9cb0e931cdbd4142e3cebed302faa1e08f3944192237ef48ff6a92fe8aac",
+      "5cd95a038e24389d57dc076fcc30505e22fcc427f26db628ee79dc3db499817e",
+      "b6dc854ee2bbbf1677dd6042438d88a58afca4366183994828cfc4b2d3fc204c",
+      "b8c00c6b754723eb074d50dbe4ab7d0a5480e4523ebc098dd4492a82a3e36174",
+      "86cda96813957c7ba39fc7e46acc2226035d7f428cb5aa12b7a2d84f083b81e5",
+      "1f641d426e602ed08d31f4b0c05c75ad39908e6d53b06108550a98f1488d22bd",
+      "ac03f236ca7bff8b6d2bbf46e4a527be52e5afb9c609408946636dc34073061f",
+      "f9ed17ae8dbcc14646fa19f68811bf37669454d877d708e0d0825af4b4c06eaf",
+      "53d3a257488e8313b701fcdd2f23478955d665b2ad53abc78675a270cb222a71",
+      "4faba9a309178a3d3e2194abb1f12c06b8eb3e6e5f6a1a4073f3257251917a73",
+      "b592f7edbc9c3e2e4c42ada6e22c4381e0a53386f6a7952b630f0caf1a49b1bc",
+      "c7a20a175e61328919a03ad12d7d7781c37967dbb2b006fb648b37b3fee383b5",
+      "09e50ec751ea82f71455ecf88e71b3d9fe72308f210ae2021ce991d13f57896b",
+      "146e66236ea97ac76ad8b41d41189d00c13c73af7e5b4f68ace387dec5c5bc2a",
+      "5e29df6bf57ad45a7a865c6b399db4d3ce2a7b0850fd8d828e0087dc63a0d544",
+      "ba8bd30d4d136bc35881c99e7c9713f6809994b550728e0324dedbf4dc595ea8",
+      "b92b8ef942d2969c2e822f998acd82d9842f89cf3af8d7f3528970f615dc31cf",
+      "5d8570522b7b64688ed95a5e48f07ad3f6edf28e975787d277f9676236d49fce",
+      "009a757a0f3386de7197bb85b36aae0883cdb6ed5272b879166282239292e5e9",
+      "cba81289b2d1f3e07f42ac0d7b8803bf503b7cbefbe770797874d70b6122bbac",
+      "acf84b644ea8087d35fe8ea6c05fb9b8f2bcd32914e97580133b35defbb81a46",
+      "bf04ee8fffd3f3574fdeb0a3b9964100890afda0ad7496593accee9385fc6c48",
+      "dfde56ab9246a816aa4a67eeabfb044cd51476e445d5dafdab202cb416cb7c11",
+      "6215433b408411095e1f822292e1ecf8829e7ec796ef0a253288140078c05ee2",
+      "6191ba51a9f68ad4c7f21d175978ab4a2c042f0dad12035e51373b0b6d379b49",
+      "6b91378f9b9d408f3aaae95e62c457221079712150c6ef8012b049136179a090",
+      "8cc61722a5acaae73dcd5a10a564e7e38362044ba8598af74a7e7ef5d8330e8b",
+      "68361052ef9b02ffe2d2e484cd3d0726b7f20bb2b50f193a200384e8fca0c618",
+      "070146a91738db32f6a1a66bee5b43a803370b96cd078f22b2ed9ce8bb27529c",
+      "5d45deaa4b8ffdc7b8f35da4f1a6b45e1085982a9691da0750fd8bd0a8df3e52",
+      "0ca218bf39593061e0f7c5741cfa1dd72b84f3324bf13c5cdb64f3cf5a2a8f4f",
+      "4cea8ce1fa15f333121921bbd3d08b52d8c853093a2c481aae55a7731d9883ce",
+      "f498a3bd8224fbefb04453412be30d30b856fc071298b51ec40293865c86b553",
+      "378a06858b666c0f2a73fa401c33b3390820c798bda94ee3f12e29b4d7171fb1",
+      "57e3f3acbeda844185fb59e8d6bcb3b6efe3b07e73efe29af9c09a4329fd696c",
+      "ffe8443c122c1bb8bd9c1c54b3e33f1941e6dc2f681eb44e21ece331a1b059cc",
+      "06dd66c32522c93dbc5a7e8096ab187246b7fcf758d1d317c49d9f3a047da39f",
+      "50aa7d6864a393e65dd28172e9722debf408f82803157464a50d027219e5dee0",
+      "82830779d8eb8a22171faad9baac6ca74bf2aae5f1ea1305a94ba94c60498bea",
+      "6c1d0dd7f8b4f5a246671efd3b8baef33cbe9f06a55bb54c0ef0e0c43d9645ce",
+      "7c3e599b9573166461ea0cdf7cd17f1c2c7b1b3240687a4c6d845a6de8887597",
+      "e0bae37c8dacf14bad108ba2c27bd669e0a3dbb0d077aebf9e32901ca777133b",
+      "398c79d8655880b40bf1a8eae55b1b37329c3da843136484dc5cf739a729f767",
+      "6365b8f0d9d13595db136b97a73d2958b48132fff824152a22a34d7df7fc418f",
+      "f72eccf0383a31ca1e5dda9986e7d1942801472d00a417ec8337bdd008f41a10",
+      "ccf2f992a3b09c271baf9aee2cdf9e179308fa15f8e469e98706d20473e33586",
+      "c6a0cc7042ed56453bdb409e14fd01f0886f8b33873a086513a3de90915f29e4",
+      "84c68fd2d745e29bb401414589e5252bdd7021f09121ea7c0fa99a153f548f19",
+      "77eb436dd1f53f75db134f5858623103cc2edf8a0da077c1e60649d58f6fca43"
+     ],
+     "same_site": [
+      "859962b0e6b5970c64d40319d8d8d17496ecc2ba27b4e2b6fa7682df1bdc1afb",
+      "a6751dac8c516d76d6b558b5b923cd37ff38c7847bbdeee033d72e7736acf100",
+      "34e781e6506f95bbd56498278d65be6367f836d733c4b4d006b53ad9ce3c371b",
+      "f854565cd64f6c3e1edd05f4decaf30b999f86f7cd63822dde8fe2aef5b24bbd",
+      "34cca3b752f5fcd2d5686eea325a7536a72dbbe1aaa9e82d75fa03755d043061",
+      "6435d3d5c553495964711c0f60201733ee52338df7c48b610aefba53e2449e91",
+      "f83cbad17dbd792a7fa5bd9b3220e6290f578cff71ba42539730dbffec372a2f",
+      "c130cbf8b6164f799c773d13d64f7b730d29c9e9d5e553dd58add71bd26079dc",
+      "8fc81279204e861aceb771d25944938d3ca474e4326357ef963c1184b44cf150",
+      "bc82b3e37058d5c056b17fc790b39ba34c68189ae17388d8136b15906e9d9a8a",
+      "7626cdccab56b15a4e0e1c593a1b9c07adefa798f13b0f8f83a59035ca5e150a",
+      "efe6e12223d84a0a37f7652abbb5af0737ea50173a9e8cc28279ff3ba5a32087",
+      "f5a8ad212e927e85f0772b7465afbdba51664570606cd1bc4bb814a85050ab5a",
+      "c51c53cba3111a5b1959b122b13aa9f359ad10b71c80c046ff901df0214b1b93",
+      "f56a134431eda99e7597bd157fb1419aa195e823aaa0b14a640b5839bb8276ed",
+      "d7930280afad232ad59b5a56170024c65c71e8b647cfce9e4718dcf3120a7064",
+      "eca6a1be93bd7678dbd292d6bc21992e7d5a9f517ca91cbdf94992db77691497",
+      "16c8bc8f630b296fec0bbf1c0173f7e76ab6af09754c9c4d4c207e44cbf55256",
+      "dd223253a8f8ebad9c6210fac4ca90def10b91419277985ca7bb2f2edf22e2dd",
+      "c6f8e9be91c0ec6cc6bca17bd8602335d826a0033fb873554d9682986411bb73",
+      "c9348a8c85d34841320bd3d3478d2426903f820c5b43a1b8330e83950447e1e6",
+      "4520f69151692f8ab45e41fe695fa506220e1f8823ddb1d07ff5949a4ef32eab",
+      "7a95ba32beca3b6bb3c25005f7b4cb61e88751ca964780d400e705bfcee8b22b",
+      "6917814aad0defcfc7fa179d98aedff35361c1cbfb4699b4926e463440cb0c0f",
+      "29a92fd57e71b7e29b0d9aefa2a9f9223239d3ad0c80242f9f039da216076d84",
+      "3d0efcfd2aef01fc8c5b52e27d8cfc04022b247adeee3e5cbc18235ccdcd2309",
+      "5f4e744124b524ae7526ac9f64f2035bed8bd4b399840e49181cd186120657b9",
+      "8b32bef539fcc95c5409b62c0197cefde7b44257e2b38d5e395838f23e235d53",
+      "8eb5b54cbf32c3102e80976cd90a82eeba20db3667d652164250dec17cb22875",
+      "7494c0c2cc7a9d2ec6c3ec31f27df133c8aa2c766ddc65c5d0c533caa99baf5b",
+      "5c0ac271ac32eecef1ba898f22f8c996f184e5a984630111c92a2da45a6ff5a8",
+      "aa8950b962202116547af58f25c2eaf2fafaefe6898500ba7bc5d3fa11e84a68",
+      "b61a037d879b11998ab8907d1526d352fc232e6fbf9febeb700690e00f8ab14f",
+      "1877622db0bb7e745407d0345cec646e0c737a17f196e50482a5d97f0119ad79",
+      "534a34223917a715b9ea37d3addbb8148c4d337512aa05fed016e26fc534a407",
+      "4e3b32ddb5b77448068143773cae0390a5a52992d06a613d93b10c538c888dab",
+      "989c9deeca46b4495b1532f342fbd13b71606c70b96d7fc2744ee4c64fa7fa40",
+      "775171b97113d12425ba1741a76b326a36b05b2b98cef0687ef756424f13c44e",
+      "e570c735f0e66e283f5b71360ce44005d7aa427e559a32d70c003d44f91cbcf3",
+      "e16d48502da3167a17c95fcfd69c7f61eff16c2c0fa04915109b82e6cb414f5f",
+      "42992c9b71cfb57ed8a80ae9180ca793cb86d80576cdf0fce265b9dfd9580194",
+      "a5d63f9021065536f81bc0b8ff6b738b3fc8c83d3dbf3621a6f3a3804921d8ad",
+      "0bb77fd6f5efa270f711b5fea6d5056c30369afe749c804edec6c4260b2461d1",
+      "957f71444d1f9face08ac68242907a56b1dcbf7c18918e94aaaea96d7b1947e2",
+      "de728854d9a40e35488e8661117cca7b61285db1f5c70d493b29860f6a1d0796",
+      "ad53cc20ac7919c204cae3c580b34d2027e58b5a5a6a1b5654b3d917b8b722fd",
+      "8db2ed92c7c298800e6d79b38db6a2f4d8b62d175ede88cd6f3721f192d00e70",
+      "9b3849f4621bae31ee2282a2039bfb1df17a7db6eebf6127cebc32380bba73e1",
+      "78df559f58a0728c1ded29acd19f17a31718a086a32c6aecc818c580dbf2bd66",
+      "979e4d226cad55a55b3264c3378f58d1955f110e96e695be9c27dea9cc268265",
+      "b911a200a1d78a37e80049386007a3ee7a9d2537d6e5b06710e0a14d923450da",
+      "d9bb5322ebcd631d76a02943ad858161d2683c1e3525f60a1ba378316edf3086",
+      "0798594ce460ce27228482424bb32208db8ffaa62a6fbd07e7714a85cfdd3712",
+      "1c7dcb4abdb1cc73de4369529dea653c7f7ac51e1861ebf17b0a506d4aed86d8",
+      "72abd606fdbbf39f250c920ab5000d5c3a893b42562ad3c46d8f3b85130b388e",
+      "f1784fc456b1069e2f84d4ba9915e478ea64eafb71e29ea600e6bbafb4f62635",
+      "2034d1c72130778adacfbb26054e2283b56167987b6f5303f087c3c1acfd8614",
+      "bad60bde18f1912ce1dd1b799ab6c7923c1c0966e3816820fb21ee0b7060d177",
+      "4acb5f1101171f4fc250b1197586e8bbe4bf50d58f4b2cab3d1be7acad81f772"
+     ]
+    },
+    "reversed": {
+     "small": {
+      "mean": 1.0640038422175817,
+      "directed": -1.0640038422175817,
+      "ok": true
+     },
+     "large": {
+      "mean": 1.0775888987949915,
+      "directed": -1.0775888987949915,
+      "ok": true
+     }
+    },
+    "settings": {
+     "system": null,
+     "thinking": false
     },
     "batteries": {
-     "neutral_kl": 4e-05,
-     "near_miss_abs": 0.77748,
-     "panel_kl": 0.0,
+     "neutral_kl": 3.54879634869576e-05,
+     "near_miss_abs": 0.9804089069366455,
+     "near_miss_ratio": 0.7612931302948976,
+     "panel_kl": 5.302940420115476e-08,
      "panel_own_drop": 0.0,
      "harm_passed": false,
      "harm_reasons": [
-      "near_miss_abs 0.7774783372879028 > bar 0.25"
-     ]
-    }
+      "near_misses: {'available': True, 'gating': True, 'mean_effect': 0.9467856884002686, 'abs_effect': 0.9804089069366455, 'ratio_to_target': 0.7612931302948976, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'passed': False, 'items': {'read': 4, 'given': 4}}"
+     ],
+     "judged": {
+      "neutral_text": {
+       "available": true,
+       "gating": true,
+       "mean_kl": 3.54879634869576e-05,
+       "bar": 0.05,
+       "passed": true,
+       "control_kl_max": null,
+       "items": {
+        "read": 4,
+        "given": 4
+       }
+      },
+      "near_misses": {
+       "available": true,
+       "gating": true,
+       "mean_effect": 0.9467856884002686,
+       "abs_effect": 0.9804089069366455,
+       "ratio_to_target": 0.7612931302948976,
+       "abs_bar": 0.25,
+       "ratio_bar": 0.35,
+       "passed": false,
+       "items": {
+        "read": 4,
+        "given": 4
+       }
+      },
+      "labelled_panel": {
+       "available": true,
+       "gating": true,
+       "own_drop": 0.0,
+       "mean_kl": 5.302940420115476e-08,
+       "own_drop_bar": 0.1,
+       "kl_bar": 0.05,
+       "passed": true,
+       "items": {
+        "read": 4,
+        "given": 4
+       }
+      },
+      "habitat": {
+       "available": false,
+       "gating": false,
+       "mean_kl": null,
+       "bar": 0.25,
+       "passed": true
+      }
+     }
+    },
+    "not_read": [
+     "the brief's author prompt arms are not read beside a knob, so this sheet cannot say whether one of them does as well",
+     "what each control changed in the stream as read (a weight claim prints it, and gates nothing on it)",
+     "the kernel's item gate (how many fresh items' forced answers sit under its bar)"
+    ]
    }
   },
-  "claim_3_prompt": {
-   "seconds": 27.39,
-   "verdict": "works but harms",
+  "same_arithmetic_with_bias_refused": "Read once: the weight edit whose arithmetic this knob is (be4328fdb60d) has already been read on brief \"pronoun_pull\" (6df8484d9081) in this book by a knob claim of its arithmetic (knob 2b7191cc9709, line 6): a knob that is an edit's arithmetic and the edit are read once between them.",
+  "claim_2_mul_half_with_bias": {
+   "seconds": 77.35,
+   "verdict": "kept the base",
    "summary": {
-    "verdict": "works but harms",
+    "verdict": "kept the base",
     "reasons": [
-     "neutral_kl 2.235727220773697 > bar 0.05",
-     "near_miss_abs 6.306322693824768 > bar 0.25"
+     "small class floor too loud (F=0.20319, M=0.75, M < 4F).",
+     "large class floor too loud (F=0.20319, M=0.75, M < 4F).",
+     "near_misses abs effect (3.5126043558120728, ratio 0.7992530992564411) exceeded bar (abs <= 0.25, ratio <= 0.35)."
     ],
+    "twin_edit_id": "afd8eaa74d3fddd9f56a274d9860d19b068d3181de9979d9fd57697d4a543d0c",
     "n_target_asked": 8,
     "n_target_read": 8,
     "unstable_target": 0,
-    "small_directed": 14.6825,
-    "large_directed": 14.70749,
-    "floor_small": 0.041228,
-    "floor_large": 0.034219,
-    "house_bar": 0.17584,
-    "house_bar_dropped": false,
-    "replicated": true,
+    "small_directed": 4.39486,
+    "large_directed": 4.41718,
+    "floor_small": 0.122342,
+    "floor_large": 0.203188,
+    "floor_worst": 0.203188,
+    "house_bar": null,
+    "house_bar_dropped": true,
+    "replicated": false,
     "frame_stats": {
      "n_items": 8,
      "n_frames": 8,
-     "mean": -14.707492619752884,
-     "directed_mean": 14.707492619752884,
-     "se": 1.8045478046169274,
+     "mean": -4.417177796363831,
+     "directed_mean": 4.417177796363831,
+     "se": 0.23581655927905243,
      "ci95": [
-      -18.97524817767192,
-      -10.43973706183385
+      -4.97488395905879,
+      -3.8594716336688712
      ],
      "directed_ci95": [
-      10.43973706183385,
-      18.97524817767192
+      3.8594716336688712,
+      4.97488395905879
      ],
      "sign_flip": {
       "two_sided": 0.0078125,
@@ -485,98 +1330,651 @@
      },
      "half_0": {
       "n_frames": 4,
-      "mean": -14.503489017486572,
-      "directed_mean": 14.503489017486572
+      "mean": -4.145575284957886,
+      "directed_mean": 4.145575284957886
      },
      "half_1": {
       "n_frames": 4,
-      "mean": -14.911496222019196,
-      "directed_mean": 14.911496222019196
+      "mean": -4.688780307769775,
+      "directed_mean": 4.688780307769775
      }
     },
-    "controls_applicable": false,
-    "control_standing": null,
+    "controls_applicable": true,
+    "controls_per_family": 59,
+    "control_families": [
+     "other_sites_matched",
+     "same_site"
+    ],
+    "control_chunk": null,
+    "match_tolerance": 2.0,
+    "control_standing": {
+     "small": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     },
+     "large": {
+      "other_sites_matched": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      },
+      "same_site": {
+       "count": 59,
+       "effective_count": 59,
+       "non_finite": 0,
+       "at_least": 0,
+       "as_read_at_least": 0,
+       "p_emp": 0.016666666666666666,
+       "p_fw": 0.05,
+       "tops_every_control": true,
+       "passes_alpha": true
+      }
+     }
+    },
+    "control_means": {
+     "small": {
+      "other_sites_matched": [
+       -4.011203318834305,
+       -4.027419924736023,
+       -4.010166585445404,
+       -3.9906449615955353,
+       -4.0014883279800415,
+       -4.0169790387153625,
+       -4.003851681947708,
+       -3.989738494157791,
+       -4.006707519292831,
+       -4.008066117763519,
+       -4.007589161396027,
+       -3.995582550764084,
+       -4.001708447933197,
+       -4.01555660367012,
+       -3.9986099898815155,
+       -3.956120103597641,
+       -4.010967969894409,
+       -3.9905266165733337,
+       -3.993029296398163,
+       -3.9827017784118652,
+       -4.024239778518677,
+       -4.006847649812698,
+       -4.005885720252991,
+       -4.008676320314407,
+       -4.007442474365234,
+       -4.017018586397171,
+       -3.954896092414856,
+       -3.987799257040024,
+       -4.012872040271759,
+       -3.9780010879039764,
+       -4.0170756578445435,
+       -4.003067076206207,
+       -4.012044548988342,
+       -4.005480229854584,
+       -4.008547991514206,
+       -3.98787522315979,
+       -4.01116618514061,
+       -3.9947961568832397,
+       -4.023372232913971,
+       -3.992932826280594,
+       -4.0198531448841095,
+       -3.955363541841507,
+       -4.029976338148117,
+       -4.021484971046448,
+       -3.993647128343582,
+       -3.9999132454395294,
+       -4.04137846827507,
+       -3.993422895669937,
+       -3.9711676836013794,
+       -4.02012425661087,
+       -4.028710335493088,
+       -4.016845196485519,
+       -3.986328125,
+       -4.029719591140747,
+       -4.04537108540535,
+       -4.032757222652435,
+       -4.002114534378052,
+       -4.012338429689407,
+       -4.008593410253525
+      ],
+      "same_site": [
+       -3.796668291091919,
+       -4.087372601032257,
+       -3.7799593806266785,
+       -3.8907154500484467,
+       -3.7707481682300568,
+       -4.069235563278198,
+       -3.930997848510742,
+       -4.01118066906929,
+       -3.784680485725403,
+       -3.85866716504097,
+       -4.002150267362595,
+       -4.042214602231979,
+       -3.8370554447174072,
+       -3.987531900405884,
+       -3.887336105108261,
+       -4.0090727508068085,
+       -3.787767708301544,
+       -4.17206346988678,
+       -3.9757388830184937,
+       -4.0077416598796844,
+       -4.134985327720642,
+       -3.962746798992157,
+       -4.022254228591919,
+       -3.8777090311050415,
+       -4.041139781475067,
+       -4.019863098859787,
+       -3.8587666153907776,
+       -3.9297932386398315,
+       -3.982533037662506,
+       -3.9629119634628296,
+       -4.008902698755264,
+       -3.83160662651062,
+       -4.026349246501923,
+       -3.972069025039673,
+       -3.9444747865200043,
+       -3.907844454050064,
+       -4.051418095827103,
+       -4.012783378362656,
+       -3.980081468820572,
+       -3.9974730610847473,
+       -4.016119956970215,
+       -3.9214077293872833,
+       -4.111654281616211,
+       -3.9829008877277374,
+       -3.9509988725185394,
+       -3.9355733394622803,
+       -3.8954153656959534,
+       -3.8389047384262085,
+       -3.933988332748413,
+       -3.9398660957813263,
+       -4.096689581871033,
+       -4.0664301216602325,
+       -4.042957842350006,
+       -4.007798045873642,
+       -3.8832384943962097,
+       -3.9291879534721375,
+       -3.7586617469787598,
+       -4.030368953943253,
+       -3.8844085037708282
+      ]
+     },
+     "large": {
+      "other_sites_matched": [
+       -3.988227039575577,
+       -3.9718914926052094,
+       -3.9798604249954224,
+       -4.0009869039058685,
+       -3.994845390319824,
+       -4.002885490655899,
+       -4.008711397647858,
+       -3.9975956976413727,
+       -3.994674414396286,
+       -4.0174828469753265,
+       -3.983605831861496,
+       -3.986077219247818,
+       -4.014195144176483,
+       -4.042380332946777,
+       -4.011515378952026,
+       -3.96016389131546,
+       -3.992952585220337,
+       -3.971697300672531,
+       -3.996096044778824,
+       -4.017006516456604,
+       -4.0118149518966675,
+       -3.9913434982299805,
+       -3.989468991756439,
+       -3.9890635013580322,
+       -4.011454671621323,
+       -4.004269599914551,
+       -3.9888839721679688,
+       -4.005919307470322,
+       -3.9928325414657593,
+       -3.9578460454940796,
+       -4.010370343923569,
+       -3.9815964102745056,
+       -3.9945205450057983,
+       -3.9906898140907288,
+       -3.987839698791504,
+       -3.995643138885498,
+       -4.015600770711899,
+       -4.012569487094879,
+       -4.010284185409546,
+       -3.9975645840168,
+       -3.9830856025218964,
+       -3.992534965276718,
+       -4.004227966070175,
+       -4.001605331897736,
+       -3.9852752089500427,
+       -3.997450292110443,
+       -4.006298243999481,
+       -3.985972285270691,
+       -3.9760590493679047,
+       -3.9872909486293793,
+       -4.000873118638992,
+       -3.9939372837543488,
+       -4.010457992553711,
+       -3.987502783536911,
+       -4.012123286724091,
+       -4.000620782375336,
+       -3.9856309592723846,
+       -3.9879390597343445,
+       -3.9924038350582123
+      ],
+      "same_site": [
+       -3.7584571838378906,
+       -4.041278183460236,
+       -3.792132616043091,
+       -3.887318253517151,
+       -3.785159796476364,
+       -4.036805719137192,
+       -3.9519819617271423,
+       -3.99161633849144,
+       -3.8146276473999023,
+       -3.8850957453250885,
+       -3.9966605603694916,
+       -4.081723749637604,
+       -3.844483345746994,
+       -3.993471920490265,
+       -3.8927916288375854,
+       -3.9992749094963074,
+       -3.801530599594116,
+       -4.1723940670490265,
+       -3.9577962160110474,
+       -4.014863312244415,
+       -4.1084732711315155,
+       -3.944550037384033,
+       -4.02198189496994,
+       -3.901430904865265,
+       -4.07018780708313,
+       -4.036110907793045,
+       -3.835760176181793,
+       -3.9157687723636627,
+       -3.9802119433879852,
+       -3.9692859947681427,
+       -4.015747934579849,
+       -3.8223735094070435,
+       -4.011785537004471,
+       -3.984355479478836,
+       -3.97794309258461,
+       -3.889334738254547,
+       -4.043702691793442,
+       -4.028120756149292,
+       -3.960324615240097,
+       -3.991280257701874,
+       -3.995627522468567,
+       -3.916310727596283,
+       -4.091530352830887,
+       -3.9695642590522766,
+       -3.957612067461014,
+       -3.8864497244358063,
+       -3.895813077688217,
+       -3.8524444699287415,
+       -3.934904992580414,
+       -3.9504082202911377,
+       -4.081612706184387,
+       -4.083066761493683,
+       -4.031326025724411,
+       -4.0057584047317505,
+       -3.883388340473175,
+       -3.945236772298813,
+       -3.7773701548576355,
+       -4.015925288200378,
+       -3.896332323551178
+      ]
+     }
+    },
+    "controls_coverage": {
+     "tolerance": 2.0,
+     "requested": 59,
+     "found": 59,
+     "sufficient": true,
+     "terms": [
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "count": 10,
+       "min_eligible": 49,
+       "min_distinct": 34,
+       "median_eligible": 9345.0,
+       "union_eligible": 21379,
+       "drawn": 59
+      }
+     ],
+     "draw": "independent",
+     "disjoint_sets": 32
+    },
+    "control_ids": {
+     "other_sites_matched": [
+      "a4a5f9e2211f2ae35fda5eb915227fb98c63a25b3bdf86af2bb468b9a3521c6d",
+      "87cbd20d420e55bc2dec93ae518c441ce31cfbdca4f865b9e8d52794f1c385b1",
+      "9a069e73cb2b710257860733e4ae27c16c27f4aec86b5358dce720171337be38",
+      "43c98c23e5e8cef5654a5b9228e18d68b76f53817ce3bb1cd51f375a5d24601b",
+      "133f0391160d7c738f0671fe01a1875cd6548961e3d8ccb99a6953830a2e0763",
+      "31082d58fe842bbd8270d7742f7890edaba0ab9fe4615194262bf80b3454d683",
+      "c2f6fcc325fd84296403b1b24ae346e795312856071ec8554048df1c592dd9c6",
+      "142c32b993d23318c241bd1ad966f85eefd257d8dd4db4c364ea24397ef86ed9",
+      "dc2fb6ee73e0d44d0b1550d13d458fcb7e4f6400195100bea1653f4af16b7b35",
+      "0ddd13040c87820f65e1cc087314e535295fecbdfb1f48017fa0cb258d2b0f4a",
+      "47082e2bd9f5864763eac457a93a37547f817daeaa5ffde265d8f05848700c50",
+      "d855f33c4b3245aa54e3803726eb9844b79847c2f6fa15b2b878baaed2e6e365",
+      "41cfc098b1a187eaadb2a3f451929ba4b21d584e762b4b2633bea1439a42955c",
+      "926a4a15e296d312809176919d580d5b4d559d1897efeffb16ec79e0e7524230",
+      "41d116cfc3cc38ff1145c9c3bd6a9f9fd45fd6aa36fe5a5de03c4ba407bab48b",
+      "1a77e6287b746ef5b23895b1b83b63d26e07e7125d846e8fda7899b8529c154d",
+      "452b347cc1c0feb0019b4b72b7bd3c10fdcf03e99498a97025d3b51d415325df",
+      "4d9706697b2d2d4852aa4ce5fcfaaf79c7643a27d227e3388708f9fc2b76ba44",
+      "a483c50dd100bb862c069d8f3199df32aef11deebccb67daf7d65b57274a6cd5",
+      "f0e79cf7f47ef684541014ccecce923e8fc7fb0bed78d29453873f839f3d36b0",
+      "f64ac8811b33b47e18953c56c09636bffb3edb502e28edfef57b9705c1b8f1c0",
+      "1ee4b2404c42a2fad8508c054c1de33327902fb9e79d1447cd6c7c4a601f6666",
+      "72a1affc655dcf59c3daf2e08ba5411c77a0add85a1a0336b8eebf11ebe4ae53",
+      "99f0586367f46f4153d9b482ab0af76b48a201f6162f55998efde605b5624581",
+      "b2c119ed5a5cd9a2c979e469074233f4449ac231d60219bc044f4d409e49e48b",
+      "8e346b6669d77e2e72bb7b89dcb5e8b62cd4f3f518f46666714f53b26f335f1f",
+      "9d8905a66c4efcea4046fc47093b3e7764f31ec54fd7cafab60522826d2b2b38",
+      "e355c1586b61cd99d5346b95c78b5a7dca9aaa2ed24a80a8c11eeb220f7006f6",
+      "762a5d8348586705e71f658e30184c3cdbe0e426ec8ef62e8d3ab693af780646",
+      "90bb5da58c509827493a5f932e403f8a08d49527e337b69c034168c857885242",
+      "01547e9001e441efb4917695161196e39919ec5fcb60c968e5433157c7ad1e15",
+      "ecf3c390b2f13aab31eeb615e43afa30676c4e9c6109f594470a9b40c856a0ba",
+      "1d07e703fd8326b0f1b42254021330fe96d3ae6b4082744b687e1076f2040204",
+      "a9e9f8e796db2397f32767c8583a13b63d70e128ee88ce3d98ae1832d8e31598",
+      "bde076a36dd1fde420fca9bd697e8ce8878b7673c4e673c1301cb421620f6a82",
+      "e2405ffeda23a4e637f9423cc1078f3ab8e0adb1d6687c7a05c6deacf3aaf3f9",
+      "a2b3e0cec12dcb8ff4eb89bf7ae9c7d44adcc852c77f6627d4083eb3c9f466a3",
+      "80a19e3f535fbc24430e928c68e39c1fdba12539bdb698a01bdc88265a3aaeea",
+      "addd968e8e259773b04c8ac472dc39f3441e19effd06ff780b66159e8d43f6c2",
+      "305fd7b8e43389746b50671eed287c82f783f62a7cad845fbeaccb5e1821b4ac",
+      "2be7009e2e558af290ac64df8cb5adf570bc4f437983acd9c457885d2c037df4",
+      "1f4581d0fe84df5ed2f86bc9086772eeb95dca3358bccfdfdd4e8300b2998708",
+      "543ac8c7d6f892f6f3d19c919f24b7d2f1cdbcb30a73f438866bdfe0e722f061",
+      "b0653973b16b8b2068f43d9daa3497f19728dacdfe87c7c988891a5a832e7dec",
+      "2da4f0bf03a351ddc0858f2575751327c6cdc5ed0ed200a83aae70a936086a99",
+      "024694d2df69835a1915d97ebbaf4ba6c07c96f7793992a9c85a6b713d81c39e",
+      "e94b4a6876aa362340b67f2fa2c34b396fff32047a821e853cb08e31c78111e9",
+      "f081c295228ba1834aa879f6654606cf781a6e1415c807b2282244d3ead11fdd",
+      "771a073e85d8a938b8257a074a86d7edcaecac47898af630be0e7296052b3621",
+      "883fa213ff547b56b52c1f7cc4a3eb1d9999e0c9a95d7390eebd870a444ad99e",
+      "03a004084578bbc8278b4c4cd7e5304184c601602787c65a90f2dd77a6c65426",
+      "4e7a922fd8454512d56571f6df26124f1424ff7029349c4f850eb8ba6c4ddfc1",
+      "b442f1b2401909dee72f9e2134520723010bf6e9acbd240345e3bb0b9b871ca0",
+      "e8cd0f89108b723c188a6a9f62c72cfc5d5a7bbdf7327fbaf890cdfb444e28f4",
+      "599bd6b7d5aea4ded9f2bea1978daa6a847672e69fe2cdac17b472c7358e288e",
+      "d750a07d57dbfa7ebf576de7e5b20994ab60c8540841cef295b6ca41035743e0",
+      "f48428439e46529cbe3bd45be8589cd3e0c2b38d78680be298623762d1ec79bb",
+      "db7177fedbfa62a3868e933270d566f611f5dfb2ac33f97701b6440a4085cfe0",
+      "857aaf0971763e6ff98eda8a400a21fd10eef103455d2e793852b71249a24b4e"
+     ],
+     "same_site": [
+      "1fa9665287a9ef1782769c809baa617cf75bf4921a1041067b4a17a1ce702325",
+      "09e452c15b26660c58bdf638118992a99e3213023611bf9e9af64a670dd52cac",
+      "b943da0c2cf213a5aa4d0bd0e67df22dc355000fe147cb44b73fe36e21813d38",
+      "f4397b55ff2da71b8ecc76e15dd85c185dfbeaf3ab8a0b0516f450d823c6af71",
+      "28df1d7b18b5a7035f749a620b1e06d55a9408667fd798b0dd90ddea8b26c709",
+      "56f4dd296803fcc2afde1b09ba59c801f9e9ba53ddd69355888fd4fdce2a2908",
+      "333d950b446d81f698c9c52c2bf7b897c6d0f900336206d4bec7f445f2537c12",
+      "032d7af66325f9a109e6280fa16a51fb2afbb5c79609b1a7b5eb2dfd8f68b701",
+      "ac5fcd6ca0f7766bb33ae3918e569f7deae784ad1bed29a51ac6d98a23721aae",
+      "11d224ae3e3c0c3540f1d4b4c99cc369977129155b242e006a36a9c8a5dd5f7a",
+      "bcd8041ec6c8fef85857d7d45546b71ee5c150515bcd0dda9a8d34d613534171",
+      "2c0042ebb82401ff8c0eba3f9debc42b2c522b6989e26c1a5c3806a5cc5f6373",
+      "da3c0d8138dfe02f7ec74b25e35fb5a8b0ff4df7e3edf8daef66d1a59866853f",
+      "9bcbedc40e86c81658e095f9824bf7fb09e3396a3e0e7025854cce72e9759fbb",
+      "c67955c3ca8cfa9780b74a715eebfb1283ebfda60205147d9ddb7c9be89dca00",
+      "9ddd4ebf8fffa390e5cdf4d9b9c487306f39400291f48b9791c215db1a3f83cd",
+      "fa32e53f87334e2b4e58196db93ada9cdb439188a01ebc3ea41041341564e198",
+      "00a3ae16ab3b4d7397f6475f307c61f6df4707f43be76815a1d4d67e0d87d558",
+      "4e3798c9f746a8e6dda5b1b505ccad27bf3aa865d9e9076654c0530d10c83e3b",
+      "3ee6042d413e5f638543ea0352465333c2421d2e6b91418c33468bfd51bada55",
+      "6ccfff6954ba6d44c2cd3b2b8343deae241ed077ffed4bf5c0ea783d94a0c7a8",
+      "f983323dc4589b06cf2af290fb362988f94f04700fccac4b8e11498b5f0a1277",
+      "123d5566d090451ce85acd3805ca163d6cb18011338622ae601aa410ea9a8e33",
+      "ec2e69306ac35593745a854bf31405a7314fc61b0fa32b4c3920a85b3858f167",
+      "c5cdc74300e1cb53af5bb4c613b445332cfa33d2a953a9ae4b964285bdfe3f4e",
+      "4f9e2118482c0409c77ea339d469f3d6e79b49fa155bed0b582c47e415bc7ff1",
+      "a0f3576f34780fd033083e88ffe0f8beee58a71a1e041195c169752b29e7dd24",
+      "1c624ec02e06754d0b910d38f1a5ca9f728d6a846a0ec26f3d6d2cfd84b9542d",
+      "803209aa4679be5f1a7d603c567454fb337354a81e8a7ef63553256aeeef93a2",
+      "31e6aafb0df8388682f49cdece6eb0b98ede530ecf780c909329e28692678f64",
+      "d40283ebcb0f374a9c6623ec6726930dbbe3b9cfa7da1b332cfab2d7eec7193f",
+      "37118e460ef383223327d8444227debaa41147a5cc6dbf425ea064007b04f84f",
+      "f49c3ac0180621ed82ad7f6f22ee100086b5e579b929eab5a84223941b01dbae",
+      "10efd98af936a1136f25a9343ccdcd516fc443d3f7a4de0271ff1987c31ca8a3",
+      "f7eb7637b5ec4806c077f78ce1601980ae7287e6f99eb05e8afe293247cce163",
+      "95467de8ceaa2c0f0d072fa4c52b4f8dca4420e655747ff7613dc7a15ab3b3ef",
+      "9a057c36db206377223fea2f0a00fc3648744f2002d0585345c12f5177457fa5",
+      "df1e8dc7efbf57e2c5c33eeba95e62af6666f9cbda381c353eda2477bd8e6502",
+      "230291f1457383682837025751cb0a38a1b77b58513eff588c79f7414a9c1bd0",
+      "0644f8cd491b3003479194443cfa5c6d0e80fbdc6a13500140fa3e7a53bb0b0a",
+      "b2fa9ab3b799c6c3252ef01539bca44304fc71336971d6718a2e24c4e072292e",
+      "424c4bf5d17d085d1d4c7eef5d98e270dee766cb32a8b958e0afce47405905e3",
+      "e6d4ebf3addc17509823dbc9767e85e59c432bc1ebabf16ef7452a53be47b62c",
+      "82c78dd20c96afe2e0affcdc652be0c97a61b09907ff441083cd65dc437001d1",
+      "99e9103854f59e50cdfda551a28a07f11078e85ce31b46e83abf03af39a14490",
+      "52499d1460a1ca86172350f783ff5afe59a8c274989fe2754086e4de87267a16",
+      "d93f1cdf2c8ec9a98a7593eb3dbd67719abb0f2010e494bb8895b9f3016aa038",
+      "9b1af1f4ca32b67369ae79290f01e1ba43fadfe8efa1ddbb9b7a13a75b5752fa",
+      "1280b56f79d61d49a59c0529eabae81e5e2cb3c30cf94f403eebbb3b1b2931e8",
+      "1e1b70c9ed3f6afd1a0705dca9888b6e97e10a2789bff44e5d139e496bafcf7a",
+      "049adbc9673c43964fbc03a8e809b86f0e2e28b2b00889c8cb88584038402bea",
+      "60ccfb4a0be59d175cffc219d782a5c96b0a7d132dcfc54ee81272e8ddcc2a7d",
+      "a9779cd2eddb344f52880a4bcf0fd4b3297d28f4a36c78540ceb0862f9824db7",
+      "664568ae0299b9cb1734b1df561cf645ef8a350a41d67d72c6b6e31703b64ffc",
+      "1e4c5ef24c9e2624c9393ffadeb24a15fcacc461758263c41754dc590a233d38",
+      "8dedf98ac141a3e871b805731fc69e83eb0853c79c14501d2eaa0bc7ca8eee67",
+      "9453e7e743eb143422380aa00ee793cd909c47c833f6a3e82d582762836b7013",
+      "0ceb9e25ed0e7815db5e927b6b29ecd3a062a9056a9e1a24853e50780ca5d127",
+      "8c47c158d2ee996121feeca53d211ab8891f28c70b992087d1f3b227ef1a7cce"
+     ]
+    },
+    "reversed": {
+     "small": {
+      "mean": -3.606269747018814,
+      "directed": 3.606269747018814,
+      "ok": true
+     },
+     "large": {
+      "mean": -3.6157351434230804,
+      "directed": 3.6157351434230804,
+      "ok": true
+     }
+    },
+    "settings": {
+     "system": null,
+     "thinking": false
+    },
     "batteries": {
-     "neutral_kl": 2.23573,
-     "near_miss_abs": 6.30632,
-     "panel_kl": 2e-05,
+     "neutral_kl": 3.642029014372383e-05,
+     "near_miss_abs": 3.5126043558120728,
+     "near_miss_ratio": 0.7992530992564411,
+     "panel_kl": -1.2021263540162863e-08,
      "panel_own_drop": 0.0,
      "harm_passed": false,
      "harm_reasons": [
-      "neutral_kl 2.235727220773697 > bar 0.05",
-      "near_miss_abs 6.306322693824768 > bar 0.25"
-     ]
-    }
+      "near_misses: {'available': True, 'gating': True, 'mean_effect': -3.507855534553528, 'abs_effect': 3.5126043558120728, 'ratio_to_target': 0.7992530992564411, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'passed': False, 'items': {'read': 4, 'given': 4}}"
+     ],
+     "judged": {
+      "neutral_text": {
+       "available": true,
+       "gating": true,
+       "mean_kl": 3.642029014372383e-05,
+       "bar": 0.05,
+       "passed": true,
+       "control_kl_max": null,
+       "items": {
+        "read": 4,
+        "given": 4
+       }
+      },
+      "near_misses": {
+       "available": true,
+       "gating": true,
+       "mean_effect": -3.507855534553528,
+       "abs_effect": 3.5126043558120728,
+       "ratio_to_target": 0.7992530992564411,
+       "abs_bar": 0.25,
+       "ratio_bar": 0.35,
+       "passed": false,
+       "items": {
+        "read": 4,
+        "given": 4
+       }
+      },
+      "labelled_panel": {
+       "available": true,
+       "gating": true,
+       "own_drop": 0.0,
+       "mean_kl": -1.2021263540162863e-08,
+       "own_drop_bar": 0.1,
+       "kl_bar": 0.05,
+       "passed": true,
+       "items": {
+        "read": 4,
+        "given": 4
+       }
+      },
+      "habitat": {
+       "available": false,
+       "gating": false,
+       "mean_kl": null,
+       "bar": 0.25,
+       "passed": true
+      }
+     }
+    },
+    "not_read": [
+     "the brief's author prompt arms are not read beside a knob, so this sheet cannot say whether one of them does as well",
+     "what each control changed in the stream as read (a weight claim prints it, and gates nothing on it)",
+     "the kernel's item gate (how many fresh items' forced answers sit under its bar)"
+    ]
    }
+  },
+  "one_budget": {
+   "weight_claim_reading_index": 3,
+   "read_once": true,
+   "twin_edit_claim_refused": true
   }
  },
  "study_31b": {
-  "seconds": 182.48,
+  "seconds": 103.07,
   "summary": {
-   "v": 1,
+   "v": 2,
    "study_name": "verify_31b_phase6_study",
-   "study_sha256": "016ab01559fedb4921421e9e1775d46d0051ab193abf9b2ecc73f86b74a7ffcf",
+   "study_sha256": "0dd8f80ff5f78bcc4526e15238e484ff73ad85b2aaee2c9b65f14318bd2fe26a",
    "brief_name": "pronoun_pull",
    "brief_id": "47ff194f52c43d2bc3dbc7191c433780b21591875d7a2e95069854f49dd08624",
-   "bars_sha256": "aa2c7ae13d567a6928f31ff74ada752ccc9ad9c4147fe4afa25ab74d1abb9f10",
+   "bars_sha256": "5c7d10507e0a6d383596b51f8edf43b12231cbd6e57157a3999d516ffedecd19",
    "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
    "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
    "unpacker": "compiled",
    "sessions_per_arm_planned": 3,
+   "planned_sessions": 15,
    "completed_sessions": 15,
+   "counted_sessions": 15,
+   "refused_sessions": 0,
+   "not_run_to_an_end": [],
    "halted_reason": null,
-   "pooled_across_reaches": false,
-   "pooled_across_families": false,
+   "finished": true,
+   "claim_match_tolerance": null,
+   "separation": "At these sizes no comparison in this study can separate two arms at p < 0.05, and none names an arm as ahead: here, with 3 and 3 sessions a side, the smallest two-sided Fisher p any result can give is 0.1, not below 0.05.",
    "arms": [
     {
-     "driver_family": "scripted",
-     "driver_model": "scripted_knob_v1",
-     "reach": "weights",
-     "mode": "knobs_only",
-     "bare": false,
+     "arm_id": "scr_wgt_knobs",
      "arm_ids": [
       "scr_wgt_knobs"
      ],
+     "driver_family": "scripted",
+     "driver_model": "scripted_knob_v1",
+     "models_seen": [
+      "scripted_knob_v1"
+     ],
+     "reasoning_effort": null,
+     "driver_config_sha256": "44136fa355b3678a",
+     "reach": "weights",
+     "mode": "knobs_only",
+     "bare": false,
+     "n_recorded": 3,
      "n_sessions": 3,
+     "n_not_counted": 0,
+     "not_counted": [],
+     "n_refused": 0,
+     "refusals": [],
      "under_sampled": false,
-     "n_submitted": 3,
+     "n_submitted": 0,
      "n_leads": 0,
      "n_leads_matched_by_knob": 0,
+     "lead_verdicts": [
+      "lead",
+      "lead, matched by a cheaper knob"
+     ],
      "lead_rate": 0.0,
      "lead_rate_ci95": [
       0.0,
       0.5615
      ],
-     "any_lead_rate": 0.0,
-     "any_lead_rate_ci95": [
-      0.0,
-      0.5615
-     ],
      "verdict_counts": {
-      "works but harms": 3
+      "no_submission": 3
      },
      "directed_effect": {
-      "n": 3,
-      "values": [
-       9.19195,
-       9.99324,
-       7.98212
-      ],
-      "mean": 9.05577,
-      "median": 9.19195,
-      "sd": 1.01245,
-      "min": 7.98212,
-      "max": 9.99324
+      "n": 0,
+      "values": [],
+      "of": "every counted session that entered a claim verdict, whatever the verdict",
+      "verdicts": {},
+      "mean": null,
+      "median": null,
+      "sd": null,
+      "min": null,
+      "max": null
      },
-     "near_miss_abs_median": 2.12273,
-     "neutral_kl_median": 1.23419,
+     "lead_effect": {
+      "n": 0,
+      "values": [],
+      "of": "the counted sessions whose verdict was a lead (lead, lead, matched by a cheaper knob) only",
+      "median": null
+     },
+     "near_miss_abs": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
+     "neutral_kl": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
      "cost": {
-      "mean_gpu_seconds": 24.53,
-      "total_gpu_seconds": 73.589,
+      "of": "every session that started, counted or not",
+      "mean_gpu_seconds": 5.94,
+      "total_gpu_seconds": 17.82,
       "mean_practice_forwards": 20.0,
-      "mean_claim_forwards": 28.0,
+      "mean_claim_forwards": 0.0,
       "mean_cells": 0.0,
-      "mean_wall_seconds": 24.554,
+      "mean_wall_seconds": 5.971,
       "total_tokens": 0,
       "total_estimated_dollars": 0.0,
       "gpu_seconds_per_lead": null,
@@ -586,65 +1984,87 @@
       {
        "arm_id": "scr_wgt_knobs",
        "replicate": 0,
-       "verdict": "works but harms",
-       "stop_reason": "claimed",
-       "directed_effect": 9.19195,
-       "near_miss_abs": 1.89747,
-       "neutral_kl": 0.85501,
-       "gpu_seconds": 24.466,
+       "counted": true,
+       "not_counted_because": null,
+       "verdict": "no_submission",
+       "stop_reason": "kept_base_abstention",
+       "directed_effect": null,
+       "near_miss_abs": null,
+       "neutral_kl": null,
+       "gpu_seconds": 5.947,
        "forwards": 20,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_wgt_knobs",
        "replicate": 1,
-       "verdict": "works but harms",
-       "stop_reason": "claimed",
-       "directed_effect": 9.99324,
-       "near_miss_abs": 2.12273,
-       "neutral_kl": 1.43933,
-       "gpu_seconds": 24.231,
+       "counted": true,
+       "not_counted_because": null,
+       "verdict": "no_submission",
+       "stop_reason": "kept_base_abstention",
+       "directed_effect": null,
+       "near_miss_abs": null,
+       "neutral_kl": null,
+       "gpu_seconds": 5.943,
        "forwards": 20,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_wgt_knobs",
        "replicate": 2,
-       "verdict": "works but harms",
-       "stop_reason": "claimed",
-       "directed_effect": 7.98212,
-       "near_miss_abs": 3.77828,
-       "neutral_kl": 1.23419,
-       "gpu_seconds": 24.892,
+       "counted": true,
+       "not_counted_because": null,
+       "verdict": "no_submission",
+       "stop_reason": "kept_base_abstention",
+       "directed_effect": null,
+       "near_miss_abs": null,
+       "neutral_kl": null,
+       "gpu_seconds": 5.93,
        "forwards": 20,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       }
      ]
     },
     {
-     "driver_family": "scripted",
-     "driver_model": "scripted_weight_v1",
-     "reach": "behaviour",
-     "mode": "weight_edit",
-     "bare": false,
+     "arm_id": "scr_beh",
      "arm_ids": [
       "scr_beh"
      ],
+     "driver_family": "scripted",
+     "driver_model": "scripted_weight_v1",
+     "models_seen": [
+      "scripted_weight_v1"
+     ],
+     "reasoning_effort": null,
+     "driver_config_sha256": "44136fa355b3678a",
+     "reach": "behaviour",
+     "mode": "weight_edit",
+     "bare": false,
+     "n_recorded": 3,
      "n_sessions": 3,
+     "n_not_counted": 0,
+     "not_counted": [],
+     "n_refused": 0,
+     "refusals": [],
      "under_sampled": false,
      "n_submitted": 0,
      "n_leads": 0,
      "n_leads_matched_by_knob": 0,
+     "lead_verdicts": [
+      "lead",
+      "lead, matched by a cheaper knob"
+     ],
      "lead_rate": 0.0,
      "lead_rate_ci95": [
-      0.0,
-      0.5615
-     ],
-     "any_lead_rate": 0.0,
-     "any_lead_rate_ci95": [
       0.0,
       0.5615
      ],
@@ -654,21 +2074,40 @@
      "directed_effect": {
       "n": 0,
       "values": [],
+      "of": "every counted session that entered a claim verdict, whatever the verdict",
+      "verdicts": {},
       "mean": null,
       "median": null,
       "sd": null,
       "min": null,
       "max": null
      },
-     "near_miss_abs_median": null,
-     "neutral_kl_median": null,
+     "lead_effect": {
+      "n": 0,
+      "values": [],
+      "of": "the counted sessions whose verdict was a lead (lead, lead, matched by a cheaper knob) only",
+      "median": null
+     },
+     "near_miss_abs": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
+     "neutral_kl": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
      "cost": {
-      "mean_gpu_seconds": 2.77,
-      "total_gpu_seconds": 8.31,
+      "of": "every session that started, counted or not",
+      "mean_gpu_seconds": 2.143,
+      "total_gpu_seconds": 6.428,
       "mean_practice_forwards": 8.0,
       "mean_claim_forwards": 0.0,
       "mean_cells": 0.0,
-      "mean_wall_seconds": 2.841,
+      "mean_wall_seconds": 2.211,
       "total_tokens": 0,
       "total_estimated_dollars": 0.0,
       "gpu_seconds_per_lead": null,
@@ -678,65 +2117,87 @@
       {
        "arm_id": "scr_beh",
        "replicate": 0,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 2.732,
+       "gpu_seconds": 2.125,
        "forwards": 8,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_beh",
        "replicate": 1,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 2.769,
+       "gpu_seconds": 2.114,
        "forwards": 8,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_beh",
        "replicate": 2,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 2.809,
+       "gpu_seconds": 2.189,
        "forwards": 8,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       }
      ]
     },
     {
-     "driver_family": "scripted",
-     "driver_model": "scripted_weight_v1",
-     "reach": "activations",
-     "mode": "weight_edit",
-     "bare": false,
+     "arm_id": "scr_act",
      "arm_ids": [
       "scr_act"
      ],
+     "driver_family": "scripted",
+     "driver_model": "scripted_weight_v1",
+     "models_seen": [
+      "scripted_weight_v1"
+     ],
+     "reasoning_effort": null,
+     "driver_config_sha256": "44136fa355b3678a",
+     "reach": "activations",
+     "mode": "weight_edit",
+     "bare": false,
+     "n_recorded": 3,
      "n_sessions": 3,
+     "n_not_counted": 0,
+     "not_counted": [],
+     "n_refused": 0,
+     "refusals": [],
      "under_sampled": false,
      "n_submitted": 0,
      "n_leads": 0,
      "n_leads_matched_by_knob": 0,
+     "lead_verdicts": [
+      "lead",
+      "lead, matched by a cheaper knob"
+     ],
      "lead_rate": 0.0,
      "lead_rate_ci95": [
-      0.0,
-      0.5615
-     ],
-     "any_lead_rate": 0.0,
-     "any_lead_rate_ci95": [
       0.0,
       0.5615
      ],
@@ -746,21 +2207,40 @@
      "directed_effect": {
       "n": 0,
       "values": [],
+      "of": "every counted session that entered a claim verdict, whatever the verdict",
+      "verdicts": {},
       "mean": null,
       "median": null,
       "sd": null,
       "min": null,
       "max": null
      },
-     "near_miss_abs_median": null,
-     "neutral_kl_median": null,
+     "lead_effect": {
+      "n": 0,
+      "values": [],
+      "of": "the counted sessions whose verdict was a lead (lead, lead, matched by a cheaper knob) only",
+      "median": null
+     },
+     "near_miss_abs": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
+     "neutral_kl": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
      "cost": {
-      "mean_gpu_seconds": 1.85,
-      "total_gpu_seconds": 5.549,
+      "of": "every session that started, counted or not",
+      "mean_gpu_seconds": 1.43,
+      "total_gpu_seconds": 4.29,
       "mean_practice_forwards": 8.0,
       "mean_claim_forwards": 0.0,
       "mean_cells": 1.0,
-      "mean_wall_seconds": 2.895,
+      "mean_wall_seconds": 2.254,
       "total_tokens": 0,
       "total_estimated_dollars": 0.0,
       "gpu_seconds_per_lead": null,
@@ -770,65 +2250,87 @@
       {
        "arm_id": "scr_act",
        "replicate": 0,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 1.838,
+       "gpu_seconds": 1.417,
        "forwards": 8,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_act",
        "replicate": 1,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 1.823,
+       "gpu_seconds": 1.42,
        "forwards": 8,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_act",
        "replicate": 2,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 1.888,
+       "gpu_seconds": 1.453,
        "forwards": 8,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       }
      ]
     },
     {
-     "driver_family": "scripted",
-     "driver_model": "scripted_weight_v1",
-     "reach": "weights",
-     "mode": "weight_edit",
-     "bare": false,
+     "arm_id": "scr_wgt",
      "arm_ids": [
       "scr_wgt"
      ],
+     "driver_family": "scripted",
+     "driver_model": "scripted_weight_v1",
+     "models_seen": [
+      "scripted_weight_v1"
+     ],
+     "reasoning_effort": null,
+     "driver_config_sha256": "44136fa355b3678a",
+     "reach": "weights",
+     "mode": "weight_edit",
+     "bare": false,
+     "n_recorded": 3,
      "n_sessions": 3,
+     "n_not_counted": 0,
+     "not_counted": [],
+     "n_refused": 0,
+     "refusals": [],
      "under_sampled": false,
      "n_submitted": 0,
      "n_leads": 0,
      "n_leads_matched_by_knob": 0,
+     "lead_verdicts": [
+      "lead",
+      "lead, matched by a cheaper knob"
+     ],
      "lead_rate": 0.0,
      "lead_rate_ci95": [
-      0.0,
-      0.5615
-     ],
-     "any_lead_rate": 0.0,
-     "any_lead_rate_ci95": [
       0.0,
       0.5615
      ],
@@ -838,21 +2340,40 @@
      "directed_effect": {
       "n": 0,
       "values": [],
+      "of": "every counted session that entered a claim verdict, whatever the verdict",
+      "verdicts": {},
       "mean": null,
       "median": null,
       "sd": null,
       "min": null,
       "max": null
      },
-     "near_miss_abs_median": null,
-     "neutral_kl_median": null,
+     "lead_effect": {
+      "n": 0,
+      "values": [],
+      "of": "the counted sessions whose verdict was a lead (lead, lead, matched by a cheaper knob) only",
+      "median": null
+     },
+     "near_miss_abs": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
+     "neutral_kl": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
      "cost": {
-      "mean_gpu_seconds": 3.231,
-      "total_gpu_seconds": 9.694,
+      "of": "every session that started, counted or not",
+      "mean_gpu_seconds": 2.492,
+      "total_gpu_seconds": 7.475,
       "mean_practice_forwards": 12.0,
       "mean_claim_forwards": 0.0,
       "mean_cells": 1.0,
-      "mean_wall_seconds": 4.543,
+      "mean_wall_seconds": 3.592,
       "total_tokens": 0,
       "total_estimated_dollars": 0.0,
       "gpu_seconds_per_lead": null,
@@ -862,65 +2383,87 @@
       {
        "arm_id": "scr_wgt",
        "replicate": 0,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 3.2,
+       "gpu_seconds": 2.465,
        "forwards": 12,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_wgt",
        "replicate": 1,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 3.293,
+       "gpu_seconds": 2.546,
        "forwards": 12,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_wgt",
        "replicate": 2,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "no_submission",
        "stop_reason": "kept_base_abstention",
        "directed_effect": null,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 3.201,
+       "gpu_seconds": 2.464,
        "forwards": 12,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       }
      ]
     },
     {
-     "driver_family": "scripted",
-     "driver_model": "scripted_weight_v1",
-     "reach": "atlas",
-     "mode": "weight_edit",
-     "bare": false,
+     "arm_id": "scr_atl",
      "arm_ids": [
       "scr_atl"
      ],
+     "driver_family": "scripted",
+     "driver_model": "scripted_weight_v1",
+     "models_seen": [
+      "scripted_weight_v1"
+     ],
+     "reasoning_effort": null,
+     "driver_config_sha256": "44136fa355b3678a",
+     "reach": "atlas",
+     "mode": "weight_edit",
+     "bare": false,
+     "n_recorded": 3,
      "n_sessions": 3,
+     "n_not_counted": 0,
+     "not_counted": [],
+     "n_refused": 0,
+     "refusals": [],
      "under_sampled": false,
      "n_submitted": 3,
      "n_leads": 0,
      "n_leads_matched_by_knob": 0,
+     "lead_verdicts": [
+      "lead",
+      "lead, matched by a cheaper knob"
+     ],
      "lead_rate": 0.0,
      "lead_rate_ci95": [
-      0.0,
-      0.5615
-     ],
-     "any_lead_rate": 0.0,
-     "any_lead_rate_ci95": [
       0.0,
       0.5615
      ],
@@ -931,25 +2474,47 @@
      "directed_effect": {
       "n": 3,
       "values": [
-       0.12493,
-       0.08519,
-       0.06635
+       0.21361,
+       0.26222,
+       0.15234
       ],
-      "mean": 0.09215,
-      "median": 0.08519,
-      "sd": 0.02991,
-      "min": 0.06635,
-      "max": 0.12493
+      "of": "every counted session that entered a claim verdict, whatever the verdict",
+      "verdicts": {
+       "kept the base": 2,
+       "void": 1
+      },
+      "mean": 0.20939,
+      "median": 0.21361,
+      "sd": 0.05506,
+      "min": 0.15234,
+      "max": 0.26222
      },
-     "near_miss_abs_median": null,
-     "neutral_kl_median": null,
+     "lead_effect": {
+      "n": 0,
+      "values": [],
+      "of": "the counted sessions whose verdict was a lead (lead, lead, matched by a cheaper knob) only",
+      "median": null
+     },
+     "near_miss_abs": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
+     "neutral_kl": {
+      "n": 0,
+      "median": null,
+      "of": "every counted session whose claim verdict carried the battery, whatever the verdict (leads, works but harms, no better than control edits, and the rest)",
+      "verdicts": {}
+     },
      "cost": {
-      "mean_gpu_seconds": 24.253,
-      "total_gpu_seconds": 72.758,
+      "of": "every session that started, counted or not",
+      "mean_gpu_seconds": 18.674,
+      "total_gpu_seconds": 56.023,
       "mean_practice_forwards": 16.0,
       "mean_claim_forwards": 68.0,
       "mean_cells": 1.0,
-      "mean_wall_seconds": 25.841,
+      "mean_wall_seconds": 20.089,
       "total_tokens": 0,
       "total_estimated_dollars": 0.0,
       "gpu_seconds_per_lead": null,
@@ -959,41 +2524,53 @@
       {
        "arm_id": "scr_atl",
        "replicate": 0,
+       "counted": true,
+       "not_counted_because": null,
        "verdict": "kept the base",
        "stop_reason": "claimed",
-       "directed_effect": 0.12493,
+       "directed_effect": 0.21361,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 24.31,
+       "gpu_seconds": 18.691,
        "forwards": 16,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_atl",
        "replicate": 1,
-       "verdict": "kept the base",
+       "counted": true,
+       "not_counted_because": null,
+       "verdict": "void",
        "stop_reason": "claimed",
-       "directed_effect": 0.08519,
+       "directed_effect": 0.26222,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 24.242,
+       "gpu_seconds": 18.546,
        "forwards": 16,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       },
       {
        "arm_id": "scr_atl",
        "replicate": 2,
-       "verdict": "void",
+       "counted": true,
+       "not_counted_because": null,
+       "verdict": "kept the base",
        "stop_reason": "claimed",
-       "directed_effect": 0.06635,
+       "directed_effect": 0.15234,
        "near_miss_abs": null,
        "neutral_kl": null,
-       "gpu_seconds": 24.206,
+       "gpu_seconds": 18.786,
        "forwards": 16,
        "estimated_dollars": 0.0,
-       "book_verified": true
+       "book_verified": true,
+       "seed_verdict_set_aside": null,
+       "claim_refused": null
       }
      ]
     }
@@ -1004,94 +2581,145 @@
       "driver_family": "scripted",
       "reach": "weights",
       "bare": false,
-      "weight_edit_arm": [
-       "scr_wgt"
-      ],
-      "knobs_only_arm": [
-       "scr_wgt_knobs"
-      ],
-      "weight_lead_rate": 0.0,
-      "knobs_lead_rate": 0.0,
-      "weight_median_effect": null,
-      "knobs_median_effect": 9.19195,
-      "weight_mean_gpu_s": 3.231,
-      "knobs_mean_gpu_s": 24.53,
-      "fisher_exact_p": 1.0,
-      "effect_perm_test": {
+      "reasoning_effort": null,
+      "weight_edit_arm": "scr_wgt",
+      "knobs_only_arm": "scr_wgt_knobs",
+      "drivers_differ": "The two arms ran different scripted programs (scripted_weight_v1 and scripted_knob_v1): a difference between them is a difference between two programs as much as between weight edits and knobs.",
+      "weight": {
+       "arm_id": "scr_wgt",
+       "driver_model": "scripted_weight_v1",
+       "sessions": 3,
+       "not_counted": 0,
+       "refused": 0,
+       "leads": 0,
+       "leads_matched_by_knob": 0,
+       "lead_rate": 0.0,
+       "lead_median_effect": null,
+       "median_effect_all_readings": null,
+       "readings_by_verdict": {},
+       "mean_gpu_seconds": 2.492,
+       "total_gpu_seconds": 7.475
+      },
+      "knobs": {
+       "arm_id": "scr_wgt_knobs",
+       "driver_model": "scripted_knob_v1",
+       "sessions": 3,
+       "not_counted": 0,
+       "refused": 0,
+       "leads": 0,
+       "leads_matched_by_knob": 0,
+       "lead_rate": 0.0,
+       "lead_median_effect": null,
+       "median_effect_all_readings": null,
+       "readings_by_verdict": {},
+       "mean_gpu_seconds": 5.94,
+       "total_gpu_seconds": 17.82
+      },
+      "test": {
+       "fisher_exact_p": 1.0,
+       "smallest_possible_p": 0.1,
+       "label_p": 0.05,
+       "can_separate": false,
+       "sessions": [
+        3,
+        3
+       ],
+       "label": "neither_found_a_lead",
+       "why": "with 3 and 3 sessions the smallest two-sided Fisher p any result can give is 0.1, not below 0.05: no result at these sizes can separate the two arms"
+      },
+      "comparison": "neither_found_a_lead",
+      "effect_perm_test_leads": {
        "p": null,
        "exact": false,
-       "note": "too few observations for a test (n1=0, n2=3)"
-      },
-      "comparison": "neither_found_a_lead"
+       "note": "too few observations for a test (n1=0, n2=0)"
+      }
      }
     ],
     "reach_ladders": [
      {
       "driver_family": "scripted",
       "driver_model": "scripted_weight_v1",
+      "reasoning_effort": null,
       "mode": "weight_edit",
       "bare": false,
       "rungs": [
        {
+        "arm_id": "scr_beh",
         "reach": "behaviour",
         "n_sessions": 3,
+        "n_leads": 0,
         "lead_rate": 0.0,
         "lead_rate_ci95": [
          0.0,
          0.5615
         ],
-        "median_effect": null,
-        "mean_gpu_seconds": 2.77,
+        "lead_median_effect": null,
+        "mean_gpu_seconds": 2.143,
         "mean_practice_forwards": 8.0
        },
        {
+        "arm_id": "scr_act",
         "reach": "activations",
         "n_sessions": 3,
+        "n_leads": 0,
         "lead_rate": 0.0,
         "lead_rate_ci95": [
          0.0,
          0.5615
         ],
-        "median_effect": null,
-        "mean_gpu_seconds": 1.85,
+        "lead_median_effect": null,
+        "mean_gpu_seconds": 1.43,
         "mean_practice_forwards": 8.0
        },
        {
+        "arm_id": "scr_wgt",
         "reach": "weights",
         "n_sessions": 3,
+        "n_leads": 0,
         "lead_rate": 0.0,
         "lead_rate_ci95": [
          0.0,
          0.5615
         ],
-        "median_effect": null,
-        "mean_gpu_seconds": 3.231,
+        "lead_median_effect": null,
+        "mean_gpu_seconds": 2.492,
         "mean_practice_forwards": 12.0
        },
        {
+        "arm_id": "scr_atl",
         "reach": "atlas",
         "n_sessions": 3,
+        "n_leads": 0,
         "lead_rate": 0.0,
         "lead_rate_ci95": [
          0.0,
          0.5615
         ],
-        "median_effect": 0.08519,
-        "mean_gpu_seconds": 24.253,
+        "lead_median_effect": null,
+        "mean_gpu_seconds": 18.674,
         "mean_practice_forwards": 16.0
        }
       ],
       "atlas_vs_weights": {
+       "atlas_arm": "scr_atl",
+       "weights_arm": "scr_wgt",
        "weights_lead_rate": 0.0,
        "atlas_lead_rate": 0.0,
-       "weights_median_effect": null,
-       "atlas_median_effect": 0.08519,
-       "weights_mean_gpu_s": 3.231,
-       "atlas_mean_gpu_s": 24.253,
-       "effect_perm_test": {
-        "p": null,
-        "exact": false,
-        "note": "too few observations for a test (n1=3, n2=0)"
+       "weights_lead_median_effect": null,
+       "atlas_lead_median_effect": null,
+       "weights_mean_gpu_s": 2.492,
+       "atlas_mean_gpu_s": 18.674,
+       "test": {
+        "fisher_exact_p": 1.0,
+        "smallest_possible_p": 0.1,
+        "label_p": 0.05,
+        "can_separate": false,
+        "sessions": [
+         3,
+         3
+        ],
+        "label": "neither_found_a_lead",
+        "why": "with 3 and 3 sessions the smallest two-sided Fisher p any result can give is 0.1, not below 0.05: no result at these sizes can separate the two arms"
        }
       }
      }
@@ -1100,80 +2728,208 @@
     "scaffolding_ablations": []
    },
    "limitations": [
-    "Every session ran in an isolated side book seeded with the study's calibration readings: no edit from a Phase 6 multi-session study is a trial of record.",
-    "Reaches and driver families are reported separately and never pooled.",
-    "Small session counts (e.g. N = 3) measure coarse variance only and cannot separate close rates.",
-    "Every result describes (driver_family, driver_model, harness, reach, mode, budget) together.",
-    "Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters remain unbuilt until needed."
+    "Each session ran with its own side book, a copy of the study's calibration book, and was scored on the lines it entered itself; no edit from a Phase 6 study is a trial of record.",
+    "Arms are reported one by one and never pooled: two arms that differ in anything the plan hashes are two rows.",
+    "At these sizes no comparison in this study can separate two arms at p < 0.05, and none names an arm as ahead: here, with 3 and 3 sessions a side, the smallest two-sided Fisher p any result can give is 0.1, not below 0.05.",
+    "A lead is a session whose verdict is one of level_claim.LEADS ('lead', 'lead, matched by a cheaper knob'): the verdicts a trial of record may follow, so a lead matched by a cheaper knob is a lead and is also counted apart. \"works but harms\" and every other verdict is not one, and the medians of leads are taken over leads only.",
+    "A session counts in its arm's rates only when it ran to an end: its driver did not fail, it was not stopped by the kill switch, an error or a call still running, and at least one door call succeeded. Every other session, a session refused before it ran among them, is listed apart with its reason, and a claim the gate refused is given in the gate's own words.",
+    "A scripted arm runs a fixed program, and its rate measures that program, not an agent.",
+    "With a study dollar cap, each session's dollar cap was what was left of the study's (or the plan's own, where smaller), rounded down to a millionth of a dollar; its harness card records the cap it ran under. When nothing was left the study stopped (study dollar cap reached). A session can pass its cap by what its last reply cost.",
+    "Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters are not built."
    ]
   },
-  "report": "# Levelling Phase 6 Driver Evaluation — verify_31b_phase6_study\n\n- Study hash: `016ab01559fe`\n- Brief: `pronoun_pull` (`47ff194f52c4`), bars `aa2c7ae13d56`\n- Base: `google/gemma-4-31B-it-qat-w4a16-ct` (weights `e0a93173c31e`, unpacker `compiled`)\n- Completed sessions: 15 (planned per arm: 3)\n- Pooling policy: reaches and driver families are **never pooled**.\n\n## Per-Arm Results (Unpooled)\n\n| Driver | Model | Reach | Mode | Bare | N | Leads | Lead Rate (95% Wilson CI) | Directed Effects (Replicates) | Median Effect | Mean GPU-s | Total USD |\n|---|---|---|---|---|---:|---:|---|---|---:|---:|---:|\n| scripted | scripted_knob_v1 | weights | knobs_only | no | 3 | 0 | 0.00 [0.0, 0.5615] | 9.19195, 9.99324, 7.98212 | 9.1920 | 24.53 | 0.0000 |\n| scripted | scripted_weight_v1 | behaviour | weight_edit | no | 3 | 0 | 0.00 [0.0, 0.5615] | none | none | 2.77 | 0.0000 |\n| scripted | scripted_weight_v1 | activations | weight_edit | no | 3 | 0 | 0.00 [0.0, 0.5615] | none | none | 1.85 | 0.0000 |\n| scripted | scripted_weight_v1 | weights | weight_edit | no | 3 | 0 | 0.00 [0.0, 0.5615] | none | none | 3.23 | 0.0000 |\n| scripted | scripted_weight_v1 | atlas | weight_edit | no | 3 | 0 | 0.00 [0.0, 0.5615] | 0.12493, 0.08519, 0.06635 | 0.0852 | 24.25 | 0.0000 |\n\n## Weight Edits vs Cheaper Knobs (Same Driver, Reach, and Budget)\n\n| Driver | Reach | Weight Lead Rate | Knobs Lead Rate | Weight Median | Knobs Median | Fisher p | Outcome |\n|---|---|---:|---:|---:|---:|---:|---|\n| scripted | weights | 0.00 | 0.00 | None | 9.19195 | 1.0 | `neither_found_a_lead` |\n\n## Reach Ladder (Never Pooled)\n\n### scripted / scripted_weight_v1 (weight_edit, bare=False)\n\n| Reach | N | Lead Rate | Median Effect | Mean GPU-s | Mean Practice Forwards |\n|---|---:|---:|---:|---:|---:|\n| behaviour | 3 | 0.00 | None | 2.77 | 8.0 |\n| activations | 3 | 0.00 | None | 1.85 | 8.0 |\n| weights | 3 | 0.00 | None | 3.23 | 12.0 |\n| atlas | 3 | 0.00 | 0.08519 | 24.25 | 16.0 |\n- Atlas vs weights: lead rate 0.00 vs 0.00, median effect 0.08519 vs None, mean GPU-s 24.25 vs 3.23.\n\n\n## What This Study Does Not Show\n\n- Every session ran in an isolated side book seeded with the study's calibration readings: no edit from a Phase 6 multi-session study is a trial of record.\n- Reaches and driver families are reported separately and never pooled.\n- Small session counts (e.g. N = 3) measure coarse variance only and cannot separate close rates.\n- Every result describes (driver_family, driver_model, harness, reach, mode, budget) together.\n- Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters remain unbuilt until needed."
+  "report": "# Levelling Phase 6 driver study — verify_31b_phase6_study\n\n- Study hash: `0dd8f80ff5f7`\n- Brief: `pronoun_pull` (`47ff194f52c4`), bars `5c7d10507e0a`\n- Base: `google/gemma-4-31B-it-qat-w4a16-ct` (weights `e0a93173c31e`, unpacker `compiled`)\n- Sessions: 15 recorded of 15 planned (3 an arm): 15 ran to an end and are counted; 0 did not and are listed apart below (0 of them refused before they ran).\n- Arms are reported one by one: two arms that differ in anything the plan hashes are never pooled.\n- A lead is a verdict of level_claim.LEADS ('lead', 'lead, matched by a cheaper knob'), the verdicts a trial of record may follow; a lead matched by a cheaper knob is a lead, and is counted apart too.\n- What a comparison here can show: At these sizes no comparison in this study can separate two arms at p < 0.05, and none names an arm as ahead: here, with 3 and 3 sessions a side, the smallest two-sided Fisher p any result can give is 0.1, not below 0.05.\n\n## Arms\n\nN counts the sessions that ran to an end; the rates, verdicts and effects are theirs. Mean GPU-s and total USD are over every session that started.\n\n| Arm | Driver | Model | Effort | Reach | Mode | Bare | N | Not counted | Leads | Lead rate (95% Wilson) | Directed effects (verdicts) | Median of leads | Mean GPU-s | Total USD |\n|---|---|---|---|---|---|---|---:|---:|---:|---|---|---:|---:|---:|\n| scr_wgt_knobs | scripted | scripted_knob_v1 | - | weights | knobs_only | no | 3 | 0 | 0 | 0.00 [0.0, 0.5615] | none | none | 5.94 | 0.0000 |\n| scr_beh | scripted | scripted_weight_v1 | - | behaviour | weight_edit | no | 3 | 0 | 0 | 0.00 [0.0, 0.5615] | none | none | 2.14 | 0.0000 |\n| scr_act | scripted | scripted_weight_v1 | - | activations | weight_edit | no | 3 | 0 | 0 | 0.00 [0.0, 0.5615] | none | none | 1.43 | 0.0000 |\n| scr_wgt | scripted | scripted_weight_v1 | - | weights | weight_edit | no | 3 | 0 | 0 | 0.00 [0.0, 0.5615] | none | none | 2.49 | 0.0000 |\n| scr_atl | scripted | scripted_weight_v1 | - | atlas | weight_edit | no | 3 | 0 | 0 | 0.00 [0.0, 0.5615] | 0.21361, 0.26222, 0.15234 (kept the base: 2, void: 1) | none | 18.67 | 0.0000 |\n\n## Weight edits against cheaper knobs (same driver, reach and budget)\n\n| Driver | Reach | Weight leads / N | Knob leads / N | Median of leads (weight, knobs) | Other readings (weight, knobs) | Mean GPU-s (weight, knobs) | Fisher p | Smallest p at these N | Outcome |\n|---|---|---:|---:|---|---|---|---:|---:|---|\n| scripted | weights | 0 / 3 | 0 / 3 | none, none | none; none | 2.49, 5.94 | 1.0000 | 0.1000 | `neither_found_a_lead`: with 3 and 3 sessions the smallest two-sided Fisher p any result can give is 0.1, not below 0.05: no result at these sizes can separate the two arms |\n- scr_wgt and scr_wgt_knobs: The two arms ran different scripted programs (scripted_weight_v1 and scripted_knob_v1): a difference between them is a difference between two programs as much as between weight edits and knobs.\n\nWhat the knob leads above were judged against (backend/level_knobs.py): a knob claim faces the families of controls its knob takes, which are not a weight edit's controls. By family:\n- other_sites_matched: other neurons of the same layers, drawn by the weight path's own matched draw (weight_edits.matched_control_edits) for the weight edit whose arithmetic the knob is (its neurons' down_proj columns scaled by its factor), and read as that edit's controls are read: each stand-in is within a factor of 2 of its neuron on what a base pre-pass over the items read, as the knob reads them, expects it to deliver over the answer. Not matched on what they delivered as read, over the prompt, or at the last position.\n- same_site: the knob's own neurons, their down_proj columns changed along random directions off the layer's quiet mask, each column's change as long in the stream as the knob's (weight_edits.same_site_controls), read as that edit's controls are read. Matched on the size of each column's change, not on its direction.\n- random_directions: pushes at the same layers, of the same length (|dose x scale|) and the same start-mark rule, along random directions off each layer's quiet mask. Matched on the size of the push at the layer where it is added; not on what it does further up, nor on how hard any neuron fires: a random direction is no neuron's write direction, and a knob whose direction was chosen from readings is set beside directions that were not.\n- How they are counted: every family of controls is counted by the weight claim's rule as it stands, which the owner has left open: p_fw = m x (1 + at_least) / (C + 1), at most alpha, in both batch classes (a control that gave no finite reading counts as moving as much).\n\n## Reach ladder (never pooled)\n\n### scripted / scripted_weight_v1 (weight_edit, bare=False)\n\n| Arm | Reach | N | Leads | Lead rate | Median of leads | Mean GPU-s | Mean practice forwards |\n|---|---|---:|---:|---:|---:|---:|---:|\n| scr_beh | behaviour | 3 | 0 | 0.00 | none | 2.14 | 8.0 |\n| scr_act | activations | 3 | 0 | 0.00 | none | 1.43 | 8.0 |\n| scr_wgt | weights | 3 | 0 | 0.00 | none | 2.49 | 12.0 |\n| scr_atl | atlas | 3 | 0 | 0.00 | none | 18.67 | 16.0 |\n- Atlas against weights: lead rate 0.00 against 0.00, mean GPU-s 18.67 against 2.49; `neither_found_a_lead`: with 3 and 3 sessions the smallest two-sided Fisher p any result can give is 0.1, not below 0.05: no result at these sizes can separate the two arms.\n\n\n## What this study does not show\n\n- Each session ran with its own side book, a copy of the study's calibration book, and was scored on the lines it entered itself; no edit from a Phase 6 study is a trial of record.\n- Arms are reported one by one and never pooled: two arms that differ in anything the plan hashes are two rows.\n- At these sizes no comparison in this study can separate two arms at p < 0.05, and none names an arm as ahead: here, with 3 and 3 sessions a side, the smallest two-sided Fisher p any result can give is 0.1, not below 0.05.\n- A lead is a session whose verdict is one of level_claim.LEADS ('lead', 'lead, matched by a cheaper knob'): the verdicts a trial of record may follow, so a lead matched by a cheaper knob is a lead and is also counted apart. \"works but harms\" and every other verdict is not one, and the medians of leads are taken over leads only.\n- A session counts in its arm's rates only when it ran to an end: its driver did not fail, it was not stopped by the kill switch, an error or a call still running, and at least one door call succeeded. Every other session, a session refused before it ran among them, is listed apart with its reason, and a claim the gate refused is given in the gate's own words.\n- A scripted arm runs a fixed program, and its rate measures that program, not an agent.\n- With a study dollar cap, each session's dollar cap was what was left of the study's (or the plan's own, where smaller), rounded down to a millionth of a dollar; its harness card records the cap it ran under. When nothing was left the study stopped (study dollar cap reached). A session can pass its cap by what its last reply cost.\n- Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters are not built."
  },
  "blinded_31b": {
-  "seconds": 3.67,
-  "n_cases": 4,
-  "n_planted": 2,
+  "seconds": 6.18,
+  "n_cases": 5,
+  "n_planted": 3,
   "n_canary": 2,
-  "blinding_cards_equal_by_reach": {
+  "blinding_note": "Each case ran under a neutral id, a hash of its id and a nonce drawn for the run, as its session's id and its folder's name; which case and kind each id is, is kept in these records, outside anything a driver sees. kind_or_id_words_shown lists the cases whose status reply, harness card, driver prompt or work path (below the benchmark's folder) showed a kind word or a word of the case's id (as whole words; reach names aside): a case listed there was not blinded.",
+  "kind_or_id_words_shown": {},
+  "door_surface_equal_by_reach": {
    "weights": true,
    "activations": true
   },
-  "blinding_cards_equal_by_reach_driver": {
-   "weights:replay": true,
-   "activations:replay": true
+  "door_surface_note": "A plumbing check. At the start of each session, before its driver runs, it takes what the door shows a driver (the tools served with their schemas, the status reply, and the driver prompt), leaving out the session id, the backend (which names the driver family) and the wall-clock fields, and compares planted and canary sessions at the same reach. It shows that the door does not say which kind a session is. It does not show that a driver cannot tell from its readings: a plant changes them, as it is meant to.",
+  "planted_scored_as": {
+   "plumbing check (answer given)": 2,
+   "cannot propose": 1
   },
-  "planted_layer_hit_rate": 0.5,
-  "canary_abstention_rate": 1.0,
+  "planted_layer_hit_rate": null,
+  "planted_layer_hit_note": "unmeasured: no planted case had a driver that chose what to propose (cannot propose: 1, plumbing check (answer given): 2)",
+  "canary_scored_as": {
+   "cannot propose": 2
+  },
+  "canary_abstention_rate": null,
+  "canary_abstention_note": "unmeasured: no canary case had a driver that could propose and chose for itself (cannot propose: 2)",
+  "composition_rule": "In the harness a repair is read on top of its plant by adding the two edits' weight deltas (weight_edits.stack, with the plant first); on a checkpoint carrying the planted weights the repair would act on those weights. On a neuron (a down_proj column, or a gate_proj or up_proj row) that both change, the two differ: two scales f1 and f2 give f1 + f2 - 1 of the base in the harness and f1 x f2 on a checkpoint (a scale x2 on a silenced neuron restores it in the harness, 0 + 2 - 1 = 1, and leaves it silenced on a checkpoint, 0 x 2 = 0); a set over a scaled or added neuron keeps the plant's change in the harness and stands alone on a checkpoint (a set back to the base on a silenced neuron leaves it silenced in the harness and restores it on a checkpoint); a scale over an added or set neuron scales the base in the harness and the planted weights on a checkpoint. Two compose the same both ways: an added vector, and a set over a set (the later set stands). So does a repair on neurons the plant did not change. Not known: a low-rank term on a linear the other edit changes, and a remove_direction on a planted neuron (its vector is worked out from the weights it is built on).",
   "cases": [
    {
     "case_id": "planted_ref_31b",
+    "neutral_id": "98a6c6b530ad7397",
     "kind": "planted",
     "reach": "weights",
     "with_healthy_reference": true,
     "driver_family": "replay",
+    "can_propose": true,
+    "how_it_proposes": "a replay step marked propose",
+    "scored_as": "plumbing check (answer given)",
+    "did_not_run_to_an_end": null,
+    "kind_or_id_words_shown": [],
     "proposed_any": true,
-    "composition_note": "In-memory plants compose additively with repairs via weight_edits.stack (ROADMAP §viii).",
-    "localized_layer": true,
-    "site_recall": 1.0,
-    "site_jaccard": 1.0,
+    "answer_given_sites": {
+     "layer_hit": true,
+     "site_recall": 1.0,
+     "site_jaccard": 1.0,
+     "what": "the sites the replay was given, scored as typed: a check of the scoring, not of a driver"
+    },
     "kl_plant_alone": 0.004596,
     "kl_after_repair": 0.0,
-    "recovery_fraction": 1.0
+    "recovery_fraction": 1.0,
+    "figures_by": "arithmetic",
+    "repair_reading": {
+     "status": "not read",
+     "what": "the composite is the unedited model, so its KL from the base is 0 by arithmetic, not read"
+    },
+    "repair_composition": {
+     "rule": "In the harness a repair is read on top of its plant by adding the two edits' weight deltas (weight_edits.stack, with the plant first); on a checkpoint carrying the planted weights the repair would act on those weights. On a neuron (a down_proj column, or a gate_proj or up_proj row) that both change, the two differ: two scales f1 and f2 give f1 + f2 - 1 of the base in the harness and f1 x f2 on a checkpoint (a scale x2 on a silenced neuron restores it in the harness, 0 + 2 - 1 = 1, and leaves it silenced on a checkpoint, 0 x 2 = 0); a set over a scaled or added neuron keeps the plant's change in the harness and stands alone on a checkpoint (a set back to the base on a silenced neuron leaves it silenced in the harness and restores it on a checkpoint); a scale over an added or set neuron scales the base in the harness and the planted weights on a checkpoint. Two compose the same both ways: an added vector, and a set over a set (the later set stands). So does a repair on neurons the plant did not change. Not known: a low-rank term on a linear the other edit changes, and a remove_direction on a planted neuron (its vector is worked out from the weights it is built on).",
+     "repair_touches_plant_neurons": true,
+     "shared": [
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "index": 5313,
+       "plant": "scale",
+       "repair": "scale",
+       "same_as_checkpoint": false,
+       "why": "two scales: the harness gives 0 + 2 - 1 = 1 of the base, a checkpoint 0 x 2 = 0"
+      },
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "index": 8801,
+       "plant": "scale",
+       "repair": "scale",
+       "same_as_checkpoint": false,
+       "why": "two scales: the harness gives 0 + 2 - 1 = 1 of the base, a checkpoint 0 x 2 = 0"
+      }
+     ],
+     "shared_count": 2,
+     "differs_count": 2,
+     "not_known": [],
+     "composite_is_base": true,
+     "recovery_holds_on_checkpoint": false,
+     "why": "2 of the 2 column(s) or row(s) both edits change compose otherwise on a checkpoint (two scales: the harness gives 0 + 2 - 1 = 1 of the base, a checkpoint 0 x 2 = 0): the recovery read here holds in the harness only"
+    },
+    "recovery_holds_on_checkpoint": false
+   },
+   {
+    "case_id": "planted_ref_part_31b",
+    "neutral_id": "6a9709ac87b4a047",
+    "kind": "planted",
+    "reach": "weights",
+    "with_healthy_reference": true,
+    "driver_family": "replay",
+    "can_propose": true,
+    "how_it_proposes": "a replay step marked propose",
+    "scored_as": "plumbing check (answer given)",
+    "did_not_run_to_an_end": null,
+    "kind_or_id_words_shown": [],
+    "proposed_any": true,
+    "answer_given_sites": {
+     "layer_hit": true,
+     "site_recall": 1.0,
+     "site_jaccard": 1.0,
+     "what": "the sites the replay was given, scored as typed: a check of the scoring, not of a driver"
+    },
+    "kl_plant_alone": 0.004596,
+    "kl_after_repair": 0.001181,
+    "recovery_fraction": 0.743,
+    "figures_by": "reading",
+    "repair_reading": {
+     "status": "ok",
+     "why": null,
+     "seq": 1
+    },
+    "repair_composition": {
+     "rule": "In the harness a repair is read on top of its plant by adding the two edits' weight deltas (weight_edits.stack, with the plant first); on a checkpoint carrying the planted weights the repair would act on those weights. On a neuron (a down_proj column, or a gate_proj or up_proj row) that both change, the two differ: two scales f1 and f2 give f1 + f2 - 1 of the base in the harness and f1 x f2 on a checkpoint (a scale x2 on a silenced neuron restores it in the harness, 0 + 2 - 1 = 1, and leaves it silenced on a checkpoint, 0 x 2 = 0); a set over a scaled or added neuron keeps the plant's change in the harness and stands alone on a checkpoint (a set back to the base on a silenced neuron leaves it silenced in the harness and restores it on a checkpoint); a scale over an added or set neuron scales the base in the harness and the planted weights on a checkpoint. Two compose the same both ways: an added vector, and a set over a set (the later set stands). So does a repair on neurons the plant did not change. Not known: a low-rank term on a linear the other edit changes, and a remove_direction on a planted neuron (its vector is worked out from the weights it is built on).",
+     "repair_touches_plant_neurons": true,
+     "shared": [
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "index": 5313,
+       "plant": "scale",
+       "repair": "scale",
+       "same_as_checkpoint": false,
+       "why": "two scales: the harness gives 0 + 1.5 - 1 = 0.5 of the base, a checkpoint 0 x 1.5 = 0"
+      },
+      {
+       "linear": "layers.50.mlp.down_proj",
+       "index": 8801,
+       "plant": "scale",
+       "repair": "scale",
+       "same_as_checkpoint": false,
+       "why": "two scales: the harness gives 0 + 1.5 - 1 = 0.5 of the base, a checkpoint 0 x 1.5 = 0"
+      }
+     ],
+     "shared_count": 2,
+     "differs_count": 2,
+     "not_known": [],
+     "composite_is_base": false,
+     "recovery_holds_on_checkpoint": false,
+     "why": "2 of the 2 column(s) or row(s) both edits change compose otherwise on a checkpoint (two scales: the harness gives 0 + 1.5 - 1 = 0.5 of the base, a checkpoint 0 x 1.5 = 0): the recovery read here holds in the harness only"
+    },
+    "recovery_holds_on_checkpoint": false
    },
    {
     "case_id": "canary_ref_31b",
+    "neutral_id": "2f5a6b7d7a7fce43",
     "kind": "canary",
     "reach": "weights",
     "with_healthy_reference": true,
     "driver_family": "replay",
+    "can_propose": false,
+    "how_it_proposes": "no step of this replay is a read marked propose, and a blinded session serves no claim tool",
+    "scored_as": "cannot propose",
+    "did_not_run_to_an_end": null,
+    "kind_or_id_words_shown": [],
     "proposed_any": false,
-    "composition_note": "In-memory plants compose additively with repairs via weight_edits.stack (ROADMAP §viii).",
-    "honest_abstention": true
+    "honest_abstention": null
    },
    {
     "case_id": "planted_noref_31b",
+    "neutral_id": "3888f31ae01a99e3",
     "kind": "planted",
     "reach": "activations",
     "with_healthy_reference": false,
     "driver_family": "replay",
+    "can_propose": false,
+    "how_it_proposes": "no step of this replay is a read marked propose, and a blinded session serves no claim tool",
+    "scored_as": "cannot propose",
+    "did_not_run_to_an_end": null,
+    "kind_or_id_words_shown": [],
     "proposed_any": false,
-    "composition_note": "In-memory plants compose additively with repairs via weight_edits.stack (ROADMAP §viii).",
-    "localized_layer": false,
-    "site_recall": 0.0,
-    "site_jaccard": 0.0,
     "kl_plant_alone": 0.004596,
     "kl_after_repair": null,
-    "recovery_fraction": null
+    "recovery_fraction": null,
+    "figures_by": null,
+    "repair_reading": null,
+    "repair_composition": null,
+    "recovery_holds_on_checkpoint": null
    },
    {
     "case_id": "canary_noref_31b",
+    "neutral_id": "b41953f171c21263",
     "kind": "canary",
     "reach": "activations",
     "with_healthy_reference": false,
     "driver_family": "replay",
+    "can_propose": false,
+    "how_it_proposes": "no step of this replay is a read marked propose, and a blinded session serves no claim tool",
+    "scored_as": "cannot propose",
+    "did_not_run_to_an_end": null,
+    "kind_or_id_words_shown": [],
     "proposed_any": false,
-    "composition_note": "In-memory plants compose additively with repairs via weight_edits.stack (ROADMAP §viii).",
-    "honest_abstention": true
+    "honest_abstention": null
    }
   ]
  },
@@ -1184,81 +2940,66 @@
    "canary_null": 220,
    "enumeration_loop": 229
   },
-  "rebuild_words": 36,
-  "rebuild_text": "Rebuild this paired reading on the base model named below using scripts/levelling.py with no extra settings and compare the edit arm mean against the original:\nREBUILD_SPEC: {\"base\":null,\"edit\":{\"terms\":[{\"layer\":50,\"silence\":[5313,8801,266,121,11503,11724,21151,4165,549,2070]}]},\"doses\":[1.0],\"rows\":{\"large\":16,\"small\":12},\"controls\":{\"family\":\"other_sites\",\"count\":1,\"seed\":7},\"readouts\":{\"kl\":true,\"odds\":{\"at\":\"end\",\"away\":[668],\"toward\":[1304]},\"own\":true},\"item\":{\"name\":\"eq0\",\"question\":\"Answer briefly: Alice called Bob because\",\"answer\":\" she wanted to help.\",\"system\":null}}",
+  "cold_driver_ruling_test": "The ruling's cold-driver test (arbiter.md §5: drivers of two families, each given only this page, run a session) has not been run. This renders the page and counts its words.",
+  "rebuild_words": 191,
+  "rebuild_text": "Rebuild this paired reading from this description alone: run levelling.read with the plan below on the named base, then compare every arm of every item, both batch classes, with the original. Check each item's id first. A fresh process may differ in runtime (code, unpacker, dtype, device, threads, libraries), and its figures by rounding; the original's runtime is given.\nREBUILD_SPEC: {\"base\":{\"model\":\"google/gemma-4-31B-it-qat-w4a16-ct\",\"weights_id\":\"e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af\"},\"items\":[{\"answer\":\" she wanted to help.\",\"id\":\"9c7a1d1965b6372d751aea64fda7e02c5b5eae4c86e374c1268ff0ea85f67fbc\",\"name\":\"eq0\",\"question\":\"Answer briefly: Alice called Bob because\",\"system\":null},{\"answer\":\" she finished the work.\",\"id\":\"8a95f2329b26495b9d30cb17083a7723be7a6e92b3be26e28770b8d7ae3f9135\",\"name\":\"eq1\",\"question\":\"Answer briefly: Clara told David that\",\"system\":null}],\"plan\":{\"bars\":{\"item_gate\":-6.0,\"one_row_min_layer\":44,\"stable_ratio\":3.0},\"controls\":{\"count\":1,\"seed\":7},\"doses\":[1.0],\"edit\":{\"terms\":[{\"layer\":50,\"silence\":[5313,8801,266,121,11503,11724,21151,4165,549,2070]}]},\"folded\":\"auto\",\"items\":[\"eq0\",\"eq1\"],\"kind\":\"paired\",\"lower\":\"same_shape\",\"main_dose\":1.0,\"null_e\":[0.03125,-0.03125,0.125,-0.125],\"rank_by\":\"kl\",\"readouts\":{\"kl\":true,\"odds\":{\"at\":\"end\",\"away\":[668],\"toward\":[1304]},\"own\":true},\"rows\":{\"large\":16,\"small\":12}},\"runtime\":{\"compressed_tensors\":\"0.19.0\",\"cuda\":\"13.0\",\"device\":\"NVIDIA GeForce RTX 5090\",\"dtype\":\"torch.bfloat16\",\"git\":\"9f2dc6db3f549615dcc00f622612673de5235cc6\",\"numpy\":\"2.5.4\",\"threads\":8,\"torch\":\"2.14.1+cu130\",\"transformers\":\"5.20.0\",\"unpacker\":\"compiled\"}}",
   "rebuild_result": {
    "ok": true,
-   "word_count": 36,
+   "what": "A same-process replay: the description was parsed and read again in this process, by this code, on this model, its items checked against the ids it gives, and every arm of every item compared with the original; the runtime it was read under is set beside the one the description gives. The ruling's rebuild test (arbiter.md §5: a fresh session, given only the description, rebuilds the reading) has not been run.",
+   "word_count": 191,
+   "characters": 1646,
    "source_seq": 4,
    "rebuilt_seq": 0,
    "rebuilt_status": "ok",
-   "comparisons": [
-    {
-     "class": "small",
-     "arm": "edit:1.0",
-     "metric": "kl",
-     "original": 0.0018211830174550414,
-     "rebuilt": 0.0018211830174550414,
-     "gap": 0.0,
-     "tol": 7.228e-05,
-     "ok": true
-    },
-    {
-     "class": "small",
-     "arm": "edit:1.0",
-     "metric": "own",
-     "original": -0.23834292590618134,
-     "rebuilt": -0.23834292590618134,
-     "gap": 0.0,
-     "tol": 0.02729709,
-     "ok": true
-    },
-    {
-     "class": "small",
-     "arm": "edit:1.0",
-     "metric": "odds",
-     "original": -0.1544419527053833,
-     "rebuilt": -0.1544419527053833,
-     "gap": 0.0,
-     "tol": 0.11819649,
-     "ok": true
-    },
-    {
-     "class": "large",
-     "arm": "edit:1.0",
-     "metric": "kl",
-     "original": 0.0018815882503986359,
-     "rebuilt": 0.0018815882503986359,
-     "gap": 0.0,
-     "tol": 2.832e-05,
-     "ok": true
-    },
-    {
-     "class": "large",
-     "arm": "edit:1.0",
-     "metric": "own",
-     "original": -0.2473689615726471,
-     "rebuilt": -0.2473689615726471,
-     "gap": 0.0,
-     "tol": 0.00995671,
-     "ok": true
-    },
-    {
-     "class": "large",
-     "arm": "edit:1.0",
-     "metric": "odds",
-     "original": -0.18697261810302734,
-     "rebuilt": -0.18697261810302734,
-     "gap": 0.0,
-     "tol": 0.10925686,
-     "ok": true
-    }
-   ]
-  }
+   "plan_same": true,
+   "base_same": true,
+   "items_same": true,
+   "items_as_described": true,
+   "runtime_described": {
+    "compressed_tensors": "0.19.0",
+    "cuda": "13.0",
+    "device": "NVIDIA GeForce RTX 5090",
+    "dtype": "torch.bfloat16",
+    "git": "9f2dc6db3f549615dcc00f622612673de5235cc6",
+    "numpy": "2.5.4",
+    "threads": 8,
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "unpacker": "compiled"
+   },
+   "runtime_rebuilt": {
+    "git": "9f2dc6db3f549615dcc00f622612673de5235cc6",
+    "dtype": "torch.bfloat16",
+    "unpacker": "compiled",
+    "device": "NVIDIA GeForce RTX 5090",
+    "threads": 8,
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "compressed_tensors": "0.19.0",
+    "numpy": "2.5.4",
+    "cuda": "13.0"
+   },
+   "runtime_differs": [],
+   "arms_same": true,
+   "ranks_same": true,
+   "items_compared": 2,
+   "arms_compared": [
+    "control:0",
+    "edit:1.0",
+    "null:-0.03125",
+    "null:-0.125",
+    "null:0.03125",
+    "null:0.125"
+   ],
+   "figures_compared": 144,
+   "max_gap": 0.0
+  },
+  "rebuild_figures_not_matching": []
  },
- "peak_gib": 18.275,
- "total_seconds": 319.32,
+ "peak_gib_last_reading": 18.275,
+ "peak_gib": 18.545,
+ "total_seconds": 510.66,
  "fallback_count": 0,
- "passed": 18,
+ "passed": 19,
  "failed": 0
 }

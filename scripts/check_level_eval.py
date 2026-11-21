@@ -17,9 +17,9 @@ Tests every Phase 6 module on the CPU stand-in (no GPU, single thread, temporary
 5. Multi-session study orchestration (`backend/level_eval.py`): pre-flight validation, per-session isolated side books,
    unpooled reach ladder & weight-vs-knobs & agent-vs-scripted & `--bare` ablation tables, exact Wilson/Fisher/perm
    statistics, model-free reload from `study_book.jsonl`, and `STOP` file kill switch.
-6. Blinded planted-fault (with and without healthy reference) & canary benchmark with identical harness cards.
-7. Future-ready protocol checks: cold-driver one-page brief (<= 600 words), <= 200-word rebuild test, and owner CLI
-   (`scripts/levelling_eval.py`).
+6. Blinded planted-fault and canary benchmark: plumbing checks (neutral case ids, the same door surface, the composition rule).
+7. The cold-driver page (at most 600 words), the rebuild description and its same-process replay, and the owner's
+   command line (`scripts/levelling_eval.py`).
 8. Surface isolation & zero kept-out words audit across all Phase 6 files and rendered documents.
 
 Run:
