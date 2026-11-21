@@ -395,9 +395,10 @@ class AtlasReader:
         or exact token id `id:123`). Falls back to substring only if no exact token exists.
 
         Each hit carries the label gate's check of that face (`label_gate`, of its lens and naked-eye readings), and a
-        steer-source hit also what the steer lens's own check found at its layer (`steer_check`). Hits the gate lets
-        through come first. `gate_passes_only` leaves out faces the gate marks held_back and, for the steer source,
-        layers where the steer check sets the steer words aside. `trusted_only` is an older name for it."""
+        steer-source hit also what the steer lens's own check found at its layer (`steer_check`). Hits not set aside
+        come first. `gate_passes_only` leaves out, for the lens and eye sources, faces the label gate marks held_back,
+        and, for the steer source, layers where the steer check sets the steer words aside (the label gate's check of
+        the face is shown there but does not set a steer word aside). `trusted_only` is an older name for it."""
         if trusted_only is not None:
             gate_passes_only = bool(gate_passes_only or trusted_only)
         q_raw = str(query or "")
@@ -492,7 +493,11 @@ class AtlasReader:
                 e_ids = eye_other_arr[l_i, n_i].tolist() if has_both else None
                 gate = self._label_gate(l_i, n_layers, l_ids, e_ids, silenced=is_sil)
                 steer = self._steer_check(l_i) if source == "steer" else None
-                set_aside = bool(gate["held_back"]) or bool(steer and steer["set_aside"])
+                # A lens or eye word is set aside by the label gate; a steer word by the steer lens's own check alone,
+                # as the instrument's pages do (`backend/atlas_index.py` steer_weak): the label gate reads the lens and
+                # the naked eye, not the steer lens, so its check of the face is shown beside a steer hit but does not
+                # set it aside
+                set_aside = bool(steer["set_aside"]) if steer is not None else bool(gate["held_back"])
                 if gate_passes_only and set_aside:
                     continue
                 row_ids = [int(x) for x in mat[n_i].tolist()]

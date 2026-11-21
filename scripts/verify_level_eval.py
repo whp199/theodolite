@@ -10,9 +10,11 @@ Measures live on `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens f
    - Refused before registering, no fresh reading spent: the blunt `logit_bias` on `' she'` and a system prompt (no
      family of controls), and the `neuron_mul` knob with no controls.
    - Fresh knob claim #1: `neuron_mul(0)` on E6 L50 `'she'` ten, read against the controls of the weight edit whose
-     arithmetic it is (matched other sites and same-site directions), judged by `level_claim.judge_claim`.
-   - Fresh knob claim #2: the same ten with the blunt bias, which reaches every control row as the knob's.
-   - One budget with weight claims (the weight path's gate gives a weight claim reading 3) and read once.
+     arithmetic it is (its twin: matched other sites and same-site directions), judged by `level_claim.judge_claim`.
+   - The same ten with the blunt bias is that edit read again, refused before anything is spent. Fresh knob claim #2:
+     the ten halved (`neuron_mul(0.5)`) with the blunt bias, which reaches every control row and the reversed read.
+   - One budget with weight claims (the weight path's gate gives a weight claim of another edit reading 3) and read
+     once: knob #1 again, and a weight claim of its twin edit, are refused.
 3. Multi-session Phase 6 comparison study of scripted arms (5 arms x 3 sessions = 15 side books), run to show that it
    runs; at 3 sessions an arm no comparison can separate two arms, and the report says so:
    - Reach ladder: `behaviour` -> `activations` -> `weights` -> `atlas` (`mode="weight_edit"`).
@@ -118,6 +120,24 @@ CODE_FILES = (
 RECORD_FILES = ("experiments/results/levelling/verify_eval.json", "experiments/results/levelling/verify_eval_book.jsonl")
 
 
+_PEAK_BEFORE_RESETS = [0]
+
+
+def _keep_peak_across_resets() -> None:
+    """Every reading resets the device's peak memory figure; wrap the reset so the largest figure before each one is
+    kept for the record (the script's own measure; nothing in the readings changes)."""
+    orig = torch.cuda.reset_peak_memory_stats
+
+    def _reset(device: Any = None) -> None:
+        try:
+            _PEAK_BEFORE_RESETS[0] = max(_PEAK_BEFORE_RESETS[0], int(torch.cuda.max_memory_allocated(device)))
+        except Exception:
+            pass
+        orig(device)
+
+    torch.cuda.reset_peak_memory_stats = _reset
+
+
 def _commit_now() -> Dict[str, Any]:
     """The commit this script ran at, how many paths git lists as changed (the two records this script rewrites left
     out), and the sha256 of each file of `CODE_FILES` as it was read (None where git or the file cannot say)."""
@@ -181,6 +201,7 @@ def main() -> int:
     print(f"Loaded {h.model_id} in {load_s} s (rest {rest_gib} GiB, weights {str(h.weights_id)[:16]}).", flush=True)
     we.assert_base(h.lm, h.hooks_at_load)
     torch.cuda.reset_peak_memory_stats()
+    _keep_peak_across_resets()  # from here on, the largest figure before every reset is kept for the record
 
     snap = checkpoint_snapshot(h.model_id.split("@", 1)[0])
     check("checkpoint_snapshot_found", snap is not None and snap.is_dir(), str(snap))
@@ -412,7 +433,15 @@ print("ATL_CELL:" + json.dumps({
         )
 
         # 2c. Fresh knob claim #1: neuron_mul(0) on E6 L50 'she' ten, read against the controls of the weight edit
-        # whose arithmetic it is (matched other sites and same-site directions, drawn and read as that edit's are)
+        # whose arithmetic it is (its twin: matched other sites and same-site directions, drawn and read as that edit's
+        # are)
+        eq_edit_31b = we.build(h.lm, [we.silence(50, E6_L50_SHE10)], model_id=h.model_id, weights_id=h.weights_id)
+
+        def _last_knob_verdict() -> Optional[str]:
+            got = [e["body"].get("verdict") for e in lb.entries(OUT_BOOK)
+                   if (e.get("body") or {}).get("note_type") == "knob_claim_verdict"]
+            return got[-1] if got else None
+
         t_k1 = time.perf_counter()
         kc1 = lk.run_fresh_knob_claim(h, brief, bars, k_mul_spec, book_path=OUT_BOOK, **kc_design)
         k1_s = round(time.perf_counter() - t_k1, 2)
@@ -420,7 +449,7 @@ print("ATL_CELL:" + json.dumps({
         s_k1 = kc1["summary"]
         check(
             "knob_claim_1_mul_against_weight_edit_controls_31b",
-            kc1["verdict"] in lk.KNOB_VERDICTS
+            _last_knob_verdict() == kc1["verdict"] and s_k1["twin_edit_id"] == eq_edit_31b.id
             and s_k1["control_families"] == ["other_sites_matched", "same_site"]
             and (kc1["verdict"] == "void"
                  or all(len(s_k1["control_ids"].get(f) or []) == brief.default_controls for f in s_k1["control_families"])),
@@ -434,52 +463,80 @@ print("ATL_CELL:" + json.dumps({
                 "reversed": s_k1["reversed"],
                 "controls": s_k1["control_standing"],
                 "coverage": s_k1["controls_coverage"],
+                "unstable_target": s_k1["unstable_target"],
                 "batteries": {k: v for k, v in s_k1["batteries"].items() if k != "judged"},
             },
         )
 
-        # 2d. Fresh knob claim #2: the same ten with the blunt bias added; the bias goes to every control row too, so
-        # the controls differ from the knob only in the steering
+        # 2d. The same ten with the blunt bias added is the same weight edit read again (its twin), so it is refused
+        # before anything is spent. Fresh knob claim #2 is the ten halved (neuron_mul by 0.5, the twin of another edit)
+        # with the blunt bias: the bias goes to every control row and to the reversed read, so the controls and the
+        # reverse differ from the knob only in the steering
         k_mul_bias_spec = {**k_mul_spec, "decoding": dict(k_bias_spec["decoding"])}
+        spent_before = int(lcl.brief_history(brief.id, OUT_BOOK, name=brief.name)["fresh_count"])
+        twin_words: Optional[str] = None
+        try:
+            lk.run_fresh_knob_claim(h, brief, bars, k_mul_bias_spec, book_path=OUT_BOOK, **kc_design)
+        except lk.KnobRefused as exc:
+            twin_words = str(exc)
+        spent_after = int(lcl.brief_history(brief.id, OUT_BOOK, name=brief.name)["fresh_count"])
+        check("knob_same_arithmetic_refused_read_once_31b",
+              twin_words is not None and "the weight edit whose arithmetic this knob is" in twin_words
+              and spent_after == spent_before,
+              {"refused": (twin_words or "")[:300], "fresh_readings_spent": spent_after - spent_before})
+        k_half_bias_spec = {"steering": [{"kind": "neuron_mul", "layer": 50, "neurons": E6_L50_SHE10, "factor": 0.5}],
+                            "decoding": dict(k_bias_spec["decoding"])}
+        half_edit_31b = we.build(h.lm, [we.scale(50, E6_L50_SHE10, 0.5)], model_id=h.model_id, weights_id=h.weights_id)
         t_k2 = time.perf_counter()
-        kc2 = lk.run_fresh_knob_claim(h, brief, bars, k_mul_bias_spec, book_path=OUT_BOOK, **kc_design)
+        kc2 = lk.run_fresh_knob_claim(h, brief, bars, k_half_bias_spec, book_path=OUT_BOOK, **kc_design)
         k2_s = round(time.perf_counter() - t_k2, 2)
         docs_to_audit.append(kc2["sheet"])
         s_k2 = kc2["summary"]
         check(
-            "knob_claim_2_mul_with_bias_31b",
-            kc2["verdict"] in lk.KNOB_VERDICTS and s_k2["control_families"] == ["other_sites_matched", "same_site"]
-            and lk.CONTROLS_SHARE_SAY in kc2["sheet"],
+            "knob_claim_2_mul_half_with_bias_31b",
+            _last_knob_verdict() == kc2["verdict"] and s_k2["twin_edit_id"] == half_edit_31b.id
+            and s_k2["control_families"] == ["other_sites_matched", "same_site"],
             {
                 "seconds": k2_s,
                 "verdict": kc2["verdict"],
                 "reasons": s_k2["reasons"],
                 "small_dir": s_k2["small_directed"],
                 "large_dir": s_k2["large_directed"],
+                "reversed": s_k2["reversed"],
                 "controls": s_k2["control_standing"],
+                "unstable_target": s_k2["unstable_target"],
                 "batteries": {k: v for k, v in s_k2["batteries"].items() if k != "judged"},
             },
         )
 
-        # 2e. One budget a brief and read once: after two knob claims the weight path's own gate gives a weight claim
-        # the third reading (asked, not taken), and the first knob is refused a second reading
-        eq_edit_31b = we.build(h.lm, [we.silence(50, E6_L50_SHE10)], model_id=h.model_id, weights_id=h.weights_id)
-        gate_now = lcl.fresh_reading_gate(h, brief, bars, eq_edit_31b, OUT_BOOK, what="claim")
+        # 2e. One budget a brief and read once: after two knob claims the weight path's own gate gives a weight claim of
+        # another edit the third reading (asked, not taken); a claim of knob #1's twin edit is refused, and so is knob #1
+        other_edit_31b = we.build(h.lm, [we.silence(50, E6_L50_SHE10[:5])], model_id=h.model_id, weights_id=h.weights_id)
+        gate_now = lcl.fresh_reading_gate(h, brief, bars, other_edit_31b, OUT_BOOK, what="claim")
+        twin_claim_words: Optional[str] = None
+        try:
+            lcl.fresh_reading_gate(h, brief, bars, eq_edit_31b, OUT_BOOK, what="claim")
+        except lcl.ClaimRefused as exc:
+            twin_claim_words = str(exc)
         ro_refused = False
         try:
             lk.run_fresh_knob_claim(h, brief, bars, k_mul_spec, book_path=OUT_BOOK, **kc_design)
         except lk.KnobRefused as exc:
             ro_refused = "Read once" in str(exc)
-        check("knob_one_budget_and_read_once_31b", gate_now["reading_index"] == 3 and ro_refused,
-              {"weight_claim_reading_index_after_two_knob_claims": gate_now["reading_index"], "read_once": ro_refused})
+        twin_refused = twin_claim_words is not None and "by a knob claim of its arithmetic" in twin_claim_words
+        check("knob_one_budget_and_read_once_31b", gate_now["reading_index"] == 3 and ro_refused and twin_refused,
+              {"weight_claim_reading_index_after_two_knob_claims": gate_now["reading_index"], "read_once": ro_refused,
+               "twin_edit_claim_refused": (twin_claim_words or "")[:300]})
 
         record["knobs_31b"] = {
             "calibration_seconds": cal_s,
             "equiv_weight_vs_mul": {"weight": round(w_eff, 5), "mul": round(k_eff, 5), "gap": round(equiv_gap, 5)},
             "refused_before_registering": {k: (v or "")[:300] for k, v in refused_words.items()},
             "claim_1_mul": {"seconds": k1_s, "verdict": kc1["verdict"], "summary": kc1["summary"]},
-            "claim_2_mul_with_bias": {"seconds": k2_s, "verdict": kc2["verdict"], "summary": kc2["summary"]},
-            "one_budget": {"weight_claim_reading_index": gate_now["reading_index"], "read_once": ro_refused},
+            "same_arithmetic_with_bias_refused": (twin_words or "")[:300],
+            "claim_2_mul_half_with_bias": {"seconds": k2_s, "verdict": kc2["verdict"], "summary": kc2["summary"]},
+            "one_budget": {"weight_claim_reading_index": gate_now["reading_index"], "read_once": ro_refused,
+                           "twin_edit_claim_refused": twin_refused},
         }
 
         # ===================================================================== 3. Multi-session 31B Phase 6 Study
@@ -557,10 +614,12 @@ print("ATL_CELL:" + json.dumps({
             and reloaded["finished"]
             and reloaded["session_books_checked"] == 15
             and reloaded["summary"]["study_name"] == study_plan.name
-            and summ["pooled_across_reaches"] is False
-            and summ["pooled_across_families"] is False
-            and summ["pooled_across_arms"] is False
+            # every planned session ran to an end and is counted (level_eval.why_not_counted), 3 an arm, one row an arm
+            and summ["counted_sessions"] == 15
+            and not summ["not_run_to_an_end"]
             and len(summ["arms"]) == len(study_plan.arms)
+            and all(a["n_sessions"] == 3 and a["arm_ids"] == [a["arm_id"]] for a in summ["arms"])
+            and reloaded["summary"]["counted_sessions"] == 15
             and len(summ["comparisons"]["weight_vs_knobs"]) == 1
             and len(summ["comparisons"]["reach_ladders"]) == 1
             and summ["comparisons"]["reach_ladders"][0]["atlas_vs_weights"] is not None
@@ -568,6 +627,11 @@ print("ATL_CELL:" + json.dumps({
             {
                 "seconds": study_s,
                 "sessions": len(sres["outcomes"]),
+                "counted_sessions": summ["counted_sessions"],
+                "not_run_to_an_end": [
+                    {"run_id": s.get("run_id"), "reason": s.get("reason"), "claim_refused": s.get("claim_refused")}
+                    for s in summ["not_run_to_an_end"]
+                ],
                 "what_a_comparison_can_show": summ["separation"],
                 "arms": {
                     a["arm_id"]: {
@@ -598,7 +662,8 @@ print("ATL_CELL:" + json.dumps({
         print("\nStep 4: Blinded planted-fault & canary benchmark on 31B L50...", flush=True)
         # The benchmark checks plumbing (level_eval.run_blinded_benchmark): no driver here can propose by its own choice
         # in a blinded session. A scale x2 on the silenced pair "repairs" it in the harness only, where deltas add
-        # (0 + 2 - 1 = 1), and the harness has nothing to read; a scale x1.5 leaves a reading, and its figure.
+        # (0 + 2 - 1 = 1): the composite is the unedited model, its KL 0 by arithmetic and not read; a scale x1.5
+        # leaves a reading, and its figure. Each case runs under a neutral id, and none may show its kind or id words.
         plant_rec = {"terms": [{"layer": 50, "silence": [5313, 8801]}]}
         repair_rec = {"terms": [{"layer": 50, "scale": [5313, 8801], "factor": 2.0}]}
         part_rec = {"terms": [{"layer": 50, "scale": [5313, 8801], "factor": 1.5}]}
@@ -690,19 +755,27 @@ print("ATL_CELL:" + json.dumps({
             and pr.get("scored_as") == "plumbing check (answer given)"
             and pr.get("kl_plant_alone") is not None
             and pr["kl_plant_alone"] > 0.0
-            and pr.get("kl_after_repair") is None
-            and (pr.get("repair_reading") or {}).get("status") == "refused"
+            and pr.get("kl_after_repair") == 0.0
+            and pr.get("figures_by") == "arithmetic"
+            and (pr.get("repair_reading") or {}).get("status") == "not read"
             and pr.get("recovery_holds_on_checkpoint") is False
             and pp.get("kl_after_repair") is not None
-            and pp.get("recovery_holds_on_checkpoint") is False,
+            and pp.get("figures_by") == "reading"
+            and pp.get("recovery_holds_on_checkpoint") is False
+            and b_summ["kind_or_id_words_shown"] == {}
+            and all(c.get("neutral_id") and c["case_id"] not in str(c["neutral_id"]) for c in b_summ["cases"])
+            and not any(c.get("did_not_run_to_an_end") for c in b_summ["cases"]),
             {
                 "seconds": bl_s,
                 "what": "plumbing checks, not measurements: no driver here can propose by its own choice in a blinded session",
+                "kind_or_id_words_shown": b_summ["kind_or_id_words_shown"],
+                "neutral_ids": {c["case_id"]: c.get("neutral_id") for c in b_summ["cases"]},
                 "door_surface_equal_by_reach": b_summ["door_surface_equal_by_reach"],
                 "canary_abstention": b_summ["canary_abstention_note"],
                 "localization": b_summ["planted_layer_hit_note"],
                 "kl_plant_alone": pr.get("kl_plant_alone"),
                 "scale_x2_repair_reading": pr.get("repair_reading"),
+                "scale_x2_kl_after_repair": [pr.get("kl_after_repair"), pr.get("figures_by")],
                 "scale_x1.5_kl_after_repair": pp.get("kl_after_repair"),
                 "scale_x1.5_recovery_fraction": pp.get("recovery_fraction"),
                 "recovery_holds_on_checkpoint": [pr.get("recovery_holds_on_checkpoint"), pp.get("recovery_holds_on_checkpoint")],
@@ -725,7 +798,8 @@ print("ATL_CELL:" + json.dumps({
             cold_ruling = cp["ruling_test"]
             if cp["word_count"] > lev.MAX_COLD_PAGE_WORDS or cp["prompt_named_site"]:
                 cold_ok = False
-        check("cold_driver_pages_ok", cold_ok, {"words": cold_words, "sites_named": cold_sites, "ruling_test": cold_ruling})
+        check("cold_driver_pages_ok", cold_ok, {"words": cold_words, "sites_named": cold_sites, "ruling_test": cold_ruling,
+                                                "site_finder": lev.SITE_FINDER_SAYS})
 
         rb_desc = lev.make_rebuild_description(OUT_BOOK, equiv_seq)
         docs_to_audit.append(rb_desc["description"])
@@ -736,14 +810,20 @@ print("ATL_CELL:" + json.dumps({
         check(
             "rebuild_replay_31b",
             rb_desc["word_count"] <= lev.MAX_REBUILD_WORDS
+            and rb_desc["characters"] <= lev.MAX_REBUILD_CHARS
             and rb_res["ok"] is True
             and rb_res["plan_same"] is True
             and rb_res["items_compared"] == 2
+            and rb_res["items_as_described"] is True
+            and rb_res["runtime_differs"] == []
             and len(rb_comps) >= 2,
             {
                 "seconds": rb_s,
                 "what": rb_res["what"],
                 "word_count": rb_desc["word_count"],
+                "characters": rb_desc["characters"],
+                "runtime_described": rb_res["runtime_described"],
+                "runtime_differs": rb_res["runtime_differs"],
                 "figures_compared": len(rb_comps),
                 "arms_compared": rb_res["arms_compared"],
                 "max_abs_gap": rb_res["max_gap"],
@@ -759,8 +839,14 @@ print("ATL_CELL:" + json.dumps({
         }
 
     # ===================================================================== 6. Final invariants
-    we.assert_base(h.lm, h.hooks_at_load)
-    check("assert_base_final", True, "model clean at base")
+    # Whether the model is at its base after every reading: a refusal of assert_base is recorded as a failed check
+    # (with its words), not left to stop the script before the record is written
+    try:
+        we.assert_base(h.lm, h.hooks_at_load)
+        base_ok, base_why = True, "model clean at base"
+    except Exception as exc:  # noqa: BLE001 - the record says what assert_base said
+        base_ok, base_why = False, f"{type(exc).__name__}: {exc}"
+    check("assert_base_final", base_ok, base_why)
 
     fb1 = int(getattr(engine_runtime.dequantize_w4a16_full, "fell_back", 0) or 0)
     check("zero_unpacker_fallbacks", fb1 == fb0, {"before": fb0, "after": fb1, "fallback_count": fb1 - fb0})
@@ -774,7 +860,11 @@ print("ATL_CELL:" + json.dumps({
             bad_words.append(m.group(0))
     check("zero_kept_out_words_rendered", not bad_words, {"docs": len(docs_to_audit), "found": bad_words[:10]})
 
-    peak_gib = round(torch.cuda.max_memory_allocated(h.device) / 2**30, 3)
+    # The peak over the whole run: each reading resets the device's peak (levelling's `reset_peak`), so the script
+    # keeps the largest figure seen before every reset (`_keep_peak_across_resets`) and takes the larger of that and
+    # the peak since the last reset
+    peak_gib = round(max(_PEAK_BEFORE_RESETS[0], torch.cuda.max_memory_allocated(h.device)) / 2**30, 3)
+    record["peak_gib_last_reading"] = round(torch.cuda.max_memory_allocated(h.device) / 2**30, 3)
     total_s = round(time.perf_counter() - t_all, 2)
     passed = sum(1 for c in checks if c["ok"])
     failed = sum(1 for c in checks if not c["ok"])

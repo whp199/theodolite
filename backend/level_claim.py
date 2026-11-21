@@ -941,8 +941,12 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     registration and its verdict are among `registrations` and `verdicts` (each with its `knob_id` and no
     `edit_id`), its knob among `seen_knob_ids`, and it counts in `fresh_count`, `other_ids`, `book_fresh_readings`
     and `frames_read` as a claim does: one budget a brief, spent by weight claims, trials and knob claims alike. A
-    knob's practice reading counts in `practice_readings`, and the items it records (each under the system turn the
-    knob read it with) are looked through by `guard` as a practice reading's are.
+    `neuron_mul` knob is the arithmetic of a weight edit, its twin, whose id the knob's notes carry as
+    `twin_edit_id`: that id is among `seen_edit_ids` as a weight claim's edit is, so the edit and its twin are read
+    once between them. A knob's practice reading counts in `practice_readings`, and the items it records (each under
+    the system turn the knob read it with) are looked through by `guard` as a practice reading's are. A knob claim
+    of another brief is text read too: when `guard` finds this brief's kept-back wording in the system turn it read
+    every item with (its brief's and its prompt), its line is in `kept_back_in_knob_claims`.
 
     Of the whole book, whatever the brief: `practice_templates`, the template ids of every frame drawn in practice
     here (so a practice frame moved into another brief's kept-back split is still known); `book_fresh_readings`,
@@ -967,6 +971,7 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     frames_read: Dict[str, set] = {}
     practice_readings = 0
     kept_back_practised: List[int] = []
+    kept_back_in_knob_claims: List[int] = []
     trials: List[Dict[str, Any]] = []
     trial_verdicts: List[Dict[str, Any]] = []
     tried_edit_ids: List[str] = []
@@ -974,7 +979,7 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     empty = {
         "calibrations": [], "registrations": [], "verdicts": [], "seen_edit_ids": [], "other_ids": [],
         "practice_item_ids": [], "practice_frame_ids": [], "practice_templates": [], "book_fresh_readings": {},
-        "frames_read": {}, "practice_readings": 0, "kept_back_practised": [],
+        "frames_read": {}, "practice_readings": 0, "kept_back_practised": [], "kept_back_in_knob_claims": [],
         "trials": [], "trial_verdicts": [], "tried_edit_ids": [], "seen_knob_ids": [], "fresh_count": 0,
     }
     want_name = _name_key(name) if name is not None else None
@@ -1052,6 +1057,15 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
                 kid = body.get("knob_id")
                 if isinstance(kid, str):
                     seen_knob_ids.append(kid)
+                twin = body.get("twin_edit_id")
+                if isinstance(twin, str):
+                    seen_edit_ids.append(twin)  # the weight edit whose arithmetic the knob is: read with it
+            elif guard is not None:
+                # another brief's knob claim read its prompt in the system turn of every item: text read here
+                kn = body.get("knob") if isinstance(body.get("knob"), Mapping) else {}
+                st = ((body.get("design") or {}).get("settings") or {}) if isinstance(body.get("design"), Mapping) else {}
+                if kn.get("prompt") is not None and guard.hit(st.get("system"), kn.get("prompt")) is not None:
+                    kept_back_in_knob_claims.append(int(entry["seq"]))
         elif nt == "knob_claim_verdict":
             if mine(body):
                 verdicts.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
@@ -1076,6 +1090,7 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         "frames_read": {tid: sorted([n, i] for n, i in who) for tid, who in sorted(frames_read.items())},
         "practice_readings": practice_readings,
         "kept_back_practised": kept_back_practised,
+        "kept_back_in_knob_claims": kept_back_in_knob_claims,
         "trials": trials,
         "trial_verdicts": trial_verdicts,
         "tried_edit_ids": tried_edit_ids,
@@ -1112,6 +1127,7 @@ def fresh_reading_gate(
     *,
     what: str = "claim",
     knob_id: Optional[str] = None,
+    twin_edit_id: Optional[str] = None,
     practice_item_ids: Optional[Iterable[str]] = None,
     practice_frame_ids: Optional[Iterable[str]] = None,
     calibration: Optional[Mapping[str, Any]] = None,
@@ -1120,15 +1136,23 @@ def fresh_reading_gate(
     """What every fresh reading of a brief is asked before it is registered: a claim's (`what="claim"`), a trial
     of record's (`what="trial"`) and a cheaper knob's claim (`what="knob"`, asked with `knob_id` and no edit,
     `backend/level_knobs.py`) alike, since all three read the brief's kept-back frames and each spends one of its `m`.
+    A `neuron_mul` knob is asked with `twin_edit_id` too: the id of the weight edit whose arithmetic it is.
 
     Refused, in this order: kept-back wording that a practice reading in this book holds (a knob's practice reading
-    is looked through under the system turn the knob read each item with); a brief changed under its name since its
-    first fresh reading; a kept-back frame seen in practice (by id or by template); a kept-back frame
+    is looked through under the system turn the knob read each item with), or that another brief's knob claim read
+    in the system turn of its items; a brief changed under its name since its first fresh reading; a kept-back frame
+    seen in practice (by id or by template); a kept-back frame
     already read under another brief; bars that no calibration reading in this book produced, or that were
     calibrated on other weights; an edit already read (a claim reads an edit once; a trial reads an edit once, and
     may follow that edit's claim when the claim read a lead, which is what a trial promotes; nothing follows a
     trial), or a knob already read (a knob claim reads a knob once); and a brief whose `m` fresh readings, claims,
     knob claims and trials together, are spent.
+
+    A knob and its twin edit are one edit to "read once" and to "a trial follows a lead": a knob claim is refused
+    after a claim or a trial of its twin, or a knob claim of the same arithmetic; a claim of the edit is refused after
+    a knob claim of its twin; and a trial of the edit follows a knob claim of its twin only when that knob read a lead
+    and was the edit's arithmetic and nothing else (no prompt, no decoding setting), at dose 1, since a trial promotes
+    what the claim read.
 
     A trial is asked two things more of its bars. The calibration note must name the weights it was taken on (a
     note that names none is taken for a claim, as it always was, and not for a trial). And the note must follow from
@@ -1149,6 +1173,8 @@ def fresh_reading_gate(
         raise ValueError(f'what is "claim", "trial" or "knob"; {what!r} was given.')
     if (what == "knob") != (edit is None) or (what == "knob") != isinstance(knob_id, str):
         raise ValueError('A knob claim is asked with its knob_id and no edit; a claim or a trial with its edit.')
+    if twin_edit_id is not None and (what != "knob" or not isinstance(twin_edit_id, str)):
+        raise ValueError("twin_edit_id is a knob claim's: the id of the weight edit whose arithmetic the knob is.")
     noun = {"claim": "claim", "trial": "trial of record", "knob": "knob claim"}[what]
     hist = brief_history(brief.id, bk, name=brief.name, guard=lbr.KeptBack([brief]))
     if hist["kept_back_practised"]:
@@ -1158,6 +1184,15 @@ def fresh_reading_gate(
             f'{"s" if len(hist["kept_back_practised"]) > 1 else ""} {at}'
             f'{", ..." if len(hist["kept_back_practised"]) > 8 else ""}): their wording, or a near wording, stands in a '
             f"reading that is not a fresh claim reading, so a {noun} on them here would not be on fresh frames."
+        )
+    if hist["kept_back_in_knob_claims"]:
+        at = ", ".join(str(s) for s in hist["kept_back_in_knob_claims"][:8])
+        raise ClaimRefused(
+            f'Kept-back frames of brief "{brief.name}" stand in the prompt of a knob claim of another brief in this '
+            f'book (line{"s" if len(hist["kept_back_in_knob_claims"]) > 1 else ""} {at}'
+            f'{", ..." if len(hist["kept_back_in_knob_claims"]) > 8 else ""}): their wording, or a near wording, was '
+            f"read in the system turn of every item of that reading, which was not a fresh reading of this brief, so a "
+            f"{noun} on them here would not be on fresh frames."
         )
     if hist["other_ids"]:
         raise ClaimRefused(
@@ -1219,12 +1254,41 @@ def fresh_reading_gate(
                     f"from this book: {why_not}. A trial of record takes bars its book shows were calibrated."
                 )
     k_prior = int(hist["fresh_count"])
+
+    def read_by(eid: str) -> Optional[Dict[str, Any]]:
+        """The first claim registration in this book that read edit `eid`: a weight claim of it, or a knob claim of
+        its twin (whose notes name the edit as `twin_edit_id`)."""
+        return next((r for r in hist["registrations"] if eid in (r.get("edit_id"), r.get("twin_edit_id"))), None)
+
+    def by_words(reg: Optional[Mapping[str, Any]]) -> str:
+        if reg is not None and reg.get("knob_id"):
+            return (f"by a knob claim of its arithmetic (knob {str(reg['knob_id'])[:12]}, line {reg['seq']}): a knob "
+                    "that is an edit's arithmetic and the edit are read once between them")
+        return f"(line {reg['seq']})" if reg is not None else ""
+
     if what == "knob" and knob_id in hist["seen_knob_ids"]:
         at_line = next((r["seq"] for r in hist["registrations"] if r.get("knob_id") == knob_id), None)
         raise ClaimRefused(
             f'Read once: knob {str(knob_id)[:12]} has already had a fresh claim reading on brief "{brief.name}" '
             f"({brief.short()}) in this book (line {at_line})."
         )
+    if what == "knob" and twin_edit_id is not None:
+        if twin_edit_id in hist["tried_edit_ids"]:
+            at_line = next((t["seq"] for t in hist["trials"] if t.get("edit_id") == twin_edit_id), None)
+            raise ClaimRefused(
+                f'Read once: the weight edit whose arithmetic this knob is ({twin_edit_id[:12]}) has already had a '
+                f'trial on brief "{brief.name}" ({brief.short()}) in this book (line {at_line}): nothing is read of the '
+                "edit on these frames after its trial, and a knob that is its arithmetic is the edit read again."
+            )
+        if twin_edit_id in hist["seen_edit_ids"]:
+            prior = read_by(twin_edit_id)
+            raise ClaimRefused(
+                f'Read once: the weight edit whose arithmetic this knob is ({twin_edit_id[:12]}) has already been read '
+                f'on brief "{brief.name}" ({brief.short()}) in this book '
+                + (by_words(prior) if prior is not None and prior.get("knob_id") else
+                   f"by a weight claim {by_words(prior)}: a knob that is an edit's arithmetic and the edit are read "
+                   "once between them") + "."
+            )
     if what != "knob" and edit.id in hist["tried_edit_ids"]:
         at_line = next((t["seq"] for t in hist["trials"] if t.get("edit_id") == edit.id), None)
         raise ClaimRefused(
@@ -1233,26 +1297,44 @@ def fresh_reading_gate(
             "the edit on these frames after it."
         )
     if what == "claim" and edit.id in hist["seen_edit_ids"]:
+        prior = read_by(edit.id)
         raise ClaimRefused(
-            f'Read once: edit {edit.short()} has already been read on brief "{brief.name}" ({brief.short()}).'
+            f'Read once: edit {edit.short()} has already been read on brief "{brief.name}" ({brief.short()})'
+            + (f" {by_words(prior)}" if prior is not None and prior.get("knob_id") else "") + "."
         )
     if what == "trial" and edit.id in hist["seen_edit_ids"]:
         # a trial promotes a lead. An edit whose claim reading here read anything else has nothing to promote, and a
-        # trial of it would be a second draw at the same question on the same frames
-        claim_reg = next(r for r in hist["registrations"] if r.get("edit_id") == edit.id)
+        # trial of it would be a second draw at the same question on the same frames. A knob claim of the edit's
+        # arithmetic is that claim reading when the knob was the arithmetic alone; one with more parts read
+        # something else, which a trial of the edit does not promote
+        claim_reg = read_by(edit.id)
+        if claim_reg is None:  # a twin id with no registration of this brief cannot be: refuse, and say so
+            raise ClaimRefused(f"Edit {edit.short()} is recorded as read on brief \"{brief.name}\" and no claim "
+                               "registration names it: a trial follows a claim's lead, and none can be found.")
         claim_said = next((v.get("verdict") for v in hist["verdicts"]
                            if v.get("registration_seq") == claim_reg["seq"]), None)
+        is_knob = bool(claim_reg.get("knob_id"))
+        whose = (f"The knob claim of edit {edit.short()}'s arithmetic (knob {str(claim_reg['knob_id'])[:12]})" if is_knob
+                 else f"Edit {edit.short()}'s claim reading")
         if claim_said not in LEADS:
             raise ClaimRefused(
-                f"Edit {edit.short()}'s claim reading on brief \"{brief.name}\" in this book (line {claim_reg['seq']}) "
+                f"{whose} on brief \"{brief.name}\" in this book (line {claim_reg['seq']}) "
                 + (f'read "{claim_said}"' if claim_said is not None else "was registered and never ended")
                 + ": a trial of record follows a lead, and a second reading of the same edit on the same frames "
                 "after anything else would be a second draw at one question."
             )
-        claim_dose = _clean_float(claim_reg.get("main_dose"))
+        kn = claim_reg.get("knob") if isinstance(claim_reg.get("knob"), Mapping) else {}
+        if is_knob and (kn.get("prompt") is not None or kn.get("decoding")):
+            raise ClaimRefused(
+                f"{whose} on brief \"{brief.name}\" in this book (line {claim_reg['seq']}) read a lead with more than "
+                "the edit's arithmetic (a prompt or a decoding setting): a trial promotes what the claim read, and a "
+                "trial of the edit alone on these frames would be a second reading of it after a reading of something "
+                "else."
+            )
+        claim_dose = 1.0 if is_knob else _clean_float(claim_reg.get("main_dose"))  # a twin is its edit at dose 1
         if main_dose is not None and claim_dose is not None and float(main_dose) != claim_dose:
             raise ClaimRefused(
-                f"Edit {edit.short()}'s claim reading in this book (line {claim_reg['seq']}) read it at dose "
+                f"{whose} in this book (line {claim_reg['seq']}) read it at dose "
                 f"{claim_dose:g}, and this trial is registered at dose {float(main_dose):g}: a trial promotes what the "
                 "claim read, at the dose it read it."
             )

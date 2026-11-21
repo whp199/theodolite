@@ -6,8 +6,12 @@ Owner-side orchestration for Phase 6 ("Whether agents help"; `verify/arbiter.md`
 - Multi-session studies (`EvalStudyPlan`, `run_eval_study`): `N` sessions an arm (3 by default), the arms taken in
   turn one replicate at a time, each session in its own folder with its own side book. A side book starts as a copy
   of the study's calibration book, and a session is scored on the lines it entered itself. `weight_edits.assert_base`
-  runs before and after every session. A study folder that was used before is refused; a driver's refusal is recorded
-  for its session and the study goes on; however a study ends, its end note, summary and report are written.
+  runs before and after every session. A study folder that was used before is refused, and so is a calibration book
+  that leaves the brief no fresh reading for a session's claim; a driver's refusal is recorded for its session and the
+  study goes on; however a study ends, its end note, summary and report are written.
+- A session counts in its arm's rates only when it ran to an end (`why_not_counted`): its driver did not fail, it was
+  not stopped by the kill switch, an error or a reading still running, and at least one door call succeeded. Every
+  other session is listed apart, with its reason, and a claim the gate refused is recorded in the gate's own words.
 - Results are kept arm by arm and never pooled: two arms that differ in anything the plan hashes (driver family,
   model, reasoning effort, driver settings, reach, mode, `--bare`) are two rows. Four comparisons are made, each
   between arms that differ in one thing only:
@@ -17,7 +21,8 @@ Owner-side orchestration for Phase 6 ("Whether agents help"; `verify/arbiter.md`
   4. `--bare` against the standard prompt (`docs/SCAFFOLD.md`).
   A comparison names an arm as ahead only when a two-sided Fisher test on the two arms' lead counts is below
   `LABEL_P`, with at least `MIN_VARIANCE_SESSIONS` sessions on each side. At 3 sessions an arm the smallest p such a
-  test can give is 0.1, so no comparison at that size can separate two arms, and the summary and report say so.
+  test can give is 0.1, so no comparison at that size can separate two arms, and the summary and report say so. A
+  lead is a verdict of `level_claim.LEADS` ("lead", and "lead, matched by a cheaper knob").
 - A blinded planted-fault and canary benchmark (`run_blinded_benchmark`), scored outside the session. Its docstring
   says what it can show and what it cannot.
 - Helpers for the ruling's two end-of-phase driver tests (`arbiter.md` §5), neither of which has been run:
@@ -37,6 +42,7 @@ import json
 import math
 import os
 import re
+import secrets
 import shutil
 import time
 from dataclasses import dataclass, field
@@ -64,8 +70,21 @@ REACH_ORDER = ("behaviour", "activations", "weights", "atlas", "tools_only", "sa
 FORBIDDEN_CONFIG_KEYS = ("api_key", "secret", "token", "password", "auth_token")
 MAX_COLD_PAGE_WORDS = 600
 MAX_REBUILD_WORDS = 200
+# A description's characters are bounded too, so a long run of characters cannot pass as one word: twelve characters
+# a word of the ruling's 200, room for the 64-character hashes a description carries (base, items)
+MAX_REBUILD_CHARS = 12 * MAX_REBUILD_WORDS
 LABEL_P = 0.05  # a comparison names an arm as ahead only when a two-sided test on the lead counts is below this
 EFFORT_FAMILIES = ("openai", "claude")  # the drivers `level_drivers.run_driver` passes a reasoning effort to
+LEAD_VERDICTS = tuple(lcl.LEADS)  # a lead: the verdicts a trial of record may follow ("lead", and the matched lead)
+SESSION_FRESH_READINGS = 1  # what one session's claim spends of the brief's fresh readings (its driver submits one)
+# A session whose outcome ends with one of these did not run to an end (`why_not_counted`)
+NOT_TO_AN_END_STOPS = {
+    "killed": "it was stopped by the kill switch (STOP, a signal) before it ended",
+    "error": "it ended in an error",
+    "driver_failure": "its driver could not work the door",
+    "still_running": "a call it made was still running when it was stopped",
+}
+STUDY_DOLLAR_CAP_REACHED = "study dollar cap reached"
 STUDY_FOLDER_FILES = ("study_book.jsonl", "study_plan.json", "calibration_book.jsonl", "bars.json", "summary.json",
                       "report.md", "sessions")
 COLD_RULING_NOT_RUN = (
@@ -74,15 +93,24 @@ COLD_RULING_NOT_RUN = (
 )
 REBUILD_REPLAY_WHAT = (
     "A same-process replay: the description was parsed and read again in this process, by this code, on this model, "
-    "and every arm of every item compared with the original. The ruling's rebuild test (arbiter.md §5: a fresh "
-    "session, given only the description, rebuilds the reading) has not been run."
+    "its items checked against the ids it gives, and every arm of every item compared with the original; the runtime "
+    "it was read under is set beside the one the description gives. The ruling's rebuild test (arbiter.md §5: a "
+    "fresh session, given only the description, rebuilds the reading) has not been run."
 )
 COMPOSITION_RULE = (
-    "In the harness a repair is read on top of its plant by adding the two edits' weight deltas (weight_edits.stack): "
-    "where both scale one neuron, factors f1 and f2 give f1 + f2 - 1, so a scale x2 on a silenced neuron gives "
-    "0 + 2 - 1 = 1 and restores it. On a checkpoint carrying the planted weights the repair would act on those "
-    "weights instead, and a scale x2 of a silenced neuron leaves it silenced (0 x 2 = 0)."
+    "In the harness a repair is read on top of its plant by adding the two edits' weight deltas (weight_edits.stack, "
+    "with the plant first); on a checkpoint carrying the planted weights the repair would act on those weights. On a "
+    "neuron (a down_proj column, or a gate_proj or up_proj row) that both change, the two differ: two scales f1 and f2 "
+    "give f1 + f2 - 1 of the base in the harness and f1 x f2 on a checkpoint (a scale x2 on a silenced neuron restores "
+    "it in the harness, 0 + 2 - 1 = 1, and leaves it silenced on a checkpoint, 0 x 2 = 0); a set over a scaled or "
+    "added neuron keeps the plant's change in the harness and stands alone on a checkpoint (a set back to the base on "
+    "a silenced neuron leaves it silenced in the harness and restores it on a checkpoint); a scale over an added or "
+    "set neuron scales the base in the harness and the planted weights on a checkpoint. Two compose the same both ways: "
+    "an added vector, and a set over a set (the later set stands). So does a repair on neurons the plant did not "
+    "change. Not known: a low-rank term on a linear the other edit changes, and a remove_direction on a planted neuron "
+    "(its vector is worked out from the weights it is built on)."
 )
+NO_CHANGE_SAY = "the composite is the unedited model, so its KL from the base is 0 by arithmetic, not read"
 DOOR_SURFACE_NOTE = (
     "A plumbing check. At the start of each session, before its driver runs, it takes what the door shows a driver "
     "(the tools served with their schemas, the status reply, and the driver prompt), leaving out the session id, the "
@@ -124,6 +152,42 @@ def _number(x: Any, what: str) -> float:
 
 def _canonical_sha(obj: Any) -> str:
     return hashlib.sha256(lb.canonical(obj)).hexdigest()
+
+
+def why_not_counted(outcome: Mapping[str, Any]) -> Optional[str]:
+    """None when a session ran to an end and counts in its arm's rates, else why it did not, in plain words.
+
+    It ran to an end when its driver did not fail (`driver_failure` is None), its stop is not one of
+    `NOT_TO_AN_END_STOPS` (the kill switch, an error, a driver failure, a call still running), and the door saw at least
+    one call succeed (`door.ok` of 1 or more). An outcome that records no `door` does not count; nor does a session
+    refused before it ran."""
+    if outcome.get("refused"):
+        return f"refused before it ran: {outcome.get('refusal')}"
+    why: List[str] = []
+    fail = outcome.get("driver_failure")
+    if fail is not None:
+        why.append(f"its driver failed: {fail}")
+    stop = outcome.get("stop_reason")
+    if stop in NOT_TO_AN_END_STOPS and not (stop == "driver_failure" and fail is not None):
+        say = NOT_TO_AN_END_STOPS[str(stop)]
+        refused_claim = str(outcome.get("claim_refused") or "").strip()
+        note = (f"a claim the door refused: {refused_claim}" if refused_claim
+                else str(outcome.get("notes") or "").strip())
+        why.append(f"{say} ({note[:400]})" if stop == "error" and note else say)
+    door = outcome.get("door")
+    if not isinstance(door, Mapping):
+        why.append("its outcome records no door calls")
+    else:
+        ok = door.get("ok")
+        if (isinstance(ok, bool) or not isinstance(ok, int) or ok < 1) and fail is None:
+            why.append("no door call succeeded")  # (where the driver failed, its failure says so already)
+    return "; ".join(why) or None
+
+
+def _claim_refused(outcome: Mapping[str, Any]) -> Optional[str]:
+    """The door's own words for the last claim it refused in a session (`level_drivers`' `claim_refused`), or None."""
+    cr = outcome.get("claim_refused")
+    return str(cr)[:1200] if cr else None
 
 
 # -------------------------------------------------------------------------------------- study plan & validation
@@ -301,6 +365,31 @@ def study_plan_from_dict(raw: Mapping[str, Any]) -> EvalStudyPlan:
     return plan
 
 
+def claim_design_refusal(design: Mapping[str, Any]) -> Optional[str]:
+    """Why a study's `claim_design` would have every session's claim refused, in the claim's own rule, or None: the
+    counts (`n_target`, `n_neutral`, `n_near`, `n_panel`, `written_rows`, `controls_override`) are whole numbers of 1 or
+    more (`level_claim.run_fresh_claim` refuses 0 control edits a family, as the knob claim does; it also asks more of
+    `n_target`, by the bars); `match_tolerance` is a finite factor of 1 or more; `rows` names whole numbers of 1 or more
+    for "small" and "large". Asked before anything is loaded, so a plan that would read nothing is not run."""
+    for k in ("n_target", "n_neutral", "n_near", "n_panel", "written_rows", "controls_override"):
+        if k in design and design[k] is not None:
+            v = design[k]
+            if isinstance(v, bool) or not isinstance(v, int) or v < 1:
+                return (f"claim_design.{k} is a whole number of 1 or more, as a fresh reading takes it; {v!r} is not"
+                        + (" (a claim with no control edits is refused)." if k == "controls_override" else "."))
+    if design.get("match_tolerance") is not None:
+        t = design["match_tolerance"]
+        if isinstance(t, bool) or not isinstance(t, (int, float)) or not math.isfinite(float(t)) or float(t) < 1.0:
+            return f"claim_design.match_tolerance is a finite factor of 1 or more; {t!r} is not."
+    if design.get("rows") is not None:
+        r = design["rows"]
+        bad = (not isinstance(r, Mapping) or not r or any(k not in ("small", "large") for k in r)
+               or any(isinstance(v, bool) or not isinstance(v, int) or v < 1 for v in r.values()))
+        if bad:
+            return f'claim_design.rows names whole numbers of 1 or more for "small" and "large"; {r!r} does not.'
+    return None
+
+
 def validate_study_plan(
     plan: EvalStudyPlan,
     *,
@@ -328,6 +417,9 @@ def validate_study_plan(
     unknown_cd = sorted(k for k in plan.claim_design if k not in lses.CLAIM_DESIGN_KEYS)
     if unknown_cd:
         raise EvalRefused(f"Unknown claim_design key(s): {', '.join(unknown_cd)}.")
+    why_cd = claim_design_refusal(plan.claim_design)
+    if why_cd is not None:
+        raise EvalRefused(why_cd)
 
     seen_ids: set[str] = set()
     warnings: List[str] = []
@@ -351,7 +443,14 @@ def validate_study_plan(
         if arm.mode not in lses.VALID_MODES:
             raise EvalRefused(f"Arm {arm.arm_id!r} has invalid mode {arm.mode!r}.")
 
-        # A reasoning effort is hashed into the plan, so it must reach the driver, and only a driver that takes one
+        # A reasoning effort is hashed into the plan, so it must reach the driver, and only a driver that takes one. It
+        # is named on the arm, where its row reads it, and nowhere else
+        if "reasoning_effort" in (arm.driver_config or {}):
+            raise EvalRefused(
+                f"Arm {arm.arm_id!r} names a reasoning effort in driver_config "
+                f"({arm.driver_config['reasoning_effort']!r}); name it as the arm's reasoning_effort, where its row "
+                "and the plan's hash read it."
+            )
         if arm.reasoning_effort is not None:
             if not isinstance(arm.reasoning_effort, str) or not arm.reasoning_effort.strip():
                 raise EvalRefused(f"Arm {arm.arm_id!r}: reasoning_effort is a non-empty string or null.")
@@ -360,12 +459,11 @@ def validate_study_plan(
                     f"Arm {arm.arm_id!r}: a reasoning effort is passed to the {' and '.join(EFFORT_FAMILIES)} drivers "
                     f"only; the {arm.driver_family} driver would run the same without it, under another plan hash."
                 )
-        cfg_eff = (arm.driver_config or {}).get("reasoning_effort")
-        if cfg_eff is not None and arm.reasoning_effort is not None and cfg_eff != arm.reasoning_effort:
-            raise EvalRefused(
-                f"Arm {arm.arm_id!r} names two reasoning efforts ({arm.reasoning_effort!r}, and {cfg_eff!r} in "
-                "driver_config); name one."
-            )
+            if arm.driver_family == "claude" and arm.reasoning_effort not in ldrv.CLAUDE_EFFORTS:
+                raise EvalRefused(
+                    f"Arm {arm.arm_id!r}: Claude Code's effort is one of {', '.join(ldrv.CLAUDE_EFFORTS)}, not "
+                    f"{arm.reasoning_effort!r}."
+                )
 
         # Never allow raw secrets embedded in study plan JSON
         for k in (arm.driver_config or {}):
@@ -603,7 +701,8 @@ def two_arm_lead_test(a: Mapping[str, Any], b: Mapping[str, Any], a_name: str, b
     b_rate = b_l / float(b_n) if b_n else 0.0
     if a_n == 0 or b_n == 0:
         return {"fisher_exact_p": None, "smallest_possible_p": None, "label_p": LABEL_P, "can_separate": False,
-                "label": "not_compared", "why": f"an arm ran no session ({a_n} and {b_n})"}
+                "sessions": [a_n, b_n], "label": "not_compared",
+                "why": f"an arm has no session that ran to an end ({a_n} and {b_n})"}
     if a_l == 0 and b_l == 0:
         label = "neither_found_a_lead"
     elif enough and p is not None and p < LABEL_P and a_rate > b_rate:
@@ -626,6 +725,7 @@ def two_arm_lead_test(a: Mapping[str, Any], b: Mapping[str, Any], a_name: str, b
         "smallest_possible_p": p_min,
         "label_p": LABEL_P,
         "can_separate": can_separate,
+        "sessions": [a_n, b_n],
         "label": label,
         "why": why,
     }
@@ -685,17 +785,22 @@ def _arm_driver_config(arm: EvalArm) -> Dict[str, Any]:
     return cfg
 
 
-def _session_driver_budget(plan: EvalStudyPlan, spent: float) -> ldrv.DriverBudget:
-    """The driver budget one session runs under. With a study dollar cap, its dollar cap is what is left of the
-    study's, or the plan's own per-session cap where that is smaller, so the session in progress counts against the
-    study's total while it runs, not only after it."""
+def _session_driver_budget(plan: EvalStudyPlan, spent: float) -> Optional[ldrv.DriverBudget]:
+    """The driver budget one session runs under, or None when the study's dollar cap leaves it nothing. With a study
+    dollar cap, its dollar cap is what is left of the study's, or the plan's own per-session cap where that is smaller,
+    so the session in progress counts against the study's total while it runs, not only after it. What is left is
+    rounded down to a millionth of a dollar, never up past it; when that comes to 0 or less there is nothing to hand a
+    session (a driver reads a dollar cap of 0 as none), and the study stops (`STUDY_DOLLAR_CAP_REACHED`)."""
     db = plan.driver_budget
     if plan.max_total_dollars is None:
         return db
-    left = max(0.0, float(plan.max_total_dollars) - float(spent))
+    left = float(plan.max_total_dollars) - float(spent)
+    left = math.floor(left * 1e6) / 1e6 if math.isfinite(left) else 0.0
+    if left <= 0.0:
+        return None
     cap = db.max_dollars
-    per = left if (cap is None or float(cap) <= 0.0) else min(float(cap), left)
-    return dataclasses.replace(db, max_dollars=round(per, 6))
+    per = left if (cap is None or float(cap) <= 0.0 or float(cap) > left) else float(cap)
+    return dataclasses.replace(db, max_dollars=per)
 
 
 def _score_own_lines(outcome: Mapping[str, Any], own_from: int) -> Dict[str, Any]:
@@ -758,6 +863,26 @@ def _refused_outcome(arm: EvalArm, exc: BaseException, db: ldrv.DriverBudget, ru
     }
 
 
+def refuse_spent_calibration_book(brief: lbr.Brief, calibration_book: Path) -> None:
+    """Refuse a study whose calibration book leaves the brief fewer fresh readings than one session needs
+    (`SESSION_FRESH_READINGS`). Every side book starts as a copy of it, and the gate counts the brief's fresh readings
+    in the book a claim is taken in (`level_claim.fresh_reading_gate`): a copy whose readings are spent refuses every
+    session's claim, and the study would read nothing. Asked before anything is written."""
+    p = Path(calibration_book).resolve()
+    if not p.is_file():
+        raise EvalRefused(f"The calibration book {p} is not a file.")
+    hist = lcl.brief_history(brief.id, p, name=brief.name)
+    used = int(hist["fresh_count"])
+    left = int(brief.max_fresh_readings) - used
+    if left < SESSION_FRESH_READINGS:
+        raise EvalRefused(
+            f'The calibration book {p.name} leaves brief "{brief.name}" {max(0, left)} of its '
+            f"{brief.max_fresh_readings} fresh reading(s) ({used} spent there), and a session's claim takes "
+            f"{SESSION_FRESH_READINGS}: every side book starts as a copy of it, so the gate would refuse every "
+            "session's claim. Give a calibration book with a fresh reading left, or let the study calibrate its own."
+        )
+
+
 def _supplied_calibration(
     bars: lcl.BarSet, calibration_book: Path, brief: lbr.Brief, cal_book_path: Path, bars_path: Path
 ) -> Tuple[lcl.BarSet, str]:
@@ -805,6 +930,8 @@ def run_eval_study(
     sdir = Path(study_dir).resolve()
     refuse_used_study_dir(sdir)
     brief = _resolve_brief(plan, h.tokenizer)
+    if calibration_book is not None:
+        refuse_spent_calibration_book(brief, Path(calibration_book))
 
     sdir.mkdir(parents=True, exist_ok=True)
     sessions_root = sdir / "sessions"
@@ -835,6 +962,7 @@ def run_eval_study(
     total_dollars = 0.0
     t_study = time.monotonic()
     refused_n = 0
+    counted_n = 0
     try:
         why_ks = ks.triggered()
         if why_ks:
@@ -869,20 +997,22 @@ def run_eval_study(
                 for rep in range(int(plan.sessions_per_arm)):
                     for arm in plan.arms:
                         why_ks = ks.triggered()
+                        db_now = _session_driver_budget(plan, total_dollars)
                         if why_ks:
                             halted_reason = f"kill_switch: {why_ks}"
                         elif (time.monotonic() - t_study) >= float(plan.max_total_wall_seconds):
                             halted_reason = "study_wall_cap"
-                        elif plan.max_total_dollars is not None and total_dollars >= float(plan.max_total_dollars):
-                            halted_reason = "study_dollar_cap"
+                        elif db_now is None:
+                            halted_reason = STUDY_DOLLAR_CAP_REACHED
                         if halted_reason:
                             break
                         outcome = _run_one_session(
                             h, plan, arm, rep, sessions_root, cal_book_path, cal_ver, brief, study_bars,
-                            weights_dir=weights_dir, atlas_dir=atlas_dir, kill_switch=ks, spent=total_dollars,
+                            weights_dir=weights_dir, atlas_dir=atlas_dir, kill_switch=ks, driver_budget=db_now,
                             probe_sandbox=probe_sandbox, ignore_reach_env=ignore_reach_env,
                         )
                         refused_n += 1 if outcome.get("refused") else 0
+                        counted_n += 1 if why_not_counted(outcome) is None else 0
                         total_dollars += float((outcome.get("usage") or {}).get("estimated_dollars") or 0.0)
                         outcomes.append(outcome)
                         run_dir = sessions_root / f"{arm.arm_id}_r{rep}"
@@ -903,6 +1033,12 @@ def run_eval_study(
                             },
                             "outcome": outcome,
                         }, path=study_book)
+                        if outcome.get("stop_reason") == "still_running":
+                            # a call of that session's was still running when it was stopped: the model is not
+                            # known to be free, so no other session starts on it
+                            halted_reason = (f"still_running: a call made in {arm.arm_id}_r{rep} was still running "
+                                             "when it was stopped, so no later session was started")
+                            break
                     if halted_reason:
                         break
     except BaseException as exc:
@@ -920,6 +1056,8 @@ def run_eval_study(
             "halted_reason": halted_reason,
             "completed_sessions": len(outcomes),
             "refused_sessions": refused_n,
+            "counted_sessions": counted_n,
+            "not_run_to_an_end": len(outcomes) - counted_n,
             "planned_sessions": planned,
             "total_seconds": round(time.monotonic() - t_study, 3),
             "total_estimated_dollars": round(total_dollars, 6),
@@ -957,7 +1095,7 @@ def _run_one_session(
     weights_dir: Optional[Path],
     atlas_dir: Optional[Path],
     kill_switch: ldrv.KillSwitch,
-    spent: float,
+    driver_budget: ldrv.DriverBudget,
     probe_sandbox: bool,
     ignore_reach_env: bool,
 ) -> Dict[str, Any]:
@@ -970,7 +1108,7 @@ def _run_one_session(
     if not seed_ver["ok"] or seed_ver["head"] != cal_ver["head"] or seed_ver["entries"] != cal_ver["entries"]:
         raise EvalRefused(f"The side book of {run_id} is not the calibration book it was copied from.")
     own_from = int(cal_ver["entries"])
-    db = _session_driver_budget(plan, spent)
+    db = driver_budget
     backend_tag = arm.driver_family if arm.driver_family in lses.VALID_BACKENDS else "local"
     if arm.driver_family == "scripted":
         backend_tag = "script"
@@ -1064,8 +1202,10 @@ def summarize_study(
     halted_reason: Optional[str] = None,
     finished: bool = True,
 ) -> Dict[str, Any]:
-    """Aggregate outcomes arm by arm, never pooling two arms (`_arm_group_key`), and compare arms that differ in one
-    thing only. A session that was refused is listed and not counted among the sessions an arm ran."""
+    """Aggregate outcomes arm by arm, never pooling two arms (`_arm_group_key`: one row an arm), and compare arms that
+    differ in one thing only. An arm's rates, verdicts, effects and batteries are over the sessions that ran to an end
+    (`why_not_counted`); every other session (refused, stopped, failed, or with no door call that succeeded) is listed
+    apart with its reason. Its costs are over every session that started, counted or not."""
     specs = _arm_specs(plan_doc)
     served: Dict[str, List[str]] = {}
     for o in outcomes:
@@ -1077,7 +1217,7 @@ def summarize_study(
         grouped.setdefault(_arm_group_key(o, specs, served), []).append(o)
 
     arm_summaries: List[Dict[str, Any]] = []
-    pooled_reaches = pooled_families = pooled_arms = False
+    not_counted_all: List[Dict[str, Any]] = []
 
     def _order(kv: Tuple[Tuple[Any, ...], Any]) -> Tuple[Any, ...]:
         aid, fam, mod, reach, mode, bare, effort, cfg = kv[0]
@@ -1086,18 +1226,28 @@ def summarize_study(
     for key, rows in sorted(grouped.items(), key=_order):
         aid, fam, mod, reach, mode, bare, effort, cfg = key
         cards = [r.get("harness_card") or {} for r in rows]
-        pooled_reaches |= len({str(c.get("reach")) for c in cards if c.get("reach") is not None}) > 1
-        pooled_families |= len({str(c.get("driver_family")) for c in cards if c.get("driver_family") is not None}) > 1
-        pooled_arms |= len({str(r.get("arm_id") or "") for r in rows}) > 1
-        ran = [r for r in rows if not r.get("refused")]
+        why_by_row = [why_not_counted(r) for r in rows]
+        counted = [r for r, w in zip(rows, why_by_row) if w is None]
+        started = [r for r in rows if not r.get("refused")]
         refused = [r for r in rows if r.get("refused")]
-        n = len(ran)
+        not_counted = [{
+            "arm_id": r.get("arm_id"),
+            "replicate": r.get("replicate"),
+            "run_id": r.get("run_id"),
+            "stop_reason": r.get("stop_reason"),
+            "reason": w,
+            "claim_refused": _claim_refused(r),
+        } for r, w in zip(rows, why_by_row) if w is not None]
+        not_counted_all += not_counted
+        n = len(counted)
         verdict_counts: Dict[str, int] = {}
         effs: List[float] = []
         effs_verdicts: Dict[str, int] = {}
         lead_effs: List[float] = []
         nm_vals: List[float] = []
+        nm_verdicts: Dict[str, int] = {}
         neu_vals: List[float] = []
+        neu_verdicts: Dict[str, int] = {}
         gpu_s: List[float] = []
         fwds: List[int] = []
         cl_fwds: List[int] = []
@@ -1107,7 +1257,7 @@ def summarize_study(
         usd: List[float] = []
         replicates_detail: List[Dict[str, Any]] = []
 
-        for r in ran:
+        for r in counted:
             v = str(r.get("verdict") or "no_submission")
             verdict_counts[v] = verdict_counts.get(v, 0) + 1
             m = r.get("metrics") or {}
@@ -1115,26 +1265,36 @@ def summarize_study(
             if de is not None:
                 effs.append(de)
                 effs_verdicts[v] = effs_verdicts.get(v, 0) + 1
-                if v == "lead":
+                if v in LEAD_VERDICTS:
                     lead_effs.append(de)
             nm = _clean_float(m.get("near_miss_abs"))
             if nm is not None:
                 nm_vals.append(nm)
+                nm_verdicts[v] = nm_verdicts.get(v, 0) + 1
             nk = _clean_float(m.get("neutral_kl"))
             if nk is not None:
                 neu_vals.append(nk)
+                neu_verdicts[v] = neu_verdicts.get(v, 0) + 1
+        for r, w in zip(rows, why_by_row):
+            m = r.get("metrics") or {}
+            de = _clean_float(m.get("directed_effect"))
+            nm = _clean_float(m.get("near_miss_abs"))
+            nk = _clean_float(m.get("neutral_kl"))
             u = r.get("usage") or {}
-            gpu_s.append(float(u.get("gpu_seconds") or 0.0))
-            fwds.append(int(u.get("forwards") or 0))
-            cl_fwds.append(int(u.get("claim_forwards") or 0))
-            cells_l.append(int(u.get("cells") or 0))
-            walls.append(float(u.get("wall_seconds") or 0.0))
-            toks.append(int(u.get("total_tokens") or 0))
-            usd.append(float(u.get("estimated_dollars") or 0.0))
+            if not r.get("refused"):
+                gpu_s.append(float(u.get("gpu_seconds") or 0.0))
+                fwds.append(int(u.get("forwards") or 0))
+                cl_fwds.append(int(u.get("claim_forwards") or 0))
+                cells_l.append(int(u.get("cells") or 0))
+                walls.append(float(u.get("wall_seconds") or 0.0))
+                toks.append(int(u.get("total_tokens") or 0))
+                usd.append(float(u.get("estimated_dollars") or 0.0))
             replicates_detail.append({
                 "arm_id": r.get("arm_id"),
                 "replicate": r.get("replicate"),
-                "verdict": v,
+                "counted": w is None,
+                "not_counted_because": w,
+                "verdict": str(r.get("verdict") or "no_submission"),
                 "stop_reason": r.get("stop_reason"),
                 "directed_effect": round(de, 5) if de is not None else None,
                 "near_miss_abs": round(nm, 5) if nm is not None else None,
@@ -1144,17 +1304,18 @@ def summarize_study(
                 "estimated_dollars": round(float(u.get("estimated_dollars") or 0.0), 6),
                 "book_verified": bool((r.get("book") or {}).get("verified", False)),
                 "seed_verdict_set_aside": r.get("seed_verdict_set_aside"),
+                "claim_refused": _claim_refused(r),
             })
 
-        n_leads = verdict_counts.get("lead", 0)
+        n_leads = sum(verdict_counts.get(v, 0) for v in LEAD_VERDICTS)
         n_leads_knob = verdict_counts.get("lead, matched by a cheaper knob", 0)
-        n_any_lead = n_leads + n_leads_knob
         ci_lo, ci_hi = wilson_ci(n_leads, n)
-        ci_any_lo, ci_any_hi = wilson_ci(n_any_lead, n)
         total_usd = float(sum(usd))
         total_gpu = float(sum(gpu_s))
         eff_arr = np.asarray(effs, dtype=np.float64) if effs else np.asarray([], dtype=np.float64)
         models_seen = sorted({str(c.get("driver_model")) for c in cards if c.get("driver_model") is not None})
+        batt_of = ("every counted session whose claim verdict carried the battery, whatever the verdict (leads, works "
+                   "but harms, no better than control edits, and the rest)")
 
         arm_rec = {
             "arm_id": aid,
@@ -1167,22 +1328,24 @@ def summarize_study(
             "reach": reach,
             "mode": mode,
             "bare": bare,
+            "n_recorded": len(rows),
             "n_sessions": n,
+            "n_not_counted": len(not_counted),
+            "not_counted": not_counted,
             "n_refused": len(refused),
             "refusals": [str(r.get("refusal") or "")[:300] for r in refused[:3]],
             "under_sampled": n < MIN_VARIANCE_SESSIONS,
-            "n_submitted": sum(1 for r in ran if r.get("submitted")),
+            "n_submitted": sum(1 for r in counted if r.get("submitted")),
             "n_leads": n_leads,
             "n_leads_matched_by_knob": n_leads_knob,
+            "lead_verdicts": list(LEAD_VERDICTS),
             "lead_rate": round(n_leads / float(n), 4) if n else 0.0,
             "lead_rate_ci95": [ci_lo, ci_hi],
-            "any_lead_rate": round(n_any_lead / float(n), 4) if n else 0.0,
-            "any_lead_rate_ci95": [ci_any_lo, ci_any_hi],
             "verdict_counts": verdict_counts,
             "directed_effect": {
                 "n": len(effs),
                 "values": [round(x, 5) for x in effs],
-                "of": "every session that entered a claim verdict, whatever the verdict",
+                "of": "every counted session that entered a claim verdict, whatever the verdict",
                 "verdicts": effs_verdicts,
                 "mean": round(float(eff_arr.mean()), 5) if effs else None,
                 "median": _median(effs),
@@ -1193,12 +1356,13 @@ def summarize_study(
             "lead_effect": {
                 "n": len(lead_effs),
                 "values": [round(x, 5) for x in lead_effs],
-                "of": 'the sessions whose verdict was "lead" only',
+                "of": f"the counted sessions whose verdict was a lead ({', '.join(LEAD_VERDICTS)}) only",
                 "median": _median(lead_effs),
             },
-            "near_miss_abs_median": _median(nm_vals),
-            "neutral_kl_median": _median(neu_vals),
+            "near_miss_abs": {"n": len(nm_vals), "median": _median(nm_vals), "of": batt_of, "verdicts": nm_verdicts},
+            "neutral_kl": {"n": len(neu_vals), "median": _median(neu_vals), "of": batt_of, "verdicts": neu_verdicts},
             "cost": {
+                "of": "every session that started, counted or not",
                 "mean_gpu_seconds": round(float(np.mean(gpu_s)), 3) if gpu_s else 0.0,
                 "total_gpu_seconds": round(total_gpu, 3),
                 "mean_practice_forwards": round(float(np.mean(fwds)), 2) if fwds else 0.0,
@@ -1223,8 +1387,10 @@ def summarize_study(
             "arm_id": a["arm_id"],
             "driver_model": a["driver_model"],
             "sessions": a["n_sessions"],
+            "not_counted": a["n_not_counted"],
             "refused": a["n_refused"],
             "leads": a["n_leads"],
+            "leads_matched_by_knob": a["n_leads_matched_by_knob"],
             "lead_rate": a["lead_rate"],
             "lead_median_effect": a["lead_effect"]["median"],
             "median_effect_all_readings": a["directed_effect"]["median"],
@@ -1370,22 +1536,35 @@ def summarize_study(
     tests = ([r["test"] for r in weight_vs_knobs] + [r["test"] for r in agent_vs_scripted]
              + [r["test"] for r in scaffolding_ablations]
              + [lad["atlas_vs_weights"]["test"] for lad in reach_ladders if lad.get("atlas_vs_weights")])
-    sizes = sorted({a["n_sessions"] for a in arm_summaries if a["n_sessions"] > 0})
+
+    def _sizes(ts: Sequence[Mapping[str, Any]]) -> str:
+        return ", ".join(f"{a} and {b}" for a, b in sorted({tuple(t.get("sessions") or (0, 0)) for t in ts}))
+
     if not tests:
         separation = "No two arms here differ in one thing only, so nothing was compared."
     elif not any(t["can_separate"] for t in tests):
-        n_desc = " or ".join(str(s) for s in sizes) or "no"
-        p_mins = [t["smallest_possible_p"] for t in tests if t["smallest_possible_p"] is not None]
-        min_txt = f" the smallest two-sided Fisher p any comparison here can give is {min(p_mins):g}, so" if p_mins else ""
-        separation = (
-            f"With {n_desc} session(s) an arm,{min_txt} no comparison in this study can separate two arms at "
-            f"p < {LABEL_P:g}, and none names an arm as ahead."
-        )
+        # each comparison that cannot separate is given its own reason: too few sessions on a side, or a smallest
+        # possible p that is not below LABEL_P at its sizes
+        few = [t for t in tests if min(t.get("sessions") or [0]) < MIN_VARIANCE_SESSIONS]
+        rest = [t for t in tests if t not in few]
+        parts: List[str] = []
+        if few:
+            parts.append(f"a comparison names an arm ahead only with at least {MIN_VARIANCE_SESSIONS} sessions that ran "
+                         f"to an end on each side, and {len(few)} of the {len(tests)} comparison(s) here "
+                         f"{'has' if len(few) == 1 else 'have'} fewer ({_sizes(few)} sessions a side)")
+        if rest:
+            p_mins = [t["smallest_possible_p"] for t in rest if t["smallest_possible_p"] is not None]
+            min_txt = (f"the smallest two-sided Fisher p any result can give is {min(p_mins):g}, not below "
+                       f"{LABEL_P:g}" if p_mins else "no test could be made")
+            parts.append(f"{'in the others' if few else 'here'}, with {_sizes(rest)} sessions a side, {min_txt}")
+        separation = (f"At these sizes no comparison in this study can separate two arms at p < {LABEL_P:g}, and "
+                      f"none names an arm as ahead: {'; '.join(parts)}.")
     else:
         separation = (
             f"Some comparisons here could separate two arms at p < {LABEL_P:g}; each row's test says whether it did."
         )
     refused_total = sum(a["n_refused"] for a in arm_summaries)
+    counted_total = sum(a["n_sessions"] for a in arm_summaries)
 
     return {
         "v": EVAL_VERSION,
@@ -1400,12 +1579,12 @@ def summarize_study(
         "sessions_per_arm_planned": plan_doc.get("sessions_per_arm"),
         "planned_sessions": (len(plan_doc.get("arms") or []) * int(plan_doc.get("sessions_per_arm") or 0)) or None,
         "completed_sessions": len(outcomes),
+        "counted_sessions": counted_total,
         "refused_sessions": refused_total,
+        "not_run_to_an_end": not_counted_all,
         "halted_reason": halted_reason,
         "finished": bool(finished),
-        "pooled_across_reaches": bool(pooled_reaches),
-        "pooled_across_families": bool(pooled_families),
-        "pooled_across_arms": bool(pooled_arms),
+        "claim_match_tolerance": _clean_float((plan_doc.get("claim_design") or {}).get("match_tolerance")),
         "separation": separation,
         "arms": arm_summaries,
         "comparisons": {
@@ -1419,12 +1598,19 @@ def summarize_study(
             "lines it entered itself; no edit from a Phase 6 study is a trial of record.",
             "Arms are reported one by one and never pooled: two arms that differ in anything the plan hashes are two rows.",
             separation,
-            'A lead is a session whose verdict was "lead"; "works but harms" and every other verdict is not one, and '
-            "the medians of leads are taken over leads only.",
-            "A session whose driver or session was refused was not run, and is not counted among an arm's sessions.",
+            f"A lead is a session whose verdict is one of level_claim.LEADS ({', '.join(repr(v) for v in LEAD_VERDICTS)}): "
+            "the verdicts a trial of record may follow, so a lead matched by a cheaper knob is a lead and is also "
+            'counted apart. "works but harms" and every other verdict is not one, and the medians of leads are taken '
+            "over leads only.",
+            "A session counts in its arm's rates only when it ran to an end: its driver did not fail, it was not "
+            "stopped by the kill switch, an error or a call still running, and at least one door call succeeded. "
+            "Every other session, a session refused before it ran among them, is listed apart with its reason, and a "
+            "claim the gate refused is given in the gate's own words.",
             "A scripted arm runs a fixed program, and its rate measures that program, not an agent.",
             "With a study dollar cap, each session's dollar cap was what was left of the study's (or the plan's own, "
-            "where smaller); its harness card records the cap it ran under.",
+            "where smaller), rounded down to a millionth of a dollar; its harness card records the cap it ran under. "
+            f"When nothing was left the study stopped ({STUDY_DOLLAR_CAP_REACHED}). A session can pass its cap by "
+            "what its last reply cost.",
             "Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters are not built.",
         ],
     }
@@ -1456,13 +1642,55 @@ def _side_book_problems(sdir: Path, side: Mapping[str, Any], cal: Optional[Mappi
     return probs
 
 
+def verdict_of_own_lines(book: Path, own_from: int) -> Dict[str, Any]:
+    """The verdict, submitted flag and directed effect of the lines of `book` from line `own_from` on (a side book's
+    own lines, after the calibration book it starts as), read as `level_drivers` reads a session's outcome from its
+    book: the last claim or knob claim verdict, and its large class's directed mean (its small class's when the large
+    gave none). No verdict line: "no_submission", not submitted, no effect."""
+    verdict, submitted, de = "no_submission", False, None
+    for entry in lb.entries(Path(book), start=int(own_from)):
+        if entry.get("kind") != "note":
+            continue
+        body = entry.get("body") or {}
+        nt = body.get("note_type") or body.get("note")
+        if nt == "claim_verdict":
+            submitted, verdict = True, str(body.get("verdict") or "void")
+            summ = body.get("summary") or {}
+            sm, lg = summ.get("small") or {}, summ.get("large") or {}
+            de = lg.get("directed_mean") if lg.get("directed_mean") is not None else sm.get("directed_mean")
+        elif nt == "knob_claim_verdict":
+            submitted, verdict = True, str(body.get("verdict") or "void")
+            summ = body.get("summary") or {}
+            de = summ.get("large_directed") if summ.get("large_directed") is not None else summ.get("small_directed")
+    return {"verdict": verdict, "submitted": submitted, "directed_effect": _clean_float(de)}
+
+
+def _outcome_against_side_book(sdir: Path, side: Mapping[str, Any], outcome: Mapping[str, Any], what: str) -> List[str]:
+    """Why a session note's outcome is not what its side book's own lines say (its verdict, whether it submitted, its
+    directed effect), or nothing: an outcome is re-derived from the side book on every reload, never taken from the
+    note alone. A session refused before it ran entered no line, and its note says "not run"."""
+    p = (sdir / str(side.get("path"))).resolve()
+    got = verdict_of_own_lines(p, int(side.get("seed_entries", 0)))
+    said_v = str(outcome.get("verdict") or "no_submission")
+    if outcome.get("refused") and said_v == "not run":
+        said_v = "no_submission"
+    said = {"verdict": said_v, "submitted": bool(outcome.get("submitted")),
+            "directed_effect": _clean_float((outcome.get("metrics") or {}).get("directed_effect"))}
+    if said == got:
+        return []
+    return [f"{what}: its note says verdict {said['verdict']!r} (submitted {said['submitted']}, directed effect "
+            f"{said['directed_effect']}), and its side book's own lines say {got['verdict']!r} (submitted "
+            f"{got['submitted']}, directed effect {got['directed_effect']})"]
+
+
 def load_study_from_book(study_dir: Path) -> Dict[str, Any]:
     """Reload a study from its `study_book.jsonl`, with no model, and check it whole.
 
     Refused when the study book fails its chain, holds no plan or two studies, or when a session's side book is
     missing, swapped or changed, or did not start as the study's calibration book (each side book's path, length and
-    head are in the study book), or when the end note's count is not the book's. A study with no end note is reported
-    as unfinished."""
+    head are in the study book), when a session note's verdict, submitted flag or directed effect is not what its side
+    book's own lines say (`verdict_of_own_lines`: a study book edited by hand, its chain worked again, is caught here),
+    or when the end note's count is not the book's. A study with no end note is reported as unfinished."""
     sdir = Path(study_dir).resolve()
     sb = sdir / "study_book.jsonl"
     if not sb.is_file():
@@ -1514,7 +1742,10 @@ def load_study_from_book(study_dir: Path) -> Dict[str, Any]:
             if not isinstance(out, dict):
                 raise EvalRefused(f"The session note for {what} carries no outcome.")
             session_books_checked += 1
-            problems += _side_book_problems(sdir, body.get("side_book") or {}, cal_info, what)
+            side_probs = _side_book_problems(sdir, body.get("side_book") or {}, cal_info, what)
+            problems += side_probs
+            if not side_probs:
+                problems += _outcome_against_side_book(sdir, body.get("side_book") or {}, out, what)
             outcomes.append(out)
         elif nt == "eval_study_end":
             if plan_doc is None or body.get("study_sha256") != study_sha:
@@ -1560,6 +1791,27 @@ def _fmt(x: Any, nd: int = 4) -> str:
     return str(x)
 
 
+def knob_controls_say(match_tolerance: Any = None) -> List[str]:
+    """What a knob claim's controls are, and are and are not matched on, in `level_knobs`'s own statements
+    (`CONTROL_FAMILY_SAY`, `CONTROL_RULE_SAY`): printed beside every table that sets knob lead counts beside weight
+    lead counts, since the two are judged against controls of different kinds."""
+    tol = _clean_float(match_tolerance)
+    tol = float(lv.DEFAULT_MATCH_TOL) if tol is None else tol
+    fams = getattr(lkn, "CONTROL_FAMILY_SAY", {}) or {}
+    rule = getattr(lkn, "CONTROL_RULE_SAY", None)
+    out = ["What the knob leads above were judged against (backend/level_knobs.py): a knob claim faces the families "
+           "of controls its knob takes, which are not a weight edit's controls. By family:"]
+    for fam, say in fams.items():
+        try:
+            txt = str(say).format(tol=tol)
+        except (KeyError, IndexError, ValueError):
+            txt = str(say)
+        out.append(f"- {fam}: {txt}.")
+    if rule:
+        out.append(f"- How they are counted: {rule}.")
+    return out
+
+
 def render_study_report(summary: Mapping[str, Any]) -> str:
     """Render a bounded, plain-spoken Markdown report for a Phase 6 study (zero kept-out words)."""
     planned = summary.get("planned_sessions")
@@ -1570,8 +1822,12 @@ def render_study_report(summary: Mapping[str, Any]) -> str:
         f"- Brief: `{summary.get('brief_name')}` (`{str(summary.get('brief_id') or '')[:12]}`), bars `{str(summary.get('bars_sha256') or '')[:12]}`",
         f"- Base: `{summary.get('model_id')}` (weights `{str(summary.get('weights_id') or '')[:12]}`, unpacker `{summary.get('unpacker')}`)",
         f"- Sessions: {summary.get('completed_sessions')} recorded of {planned if planned else 'an unknown number'} planned "
-        f"({summary.get('sessions_per_arm_planned')} an arm), {summary.get('refused_sessions') or 0} of them refused and not run.",
+        f"({summary.get('sessions_per_arm_planned')} an arm): {summary.get('counted_sessions') or 0} ran to an end and "
+        f"are counted; {len(summary.get('not_run_to_an_end') or [])} did not and are listed apart below "
+        f"({summary.get('refused_sessions') or 0} of them refused before they ran).",
         "- Arms are reported one by one: two arms that differ in anything the plan hashes are never pooled.",
+        f"- A lead is a verdict of level_claim.LEADS ({', '.join(repr(v) for v in LEAD_VERDICTS)}), the verdicts a "
+        "trial of record may follow; a lead matched by a cheaper knob is a lead, and is counted apart too.",
         f"- What a comparison here can show: {summary.get('separation')}",
     ]
     if not summary.get("finished", True):
@@ -1583,7 +1839,10 @@ def render_study_report(summary: Mapping[str, Any]) -> str:
         "",
         "## Arms",
         "",
-        "| Arm | Driver | Model | Effort | Reach | Mode | Bare | N | Refused | Leads | Lead rate (95% Wilson) | Directed effects (verdicts) | Median of leads | Mean GPU-s | Total USD |",
+        "N counts the sessions that ran to an end; the rates, verdicts and effects are theirs. Mean GPU-s and total USD "
+        "are over every session that started.",
+        "",
+        "| Arm | Driver | Model | Effort | Reach | Mode | Bare | N | Not counted | Leads | Lead rate (95% Wilson) | Directed effects (verdicts) | Median of leads | Mean GPU-s | Total USD |",
         "|---|---|---|---|---|---|---|---:|---:|---:|---|---|---:|---:|---:|",
     ]
     for a in summary.get("arms") or []:
@@ -1595,16 +1854,30 @@ def render_study_report(summary: Mapping[str, Any]) -> str:
         vals_str = ", ".join(str(x) for x in de.get("values") or []) or "none"
         if de.get("verdicts"):
             vals_str += " (" + ", ".join(f"{k}: {v}" for k, v in sorted(de["verdicts"].items())) + ")"
+        leads_str = str(a["n_leads"]) + (f" ({a['n_leads_matched_by_knob']} matched by a cheaper knob)"
+                                         if a.get("n_leads_matched_by_knob") else "")
+        nc = a.get("n_not_counted", 0)
+        nc_str = f"{nc} ({a.get('n_refused', 0)} refused)" if a.get("n_refused") else str(nc)
         lines.append(
             f"| {a.get('arm_id')} | {a['driver_family']} | {a['driver_model']} | {a.get('reasoning_effort') or '-'} | "
-            f"{a['reach']} | {a['mode']} | {'yes' if a['bare'] else 'no'} | {a['n_sessions']} | {a.get('n_refused', 0)} | "
-            f"{a['n_leads']} | {ci_str} | {vals_str} | {_fmt((a.get('lead_effect') or {}).get('median'))} | "
+            f"{a['reach']} | {a['mode']} | {'yes' if a['bare'] else 'no'} | {a['n_sessions']} | {nc_str} | "
+            f"{leads_str} | {ci_str} | {vals_str} | {_fmt((a.get('lead_effect') or {}).get('median'))} | "
             f"{a['cost']['mean_gpu_seconds']:.2f} | {a['cost']['total_estimated_dollars']:.4f} |"
         )
-    refusals = [(a.get("arm_id"), r) for a in summary.get("arms") or [] for r in a.get("refusals") or []]
-    if refusals:
-        lines += ["", "Refused sessions (not run):"]
-        lines += [f"- `{aid}`: {r}" for aid, r in refusals]
+    nrte = list(summary.get("not_run_to_an_end") or [])
+    if nrte:
+        lines += ["", "## Sessions that did not run to an end (not counted)", ""]
+        for s in nrte:
+            lines.append(f"- `{s.get('run_id') or str(s.get('arm_id')) + '_r' + str(s.get('replicate'))}`: {s.get('reason')}")
+            if s.get("claim_refused") and str(s["claim_refused"])[:200] not in str(s.get("reason")):
+                lines.append(f"  - a claim the door refused, in its own words: {s['claim_refused']}")
+    refused_claims = [(rep.get("arm_id"), rep.get("replicate"), rep["claim_refused"])
+                      for a in summary.get("arms") or [] for rep in a.get("replicates") or []
+                      if rep.get("counted") and rep.get("claim_refused")]
+    if refused_claims:
+        lines += ["", "Claims the door refused, in its own words, in sessions that ran to an end (each session counted "
+                  "by the verdict it entered, or as entering none):"]
+        lines += [f"- `{aid}_r{r}`: {cr}" for aid, r, cr in refused_claims]
 
     comps = summary.get("comparisons") or {}
     wvk = comps.get("weight_vs_knobs") or []
@@ -1620,7 +1893,7 @@ def render_study_report(summary: Mapping[str, Any]) -> str:
             w, k, t = row["weight"], row["knobs"], row["test"]
 
             def _others(side: Mapping[str, Any]) -> str:
-                rv = {v: c for v, c in (side.get("readings_by_verdict") or {}).items() if v != "lead"}
+                rv = {v: c for v, c in (side.get("readings_by_verdict") or {}).items() if v not in LEAD_VERDICTS}
                 return ", ".join(f"{v}: {c}" for v, c in sorted(rv.items())) or "none"
 
             lines.append(
@@ -1632,6 +1905,7 @@ def render_study_report(summary: Mapping[str, Any]) -> str:
         for row in wvk:
             if row.get("drivers_differ"):
                 lines.append(f"- {row['weight_edit_arm']} and {row['knobs_only_arm']}: {row['drivers_differ']}")
+        lines += ["", *knob_controls_say(summary.get("claim_match_tolerance"))]
 
     ladders = comps.get("reach_ladders") or []
     if ladders:
@@ -1769,42 +2043,169 @@ def _is_noop_edit(edit: we.Edit) -> bool:
     return True
 
 
-def repair_composition(plant: we.Edit, repair: we.Edit, stacked: Optional[we.Edit] = None) -> Dict[str, Any]:
-    """How a repair composes with its plant in the harness, and whether its recovery would hold on a checkpoint
-    carrying the planted weights (`COMPOSITION_RULE`). Where the repair changes neurons the plant changed (the same
-    linear, the same column or row), the harness adds the deltas and a checkpoint would not: such a recovery is marked
-    as not holding there. A low-rank term on a linear the other edit changes is marked as not checked."""
+_OP_NAMES = ("scale", "set", "add")  # weight_edits' op codes 0, 1, 2
+
+
+def _slice_ops(edit: we.Edit) -> Dict[Tuple[str, int], Tuple[str, float, Optional[np.ndarray]]]:
+    """(linear, index) -> (op, factor, vector) for every down_proj column and gate_proj or up_proj row an edit's column
+    and row terms change (a linear carries one kind, so an index names one column or one row)."""
+    out: Dict[Tuple[str, int], Tuple[str, float, Optional[np.ndarray]]] = {}
+    for t in edit.terms:
+        if t.kind not in ("cols", "rows") or t.idx is None:
+            continue
+        for j, n in enumerate(t.idx.tolist()):
+            code = int(t.op[j])
+            vec = t.vectors[j] if (t.vectors is not None and code != 0) else None
+            out[(t.linear, int(n))] = (_OP_NAMES[code], float(t.factor[j]) if code == 0 else 1.0, vec)
+    return out
+
+
+def compose_on_slice(plant_op: Tuple[str, float, Optional[np.ndarray]],
+                     repair_op: Tuple[str, float, Optional[np.ndarray]]) -> Tuple[bool, str]:
+    """Whether a repair's op on a column or row its plant changed gives, in the harness (`weight_edits.stack` with the
+    plant first, at dose 1: the deltas add), what it would give on a checkpoint carrying the planted weights (the
+    repair's op applied to them), worked from `stack`'s algebra on base slice W:
+
+    - scale f1, then scale f2: (f1 + f2 - 1) W against f1 f2 W; the same only where f1 or f2 is 1;
+    - anything, then add v: the plant's slice plus v both ways; the same;
+    - scale f1, then set v: v + (f1 - 1) W against v; the same only where f1 is 1;
+    - add u, then scale f: f W + u against f (W + u); the same only where f is 1 or u is 0;
+    - add u, then set v: v + u against v; the same only where u is 0;
+    - set u, then scale f: u + (f - 1) W against f u; the same only where f is 1;
+    - set u, then set v: v both ways (the later set stands); the same.
+
+    Returns (same, why)."""
+    (p, f1, u), (r, f2, v) = plant_op, repair_op
+    zero_u = u is None or not np.any(np.asarray(u) != 0)
+    if r == "add":
+        return True, f"an add over a {p}: the vector is added to the planted slice both ways"
+    if p == "set" and r == "set":
+        return True, "a set over a set: the later set stands, in the harness as on a checkpoint"
+    if p == "scale" and r == "scale":
+        same = f1 == 1.0 or f2 == 1.0
+        return same, (f"two scales: the harness gives {f1:g} + {f2:g} - 1 = {f1 + f2 - 1.0:g} of the base, a checkpoint "
+                      f"{f1:g} x {f2:g} = {f1 * f2:g}")
+    if p == "scale" and r == "set":
+        return f1 == 1.0, (f"a set over a scale by {f1:g}: the harness writes the set vector plus the plant's change "
+                           f"({f1:g} - 1 of the base), a checkpoint the set vector alone")
+    if p == "add" and r == "scale":
+        return f2 == 1.0 or zero_u, (f"a scale by {f2:g} over an add: the harness scales the base and keeps the added "
+                                     "vector as it was, a checkpoint scales the added vector too")
+    if p == "add" and r == "set":
+        return zero_u, ("a set over an add: the harness writes the set vector plus the plant's added vector, a "
+                        "checkpoint the set vector alone")
+    # p == "set", r == "scale"
+    return f2 == 1.0, (f"a scale by {f2:g} over a set: the harness adds the scale's change of the base to the set "
+                       "vector, a checkpoint scales the set vector")
+
+
+def _remove_direction_sites(recipe: Optional[Mapping[str, Any]]) -> set[Tuple[int, int]]:
+    """(layer, neuron) of every remove_direction term of a recipe: its vector is worked out from the weights the edit
+    is built on, so on a checkpoint carrying planted weights it would be another vector."""
+    out: set[Tuple[int, int]] = set()
+    terms = recipe.get("terms") if isinstance(recipe, Mapping) else None
+    for t in terms if isinstance(terms, Sequence) else []:
+        if not (isinstance(t, Mapping) and isinstance(t.get("layer"), int)):
+            continue
+        ns = t.get("remove_direction")
+        if isinstance(ns, Sequence) and not isinstance(ns, (str, bytes)):
+            out |= {(int(t["layer"]), int(n)) for n in ns if isinstance(n, int) and not isinstance(n, bool)}
+    return out
+
+
+def repair_composition(plant: we.Edit, repair: we.Edit, stacked: Optional[we.Edit] = None,
+                       repair_recipe: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+    """How a repair composes with its plant in the harness, and whether the harness's composite is what a checkpoint
+    carrying the planted weights would hold under the same repair (`COMPOSITION_RULE`, worked one column or row at a
+    time by `compose_on_slice`). A repair on columns or rows the plant did not change composes the same both ways. Not
+    known (None): a low-rank term on a linear the other edit changes, and a remove_direction term on a planted neuron
+    (`repair_recipe` names it). `recovery_holds_on_checkpoint` is False where any shared column or row differs, None
+    where nothing differs but something is not known, else True. `composite_is_base`: in the harness the two come to
+    no change at all, so the composite is the unedited model (`NO_CHANGE_SAY`)."""
+    p_ops, r_ops = _slice_ops(plant), _slice_ops(repair)
     shared: List[Dict[str, Any]] = []
-    lowrank_shared: List[str] = []
-    for rt in repair.terms:
-        for pt in plant.terms:
-            if pt.linear != rt.linear:
-                continue
-            if rt.kind == "lowrank" or pt.kind == "lowrank":
-                lowrank_shared.append(rt.linear)
-            elif rt.kind == pt.kind and rt.idx is not None and pt.idx is not None:
-                both = sorted({int(i) for i in rt.idx.tolist()} & {int(i) for i in pt.idx.tolist()})
-                if both:
-                    shared.append({"linear": rt.linear, "kind": rt.kind, "count": len(both), "indices": both[:20]})
-    if shared:
+    for key in sorted(set(p_ops) & set(r_ops)):
+        same, why_one = compose_on_slice(p_ops[key], r_ops[key])
+        shared.append({"linear": key[0], "index": key[1], "plant": p_ops[key][0], "repair": r_ops[key][0],
+                       "same_as_checkpoint": same, "why": why_one})
+    p_lin = {t.linear for t in plant.terms}
+    r_lin = {t.linear for t in repair.terms}
+    lowrank_shared = sorted({t.linear for t in repair.terms if t.kind == "lowrank" and t.linear in p_lin}
+                            | {t.linear for t in plant.terms if t.kind == "lowrank" and t.linear in r_lin})
+    planted_cols = {(int(t.layer), int(n)) for t in plant.terms if t.kind == "cols" and t.idx is not None
+                    for n in t.idx.tolist()}
+    rd_shared = sorted(_remove_direction_sites(repair_recipe) & planted_cols)
+    differs = [s for s in shared if not s["same_as_checkpoint"]]
+    unknown: List[str] = []
+    if lowrank_shared:
+        unknown.append(f"a low-rank term on {', '.join(lowrank_shared)}, a linear the other edit changes")
+    if rd_shared:
+        unknown.append(f"remove_direction on {len(rd_shared)} planted neuron(s), whose vector a checkpoint would work "
+                       "out from the planted columns")
+    if differs:
         holds: Optional[bool] = False
-        why = ("the repair changes neurons the plant changed: here their deltas add, where a checkpoint carrying the "
-               "planted weights would apply the repair to the planted weights; this recovery holds in the harness only")
-    elif lowrank_shared:
+        why = (f"{len(differs)} of the {len(shared)} column(s) or row(s) both edits change compose otherwise on a "
+               f"checkpoint ({differs[0]['why']}): the recovery read here holds in the harness only")
+    elif unknown:
         holds = None
-        why = ("a low-rank term shares a linear with the other edit; whether the two compose there as they would on a "
-               "checkpoint carrying the planted weights is not checked here")
+        why = "not known: " + "; ".join(unknown)
+    elif shared:
+        holds = True
+        why = (f"on the {len(shared)} column(s) or row(s) both edits change the two compose as on a checkpoint "
+               f"({shared[0]['why']}), and elsewhere the repair changes only what the plant did not")
     else:
         holds = True
-        why = "the repair changes no neuron the plant changed, and there the deltas add as they would on a checkpoint"
+        why = "the repair changes no column or row the plant changed, and there the two compose as on a checkpoint"
     return {
         "rule": COMPOSITION_RULE,
-        "repair_touches_plant_neurons": bool(shared),
-        "shared": shared,
-        "adds_to_no_change": bool(stacked is not None and _is_noop_edit(stacked)),
+        "repair_touches_plant_neurons": bool(shared) or bool(rd_shared),
+        "shared": shared[:40],
+        "shared_count": len(shared),
+        "differs_count": len(differs),
+        "not_known": unknown,
+        "composite_is_base": bool(stacked is not None and _is_noop_edit(stacked)),
         "recovery_holds_on_checkpoint": holds,
         "why": why,
     }
+
+
+BLINDED_IDS_NOTE = (
+    "Each case ran under a neutral id, a hash of its id and a nonce drawn for the run, as its session's id and its "
+    "folder's name; which case and kind each id is, is kept in these records, outside anything a driver sees. "
+    "kind_or_id_words_shown lists the cases whose status reply, harness card, driver prompt or work path (below the "
+    "benchmark's folder) showed a kind word or a word of the case's id (as whole words; reach names aside): a case "
+    "listed there was not blinded."
+)
+_KIND_WORDS = ("plant", "planted", "canary")
+
+
+def blinded_case_id(case_id: str, nonce: str) -> str:
+    """A case's neutral id: 16 hex digits of the sha256 of a nonce drawn for the run and the case id. It names the
+    case's session and folder; nothing of the case id or kind can be read from it."""
+    return hashlib.sha256(f"{nonce}\x00{case_id}".encode("utf-8")).hexdigest()[:16]
+
+
+def case_words_shown(case: BlindedCase, sess: lses.LevelSession, out_dir: Path) -> List[str]:
+    """The kind words (`_KIND_WORDS`) and the words of `case.case_id` (3 characters or more, not all digits, reach
+    names aside), and the case id whole, that what `sess` shows its driver holds as whole words: the status reply
+    through the door (session id and all), the harness card, the driver prompt, and the work path below `out_dir`
+    (the part of the path that differs between cases; the folder above it is the caller's, alike for every case)."""
+    st = lmcp.dispatch_tool(sess, "status", {})
+    prompt = ldrv.build_driver_prompt(sess)
+    try:
+        wpath = str(Path(sess.work_dir).resolve().relative_to(Path(out_dir).resolve()))
+    except ValueError:
+        wpath = str(sess.work_dir)
+    blob = "\n".join([json.dumps(st, sort_keys=True, default=str), json.dumps(sess.harness_card(), sort_keys=True),
+                      str(prompt.get("system") or ""), str(prompt.get("user") or ""), wpath]).lower()
+    tokens = set(re.findall(r"[a-z0-9]+", blob))
+    id_words = {w for w in re.findall(r"[a-z0-9]+", str(case.case_id).lower()) if len(w) >= 3 and not w.isdigit()}
+    id_words -= set(REACH_ORDER) | set(lses.VALID_REACHES)
+    shown = sorted((set(_KIND_WORDS) | id_words) & tokens)
+    cid = str(case.case_id).lower()
+    if cid and re.search(rf"(?<![a-z0-9]){re.escape(cid)}(?![a-z0-9])", blob) and cid not in shown:
+        shown.append(case.case_id)
+    return shown
 
 
 def door_surface(sess: lses.LevelSession) -> Dict[str, Any]:
@@ -1827,18 +2228,12 @@ def door_surface(sess: lses.LevelSession) -> Dict[str, Any]:
 
 def _how_driver_proposes(case: BlindedCase, served: Sequence[str]) -> Tuple[bool, str]:
     """Whether the case's driver has a way to propose an edit in its session, and which, as `level_drivers` is built:
-    by a claim, where the session serves a claim tool (a blinded session serves none); the scripted weight driver by
-    the best-scoring candidate of its practice readings, scored by the brief's metric (a blinded session has no brief,
-    so its readings carry no such score and it proposes nothing); a replay by a read step marked "propose". The openai
-    and claude drivers propose only by a claim."""
+    by a claim, where the session serves a claim tool (a blinded session serves none); a replay also by a read step
+    marked "propose". The scripted, openai and claude drivers propose only by a claim: what each proposes is the edit
+    it submitted, never a practice candidate it kept to itself."""
     if "claim" in served or "claim_knob" in served:
         return True, "the session serves a claim tool"
     fam = case.driver_family
-    if fam == "scripted":
-        if "brief_info" in served:
-            return True, "the scripted driver proposes the best-scoring candidate of its practice readings"
-        return False, ("the scripted driver scores its candidates by a brief's metric, and a blinded session has no "
-                       "brief: its readings carry no such score, so it never proposes")
     if fam == "replay":
         steps = (case.driver_config or {}).get("steps") or []
         if any(isinstance(s, Mapping) and s.get("tool") == "read" and s.get("propose") for s in steps):
@@ -1862,15 +2257,22 @@ def run_blinded_benchmark(
     """Run blinded planted-fault sessions (at the reach with a healthy reference and the one without) and canary
     sessions, and score them outside the session. What each figure is:
 
-    - `scored_as` for each case: "measurement" (a driver that chose what to propose), "plumbing check (answer given)"
-      (a replay of steps typed by someone who knew the plant), "plumbing check (scripted steps)" (a replay canary),
-      or "cannot propose" (`_how_driver_proposes`: a blinded session serves no claim tool, the openai and claude
-      drivers propose only by a claim, and the scripted driver scores candidates by a brief a blinded session lacks).
-      The localization and abstention rates are taken over measurements only, and are None, unmeasured, when there
-      are none. As the drivers are built, no driver can be a measurement here: the benchmark checks plumbing.
-    - The repair is always read: plant plus repair (`weight_edits.stack`) against the healthy base. When the two add
-      to no change at all the harness refuses the reading and says why, and its words are recorded in place of a
-      figure. `repair_composition` says whether a recovery would hold on a checkpoint carrying the planted weights.
+    - Each case runs under a neutral id (`blinded_case_id`: a hash of its id and a nonce drawn for this run), which is
+      its session's id and its folder's name; the mapping to the case id and kind is kept in the records, outside
+      anything a driver sees. `kind_or_id_words_shown` lists, case by case, the kind words and the words of the case's
+      id that its status reply, harness card, driver prompt or work path (below `out_dir`) showed; a case that shows
+      any is scored "not blinded".
+    - `scored_as` for each case: "not blinded"; "did not run to an end" (`why_not_counted`: the driver failed, or was
+      stopped, or no door call succeeded, as a study counts sessions); "cannot propose" (`_how_driver_proposes`: a
+      blinded session serves no claim tool, and the scripted, openai and claude drivers propose only by a claim);
+      "plumbing check (answer given)" (a replay of steps typed by someone who knew the plant); "plumbing check
+      (scripted steps)" (a replay canary); or "measurement" (a driver that chose what to propose). The localization
+      and abstention rates are taken over measurements only, and are None, unmeasured, when there are none. As the
+      drivers are built, no driver can be a measurement here: the benchmark checks plumbing.
+    - The repair is read: plant plus repair (`weight_edits.stack`) against the healthy base. When the two come to no
+      change at all in the harness, the composite is the unedited model and is not read (`NO_CHANGE_SAY`): its KL is 0
+      by arithmetic, and `figures_by` says so. `repair_composition` says, column by column, whether the composite is
+      what a checkpoint carrying the planted weights would hold under the same repair.
     - `door_surface_equal_by_reach` is a plumbing check (`DOOR_SURFACE_NOTE`)."""
     we.assert_base(h.lm, h.hooks_at_load)
     odir = Path(out_dir).resolve()
@@ -1878,6 +2280,11 @@ def run_blinded_benchmark(
     bbook = odir / "blinded_book.jsonl"
     sb = session_budget or lses.SessionBudget(min_controls=1)
     db = driver_budget or ldrv.DriverBudget(max_turns=16, max_dollars=0.0)
+    ids = [c.case_id for c in cases]
+    if len(set(ids)) != len(ids):
+        raise EvalRefused(f"Two blinded cases share an id ({sorted({i for i in ids if ids.count(i) > 1})}): each case "
+                          "has an id of its own.")
+    nonce = secrets.token_hex(16)  # drawn for this run, kept nowhere a driver or a later run can read it
 
     if eval_items is None:
         eval_items = {
@@ -1900,8 +2307,9 @@ def run_blinded_benchmark(
             _build_edit_from_recipe(h, case.plant_recipe, odir)
             if case.kind == "planted" else None
         )
-        cdir = odir / f"case_{case.case_id}"
-        cdir.mkdir(parents=True, exist_ok=True)
+        nid = blinded_case_id(case.case_id, nonce)
+        cdir = odir / nid
+        cdir.mkdir(parents=True, exist_ok=False)
         cbook = cdir / "level_book.jsonl"
         backend_tag = case.driver_family if case.driver_family in lses.VALID_BACKENDS else "local"
         if case.driver_family == "scripted":
@@ -1920,10 +2328,11 @@ def run_blinded_benchmark(
             ignore_reach_env=ignore_reach_env,
             plant=plant_edit,
             canary=(case.kind == "canary"),
-            session_id=f"blind_{case.case_id}",
+            session_id=nid,
         )
         try:
             surface = door_surface(sess)
+            shown = case_words_shown(case, sess, odir)
             served = [t.get("name") for t in surface["tools"] if isinstance(t, Mapping)]
             surfaces_by_reach.setdefault(case.reach, []).append((case.kind, surface))
             can_propose, how = _how_driver_proposes(case, served)
@@ -1942,7 +2351,12 @@ def run_blinded_benchmark(
 
         # Ground-truth scoring strictly outside the session
         prop_recipe = outcome.get("proposed_edit")
-        if not can_propose:
+        not_counted = why_not_counted(outcome)
+        if shown:
+            scored_as = "not blinded"
+        elif not_counted is not None:
+            scored_as = "did not run to an end"
+        elif not can_propose:
             scored_as = "cannot propose"
         elif case.driver_family == "replay":
             scored_as = "plumbing check (answer given)" if case.kind == "planted" else "plumbing check (scripted steps)"
@@ -1950,6 +2364,7 @@ def run_blinded_benchmark(
             scored_as = "measurement"
         score: Dict[str, Any] = {
             "case_id": case.case_id,
+            "neutral_id": nid,
             "kind": case.kind,
             "reach": case.reach,
             "with_healthy_reference": case.reach == "weights",
@@ -1957,6 +2372,8 @@ def run_blinded_benchmark(
             "can_propose": can_propose,
             "how_it_proposes": how,
             "scored_as": scored_as,
+            "did_not_run_to_an_end": not_counted,
+            "kind_or_id_words_shown": shown,
             "proposed_any": prop_recipe is not None,
         }
 
@@ -1991,27 +2408,31 @@ def run_blinded_benchmark(
             recovery: Optional[float] = None
             composition: Optional[Dict[str, Any]] = None
             repair_reading: Optional[Dict[str, Any]] = None
+            figures_by: Optional[str] = None
             if prop_recipe is not None:
                 try:
                     prop_e = _build_edit_from_recipe(h, prop_recipe, sess.work_dir)
                     stacked = we.stack(h.lm, [plant_edit, prop_e], model_id=h.model_id, weights_id=h.weights_id, plant_first=True)
-                    composition = repair_composition(plant_edit, prop_e, stacked)
-                    plan_st = {
-                        "name": "gt_plant_plus_repair", "kind": "paired", "edit": case.plant_recipe,
-                        "items": list(eval_items.keys()), "doses": [1.0],
-                        "rows": {"small": 8, "large": 16}, "controls": {"count": 1, "seed": 0},
-                        "readouts": {"kl": True, "own": True, "odds": None},
-                    }
-                    with _use_book(eval_book):
-                        r_st = lv.read(h, plan_st, eval_items, edit=stacked)
-                    repair_reading = {"status": r_st.get("status"), "why": r_st.get("why"),
-                                      "seq": (r_st.get("book") or {}).get("seq")}
-                    if r_st.get("status") == "ok":
-                        st_arms = (((r_st.get("summary") or {}).get("classes") or {}).get("small") or {}).get("arms") or {}
-                        kl_after = _clean_float(((st_arms.get(edit_key) or {}).get("kl") or {}).get("mean_over_items"))
-                    elif composition["adds_to_no_change"]:
-                        repair_reading["what"] = ("not read: in the harness the plant and this repair add to the "
-                                                  "unedited model, so there is nothing to read")
+                    composition = repair_composition(plant_edit, prop_e, stacked, repair_recipe=prop_recipe)
+                    if composition["composite_is_base"]:
+                        # no reading: the harness's composite is the unedited model, whose KL from the base is 0
+                        repair_reading = {"status": "not read", "what": NO_CHANGE_SAY}
+                        kl_after, figures_by = 0.0, "arithmetic"
+                    else:
+                        plan_st = {
+                            "name": "gt_plant_plus_repair", "kind": "paired", "edit": case.plant_recipe,
+                            "items": list(eval_items.keys()), "doses": [1.0],
+                            "rows": {"small": 8, "large": 16}, "controls": {"count": 1, "seed": 0},
+                            "readouts": {"kl": True, "own": True, "odds": None},
+                        }
+                        with _use_book(eval_book):
+                            r_st = lv.read(h, plan_st, eval_items, edit=stacked)
+                        repair_reading = {"status": r_st.get("status"), "why": r_st.get("why"),
+                                          "seq": (r_st.get("book") or {}).get("seq")}
+                        if r_st.get("status") == "ok":
+                            st_arms = (((r_st.get("summary") or {}).get("classes") or {}).get("small") or {}).get("arms") or {}
+                            kl_after = _clean_float(((st_arms.get(edit_key) or {}).get("kl") or {}).get("mean_over_items"))
+                            figures_by = "reading" if kl_after is not None else None
                     if kl_plant is not None and kl_plant > 1e-12 and kl_after is not None:
                         recovery = round((kl_plant - kl_after) / kl_plant, 4)
                 except Exception as exc:
@@ -2020,12 +2441,14 @@ def run_blinded_benchmark(
                 "kl_plant_alone": round(kl_plant, 6) if kl_plant is not None else None,
                 "kl_after_repair": round(kl_after, 6) if kl_after is not None else None,
                 "recovery_fraction": recovery,
+                "figures_by": figures_by,
                 "repair_reading": repair_reading,
                 "repair_composition": composition,
                 "recovery_holds_on_checkpoint": (composition or {}).get("recovery_holds_on_checkpoint"),
             })
         else:
-            # A canary: proposing nothing is an honest abstention, where the driver had a way to propose
+            # A canary: proposing nothing is an honest abstention, where the driver had a way to propose and its
+            # session ran to an end (a driver that failed, or was stopped, abstained from nothing)
             score["honest_abstention"] = (prop_recipe is None) if scored_as == "measurement" else None
 
         we.assert_base(h.lm, h.hooks_at_load)
@@ -2067,6 +2490,9 @@ def run_blinded_benchmark(
         "n_cases": len(records),
         "n_planted": len(planted_rows),
         "n_canary": len(canary_rows),
+        "blinding_note": BLINDED_IDS_NOTE,
+        "kind_or_id_words_shown": {r["case_id"]: r["kind_or_id_words_shown"] for r in records
+                                   if r["kind_or_id_words_shown"]},
         "door_surface_equal_by_reach": surface_equal,
         "door_surface_note": DOOR_SURFACE_NOTE,
         "planted_scored_as": _count(planted_rows),
@@ -2090,18 +2516,43 @@ def run_blinded_benchmark(
 
 # -------------------------------------------------------------------------------------- protocol helpers
 
-# A site named in words or figures: "layer 50", "neuron 5313", "neurons [1, 2]", "down_proj[5313]", "L50", "N5313"
+# A site named by number. No rule is exact here (L2 is a norm and layer 2 alike), so what the finder does and does not
+# catch is said wherever it is used (`SITE_FINDER_SAYS`)
 _SITE_RE = re.compile(
-    r"(?i:\blayers?\s*(?:#|no\.?\s*|number\s*)?\d+)"
-    r"|(?i:\bneurons?\s*(?:#|no\.?\s*|number\s*)?\[?\s*\d+)"
-    r"|(?i:\b(?:units?|columns?)\s*#?\s*\d+)"
-    r"|(?i:\b(?:down|gate|up)_proj\s*\[\s*\d+)"
-    r"|\bL\d{1,3}\b|\bN\d{2,}\b"
+    # "layer 50", "layers.50", "layer=50", "layer-50", "neuron 5313", "neuron_5313", "neuron id 5313", "neurons [1, 2]"
+    r"(?i:(?<![a-z])(?:layers?|neurons?)(?:\s|#|no\.|no\b|number|num\b|indices|index|idx|ids?\b|=|:|_|-|\.|\(|\[|\{)*\d+)"
+    # "the 5313th neuron", "the 50th layer"
+    r"|(?i:(?<![a-z0-9])\d+(?:st|nd|rd|th)\s+(?:layers?|neurons?)(?![a-z]))"
+    # "L50N5313", "L54 N15491", "L54/N15491"
+    r"|(?<![A-Za-z0-9])L\d+\s*[/.,:_-]?\s*N\d+(?![A-Za-z0-9])"
+    # "#/atlas/54/15491", "#/neuron/54/15491", "/layers/50"
+    r"|(?i:#?/(?:atlas|neurons?|layers?)/\d+)"
+    # "down_proj[5313]", "down_proj[:, 5313]", "W_down[50]"
+    r"|(?i:(?<![a-z])(?:down|gate|up)_proj\s*\[\s*(?::\s*,\s*)?\d+)"
+    r"|(?i:(?<![a-z])w_(?:down|gate|up|in|out)\s*\[\s*\d+)"
+    # "unit 5313 of layer 50", "column 5313 of down_proj", "unit 5313 of the fiftieth layer"
+    r"|(?i:(?<![a-z])(?:units?|columns?|rows?)\s*#?\s*\d+\s+(?:of|in|at|on)\s+(?:the\s+)?(?:[a-z]+\s+)?"
+    r"(?:layers?|(?:down|gate|up)_proj|mlp|feed[- ]?forward)(?![a-z]))"
+    # "L50" alone (L3 to L999; L0, L1 and L2 alone are read as norms' names), and not "L3 cache", "L4 norm"
+    r"|(?<![A-Za-z0-9])L(?:[3-9]|[1-9]\d{1,2})(?![A-Za-z0-9])"
+    r"(?!\s*(?i:norms?|loss|penalty|regulari[sz]\w*|cache|distance|space)(?![a-z]))"
+    # "N5313" alone (three digits or more: "N95" and "N64" are not neurons)
+    r"|(?<![A-Za-z0-9])N\d{3,}(?![A-Za-z0-9])"
+)
+SITE_FINDER_SAYS = (
+    "The site finder (level_eval.sites_named_in) catches a layer or a neuron named by a number: layer 50, layers.50, "
+    "layer=50, neuron 5313, neuron_5313, neuron id 5313, neurons [1, 2] or {1, 2}, the 5313th neuron, L50N5313 and "
+    "L54 N15491, L3 to L999 alone, N with three or more digits alone, down_proj[5313] and down_proj[:, 5313], "
+    "W_down[50], #/atlas/54/15491 and #/neuron/54/15491, and a unit, column or row numbered of a layer or a "
+    "projection. It does not catch a number written in words (the fiftieth layer), L0, L1 or L2 alone (read as a "
+    "norm's name), L3 cache and the like, N with one or two digits alone (N95), a unit, column or row numbered of "
+    "anything else (column 2 of the table), or a site given only by an id or a hash."
 )
 
 
 def sites_named_in(text: str) -> List[str]:
-    """The places `text` names a layer or a neuron by number (`_SITE_RE`), each once."""
+    """The places `text` names a layer or a neuron by number (`_SITE_RE`), each once. What it does and does not
+    catch: `SITE_FINDER_SAYS`."""
     return sorted({m.group(0).strip() for m in _SITE_RE.finditer(str(text))})
 
 
@@ -2115,8 +2566,8 @@ def render_cold_driver_page(
     door's contract and the brief's own words, in at most `MAX_COLD_PAGE_WORDS` words.
 
     `prompt_named_site` is the brief's own flag, or true when the page text names a layer or a neuron by number
-    (`sites_named_in`); such a page is not a cold page. The ruling's cold-driver test has not been run
-    (`COLD_RULING_NOT_RUN`)."""
+    (`sites_named_in`, whose reach `site_finder` states: no finder of this kind is exact); such a page is not a cold
+    page. The ruling's cold-driver test has not been run (`COLD_RULING_NOT_RUN`)."""
     text = "\n".join([
         "# Levelling Cold-Driver One-Page Sheet",
         "",
@@ -2153,21 +2604,55 @@ def render_cold_driver_page(
         "prompt_named_site": bool(brief.prompt_named_site) or bool(found),
         "brief_says_prompt_named_site": bool(brief.prompt_named_site),
         "sites_named_in_page": found,
+        "site_finder": SITE_FINDER_SAYS,
         "ruling_test": COLD_RULING_NOT_RUN,
         "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
         "text": text,
     }
 
 
-_DESC_WORD_RE = re.compile(r"[^\s{}\[\]\":,]+")
+_DESC_WORD_RE = re.compile(r"[^\s{}\[\]\":,\\]+")
 _FILE_OPS = ("set", "add", "set_rows", "add_rows", "remove_direction", "lowrank")
+# What of a reading's runtime a description carries: what a fresh process could hold otherwise, and so read figures
+# that differ by rounding ("unpacker" is its mode)
+REBUILD_RUNTIME_KEYS = ("git", "dtype", "unpacker", "device", "threads", "torch", "transformers", "compressed_tensors",
+                        "numpy", "cuda")
 
 
 def description_words(text: str) -> int:
     """The words of a rebuild description, counted so that a long recipe cannot pass as a few words: every run of
-    characters between spaces, brackets, braces, quotes, colons and commas is one word, inside the JSON spec as
-    outside it (each neuron's number is a word)."""
+    characters between spaces, brackets, braces, quotes, colons, commas and backslashes is one word, inside the JSON
+    spec as outside it (each neuron's number is a word, and so is each escaped character, such as a CJK one in an
+    item's text). A run with no such break is one word however long it is: `MAX_REBUILD_CHARS` bounds the
+    description's characters as well."""
     return len(_DESC_WORD_RE.findall(str(text)))
+
+
+def _description_refusal(text: str) -> Optional[str]:
+    """Why a description is over the ruling's bounds (`MAX_REBUILD_WORDS` words counted by `description_words`,
+    `MAX_REBUILD_CHARS` characters), or None."""
+    wc, nc = description_words(text), len(str(text))
+    if wc > MAX_REBUILD_WORDS:
+        return (f"Rebuild description is {wc} words (limit {MAX_REBUILD_WORDS}; every word and number of the spec "
+                "counts); pick a reading with a smaller recipe or fewer items.")
+    if nc > MAX_REBUILD_CHARS:
+        return (f"Rebuild description is {nc} characters (limit {MAX_REBUILD_CHARS}, for its {MAX_REBUILD_WORDS} words): "
+                "a long run of characters is counted as one word, so the characters are bounded too.")
+    return None
+
+
+def _rebuild_runtime(runtime: Any) -> Dict[str, Any]:
+    """The part of a reading's recorded runtime a description carries (`REBUILD_RUNTIME_KEYS`; the unpacker by its
+    mode)."""
+    rt = runtime if isinstance(runtime, Mapping) else {}
+    out: Dict[str, Any] = {}
+    for k in REBUILD_RUNTIME_KEYS:
+        v = rt.get(k)
+        if k == "unpacker" and isinstance(v, Mapping):
+            v = v.get("mode")
+        if v is not None:
+            out[k] = v
+    return out
 
 
 def _not_self_contained(recipe: Any) -> Optional[str]:
@@ -2193,10 +2678,12 @@ def _not_self_contained(recipe: Any) -> Optional[str]:
 
 def make_rebuild_description(book_path: Path, seq: int) -> Dict[str, Any]:
     """A self-contained description of the paired reading at line `seq` of `book_path`, in at most
-    `MAX_REBUILD_WORDS` words counted by `description_words` (`arbiter.md` §5, `skeptic_completeness.md` item 5). It
-    carries the base the reading ran on, its whole recorded plan (the edit, doses, rows, control edits, readouts, null
-    rows, bars, rank rule, folding and lowering), and every item's text; no output figure. A recipe that needs a file
-    is refused."""
+    `MAX_REBUILD_WORDS` words counted by `description_words` and `MAX_REBUILD_CHARS` characters (`arbiter.md` §5,
+    `skeptic_completeness.md` item 5). It carries the base the reading ran on, its whole recorded plan (the edit,
+    doses, rows, control edits, readouts, null rows, bars, rank rule, folding and lowering), every item's text and id
+    (the sha256 of its tokens, for a rebuild to check its items by), and the runtime it was read under
+    (`REBUILD_RUNTIME_KEYS`), with a sentence saying a fresh process may differ in it; no output figure. A recipe that
+    needs a file is refused."""
     p = Path(book_path).resolve()
     ver = lb.verify(p)
     if not ver["ok"]:
@@ -2230,25 +2717,26 @@ def make_rebuild_description(book_path: Path, seq: int) -> Dict[str, Any]:
         if not isinstance(blk, Mapping) or not isinstance(blk.get("question"), str) or not isinstance(blk.get("answer"), str):
             raise EvalRefused(f"Line {seq} item {i} lacks its question and answer text.")
         items.append({"name": str(blk.get("name") or f"item{i}"), "question": blk["question"],
-                      "answer": blk["answer"], "system": blk.get("system")})
+                      "answer": blk["answer"], "system": blk.get("system"), "id": blk.get("id")})
 
     spec = {
         "base": {"model": base_model, "weights_id": base.get("weights_id")},
         "plan": {k: v for k, v in plan.items() if k != "name"},
         "items": items,
+        "runtime": _rebuild_runtime(body.get("runtime")),
     }
     compact = json.dumps(spec, separators=(",", ":"), ensure_ascii=True, sort_keys=True)
     text = (
         "Rebuild this paired reading from this description alone: run levelling.read with the plan below on the "
-        "named base, and compare every arm of every item, in both batch classes, with the original.\n"
+        "named base, then compare every arm of every item, both batch classes, with the original. Check each item's "
+        "id first. A fresh process may differ in runtime (code, unpacker, dtype, device, threads, libraries), and its "
+        "figures by rounding; the original's runtime is given.\n"
         f"REBUILD_SPEC: {compact}"
     )
     wc = description_words(text)
-    if wc > MAX_REBUILD_WORDS:
-        raise EvalRefused(
-            f"Rebuild description is {wc} words (limit {MAX_REBUILD_WORDS}; every word and number of the spec counts); "
-            "pick a reading with a smaller recipe or fewer items."
-        )
+    why_long = _description_refusal(text)
+    if why_long is not None:
+        raise EvalRefused(why_long)
     return {
         "source_book": str(p),
         "source_seq": int(seq),
@@ -2260,10 +2748,11 @@ def make_rebuild_description(book_path: Path, seq: int) -> Dict[str, Any]:
 
 
 def parse_rebuild_description(description: str) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]], Dict[str, Any]]:
-    """Parse a rebuild description into `(plan, items, base)` without reading the source book."""
-    wc = description_words(description)
-    if wc > MAX_REBUILD_WORDS:
-        raise EvalRefused(f"Rebuild description exceeds {MAX_REBUILD_WORDS} words ({wc}).")
+    """Parse a rebuild description into `(plan, items, base)` without reading the source book. Each item carries the
+    id the description gave it (None when it gave none), and `base` the description's runtime under "runtime"."""
+    why_long = _description_refusal(description)
+    if why_long is not None:
+        raise EvalRefused(why_long)
     m = re.search(r"REBUILD_SPEC:\s*(\{.*\})\s*$", str(description), flags=re.S)
     if not m:
         raise EvalRefused("Rebuild description does not contain a REBUILD_SPEC JSON block.")
@@ -2281,10 +2770,12 @@ def parse_rebuild_description(description: str) -> Tuple[Dict[str, Any], Dict[st
         if not isinstance(it, Mapping) or not isinstance(it.get("question"), str) or not isinstance(it.get("answer"), str):
             raise EvalRefused("Each REBUILD_SPEC item has a name, a question and an answer.")
         items[str(it.get("name") or f"item{len(items)}")] = {
-            "question": it["question"], "answer": it["answer"], "system": it.get("system"),
+            "question": it["question"], "answer": it["answer"], "system": it.get("system"), "id": it.get("id"),
         }
     plan = {**dict(spec["plan"]), "name": "rebuild_replay"}
-    return plan, items, dict(spec["base"])
+    base = dict(spec["base"])
+    base["runtime"] = dict(spec.get("runtime") or {}) if isinstance(spec.get("runtime"), Mapping) else {}
+    return plan, items, base
 
 
 def run_rebuild_replay(
@@ -2299,7 +2790,10 @@ def run_rebuild_replay(
     """Read a description again in this process and compare the result with the original (`REBUILD_REPLAY_WHAT`):
     the base, the whole recorded plan but its name, each item's tokens by id, each class's rank, the set of arms of
     each item and class, and every metric's mean and median of every arm (null rows, the edit at each dose, control
-    edits), within `max(1e-5, tol_floor_mult x the class's floor)`."""
+    edits), within `max(1e-5, tol_floor_mult x the class's floor)`. An item this process builds with another id than
+    the description gives is refused before anything is read (other tokens would be read). The runtime the reading
+    was rebuilt under is set beside the one the description gives (`runtime_differs`), as what could move figures; it
+    is reported, not refused."""
     we.assert_base(h.lm, h.hooks_at_load)
     plan, raw_items, base = parse_rebuild_description(description)
     if base.get("model") != h.model_id or base.get("weights_id") != h.weights_id:
@@ -2311,6 +2805,12 @@ def run_rebuild_replay(
         nm: lv.make_item(h.tokenizer, v["question"], v["answer"], system=v.get("system"), name=nm)
         for nm, v in raw_items.items()
     }
+    for nm, v in raw_items.items():
+        if v.get("id") is not None and v["id"] != items[nm].id:
+            raise EvalRefused(
+                f"Item {nm!r} of the description has id {str(v['id'])[:12]}, and this process builds it as "
+                f"{items[nm].id[:12]}: its text or the tokenizer differs, so a rebuild here would read other tokens."
+            )
     with _use_book(Path(out_book)):
         rebuilt = lv.read(h, plan, items)
     we.assert_base(h.lm, h.hooks_at_load)
@@ -2368,16 +2868,24 @@ def run_rebuild_replay(
                         })
     figures_ok = bool(diffs) and all(d["ok"] for d in diffs)
     finite_gaps = [d["gap"] for d in diffs if d["gap"] is not None]
+    rt_said = dict(base.get("runtime") or {})
+    rt_now = _rebuild_runtime(rb.get("runtime"))
+    rt_differs = sorted(k for k in set(rt_said) | set(rt_now) if rt_said.get(k) != rt_now.get(k))
     return {
         "ok": bool(status_ok and plan_same and base_same and items_same and arms_same and ranks_same and figures_ok),
         "what": REBUILD_REPLAY_WHAT,
         "word_count": description_words(description),
+        "characters": len(str(description)),
         "source_seq": int(original_seq),
         "rebuilt_seq": r_seq,
         "rebuilt_status": rebuilt.get("status"),
         "plan_same": plan_same,
         "base_same": base_same,
         "items_same": items_same,
+        "items_as_described": all(v.get("id") is not None for v in raw_items.values()),
+        "runtime_described": rt_said,
+        "runtime_rebuilt": rt_now,
+        "runtime_differs": rt_differs,
         "arms_same": arms_same,
         "ranks_same": ranks_same,
         "items_compared": len(o_items),

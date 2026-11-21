@@ -3,17 +3,19 @@
 
 Subcommands:
 - `plan`: build and validate a Phase 6 multi-session study plan (reach ladder + matched-budget cheaper-knobs arm +
-  optional second driver family and `--bare` ablation), and print its bounds. A plan that does not validate is
-  refused and nothing is written.
+  optional second driver family and `--bare` ablation), and print its bounds. A plan that does not validate (a claim
+  design that would read nothing, such as `--claim-controls 0`, among the rest) is refused and nothing is written.
 - `run`: run a study plan JSON (`--stand-in` on CPU, or the live 31B on the card under `gpu.lock`). The plan is read
-  and validated, and the study folder checked unused and free of a STOP file, before the model is loaded or the lock
-  taken.
+  and validated, its brief found (a starter brief by name, or the brief file it names, read), and the study folder
+  checked unused and free of a STOP file, before the model is loaded or the lock taken.
 - `knobs`: one owner cheaper-knob fresh claim reading (prompts, decoding, and/or transient steering), entered in the
-  book named by `--book` (required: it never falls back to the default book). With `--stand-in` it writes nothing in
-  the working folder.
+  book named by `--book` (required: it never falls back to the default book). The knob, the bars and the brief are
+  read, and `--controls` below 1 refused, before the model is loaded. With `--stand-in` it writes nothing in the
+  working folder, and the default book is refused: a stand-in reading is never entered there.
 - `rebuild`: print a rebuild description of a recorded paired reading (at most 200 words, each word and number of its
-  spec counted), and with `--replay` read it again in this process and compare. That is a same-process replay, not
-  the ruling's fresh-session rebuild test, which has not been run.
+  spec counted, and at most 2,400 characters), and with `--replay` read it again in this process and compare. That
+  is a same-process replay, not the ruling's fresh-session rebuild test, which has not been run. A `--stand-in`
+  replay into the default book is refused.
 - `cold-page`: print the one-page sheet a cold driver would be given, and whether it names a site. The ruling's
   cold-driver test has not been run.
 - `report`: reload a study from `<study_dir>/study_book.jsonl` with no model, check every side book against it, and
@@ -34,6 +36,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from backend import level_atlas as la  # noqa: E402
+from backend import level_book as lb  # noqa: E402
 from backend import level_briefs as lbr  # noqa: E402
 from backend import level_claim as lcl  # noqa: E402
 from backend import level_drivers as ldrv  # noqa: E402
@@ -84,6 +87,28 @@ def _load_handle(stand_in: bool, export_dir: Optional[Path], *, port: int = lmcp
     except la.AtlasReaderError:
         adir = None
     return h, wdir, adir, lock_f
+
+
+def _refuse_default_book_on_stand_in(stand_in: bool, book: Path, what: str) -> None:
+    """A stand-in reading is never entered in the default book: that book counts the owner's readings of the model."""
+    if stand_in and Path(book).expanduser().resolve() == lb.default_book_path().expanduser().resolve():
+        raise SystemExit(f"refused: {what} {book} is the default book, and a --stand-in reading is never entered there; "
+                         "name a side book.")
+
+
+def _brief_before_load(brief_arg: str) -> Optional[lbr.Brief]:
+    """The brief `brief_arg` names, found before anything is loaded: a brief file, read (returned), or a starter
+    brief's name, checked (None: a starter brief is built with the model's tokenizer once it is loaded)."""
+    p = Path(brief_arg)
+    if p.is_file():
+        try:
+            return lbr.load_brief(p)
+        except lbr.BriefError as exc:
+            raise SystemExit(f"refused: {exc}") from None
+    names = sorted(lbr.starter_briefs(None))
+    if brief_arg not in names:
+        raise SystemExit(f"refused: {brief_arg!r} is neither a brief file nor a starter brief ({', '.join(names)}).")
+    return None
 
 
 def _validation_lines(val: dict) -> List[str]:
@@ -168,12 +193,17 @@ def _cmd_run(args: argparse.Namespace) -> int:
     try:
         plan = lev.study_plan_from_dict(raw)
         lev.validate_study_plan(plan, weights_dir=wdir_arg, atlas_dir=adir_arg, check_paths=False)
+        if plan.brief_path:
+            lbr.load_brief(Path(plan.brief_path))  # read now: a missing or broken brief file is refused here
+        elif plan.brief_name not in lbr.starter_briefs(None):
+            raise lev.EvalRefused(f"Unknown brief_name {plan.brief_name!r}; supply brief_path or choose from "
+                                  f"{', '.join(sorted(lbr.starter_briefs(None)))}.")
         if wdir_arg is not None and not wdir_arg.is_dir():
             raise lev.EvalRefused(f"--weights-dir {wdir_arg} is not a folder.")
         if adir_arg is not None:
             la.resolve_atlas_index_dir(adir_arg)
         lev.refuse_used_study_dir(out_dir)
-    except (lev.EvalRefused, lses.SessionRefused, la.AtlasReaderError) as exc:
+    except (lev.EvalRefused, lses.SessionRefused, la.AtlasReaderError, lbr.BriefError) as exc:
         raise SystemExit(f"refused: {exc}") from None
     if stop_file.exists():
         raise SystemExit(f"refused: a STOP file is at {stop_file}; remove it to run the study (nothing was started).")
@@ -192,7 +222,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
             kill_switch=ks,
             probe_sandbox=not args.no_probe,
         )
-    except (lev.EvalRefused, ldrv.DriverRefused, lses.SessionRefused) as exc:
+    except (lev.EvalRefused, ldrv.DriverRefused, lses.SessionRefused, lbr.BriefError, lcl.ClaimRefused) as exc:
         raise SystemExit(f"refused: {exc}") from None
     finally:
         if lock_f is not None:
@@ -202,17 +232,26 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_knobs(args: argparse.Namespace) -> int:
+    # What can be read and refused without the model is, before it is loaded or the card's lock taken
     try:
         knob_raw = json.loads(Path(args.knob).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise SystemExit(f"refused: cannot read the knob {args.knob}: {exc}") from None
+    if args.controls is not None and int(args.controls) < 1:
+        raise SystemExit(f"refused: --controls is a whole number of 1 or more control edits a family; {args.controls} "
+                         "is not (a claim with no control edits is refused).")
     book = Path(args.book).resolve()
+    _refuse_default_book_on_stand_in(bool(args.stand_in), book, "--book")
+    try:
+        bars = lcl.load_bars(Path(args.bars))
+    except lcl.ClaimRefused as exc:
+        raise SystemExit(f"refused: {exc}") from None
+    brief_file = _brief_before_load(str(args.brief))
+    if brief_file is not None and bars.brief_id != brief_file.id:
+        raise SystemExit(f"refused: BarSet {bars.short()} is for brief {bars.brief_id[:12]}, not {brief_file.short()}.")
     h, _w, _a, lock_f = _load_handle(bool(args.stand_in), None, port=int(args.port))
     try:
-        starters = lbr.starter_briefs(h.tokenizer)
-        b_path = Path(args.brief)
-        brief = lbr.load_brief(b_path) if b_path.is_file() else starters[args.brief]
-        bars = lcl.load_bars(Path(args.bars))
+        brief = brief_file if brief_file is not None else lbr.starter_briefs(h.tokenizer)[args.brief]
         res = lkn.run_fresh_knob_claim(
             h,
             brief,
@@ -237,10 +276,12 @@ def _cmd_rebuild(args: argparse.Namespace) -> int:
     except lev.EvalRefused as exc:
         raise SystemExit(f"refused: {exc}") from None
     print(desc["description"])
-    print(f"\n[{desc['word_count']} words counted with every word and number of the spec, "
-          f"{desc['characters']} characters, sha256={desc['sha256'][:12]}]")
+    print(f"\n[{desc['word_count']} words counted with every word and number of the spec (at most "
+          f"{lev.MAX_REBUILD_WORDS}), {desc['characters']} characters (at most {lev.MAX_REBUILD_CHARS}), "
+          f"sha256={desc['sha256'][:12]}]")
     if args.replay:
         out_book = Path(args.out_book) if args.out_book else (Path(args.book).resolve().parent / "rebuild_replay_book.jsonl")
+        _refuse_default_book_on_stand_in(bool(args.stand_in), out_book, "--out-book")
         h, _w, _a, lock_f = _load_handle(bool(args.stand_in), None, port=int(args.port))
         try:
             chk = lev.run_rebuild_replay(h, desc["description"], Path(args.book), int(args.seq), out_book=out_book)
@@ -269,6 +310,7 @@ def _cmd_cold_page(args: argparse.Namespace) -> int:
     if page["prompt_named_site"]:
         print("This page names a site (" + (", ".join(page["sites_named_in_page"]) or "the brief says so")
               + "): it is not a cold page.")
+    print(page["site_finder"])
     print(page["ruling_test"])
     return 0
 

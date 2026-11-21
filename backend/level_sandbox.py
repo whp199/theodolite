@@ -12,6 +12,10 @@ Containment model (verified actively by `probe_sandbox`):
 - Resources: `RLIMIT_AS` (sized above the read-only weight mmap plus working budget), `RLIMIT_FSIZE`, parent-side
   resident-RAM (`VmRSS`) monitor, and hard wall-clock timeout with process-group `SIGKILL`; a cell still running when
   its session closes is killed the same way (`stop_cells`).
+- What a cell leaves: `/work` keeps regular files and folders only. A link, pipe or socket a cell leaves there is
+  removed, unread, as the cell ends (`_drop_not_files`), so nothing on the host that reads `/work` after a cell (the
+  list of files it wrote, with their sizes and sha256; a reading's term files) follows a link out of it or waits on a
+  pipe. The files a cell wrote are looked at without following a link (`_walk_work`, `_file_sha256`).
 
 No pinned or live runtime module is imported inside the sandbox; cells interact with weights strictly through the
 read-only `WeightReader` (`W`) and persist float32 arrays to `/work` via `save_array(name, arr)` with sha256 hashes.
@@ -23,6 +27,7 @@ import json
 import os
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -269,24 +274,100 @@ def _resolve_weight_binds(weights_dir: Path) -> Tuple[List[Tuple[Path, str]], in
     return binds, total_st_bytes
 
 
-def _snapshot_work_files(work_dir: Path) -> Dict[str, Tuple[int, float]]:
-    out: Dict[str, Tuple[int, float]] = {}
-    root = Path(work_dir).resolve()
-    if not root.is_dir():
-        return out
-    for p in root.rglob("*"):
-        if p.is_file():
+def _kind_of(mode: int) -> str:
+    if stat.S_ISLNK(mode):
+        return "link"
+    if stat.S_ISFIFO(mode):
+        return "pipe"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    if stat.S_ISCHR(mode) or stat.S_ISBLK(mode):
+        return "device"
+    return "other"
+
+
+def _listable(d: Path, mode: int) -> None:
+    """Give this user read, write and search on folder `d` (its own, or a cell's, which runs as this user): a cell
+    can take the read bit off a folder, /work among them, and leave in it a link the host could still follow."""
+    if stat.S_IMODE(mode) & 0o700 != 0o700:
+        try:
+            os.chmod(d, stat.S_IMODE(mode) | 0o700)
+        except OSError:
+            pass
+
+
+def _walk_work(work_dir: Path) -> Tuple[Dict[str, Tuple[int, int]], List[Tuple[str, str]]]:
+    """What the work folder holds, looked at without following a link: its regular files `{rel_path: (bytes,
+    mtime_ns)}`, and every entry that is neither a regular file nor a folder (a link, a pipe, a socket) as `(rel_path,
+    kind)`. Nothing is opened, no link is followed or gone into, and a folder this user cannot list is made listable
+    first (`_listable`); one that still cannot be listed is named as `unlisted`."""
+    files: Dict[str, Tuple[int, int]] = {}
+    odd: List[Tuple[str, str]] = []
+    root = Path(work_dir)
+    try:
+        st_root = os.lstat(root)
+    except OSError:
+        return files, odd
+    if not stat.S_ISDIR(st_root.st_mode):
+        return files, odd
+    _listable(root, st_root.st_mode)
+    stack = [root]
+    while stack:
+        d = stack.pop()
+        try:
+            with os.scandir(d) as it:
+                entries = list(it)
+        except OSError:
+            odd.append((os.path.relpath(d, root), "unlisted"))
+            continue
+        for e in entries:
             try:
-                st = p.stat()
-                out[str(p.relative_to(root))] = (int(st.st_size), float(st.st_mtime_ns))
+                st = e.stat(follow_symlinks=False)
             except OSError:
-                pass
-    return out
+                continue
+            rel = os.path.relpath(e.path, root)
+            if stat.S_ISDIR(st.st_mode):
+                _listable(Path(e.path), st.st_mode)
+                stack.append(Path(e.path))
+            elif stat.S_ISREG(st.st_mode):
+                files[rel] = (int(st.st_size), int(st.st_mtime_ns))
+            else:
+                odd.append((rel, _kind_of(st.st_mode)))
+    return files, odd
 
 
-def _file_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
+def _drop_not_files(work_dir: Path) -> List[Dict[str, str]]:
+    """Remove, unread, everything in the work folder that is neither a regular file nor a folder: a link a cell left
+    there would otherwise be followed by whatever on the host reads the folder after it (this runner's own list of
+    the files a cell wrote, with their sizes and sha256, or a reading's term files), and a pipe would hang that read.
+    A link is removed itself; what it names is not touched. Returns what was removed."""
+    removed: List[Dict[str, str]] = []
+    for rel, kind in _walk_work(work_dir)[1]:
+        p = os.path.join(str(work_dir), rel)
+        try:
+            if kind == "unlisted" and rel == os.curdir:
+                raise OSError("the work folder itself cannot be listed")
+            if kind == "unlisted":  # a folder that cannot be looked into is not kept: what it holds is unknown
+                shutil.rmtree(p)
+            else:
+                os.unlink(p)
+            removed.append({"rel_path": rel, "kind": kind})
+        except OSError:
+            removed.append({"rel_path": rel, "kind": kind, "error": "could not be removed"})
+    return removed
+
+
+def _file_sha256(path: Path) -> Optional[str]:
+    """The sha256 of a regular file, opened without following a link (and without waiting on a pipe); None for
+    anything else."""
+    try:
+        fd = os.open(str(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return None
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            return None
+        h = hashlib.sha256()
         while True:
             chunk = f.read(1 << 20)
             if not chunk:
@@ -417,7 +498,8 @@ def run_cell(
     if _cells_stopping(work_key):
         raise SandboxError("The session is closing: no new cell is started.")
     work.mkdir(parents=True, exist_ok=True)
-    before_files = _snapshot_work_files(work)
+    removed = _drop_not_files(work)  # none should be there: each cell's own are removed as it ends (below)
+    before_files = _walk_work(work)[0]
 
     exe, py_base, site_dirs = _python_layout()
     rel_exe = exe.relative_to(py_base)
@@ -591,6 +673,9 @@ def run_cell(
                         pass
                     raise
             finally:
+                # the cell has ended (or been killed): before anything on the host looks in /work again, what it left
+                # there that is not a file or a folder goes, unread
+                removed += _drop_not_files(work)
                 with _CELLS_LOCK:
                     left = _CELLS_RUNNING.get(work_key, 1) - 1
                     if left > 0:
@@ -602,15 +687,14 @@ def run_cell(
         stderr_full = stderr_tmp.read_text(encoding="utf-8", errors="replace")
 
     elapsed = time.perf_counter() - t0
-    after_files = _snapshot_work_files(work)
+    after_files = _walk_work(work)[0]  # regular files only, looked at without following a link
     files_written: List[Dict[str, Any]] = []
     for rel, meta in sorted(after_files.items()):
         if before_files.get(rel) != meta:
-            fp = work / rel
             files_written.append({
                 "rel_path": rel,
                 "bytes": meta[0],
-                "sha256": _file_sha256(fp) if fp.is_file() else None,
+                "sha256": _file_sha256(work / rel),
             })
 
     if cell_log_dir is not None:
@@ -644,6 +728,9 @@ def run_cell(
         "stdout_truncated": stdout_trunc,
         "stderr_truncated": stderr_trunc,
         "files_written": files_written,
+        # /work keeps regular files and folders only: a link, pipe or socket a cell leaves is removed as it ends,
+        # unread (what a link names is never opened, hashed or measured), and named here
+        "removed": removed,
         "error": error,
         "log_dir": str(cell_log_dir) if cell_log_dir is not None else None,
     }

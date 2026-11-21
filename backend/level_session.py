@@ -274,12 +274,9 @@ class LevelSession:
         self._claim_design: Dict[str, Any] = {k: v for k, v in design.items() if v is not None}
         # Kept-back frames are kept from practice here, at the gates to the model: those of every starter brief (their
         # text is in the published source, and a session with no brief bound may be practising for one) and of the
-        # bound brief.
-        self._kept_back = lbr.KeptBack(
-            list(lbr.starter_briefs(handle.tokenizer if handle is not None else None).values())
-            + ([brief] if brief is not None else []),
-            batteries=True,  # the harm batteries' own questions too: they are few, fixed and published
-        )
+        # bound brief, and the harm batteries' own questions (they are few, fixed and published). A knob claim asks
+        # its prompt of the same guard (`level_knobs.kept_back_guard`), by whichever door it comes in.
+        self._kept_back = lkn.kept_back_guard(handle.tokenizer if handle is not None else None, brief)
         self.gate_refusals: int = 0
         self._practice_reads: int = 0
 
@@ -625,7 +622,9 @@ class LevelSession:
         out = {"cell_id": cell_id, **res, "remaining": self._remaining()}
         self._log("cell", {"cell_id": cell_id, "ok": res["ok"], "seconds": res["seconds"],
                            "timed_out": res["timed_out"], "oom_killed": res["oom_killed"],
-                           "files_written": res["files_written"]})
+                           "files_written": res["files_written"],
+                           # links, pipes and the like the cell left in /work, removed unread (level_sandbox)
+                           "removed": res.get("removed", [])})
         return out
 
     def capture(
@@ -908,7 +907,9 @@ class LevelSession:
             "practice_reads_this_session": int(self._practice_reads),
             "prior_verdicts": [  # weight claims and knob claims: one budget a brief
                 {"reading_index": v.get("reading_index"), "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
-                 **({"knob_id": v["knob_id"]} if v.get("knob_id") else {})}
+                 **({"knob_id": v["knob_id"]} if v.get("knob_id") else {}),
+                 # a neuron_mul knob's twin: the weight edit read with it, which a claim of it is refused
+                 **({"twin_edit_id": v["twin_edit_id"]} if v.get("twin_edit_id") else {})}
                 for v in hist["verdicts"]
             ],
             # the trials that spent a fresh reading too (of record, a dry run, a re-run), so the count above adds up

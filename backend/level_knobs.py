@@ -11,30 +11,37 @@ What a fresh knob claim shares with a weight claim, and how:
   under its name, frames seen in practice or read under another brief, bars not calibrated in the book, a knob read
   before, and the brief's `m` spent. Its registration is a note `level_claim.brief_history` counts, so weight
   claims, trials and knob claims spend the same `m` in one book, and the `m` in p_fw = m x p_emp is that one budget.
+  A `neuron_mul` knob and the weight edit whose arithmetic it is (its twin, `twin_edit_id` in its notes) are read
+  once between them, and a trial of the edit follows the knob's claim as it follows the edit's own.
 - The same draw: kept-back items drawn after registration from `os.urandom(32)`, refusing items and frames seen in
   practice.
 - The same verdict engine: `level_claim.judge_claim`, given the knob's own families of controls, with both batch
   classes read for the target and the batteries (the larger battery figure kept), the reversed read (the knob with
-  its steering reversed and its logit bias negated), the near-miss size and its ratio to the effect, and the gating
-  and habitat batteries the bars name. Four choices of this gate are stricter than a weight claim's and are kept
-  (`STRICTER_SAY`): the noise floor is the larger class's for both classes; a near miss's size is the mean of each
-  item's size (`knob_batteries`); and, each where the engine's order puts its kind (`_stricter`), a frame CI that
-  does not clear zero is "did not replicate" and a labelled-panel KL that was not read counts as harm.
+  its steering reversed, its other parts as in the knob), the near-miss size and its ratio to the effect, and the
+  gating and habitat batteries the bars name. An item is kept when its two batch classes agree by the weight path's
+  rule (`levelling._stability`): every read-out the brief has on, the knob's arm and its reversed arm. The choices
+  of this gate that are stricter than a weight claim's are kept (`stricter_words`): on a paired brief the noise floor
+  is the larger class's for both classes; a near miss's size is the mean of each item's size (`knob_batteries`);
+  and, each where the engine's order puts its kind (`_stricter`), a frame CI that does not clear zero is "did not
+  replicate" and a labelled-panel KL that was not read counts as harm.
 - Its controls differ from the knob only in the steering: the knob's prompt, thinking setting, sampler and logit
   bias apply to every control row as to the knob's. `neuron_mul` is the arithmetic of a weight edit that scales its
   neurons' down_proj columns, and its controls are drawn as that edit's are (`weight_edits.matched_control_edits`,
-  `weight_edits.same_site_controls`) and read by the weight path's own per-row hooks. `direction` and `neuron_add`
-  are pushes added to the stream; their controls are pushes of the same length at the same layer along random
-  directions (`CONTROL_FAMILY_SAY`).
+  `weight_edits.same_site_controls`; on a written brief in the written claim's chunks and seeds) and read by the
+  weight path's own per-row hooks. `direction` and `neuron_add` are pushes added to the stream; their controls are
+  pushes of the same length at the same layer along random directions (`control_family_words`).
 
 Refused before a fresh reading is spent: a knob with no steering part (a prompt or a decoding setting has no family
 of controls, and a weight claim with none is refused), a knob that mixes `neuron_mul` with pushes, a `neuron_mul`
-that spares the start mark (no weight edit does that arithmetic), fewer than one control a family, and a part that
-cannot act on the brief's reading (`parts_that_cannot_act`).
+that spares the start mark (no weight edit does that arithmetic), fewer than one control a family, a part that
+cannot act on the brief's reading (`parts_that_cannot_act`), a prompt that holds a kept-back frame's wording (the
+practice gates' own guard, `kept_back_guard`), and a knob whose text makes the longest item the claim can draw, fresh
+or battery, too long to read (`longest_items`).
 
-Every knob reading is read against the brief's chat settings: its system turn (or an item's own) and its thinking
+Every target item is read against the brief's chat settings: its system turn (or an item's own) and its thinking
 setting. The knob's prompt is added to that system turn and its thinking setting, when it has one, replaces the
-brief's; nothing else differs between the knob's row and the base row.
+brief's; nothing else differs between the knob's row and the base row. The retention batteries are read as the bars
+were calibrated (`battery_items`): each item as drawn, thinking off, the knob's prompt added to its system turn.
 
 Layers count from 0 in code and files; human-facing strings give both ("layer 50 (page layer 51)").
 Zero kept-out words appear in source, docstrings, or rendered sheets.
@@ -45,6 +52,7 @@ import contextlib
 import dataclasses
 import datetime
 import hashlib
+import itertools
 import json
 import math
 import os
@@ -105,7 +113,8 @@ STEERING_SAY = {
                    "every position whatever the neurons do{bos}. It is not an add to the neurons' activations"),
 }
 # Each family of controls a knob claim is judged against: what its controls are, and what they are and are not
-# matched on. Printed on every knob sheet; the rule they are counted by is the weight claim's (`CONTROL_RULE_SAY`).
+# matched on, in the words true of the reading they are printed with (`control_family_words`). Printed on every knob
+# sheet; the rule they are counted by is the weight claim's (`control_rule_words`).
 CONTROL_FAMILY_SAY = {
     "other_sites_matched": (
         "other neurons of the same layers, drawn by the weight path's own matched draw "
@@ -124,15 +133,37 @@ CONTROL_FAMILY_SAY = {
         "on what it does further up, nor on how hard any neuron fires: a random direction is no neuron's write "
         "direction, and a knob whose direction was chosen from readings is set beside directions that were not"),
 }
+# On a written brief the matched draw is a written weight claim's: its pre-pass reads each item's prompt, with
+# thinking off (`levelling._score_sites` over `Item.prompt_ids`), and its controls come in chunks with seeds of their own
+# (`level_claim._run_written_target_claims`).
+CONTROL_FAMILY_WRITTEN_SAY = {
+    "other_sites_matched": (
+        "other neurons of the same layers, drawn by the weight path's own matched draw "
+        "(weight_edits.matched_control_edits) for the weight edit whose arithmetic the knob is (its neurons' down_proj "
+        "columns scaled by its factor), as a written weight claim of that edit draws them: in chunks of {chunk}, each "
+        "chunk from its own seed, on a base pre-pass over the items' prompts read with thinking off, as a written "
+        "weight claim's pre-pass reads them{with_prompt}. Each stand-in is within a factor of {tol:g} of its neuron on "
+        "what that pre-pass expects it to deliver over the prompt. Not matched on what they delivered as read, nor "
+        "over what was written{not_twins}"),
+    "same_site": (
+        "the knob's own neurons, their down_proj columns changed along random directions off the layer's quiet mask, "
+        "each column's change as long in the stream as the knob's (weight_edits.same_site_controls), drawn in chunks "
+        "of {chunk} with the seeds a written weight claim of that edit draws them with, and read as that edit's "
+        "controls are read. Matched on the size of each column's change, not on its direction"),
+}
 CONTROL_RULE_SAY = (
     "every family of controls is counted by the weight claim's rule as it stands, which the owner has left open: "
     "p_fw = m x (1 + at_least) / (C + 1), at most alpha, in both batch classes (a control that gave no finite reading "
     "counts as moving as much)")
+CONTROL_RULE_WRITTEN_SAY = (
+    "every family of controls is counted by the weight claim's rule as it stands, which the owner has left open: "
+    "p_fw = m x (1 + at_least) / (C + 1), at most alpha, in the written class, the one class a written reading has (a "
+    "control that gave no finite reading counts as moving as much)")
 CONTROLS_SHARE_SAY = ("the controls share the knob's prompt, thinking setting, sampler and logit bias, and differ from "
                       "it only in the steering")
 REVERSED_SAY = ("the reversed read is the knob with its steering reversed (a push's dose negated, a neuron_mul's factor "
-                "f read at 2 - f, as a weight edit at dose -1) and its logit bias negated; its prompt, thinking setting "
-                "and sampler are as in the knob")
+                "f read at 2 - f, as a weight edit at dose -1); its prompt, thinking setting, sampler and logit bias "
+                "are as in the knob, as they are on every control row, so only the steering is reversed")
 # What a weight claim reads and a knob claim does not: listed on every knob sheet.
 NOT_READ_SAY = (
     "the brief's author prompt arms are not read beside a knob, so this sheet cannot say whether one of them does as "
@@ -142,13 +173,74 @@ NOT_READ_SAY = (
 )
 NOT_READ_WRITTEN_SAY = ("the written strata and the base settings audit a written weight claim prints (neither gates "
                         "its verdict)")
+NOT_READ_STRATA_SAY = "the written strata a written weight claim prints (they gate nothing)"
 NOT_READ_SAMPLER_SAY = ("the harm of the knob's sampler: the retention batteries are read teacher-forced, where a "
                         "sampler does nothing")
+NOT_READ_THINKING_SAY = ("the harm of the knob's thinking setting: the retention batteries are read with thinking off, "
+                         "as the bars were calibrated, so the knob's thinking setting is not read on them")
 STRICTER_SAY = (
     "where this gate is stricter than a weight claim's: the noise floor is the larger of the two classes' for both; "
     "a near miss's size is the mean of each item's size, never less than the size of the mean a weight claim reads; "
     "a frame CI (large class) that does not clear zero reads \"did not replicate\"; and a labelled-panel KL that was "
     "not read counts as harm")
+STRICTER_WRITTEN_SAY = (
+    "where this gate is stricter than a weight claim's: a near miss's size is the mean of each item's size, never less "
+    "than the size of the mean a weight claim reads; a frame CI (written class) that does not clear zero reads \"did "
+    "not replicate\"; and a labelled-panel KL that was not read counts as harm")
+BATTERIES_READ_SAY = ("the retention batteries are read as the bars were calibrated: each item as drawn, thinking off, "
+                      "the knob's prompt added to its system turn")
+WRITTEN_UNTOUCHED_SAY = (
+    "every batch of written arms is laid out as a written weight claim's batch is, an untouched first row and an "
+    "untouched twin last, which must write the same pieces with the same log-probabilities; and the untouched first "
+    "row must write the pieces of the base row (or, under a knob whose prompt or sampler is not the base's, of an "
+    "untouched row with that prompt and sampler), written in a batch of its own: else the reading is void")
+
+
+def control_family_words(fam: str, *, tol: float, written: bool = False, chunk: Optional[int] = None,
+                         prompt: bool = False) -> str:
+    """What family `fam`'s controls are, and are and are not matched on, in the words true of the reading: a paired
+    reading's (`CONTROL_FAMILY_SAY`) or a written one's (`CONTROL_FAMILY_WRITTEN_SAY`, with its chunks of `chunk`, and
+    with `prompt`, a knob whose prompt the pre-pass read, so its stand-ins are not the ones its weight edit alone
+    would face on these items)."""
+    if written and fam in CONTROL_FAMILY_WRITTEN_SAY:
+        return CONTROL_FAMILY_WRITTEN_SAY[fam].format(
+            tol=float(tol), chunk=int(chunk or 1),
+            with_prompt=", with the knob's prompt added to their system turn" if prompt else "",
+            not_twins=(". With the knob's prompt in the pre-pass they are not the stand-ins a written weight claim of "
+                       "the edit alone draws on these items") if prompt else "")
+    return CONTROL_FAMILY_SAY[fam].format(tol=float(tol))
+
+
+def control_rule_words(written: bool) -> str:
+    """The rule the controls are counted by, in the classes the reading has."""
+    return CONTROL_RULE_WRITTEN_SAY if written else CONTROL_RULE_SAY
+
+
+def stricter_words(written: bool) -> str:
+    """Where this gate is stricter than a weight claim's, of the reading it is printed with (a written reading has one
+    class and no noise floor)."""
+    return STRICTER_WRITTEN_SAY if written else STRICTER_SAY
+
+
+def not_read_words(brief: lbr.Brief, knob: KnobSpec) -> List[str]:
+    """What a weight claim of the same kind of reading reads or prints and this knob claim does not, each true of the
+    reading: on a paired brief the author prompt arms (when the brief has some and its metric has a prompt read-out,
+    as `level_claim.run_fresh_claim` reads them), what each control delivered and the item gate; on a written brief
+    the written strata (and the base settings audit, when the brief asks for one), since a written weight claim
+    prints no item gate, no delivered figures and reads no prompt arms; and the harm of a sampler or a thinking
+    setting the knob has, which the batteries do not read."""
+    out: List[str] = []
+    if brief.metric == "written_loop":
+        out.append(NOT_READ_WRITTEN_SAY if brief.compare_settings else NOT_READ_STRATA_SAY)
+    else:
+        if brief.prompt_arms and brief.metric in ("odds", "own"):
+            out.append(NOT_READ_SAY[0])
+        out += [NOT_READ_SAY[1], NOT_READ_SAY[2]]
+    if "sampler" in knob.decoding:
+        out.append(NOT_READ_SAMPLER_SAY)
+    if "thinking" in knob.decoding:
+        out.append(NOT_READ_THINKING_SAY)
+    return out
 NO_CONTROLS_SAY = (
     "A fresh knob claim needs a steering part: a prompt or a decoding setting alone has no family of controls to be "
     "read against, and a claim with none is refused (a weight edit with no control family is refused the same way). "
@@ -625,6 +717,36 @@ def ref_and_knob_items(h: lv.Handle, item: lv.Item, knob: KnobSpec,
     return ref, kit
 
 
+def battery_items(h: lv.Handle, item: lv.Item, knob: KnobSpec) -> Tuple[lv.Item, lv.Item]:
+    """(the base row's item, the knob's item) for a retention battery item, read as the bars were calibrated
+    (`level_claim.calibrate_bars`) and as a weight claim reads its batteries: the item as drawn, thinking off, its own
+    system turn. The knob's item adds the knob's prompt to that system turn; the knob's thinking setting is not read
+    on a battery (`NOT_READ_THINKING_SAY`), so the bars stay the bars of the reading they were calibrated on."""
+    if knob.prompt is None:
+        return item, item
+    return item, _retokenised(h, item, knob_system_turn(knob, item.system), False, "the knob")
+
+
+def kept_back_guard(tokenizer: Any, brief: Optional[lbr.Brief]) -> lbr.KeptBack:
+    """The guard a session's practice gates ask an item of (`level_session.LevelSession`), and a knob claim asks its
+    prompt of: the kept-back frames of every starter brief (their text is in the published source) and of `brief`,
+    and the retention batteries' own questions."""
+    return lbr.KeptBack(list(lbr.starter_briefs(tokenizer).values()) + ([brief] if brief is not None else []),
+                        batteries=True)
+
+
+def sampler_effect(cfg: Optional[Mapping[str, Any]], vocab_size: int) -> Tuple[Any, ...]:
+    """What a sampler does, whatever its spelling: greedy when its temperature is 0 or its top-k is 1, whatever else
+    is set; else its temperature, top-k (0 when it keeps the whole vocabulary), top-p and presence penalty."""
+    c = dict(cfg or {})
+    t = float(c.get("temperature", 0.0))
+    k = int(c.get("top_k", 0))
+    if t <= 0.0 or k == 1:
+        return ("greedy",)
+    return ("sampled", round(t, 6), 0 if k <= 0 or k >= int(vocab_size) else k, round(float(c.get("top_p", 1.0)), 6),
+            round(float(c.get("presence_penalty", 0.0)), 6))
+
+
 def knob_texts(knob: KnobSpec, item: Any, brief: Optional[lbr.Brief]) -> Tuple[Optional[str], Optional[str],
                                                                                Optional[str]]:
     """The texts the model reads of `item` under `knob`, in order (system turn, question, answer): what a kept-back
@@ -646,26 +768,32 @@ def brief_sampler(brief: lbr.Brief) -> Dict[str, Any]:
             "presence_penalty": round(float(wcfg.get("presence_penalty", 0.0)), 6)}
 
 
-def parts_that_cannot_act(knob: KnobSpec, brief: Optional[lbr.Brief], *, written: bool) -> List[str]:
+def parts_that_cannot_act(knob: KnobSpec, brief: Optional[lbr.Brief], *, written: bool,
+                          vocab_size: Optional[int] = None) -> List[str]:
     """The parts of `knob` that cannot act on a reading (teacher-forced, or written with `written`) under `brief`,
-    in plain words: a sampler where nothing is sampled, or the brief's own sampler; a thinking setting the brief
-    already reads with. Such a part reads exactly as the knob without it: it would be registered and printed and
-    never read, and a knob of such parts alone would spend a reading on nothing."""
+    in plain words: a sampler where nothing is sampled, or one that does what the brief's own does (`sampler_effect`:
+    two greedy samplers are one, however each is spelled); a thinking setting the brief already reads with. Such a
+    part reads exactly as the knob without it: it would be registered and printed and never read, and a knob of such
+    parts alone would spend a reading on nothing."""
     _sys, b_think = _settings_of(brief)
     out: List[str] = []
     dec = knob.decoding
     if "sampler" in dec:
+        vocab = int(vocab_size) if vocab_size is not None else 1 << 62
         if not written:
             out.append("its sampler: a teacher-forced reading samples nothing")
-        elif brief is not None and dict(dec["sampler"]) == brief_sampler(brief):
-            out.append("its sampler: it is the brief's own")
+        elif brief is not None and sampler_effect(dec["sampler"], vocab) == sampler_effect(brief_sampler(brief), vocab):
+            got = sampler_effect(dec["sampler"], vocab)
+            out.append("its sampler: it does what the brief's own does" + (" (both are greedy)" if got == ("greedy",)
+                                                                           else ""))
     if "thinking" in dec and bool(dec["thinking"]) == b_think:
         out.append(f"its thinking setting: the brief already reads with thinking {'on' if b_think else 'off'}")
     return out
 
 
-def _refuse_parts_that_cannot_act(knob: KnobSpec, brief: Optional[lbr.Brief], *, written: bool) -> None:
-    inert = parts_that_cannot_act(knob, brief, written=written)
+def _refuse_parts_that_cannot_act(knob: KnobSpec, brief: Optional[lbr.Brief], *, written: bool,
+                                  vocab_size: Optional[int] = None) -> None:
+    inert = parts_that_cannot_act(knob, brief, written=written, vocab_size=vocab_size)
     if inert:
         raise KnobRefused(
             f"This knob has a part that cannot act on {'a written' if written else 'a teacher-forced'} reading, so it "
@@ -681,7 +809,10 @@ def _anchor_layer(h: lv.Handle, knob: KnobSpec) -> int:
 
 def _mirror_of(knob: KnobSpec) -> Tuple[Tuple[ResolvedSteerTerm, ...], Optional[Dict[str, float]]]:
     """The reversed knob's steering and logit bias (`REVERSED_SAY`): a push's dose negated, a neuron_mul's factor f
-    at 2 - f (a weight edit at dose -1), the bias negated. Refused when the reverse is past the knob's caps."""
+    at 2 - f (a weight edit at dose -1); the bias is the knob's own, as on every control row, since only the steering
+    is reversed (a bias negated would move the reversed row away from the brief's way by the bias alone, and an even
+    push, whose reverse moves the metric as far, would pass the reversed read on it). Refused when the reverse is past
+    the knob's caps."""
     terms: List[ResolvedSteerTerm] = []
     for t in knob.steering_resolved:
         if t.kind == "neuron_mul":
@@ -696,7 +827,7 @@ def _mirror_of(knob: KnobSpec) -> Tuple[Tuple[ResolvedSteerTerm, ...], Optional[
             terms.append(dataclasses.replace(t, magnitude=-float(t.magnitude),
                                              canonical={**dict(t.canonical), "reversed": True}))
     bias = knob.decoding.get("logit_bias")
-    return tuple(terms), ({str(k): -float(v) for k, v in bias.items()} if bias else None)
+    return tuple(terms), ({str(k): float(v) for k, v in bias.items()} if bias else None)
 
 
 def _draw_steering_controls(
@@ -967,8 +1098,9 @@ def _eval_paired_arms(
     """Read `arms` ([(name, program, logit bias)]) on one item at one batch class of `rows` rows. The base row is
     `ref_item` (the item under the brief's chat settings), with null rows at `anchor_layer` and an untouched twin
     that must match it to the bit; every arm is read on `knob_item` (the item as the knob reads it) and scored against
-    the base row with its own logit bias added. Returns {"void", "forwards", "floor", "scores": {name: {"kl", "own",
-    "odds"}}}: `floor` is the largest |metric| of the null rows."""
+    the base row with its own logit bias added. Returns {"void", "forwards", "floor", "floors", "scores": {name:
+    {"kl", "own", "odds"}}}: `floor` is the largest |metric| of the null rows, `floors` the same of every read-out
+    (`levelling._floor`: the largest absolute mean among the null rows)."""
     if rows < len(NULL_ES) + 3:
         raise KnobRefused(f"rows must be at least {len(NULL_ES) + 3} to hold base, twin, null rows, and knob; got {rows}.")
     sp_b = lv._Span.of(ref_item, h.device)
@@ -1005,12 +1137,13 @@ def _eval_paired_arms(
     if not torch.equal(Hf0[0], Hf0[rows - 1]):
         return {"void": "untouched twin row parted from base row", "forwards": forwards}
     H0 = Hf0[0].detach()
-    null_vals = []
+    null_by: Dict[str, List[float]] = {}
     for i in range(len(NULL_ES)):
-        mv = _score_states_pair(h, H0, sp_b, Hf0[1 + i], sp_b, readouts).get(metric)
-        if mv is not None:
-            null_vals.append(abs(float(mv)))
-    floor_val = max(null_vals) if null_vals else 0.0
+        for m_name, mv in _score_states_pair(h, H0, sp_b, Hf0[1 + i], sp_b, readouts).items():
+            if mv is not None:
+                null_by.setdefault(m_name, []).append(abs(float(mv)))
+    floors = {m_name: max(vs) for m_name, vs in null_by.items() if vs}
+    floor_val = floors.get(metric, 0.0)
     scores: Dict[str, Dict[str, Optional[float]]] = {}
     for r, name, bias in placed0:
         scores[name] = _score_states_pair(h, H0, sp_b, Hf0[r], sp_b, readouts, logit_bias=bias)
@@ -1039,7 +1172,29 @@ def _eval_paired_arms(
                 return {"void": "later knob forward row 0 parted from first knob forward", "forwards": forwards}
         for r, name, bias in placed:
             scores[name] = _score_states_pair(h, H0, sp_b, Hf[r], sp_b if same else sp_k, readouts, logit_bias=bias)
-    return {"void": None, "forwards": forwards, "floor": float(floor_val), "scores": scores}
+    return {"void": None, "forwards": forwards, "floor": float(floor_val), "floors": floors, "scores": scores}
+
+
+def disagreements(small: Mapping[str, Any], large: Mapping[str, Any], arms: Sequence[str],
+                  readouts: Mapping[str, Any], ratio: float = lv.STABLE_RATIO) -> List[Tuple[str, str]]:
+    """The weight path's rule for whether one item's two batch classes agree (`levelling._stability`), over a knob's
+    own arms (`arms`: the knob, and its reversed read, the dose -1 of a weight edit) and every read-out the brief has
+    on: each arm's two readings of each read-out are asked `levelling.agree` against the larger of the two classes'
+    floors of that read-out. Returns the (read-out, arm) pairs that disagree; any one makes the item unstable, and it
+    is left out, as a weight reading leaves it out. Controls are not asked, as a weight reading does not ask its
+    control edits' arms."""
+    out: List[Tuple[str, str]] = []
+    for m in lv.METRICS:
+        if not readouts.get(m):
+            continue
+        floor = max(float((small.get("floors") or {}).get(m) or 0.0), float((large.get("floors") or {}).get(m) or 0.0))
+        for a in arms:
+            x = _clean_float(((small.get("scores") or {}).get(a) or {}).get(m))
+            y = _clean_float(((large.get("scores") or {}).get(a) or {}).get(m))
+            ok, _r = lv.agree(x, y, floor, lv.SIGNED[m], ratio)
+            if ok is False:
+                out.append((m, a))
+    return out
 
 
 def _write_rows_with_bias(
@@ -1052,7 +1207,10 @@ def _write_rows_with_bias(
     samples_of: Optional[Sequence[int]],
     row_biases: Sequence[Optional[Mapping[str, float]]],
 ) -> List[Dict[str, Any]]:
-    """Batched decode on the untouched base model with per-row programs (`_row_hooks`) and per-row logit bias."""
+    """Batched decode on the untouched base model with per-row programs (`_row_hooks`) and per-row logit bias. Each
+    row's `logprobs` are its pieces' log-probabilities under the logits it was written from (its bias added), in fp32:
+    two rows of one batch with the same program and bias match in them to the bit, as a weight reading's untouched
+    rows must (`levelling._written_batch`)."""
     lm = h.lm
     W_U = h.W_U
     dev = h.device
@@ -1063,6 +1221,7 @@ def _write_rows_with_bias(
         of = [0] * B if samples_of is None else [int(s) for s in samples_of]
         race = ao._Race(settings, int(sampler.seed), of, dev)
     written: List[List[int]] = [[] for _ in range(B)]
+    logps: List[List[float]] = [[] for _ in range(B)]
     T = max(len(r) for r in rows_ids)
     ids = torch.tensor([[0] * (T - len(r)) + [int(t) for t in r] for r in rows_ids], dtype=torch.long, device=dev)
     mask = torch.tensor([[0] * (T - len(r)) + [1] * len(r) for r in rows_ids], dtype=torch.long, device=dev)
@@ -1092,12 +1251,15 @@ def _write_rows_with_bias(
             else:
                 nxt, _p = race.draw(logits, written)
             nxt_list = nxt.tolist()
+            step_lp = torch.log_softmax(logits.float(), dim=-1).gather(1, nxt.view(-1, 1).to(logits.device)).view(-1)
+            step_lp_list = step_lp.tolist()
             all_done = True
             for r_i in range(B):
                 if done[r_i]:
                     continue
                 tok = int(nxt_list[r_i])
                 written[r_i].append(tok)
+                logps[r_i].append(float(step_lp_list[r_i]))
                 if tok in stop_ids:
                     done[r_i] = True
                     ended[r_i] = True
@@ -1119,6 +1281,7 @@ def _write_rows_with_bias(
         text = h.tokenizer.decode(pieces, skip_special_tokens=False)
         rows_out.append({
             "pieces": pieces,
+            "logprobs": logps[r_i],
             "text": text,
             "ended": ended[r_i],
             "cut_off": (not ended[r_i]) and len(pieces) >= int(max_new),
@@ -1152,6 +1315,21 @@ def _written_ids(h: lv.Handle, it: lv.Item, knob: KnobSpec, brief: lbr.Brief) ->
             lv.chat_ids(h.tokenizer, it.question, system=knob_system_turn(knob, ref_sys), thinking=k_think))
 
 
+def written_seeds(brief: lbr.Brief) -> List[int]:
+    """The sampler seeds a written reading of `brief` writes with: a written weight claim's (`levelling._written_item`:
+    its first seed, then one more a sample, as many samples as the brief names seeds)."""
+    seeds = list((brief.written_config or {}).get("seeds") or [1, 2])
+    first = int(seeds[0]) if seeds else 1
+    return [first + s for s in range(max(1, len(seeds)))]
+
+
+def _needs_own_reference(b_ids: Sequence[int], k_ids: Sequence[int], base_s: Mapping[str, Any],
+                         knob_s: Mapping[str, Any]) -> bool:
+    """Whether an untouched row under the knob writes from another prompt or with another sampler than the base row,
+    so that a batch of arms' untouched row is set beside an untouched row of its own prompt and sampler."""
+    return list(k_ids) != list(b_ids) or dict(knob_s) != dict(base_s)
+
+
 def _eval_written_arms(
     h: lv.Handle,
     items: Sequence[lv.Item],
@@ -1165,21 +1343,32 @@ def _eval_written_arms(
 ) -> Dict[str, Any]:
     """Write each item under the brief's chat settings and sampler (the base row, with an untouched twin that must
     write the same pieces) and under each of `arms` ([(name, program, logit bias)]: the knob's prompt, thinking
-    setting and sampler, each arm's own steering and bias), every seed of the brief's. Returns {"void", "forwards",
-    "deltas": {name: [an item's mean over seeds of (arm looped - base looped)]}, "base_loop_rate"}, loops counted
-    by the brief's own loop rule (`level_briefs.loop_rule_of`)."""
+    setting and sampler, each arm's own steering and bias), at every seed (`written_seeds`: a written weight claim's).
+    Each batch of arms is `chunk_rows` rows laid out as a weight reading's written batch is (`levelling._written_batch`):
+    an untouched first row, the arms, and an untouched twin last, which must write the first row's pieces with its
+    log-probabilities, to the bit, or the reading is void; and the untouched first row must write the base row's
+    pieces (`WRITTEN_UNTOUCHED_SAY`), or, under a knob whose prompt or sampler is not the base's, the pieces of an
+    untouched row of that prompt and sampler written in a batch of two with its own twin. Across batches pieces are
+    set side by side and log-probabilities are not: rows of one batch match to the bit, and rows of batches of other
+    sizes need not. Returns {"void", "forwards", "deltas": {name: [an item's mean over seeds of (arm looped - base
+    looped)]}, "base_loop_rate"}, loops counted by the brief's own loop rule (`level_briefs.loop_rule_of`)."""
     wcfg = dict(brief.written_config or {})
     m_new = int(max_new if max_new is not None else wcfg.get("max_new_tokens", 128))
-    seed_list = [int(s) for s in (seeds if seeds is not None else (wcfg.get("seeds") or [1, 2]))]
+    seed_list = [int(s) for s in seeds] if seeds is not None else written_seeds(brief)
     rule = lbr.loop_rule_of(brief)
     base_s = brief_sampler(brief)
     knob_s = dict(knob.decoding.get("sampler") or base_s)
-    chunk = max(1, int(chunk_rows))
+    per_batch = max(1, int(chunk_rows) - 2)  # every batch of arms keeps its first and last rows untouched
+
+    def twins(rows: Sequence[Mapping[str, Any]], a: int, b: int) -> bool:
+        return rows[a]["pieces"] == rows[b]["pieces"] and rows[a]["logprobs"] == rows[b]["logprobs"]
+
     deltas: Dict[str, List[float]] = {name: [] for name, _p, _b in arms}
     base_rates: List[float] = []
     forwards = 0
     for it in items:
         b_ids, k_ids = _written_ids(h, it, knob, brief)
+        own_ref = _needs_own_reference(b_ids, k_ids, base_s, knob_s)
         per: Dict[str, List[float]] = {name: [] for name, _p, _b in arms}
         b_loops: List[float] = []
         for sd in seed_list:
@@ -1188,19 +1377,41 @@ def _eval_written_arms(
                 row_biases=[None, None],
             )
             forwards += 1
-            if b_rows[0]["pieces"] != b_rows[1]["pieces"]:
-                return {"void": "written base twin row parted from base row", "forwards": forwards}
+            if not twins(b_rows, 0, 1):
+                return {"void": "written base twin row did not write the base row's pieces with its log-probabilities",
+                        "forwards": forwards}
             b_lp = 1.0 if lv.loop_flag(b_rows[0], rule) else 0.0
             b_loops.append(b_lp)
-            for start in range(0, len(arms), chunk):
-                part = list(arms[start:start + chunk])
-                a_rows = _write_rows_with_bias(
-                    h, [k_ids] * len(part), [p for _n, p, _b in part], max_new=m_new,
-                    sampler=_sampler_for(knob_s, sd), samples_of=[0] * len(part),
-                    row_biases=[b for _n, _p, b in part],
+            ref_pieces, ref_what = b_rows[0]["pieces"], "the base row's"
+            if own_ref:
+                r_rows = _write_rows_with_bias(
+                    h, [k_ids, k_ids], [None, None], max_new=m_new, sampler=_sampler_for(knob_s, sd),
+                    samples_of=[0, 0], row_biases=[None, None],
                 )
                 forwards += 1
-                for (name, _p, _b), row in zip(part, a_rows):
+                if not twins(r_rows, 0, 1):
+                    return {"void": "written untouched twin row under the knob's prompt and sampler did not write its "
+                                    "first row's pieces with its log-probabilities", "forwards": forwards}
+                ref_pieces, ref_what = r_rows[0]["pieces"], "an untouched row's of the knob's prompt and sampler"
+            for start in range(0, len(arms), per_batch):
+                part = list(arms[start:start + per_batch])
+                n_rows = len(part) + 2
+                a_rows = _write_rows_with_bias(
+                    h, [k_ids] * n_rows, [None] + [p for _n, p, _b in part] + [None], max_new=m_new,
+                    sampler=_sampler_for(knob_s, sd), samples_of=[0] * n_rows,
+                    row_biases=[None] + [b for _n, _p, b in part] + [None],
+                )
+                forwards += 1
+                where = f'(item "{it.name}", seed {sd}, a batch of {n_rows} written rows)'
+                if not twins(a_rows, 0, n_rows - 1):
+                    return {"void": (f"the untouched twin row of a batch of arms did not write its untouched first "
+                                     f"row's pieces with its log-probabilities {where}: the rows of that batch are not "
+                                     "independent of one another"), "forwards": forwards}
+                if a_rows[0]["pieces"] != ref_pieces:
+                    return {"void": (f"the untouched first row of a batch of arms did not write {ref_what} pieces "
+                                     f"{where}: the rows are not independent of the batch they are written in"),
+                            "forwards": forwards}
+                for (name, _p, _b), row in zip(part, a_rows[1:-1]):
                     per[name].append((1.0 if lv.loop_flag(row, rule) else 0.0) - b_lp)
         for name in deltas:
             deltas[name].append(float(np.mean(per[name])))
@@ -1241,7 +1452,11 @@ def estimate_knob_reading(
         raise KnobRefused("estimate_knob_reading requires at least one item.")
     n_ctl = int(controls) if knob.steering_resolved else 0
     if kind == "written":
-        n_arm_batches = 1 + math.ceil((1 + n_ctl) / lv.WRITTEN_ROWS_MAX)
+        # the base batch, a batch of the knob's own untouched rows when its text or sampler is not the base's (taken
+        # here whenever the knob has a prompt, a thinking setting or a sampler), and the batches of arms, each with
+        # its two untouched rows (`_eval_written_arms`)
+        own_ref = 1 if (knob.prompt is not None or "thinking" in knob.decoding or "sampler" in knob.decoding) else 0
+        n_arm_batches = 1 + own_ref + math.ceil((1 + n_ctl) / (lv.WRITTEN_ROWS_MAX - 2))
         fwds = len(items) * max(1, int(samples)) * n_arm_batches
         secs = round(fwds * int(max_new) * 0.095, 3)
         return {"kind": "written", "forwards": fwds, "seconds": secs, "knob_classes": list(knob.knob_classes)}
@@ -1301,7 +1516,7 @@ def read_knob_practice(
         raise KnobRefused("read_knob_practice requires at least one item.")
     allowed_l = brief.allowed_layers if brief is not None else None
     knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=allowed_l)
-    _refuse_parts_that_cannot_act(knob, brief, written=False)
+    _refuse_parts_that_cannot_act(knob, brief, written=False, vocab_size=int(h.W_U.shape[0]))
     ro = dict(readouts or (brief.readouts if brief is not None else {"kl": True, "own": True, "odds": None}))
     met = str(brief.metric if brief is not None else metric)
     sgn = 1.0 if (brief.direction if brief is not None else direction) == 0 else float(
@@ -1347,8 +1562,7 @@ def read_knob_practice(
             large_floors.append(f_lg)
             if v_sm is None or v_lg is None:
                 continue
-            ok_agree, _ratio = lv.agree(v_sm, v_lg, max(f_sm, f_lg), met in ("odds", "own"))
-            if not ok_agree:
+            if disagreements(res_sm, res_lg, ["knob"], ro):  # the weight path's rule, every read-out on
                 unstable_count += 1
                 continue
             small_vals.append(v_sm)
@@ -1436,7 +1650,7 @@ def write_knob_practice(
     if not items:
         raise KnobRefused("write_knob_practice requires at least one item.")
     knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=brief.allowed_layers)
-    _refuse_parts_that_cannot_act(knob, brief, written=True)
+    _refuse_parts_that_cannot_act(knob, brief, written=True, vocab_size=int(h.W_U.shape[0]))
     n_ctl = int(controls) if knob.steering_resolved else 0
     ctl_list = _draw_steering_controls(h, knob.steering_resolved, n_ctl, seed=int(seed)) if n_ctl > 0 else []
     bias = knob.decoding.get("logit_bias")
@@ -1500,12 +1714,127 @@ class _ClaimPlan:
     written: bool
     families: Tuple[str, ...]
     C: int
-    eq_edit: Optional[we.Edit]  # neuron_mul: the weight edit whose arithmetic the knob is
+    eq_edit: Optional[we.Edit]  # neuron_mul: the weight edit whose arithmetic the knob is (its twin)
     mirror: Optional[Tuple[Tuple[ResolvedSteerTerm, ...], Optional[Dict[str, float]]]]
     tol: float
     rows: Dict[str, int]
     written_rows: int
     design: Dict[str, Any]
+    chunk: int = 0  # written: how many controls a written weight claim draws in one chunk (`level_claim._written_rows`)
+
+
+# How many renderings of one generator's split `longest_items` reads through for its longest items. A split with more
+# cannot be read through before a claim is registered, so a knob whose text changes the items is refused on it.
+LONGEST_SPLIT_MAX = 100_000
+_LONGEST_KEPT: Dict[str, List[lv.Item]] = {}
+
+
+def _split_longest(h: lv.Handle, gen: lbr.FrameGenerator, split: str, system_override: Optional[str],
+                   what: str) -> List[lv.Item]:
+    """For each frame of `gen`'s `split`, its longest rendering by word-pieces, made as the draw makes it
+    (`FrameGenerator.draw`: the templates filled, `system_override` or the frame's own system turn): every rendering
+    is read through, so none is longer. Kept by the generator's content, so a split is read through once a process."""
+    key = hashlib.sha256(lb.canonical({"gen": gen.to_dict(), "split": split, "system": system_override,
+                                       "tokenizer": str(getattr(h.tokenizer, "name_or_path", ""))})).hexdigest()
+    if key in _LONGEST_KEPT:
+        return list(_LONGEST_KEPT[key])
+    if gen.capacity(split) > LONGEST_SPLIT_MAX:
+        raise KnobRefused(
+            f"The {what} the claim draws from ({gen.name}, {split}) have {gen.capacity(split)} renderings, more than the "
+            f"{LONGEST_SPLIT_MAX} read through for the longest before a claim is registered, so it cannot be told "
+            "before registering that every item the claim may draw can be read with the knob's text. Claim it "
+            "without a prompt or a thinking setting, or on a brief with fewer renderings. Nothing was registered.")
+    out: List[lv.Item] = []
+    for fr in gen.frames_for(split):
+        phs = sorted(set(lbr._SLOT_RE.findall(fr.question_tpl) + lbr._SLOT_RE.findall(fr.answer_tpl)))
+        sys_turn = system_override if system_override is not None else fr.system
+        best: Optional[lv.Item] = None
+        for vals in itertools.product(*[gen.slots[p] for p in phs]):
+            sl = dict(zip(phs, vals))
+            try:
+                it = lv.make_item(h.tokenizer, fr.question_tpl.format(**sl), fr.answer_tpl.format(**sl),
+                                  system=sys_turn, name=f"longest_{fr.id}")
+            except lv.Refused:
+                continue  # the draw cannot make it either: it is no item a claim reads
+            if best is None or len(it.ids) > len(best.ids):
+                best = it
+        if best is not None:
+            out.append(best)
+    _LONGEST_KEPT[key] = list(out)
+    return out
+
+
+def _panel_longest(h: lv.Handle) -> List[lv.Item]:
+    """The longest item of each form the labelled panel draws (`level_briefs.draw_labelled_sanity_panel`: a sum of two
+    numbers from 11 to 88, a product of two from 3 to 14, and each of `PANEL_FACTS`), every one of them read through."""
+    key = "panel:" + str(getattr(h.tokenizer, "name_or_path", ""))
+    if key in _LONGEST_KEPT:
+        return list(_LONGEST_KEPT[key])
+    forms = {
+        "sum": [(f"Compute {a} + {b}. Reply with the number.", str(a + b)) for a in range(11, 89) for b in range(11, 89)],
+        "product": [(f"Compute {a} * {b}. Reply with the number.", str(a * b)) for a in range(3, 15) for b in range(3, 15)],
+        "fact": [(str(q), str(a)) for q, a in lbr.PANEL_FACTS],
+    }
+    out: List[lv.Item] = []
+    for kind, pairs in forms.items():
+        made = [lv.make_item(h.tokenizer, q, a, name=f"longest_panel_{kind}") for q, a in pairs]
+        out.append(max(made, key=lambda it: len(it.ids)))
+    _LONGEST_KEPT[key] = list(out)
+    return out
+
+
+def longest_items(h: lv.Handle, brief: lbr.Brief) -> Dict[str, List[lv.Item]]:
+    """The longest items a fresh claim of `brief` can draw, a list a source (one a frame, or a form of the panel): its
+    kept-back target frames and near misses (under the brief's system turn, as the claim draws them), the neutral
+    battery and the labelled panel. What a knob's text is tried on before a claim is registered (`_claim_plan`)."""
+    sys_ovr = (brief.chat_settings or {}).get("system")
+    return {
+        "target": _split_longest(h, brief.generator, "kept_back", sys_ovr, "target items"),
+        "near_misses": _split_longest(h, brief.near_miss_generator, "kept_back", sys_ovr, "near misses"),
+        "neutral_text": _split_longest(h, lbr.neutral_chat_generator(), "kept_back", None, "neutral items"),
+        "labelled_panel": _panel_longest(h),
+    }
+
+
+def _prepass_written_item(h: lv.Handle, it: lv.Item, knob: KnobSpec, brief: lbr.Brief) -> lv.Item:
+    """An item as a written weight claim's matched pre-pass reads it (`levelling._score_sites` over `Item.prompt_ids`,
+    thinking off): the item as drawn, or, under a knob's prompt, the item made again with the prompt added to its
+    system turn, thinking still off."""
+    if knob.prompt is None:
+        return it
+    b_sys, _think = _settings_of(brief)
+    ref_sys = it.system if it.system is not None else b_sys
+    return _retokenised(h, it, knob_system_turn(knob, ref_sys), False, "the knob (the matched draw's pre-pass)")
+
+
+def _refuse_too_long(h: lv.Handle, brief: lbr.Brief, knob: KnobSpec, written: bool) -> None:
+    """Refused before registering: a knob whose text (its prompt, or a thinking setting that is not the brief's) makes
+    the longest item the claim can draw too long to read, fresh or battery, as the claim would make it under the knob
+    (`ref_and_knob_items`, `_prepass_written_item`, `battery_items`). A knob that changes no item's text has nothing to
+    try."""
+    changes_targets = knob.prompt is not None or ("thinking" in knob.decoding and not written)
+    if not changes_targets:  # a written reading's pre-pass is read with thinking off, whatever the knob's setting
+        return
+    longest = longest_items(h, brief)
+    tries: List[Tuple[str, lv.Item, Any]] = []
+    if changes_targets:
+        for it in longest["target"]:
+            tries.append(("kept-back target item", it,
+                          (lambda x: _prepass_written_item(h, x, knob, brief)) if written else
+                          (lambda x: ref_and_knob_items(h, x, knob, brief))))
+    if knob.prompt is not None:
+        for src in ("near_misses", "neutral_text", "labelled_panel"):
+            for it in longest[src]:
+                tries.append((f"{src} battery item", it, lambda x: battery_items(h, x, knob)))
+    for what, it, make in tries:
+        try:
+            make(it)
+        except (KnobRefused, lv.Refused) as exc:
+            raise KnobRefused(
+                f"With this knob's text the longest {what} the claim can draw cannot be read ({exc}): every fresh and "
+                "battery item a claim may draw is tried before it is registered, so a reading is not spent on items "
+                "too long to read. Shorten the knob's prompt. Nothing was registered."
+            ) from None
 
 
 def _claim_plan(
@@ -1539,7 +1868,7 @@ def _claim_plan(
             "along random directions: a knob that mixes neuron_mul with direction or neuron_add terms has no one "
             "family of controls, so it is refused. Claim the parts as knobs of their own."
         )
-    _refuse_parts_that_cannot_act(knob, brief, written=written)
+    _refuse_parts_that_cannot_act(knob, brief, written=written, vocab_size=int(h.W_U.shape[0]))
     C = controls_override if controls_override is not None else brief.default_controls
     for what, n, least in (("n_target", n_target, 2 * int(min_frames_per_half)), ("n_neutral", n_neutral, 1),
                            ("n_near", n_near, 1), ("n_panel", n_panel, 1), ("controls a family", C, 1)):
@@ -1579,31 +1908,35 @@ def _claim_plan(
         families = ("random_directions",)
     mirror = _mirror_of(knob) if brief.direction != 0 else None
     if knob.prompt is not None:
-        hit = lbr.KeptBack([brief], batteries=True).hit(knob.prompt)
+        # the practice gates' own guard (every starter brief's kept-back frames, the bound brief's, the batteries'
+        # questions), asked of the system turn every item is read with: the brief's, with the prompt after it
+        hit = kept_back_guard(h.tokenizer, brief).hit(_settings_of(brief)[0], knob.prompt)
         if hit is not None:
             whose = "of the retention batteries" if hit["brief"] == lbr.BATTERIES else f'of brief "{hit["brief"]}"'
             raise KnobRefused(
                 f"The knob's prompt holds the {hit['how']} of a kept-back frame {whose} ({hit['frame']}): it would "
-                "stand in the system turn of every fresh item, so the reading would not be on fresh frames."
+                "stand in the system turn of every fresh item, so the reading would not be on fresh frames, and "
+                "another brief's frames would be read outside a fresh reading of that brief."
             )
-    # a prompt or a thinking setting that cannot be made into an item is refused here, before anything is registered
-    sample = brief.generator.draw("practice", 1, seed_bytes=b"preflight_knob", tokenizer=h.tokenizer,
-                                  system_override=(brief.chat_settings or {}).get("system"))
-    if sample:
-        if written:
-            _written_ids(h, sample[0].item, knob, brief)
-        ref_and_knob_items(h, sample[0].item, knob, brief)
+    # a prompt or a thinking setting that makes an item the claim can draw too long to read is refused here, before
+    # anything is registered: the longest fresh and battery items are tried under the knob
+    _refuse_too_long(h, brief, knob, written)
+    # a written weight claim draws its controls in chunks of this many, chunk k from its own seed
+    chunk = lcl._written_rows(int(w_rows), 3 if brief.direction != 0 else 2)[1] if written else 0
     design = {
         "n_target": int(n_target), "n_neutral": int(n_neutral), "n_near": int(n_near), "n_panel": int(n_panel),
         "rows": {k: int(v) for k, v in rows_cfg.items()}, "written_rows": int(w_rows),
         "controls_per_family": int(C), "control_families": list(families), "match_tolerance": float(tol),
         "reversed": mirror is not None, "settings": {"system": _settings_of(brief)[0], "thinking": _settings_of(brief)[1]},
+        "twin_edit_id": eq_edit.id if eq_edit is not None else None,
     }
     if written:
         design["loop_rule"] = lbr.loop_rule_of(brief)
+        design["control_chunk"] = int(chunk)
+        design["seeds"] = written_seeds(brief)
     return _ClaimPlan(knob=knob, written=written, families=families, C=int(C), eq_edit=eq_edit, mirror=mirror,
                       tol=float(tol), rows={k: int(v) for k, v in rows_cfg.items()}, written_rows=int(w_rows),
-                      design=design)
+                      design=design, chunk=int(chunk))
 
 
 def _price(h: lv.Handle, brief: lbr.Brief, plan: _ClaimPlan) -> Dict[str, Any]:
@@ -1628,8 +1961,12 @@ def _price(h: lv.Handle, brief: lbr.Brief, plan: _ClaimPlan) -> Dict[str, Any]:
     if plan.written:
         wcfg = dict(brief.written_config or {})
         m_new = int(wcfg.get("max_new_tokens", 128))
-        n_seeds = max(1, len(wcfg.get("seeds") or [1, 2]))
-        dec = int(d["n_target"]) * n_seeds * (1 + math.ceil(n_arms / plan.written_rows))
+        n_seeds = len(written_seeds(brief))
+        # the base batch, the knob's own untouched rows when its text or sampler is not the base's, and the batches
+        # of arms, each with its two untouched rows (`_eval_written_arms`)
+        own_ref = 1 if (plan.knob.prompt is not None or "thinking" in plan.knob.decoding
+                        or "sampler" in plan.knob.decoding) else 0
+        dec = int(d["n_target"]) * n_seeds * (1 + own_ref + math.ceil(n_arms / max(1, plan.written_rows - 2)))
         fwds += dec
         secs += dec * m_new * 0.095
     else:
@@ -1671,25 +2008,50 @@ def _draw_claim_controls(
     seed_u32: int,
 ) -> Tuple[Optional[Dict[str, List[Program]]], Optional[Dict[str, Any]], Optional[str], int]:
     """The claim's controls, a family each ({family: [program, ...]}), the matched draw's coverage, why they could not
-    be drawn (or None), and the forwards the draw took. A neuron_mul knob's are its weight edit's: other sites drawn
-    by the weight path's matched draw on a base pre-pass over `score_items` (the items as the knob reads them), and
-    same-site random directions, each read as a `weight_edits.Arm`. A push's are pushes along random directions."""
+    be drawn (or None), and the forwards the draw took. A neuron_mul knob's are its weight edit's, drawn as a weight
+    claim of that edit draws them: other sites by the weight path's matched draw on a base pre-pass over
+    `score_items`, and same-site random directions, each read as a `weight_edits.Arm`. On a paired brief the two are
+    drawn at the claim's seed and the seed after it (`level_claim.run_fresh_claim`); on a written brief in chunks of
+    `plan.chunk`, chunk k of the matched draw at seed + 97k and of the same-site draw at seed + 1000 + 97k
+    (`level_claim._run_written_target_claims`). A push's are pushes along random directions."""
     if plan.eq_edit is not None:
         kind = "written" if plan.written else "paired"
         scores = lv._score_sites(h, plan.eq_edit, list(score_items), kind)
-        matched, cov = we.matched_control_edits(plan.eq_edit, h.lm, scores, int(seed_u32), plan.C, tolerance=plan.tol)
-        cov_clean = lv._clean(cov)
-        for term in (cov_clean.get("terms") or ()) if isinstance(cov_clean, dict) else ():
-            if isinstance(term, dict):
-                term.pop("edit_scores", None)
-        if matched is None:
-            return None, cov_clean, (
-                f"Matched controls requested {cov.get('requested')} distinct control sets within factor "
-                f"{cov.get('tolerance')} of expected delivered magnitude, but only {cov.get('found')} were available "
-                "on these items."), len(score_items)
-        same = we.same_site_controls(plan.eq_edit, h.lm, int(seed_u32) + 1, plan.C)
-        return ({"other_sites_matched": [we.Arm(e, 1.0) for e in matched],
-                 "same_site": [we.Arm(e, 1.0) for e in same]}, cov_clean, None, len(score_items))
+        if plan.written:
+            parts = []
+            done, k = 0, 0
+            while done < plan.C:
+                take = min(max(1, plan.chunk), plan.C - done)
+                parts.append((k, take))
+                done += take
+                k += 1
+        else:
+            parts = [(0, plan.C)]
+        matched_all: List[we.Edit] = []
+        same_all: List[we.Edit] = []
+        cov_clean: Any = None
+        for k, take in parts:
+            s_matched = int(seed_u32) + (97 * k if plan.written else 0)
+            matched, cov = we.matched_control_edits(plan.eq_edit, h.lm, scores, s_matched, take, tolerance=plan.tol)
+            if cov_clean is None:
+                cov_clean = lv._clean(cov)
+                for term in (cov_clean.get("terms") or ()) if isinstance(cov_clean, dict) else ():
+                    if isinstance(term, dict):
+                        term.pop("edit_scores", None)
+                if plan.written and isinstance(cov_clean, dict):
+                    cov_clean["chunks"] = len(parts)  # the first chunk's coverage, of this many
+            if matched is None:
+                return None, cov_clean, (
+                    f"Matched controls requested {cov.get('requested')} distinct control sets within factor "
+                    f"{cov.get('tolerance')} of expected delivered magnitude, but only {cov.get('found')} were "
+                    "available on these items" + (f" (chunk {k} of {len(parts)})." if plan.written else ".")
+                ), len(score_items)
+            matched_all += list(matched)
+        for k, take in parts:
+            s_same = int(seed_u32) + (1000 + 97 * k if plan.written else 1)
+            same_all += list(we.same_site_controls(plan.eq_edit, h.lm, s_same, take))
+        return ({"other_sites_matched": [we.Arm(e, 1.0) for e in matched_all],
+                 "same_site": [we.Arm(e, 1.0) for e in same_all]}, cov_clean, None, len(score_items))
     pushes = _draw_steering_controls(h, plan.knob.steering_resolved, plan.C, seed=int(seed_u32))
     return {"random_directions": list(pushes)}, None, None, 0
 
@@ -1706,12 +2068,13 @@ def _battery_classes(
 ) -> Dict[str, Any]:
     """One retention battery read under `knob` in both batch classes, as a weight claim reads its batteries:
     {"void", "forwards", "given", "classes": {cls: {"mean", "abs_mean", "own_mean", "kl_mean", "n_read"}}}. Each item
-    is read against the base row under the brief's chat settings (`ref_and_knob_items`)."""
+    is read as the bars were calibrated (`battery_items`: as drawn, thinking off), whatever the brief's thinking
+    setting, against the base row read the same way."""
     arm = [("knob", knob.steering_resolved or None, knob.decoding.get("logit_bias"))]
     forwards = 0
     per: Dict[str, Dict[str, List[float]]] = {c: {"m": [], "own": [], "kl": []} for c in rows}
     for it in items:
-        ref, kit = ref_and_knob_items(h, it, knob, brief)
+        ref, kit = battery_items(h, it, knob)
         for cls, R in rows.items():
             res = _eval_paired_arms(h, ref, kit, arm, readouts, metric, int(R), anchor)
             forwards += int(res.get("forwards", 0))
@@ -1833,6 +2196,7 @@ def render_knob_sheet(
     """Render a bounded, plain-spoken Knob Claim Sheet (zero kept-out words): what was read, what its controls are
     and are not matched on, what the verdict came from, and what a weight claim reads that this one does not."""
     st = summary.get("settings") or {}
+    written = brief.metric == "written_loop"
     lines = [
         f"# Cheaper-Knob Claim Sheet — {brief.name}",
         f"- Verdict: **{verdict}**",
@@ -1843,43 +2207,58 @@ def render_knob_sheet(
         f"- Brief: `{brief.short()}` (`{brief.metric}`, least effect M = {brief.least_effect:g}), bars `{bars.short()}` "
         f"(alpha = {bars.alpha:g}); judged by {lcl.RULE_PRESET} v{lcl.RULE_VERSION} (level_claim.judge_claim)",
         f"- Book: `{meta.get('book_name')}` ({'default level book' if meta.get('is_default_book') else 'side book'})",
-        f"- Read under the brief's chat settings: system turn {'set' if st.get('system') else 'none'}, thinking "
-        f"{'on' if st.get('thinking') else 'off'}; the knob's prompt is added to that system turn and its thinking "
-        "setting, when it has one, replaces the brief's",
+        f"- Target items read under the brief's chat settings: system turn {'set' if st.get('system') else 'none'}, "
+        f"thinking {'on' if st.get('thinking') else 'off'}; the knob's prompt is added to that system turn and its "
+        f"thinking setting, when it has one, replaces the brief's. {BATTERIES_READ_SAY[0].upper()}{BATTERIES_READ_SAY[1:]}",
     ]
+    if summary.get("twin_edit_id"):
+        lines.append(f"- The weight edit whose arithmetic this knob is: `{str(summary['twin_edit_id'])[:12]}`. It and this "
+                     "knob are read once between them on this brief in this book, and a trial of the edit follows this "
+                     "claim only when it read a lead with the edit's arithmetic and nothing else")
     if knob.prompt is not None:
         lines.append(f"- Prompt part: {len(knob.prompt)} chars (sha256 `{hashlib.sha256(knob.prompt.encode('utf-8')).hexdigest()[:12]}`)")
     if knob.decoding:
         lines.append(f"- Decoding part: `{json.dumps(knob.decoding, sort_keys=True)}`")
     for i, t in enumerate(knob.steering_resolved):
         lines.append(f"- Steering term {i}: {steering_words(t)}")
-    lines.append(
-        f"- Target effect (directed): small = {summary.get('small_directed')}, large = {summary.get('large_directed')}, "
-        f"house bar = {summary.get('house_bar')} (floor {summary.get('floor_worst')}), replicated = {summary.get('replicated')}"
-    )
+    if written:
+        lines.append(
+            f"- Target effect (directed, the written class): {summary.get('large_directed')}, house bar = "
+            f"{summary.get('house_bar')} (a written reading has no noise floor), replicated = {summary.get('replicated')}. "
+            f"{WRITTEN_UNTOUCHED_SAY[0].upper()}{WRITTEN_UNTOUCHED_SAY[1:]}"
+        )
+    else:
+        lines.append(
+            f"- Target effect (directed): small = {summary.get('small_directed')}, large = {summary.get('large_directed')}, "
+            f"house bar = {summary.get('house_bar')} (floor {summary.get('floor_worst')}), replicated = "
+            f"{summary.get('replicated')}"
+        )
     rv = summary.get("reversed") or {}
     if rv:
         lines.append("- Reversed read: " + ", ".join(f"{c} = {_fmt(v.get('directed'))}" for c, v in rv.items())
                      + f" (directed; it fails when it reaches the house bar). {REVERSED_SAY}")
     lines.append(f"- Controls ({summary.get('controls_per_family')} a family; {CONTROLS_SHARE_SAY}). "
-                 f"{CONTROL_RULE_SAY}:")
+                 f"{control_rule_words(written)}:")
+    tol_now = float(summary.get("match_tolerance") or lv.DEFAULT_MATCH_TOL)
     for fam in summary.get("control_families") or ():
-        lines.append(f"  - {fam}: {CONTROL_FAMILY_SAY[fam].format(tol=float(summary.get('match_tolerance') or lv.DEFAULT_MATCH_TOL))}")
+        lines.append(f"  - {fam}: " + control_family_words(fam, tol=tol_now, written=written,
+                                                            chunk=summary.get("control_chunk"),
+                                                            prompt=knob.prompt is not None))
         for cls, by_fam in (summary.get("control_standing") or {}).items():
             cs = by_fam.get(fam) or {}
             lines.append(f"    {cls}: {cs.get('at_least')} of {cs.get('count')} moved the metric as much "
                          f"(p_fw = {_fmt(cs.get('p_fw'))}, passes = {cs.get('passes_alpha')})")
     bats = summary.get("batteries") or {}
     lines.append(
-        f"- Retention batteries (both batch classes, the larger figure kept): neutral KL = {bats.get('neutral_kl')} "
-        f"(bar <= {bars.neutral_kl_max:g}); near-miss size = {bats.get('near_miss_abs')} (bar <= "
+        f"- Retention batteries (teacher-forced, both batch classes, the larger figure kept): neutral KL = "
+        f"{bats.get('neutral_kl')} (bar <= {bars.neutral_kl_max:g}); near-miss size = {bats.get('near_miss_abs')} (bar <= "
         f"{bars.near_miss_abs_max:g}; ratio to the effect = {bats.get('near_miss_ratio')}, bar <= "
         f"{bars.near_miss_ratio_max:g}); panel KL = {bats.get('panel_kl')} (bar <= {bars.panel_kl_max:g}), panel own "
         f"drop = {bats.get('panel_own_drop')} (bar <= {bars.panel_own_drop_max:g}); habitat: not run (no atlas passages "
         f"index mounted); gating: {', '.join(bars.gating_batteries)}"
     )
-    lines.append(f"- {STRICTER_SAY}")
-    lines.append("- Not read for a knob claim: " + "; ".join(summary.get("not_read") or NOT_READ_SAY))
+    lines.append(f"- {stricter_words(written)}")
+    lines.append("- Not read for a knob claim: " + "; ".join(summary.get("not_read") or not_read_words(brief, knob)))
     if summary.get("reasons"):
         lines.append(f"- Reasons: {'; '.join(str(r) for r in summary['reasons'])}")
     lines.append(f"- Cost: {meta.get('forwards')} forward(s), {meta.get('seconds')} s; base verified untouched before and after.")
@@ -1913,12 +2292,14 @@ def run_fresh_knob_claim(
     """Run one registered fresh cheaper-knob claim on `brief`'s kept-back frames and calibrated `bars`.
 
     1. Refuse, before anything is registered, what `_claim_plan` refuses, and what the weight path's own gate
-       refuses (`level_claim.fresh_reading_gate`, what="knob": one budget with weight claims and trials).
+       refuses (`level_claim.fresh_reading_gate`, what="knob": one budget with weight claims and trials, and a
+       neuron_mul knob read once with the weight edit whose arithmetic it is, its twin).
     2. Register (`knob_claim_registration`), then draw from `os.urandom(32)`: kept-back items refusing those seen in
        practice, near misses, neutral and panel items.
-    3. Read the knob, its reverse and its controls on the target items in both batch classes (or written), and the
-       batteries in both classes; judge with `level_claim.judge_claim` and the knob gate's stricter rules
-       (`_stricter`); write the verdict (`knob_claim_verdict`) and the sheet."""
+    3. Read the knob, its reverse and its controls on the target items in both batch classes (or written), keeping
+       an item whose classes agree by the weight path's rule (`disagreements`), and the batteries in both classes as
+       the bars were calibrated (`battery_items`); judge with `level_claim.judge_claim` and the knob gate's stricter
+       rules (`_stricter`); write the verdict (`knob_claim_verdict`) and the sheet."""
     we.assert_base(h.lm, h.hooks_at_load)
     if bars.brief_id != brief.id:
         raise KnobRefused(f"BarSet {bars.short()} is for brief {bars.brief_id[:12]}, not {brief.short()}.")
@@ -1930,8 +2311,9 @@ def run_fresh_knob_claim(
                        n_panel=n_panel, rows=rows, written_rows=written_rows, controls_override=controls_override,
                        match_tolerance=match_tolerance, min_frames_per_half=bars.min_frames_per_half)
     knob = plan.knob
+    twin_id = plan.eq_edit.id if plan.eq_edit is not None else None
     try:
-        gate = lcl.fresh_reading_gate(h, brief, bars, None, bk, what="knob", knob_id=knob.id,
+        gate = lcl.fresh_reading_gate(h, brief, bars, None, bk, what="knob", knob_id=knob.id, twin_edit_id=twin_id,
                                       practice_item_ids=practice_item_ids, practice_frame_ids=practice_frame_ids)
     except lcl.ClaimRefused as exc:
         raise KnobRefused(str(exc)) from None
@@ -1954,6 +2336,8 @@ def run_fresh_knob_claim(
         "knob_id": knob.id,
         "knob": knob.to_dict(),
         "knob_classes": list(knob.knob_classes),
+        # a neuron_mul knob's twin, read once with it (`level_claim.brief_history` counts it among the edits read)
+        "twin_edit_id": twin_id,
         "reading_index": reading_index,
         "max_fresh_readings": int(brief.max_fresh_readings),
         "rule_preset": lcl.RULE_PRESET,
@@ -1970,7 +2354,8 @@ def run_fresh_knob_claim(
         "book": gate["book"],
         "book_fresh_readings": dict(hist["book_fresh_readings"]),
         "prior_verdicts": [
-            {"seq": v["seq"], "edit_id": v.get("edit_id"), "knob_id": v.get("knob_id"), "verdict": v.get("verdict"),
+            {"seq": v["seq"], "edit_id": v.get("edit_id"), "knob_id": v.get("knob_id"),
+             "twin_edit_id": v.get("twin_edit_id"), "verdict": v.get("verdict"),
              "reading_index": v.get("reading_index"), "brief_id": v.get("brief_id")}
             for v in hist["verdicts"]
         ],
@@ -2028,8 +2413,8 @@ def run_fresh_knob_claim(
         if void_reason is None:
             try:
                 if plan.written:
-                    score_items = [lv.item_from_ids(_written_ids(h, dd.item, knob, brief)[1], dd.item.answer_ids,
-                                                    name=dd.item.name) for dd in target_drawn]
+                    # as a written weight claim's matched pre-pass reads them: each item's prompt, thinking off
+                    score_items = [_prepass_written_item(h, dd.item, knob, brief) for dd in target_drawn]
                 else:
                     pairs = {dd.item.name: ref_and_knob_items(h, dd.item, knob, brief) for dd in target_drawn}
                     score_items = [pairs[dd.item.name][1] for dd in target_drawn]
@@ -2084,8 +2469,9 @@ def run_fresh_knob_claim(
                 floors["large"].append(f_l)
                 if v_s is None or v_l is None:
                     continue
-                ok_agree, _ratio = lv.agree(v_s, v_l, max(f_s, f_l), metric in ("odds", "own"))
-                if not ok_agree:
+                # the weight path's rule: every read-out on, the knob's arm and its reversed read
+                if disagreements(got_cls["small"], got_cls["large"],
+                                 ["knob"] + (["reversed"] if plan.mirror is not None else []), brief.readouts):
                     unstable_n += 1
                     continue
                 kept_drawn.append(dd)
@@ -2132,6 +2518,7 @@ def run_fresh_knob_claim(
                 "bars_sha256": bars.id,
                 "knob_id": knob.id,
                 "knob_classes": list(knob.knob_classes),
+                "twin_edit_id": twin_id,
                 "reading_index": reading_index,
                 "max_fresh_readings": int(brief.max_fresh_readings),
                 "registration_seq": int(reg_entry["seq"]),
@@ -2175,11 +2562,11 @@ def run_fresh_knob_claim(
     hb = (jcls.get(cls_names[-1]) or {}).get("house_bar") or {}
     harm_reasons = [f"{b}: {v}" for b, v in jbat.items() if v.get("gating") and not v.get("passed")]
     harm_reasons += [a for a in added if "harm" in a]
-    not_read = list(NOT_READ_SAY) + ([NOT_READ_WRITTEN_SAY] if plan.written else []) \
-        + ([NOT_READ_SAMPLER_SAY] if "sampler" in knob.decoding else [])
+    not_read = not_read_words(brief, knob)
     summary = {
         "verdict": verdict,
         "reasons": reasons,
+        "twin_edit_id": twin_id,
         "n_target_asked": int(d["n_target"]),
         "n_target_read": n_kept,
         "unstable_target": unstable_n,
@@ -2197,6 +2584,7 @@ def run_fresh_knob_claim(
         "controls_applicable": True,
         "controls_per_family": plan.C,
         "control_families": list(plan.families),
+        "control_chunk": plan.chunk if plan.written else None,
         "match_tolerance": plan.tol,
         "control_standing": {c: dict((jcls.get(c) or {}).get("controls") or {}) for c in cls_names} if jcls else None,
         # each control's mean over the items kept, as judged (None: it did not read on every item, and is counted
@@ -2241,6 +2629,7 @@ def run_fresh_knob_claim(
         "bars_sha256": bars.id,
         "knob_id": knob.id,
         "knob_classes": list(knob.knob_classes),
+        "twin_edit_id": twin_id,
         "reading_index": reading_index,
         "max_fresh_readings": int(brief.max_fresh_readings),
         "registration_seq": int(reg_entry["seq"]),
@@ -2257,6 +2646,7 @@ def run_fresh_knob_claim(
         "brief_name": brief.name,
         "knob_id": knob.id,
         "knob_classes": list(knob.knob_classes),
+        "twin_edit_id": twin_id,
         "reading_index": reading_index,
         "max_fresh_readings": int(brief.max_fresh_readings),
         "verdict": verdict,

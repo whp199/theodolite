@@ -2578,13 +2578,22 @@ def run_trial_of_record(
     rows_cfg = dict(trial_cfg["rows"])
     tol = float(trial_cfg["match_tolerance"])
     reading_index = int(gate["reading_index"])
-    src = next((v for v in reversed(hist["verdicts"]) if v.get("edit_id") == edit.id), None)
+    # The claim this trial follows: the edit's own, or the claim of a cheaper knob that is this edit's arithmetic
+    # (a neuron_mul knob's weight-edit twin, `level_knobs`), which the gate lets a trial follow only at dose 1
+    def _reads_this_edit(v: Mapping[str, Any]) -> bool:
+        return v.get("edit_id") == edit.id or v.get("twin_edit_id") == edit.id
+
+    src = next((v for v in reversed(hist["verdicts"]) if _reads_this_edit(v)), None)
     source_claim = ({"seq": int(src["seq"]), "verdict": src.get("verdict"), "reading_index": src.get("reading_index")}
                     if src else None)
-    src_reg = next((r for r in hist["registrations"] if r.get("edit_id") == edit.id), None)
+    src_reg = next((r for r in hist["registrations"] if _reads_this_edit(r)), None)
     practice_best = _clean_float((src_reg or {}).get("practice_best"))
     if source_claim is not None:
-        source_claim["main_dose"] = _clean_float((src_reg or {}).get("main_dose"))
+        if (src_reg or {}).get("knob_id"):
+            source_claim["knob_id"] = src_reg.get("knob_id")
+            source_claim["main_dose"] = 1.0  # a knob twin reads its edit's arithmetic at dose 1
+        else:
+            source_claim["main_dose"] = _clean_float((src_reg or {}).get("main_dose"))
     kb_frames = brief.generator.frames_for("kept_back")
     published = lbr.published_template_ids(h.tokenizer)
     kept_back_note = {"frames": len(kb_frames),

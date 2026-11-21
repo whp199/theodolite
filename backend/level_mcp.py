@@ -570,8 +570,8 @@ def serve_stdio(session: lses.LevelSession) -> int:
 
 SOCKET_NAME = "door.sock"
 AF_UNIX_PATH_MAX = 107  # bytes a socket's path may take on Linux: sun_path holds 108, the last for its closing NUL
-DRAIN_GRACE_S = 120.0  # past the session's remaining wall-clock seconds, how long a closing bridge waits for a call
 CLOSING_WORDS = "the session is closing: the door takes no more calls."
+ERROR_WORDS_MAX = 2000  # characters of a failed or refused call's own words kept in its record (a claim's refusal)
 
 
 def _within(p: Path, root: Path) -> bool:
@@ -609,6 +609,7 @@ def _call_facts(name: str, args: Mapping[str, Any], out: Any) -> Dict[str, Any]:
         return {}
     if name == "cell":
         return {"files_written": [str(f.get("rel_path")) for f in (out.get("files_written") or [])][:50],
+                "removed": [str(r.get("rel_path")) for r in (out.get("removed") or [])][:50],
                 "cell_ok": bool(out.get("ok")), "stopped": bool(out.get("stopped"))}
     if name == "capture":
         return {"files_written": [str(out.get("rel_path"))]}
@@ -625,18 +626,20 @@ class SocketBridge:
     """`session` served over a private AF_UNIX socket to a CLI driver's stdio MCP child (`level_mcp.py --socket
     <path>`), so the child reaches the model a study has already loaded.
 
-    - The socket (`path`) sits in a new mode-0700 folder of its own (`_private_socket_dir`), is mode 0600 from bind,
-      and goes, with its folder, on `close`.
+    - The socket (`path`) sits in a new mode-0700 folder of its own (`_private_socket_dir`), so no other user can
+      reach it whatever its own mode; it is made 0600 once bound (the process's umask is never changed: it is the
+      whole process's, not this thread's), and goes, with its folder, on `close`.
     - One door call at a time, whatever connection it comes on, so each call's budget checks see every call before it.
     - `close` takes no more calls (one that comes after is answered with an error), kills a cell that is running
-      (`level_sandbox.stop_cells`) and waits for a model reading that is running, for the session's remaining
-      wall-clock seconds and `DRAIN_GRACE_S` more (or `drain_seconds`), so what that call puts in the book or the work
-      folder is there before an outcome is read. `calls` lists every call that reached the door; `close` returns what
-      was running at the stop and how it ended."""
+      (`level_sandbox.stop_cells`), and waits for any other call that is running until it ends, with no bound: a
+      reading on the model always ends, and one cut off, or a book read before its lines land, would record a claim
+      as no submission while its fresh reading was spent. So what the call puts in the book or the work folder is
+      there before an outcome is read. `calls` lists every call that reached the door; `close` returns what was
+      running at the stop, how it ended, and how long the door waited for it and why (`waited_seconds`,
+      `wait_note`)."""
 
-    def __init__(self, session: lses.LevelSession, *, drain_seconds: Optional[float] = None) -> None:
+    def __init__(self, session: lses.LevelSession) -> None:
         self.session = session
-        self.drain_seconds = drain_seconds
         self.dir = _private_socket_dir(session.work_dir)
         self.path = self.dir / SOCKET_NAME
         self.calls: List[Dict[str, Any]] = []
@@ -648,16 +651,13 @@ class SocketBridge:
         self._conns: List[socket.socket] = []
         self._report: Optional[Dict[str, Any]] = None
         srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        prev_umask = os.umask(0o177)
         try:
-            srv.bind(str(self.path))
+            srv.bind(str(self.path))  # inside the 0700 folder: reachable by this user only from the moment it exists
+            os.chmod(self.path, 0o600)
         except OSError:
             srv.close()
             shutil.rmtree(self.dir, ignore_errors=True)
             raise
-        finally:
-            os.umask(prev_umask)
-        os.chmod(self.path, 0o600)
         srv.listen(4)
         srv.settimeout(0.25)
         self._srv = srv
@@ -743,21 +743,13 @@ class SocketBridge:
             if ok:
                 rec.update(_call_facts(name, args if isinstance(args, Mapping) else {}, out))
             else:
-                rec["error"] = text[:300]
+                rec["error"] = text[:ERROR_WORDS_MAX]  # a refused claim's own words, for the driver's outcome
         return _tool_reply(id_, ok, text)
 
-    def _drain_bound(self) -> float:
-        if self.drain_seconds is not None:
-            return max(0.0, float(self.drain_seconds))
-        try:
-            left = float(self.session.status()["remaining"]["wall_seconds"])
-        except Exception:
-            left = float(self.session.budget.max_wall_seconds)
-        return max(0.0, left) + DRAIN_GRACE_S
-
     def close(self) -> Dict[str, Any]:
-        """Stop taking calls, kill a running cell, wait for a running reading (see the class), then remove the socket
-        and its folder. Returns what was running at the stop and how it ended; a second call returns the same."""
+        """Stop taking calls, kill a running cell, wait for any other running call to end, with no bound (see the
+        class), then remove the socket and its folder. Returns what was running at the stop, how it ended, and how
+        long the door waited for it and why; a second call returns the same."""
         if self._report is not None:
             return self._report
         t0 = time.monotonic()
@@ -771,11 +763,21 @@ class SocketBridge:
         except OSError:
             pass
         cells_stopped = ls.stop_cells(self.session.work_dir)
-        bound = self._drain_bound()
-        done = self._call_lock.acquire(timeout=bound)
-        if done:
-            self._call_lock.release()
-            ls.release_cells(self.session.work_dir)
+        with self._call_lock:  # the running call, if any, has ended: a cell killed, anything else let finish
+            pass
+        ls.release_cells(self.session.work_dir)
+        waited = round(time.monotonic() - t0, 3)
+        wait_note: Optional[str] = None
+        if running is not None:
+            tool = str(running.get("tool") or "?")
+            if tool == "cell":
+                how = "it was killed" if running.get("stopped") else "it ended before it could be killed"
+                wait_note = f"A cell was running at the stop: {how}, and the door waited {waited:g} s for it to end."
+            else:
+                ended = "it answered" if running.get("ok") is True else "it failed"
+                wait_note = (f"A {tool} call was running at the stop: the door waited {waited:g} s for it to end "
+                             f"({ended}) before the outcome was read, as a reading is never cut off midway (only a "
+                             "cell is killed), so what it wrote is in the book.")
         with self._state_lock:
             conns = list(self._conns)
         for c in conns:
@@ -792,21 +794,20 @@ class SocketBridge:
             "errors": sum(1 for c in self.calls if c.get("ok") is False),
             "refused_after_stop": int(self.refused_after_stop),
             "running_at_stop": dict(running) if running is not None else None,
-            "still_running": not done,
             "cells_stopped": int(cells_stopped),
-            "waited_seconds": round(time.monotonic() - t0, 3),
-            "wait_bound_seconds": round(bound, 1),
+            "waited_seconds": waited,
+            "wait_note": wait_note,
             "socket_removed": not self.dir.exists(),
         }
         return self._report
 
 
 @contextlib.contextmanager
-def session_socket_bridge(session: lses.LevelSession, *, drain_seconds: Optional[float] = None) -> Iterator[SocketBridge]:
+def session_socket_bridge(session: lses.LevelSession) -> Iterator[SocketBridge]:
     """Serve `session` to a CLI driver's MCP child over a private socket for the life of the block (`SocketBridge`;
-    its `path` is the socket's). Leaving the block closes it: no more calls, a running cell killed, a running reading
-    waited for."""
-    bridge = SocketBridge(session, drain_seconds=drain_seconds)
+    its `path` is the socket's). Leaving the block closes it: no more calls, a running cell killed, any other running
+    call waited for until it ends."""
+    bridge = SocketBridge(session)
     try:
         yield bridge
     finally:

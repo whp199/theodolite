@@ -23,11 +23,15 @@ Supported driver families:
 Hard unattended caps (`verify/arbiter.md` row 34, `verify/skeptic_safety.md:271`), kept during the run:
 - `DriverBudget`: `max_turns`, `max_tokens`, `max_dollars` (owner-approved ceiling required for paid drivers; a study
   passes what it has left), `max_wall_seconds` with process-group `SIGKILL`. Claude Code is also given the dollars as
-  `--max-budget-usd`; an OpenAI-compatible endpoint's dollars are counted at known prices, never at a silent 0.
+  `--max-budget-usd`. An OpenAI-compatible endpoint's dollars are counted at known prices, never at a silent 0, from
+  token counts no lower than the harness's own floor; each request is sent only when an upper bound of its prompt
+  fits what is left, with a completion limit sized to the rest (`run_openai_driver`).
 - `KillSwitch`: file-based (`STOP` file) and event/signal kill switch checked before every turn and subprocess read,
   and every 0.2 s while an endpoint request is out.
+- Every outcome, whatever the driver family, carries `driver_failure`, `stop_reason` and `door` (`{"calls", "ok",
+  "errors"}`, `_extract_outcome_from_book`), and a claim the door refused in its own words (`claim_refused`).
 - A session whose door calls were denied, or none of whose door calls succeeded, ends as `driver_failure`, never as
-  an honest abstention.
+  an honest abstention. One its own cap or STOP ended before it made any door call is not a driver's failure.
 
 Zero kept-out words appear in source, docstrings, prompts, or outputs.
 """
@@ -155,6 +159,22 @@ class KillSwitch:
             signal.signal(signal.SIGINT, prev_int)
 
 
+def _fresh_readings_left(session: lses.LevelSession, brief_card: Mapping[str, Any]) -> Any:
+    """How many of the brief's fresh readings the session's book has left (claims, knob claims and trials spend
+    them alike, `level_claim.brief_history`), or the brief's whole number when the book cannot be read."""
+    m = brief_card.get("max_fresh_readings")
+    brief = getattr(session, "_brief", None)
+    if brief is None or not isinstance(m, int):
+        return m
+    try:
+        from backend import level_claim as lcl
+
+        hist = lcl.brief_history(brief.id, session.book_path, name=brief.name)
+        return max(0, int(m) - int(hist["fresh_count"]))
+    except Exception:  # an unreadable book: the brief's own number, as before
+        return m
+
+
 def build_driver_prompt(
     session: lses.LevelSession,
     *,
@@ -240,7 +260,7 @@ def build_driver_prompt(
             f"Goal: {brief_card.get('driver_text')}",
             f"Metric: {brief_card.get('metric')} (direction={brief_card.get('direction')}, least_effect={brief_card.get('least_effect')}).",
             f"Allowed tensors: {', '.join(brief_card.get('allowed_tensors') or ())}.",
-            f"Fresh readings available in this session: {brief_card.get('max_fresh_readings')}.",
+            f"Fresh readings this book has left for the brief: {_fresh_readings_left(session, brief_card)}.",
             "Call status and brief_info first if needed, explore on practice items, and either submit one candidate or stop and keep the base.",
         ]
     else:
@@ -289,11 +309,21 @@ def _extract_outcome_from_book(
     proposed_knob: Optional[Mapping[str, Any]] = None,
     driver_failure: Optional[str] = None,
     door: Optional[Mapping[str, Any]] = None,
+    claim_refused: Optional[str] = None,
+    extra_usage: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Assemble the canonical `SessionOutcome` from `session` and its verified level book (never trusting driver prose).
 
-    `driver_failure` says, in plain words, why the driver could not work the door (`_door_failure`); `door` is what
-    the door saw of the driver's calls (and, for a CLI driver, what was running when it was stopped)."""
+    Every driver family's outcome carries the same three things a study counts a session by:
+    - `driver_failure`: why the driver could not work the door, in plain words, or None (`_door_failure`);
+    - `stop_reason`: why the run ended;
+    - `door`: what the door saw of the driver's calls, at least `{"calls", "ok", "errors"}` (for a CLI driver also
+      what was running when it was stopped, and how long the door waited for it).
+    `claim_refused` is the door's own words for the last claim it refused, or None; `extra_usage` adds to `usage`
+    (an endpoint's own token figures beside the counted ones)."""
+    door_d = dict(door) if isinstance(door, Mapping) else {}
+    for k in ("calls", "ok", "errors"):
+        door_d[k] = int(door_d.get(k) or 0)
     close_info = session.close()
     ver = lb.verify(session.book_path)
     book_ok = bool(ver["ok"])
@@ -419,6 +449,8 @@ def _extract_outcome_from_book(
         "estimated_dollars": round(float(estimated_dollars), 6),
         "tool_errors": int(tool_errors),
     })
+    if isinstance(extra_usage, Mapping):
+        usage.update(dict(extra_usage))
     return {
         "v": DRIVER_VERSION,
         "finished_at": _utc_now(),
@@ -454,7 +486,8 @@ def _extract_outcome_from_book(
         "proposed_edit": dict(proposed_edit) if isinstance(proposed_edit, Mapping) else None,
         "proposed_knob": dict(proposed_knob) if isinstance(proposed_knob, Mapping) else None,
         "driver_failure": driver_failure,
-        "door": dict(door) if isinstance(door, Mapping) else None,
+        "claim_refused": claim_refused,
+        "door": door_d,
         "notes": notes[:2000],
     }
 
@@ -465,6 +498,16 @@ def _call(session: lses.LevelSession, tool: str, args: Mapping[str, Any]) -> Tup
         return True, lmcp.dispatch_tool(session, tool, args)
     except Exception as exc:
         return False, str(exc)
+
+
+def _plain_ending(stop_reason: str, calls: int, errors: int) -> Tuple[str, Optional[str], Dict[str, int]]:
+    """`(stop_reason, driver_failure, door)` for a driver whose door calls are made in this process, one at a time (a
+    scripted baseline, a replay): what the door saw of them, and whether the driver worked it at all."""
+    door = _door_counts(calls, errors)
+    failure = _door_failure(door["ok"], door["errors"], stop_reason=stop_reason)
+    if failure and stop_reason in ("kept_base_abstention", "error"):
+        stop_reason = "driver_failure"
+    return stop_reason, failure, door
 
 
 def _extract_practice_directed(read_reply: Mapping[str, Any], metric: str, direction: int) -> Optional[float]:
@@ -488,6 +531,14 @@ def _extract_practice_directed(read_reply: Mapping[str, Any], metric: str, direc
                 if isinstance(val, (int, float)):
                     return float(sgn * val)
     return None
+
+
+def _claimable_recipe(recipe: Mapping[str, Any]) -> bool:
+    """Whether the claim gate can take an edit of this recipe: one with at least one term that is not low-rank. An
+    edit of low-rank terms alone has no family of control edits yet, so the gate refuses it
+    (`level_claim.run_fresh_claim`); a baseline that put one forward would end in an error, not an abstention."""
+    terms = (recipe or {}).get("terms") or []
+    return any(isinstance(t, Mapping) and "lowrank" not in t for t in terms)
 
 
 def _practice_floor(read_reply: Mapping[str, Any], metric: str) -> float:
@@ -572,12 +623,15 @@ def run_scripted_weight_driver(
 
     ok_s, st = _step("status", {})
     if not ok_s:
+        stop_e, failure_e, door_e = _plain_ending("error", turns, tool_errors)
         return _extract_outcome_from_book(
             session, driver_family="scripted", driver_model="scripted_weight_v1", face="direct_python",
             reasoning_effort=None, prompt_info=prompt_info, driver_budget=db,
-            stop_reason="error", turns=turns, prompt_tokens=0, completion_tokens=0, reasoning_tokens=0,
+            stop_reason=stop_e, turns=turns, prompt_tokens=0, completion_tokens=0, reasoning_tokens=0,
             estimated_dollars=0.0, tool_errors=tool_errors, notes=f"status failed: {st}",
+            driver_failure=failure_e, door=door_e,
         )
+    claim_refused: Optional[str] = None
     allowed = set(st["harness_card"]["allowed_tools"])
     reach = st["harness_card"]["reach"]
     has_brief = "brief_info" in allowed
@@ -760,7 +814,7 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
                 "controls": {"family": "other_sites", "count": max(1, int(session.budget.min_written_controls)), "seed": int(seed)},
             }
             ok_r, rres = _step("write", {"plan": plan, "items": prac_items})
-            if ok_r and best_cand is None:
+            if ok_r and best_cand is None and _claimable_recipe(edit_recipe):
                 best_cand = edit_recipe
                 best_score = 0.0
         else:
@@ -780,7 +834,9 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
             if ok_r:
                 sc = _extract_practice_directed(rres, metric, direction)
                 fl = _practice_floor(rres, metric)
-                if sc is not None and (best_score is None or sc > best_score):
+                # Practice reads every candidate; the one put forward is the best of those the claim gate can take
+                # (an edit of low-rank terms alone has no control edits yet, and the gate refuses it)
+                if sc is not None and _claimable_recipe(edit_recipe) and (best_score is None or sc > best_score):
                     best_score = sc
                     best_floor = fl
                     best_cand = edit_recipe
@@ -803,11 +859,14 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
             stop_reason = "claimed" if ok_cl else "error"
             if ok_cl:
                 proposed_edit = best_cand
+            else:
+                claim_refused = _refusal_words(cl_res)
         else:
             stop_reason = "kept_base_abstention"
     elif _stopped():
         stop_reason = _stopped() or "killed"
 
+    stop_reason, failure, door = _plain_ending(stop_reason, turns, tool_errors)
     return _extract_outcome_from_book(
         session,
         driver_family="scripted",
@@ -825,6 +884,9 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
         tool_errors=tool_errors,
         notes=f"reach={reach}; evaluated {len(candidates)} candidate(s); best_practice={best_score}",
         proposed_edit=proposed_edit,
+        driver_failure=failure,
+        door=door,
+        claim_refused=claim_refused,
     )
 
 
@@ -869,12 +931,15 @@ def run_scripted_knob_driver(
 
     ok_s, st = _step("status", {})
     if not ok_s:
+        stop_e, failure_e, door_e = _plain_ending("error", turns, tool_errors)
         return _extract_outcome_from_book(
             session, driver_family="scripted", driver_model="scripted_knob_v1", face="direct_python",
             reasoning_effort=None, prompt_info=prompt_info, driver_budget=db,
-            stop_reason="error", turns=turns, prompt_tokens=0, completion_tokens=0, reasoning_tokens=0,
+            stop_reason=stop_e, turns=turns, prompt_tokens=0, completion_tokens=0, reasoning_tokens=0,
             estimated_dollars=0.0, tool_errors=tool_errors, notes=f"status failed: {st}",
+            driver_failure=failure_e, door=door_e,
         )
+    claim_refused: Optional[str] = None
     allowed = set(st["harness_card"]["allowed_tools"])
     reach = st["harness_card"]["reach"]
     binfo: Dict[str, Any] = {}
@@ -1009,7 +1074,7 @@ def run_scripted_knob_driver(
     if "claim_knob" in allowed and best_knob is not None and not _stopped():
         should_submit = submit_even_if_weak or (best_score is not None and best_score > max(best_floor, 0.0))
         if should_submit:
-            ok_cl, _cl_res = _step("claim_knob", {
+            ok_cl, cl_res = _step("claim_knob", {
                 "knob": best_knob,
                 "forecast": {"direction": direction, "expected_min": round(float(best_score or 0.0), 4)},
                 "practice_best": round(float(best_score), 5) if best_score is not None else None,
@@ -1017,11 +1082,14 @@ def run_scripted_knob_driver(
             stop_reason = "claimed" if ok_cl else "error"
             if ok_cl:
                 proposed_knob = best_knob
+            else:
+                claim_refused = _refusal_words(cl_res)
         else:
             stop_reason = "kept_base_abstention"
     elif _stopped():
         stop_reason = _stopped() or "killed"
 
+    stop_reason, failure, door = _plain_ending(stop_reason, turns, tool_errors)
     return _extract_outcome_from_book(
         session,
         driver_family="scripted",
@@ -1039,6 +1107,9 @@ def run_scripted_knob_driver(
         tool_errors=tool_errors,
         notes=f"reach={reach}; mode=knobs_only; evaluated {len(candidates)} knob(s); best_practice={best_score}",
         proposed_knob=proposed_knob,
+        driver_failure=failure,
+        door=door,
+        claim_refused=claim_refused,
     )
 
 
@@ -1062,6 +1133,7 @@ def run_replay_driver(
     stop_reason = "kept_base_abstention"
     proposed_edit = None
     proposed_knob = None
+    claim_refused: Optional[str] = None
     t0 = time.monotonic()
 
     for step in steps:
@@ -1080,6 +1152,8 @@ def run_replay_driver(
         ok, res = _call(session, tool, args)
         if not ok:
             tool_errors += 1
+            if tool in CLAIM_TOOLS:
+                claim_refused = _refusal_words(res)
         else:
             if tool == "claim":
                 proposed_edit = args.get("edit")
@@ -1092,6 +1166,7 @@ def run_replay_driver(
                 if isinstance(plan_arg, Mapping) and isinstance(plan_arg.get("edit"), Mapping):
                     proposed_edit = dict(plan_arg["edit"])
 
+    stop_reason, failure, door = _plain_ending(stop_reason, turns, tool_errors)
     return _extract_outcome_from_book(
         session,
         driver_family="replay",
@@ -1110,6 +1185,9 @@ def run_replay_driver(
         notes=f"replayed {turns}/{len(steps)} step(s)",
         proposed_edit=proposed_edit,
         proposed_knob=proposed_knob,
+        driver_failure=failure,
+        door=door,
+        claim_refused=claim_refused,
     )
 
 
@@ -1177,9 +1255,10 @@ def _resolve_openai_profile(
 
     - A profile's address is its own: a plan that names a profile cannot send it to another address.
     - An endpoint is on this machine only when its host is `localhost`, 127.0.0.0/8 or ::1 (`endpoint_is_local`).
-    - A remote endpoint is reached only through a profile at that address, over https, and its key is read only from
-      the variable that profile names: a plan cannot pair another variable with a remote address. An endpoint on this
-      machine may take its key from whatever variable the plan names, or from none.
+    - A remote endpoint is reached only through a profile at that address, over https.
+    - Any endpoint's key, on this machine or not, is read only from the variable a profile at its address names: a
+      plan cannot pair another variable with an address (`GITHUB_TOKEN` for `http://127.0.0.1:9/v1` is refused), and
+      an address no profile names a variable for is sent no key.
     - The address takes no user name, password, query or fragment."""
     from backend import scientist_chat as sc
 
@@ -1209,9 +1288,7 @@ def _resolve_openai_profile(
     key = _endpoint_key(url)
     at_url = {n: p for n, p in profs.items() if _endpoint_key(str(p.get("base_url") or "")) == key}
     envs = sorted({str(p["key_env"]) for p in at_url.values() if p.get("key_env")})
-    if is_local:
-        key_env = api_key_env or (envs[0] if len(envs) == 1 else None)
-    else:
+    if not is_local:
         if u.scheme != "https":
             raise DriverRefused(f"A remote endpoint is reached over https only, not {url}.")
         if not at_url:
@@ -1220,15 +1297,20 @@ def _resolve_openai_profile(
                 "scientist folder): a remote endpoint is reached only through a profile, which names the variable "
                 "its key is in."
             )
-        if api_key_env and api_key_env not in envs:
-            where = ("$" + " or $".join(envs)) if envs else "no variable (its profile names none)"
-            raise DriverRefused(
-                f"The key for {url} is read from {where}: a plan cannot pair another variable (${api_key_env}) with "
-                "a remote address."
-            )
-        if not api_key_env and len(envs) > 1:
-            raise DriverRefused(f"The profiles at {url} name different key variables (${', $'.join(envs)}): name one.")
-        key_env = api_key_env or (envs[0] if envs else None)
+    if api_key_env and api_key_env not in envs:
+        if envs:
+            where = "$" + " or $".join(envs)
+        elif at_url:
+            where = "no variable (its profile names none, so it is sent no key)"
+        else:
+            where = "no variable (no endpoint profile is at this address, so it is sent no key)"
+        raise DriverRefused(
+            f"The key for {url} is read from {where}: a plan cannot pair another variable (${api_key_env}) with "
+            "an endpoint's address, on this machine or not."
+        )
+    if not api_key_env and len(envs) > 1:
+        raise DriverRefused(f"The profiles at {url} name different key variables (${', $'.join(envs)}): name one.")
+    key_env = api_key_env or (envs[0] if envs else None)
     if not url.rstrip("/").endswith("/chat/completions"):
         url = url.rstrip("/") + "/chat/completions"
     api_key = os.environ.get(key_env, "").strip() if key_env else ""
@@ -1247,14 +1329,33 @@ class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
         )
 
 
-_OPENAI_OPENER = urllib.request.build_opener(_RefuseRedirects)
+def _openai_opener(url: str) -> urllib.request.OpenerDirector:
+    """The opener for one request, built when it is sent: redirects refused, and
+    - for an endpoint on this machine, no proxy at all, whatever the environment says: a proxy would be handed the
+      request, its key among its headers, in the clear;
+    - for a remote endpoint (https only), the environment's proxy, if one is set: through it the request, key and
+      all, travels inside TLS."""
+    if endpoint_is_local(url):
+        return urllib.request.build_opener(urllib.request.ProxyHandler({}), _RefuseRedirects)
+    if urllib.parse.urlsplit(url).scheme != "https":
+        raise DriverRefused(f"A remote endpoint is reached over https only, not {url}.")
+    return urllib.request.build_opener(_RefuseRedirects)
 
 
 def _default_openai_transport(payload: Dict[str, Any], headers: Dict[str, str], url: str, timeout_s: float) -> Dict[str, Any]:
+    """POST `payload` to `url` and return the reply's JSON. An answer that is not a success raises with the
+    endpoint's own words (a field it does not take, a limit it refuses), so the run fails loudly."""
     data = json.dumps(payload, ensure_ascii=True).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    with _OPENAI_OPENER.open(req, timeout=timeout_s) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with _openai_opener(url).open(req, timeout=timeout_s) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            said = exc.read(2000).decode("utf-8", errors="replace").strip()
+        except Exception:
+            said = ""
+        raise RuntimeError(f"the endpoint answered HTTP {exc.code} ({exc.reason})" + (f": {said}" if said else "")) from None
 
 
 def _openai_prices(
@@ -1321,17 +1422,69 @@ def _count(x: Any) -> Optional[int]:
     return int(x) if isinstance(x, int) and not isinstance(x, bool) and x >= 0 else None
 
 
-def _door_failure(door_ok: int, door_errors: int, *, denied: int = 0, other: Optional[str] = None) -> Optional[str]:
+BUDGET_STOPS = ("budget_turns", "budget_tokens", "budget_dollars", "budget_wall")
+CLAIM_TOOLS = ("claim", "claim_knob")
+
+
+def _door_failure(
+    door_ok: int,
+    door_errors: int,
+    *,
+    stop_reason: str,
+    denied: int = 0,
+    other: Optional[str] = None,
+) -> Optional[str]:
     """Why a driver could not work the door, in plain words, or None. A session whose door calls were denied, or none
-    of whose door calls succeeded, ended by the driver's failure: never by an honest abstention."""
+    of whose door calls succeeded, ended by the driver's failure: never by an honest abstention. A run its own cap or
+    STOP ended before it made any door call is not a driver's failure: its `stop_reason` says what stopped it."""
     if other:
         return other
     if denied:
         return f"{denied} tool call(s) were denied by the driver's own permissions, so it could not work the door."
-    if door_ok <= 0:
-        made = f"{door_errors} were made and every one failed" if door_errors else "none was made"
-        return f"No door call succeeded ({made}): the driver did not work the door."
-    return None
+    if door_ok > 0:
+        return None
+    if door_errors:
+        return f"No door call succeeded ({door_errors} were made and every one failed): the driver did not work the door."
+    if stop_reason in BUDGET_STOPS or stop_reason == "killed":
+        return None
+    return "No door call was made: the driver did not work the door."
+
+
+def _refusal_words(text: Any) -> str:
+    """A refused door call's own words, less the reply's "error: " mark."""
+    s = str(text)
+    return s[len("error: "):] if s.startswith("error: ") else s
+
+
+def _door_counts(calls: int, errors: int) -> Dict[str, int]:
+    return {"calls": int(calls), "ok": int(calls) - int(errors), "errors": int(errors)}
+
+
+TEMPLATE_MARGIN_TOKENS = 1024  # tokens a chat template may add to a request's own bytes (its tool preamble, turn marks)
+MAX_COMPLETION_PER_REPLY = 32_768  # the most one reply is let run to, whatever more the caps would allow
+COMPLETION_LIMIT_FIELDS = ("max_tokens", "max_completion_tokens")  # what an endpoint calls a reply's token limit
+
+
+def _json_bytes(obj: Any) -> int:
+    """The UTF-8 bytes of `obj` written as JSON with its text unescaped, as an endpoint's tokenizer reads it."""
+    return len(json.dumps(obj, ensure_ascii=False).encode("utf-8"))
+
+
+def _profile_limit_field(profile_name: Optional[str], url: str) -> Optional[str]:
+    """What the endpoint profile (the one named, else those at `url`) calls a reply's token limit, from its
+    `completion_limit_field`, or None. Profiles that name two are refused: name one in the driver config."""
+    from backend import scientist_chat as sc
+
+    profs = sc.profiles()
+    key = _endpoint_key(url)
+    names = [profile_name] if profile_name else [n for n, p in profs.items()
+                                                 if _endpoint_key(str(p.get("base_url") or "")) == key]
+    fields = sorted({str(profs[n]["completion_limit_field"]) for n in names
+                     if n in profs and profs[n].get("completion_limit_field")})
+    if len(fields) > 1:
+        raise DriverRefused(f"The profiles at {url} call a reply's token limit {' and '.join(fields)}: name one in the "
+                            "driver config (completion_limit_field).")
+    return fields[0] if fields else None
 
 
 def run_openai_driver(
@@ -1348,21 +1501,39 @@ def run_openai_driver(
     extra_instructions: Optional[str] = None,
     input_usd_per_mtok: Optional[float] = None,
     output_usd_per_mtok: Optional[float] = None,
+    completion_limit_field: Optional[str] = None,
+    max_completion_per_reply: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Run any OpenAI-compatible tool-calling model against `session`, keeping its turn, token, dollar and wall caps
     during the run, not after it.
 
-    - The endpoint and its key are `_resolve_openai_profile`'s; a redirect is refused (`_RefuseRedirects`).
-    - The dollars are counted each turn from the reply's token usage at known prices (`_openai_prices`), or from the
-      reply's own cost when that is higher. A request is not sent when what is spent, with the last prompt sent again
-      (the next prompt is at least as long), would pass `max_dollars` or `max_tokens`. A reply with no token usage
-      stops the run: the caps cannot be kept without it.
-    - STOP and the wall clock are looked at every 0.2 s while a request is out (`_await_reply`).
-    - A session none of whose door calls succeeded ends as `driver_failure` (`_door_failure`)."""
+    - The endpoint and its key are `_resolve_openai_profile`'s. A redirect is refused, and an endpoint on this
+      machine is never reached through a proxy (`_openai_opener`).
+    - What is spent is counted at no less than a floor of the harness's own: each request's prompt at the larger of
+      the endpoint's count and the request's UTF-8 bytes / 4, each reply at the larger of the endpoint's count and
+      the reply's bytes / 4; the dollars from those at known prices (`_openai_prices`), or the reply's own cost when
+      that is higher. `usage` gives the endpoint's own figures (`provider_*`) beside the counted ones.
+    - A request goes out only when it fits what is left, its prompt priced at an upper bound: its UTF-8 bytes and
+      `TEMPLATE_MARGIN_TOKENS` (a token covers at least one byte, however the text tokenizes: a cell's float array,
+      CJK), or the endpoint's count of the last prompt when that is larger. It carries a completion limit
+      (`max_tokens`, or `completion_limit_field`) sized to what the tokens and dollars left allow, and at most
+      `max_completion_per_reply`. A reply past that limit, or with no token usage, stops the run, as the caps cannot
+      be kept; an endpoint that refuses the field fails the run in its own words.
+    - A dollar cap of 0 is a cap: at prices above 0 nothing is sent. At prices of 0 nothing is paid and requests go
+      out, and a reply that says it cost something stops the run.
+    - STOP and the wall clock are looked at every 0.2 s while a request is out (`_await_reply`), and before each tool
+      call a reply asks for.
+    - A session none of whose door calls succeeded ends as `driver_failure` (`_door_failure`); one its own cap
+      stopped before any door call does not: its `stop_reason` says which cap."""
     if not model or not isinstance(model, str):
         raise DriverRefused("OpenAI driver requires a non-empty model name.")
     db = driver_budget or DriverBudget()
     ks = kill_switch or KillSwitch()
+    per_reply = MAX_COMPLETION_PER_REPLY if max_completion_per_reply is None else max_completion_per_reply
+    if isinstance(per_reply, bool) or not isinstance(per_reply, int) or per_reply < 1:
+        raise DriverRefused(f"max_completion_per_reply is a whole number of tokens, 1 or more, not {per_reply!r}.")
+    if db.max_dollars is not None and not math.isfinite(float(db.max_dollars)):
+        raise DriverRefused(f"max_dollars is a number of dollars, not {db.max_dollars!r}.")
 
     if transport_fn is None:
         url, api_key, is_local = _resolve_openai_profile(profile, base_url, api_key_env)
@@ -1370,11 +1541,18 @@ def run_openai_driver(
             raise DriverRefused(
                 "Remote OpenAI-compatible driver requires an explicit owner-approved max_dollars > 0 ceiling."
             )
+        if completion_limit_field is None:  # the driver config's, else the one the endpoint's profile names
+            completion_limit_field = _profile_limit_field(profile, url)
     else:
         url, api_key, is_local = "http://mock.local/v1/chat/completions", None, True
+    limit_field = str(completion_limit_field or "max_tokens")
+    if limit_field not in COMPLETION_LIMIT_FIELDS:
+        raise DriverRefused(f"A reply's token limit is sent as {' or '.join(COMPLETION_LIMIT_FIELDS)}, not {limit_field!r}.")
     pin, pout = _openai_prices(db, input_usd_per_mtok, output_usd_per_mtok, is_local=is_local,
                                mocked=transport_fn is not None)
-    capped = db.max_dollars is not None and db.max_dollars > 0.0
+    capped = db.max_dollars is not None  # a cap of 0 is kept as one (see above)
+    max_usd = float(db.max_dollars) if db.max_dollars is not None else math.inf
+    max_tok = int(db.max_tokens)
 
     prompt_info = build_driver_prompt(session, extra_instructions=extra_instructions)
     oa_tools = _mcp_tools_to_openai(lmcp.tools_for_session(session))
@@ -1387,23 +1565,29 @@ def run_openai_driver(
         headers["Authorization"] = f"Bearer {api_key}"
 
     turns = 0
-    prompt_toks = 0
-    comp_toks = 0
+    prompt_toks = 0  # counted: each request at the larger of the endpoint's count and its bytes / 4
+    comp_toks = 0  # counted: each reply at the larger of the endpoint's count and its bytes / 4
+    prov_pt = 0  # the endpoint's own counts, as it gave them
+    prov_ct = 0
+    prov_cost: Optional[float] = None
     reas_toks = 0
-    last_pt = 0
+    last_pt = 0  # the endpoint's own count of the last prompt
     est_usd = 0.0
     tool_errors = 0
     door_ok = 0
+    claim_refused: Optional[str] = None
     served_model = model
     stop_reason = "kept_base_abstention"
+    stop_note = ""
     last_text = ""
     proposed_edit = None
     proposed_knob = None
     t0 = time.monotonic()
     deadline = t0 + float(db.max_wall_seconds)
     transport = transport_fn or _default_openai_transport
+    halted = False
 
-    while True:
+    while not halted:
         if ks.triggered():
             stop_reason = "killed"
             break
@@ -1421,16 +1605,29 @@ def run_openai_driver(
         }
         if reasoning_effort:
             payload["reasoning_effort"] = reasoning_effort
-        # The prompt about to go out, in tokens: what the last reply said the last prompt was, or (before any reply,
-        # or when this one has grown past it) its length in characters over 3, an over-count for text and JSON, so
-        # the first request is priced as well as the later ones
-        next_pt = max(last_pt, len(json.dumps(payload, ensure_ascii=False)) // 3)
-        if prompt_toks + comp_toks + next_pt > db.max_tokens or prompt_toks + comp_toks >= db.max_tokens:
+        n_bytes = _json_bytes(payload)
+        next_pt = max(last_pt, n_bytes + TEMPLATE_MARGIN_TOKENS)  # at most this many tokens, however it tokenizes
+        spent = prompt_toks + comp_toks
+        room = max_tok - spent - next_pt  # what the token cap leaves for the reply
+        if room < 1:
             stop_reason = "budget_tokens"
+            stop_note = (f"Stopped at the token cap before request {turns + 1}: {spent} tokens counted, and its prompt "
+                         f"could be up to {next_pt} ({n_bytes} bytes), against max_tokens {max_tok}.")
             break
-        if capped and (est_usd >= db.max_dollars or est_usd + next_pt * float(pin or 0.0) / 1e6 > db.max_dollars):
-            stop_reason = "budget_dollars"
-            break
+        if capped:
+            usd_room = max_usd - est_usd - next_pt * pin / 1e6  # what the dollar cap leaves for the reply
+            usd_comp = math.floor(usd_room * 1e6 / pout) if pout > 0.0 and usd_room >= 0.0 else None
+            if usd_room < 0.0 or (usd_comp is not None and usd_comp < 1):
+                stop_reason = "budget_dollars"
+                stop_note = (f"Stopped at the dollar cap before request {turns + 1}: ${est_usd:.6f} counted, and its "
+                             f"prompt could cost ${next_pt * pin / 1e6:.6f} ({next_pt} tokens at ${pin:g} a million) "
+                             f"with nothing left for a reply, against max_dollars {max_usd:g}.")
+                break
+            if usd_comp is not None:
+                room = min(room, usd_comp)
+        comp_limit = int(min(room, per_reply))
+        payload[limit_field] = comp_limit
+        floor_pt = _json_bytes(payload) // 4  # the request as sent: the least it is counted at
 
         turns += 1
         rem_wall = max(5.0, deadline - time.monotonic())
@@ -1438,69 +1635,97 @@ def run_openai_driver(
             resp, why = _await_reply(lambda: transport(payload, headers, url, min(120.0, rem_wall)), ks, deadline)
         except Exception as exc:
             stop_reason = "error"
-            last_text = f"endpoint error: {exc}"
+            stop_note = f"endpoint error: {exc}"
             break
         if why is not None:
             stop_reason = why
-            last_text = "Stopped while a request was out: its reply, and what it cost, were not read."
-            break
-        if not isinstance(resp, Mapping):
-            stop_reason = "error"
-            last_text = "The endpoint's reply is not a JSON object."
+            prompt_toks += floor_pt  # it was sent, and may be paid for
+            est_usd += floor_pt * pin / 1e6
+            stop_note = (f"Stopped while request {turns} was out: its prompt is counted at its floor ({floor_pt} "
+                         f"tokens); its reply, of up to {comp_limit} tokens, and what that cost were not read.")
             break
 
-        if isinstance(resp.get("model"), str) and resp["model"]:
-            served_model = str(resp["model"])
-        usage = resp.get("usage") if isinstance(resp.get("usage"), Mapping) else {}
+        reply = resp if isinstance(resp, Mapping) else {}
+        if isinstance(reply.get("model"), str) and reply["model"]:
+            served_model = str(reply["model"])
+        usage = reply.get("usage") if isinstance(reply.get("usage"), Mapping) else {}
+        choices = reply.get("choices") if isinstance(reply.get("choices"), list) else []
+        msg_raw = choices[0].get("message") if choices and isinstance(choices[0], Mapping) else None
+        msg: Dict[str, Any] = dict(msg_raw) if isinstance(msg_raw, Mapping) else {}
         pt = _count(usage.get("prompt_tokens"))
         ct = _count(usage.get("completion_tokens"))
+        pt_n = max(pt or 0, floor_pt)
+        ct_n = max(ct or 0, (_json_bytes(msg) // 4) if msg else 0)
+        prompt_toks += pt_n
+        comp_toks += ct_n
+        prov_pt += pt or 0
+        prov_ct += ct or 0
+        last_pt = pt or 0
+        details = usage.get("completion_tokens_details")
+        reas_toks += (_count(details.get("reasoning_tokens")) or 0) if isinstance(details, Mapping) else 0
+        cost = usage.get("cost")
+        cost_ok = isinstance(cost, (int, float)) and not isinstance(cost, bool) and math.isfinite(cost) and cost >= 0
+        own_cost = float(cost) if cost_ok else 0.0
+        if cost_ok:
+            prov_cost = (prov_cost or 0.0) + own_cost
+        est_usd += max((pt_n * pin + ct_n * pout) / 1e6, own_cost)
+
+        if not isinstance(resp, Mapping):
+            stop_reason = "error"
+            stop_note = "The endpoint's reply is not a JSON object."
+            break
         if pt is None or ct is None:
             stop_reason = "error"
-            last_text = "The endpoint's reply carried no token usage, so the token and dollar caps cannot be kept."
+            stop_note = "The endpoint's reply carried no token usage, so the token and dollar caps cannot be kept."
             break
-        details = usage.get("completion_tokens_details")
-        rt = (_count(details.get("reasoning_tokens")) or 0) if isinstance(details, Mapping) else 0
-        prompt_toks += pt
-        comp_toks += ct
-        reas_toks += rt
-        last_pt = pt
-        cost = usage.get("cost")
-        own_cost = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else 0.0
-        est_usd += max((pt * pin + ct * pout) / 1e6, own_cost)
-
-        choices = resp.get("choices") or []
+        if ct > comp_limit:
+            stop_reason = "error"
+            stop_note = (f"The endpoint's reply ran to {ct} completion tokens, past the limit of {comp_limit} the "
+                         f"request carried ({limit_field}): it does not keep the limit, so the caps cannot be kept.")
+            break
         if not choices:
             stop_reason = "error"
-            last_text = "empty choices in response"
+            stop_note = "empty choices in response"
             break
-        msg = choices[0].get("message") or {}
         messages.append(msg)
         if isinstance(msg.get("content"), str) and msg["content"]:
             last_text = msg["content"]
 
         tcalls = msg.get("tool_calls") or []
-        if not tcalls:
+        if not isinstance(tcalls, list) or not tcalls:
             if stop_reason != "claimed":
                 stop_reason = "kept_base_abstention"
             break
 
-        for tc in tcalls:
+        for i, tc in enumerate(tcalls):
             if ks.triggered():
-                stop_reason = "killed"
+                stop_reason, halted = "killed", True
                 break
-            fn = tc.get("function") or {}
+            if time.monotonic() >= deadline:
+                stop_reason, halted = "budget_wall", True
+                stop_note = (f"Stopped at the wall cap between tool calls: {len(tcalls) - i} of the {len(tcalls)} the "
+                             "last reply asked for were not made.")
+                break
+            tcm = tc if isinstance(tc, Mapping) else {}
+            fn = tcm.get("function") if isinstance(tcm.get("function"), Mapping) else {}
             tname = str(fn.get("name") or "")
             raw_args = fn.get("arguments") or "{}"
             try:
                 parsed_args = json.loads(raw_args) if isinstance(raw_args, str) else dict(raw_args)
-            except ValueError as exc:
+                if not isinstance(parsed_args, Mapping):
+                    raise ValueError("the arguments are not a JSON object")
+            except (ValueError, TypeError) as exc:
                 tool_errors += 1
                 out_str = f"error: invalid JSON arguments: {exc}"
+                if tname in CLAIM_TOOLS:
+                    claim_refused = f"The {tname} call's arguments could not be read ({exc}): it did not reach the gate."
             else:
                 ok, res = _call(session, tname, parsed_args)
                 if not ok:
                     tool_errors += 1
                     out_str = f"error: {res}"
+                    if tname in CLAIM_TOOLS:
+                        claim_refused = _refusal_words(res)
                 else:
                     door_ok += 1
                     if tname == "claim":
@@ -1514,13 +1739,14 @@ def run_openai_driver(
                         out_str = out_str[:16000] + "... [truncated]"
             messages.append({
                 "role": "tool",
-                "tool_call_id": str(tc.get("id") or f"call_{turns}"),
+                "tool_call_id": str(tcm.get("id") or f"call_{turns}"),
                 "content": out_str,
             })
-        if stop_reason == "killed":
-            break
 
-    failure = _door_failure(door_ok, tool_errors)
+    other = None
+    if stop_reason == "error" and door_ok == 0 and tool_errors == 0:
+        other = f"The endpoint failed before any door call was made: {stop_note}"
+    failure = _door_failure(door_ok, tool_errors, stop_reason=stop_reason, other=other)
     if failure and stop_reason in ("kept_base_abstention", "error"):
         stop_reason = "driver_failure"
     return _extract_outcome_from_book(
@@ -1538,12 +1764,21 @@ def run_openai_driver(
         reasoning_tokens=reas_toks,
         estimated_dollars=est_usd,
         tool_errors=tool_errors,
-        notes=last_text,
+        notes="\n".join(t for t in (last_text, stop_note) if t),
         proposed_edit=proposed_edit,
         proposed_knob=proposed_knob,
         driver_failure=failure,
+        claim_refused=claim_refused,
         door={"calls": door_ok + tool_errors, "ok": door_ok, "errors": tool_errors,
-              "prices_usd_per_mtok": {"input": pin, "output": pout}},
+              "prices_usd_per_mtok": {"input": pin, "output": pout},
+              "completion_limit": {"field": limit_field, "most_a_reply": per_reply}},
+        extra_usage={
+            "provider_prompt_tokens": prov_pt,
+            "provider_completion_tokens": prov_ct,
+            "provider_total_tokens": prov_pt + prov_ct,
+            "provider_cost_usd": round(prov_cost, 6) if prov_cost is not None else None,
+            "tokens_counted_as": "each request and each reply at the larger of the endpoint's count and its UTF-8 bytes / 4",
+        },
     )
 
 
@@ -1722,9 +1957,12 @@ def run_claude_cli_driver(
     - The run is read as it goes, and stopped (its process group SIGKILLed) at the wall clock, the token cap, the
       dollar cap (when prices are given), STOP, or when the CLI offers the model a tool that is not the door's.
     - The door's bridge (`level_mcp.session_socket_bridge`) is closed before the outcome is read: a cell still
-      running is killed and a reading still running is waited for, so the book holds what the session did.
+      running is killed and any other call still running is waited for until it ends, with no bound, so the book
+      holds what the session did. The outcome then says how long after the CLI ended it was read, and why
+      (`door["wait_note"]`, in `notes`).
     - A session whose door calls were denied, or none of whose door calls succeeded, ends as `driver_failure`, never
-      as an honest abstention (`_door_failure`). The claim's edit is `proposed_edit`, as the door received it.
+      as an honest abstention (`_door_failure`). The claim's edit is `proposed_edit`, as the door received it; a
+      claim the door refused is `claim_refused`, in its own words.
     - Refused at `$THEODOLITE_SCIENTIST_REACH=home`, and without an owner-approved `max_dollars > 0` (unless
       `allow_mock_cli=True` in CPU checks)."""
     if os.environ.get(lses.REACH_ENV, "").strip().lower() == "home":
@@ -1833,7 +2071,9 @@ def run_claude_cli_driver(
                     mcp_cfg_path.unlink()
                 except OSError:
                     pass
+        t_cli_end = time.monotonic()
     door = bridge.close()  # closed as the block ended; this is its report (what ran, what was running at the stop)
+    waited_after_cli = round(time.monotonic() - t_cli_end, 3)
 
     res = stream.result
     if stop_reason is None:
@@ -1853,22 +2093,26 @@ def run_claude_cli_driver(
     other = stop_note if stop_reason == "driver_failure" else None
     if other is None and stream.mcp_status not in (None, "connected", "pending"):
         other = f"The door's MCP server did not connect (its status: {stream.mcp_status})."
-    failure = _door_failure(int(door["ok"]), int(door["errors"]), denied=denied, other=other)
-    if door.get("still_running"):
-        late = (door.get("running_at_stop") or {}).get("tool")
-        failure = ((failure + " ") if failure else "") + (
-            f"A door call ({late}) was still running {door['wait_bound_seconds']:g} s after the stop: what it writes "
-            "may land after this outcome.")
+    failure = _door_failure(int(door["ok"]), int(door["errors"]), stop_reason=stop_reason, denied=denied, other=other)
     if failure and stop_reason in ("kept_base_abstention", "error"):
         stop_reason = "driver_failure"
+    # How long the outcome came after the CLI ended, and why: the door waits for a call running at the stop until
+    # it ends, with no bound (a cell is killed; a reading is let finish, so its lines are in the book)
+    wait_note = None
+    if door.get("wait_note"):
+        wait_note = (f"The CLI ended {t_cli_end - t0:.1f} s into the session ({stop_reason}), and the outcome was read "
+                     f"{waited_after_cli:g} s after that. {door['wait_note']}")
 
     proposed_edit = None
     proposed_knob = None
+    claim_refused: Optional[str] = None
     for c in bridge.calls:
         if c.get("ok") and c.get("tool") == "claim":
             proposed_edit = c.get("proposed")
         elif c.get("ok") and c.get("tool") == "claim_knob":
             proposed_knob = c.get("proposed")
+        elif c.get("ok") is False and c.get("tool") in CLAIM_TOOLS:
+            claim_refused = _refusal_words(c.get("error") or "")
 
     pt, ct = stream.tokens()
     cost = (res or {}).get("total_cost_usd")
@@ -1876,7 +2120,7 @@ def run_claude_cli_driver(
     if priced:
         est_usd = max(est_usd, (pt * float(db.input_usd_per_mtok or 0.0) + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6)
     notes = [str(res["result"])] if res is not None and isinstance(res.get("result"), str) else []
-    notes += [t for t in dict.fromkeys((stop_note, failure)) if t]
+    notes += [t for t in dict.fromkeys((stop_note, failure, wait_note)) if t]
     return _extract_outcome_from_book(
         session,
         driver_family="claude",
@@ -1896,8 +2140,10 @@ def run_claude_cli_driver(
         proposed_edit=proposed_edit,
         proposed_knob=proposed_knob,
         driver_failure=failure,
+        claim_refused=claim_refused,
         door={**door, "denied": denied, "offered_tools": stream.offered, "other_tools_asked": stream.other_uses[:20],
-              "door_uses_seen": stream.door_uses, "mcp_status": stream.mcp_status},
+              "door_uses_seen": stream.door_uses, "mcp_status": stream.mcp_status,
+              "cli_ended_at_seconds": round(t_cli_end - t0, 3), "outcome_after_cli_seconds": waited_after_cli},
     )
 
 
@@ -1987,6 +2233,8 @@ def run_driver(
             extra_instructions=cfg.get("extra_instructions"),
             input_usd_per_mtok=cfg.get("input_usd_per_mtok"),
             output_usd_per_mtok=cfg.get("output_usd_per_mtok"),
+            completion_limit_field=cfg.get("completion_limit_field"),
+            max_completion_per_reply=cfg.get("max_completion_per_reply"),
         )
     if driver_family == "claude":
         return run_claude_cli_driver(

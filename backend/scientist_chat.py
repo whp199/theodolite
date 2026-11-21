@@ -319,7 +319,8 @@ def profiles() -> Dict[str, Dict[str, Any]]:
                 if why:
                     _profile_warning = f"{path}: {name}: {why}"
                     continue
-                out[name] = {k: v[k] for k in ("label", "base_url", "key_env", "model", "stream", "headers", "params") if k in v}
+                out[name] = {k: v[k] for k in ("label", "base_url", "key_env", "model", "stream", "headers", "params",
+                                               "completion_limit_field") if k in v}
         except (OSError, ValueError) as exc:
             _profile_warning = f"{path} could not be read: {exc}"
     return out
@@ -339,6 +340,10 @@ def _bad_profile(name: Any, v: Any) -> Optional[str]:
         return "key_env must be the name of an environment variable"
     if not isinstance(v.get("headers", {}), dict) or not isinstance(v.get("params", {}), dict):
         return "headers and params are tables"
+    # the name of the field a request bounds its reply with (Levelling's driver sends one): one of the two the
+    # OpenAI-compatible endpoints take
+    if v.get("completion_limit_field") not in (None, "max_tokens", "max_completion_tokens"):
+        return "completion_limit_field is max_tokens or max_completion_tokens"
     return None
 
 
