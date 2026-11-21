@@ -55,7 +55,11 @@ from backend import census_volunteer as cv  # noqa: E402
 
 PY = sys.executable
 SPOT_CHUNKS = 5
-MAX_RUN_BYTES = 4_000_000_000
+MAX_RUN_BYTES = 4_000_000_000  # the packed answers (.jsonl.zst) in a bundle
+# the answers unpacked, an answer's line on average at most: a kit layer's run writes about 4,900 bytes an answer at
+# every layer (2.77 GB for L31's 565,254, 5.63 GB for L30's 1,130,508). Until 21 November 2026 the cap was a flat 4 GB
+# (565,254 answers at ~7,080), which refused every whole layer of twice the answers (match_things at 30, 53 and 54).
+MAX_ANSWER_BYTES = 7_000
 MAX_SMALL_BYTES = 64_000_000
 PACKED = [r"manifest\.json", r"L\d{1,2}-[a-z_]+\.jsonl\.zst", r"L\d{1,2}-[a-z_]+\.meta\.json", r"L\d{1,2}-[a-z_]+\.canary\.jsonl",
           r"L\d{1,2}-[a-z_]+\.canary\.json", r"L\d{1,2}\.writer_floor\.json", r"L\d{1,2}\.canary_check\.json"]
@@ -279,20 +283,26 @@ def check_bundle(a: argparse.Namespace, kit: Dict[str, Any]) -> Dict[str, Any]:
         return out
     runp = work / f"{stem}.jsonl"
     raw = (man.get("run") or {})
-    if int(raw.get("bytes") or 0) > MAX_RUN_BYTES:
-        fails.append(f"the manifest says the answers are {raw.get('bytes')} bytes, more than a layer's")
+    home_rows, home_about = cv.home_canary(layer, design, home_dir())
+    if not home_about.exists():
+        out.update({"fails": [f"no home canary of layer {layer} ({home_about}): census_intake.py home-canaries first"], "notes": notes})
+        return out
+    home_meta = json.loads(home_about.read_text(encoding="utf-8"))["meta"]
+    # how big the answers may unpack, from the answers the kit's own plan at this layer asks for (the home canary's
+    # meta, which the run's meta must match below), never from the bundle's
+    answers = len(cv.expected_jobs(home_meta))
+    cap = MAX_ANSWER_BYTES * answers
+    if int(raw.get("bytes") or 0) > cap:
+        fails.append(f"the manifest says the answers are {raw.get('bytes')} bytes, more than a layer of {answers:,} answers "
+                     f"writes ({cap:,})")
     else:
         got = run(["zstd", "-q", "-d", "-f", "-o", str(runp), str(zst)])
         if got.returncode != 0 or not runp.exists() or runp.stat().st_size != int(raw.get("bytes") or -1):
             fails.append("the answers do not unpack to the size the manifest names")
-    home_rows, home_about = cv.home_canary(layer, design, home_dir())
-    if not home_about.exists():
-        fails.append(f"no home canary of layer {layer} ({home_about}): census_intake.py home-canaries first")
     if fails:
         out.update({"fails": fails, "notes": notes})
         return out
     meta = json.loads(meta_p.read_text(encoding="utf-8"))
-    home_meta = json.loads(home_about.read_text(encoding="utf-8"))["meta"]
     fails += cv.meta_problems(meta, home_meta, kit)
     rt = meta.get("runtime") or {}
     out["runtime"] = rt
