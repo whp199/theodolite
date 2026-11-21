@@ -1,0 +1,75 @@
+{
+  "format": "theodolite-edit",
+  "version": 1,
+  "edit_id": "6789c6b18fce8824c3eb0414f3a7d2c565bb8b58ae913052415275d99bc3f411",
+  "base": {
+    "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+    "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+    "tensors": {
+      "layers.42.mlp.down_proj": "311323c589a6695be0fdac7acf2d7a281e6cf7371c3bc2b95c4da65f11dfad70"
+    }
+  },
+  "linears": [
+    "layers.42.mlp.down_proj"
+  ],
+  "layers": [
+    42
+  ],
+  "all_rebuilt": false,
+  "provenance": "carried",
+  "rebuilt_recipe": null,
+  "payload_sha256": "24c11d69cff0a57f657539293fb6867abb7dc7b789cb602e8341f9fe2cc90ba7",
+  "note": "L42 down_proj 10-neuron selectivity-weighted occupational gender debias edit (amp=0.2610, 0.45x dose)",
+  "terms": [
+    {
+      "linear": "layers.42.mlp.down_proj",
+      "layer": 42,
+      "which": "down_proj",
+      "kind": "cols",
+      "provenance": "carried",
+      "sha256": {
+        "columns": "278482eec316c282652931bdb9d5c6defd76ef3f4069c758834f9c04842114e2",
+        "ops": "1435b41d816e822777636fe5d533bd4a352d383f335863ae2a0219157030a64b",
+        "factors": "42919724f9a8141324aa783a09004f085522599cd9332173b568900a0f0f6704",
+        "vectors": "806b3339525e9b9f4e198ccdc9a449cde3745e4de1fb09b95fa15e2721d7f24e"
+      },
+      "columns": [
+        1665,
+        3022,
+        3505,
+        6152,
+        8075,
+        11714,
+        11973,
+        13008,
+        16454,
+        19049
+      ],
+      "ops": [
+        "add",
+        "add",
+        "add",
+        "add",
+        "add",
+        "add",
+        "add",
+        "add",
+        "add",
+        "add"
+      ],
+      "factors": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "payload_key": "t0.vectors"
+    }
+  ]
+}
