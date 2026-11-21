@@ -1651,6 +1651,70 @@ layers, the determinism run and the sampled push on 29 October). In this section
       (`census_volunteer.earlier_kit`); at the cut that is 30 (anon, 6413bb68, 36% on 19 November).
     - **The board** is kit 7’s with 53 and 54 open; 30 running under kit 6. *Not shown yet:* a whole layer of
       `match_things`. The thread post is the owner’s.
+  - **Layers 30 and 53 read whole, the first whole layers of `match_things`** (21 November 2026; the owner’s words:
+    “we have new layers to download and bring in + update the board”). Both bundles’ sha256 matched their DONE lines.
+    - **The intake’s size cap refused both at first.** `census_intake.py check` capped what a manifest may say the
+      answers unpack to at a flat 4 GB (since kit 1: 565,254 answers at about 7,080 bytes each), and a `match_things`
+      layer writes 1,130,508 answers, 5.63 GB. Nothing on the volunteers’ side was wrong. The cap is now 7,000 bytes an
+      answer times the answers the kit’s plan at the layer asks for, counted from the home canary’s meta, never the
+      bundle’s (`MAX_ANSWER_BYTES`): 7.91 GB at 30, 53 and 54, 3.96 GB at the others. `check_volunteer_kit.py` checks
+      the refusal (87 checks). The first checks had marked both claims rejected on the board; that was taken back
+      before the board was published, and both were checked again under the new cap.
+    - **Layer 53**, taken with kit 7 by Zlorthishen (anon, 7ce4c92d), who took 37 to 39, on an RTX 5090 with the home
+      card’s bits. Begun 19 November at 21:35Z by the run’s record, in one session; DONE 20 November at 23:07Z, as a
+      GitHub release. Its first PROGRESS line, posted at 21:39Z with its RESERVE and START, said 21%, which the run’s
+      record does not bear out; the spot-check is what vouches for the answers. Its spot chunks (164, 174, 403, 1112
+      and 1258 of 1,473): 3,840 of 3,840 answers identical bit for bit.
+    - **Layer 30**, taken with kit 6 by anon (Asynonymous, 6413bb68), who took 31 to 35, on the RTX PRO 6000 Blackwell
+      card class. Begun 18 November at 22:32Z, in four sessions; DONE 20 November at 23:22Z. Kit 7 was cut while it
+      ran, so it was checked by kit 6’s own file. Its spot chunks (147, 336, 362, 552 and 577 of 1,473): the first
+      word-piece the home card’s in 0.988 of answers (bar 0.90), log-probabilities apart by a median 0.0047 (0.013)
+      and 0.112 at the 99th percentile (0.26).
+
+    Each was read whole by its trial’s registered reader, two gates, N1 and N3
+    ([`census_L53_whole/`](experiments/results/census_L53_whole/), `census/trials/things_walk/prereg`, hashed 18
+    November at 16:18Z; [`census_L30_whole/`](experiments/results/census_L30_whole/), `census/trials/things/prereg`,
+    hashed 18 November at 00:20Z). Each reading gives the lead, the lead past how the text survives, the words carried
+    from half A to B and from B to A, and the new questions’ lead (bars 0.60, 0.58, 0.57, 0.56):
+
+    | layer, doses | every answer | the neurons the controls cover | its trial, every answer |
+    |---|---|---|---|
+    | 53, ±2.24 and ±2.42 ceilings | 0.747, 0.714, 0.585 and 0.593, 0.757 | 99 in 100; 0.747, 0.713, 0.583 and 0.591, 0.757 | 0.751, 0.745, 0.591 and 0.598, 0.751 |
+    | 30, ±2.42 and ±2.67 ceilings | 0.602, 0.613, **0.558 and 0.553**, 0.603 | 96 in 100; 0.604, 0.609, **0.559 and 0.554**, 0.605 | 0.618, 0.637, 0.582 and 0.587, 0.625 |
+
+    - **53 passes both gates**, close to its trial. Reported, gating nothing: each dose alone leads (0.664 the lower,
+      0.752 the upper) but neither carries its words between the halves (0.552 and 0.561; 0.544 and 0.559), nor do
+      three questions a half (0.541 to 0.573), as in its trial. By the length rule it keeps 48 word-pieces (at 32 its
+      words carry 0.534 and 0.543). The neurons lose 0.11 to 0.12 of their distinct 4-grams at the lower dose and 0.26
+      to 0.27 at the upper, the controls 0.20 and 0.43; every answer runs to the cut. Per neuron it says much: 1,466
+      above all 2,048 controls (10.5 by chance), 3,640 with q ≤ 0.05 (3,854 with the five strongest set aside), 3,054
+      more than five SDs over the controls’ median. Its strongest controls stand 6.2 to 10.2 out writing “thought” run
+      together, as the walk’s trials at 53 to 55 did. The steer lens, checked against a census above 52 for the first
+      time, agrees: a word shared with 0.738 of the 5,807 neurons above 95 in 100 controls (0.009 shuffled).
+    - **30 misses both gates on one figure**: how its words carry between the question halves, 0.558 and 0.553 against
+      0.57 (0.559 and 0.554 on the neurons the controls cover). Its lead, 0.602, sits on its bar; nothing else is
+      short. Reported: each dose alone and three questions a half lead by 0.57 to 0.60 and carry 0.537 to 0.556. Per
+      neuron it says little: 49 above all controls (10.5 by chance), none with q ≤ 0.05 (655 with the five strongest
+      set aside, which stand 8 to 11 SDs out writing German, Portuguese and Spanish), 475 more than five SDs over. The
+      text barely moves (0.002 to 0.003 of distinct 4-grams). The steer lens stays weak there (0.042 of 2,627; 0.019
+      shuffled).
+    - **Why 30 fell, read after the verdict** ([`census_L30_whole/controls/`](experiments/results/census_L30_whole/controls/),
+      unregistered and reported, the registered reader unchanged). The trial’s own 1,022 neurons, read from the
+      volunteer’s run, fall short too (0.564 and 0.557). On those 49,056 answers the two cards agree on the first
+      word-piece in 0.986 and on all 48 pieces in 0.678, as another card class does. Swapping one thing at a time:
+      the volunteer’s answers against the trial’s 1,024 controls carry 0.579 and 0.582, a pass; the home card’s
+      answers against the kit’s 2,048 carry 0.565 and 0.562, a miss; each half of the kit’s 2,048 alone gives 0.562
+      and 0.557, and 0.560 and 0.561. So the card moves the figure by 0.001 to 0.005 (the volunteer’s lower each
+      time) and the controls by about 0.02: three draws of 1,024 isotropic controls read the same neurons’ words
+      carrying at 0.56, 0.56 and 0.58, and the trial’s was the kind one. Their push sizes are not the difference: both
+      draws are paired with neurons from across the layer, and their write ceilings match the neurons’ (median 51.5
+      and 51.6, the same tails). A margin of 0.012 at a trial is within what another draw of controls moves. Every other layer read whole
+      against the kit’s controls has held its trial’s gates, save 36’s one figure.
+    - **What it changes.** The runs are whole and honest and are kept. On the board 30 is done with the miss named, as
+      36 is, and a reading of it is shown as any census whose doses are not counted calibrated. `DOSES_CALIBRATED` is
+      not widened for `match_things` anywhere (the owner’s word).
+    - **The board**: twenty-four layers done, 30–53, eighteen of them by volunteers; 54 running under kit 7 (anon,
+      0471bd29, an RTX PRO 6000, 53% on 21 November); none open.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

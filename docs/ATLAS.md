@@ -49,8 +49,10 @@ home card and taken there. Since 14 November 2026 (kit 4) a 24 GB card with noth
 design that asks twelve questions at one push, the lower of the layer's two counts, passed a trial at layer 32 (31 on
 the board) on 16 November and failed at 31; since 17 November kit 5 offers it at 32. At 31 (30 on the board) two
 designs failed, and a third passed its trial on 18 November: both counts, on twelve other questions, each asking how
-a thing works, for three tips or about an object. Kit 6 offers it there; its doses are not yet counted calibrated.
-The same design passed at 54 and 55 (53 and 54 on the board) on 18 and 19 November and failed at 30 and 56; since 19
+a thing works, for three tips or about an object. Kit 6 offered it there, and read whole (21 November) the layer fell
+short of its trial on one figure, how its words carry between question halves (0.553 against a bar of 0.57). Read
+against the random directions every whole layer is read against, the trial's own neurons fall short too: the
+trial's draw of random directions was a kind one. Its doses are not counted calibrated. The same design passed at 54 and 55 (53 and 54 on the board) on 18 and 19 November and failed at 30 and 56; since 19
 November kit 7 offers it at 54 and 55, its doses not counted calibrated there either. The other thirty-five layers
 (1–30 and 56–60) have no design that passed there. Where a census’s doses are not counted calibrated the atlas
 marks it “doses not calibrated at this layer” and inks it without gilt.
@@ -80,8 +82,13 @@ November layers 39 and 32 (38 and 31 on the board) came home and pass their tria
 that took 38 and 40, bit for bit, leads by 0.694 (0.675 in its trial) and says much of single neurons: 7,003 have q
 ≤ 0.05, though its strongest random direction stands 19.1 deviations out, writing Portuguese. 32, from the RTX PRO
 6000 that took 33–36, asked twelve questions at one push, leads by 0.641 (0.630), its words carrying by 0.584 and
-0.586, and 1,893 have q ≤ 0.05. Layer 31 (30) is being taken, and 54 and 55 (53 and 54) are open. Every figure is
-in ROADMAP §vi.
+0.586, and 1,893 have q ≤ 0.05. On 21 November two more came home. 54 (53 on the board), from the RTX 5090 that took
+38–40, bit for bit, passes both of its trial's checks read whole, close to its trial: it leads by 0.747 (0.751), its
+words carry by 0.585 and 0.593, 3,640 have q ≤ 0.05 and 1,466 beat all 2,048, and its strongest random directions
+stand 6 to 10 deviations out writing “thought” run together. The steer lens agrees with it, the highest layer it has
+been checked at. 31 (30), from the RTX PRO 6000 that took 32–36, misses both of its trial's checks on that one figure,
+its words carrying by 0.558 and 0.553, and says little of single neurons: none has q ≤ 0.05 and 49 beat all 2,048.
+55 (54) is being taken, and none is open. Every figure is in ROADMAP §vi.
 
 <table>
   <tr>

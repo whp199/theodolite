@@ -677,6 +677,29 @@ def run_checks(tmp: Path) -> int:
     t = through("badsecret", bad_tar)
     check(t["check"].returncode != 0 and "secret does not give" in t["check"].stdout and t["claim"].get("state") == "reserved",
           f"a bundle without its claim's secret is refused, the board untouched ({t['check'].stdout[-200:]}, {t['claim'].get('state')})")
+    # a manifest that says the answers unpack bigger than the layer's plan writes: refused before they are unpacked, by
+    # a cap counted from the answers the home canary's plan asks for (a flat 4 GB refused layers of twice the answers)
+    big = tmp / "bigrun"
+    big.mkdir()
+    with tarfile.open(bundle) as tf:
+        tf.extractall(big, filter="data")
+    man = json.loads((big / "manifest.json").read_text())
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("census_intake", INTAKE_PY)
+    ci = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ci)
+    answers = len(jobs)
+    man["run"]["bytes"] = ci.MAX_ANSWER_BYTES * answers + 1
+    (big / "manifest.json").write_text(json.dumps(man))
+    big_tar = tmp / "big" / bundle.name
+    big_tar.parent.mkdir()
+    with tarfile.open(big_tar, "w") as tf:
+        for p in sorted(big.iterdir()):
+            tf.add(p, arcname=p.name)
+    r = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "check", big_tar, "--work", tmp / "work-big"], env)
+    check(r.returncode != 0 and f"more than a layer of {answers:,} answers writes" in r.stdout
+          and not (tmp / "work-big" / f"L{LAYER}-{design}.jsonl").exists(),
+          f"a manifest saying more bytes than the layer's {answers:,} answers write is refused, nothing unpacked ({r.stdout[-200:]})")
     # a file a pack does not write
     odd = tmp / "odd" / bundle.name
     odd.parent.mkdir()
@@ -688,7 +711,8 @@ def run_checks(tmp: Path) -> int:
     r = run([PY, "-I", INTAKE_PY, "--dry-run", "--board", "", "check", odd, "--work", tmp / "work-odd"], env)
     check(r.returncode != 0 and "which a pack does not write" in r.stderr and not (tmp / "work-odd" / "bundle" / "run.sh").exists(),
           "a bundle holding a file a pack does not write is not unpacked")
-    section("the refusals: made up after its canary, made up throughout, another card class taken, a wrong secret, a stray file", before)
+    section("the refusals: made up after its canary, made up throughout, another card class taken, a wrong secret, answers "
+            "bigger than the layer's plan writes, a stray file", before)
 
     # 6. the load on a 24 GB card, on the CPU: the stand-in never takes the split map, so its pieces are checked here
     before = len(failures)

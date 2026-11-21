@@ -1,0 +1,2 @@
+L30-match_things-trial.jsonl controls 1024: ceiling median 51.50 p10 49.49 p90 53.81; neurons 1022: median 51.50 p10 49.63 p90 53.74; controls paired with one of these neurons: 0.05
+L30-match_things.jsonl controls 2048: ceiling median 51.59 p10 49.65 p90 53.83; neurons 1022: median 51.50 p10 49.63 p90 53.74; controls paired with one of these neurons: 0.03

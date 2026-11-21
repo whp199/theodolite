@@ -1,9 +1,9 @@
 >mapping what every MLP neuron of Gemma-4-31B writes
 >each of a layer's 21,504 neurons pushed along its own write direction on 6 questions, read against 2,048 random directions pushed the same way
->22 layers done (31-52), 16 by volunteers. thanks to all who ran one
+>24 layers done (30-53), 18 by volunteers. thanks to all who ran one
 >kit 7 adds layers 53 and 54 (layer 30's 12 questions, 2 pushes; ~30 h on a 5090)
 >a layer outside 40-50 gets a 70-min trial on our card first
->16 passed; open: 53, 54 (30 running)
+>16 passed; none open now (54 running)
 
 what you get when the atlas is published:
 - chat with Gemma with any of its 1.3M neurons turned up or down, three answers side by side
@@ -16,7 +16,7 @@ needs: one NVIDIA card 24GB+ (3090, 4090, 5090, A6000, PRO 6000...), CUDA 13 dri
 time: ~13 h a layer on a 5090, ~43 h on a 3090, + ~1 h setup. stop and resume any time
 
 git clone https://github.com/whp199/theodolite && cd theodolite && git checkout census-kit-7
-(ran an earlier kit? git fetch --tags && git checkout census-kit-7, downloads reused; a running layer stays on kit 6)
+(ran an earlier kit? git fetch --tags && git checkout census-kit-7, downloads reused)
 scripts/volunteer/census.sh check
 scripts/volunteer/census.sh reserve 53   <- an OPEN layer; post the RESERVE line it prints
 scripts/volunteer/census.sh setup

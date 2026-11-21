@@ -1,0 +1,72 @@
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.6067 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.618 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5646 (bar 0.57), rep_BA 0.5619 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.62 (bar 0.56)
+  FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4995 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+  reported: shift 0.637, shift_up 0.614, shift_down 0.639, xq 0.575, rep 0.567, mass_A 0.603, mass_u 0.596, shift_res 0.644, rep_res 0.579
+  counts {'neurons': 1022, 'controls': 2048, 'above_every_control': 4, 'by_chance': 0.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1644, 'pA05_and_pB05': 81, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.463 controls 0.303; signs {'+': 0.5431, '-': 0.555}
+--- read at 32 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5944 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.615 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5535 (bar 0.57), rep_BA 0.5603 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6044 (bar 0.56)
+  FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4997 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+  reported: shift 0.626, shift_up 0.604, shift_down 0.631, xq 0.565, rep 0.560, mass_A 0.592, mass_u 0.587, shift_res 0.642, rep_res 0.573
+  counts {'neurons': 1022, 'controls': 2048, 'above_every_control': 6, 'by_chance': 0.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1536, 'pA05_and_pB05': 78, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.446 controls 0.301; signs {'+': 0.5434, '-': 0.5492}
+max_new rule: {'shorter_passes': False, 'mass_c_drop': 0.0123, 'rep_min_drop': 0.0084, 'take_shorter': False}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/733a494b-c5c9-4e9e-95b6-ab2d649aa249/scratchpad/mixA/verdict.whole.json: FAIL
+--- read at 48 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5991 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6096 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.555 (bar 0.57), rep_BA 0.5728 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.5969 (bar 0.56)
+  FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4979 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+  reported: shift 0.632, shift_up 0.610, shift_down 0.619, xq 0.585, rep 0.569, mass_A 0.592, mass_u 0.587, shift_res 0.639, rep_res 0.576
+  counts {'neurons': 1022, 'controls': 2048, 'above_every_control': 8, 'by_chance': 0.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1419, 'pA05_and_pB05': 66, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.414 controls 0.222; signs {'+': 0.546, '-': 0.5395}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/733a494b-c5c9-4e9e-95b6-ab2d649aa249/scratchpad/mixA/verdict.lower.json: FAIL
+--- read at 48 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5763 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.5917 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5488 (bar 0.57), rep_BA 0.5374 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.5909 (bar 0.56)
+  FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5017 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+  reported: shift 0.612, shift_up 0.588, shift_down 0.620, xq 0.560, rep 0.543, mass_A 0.578, mass_u 0.564, shift_res 0.624, rep_res 0.551
+  counts {'neurons': 1022, 'controls': 2048, 'above_every_control': 1, 'by_chance': 0.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1536, 'pA05_and_pB05': 73, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.485 controls 0.281; signs {'+': 0.5075, '-': 0.5405}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/733a494b-c5c9-4e9e-95b6-ab2d649aa249/scratchpad/mixA/verdict.upper.json: FAIL
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.602 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6049 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.537 (bar 0.57), rep_BA 0.5614 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6026 (bar 0.56)
+  FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5014 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+  reported: shift 0.629, shift_up 0.613, shift_down 0.610, xq 0.551, rep 0.553, mass_A 0.609, mass_u 0.588, shift_res 0.632, rep_res 0.560
+  counts {'neurons': 1022, 'controls': 2048, 'above_every_control': 4, 'by_chance': 0.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1566, 'pA05_and_pB05': 48, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.232 controls 0.112; signs {'+': 0.5506, '-': 0.5469}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/733a494b-c5c9-4e9e-95b6-ab2d649aa249/scratchpad/mixA/verdict.first.json: FAIL
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.6086 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6216 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5554 (bar 0.57), rep_BA 0.5503 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.598 (bar 0.56)
+  FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5028 (bar (0.47, 0.53)), read_gain_ratio 1.011 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+  reported: shift 0.633, shift_up 0.614, shift_down 0.608, xq 0.568, rep 0.559, mass_A 0.601, mass_u 0.592, shift_res 0.641, rep_res 0.580
+  counts {'neurons': 1022, 'controls': 2048, 'above_every_control': 8, 'by_chance': 0.5, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1644, 'pA05_and_pB05': 41, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.213 controls 0.113; signs {'+': 0.5419, '-': 0.5383}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/733a494b-c5c9-4e9e-95b6-ab2d649aa249/scratchpad/mixA/verdict.last.json: FAIL
+=== L30-match_things.jsonl (layer 30, counted from 0): FAIL
+FAIL  N1 whole
+    pass  G1 lead (mass, every answer): mass_c 0.6067 (bar 0.6)
+    pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.618 (bar 0.58)
+    FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5646 (bar 0.57), rep_BA 0.5619 (bar 0.57)
+    pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.62 (bar 0.56)
+    FAIL  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4995 (bar [0.47, 0.53]), read_gain_ratio 1.011 (bar [0.8, 1.25]), complete (every unit planned, each with all 24 cells; every answer of the job list) False
+FAIL  N3 the neurons the controls cover (990 of 1022 covered, 96.9%; at least 50%)
+    pass  G1 lead (mass, every answer): mass_c 0.6067 (bar 0.6)
+    pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.6145 (bar 0.58)
+    FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5634 (bar 0.57), rep_BA 0.5618 (bar 0.57)
+    pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6194 (bar 0.56)
+reported, the lower dose alone (-2.42,2.42): mass_c 0.5991, mass_c_res 0.6096, rep_AB 0.555, rep_BA 0.5728, mass_B 0.5969
+reported, the upper dose alone (-2.67,2.67): mass_c 0.5763, mass_c_res 0.5917, rep_AB 0.5488, rep_BA 0.5374, mass_B 0.5909
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.602, mass_c_res 0.6049, rep_AB 0.537, rep_BA 0.5614, mass_B 0.6026
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.6086, mass_c_res 0.6216, rep_AB 0.5554, rep_BA 0.5503, mass_B 0.598
+reported: {"above_every_control": 4, "by_chance": 0.5, "text": {"-2.67 neuron": {"d4_minus_unpushed": -0.003, "cut_off": 0.997}, "-2.67 random": {"d4_minus_unpushed": -0.002, "cut_off": 0.999}, "-2.42 neuron": {"d4_minus_unpushed": -0.002, "cut_off": 0.999}, "-2.42 random": {"d4_minus_unpushed": -0.002, "cut_off": 0.999}, "+2.42 neuron": {"d4_minus_unpushed": -0.002, "cut_off": 0.998}, "+2.42 random": {"d4_minus_unpushed": -0.002, "cut_off": 1.0}, "+2.67 neuron": {"d4_minus_unpushed": -0.003, "cut_off": 0.997}, "+2.67 random": {"d4_minus_unpushed": -0.002, "cut_off": 1.0}}, "figures": {"neurons": 1022, "controls": 2048, "above_every_control": 4, "by_chance": 0.5, "q05": 0, "named": 0, "named_by_halves": 0, "above_ctl_p95": 0.1644, "pA05_and_pB05": 81, "pA05_and_pB05_by_chance": 2.6}, "named": 0, "max_new_rule": {"shorter_passes": false, "mass_c_drop": 0.0123, "rep_min_drop": 0.0084, "take_shorter": false}, "throughput": null}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/733a494b-c5c9-4e9e-95b6-ab2d649aa249/scratchpad/mixA/verdict.json
