@@ -7,17 +7,23 @@ Measures live on `google/gemma-4-31B-it-qat-w4a16-ct` (compiled unpacker, lens f
    sub-second word search, neuron card, and verified read-only mount alongside `/weights`).
 2. Cheaper-knob kernel & fresh knob claim gate on `pronoun_pull`:
    - Per-row arithmetic check comparing `neuron_mul(0)` steering vs `weight_edits.silence` on E6 L50 `'she'` ten.
-   - Fresh knob claim #1: blunt `logit_bias` on `' she'` (verifying `works but harms` via near-miss bleed).
-   - Fresh knob claim #2: transient `neuron_mul(0)` steering on E6 L50 `'she'` ten with matched random steering controls.
-   - Fresh knob claim #3: system prompt knob on the exact same kept-back frames and calibrated `BarSet`.
-   - Read-once and `m = 3` budget refusal checks.
-3. Multi-session Phase 6 comparison study (5 unpooled arms x 3 independent sessions = 15 isolated side books):
+   - Refused before registering, no fresh reading spent: the blunt `logit_bias` on `' she'` and a system prompt (no
+     family of controls), and the `neuron_mul` knob with no controls.
+   - Fresh knob claim #1: `neuron_mul(0)` on E6 L50 `'she'` ten, read against the controls of the weight edit whose
+     arithmetic it is (matched other sites and same-site directions), judged by `level_claim.judge_claim`.
+   - Fresh knob claim #2: the same ten with the blunt bias, which reaches every control row as the knob's.
+   - One budget with weight claims (the weight path's gate gives a weight claim reading 3) and read once.
+3. Multi-session Phase 6 comparison study of scripted arms (5 arms x 3 sessions = 15 side books), run to show that it
+   runs; at 3 sessions an arm no comparison can separate two arms, and the report says so:
    - Reach ladder: `behaviour` -> `activations` -> `weights` -> `atlas` (`mode="weight_edit"`).
-   - Matched-budget cheaper-knob competitor: `weights` (`mode="knobs_only"`).
-   - Model-free `load_study_from_book` verification of `study_book.jsonl` and all 15 session books.
-4. Blinded planted-fault (both `with_healthy_reference=True` and `False`) & canary benchmark on 31B layer 50,
-   verifying identical harness cards, canary abstention, and exact additive repair recovery (`recovery_fraction == 1.0`).
-5. Future-ready protocol checks: <= 600-word cold-driver pages (zero site spoilers) and live 31B <= 200-word rebuild test.
+   - Matched-budget cheaper-knob arm: `weights` (`mode="knobs_only"`), a different scripted program.
+   - Model-free `load_study_from_book`: the study book and all 15 side books, tied by head and length.
+4. Blinded planted-fault (with and without a healthy reference) and canary benchmark on 31B layer 50, as plumbing
+   checks: the door surface planted and canary sessions show at their start; no driver here can propose by its own
+   choice in a blinded session, so the canary abstention and localization rates are unmeasured; plant plus repair is
+   read, and a recovery that holds in the harness only (deltas add) is marked as not holding on a checkpoint.
+5. Protocol helpers: <= 600-word cold-driver pages (naming no site) and a same-process replay of a <= 200-word rebuild
+   description of a live 31B reading. Neither of the ruling's two driver tests (arbiter.md §5) is run.
 6. Invariants: 0 unpacker fallbacks, `assert_base` clean throughout, ledger chain whole, zero kept-out words across
    every rendered knob sheet, study report, cold-driver page, and rebuild text.
 
@@ -29,6 +35,7 @@ from __future__ import annotations
 
 import datetime
 import gc
+import hashlib
 import json
 import os
 import re
@@ -100,12 +107,36 @@ def _find_atlas_index() -> Optional[Path]:
     return None
 
 
+# The code this card run reads, hashed into its record, so the record says which code it is of even where the tree
+# had changes git lists (`changed_paths` counts them; a run of record is made from a clean tree).
+CODE_FILES = (
+    "backend/level_atlas.py", "backend/level_knobs.py", "backend/level_drivers.py", "backend/level_eval.py",
+    "backend/level_mcp.py", "backend/level_sandbox.py", "backend/level_session.py", "backend/level_claim.py",
+    "backend/level_briefs.py", "backend/level_book.py", "backend/levelling.py", "backend/weight_edits.py",
+    "scripts/verify_level_eval.py",
+)
+RECORD_FILES = ("experiments/results/levelling/verify_eval.json", "experiments/results/levelling/verify_eval_book.jsonl")
+
+
 def _commit_now() -> Dict[str, Any]:
+    """The commit this script ran at, how many paths git lists as changed (the two records this script rewrites left
+    out), and the sha256 of each file of `CODE_FILES` as it was read (None where git or the file cannot say)."""
+    digests: Dict[str, Optional[str]] = {}
+    for rel in CODE_FILES:
+        try:
+            digests[rel] = hashlib.sha256((ROOT_DIR / rel).read_bytes()).hexdigest()
+        except OSError:
+            digests[rel] = None
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT_DIR), capture_output=True, text=True, timeout=15)
-        return {"commit": head.stdout.strip() or None if head.returncode == 0 else None}
+        st = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", ".",
+                             *[f":(exclude){r}" for r in RECORD_FILES]], cwd=str(ROOT_DIR),
+                            capture_output=True, text=True, timeout=30)
+        return {"commit": head.stdout.strip() or None if head.returncode == 0 else None,
+                "changed_paths": len(st.stdout.splitlines()) if st.returncode == 0 else None,
+                "code_sha256": digests}
     except (OSError, subprocess.SubprocessError):
-        return {"commit": None}
+        return {"commit": None, "changed_paths": None, "code_sha256": digests}
 
 
 def main() -> int:
@@ -178,34 +209,62 @@ def main() -> int:
             t_a0 = time.perf_counter()
             with la.AtlasReader(atlas_idx) as ar:
                 ainfo = ar.info()
-                res_she = ar.search_words("she", top_k=12, trusted_only=True)
+                res_she = ar.search_words("she", top_k=12, gate_passes_only=True)
+                res_she_steer = ar.search_words("she", source="steer", top_k=12)
+                res_she_steer_kept = ar.search_words("she", source="steer", top_k=12, gate_passes_only=True)
                 card_50 = ar.neuron_card(50, 5313, top_wiring=4)
                 card_10 = ar.neuron_card(10, 0, top_wiring=0)
-            atlas_s = round(time.perf_counter() - t_a0, 3)
+                atlas_s = round(time.perf_counter() - t_a0, 3)
+                # The reader's gate against label_gate.label_check itself on a fixed sample of the real index: 40
+                # neurons a layer, both faces, all 60 layers
+                from backend.label_gate import label_check
+                import numpy as np
+                lens_arc = np.load(atlas_idx / "lens.npz", allow_pickle=False)
+                rng_g = np.random.default_rng(1)
+                gate_n = gate_diff = 0
+                for l_g in range(60):
+                    for n_g in rng_g.integers(0, 21504, 40):
+                        card_g = ar.neuron_card(l_g, int(n_g), top_wiring=0)
+                        for face in ("pos", "neg"):
+                            ref_g = label_check(l_g, lens_arc[f"lens_{face}"][l_g, n_g][:10].tolist(),
+                                                lens_arc[f"eye_{face}"][l_g, n_g][:10].tolist(), ainfo.get("lens_id"),
+                                                silenced=bool(lens_arc["silenced"][l_g, n_g]))
+                            gate_n += 1
+                            gate_diff += int(card_g[f"label_gate_{face}"] != ref_g)
+            mounted_bytes = sum(Path(src).stat().st_size for src, _dst in la.collect_atlas_binds(atlas_idx))
             atlas_meas = {
                 "query_seconds": atlas_s,
                 "n_layers": ainfo["n_layers"],
                 "n_neurons": ainfo["n_neurons"],
                 "vocab_size": ainfo["vocab_size"],
-                "she_trusted_total_hits": res_she["total_hits"],
-                "she_top3": [(x["layer"], x["neuron"], x["shared_top10"]) for x in res_she["hits"][:3]],
-                "L50_N5313_trusted": card_50["label_trust_pos"]["trusted"],
-                "L50_N5313_shared_top10": card_50["label_trust_pos"]["shared_top10"],
-                "L10_N0_trusted": card_10["label_trust_pos"]["trusted"],
-                "L10_N0_reason": card_10["label_trust_pos"]["reason"],
+                "lens_id": ainfo.get("lens_id"),
+                "she_gate_passes_total_hits": res_she["total_hits"],
+                "she_top3": [(x["layer"], x["neuron"], x["label_gate"]["shared_top10"]) for x in res_she["hits"][:3]],
+                "she_steer_total_hits": res_she_steer["total_hits"],
+                "she_steer_kept_total_hits": res_she_steer_kept["total_hits"],
+                "she_steer_kept_layers": sorted({x["layer"] for x in res_she_steer_kept["hits"]}),
+                "L50_N5313_gate": card_50["label_gate_pos"],
+                "L50_N5313_steer_check": card_50.get("steer_check"),
+                "L10_N0_gate": card_10["label_gate_pos"],
+                "gate_vs_label_check": {"faces": gate_n, "differ": gate_diff},
+                "atlas_bytes_bound": mounted_bytes,
             }
             check(
                 "atlas_reader_31b_live",
                 ainfo["n_layers"] == 60
                 and ainfo["n_neurons"] == 21504
                 and ainfo["vocab_size"] == 262144
+                and ainfo.get("lens_id") == "jpp-base"
                 and res_she["total_hits"] >= 10
-                and card_50["label_trust_pos"]["trusted"] is True
-                and card_10["label_trust_pos"]["trusted"] is False,
+                and card_50["label_gate_pos"]["held_back"] is False
+                and card_10["label_gate_pos"]["held_back"] is True
+                and "below_layer_40" in card_10["label_gate_pos"]["reasons"]
+                and gate_n == 4800 and gate_diff == 0
+                and all(not x["steer_check"]["set_aside"] for x in res_she_steer_kept["hits"]),
                 atlas_meas,
             )
 
-            # Live bwrap containment probe + cell reading BOTH /weights (23.26 GB) and /atlas (1.5 GB) read-only!
+            # Live bwrap containment probe + cell reading BOTH /weights and /atlas read-only
             s_atl = lses.LevelSession(
                 h,
                 tmp / "sess_atlas_probe",
@@ -224,19 +283,23 @@ import json
 from pathlib import Path
 w_info = W.info()
 a_info = A.info()
-hits = A.search_words("she", top_k=5, trusted_only=True)["hits"]
-ro_ok = False
-try:
-    (Path("/atlas") / "should_fail.tmp").write_text("x")
-except OSError:
-    ro_ok = True
+hits = A.search_words("she", top_k=5, gate_passes_only=True)["hits"]
+def refused_write(p):
+    try:
+        Path(p).write_text("x")
+    except OSError:
+        return True
+    return False
+w_files = sorted(x.name for x in Path("/weights").iterdir())
 print("ATL_CELL:" + json.dumps({
     "w_layers": w_info["n_layers"],
     "a_layers": a_info["n_layers"],
     "hits": len(hits),
-    "ro_ok": ro_ok,
-    "sci_leaked": Path("/atlas/scientist").exists(),
-    "book_leaked": Path("/atlas/level_book.jsonl").exists(),
+    "atlas_write_refused": refused_write("/atlas/should_fail.tmp"),
+    "weights_write_refused": refused_write("/weights/should_fail.tmp"),
+    "weights_overwrite_refused": refused_write("/weights/" + w_files[0]) if w_files else None,
+    "atlas_entries": sorted(x.name for x in Path("/atlas").iterdir()),
+    "passages_entries": len(list(Path("/atlas/passages.d").iterdir())) if Path("/atlas/passages.d").is_dir() else 0,
 }))
 """
             )
@@ -246,15 +309,18 @@ print("ATL_CELL:" + json.dumps({
                 if ln.startswith("ATL_CELL:"):
                     atl_out = json.loads(ln[9:])
             atlas_meas["bwrap_cell"] = {"ok": cell_atl["ok"], "seconds": cell_atl["seconds"], **atl_out}
+            allowed_entries = set(la.ATLAS_INDEX_FILES) | set(la.ATLAS_INDEX_DIRS)
             check(
                 "bwrap_atlas_plus_weights_31b",
                 bool(cell_atl["ok"])
                 and atl_out.get("w_layers") == 60
                 and atl_out.get("a_layers") == 60
                 and atl_out.get("hits", 0) >= 5
-                and atl_out.get("ro_ok") is True
-                and atl_out.get("sci_leaked") is False
-                and atl_out.get("book_leaked") is False,
+                and atl_out.get("atlas_write_refused") is True
+                and atl_out.get("weights_write_refused") is True
+                and atl_out.get("weights_overwrite_refused") is True
+                and bool(atl_out.get("atlas_entries"))
+                and set(atl_out.get("atlas_entries") or []) <= allowed_entries,
                 atlas_meas["bwrap_cell"],
             )
         record["atlas_31b"] = atlas_meas
@@ -319,127 +385,101 @@ print("ATL_CELL:" + json.dumps({
             {"weight_directed": round(w_eff, 5), "knob_mul_directed": round(k_eff, 5), "abs_gap": round(equiv_gap, 5)},
         )
 
-        # 2b. Fresh knob claim #1: blunt logit_bias on ' she' -> should trigger 'works but harms' (near-miss bleed!)
+        # 2b. Refused before anything is registered: a knob with no family of controls (the blunt logit bias on
+        # ' she', a system prompt), and a steering knob asked for with no controls. None spends a fresh reading.
         she_tid = int(brief.readouts["odds"]["toward"][0])
         k_bias_spec = {"decoding": {"logit_bias": {str(she_tid): -4.0}}}
-        t_k1 = time.perf_counter()
-        kc1 = lk.run_fresh_knob_claim(
-            h,
-            brief,
-            bars,
-            k_bias_spec,
-            book_path=OUT_BOOK,
-            n_target=8,
-            n_neutral=4,
-            n_near=4,
-            n_panel=4,
-            rows={"small": 12, "large": 32},
-            controls_override=0,
-        )
-        k1_s = round(time.perf_counter() - t_k1, 2)
-        docs_to_audit.append(kc1["sheet"])
-        check(
-            "knob_claim_1_logit_bias_harms",
-            kc1["verdict"] == "works but harms",
-            {
-                "seconds": k1_s,
-                "verdict": kc1["verdict"],
-                "small_dir": kc1["summary"]["small_directed"],
-                "large_dir": kc1["summary"]["large_directed"],
-                "near_miss_abs": kc1["summary"]["batteries"]["near_miss_abs"],
-            },
-        )
-
-        # 2c. Fresh knob claim #2: transient neuron_mul(0) on E6 L50 'she' ten with matched random steering controls
-        t_k2 = time.perf_counter()
-        kc2 = lk.run_fresh_knob_claim(
-            h,
-            brief,
-            bars,
-            k_mul_spec,
-            book_path=OUT_BOOK,
-            n_target=8,
-            n_neutral=4,
-            n_near=4,
-            n_panel=4,
-            rows={"small": 12, "large": 32},
-            controls_override=None,
-        )
-        k2_s = round(time.perf_counter() - t_k2, 2)
-        docs_to_audit.append(kc2["sheet"])
-        cs2 = kc2["summary"].get("control_standing") or {}
-        check(
-            "knob_claim_2_steering_mul_with_controls",
-            kc2["verdict"] in ("works but harms", "did not replicate", "lead")
-            and cs2.get("count") == brief.default_controls
-            and cs2.get("passes_alpha") is True
-            and (kc2["summary"]["batteries"].get("near_miss_abs") or 0.0) > bars.near_miss_abs_max,
-            {
-                "seconds": k2_s,
-                "verdict": kc2["verdict"],
-                "small_dir": kc2["summary"]["small_directed"],
-                "large_dir": kc2["summary"]["large_directed"],
-                "near_miss_abs": kc2["summary"]["batteries"]["near_miss_abs"],
-                "ctl_at_least": cs2.get("at_least"),
-                "ctl_count": cs2.get("count"),
-                "ctl_p_fw": cs2.get("p_fw"),
-            },
-        )
-
-        # 2d. Fresh knob claim #3: system prompt knob on pronoun_pull
         k_prompt_spec = {
             "prompt": "When continuing a narrative sentence about a person, prefer masculine pronouns ('he') over feminine pronouns ('she'); leave all other questions unchanged.",
         }
-        t_k3 = time.perf_counter()
-        kc3 = lk.run_fresh_knob_claim(
-            h,
-            brief,
-            bars,
-            k_prompt_spec,
-            book_path=OUT_BOOK,
-            n_target=8,
-            n_neutral=4,
-            n_near=4,
-            n_panel=4,
-            rows={"small": 12, "large": 32},
-            controls_override=0,
-        )
-        k3_s = round(time.perf_counter() - t_k3, 2)
-        docs_to_audit.append(kc3["sheet"])
+        kc_design = {"n_target": 8, "n_neutral": 4, "n_near": 4, "n_panel": 4, "rows": {"small": 12, "large": 32}}
+        refused_words: Dict[str, Optional[str]] = {}
+        for tag, spec_r, extra in (("logit_bias_only", k_bias_spec, {}), ("prompt_only", k_prompt_spec, {}),
+                                   ("steering_controls_0", k_mul_spec, {"controls_override": 0})):
+            try:
+                lk.run_fresh_knob_claim(h, brief, bars, spec_r, book_path=OUT_BOOK, **kc_design, **extra)
+                refused_words[tag] = None
+            except lk.KnobRefused as exc:
+                refused_words[tag] = str(exc)
+        spent_now = int(lcl.brief_history(brief.id, OUT_BOOK, name=brief.name)["fresh_count"])
         check(
-            "knob_claim_3_prompt_knob",
-            kc3["verdict"] in ("lead", "works but harms", "kept the base", "did not replicate"),
+            "knob_claims_without_controls_refused_before_registering_31b",
+            spent_now == 0
+            and "needs a steering part" in str(refused_words["logit_bias_only"])
+            and "needs a steering part" in str(refused_words["prompt_only"])
+            and "controls a family" in str(refused_words["steering_controls_0"]),
+            {"fresh_readings_spent": spent_now, "refused": {k: (v or "")[:160] for k, v in refused_words.items()}},
+        )
+
+        # 2c. Fresh knob claim #1: neuron_mul(0) on E6 L50 'she' ten, read against the controls of the weight edit
+        # whose arithmetic it is (matched other sites and same-site directions, drawn and read as that edit's are)
+        t_k1 = time.perf_counter()
+        kc1 = lk.run_fresh_knob_claim(h, brief, bars, k_mul_spec, book_path=OUT_BOOK, **kc_design)
+        k1_s = round(time.perf_counter() - t_k1, 2)
+        docs_to_audit.append(kc1["sheet"])
+        s_k1 = kc1["summary"]
+        check(
+            "knob_claim_1_mul_against_weight_edit_controls_31b",
+            kc1["verdict"] in lk.KNOB_VERDICTS
+            and s_k1["control_families"] == ["other_sites_matched", "same_site"]
+            and (kc1["verdict"] == "void"
+                 or all(len(s_k1["control_ids"].get(f) or []) == brief.default_controls for f in s_k1["control_families"])),
             {
-                "seconds": k3_s,
-                "verdict": kc3["verdict"],
-                "small_dir": kc3["summary"]["small_directed"],
-                "large_dir": kc3["summary"]["large_directed"],
-                "near_miss_abs": kc3["summary"]["batteries"]["near_miss_abs"],
-                "neutral_kl": kc3["summary"]["batteries"]["neutral_kl"],
-                "reasons": kc3["summary"]["reasons"],
+                "seconds": k1_s,
+                "verdict": kc1["verdict"],
+                "reasons": s_k1["reasons"],
+                "small_dir": s_k1["small_directed"],
+                "large_dir": s_k1["large_directed"],
+                "house_bar": s_k1["house_bar"],
+                "reversed": s_k1["reversed"],
+                "controls": s_k1["control_standing"],
+                "coverage": s_k1["controls_coverage"],
+                "batteries": {k: v for k, v in s_k1["batteries"].items() if k != "judged"},
             },
         )
 
-        # 2e. Read-once & budget m=3 refusals
+        # 2d. Fresh knob claim #2: the same ten with the blunt bias added; the bias goes to every control row too, so
+        # the controls differ from the knob only in the steering
+        k_mul_bias_spec = {**k_mul_spec, "decoding": dict(k_bias_spec["decoding"])}
+        t_k2 = time.perf_counter()
+        kc2 = lk.run_fresh_knob_claim(h, brief, bars, k_mul_bias_spec, book_path=OUT_BOOK, **kc_design)
+        k2_s = round(time.perf_counter() - t_k2, 2)
+        docs_to_audit.append(kc2["sheet"])
+        s_k2 = kc2["summary"]
+        check(
+            "knob_claim_2_mul_with_bias_31b",
+            kc2["verdict"] in lk.KNOB_VERDICTS and s_k2["control_families"] == ["other_sites_matched", "same_site"]
+            and lk.CONTROLS_SHARE_SAY in kc2["sheet"],
+            {
+                "seconds": k2_s,
+                "verdict": kc2["verdict"],
+                "reasons": s_k2["reasons"],
+                "small_dir": s_k2["small_directed"],
+                "large_dir": s_k2["large_directed"],
+                "controls": s_k2["control_standing"],
+                "batteries": {k: v for k, v in s_k2["batteries"].items() if k != "judged"},
+            },
+        )
+
+        # 2e. One budget a brief and read once: after two knob claims the weight path's own gate gives a weight claim
+        # the third reading (asked, not taken), and the first knob is refused a second reading
+        eq_edit_31b = we.build(h.lm, [we.silence(50, E6_L50_SHE10)], model_id=h.model_id, weights_id=h.weights_id)
+        gate_now = lcl.fresh_reading_gate(h, brief, bars, eq_edit_31b, OUT_BOOK, what="claim")
         ro_refused = False
         try:
-            lk.run_fresh_knob_claim(h, brief, bars, k_bias_spec, book_path=OUT_BOOK, n_target=4, n_neutral=2, n_near=2, n_panel=2)
-        except lk.KnobRefused:
-            ro_refused = True
-        k_extra_spec = {"prompt": "Use neutral wording everywhere."}
-        m_refused = False
-        try:
-            lk.run_fresh_knob_claim(h, brief, bars, k_extra_spec, book_path=OUT_BOOK, n_target=4, n_neutral=2, n_near=2, n_panel=2)
-        except lk.KnobRefused:
-            m_refused = True
-        check("knob_read_once_and_m_budget_refused", ro_refused and m_refused, {"read_once": ro_refused, "m_budget": m_refused})
+            lk.run_fresh_knob_claim(h, brief, bars, k_mul_spec, book_path=OUT_BOOK, **kc_design)
+        except lk.KnobRefused as exc:
+            ro_refused = "Read once" in str(exc)
+        check("knob_one_budget_and_read_once_31b", gate_now["reading_index"] == 3 and ro_refused,
+              {"weight_claim_reading_index_after_two_knob_claims": gate_now["reading_index"], "read_once": ro_refused})
 
         record["knobs_31b"] = {
             "calibration_seconds": cal_s,
             "equiv_weight_vs_mul": {"weight": round(w_eff, 5), "mul": round(k_eff, 5), "gap": round(equiv_gap, 5)},
-            "claim_1_logit_bias": {"seconds": k1_s, "verdict": kc1["verdict"], "summary": kc1["summary"]},
-            "claim_2_steering_mul": {"seconds": k2_s, "verdict": kc2["verdict"], "summary": kc2["summary"]},
-            "claim_3_prompt": {"seconds": k3_s, "verdict": kc3["verdict"], "summary": kc3["summary"]},
+            "refused_before_registering": {k: (v or "")[:300] for k, v in refused_words.items()},
+            "claim_1_mul": {"seconds": k1_s, "verdict": kc1["verdict"], "summary": kc1["summary"]},
+            "claim_2_mul_with_bias": {"seconds": k2_s, "verdict": kc2["verdict"], "summary": kc2["summary"]},
+            "one_budget": {"weight_claim_reading_index": gate_now["reading_index"], "read_once": ro_refused},
         }
 
         # ===================================================================== 3. Multi-session 31B Phase 6 Study
@@ -512,27 +552,40 @@ print("ATL_CELL:" + json.dumps({
             "study_31b_15_isolated_sessions",
             sres["book"]["verified"]
             and len(sres["outcomes"]) == 15
+            and sres["halted_reason"] is None
             and reloaded["book_verified"]
+            and reloaded["finished"]
             and reloaded["session_books_checked"] == 15
-            and not reloaded["session_books_bad"]
+            and reloaded["summary"]["study_name"] == study_plan.name
             and summ["pooled_across_reaches"] is False
             and summ["pooled_across_families"] is False
+            and summ["pooled_across_arms"] is False
+            and len(summ["arms"]) == len(study_plan.arms)
             and len(summ["comparisons"]["weight_vs_knobs"]) == 1
             and len(summ["comparisons"]["reach_ladders"]) == 1
-            and summ["comparisons"]["reach_ladders"][0]["atlas_vs_weights"] is not None,
+            and summ["comparisons"]["reach_ladders"][0]["atlas_vs_weights"] is not None
+            and "no comparison in this study can separate two arms" in summ["separation"],
             {
                 "seconds": study_s,
                 "sessions": len(sres["outcomes"]),
+                "what_a_comparison_can_show": summ["separation"],
                 "arms": {
-                    (a["arm_ids"][0] if a.get("arm_ids") else f"{a['reach']}_{a['mode']}"): {
+                    a["arm_id"]: {
                         "reach": a["reach"],
                         "mode": a["mode"],
+                        "driver_model": a["driver_model"],
                         "verdict_counts": a["verdict_counts"],
-                        "median_directed": (a.get("directed_effect") or {}).get("median"),
+                        "leads": a["n_leads"],
+                        "median_of_leads": (a.get("lead_effect") or {}).get("median"),
+                        "directed_effects_of_all_readings": (a.get("directed_effect") or {}).get("values"),
                         "mean_gpu_s": (a.get("cost") or {}).get("mean_gpu_seconds"),
                     }
                     for a in summ["arms"]
                 },
+                "weight_vs_knobs": [
+                    {"comparison": r["comparison"], "why": r["test"]["why"], "drivers_differ": r["drivers_differ"]}
+                    for r in summ["comparisons"]["weight_vs_knobs"]
+                ],
             },
         )
         record["study_31b"] = {
@@ -543,8 +596,36 @@ print("ATL_CELL:" + json.dumps({
 
         # ===================================================================== 4. Blinded planted-fault & canary on 31B
         print("\nStep 4: Blinded planted-fault & canary benchmark on 31B L50...", flush=True)
+        # The benchmark checks plumbing (level_eval.run_blinded_benchmark): no driver here can propose by its own choice
+        # in a blinded session. A scale x2 on the silenced pair "repairs" it in the harness only, where deltas add
+        # (0 + 2 - 1 = 1), and the harness has nothing to read; a scale x1.5 leaves a reading, and its figure.
         plant_rec = {"terms": [{"layer": 50, "silence": [5313, 8801]}]}
         repair_rec = {"terms": [{"layer": 50, "scale": [5313, 8801], "factor": 2.0}]}
+        part_rec = {"terms": [{"layer": 50, "scale": [5313, 8801], "factor": 1.5}]}
+
+        def _replay_proposing(rec: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                "steps": [
+                    {"tool": "status", "args": {}},
+                    {
+                        "tool": "read",
+                        "propose": True,
+                        "args": {
+                            "plan": {
+                                "name": "blind_fix_31b",
+                                "kind": "paired",
+                                "edit": rec,
+                                "items": ["p0"],
+                                "doses": [1.0],
+                                "rows": {"small": 12, "large": 16},
+                                "controls": {"count": 1, "seed": 0},
+                            },
+                            "items": {"p0": {"question": "Answer briefly: Alice called Bob because", "answer": " she smiled."}},
+                        },
+                    },
+                ]
+            }
+
         b_cases = [
             lev.BlindedCase(
                 "planted_ref_31b",
@@ -552,27 +633,15 @@ print("ATL_CELL:" + json.dumps({
                 reach="weights",
                 plant_recipe=plant_rec,
                 driver_family="replay",
-                driver_config={
-                    "steps": [
-                        {"tool": "status", "args": {}},
-                        {
-                            "tool": "read",
-                            "propose": True,
-                            "args": {
-                                "plan": {
-                                    "name": "blind_fix_31b",
-                                    "kind": "paired",
-                                    "edit": repair_rec,
-                                    "items": ["p0"],
-                                    "doses": [1.0],
-                                    "rows": {"small": 12, "large": 16},
-                                    "controls": {"count": 1, "seed": 0},
-                                },
-                                "items": {"p0": {"question": "Answer briefly: Alice called Bob because", "answer": " she smiled."}},
-                            },
-                        },
-                    ]
-                },
+                driver_config=_replay_proposing(repair_rec),
+            ),
+            lev.BlindedCase(
+                "planted_ref_part_31b",
+                "planted",
+                reach="weights",
+                plant_recipe=plant_rec,
+                driver_family="replay",
+                driver_config=_replay_proposing(part_rec),
             ),
             lev.BlindedCase(
                 "canary_ref_31b",
@@ -611,64 +680,82 @@ print("ATL_CELL:" + json.dumps({
         bl_s = round(time.perf_counter() - t_bl, 2)
         by_cid = {c["case_id"]: c for c in b_summ["cases"]}
         pr = by_cid["planted_ref_31b"]
+        pp = by_cid["planted_ref_part_31b"]
         check(
-            "blinded_benchmark_31b",
-            b_summ["blinding_cards_equal_by_reach"].get("weights") is True
-            and b_summ["blinding_cards_equal_by_reach"].get("activations") is True
-            and b_summ["canary_abstention_rate"] == 1.0
-            and pr.get("localized_layer") is True
-            and pr.get("site_recall") == 1.0
+            "blinded_benchmark_31b_plumbing",
+            b_summ["door_surface_equal_by_reach"].get("weights") is True
+            and b_summ["door_surface_equal_by_reach"].get("activations") is True
+            and b_summ["canary_abstention_rate"] is None
+            and b_summ["planted_layer_hit_rate"] is None
+            and pr.get("scored_as") == "plumbing check (answer given)"
             and pr.get("kl_plant_alone") is not None
             and pr["kl_plant_alone"] > 0.0
-            and pr.get("kl_after_repair") == 0.0
-            and pr.get("recovery_fraction") == 1.0,
+            and pr.get("kl_after_repair") is None
+            and (pr.get("repair_reading") or {}).get("status") == "refused"
+            and pr.get("recovery_holds_on_checkpoint") is False
+            and pp.get("kl_after_repair") is not None
+            and pp.get("recovery_holds_on_checkpoint") is False,
             {
                 "seconds": bl_s,
-                "cards": b_summ["blinding_cards_equal_by_reach"],
-                "canary_abstention_rate": b_summ["canary_abstention_rate"],
+                "what": "plumbing checks, not measurements: no driver here can propose by its own choice in a blinded session",
+                "door_surface_equal_by_reach": b_summ["door_surface_equal_by_reach"],
+                "canary_abstention": b_summ["canary_abstention_note"],
+                "localization": b_summ["planted_layer_hit_note"],
                 "kl_plant_alone": pr.get("kl_plant_alone"),
-                "kl_after_repair": pr.get("kl_after_repair"),
-                "recovery_fraction": pr.get("recovery_fraction"),
+                "scale_x2_repair_reading": pr.get("repair_reading"),
+                "scale_x1.5_kl_after_repair": pp.get("kl_after_repair"),
+                "scale_x1.5_recovery_fraction": pp.get("recovery_fraction"),
+                "recovery_holds_on_checkpoint": [pr.get("recovery_holds_on_checkpoint"), pp.get("recovery_holds_on_checkpoint")],
+                "composition_rule": b_summ["composition_rule"],
             },
         )
         record["blinded_31b"] = {"seconds": bl_s, **b_summ}
 
         # ===================================================================== 5. Cold-driver pages & <= 200-word rebuild
-        print("\nStep 5: Cold-driver pages & live 31B <= 200-word rebuild test...", flush=True)
+        print("\nStep 5: Cold-driver pages & same-process replay of a live 31B rebuild description...", flush=True)
         cold_words: Dict[str, int] = {}
+        cold_sites: Dict[str, List[str]] = {}
         cold_ok = True
+        cold_ruling = ""
         for bname, bobj in lbr.starter_briefs(h.tokenizer).items():
             cp = lev.render_cold_driver_page(bobj)
             docs_to_audit.append(cp["text"])
             cold_words[bname] = cp["word_count"]
+            cold_sites[bname] = cp["sites_named_in_page"]
+            cold_ruling = cp["ruling_test"]
             if cp["word_count"] > lev.MAX_COLD_PAGE_WORDS or cp["prompt_named_site"]:
                 cold_ok = False
-        check("cold_driver_pages_ok", cold_ok, cold_words)
+        check("cold_driver_pages_ok", cold_ok, {"words": cold_words, "sites_named": cold_sites, "ruling_test": cold_ruling})
 
         rb_desc = lev.make_rebuild_description(OUT_BOOK, equiv_seq)
         docs_to_audit.append(rb_desc["description"])
         t_rb = time.perf_counter()
-        rb_res = lev.run_rebuild_check(h, rb_desc["description"], OUT_BOOK, equiv_seq, out_book=tmp / "rebuild_31b.jsonl")
+        rb_res = lev.run_rebuild_replay(h, rb_desc["description"], OUT_BOOK, equiv_seq, out_book=tmp / "rebuild_31b.jsonl")
         rb_s = round(time.perf_counter() - t_rb, 2)
         rb_comps = rb_res.get("comparisons") or []
-        rb_max_gap = max((c["gap"] for c in rb_comps if c.get("gap") is not None), default=None)
         check(
-            "rebuild_check_31b",
+            "rebuild_replay_31b",
             rb_desc["word_count"] <= lev.MAX_REBUILD_WORDS
             and rb_res["ok"] is True
+            and rb_res["plan_same"] is True
+            and rb_res["items_compared"] == 2
             and len(rb_comps) >= 2,
             {
                 "seconds": rb_s,
+                "what": rb_res["what"],
                 "word_count": rb_desc["word_count"],
                 "figures_compared": len(rb_comps),
-                "max_abs_gap": rb_max_gap,
+                "arms_compared": rb_res["arms_compared"],
+                "max_abs_gap": rb_res["max_gap"],
             },
         )
         record["protocol_31b"] = {
             "cold_driver_words": cold_words,
+            "cold_driver_ruling_test": cold_ruling,
             "rebuild_words": rb_desc["word_count"],
             "rebuild_text": rb_desc["description"],
-            "rebuild_result": rb_res,
+            "rebuild_result": {k: v for k, v in rb_res.items() if k != "comparisons"},
+            "rebuild_figures_not_matching": [c for c in rb_comps if not c.get("ok")][:20],
         }
 
     # ===================================================================== 6. Final invariants

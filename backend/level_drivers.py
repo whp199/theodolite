@@ -11,17 +11,23 @@ Supported driver families:
   each declared reach (`behaviour`, `activations`, `weights`, `atlas`) and spend real session budget through the gates.
 - `replay`: replays a fixed or recorded sequence of tool calls through `level_mcp.dispatch_tool` (zero API cost).
 - `openai`: OpenAI-compatible Chat Completions tool-calling loop reusing `backend/scientist_chat.py`'s endpoint
-  profiles (API keys read strictly from environment variables, never stored on disk; injectable transport for tests).
-- `claude`: Claude Code CLI (`claude -p --output-format stream-json`) confined to the folder reach (`cwd=work_dir`,
-  `--setting-sources ""`, `--strict-mcp-config`, `--tools Read Write Edit`, `--disallowedTools Bash`, credential-stripped
-  `child_env`), connected to the live `LevelSession` via `level_mcp.session_socket_bridge` so multi-session studies do
-  not reload the 31B checkpoint per run.
+  profiles (API keys read strictly from environment variables, never stored on disk; a remote endpoint only through
+  the profile at its address, with that profile's key; redirects refused; injectable transport for tests).
+- `claude`: Claude Code CLI (`claude -p --output-format stream-json`) with the session's door tools and nothing else
+  (`claude_cli_args`: `--tools ""`, the door's tools in `--allowedTools`, `--permission-mode dontAsk`, no settings,
+  CLAUDE.md, auto-memory or saved transcript; an allowlisted environment, `claude_child_env`), connected to the live
+  `LevelSession` via `level_mcp.session_socket_bridge` so multi-session studies do not reload the 31B checkpoint per
+  run.
 - `codex`: refused unless `codex_probed=True` and `TORCHINDUCTOR_CACHE_DIR` is outside `/tmp`.
 
-Hard unattended caps (`verify/arbiter.md` row 34, `verify/skeptic_safety.md:271`):
-- `DriverBudget`: `max_turns`, `max_tokens`, `max_dollars` (owner-approved ceiling required for paid drivers),
-  `max_wall_seconds` with process-group `SIGKILL`.
-- `KillSwitch`: file-based (`STOP` file) and event/signal kill switch checked before every turn and subprocess read.
+Hard unattended caps (`verify/arbiter.md` row 34, `verify/skeptic_safety.md:271`), kept during the run:
+- `DriverBudget`: `max_turns`, `max_tokens`, `max_dollars` (owner-approved ceiling required for paid drivers; a study
+  passes what it has left), `max_wall_seconds` with process-group `SIGKILL`. Claude Code is also given the dollars as
+  `--max-budget-usd`; an OpenAI-compatible endpoint's dollars are counted at known prices, never at a silent 0.
+- `KillSwitch`: file-based (`STOP` file) and event/signal kill switch checked before every turn and subprocess read,
+  and every 0.2 s while an endpoint request is out.
+- A session whose door calls were denied, or none of whose door calls succeeded, ends as `driver_failure`, never as
+  an honest abstention.
 
 Zero kept-out words appear in source, docstrings, prompts, or outputs.
 """
@@ -30,7 +36,9 @@ from __future__ import annotations
 import contextlib
 import datetime
 import hashlib
+import ipaddress
 import json
+import math
 import os
 import select
 import shutil
@@ -40,6 +48,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -82,14 +91,16 @@ def _git_commit() -> str:
 
 @dataclass(frozen=True)
 class DriverBudget:
-    """Hard driver-side caps paired with `level_session.SessionBudget`."""
+    """Hard driver-side caps paired with `level_session.SessionBudget`. A study passes each session what is left of
+    its dollars as `max_dollars`. The prices are dollars a million tokens; None is unknown, never a silent 0 (a remote
+    OpenAI-compatible endpoint with unknown prices is refused, `_openai_prices`)."""
 
     max_turns: int = 24
     max_tokens: int = 200_000
     max_dollars: Optional[float] = None
     max_wall_seconds: float = 1200.0
-    input_usd_per_mtok: float = 0.0
-    output_usd_per_mtok: float = 0.0
+    input_usd_per_mtok: Optional[float] = None
+    output_usd_per_mtok: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -97,8 +108,8 @@ class DriverBudget:
             "max_tokens": int(self.max_tokens),
             "max_dollars": float(self.max_dollars) if self.max_dollars is not None else None,
             "max_wall_seconds": float(self.max_wall_seconds),
-            "input_usd_per_mtok": float(self.input_usd_per_mtok),
-            "output_usd_per_mtok": float(self.output_usd_per_mtok),
+            "input_usd_per_mtok": float(self.input_usd_per_mtok) if self.input_usd_per_mtok is not None else None,
+            "output_usd_per_mtok": float(self.output_usd_per_mtok) if self.output_usd_per_mtok is not None else None,
         }
 
 
@@ -191,8 +202,13 @@ def build_driver_prompt(
             sys_lines += [
                 "",
                 "Cheaper-knob mode (zero weight edits):",
-                "- Weight-edit tools are disabled. Search only over prompts, decoding (thinking, sampler, logit_bias),",
-                "  and transient activation steering pushes (direction, neuron_mul, neuron_add) via knob_read / knob_write.",
+                "- Weight-edit tools are disabled. Search only over prompts, decoding (thinking, sampler, logit_bias)",
+                "  and transient steering via knob_read / knob_write: direction adds a fixed vector to the residual stream",
+                "  at a layer's output; neuron_add adds a fixed push there along its neurons' summed write direction (not",
+                "  an add to their activations); neuron_mul multiplies its neurons' activations where they enter the down",
+                "  projection.",
+                "- A fresh claim needs a steering part: a prompt or decoding setting alone has no control edits to be",
+                "  judged against and is refused.",
                 "- Remember that a global logit_bias also moves near-miss prompts and can fail retention batteries.",
                 "- When ready, submit your best candidate once via claim_knob (scored on fresh kept-back frames and harm bars).",
             ]
@@ -210,7 +226,7 @@ def build_driver_prompt(
                 else:
                     sys_lines.append("- Off-card Python cell has writable /work with numpy/torch on CPU (no weights, no GPU, no network).")
             if "atlas_query" in tools:
-                sys_lines.append("- atlas_query searches read-only neuron labels and wiring; labels marked trusted=False are leads only.")
+                sys_lines.append("- atlas_query searches read-only neuron labels and wiring. Every word is a lead to test by a reading; each label carries the label gate's check (label_gate: held_back, reasons), and steer words what the steer lens's own check found.")
             if "claim" in tools:
                 sys_lines.append("- When a candidate clears practice controls and floor, submit it once via claim for a fresh verdict.")
 
@@ -234,13 +250,21 @@ def build_driver_prompt(
     user_text = "\n".join(user_lines).strip()
     digest = hashlib.sha256((system_text + "\n---\n" + user_text).encode("utf-8")).hexdigest()
     words = len((system_text + " " + user_text).split())
+    # Whether the page names a site: the brief says its own text does, or the page names a layer or a neuron by number
+    # (level_eval's finder; imported here, as level_eval imports this module when it loads)
+    from backend.level_eval import sites_named_in
+
+    brief_obj = getattr(session, "_brief", None)
+    sites = sites_named_in(system_text + "\n" + user_text)
+    named = bool(getattr(brief_obj, "prompt_named_site", False)) or bool(sites)
     return {
         "system": system_text,
         "user": user_text,
         "prompt_sha256": digest,
         "word_count": words,
         "bare": is_bare,
-        "prompt_named_site": False,
+        "prompt_named_site": named,
+        "sites_named": sites,
     }
 
 
@@ -263,8 +287,13 @@ def _extract_outcome_from_book(
     notes: str = "",
     proposed_edit: Optional[Mapping[str, Any]] = None,
     proposed_knob: Optional[Mapping[str, Any]] = None,
+    driver_failure: Optional[str] = None,
+    door: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Assemble the canonical `SessionOutcome` from `session` and its verified level book (never trusting driver prose)."""
+    """Assemble the canonical `SessionOutcome` from `session` and its verified level book (never trusting driver prose).
+
+    `driver_failure` says, in plain words, why the driver could not work the door (`_door_failure`); `door` is what
+    the door saw of the driver's calls (and, for a CLI driver, what was running when it was stopped)."""
     close_info = session.close()
     ver = lb.verify(session.book_path)
     book_ok = bool(ver["ok"])
@@ -287,12 +316,24 @@ def _extract_outcome_from_book(
     verdict_seq: Optional[int] = None
     all_claims: List[Dict[str, Any]] = []
 
+    # Only the lines this session wrote are its outcome: a book seeded from another (a study's calibration book) or
+    # shared with an earlier session holds claims that are not this driver's
+    own_seqs = {int(s) for s in (close_info.get("book_seqs") or [])}
+    seed_verdict_set_aside: Optional[Dict[str, Any]] = None  # the last verdict in the book this session did not enter
     if book_ok and session.book_path.exists():
         for entry in lb.entries(session.book_path):
             if entry.get("kind") != "note":
                 continue
             body = entry.get("body") or {}
             nt = body.get("note_type") or body.get("note")
+            try:
+                own_line = int(entry.get("seq", -1)) in own_seqs
+            except (TypeError, ValueError):
+                own_line = False
+            if not own_line:
+                if nt in ("claim_verdict", "knob_claim_verdict"):
+                    seed_verdict_set_aside = {"seq": entry.get("seq"), "verdict": body.get("verdict")}
+                continue
             if nt == "claim_verdict":
                 submitted = True
                 verdict_seq = int(entry["seq"])
@@ -389,6 +430,7 @@ def _extract_outcome_from_book(
         "knob_classes": knob_classes,
         "claims_count": len(all_claims),
         "all_claims": all_claims,
+        **({"seed_verdict_set_aside": seed_verdict_set_aside} if seed_verdict_set_aside else {}),
         "metrics": {
             "directed_effect": directed_effect,
             "small_directed": small_dir,
@@ -411,6 +453,8 @@ def _extract_outcome_from_book(
         "transcript_copy": close_info["transcript_copy"],
         "proposed_edit": dict(proposed_edit) if isinstance(proposed_edit, Mapping) else None,
         "proposed_knob": dict(proposed_knob) if isinstance(proposed_knob, Mapping) else None,
+        "driver_failure": driver_failure,
+        "door": dict(door) if isinstance(door, Mapping) else None,
         "notes": notes[:2000],
     }
 
@@ -578,7 +622,7 @@ def run_scripted_weight_driver(
     if "atlas_query" in allowed and not _stopped():
         q_word = _decode_target_query(session)
         if q_word:
-            ok_aq, aq = _step("atlas_query", {"op": "search_words", "args": {"query": q_word, "top_k": 32, "trusted_only": True}})
+            ok_aq, aq = _step("atlas_query", {"op": "search_words", "args": {"query": q_word, "top_k": 32, "gate_passes_only": True}})
             if ok_aq and not (aq.get("hits") or []):
                 ok_aq, aq = _step("atlas_query", {"op": "search_words", "args": {"query": q_word, "top_k": 16}})
             if ok_aq:
@@ -741,7 +785,9 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
                     best_floor = fl
                     best_cand = edit_recipe
 
-    proposed_edit = best_cand
+    # The proposal is the edit this driver submitted, and only that: its best practice candidate is not a proposal
+    # when it kept the base instead (a blinded case would otherwise score an abstention as a repair)
+    proposed_edit = None
 
     # 3. Submit best candidate to `claim` if claim tool is enabled and candidate clears floor (or forced)
     if "claim" in allowed and best_cand is not None and not _stopped():
@@ -755,6 +801,8 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
                 "practice_best": round(float(best_score), 5) if best_score is not None else None,
             })
             stop_reason = "claimed" if ok_cl else "error"
+            if ok_cl:
+                proposed_edit = best_cand
         else:
             stop_reason = "kept_base_abstention"
     elif _stopped():
@@ -903,7 +951,7 @@ def run_scripted_knob_driver(
     if "atlas_query" in allowed and not _stopped():
         q_word = _decode_target_query(session)
         if q_word:
-            ok_aq, aq = _step("atlas_query", {"op": "search_words", "args": {"query": q_word, "top_k": 24, "trusted_only": True}})
+            ok_aq, aq = _step("atlas_query", {"op": "search_words", "args": {"query": q_word, "top_k": 24, "gate_passes_only": True}})
             if ok_aq and not (aq.get("hits") or []):
                 ok_aq, aq = _step("atlas_query", {"op": "search_words", "args": {"query": q_word, "top_k": 10}})
             if ok_aq and aq.get("hits"):
@@ -924,7 +972,9 @@ def run_scripted_knob_driver(
     best_floor = 0.0
     sub_items = dict(list(prac_items.items())[:2])
 
-    for cname, kspec in candidates[:4]:
+    # The candidates that can be claimed (those with a steering part) are read first, so the four read include them
+    ordered = [c for c in candidates if c[1].get("steering")] + [c for c in candidates if not c[1].get("steering")]
+    for cname, kspec in ordered[:4]:
         why_stop = _stopped()
         if why_stop:
             stop_reason = why_stop
@@ -933,7 +983,7 @@ def run_scripted_knob_driver(
             ok_r, rres = _step("knob_write", {"knob": kspec, "items": sub_items, "max_new": 24, "seeds": [1], "name": f"prac_{cname}"})
             if ok_r:
                 sc = rres.get("directed_effect")
-                if sc is not None and (best_score is None or float(sc) > best_score):
+                if sc is not None and kspec.get("steering") and (best_score is None or float(sc) > best_score):
                     best_score = float(sc)
                     best_knob = kspec
         else:
@@ -947,12 +997,15 @@ def run_scripted_knob_driver(
                 sm_d = (rres.get("small") or {}).get("directed_mean")
                 sc = lg_d if lg_d is not None else sm_d
                 fl = max(float((rres.get("small") or {}).get("floor") or 0.0), float((rres.get("large") or {}).get("floor") or 0.0))
-                if sc is not None and (best_score is None or float(sc) > best_score):
+                if sc is not None and kspec.get("steering") and (best_score is None or float(sc) > best_score):
                     best_score = float(sc)
                     best_floor = fl
                     best_knob = kspec
 
-    proposed_knob = best_knob
+    # Practice reads every candidate; only one with a steering part can be claimed (a prompt or decoding setting alone
+    # has no control edits to be judged against, and the gate refuses it), so the best of those is put forward. The
+    # proposal is the knob this driver submitted, and only that.
+    proposed_knob = None
     if "claim_knob" in allowed and best_knob is not None and not _stopped():
         should_submit = submit_even_if_weak or (best_score is not None and best_score > max(best_floor, 0.0))
         if should_submit:
@@ -962,6 +1015,8 @@ def run_scripted_knob_driver(
                 "practice_best": round(float(best_score), 5) if best_score is not None else None,
             })
             stop_reason = "claimed" if ok_cl else "error"
+            if ok_cl:
+                proposed_knob = best_knob
         else:
             stop_reason = "kept_base_abstention"
     elif _stopped():
@@ -1075,40 +1130,208 @@ def _mcp_tools_to_openai(tools: Sequence[Mapping[str, Any]]) -> List[Dict[str, A
     ]
 
 
+def endpoint_is_local(url: str) -> bool:
+    """True only for an http(s) address whose host is `localhost`, an address in 127.0.0.0/8, or ::1. The host is
+    parsed, not searched for: `https://localhost.attacker.example/v1` is not local, nor is `https://x.example/?h=::1`."""
+    try:
+        u = urllib.parse.urlsplit(str(url).strip())
+        host = u.hostname
+    except ValueError:
+        return False
+    if u.scheme not in ("http", "https") or not host:
+        return False
+    if host == "localhost":
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if ip.version == 4:
+        return ip in ipaddress.ip_network("127.0.0.0/8")
+    return ip == ipaddress.ip_address("::1")
+
+
+def _endpoint_key(url: str) -> Optional[Tuple[str, str, Optional[int], str]]:
+    """An endpoint's address as it is compared with a profile's: scheme, host, port and path, less a trailing slash
+    and `/chat/completions`."""
+    try:
+        u = urllib.parse.urlsplit(str(url).strip())
+        port = u.port
+    except ValueError:
+        return None
+    if not u.hostname:
+        return None
+    path = u.path.rstrip("/")
+    if path.endswith("/chat/completions"):
+        path = path[: -len("/chat/completions")].rstrip("/")
+    return (u.scheme.lower(), u.hostname, port, path)
+
+
 def _resolve_openai_profile(
     profile_name: Optional[str],
     base_url: Optional[str],
     api_key_env: Optional[str],
 ) -> Tuple[str, Optional[str], bool]:
-    """Resolve `(url, api_key, is_local)` using `backend/scientist_chat.py`'s profiles (never storing keys on disk)."""
-    url = base_url
-    key_env = api_key_env
-    if profile_name and not url:
-        from backend import scientist_chat as sc
+    """Resolve `(url, api_key, is_local)` from `backend/scientist_chat.py`'s endpoint profiles (keys are read from the
+    environment, never stored on disk).
 
-        profs = sc.profiles()
+    - A profile's address is its own: a plan that names a profile cannot send it to another address.
+    - An endpoint is on this machine only when its host is `localhost`, 127.0.0.0/8 or ::1 (`endpoint_is_local`).
+    - A remote endpoint is reached only through a profile at that address, over https, and its key is read only from
+      the variable that profile names: a plan cannot pair another variable with a remote address. An endpoint on this
+      machine may take its key from whatever variable the plan names, or from none.
+    - The address takes no user name, password, query or fragment."""
+    from backend import scientist_chat as sc
+
+    profs = sc.profiles()
+    url = (base_url or "").strip() or None
+    if profile_name:
         if profile_name not in profs:
             raise DriverRefused(f"Unknown OpenAI endpoint profile {profile_name!r} (available: {', '.join(sorted(profs))}).")
-        p = profs[profile_name]
-        url = str(p.get("base_url") or "")
-        if not key_env:
-            key_env = p.get("key_env")
+        p_url = str(profs[profile_name].get("base_url") or "")
+        if url and _endpoint_key(url) != _endpoint_key(p_url):
+            raise DriverRefused(f"Profile {profile_name!r} is at {p_url}: a plan cannot send it to another address ({url}).")
+        url = p_url
     if not url:
-        url = os.environ.get("THEODOLITE_OPENAI_BASE_URL", "").strip()
+        url = os.environ.get("THEODOLITE_OPENAI_BASE_URL", "").strip() or None
     if not url:
         raise DriverRefused("OpenAI driver requires --profile, base_url, or $THEODOLITE_OPENAI_BASE_URL.")
+    try:
+        u = urllib.parse.urlsplit(url)
+        _ = u.port  # a port that is not a number is refused here
+    except ValueError as exc:
+        raise DriverRefused(f"The endpoint address {url!r} cannot be read ({exc}).") from None
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise DriverRefused(f"The endpoint address {url!r} must be an http(s) address with a host.")
+    if u.username is not None or u.password is not None or u.query or u.fragment:
+        raise DriverRefused(f"The endpoint address {url!r} takes no user name, password, query or fragment.")
+    is_local = endpoint_is_local(url)
+    key = _endpoint_key(url)
+    at_url = {n: p for n, p in profs.items() if _endpoint_key(str(p.get("base_url") or "")) == key}
+    envs = sorted({str(p["key_env"]) for p in at_url.values() if p.get("key_env")})
+    if is_local:
+        key_env = api_key_env or (envs[0] if len(envs) == 1 else None)
+    else:
+        if u.scheme != "https":
+            raise DriverRefused(f"A remote endpoint is reached over https only, not {url}.")
+        if not at_url:
+            raise DriverRefused(
+                f"{url} is not the address of any endpoint profile (backend/scientist_chat.py, or endpoints.json in the "
+                "scientist folder): a remote endpoint is reached only through a profile, which names the variable "
+                "its key is in."
+            )
+        if api_key_env and api_key_env not in envs:
+            where = ("$" + " or $".join(envs)) if envs else "no variable (its profile names none)"
+            raise DriverRefused(
+                f"The key for {url} is read from {where}: a plan cannot pair another variable (${api_key_env}) with "
+                "a remote address."
+            )
+        if not api_key_env and len(envs) > 1:
+            raise DriverRefused(f"The profiles at {url} name different key variables (${', $'.join(envs)}): name one.")
+        key_env = api_key_env or (envs[0] if envs else None)
     if not url.rstrip("/").endswith("/chat/completions"):
         url = url.rstrip("/") + "/chat/completions"
-    api_key = os.environ.get(key_env, "").strip() if key_env else os.environ.get("THEODOLITE_OPENAI_API_KEY", "").strip()
-    is_local = any(h in url for h in ("127.0.0.1", "localhost", "[::1]"))
+    api_key = os.environ.get(key_env, "").strip() if key_env else ""
     return url, (api_key or None), is_local
+
+
+class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
+    """A redirect is refused, never followed: following one would send the request, and its key, to another address."""
+
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        raise urllib.error.HTTPError(
+            req.full_url, code,
+            f"the endpoint answered {code} with a redirect to {newurl}; a redirect is refused, as following it would "
+            "send the key to another address",
+            headers, fp,
+        )
+
+
+_OPENAI_OPENER = urllib.request.build_opener(_RefuseRedirects)
 
 
 def _default_openai_transport(payload: Dict[str, Any], headers: Dict[str, str], url: str, timeout_s: float) -> Dict[str, Any]:
     data = json.dumps(payload, ensure_ascii=True).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+    with _OPENAI_OPENER.open(req, timeout=timeout_s) as resp:
         return json.loads(resp.read().decode("utf-8"))
+
+
+def _openai_prices(
+    db: DriverBudget,
+    input_usd_per_mtok: Optional[float],
+    output_usd_per_mtok: Optional[float],
+    *,
+    is_local: bool,
+    mocked: bool,
+) -> Tuple[float, float]:
+    """Dollars a million (input, output) tokens: the arm's own (its driver config), else the driver budget's. An
+    endpoint on this machine costs nothing when none are given. A remote one with none is refused, and so is a mocked
+    one under a dollar cap: at unknown prices the cap cannot be kept."""
+    pin = input_usd_per_mtok if input_usd_per_mtok is not None else db.input_usd_per_mtok
+    pout = output_usd_per_mtok if output_usd_per_mtok is not None else db.output_usd_per_mtok
+    if pin is not None and pout is not None:
+        pin_f, pout_f = float(pin), float(pout)
+        if not (math.isfinite(pin_f) and math.isfinite(pout_f)) or pin_f < 0.0 or pout_f < 0.0:
+            raise DriverRefused(f"Prices are dollars a million tokens, 0 or more (got {pin!r} and {pout!r}).")
+        return pin_f, pout_f
+    capped = db.max_dollars is not None and db.max_dollars > 0.0
+    if (is_local and not mocked) or (mocked and not capped):
+        return 0.0, 0.0
+    raise DriverRefused(
+        "The endpoint's prices are not known: give input_usd_per_mtok and output_usd_per_mtok (dollars a million "
+        "tokens) in the arm's driver config or the driver budget. The dollar cap is counted from them, or from a "
+        "reply's own cost when that is higher; it is never kept at a price of 0 that no one gave."
+    )
+
+
+def _await_reply(
+    fn: Callable[[], Dict[str, Any]],
+    ks: KillSwitch,
+    deadline: float,
+) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """Make one blocking endpoint call in a thread, looking at the kill switch and the wall clock every 0.2 s:
+    `(reply, None)`, or `(None, "killed" | "budget_wall")` as soon as either says stop (the call is left to time out
+    on its own, and a reply that comes later is not read). An exception from the call is raised here."""
+    box: Dict[str, Any] = {}
+
+    def _run() -> None:
+        try:
+            box["reply"] = fn()
+        except BaseException as exc:  # handed back to the caller's thread below
+            box["exc"] = exc
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    while True:
+        t.join(0.2)
+        if not t.is_alive():
+            break
+        if ks.triggered():
+            return None, "killed"
+        if time.monotonic() >= deadline:
+            return None, "budget_wall"
+    if "exc" in box:
+        raise box["exc"]
+    return box.get("reply"), None
+
+
+def _count(x: Any) -> Optional[int]:
+    """A token count from a reply: a whole number 0 or more, or None."""
+    return int(x) if isinstance(x, int) and not isinstance(x, bool) and x >= 0 else None
+
+
+def _door_failure(door_ok: int, door_errors: int, *, denied: int = 0, other: Optional[str] = None) -> Optional[str]:
+    """Why a driver could not work the door, in plain words, or None. A session whose door calls were denied, or none
+    of whose door calls succeeded, ended by the driver's failure: never by an honest abstention."""
+    if other:
+        return other
+    if denied:
+        return f"{denied} tool call(s) were denied by the driver's own permissions, so it could not work the door."
+    if door_ok <= 0:
+        made = f"{door_errors} were made and every one failed" if door_errors else "none was made"
+        return f"No door call succeeded ({made}): the driver did not work the door."
+    return None
 
 
 def run_openai_driver(
@@ -1123,8 +1346,19 @@ def run_openai_driver(
     kill_switch: Optional[KillSwitch] = None,
     transport_fn: Optional[Callable[[Dict[str, Any], Dict[str, str], str, float], Dict[str, Any]]] = None,
     extra_instructions: Optional[str] = None,
+    input_usd_per_mtok: Optional[float] = None,
+    output_usd_per_mtok: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Run any OpenAI-compatible tool-calling model against `session`, enforcing token/dollar/turn/wall caps."""
+    """Run any OpenAI-compatible tool-calling model against `session`, keeping its turn, token, dollar and wall caps
+    during the run, not after it.
+
+    - The endpoint and its key are `_resolve_openai_profile`'s; a redirect is refused (`_RefuseRedirects`).
+    - The dollars are counted each turn from the reply's token usage at known prices (`_openai_prices`), or from the
+      reply's own cost when that is higher. A request is not sent when what is spent, with the last prompt sent again
+      (the next prompt is at least as long), would pass `max_dollars` or `max_tokens`. A reply with no token usage
+      stops the run: the caps cannot be kept without it.
+    - STOP and the wall clock are looked at every 0.2 s while a request is out (`_await_reply`).
+    - A session none of whose door calls succeeded ends as `driver_failure` (`_door_failure`)."""
     if not model or not isinstance(model, str):
         raise DriverRefused("OpenAI driver requires a non-empty model name.")
     db = driver_budget or DriverBudget()
@@ -1138,6 +1372,9 @@ def run_openai_driver(
             )
     else:
         url, api_key, is_local = "http://mock.local/v1/chat/completions", None, True
+    pin, pout = _openai_prices(db, input_usd_per_mtok, output_usd_per_mtok, is_local=is_local,
+                               mocked=transport_fn is not None)
+    capped = db.max_dollars is not None and db.max_dollars > 0.0
 
     prompt_info = build_driver_prompt(session, extra_instructions=extra_instructions)
     oa_tools = _mcp_tools_to_openai(lmcp.tools_for_session(session))
@@ -1153,14 +1390,17 @@ def run_openai_driver(
     prompt_toks = 0
     comp_toks = 0
     reas_toks = 0
+    last_pt = 0
     est_usd = 0.0
     tool_errors = 0
+    door_ok = 0
     served_model = model
     stop_reason = "kept_base_abstention"
     last_text = ""
     proposed_edit = None
     proposed_knob = None
     t0 = time.monotonic()
+    deadline = t0 + float(db.max_wall_seconds)
     transport = transport_fn or _default_openai_transport
 
     while True:
@@ -1170,16 +1410,9 @@ def run_openai_driver(
         if turns >= db.max_turns:
             stop_reason = "budget_turns"
             break
-        if (time.monotonic() - t0) >= db.max_wall_seconds:
+        if time.monotonic() >= deadline:
             stop_reason = "budget_wall"
             break
-        if (prompt_toks + comp_toks) >= db.max_tokens:
-            stop_reason = "budget_tokens"
-            break
-        if db.max_dollars is not None and db.max_dollars > 0.0 and est_usd >= db.max_dollars:
-            stop_reason = "budget_dollars"
-            break
-
         payload: Dict[str, Any] = {
             "model": model,
             "messages": messages,
@@ -1188,29 +1421,52 @@ def run_openai_driver(
         }
         if reasoning_effort:
             payload["reasoning_effort"] = reasoning_effort
+        # The prompt about to go out, in tokens: what the last reply said the last prompt was, or (before any reply,
+        # or when this one has grown past it) its length in characters over 3, an over-count for text and JSON, so
+        # the first request is priced as well as the later ones
+        next_pt = max(last_pt, len(json.dumps(payload, ensure_ascii=False)) // 3)
+        if prompt_toks + comp_toks + next_pt > db.max_tokens or prompt_toks + comp_toks >= db.max_tokens:
+            stop_reason = "budget_tokens"
+            break
+        if capped and (est_usd >= db.max_dollars or est_usd + next_pt * float(pin or 0.0) / 1e6 > db.max_dollars):
+            stop_reason = "budget_dollars"
+            break
 
         turns += 1
-        rem_wall = max(5.0, db.max_wall_seconds - (time.monotonic() - t0))
+        rem_wall = max(5.0, deadline - time.monotonic())
         try:
-            resp = transport(payload, headers, url, min(120.0, rem_wall))
+            resp, why = _await_reply(lambda: transport(payload, headers, url, min(120.0, rem_wall)), ks, deadline)
         except Exception as exc:
             stop_reason = "error"
             last_text = f"endpoint error: {exc}"
             break
+        if why is not None:
+            stop_reason = why
+            last_text = "Stopped while a request was out: its reply, and what it cost, were not read."
+            break
+        if not isinstance(resp, Mapping):
+            stop_reason = "error"
+            last_text = "The endpoint's reply is not a JSON object."
+            break
 
         if isinstance(resp.get("model"), str) and resp["model"]:
             served_model = str(resp["model"])
-        usage = resp.get("usage") or {}
-        pt = int(usage.get("prompt_tokens") or 0)
-        ct = int(usage.get("completion_tokens") or 0)
-        rt = int(((usage.get("completion_tokens_details") or {}).get("reasoning_tokens")) or 0)
+        usage = resp.get("usage") if isinstance(resp.get("usage"), Mapping) else {}
+        pt = _count(usage.get("prompt_tokens"))
+        ct = _count(usage.get("completion_tokens"))
+        if pt is None or ct is None:
+            stop_reason = "error"
+            last_text = "The endpoint's reply carried no token usage, so the token and dollar caps cannot be kept."
+            break
+        details = usage.get("completion_tokens_details")
+        rt = (_count(details.get("reasoning_tokens")) or 0) if isinstance(details, Mapping) else 0
         prompt_toks += pt
         comp_toks += ct
         reas_toks += rt
-        if isinstance(usage.get("cost"), (int, float)):
-            est_usd += float(usage["cost"])
-        else:
-            est_usd += (pt / 1e6) * db.input_usd_per_mtok + (ct / 1e6) * db.output_usd_per_mtok
+        last_pt = pt
+        cost = usage.get("cost")
+        own_cost = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else 0.0
+        est_usd += max((pt * pin + ct * pout) / 1e6, own_cost)
 
         choices = resp.get("choices") or []
         if not choices:
@@ -1246,6 +1502,7 @@ def run_openai_driver(
                     tool_errors += 1
                     out_str = f"error: {res}"
                 else:
+                    door_ok += 1
                     if tname == "claim":
                         proposed_edit = parsed_args.get("edit")
                         stop_reason = "claimed"
@@ -1263,6 +1520,9 @@ def run_openai_driver(
         if stop_reason == "killed":
             break
 
+    failure = _door_failure(door_ok, tool_errors)
+    if failure and stop_reason in ("kept_base_abstention", "error"):
+        stop_reason = "driver_failure"
     return _extract_outcome_from_book(
         session,
         driver_family="openai",
@@ -1281,10 +1541,165 @@ def run_openai_driver(
         notes=last_text,
         proposed_edit=proposed_edit,
         proposed_knob=proposed_knob,
+        driver_failure=failure,
+        door={"calls": door_ok + tool_errors, "ok": door_ok, "errors": tool_errors,
+              "prices_usd_per_mtok": {"input": pin, "output": pout}},
     )
 
 
 # -------------------------------------------------------------------------------------- Claude CLI & Codex CLI
+
+DOOR_SERVER = "levelling"
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")  # `claude --effort` (2.1.328 --help)
+MAX_CLI_LINE_BYTES = 32 << 20  # a line of the CLI's stream-json longer than this stops the run
+# What Claude Code needs to run and to sign in, passed by name from this process's environment; nothing else passes
+# (no endpoint key, token, cloud credential, book path or other variable of ours). Claude Code reaching its model
+# through Bedrock, Vertex or Foundry is not passed: their credentials have many names.
+CLAUDE_ENV_PASS = frozenset({
+    "PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TZ", "TERM", "TMPDIR",
+    "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_RUNTIME_DIR", "CLAUDE_CONFIG_DIR",
+    # its sign-in (an API key, an auth token or a long-lived OAuth token; or its login under HOME) and its address
+    "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_BASE_URL",
+    # the way out of this machine, when it goes through a proxy, and the certificates that proxy signs with
+    "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "ALL_PROXY", "https_proxy", "http_proxy", "no_proxy", "all_proxy",
+    "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS",
+})
+CLAUDE_ENV_SET = {
+    # no auto-memory folder read into the context or written: under a checkout it is the owner's own project memory
+    # (a MEMORY.md there reached the request on 2.1.328 until this, or --restricted, was set)
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+    "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1",  # no CLAUDE.md from the home folder or any folder above the work folder
+    "ENABLE_TOOL_SEARCH": "false",  # no deferred-tool placeholder in the request: the model's tools are the door's alone
+    "DISABLE_AUTOUPDATER": "1",  # the CLI does not change its version in the middle of a study
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",  # no telemetry, error report or update check leaves the machine
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+}
+
+
+def claude_child_env() -> Dict[str, str]:
+    """The environment `claude` starts with: an allowlist of this process's (`CLAUDE_ENV_PASS`, and `LC_*`), never
+    the whole of it, and the switches `CLAUDE_ENV_SET`. The door's MCP child (`python -I level_mcp.py --socket`)
+    needs nothing of it: -I reads no PYTHON* variable, and the socket's path is on its command line."""
+    env = {k: v for k, v in os.environ.items() if k in CLAUDE_ENV_PASS or k.startswith("LC_")}
+    env.update(CLAUDE_ENV_SET)
+    return env
+
+
+def claude_cli_args(
+    exe: str,
+    prompt_info: Mapping[str, Any],
+    door_tools: Sequence[str],
+    mcp_config: Path,
+    *,
+    model: Optional[str] = None,
+    effort: Optional[str] = None,
+    max_turns: int = 24,
+    max_budget_usd: Optional[float] = None,
+) -> List[str]:
+    """The `claude` command line of a driver session; each flag is as `claude --help` (2.1.328) words it."""
+    cmd = [
+        exe, "-p",  # print mode: one prompt, its answer, then exit
+        "--output-format", "stream-json", "--verbose",  # one JSON event a line (stream-json in -p mode needs --verbose)
+        "--system-prompt", str(prompt_info["system"]),  # the driver's page in place of Claude Code's own prompt
+        "--tools", "",  # "" for none: no built-in tool (no Read, Write, Edit, Bash, WebFetch, WebSearch, Skill)
+        "--allowedTools", ",".join(door_tools),  # exactly the session's door tools, run without asking
+        "--permission-mode", "dontAsk",  # "deny if not pre-approved": a call outside the list above is refused
+        "--permission-prompts", "none",  # nobody answers a prompt: anything that would ask is denied
+        "--strict-mcp-config", "--mcp-config", str(mcp_config),  # the door's MCP server and no other
+        "--setting-sources", "",  # no user, project or local settings file, so no hook, rule or CLAUDE.md from one
+        "--restricted",  # auto-memory off, settings files ignored, bypassPermissions refused
+        "--disable-slash-commands",  # no skill or command, from the prompt or the model
+        "--no-session-persistence",  # no transcript saved under ~/.claude/projects
+        "--max-turns", str(int(max_turns)),
+    ]
+    if max_budget_usd is not None:
+        cmd += ["--max-budget-usd", f"{float(max_budget_usd):.6f}"]  # the CLI stops itself once its spend passes it
+    if model:
+        cmd += ["--model", str(model)]
+    if effort:
+        cmd += ["--effort", str(effort)]
+    return cmd + ["--", str(prompt_info["user"])]  # the prompt last, after "--", so no word of it is read as a flag
+
+
+def _json_line(raw: bytes) -> Optional[Dict[str, Any]]:
+    try:
+        ev = json.loads(raw.decode("utf-8", errors="replace"))
+    except ValueError:
+        return None
+    return ev if isinstance(ev, dict) else None
+
+
+class _ClaudeStream:
+    """What a `claude -p --output-format stream-json` run says of itself, read line by line."""
+
+    def __init__(self, door_tools: Sequence[str]) -> None:
+        self.door = set(door_tools)
+        self.offered: Optional[List[str]] = None  # the tools its init line says the model has
+        self.mcp_status: Optional[str] = None
+        self.model: Optional[str] = None
+        self.msg_tokens: Dict[str, Tuple[int, int]] = {}  # (prompt, completion) tokens of each model reply
+        self.door_uses = 0
+        self.other_uses: List[str] = []  # tools the model asked for that are not the door's
+        self.tool_errors = 0  # tool results that came back as errors, refusals of other tools among them
+        self.result: Optional[Dict[str, Any]] = None
+
+    def feed(self, ev: Mapping[str, Any]) -> None:
+        etype = ev.get("type")
+        if etype == "system" and ev.get("subtype") == "init":
+            if isinstance(ev.get("tools"), list):
+                self.offered = [str(t) for t in ev["tools"]]
+            for srv in ev.get("mcp_servers") or []:
+                if isinstance(srv, Mapping) and srv.get("name") == DOOR_SERVER:
+                    self.mcp_status = str(srv.get("status"))
+            if isinstance(ev.get("model"), str) and ev["model"]:
+                self.model = str(ev["model"])
+        elif etype == "assistant":
+            msg = ev.get("message") or {}
+            if isinstance(msg.get("model"), str) and msg["model"]:
+                self.model = str(msg["model"])
+            mid = str(msg.get("id") or f"reply_{len(self.msg_tokens)}")
+            u = msg.get("usage") or {}
+            pt = sum(_count(u.get(k)) or 0 for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"))
+            ct = _count(u.get("output_tokens")) or 0
+            seen = self.msg_tokens.get(mid, (0, 0))  # a reply's blocks can come as several lines with one usage
+            self.msg_tokens[mid] = (max(seen[0], pt), max(seen[1], ct))
+            for b in msg.get("content") or []:
+                if isinstance(b, Mapping) and b.get("type") == "tool_use":
+                    name = str(b.get("name") or "")
+                    if name in self.door:
+                        self.door_uses += 1
+                    else:
+                        self.other_uses.append(name)
+        elif etype == "user":
+            content = (ev.get("message") or {}).get("content")
+            for b in content if isinstance(content, list) else []:
+                if isinstance(b, Mapping) and b.get("type") == "tool_result" and b.get("is_error"):
+                    self.tool_errors += 1
+        elif etype == "result":
+            self.result = dict(ev)
+
+    def turns(self) -> int:
+        n = len(self.msg_tokens)
+        if self.result is not None:
+            n = max(n, _count(self.result.get("num_turns")) or 0)
+        return n
+
+    def tokens(self) -> Tuple[int, int]:
+        pt = sum(v[0] for v in self.msg_tokens.values())
+        ct = sum(v[1] for v in self.msg_tokens.values())
+        if self.result is not None:
+            u = self.result.get("usage") or {}
+            pt = max(pt, sum(_count(u.get(k)) or 0 for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")))
+            ct = max(ct, _count(u.get("output_tokens")) or 0)
+        return pt, ct
+
+    def denials(self) -> List[Any]:
+        d = (self.result or {}).get("permission_denials")
+        return list(d) if isinstance(d, list) else []
+
+    def extra_tools(self) -> List[str]:
+        return sorted(set(self.offered or ()) - self.door)
 
 
 def run_claude_cli_driver(
@@ -1298,93 +1713,87 @@ def run_claude_cli_driver(
     allow_mock_cli: bool = False,
     extra_instructions: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Launch Claude Code (`claude -p`, stream-json) at folder reach against `session` over `session_socket_bridge`.
+    """Launch Claude Code (`claude -p`, stream-json) against `session` with the session's door tools and nothing else
+    (the owner's ruling, "Door tools only": free code goes through the door's `cell`, inside bwrap).
 
-    Containment:
-    - Refuses `$THEODOLITE_SCIENTIST_REACH=home`.
-    - Requires owner-approved `driver_budget.max_dollars > 0` (unless `allow_mock_cli=True` in CPU checks).
-    - `cwd = session.work_dir` ONLY; `--setting-sources ""`; `--strict-mcp-config`; `--tools Read Write Edit`;
-      `--disallowedTools Bash`; credential-stripped `scientist_chat.child_env("claude")`.
-    - Process group (`start_new_session=True`) killed with `SIGKILL` on wall-clock cap, dollar cap, or `KillSwitch`."""
+    - The command line is `claude_cli_args`: no built-in tool; the door's tools approved and anything else denied; no
+      settings, hook, CLAUDE.md, auto-memory, slash command or saved transcript; `--max-budget-usd` at the session's
+      `max_dollars` (what the study has left). Its environment is the allowlist `claude_child_env`.
+    - The run is read as it goes, and stopped (its process group SIGKILLed) at the wall clock, the token cap, the
+      dollar cap (when prices are given), STOP, or when the CLI offers the model a tool that is not the door's.
+    - The door's bridge (`level_mcp.session_socket_bridge`) is closed before the outcome is read: a cell still
+      running is killed and a reading still running is waited for, so the book holds what the session did.
+    - A session whose door calls were denied, or none of whose door calls succeeded, ends as `driver_failure`, never
+      as an honest abstention (`_door_failure`). The claim's edit is `proposed_edit`, as the door received it.
+    - Refused at `$THEODOLITE_SCIENTIST_REACH=home`, and without an owner-approved `max_dollars > 0` (unless
+      `allow_mock_cli=True` in CPU checks)."""
     if os.environ.get(lses.REACH_ENV, "").strip().lower() == "home":
         raise DriverRefused(f"Claude CLI driver is refused at the home reach (${lses.REACH_ENV}=home).")
     db = driver_budget or DriverBudget()
     if not allow_mock_cli and (db.max_dollars is None or db.max_dollars <= 0.0):
         raise DriverRefused("Claude CLI driver requires an explicit owner-approved max_dollars > 0 ceiling.")
+    budget_usd: Optional[float] = None
+    if db.max_dollars is not None and db.max_dollars > 0.0:
+        budget_usd = round(float(db.max_dollars), 6)
+        if budget_usd <= 0.0:
+            raise DriverRefused(f"{db.max_dollars!r} dollars is less than the CLI can be given (--max-budget-usd).")
+    if reasoning_effort is not None and reasoning_effort not in CLAUDE_EFFORTS:
+        raise DriverRefused(f"Claude Code's effort is one of {', '.join(CLAUDE_EFFORTS)}, not {reasoning_effort!r}.")
     exe = claude_bin or os.environ.get("THEODOLITE_CLAUDE_BIN", "claude")
     if not allow_mock_cli and shutil.which(exe) is None and not Path(exe).is_file():
         raise DriverRefused(f"Claude CLI executable {exe!r} was not found on PATH.")
 
-    from backend import scientist_chat as sc
-
     ks = kill_switch or KillSwitch()
     prompt_info = build_driver_prompt(session, extra_instructions=extra_instructions)
-    sock_path = session.session_dir / "mcp.sock"
+    door_tools = [f"mcp__{DOOR_SERVER}__{t}" for t in session.allowed_tools()]
     mcp_cfg_path = session.session_dir / "mcp_config.json"
+    stream = _ClaudeStream(door_tools)
+    priced = db.input_usd_per_mtok is not None and db.output_usd_per_mtok is not None
+    stop_reason: Optional[str] = None
+    stop_note = ""
 
-    turns = 0
-    prompt_toks = 0
-    comp_toks = 0
-    est_usd = 0.0
-    served_model = model or "claude-cli"
-    stop_reason = "kept_base_abstention"
-    notes_parts: List[str] = []
-
-    with lmcp.session_socket_bridge(session, sock_path):
-        mcp_cfg = {
-            "mcpServers": {
-                "levelling": {
-                    "command": sys.executable,
-                    "args": ["-I", str(ROOT_DIR / "backend" / "level_mcp.py"), "--socket", str(sock_path)],
-                }
-            }
-        }
+    with lmcp.session_socket_bridge(session) as bridge:
+        mcp_cfg = {"mcpServers": {DOOR_SERVER: {
+            "command": sys.executable,
+            "args": ["-I", str(ROOT_DIR / "backend" / "level_mcp.py"), "--socket", str(bridge.path)],
+        }}}
         mcp_cfg_path.write_text(json.dumps(mcp_cfg, indent=2) + "\n", encoding="utf-8")
-
-        cmd = [
-            exe, "-p", prompt_info["user"],
-            "--output-format", "stream-json",
-            "--verbose",
-            "--strict-mcp-config",
-            "--mcp-config", str(mcp_cfg_path),
-            "--setting-sources", "",
-            "--tools", "Read", "Write", "Edit",
-            "--disallowedTools", "Bash",
-            "--system-prompt", prompt_info["system"],
-        ]
-        if model:
-            cmd += ["--model", str(model)]
-        if db.max_turns:
-            cmd += ["--max-turns", str(int(db.max_turns))]
-
-        env = sc.child_env("claude", THEODOLITE_MCP_SOCKET=str(sock_path))
+        cmd = claude_cli_args(exe, prompt_info, door_tools, mcp_cfg_path, model=model, effort=reasoning_effort,
+                              max_turns=db.max_turns, max_budget_usd=budget_usd)
         stderr_log = open(session.session_dir / "cli_stderr.log", "w", encoding="utf-8")
         t0 = time.monotonic()
         proc = subprocess.Popen(
             cmd,
             cwd=str(session.work_dir),
-            env=env,
+            env=claude_child_env(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=stderr_log,
             start_new_session=True,
-            text=True,
-            bufsize=1,
         )
         try:
             assert proc.stdout is not None
             fd = proc.stdout.fileno()
+            buf = b""
             while True:
+                pt, ct = stream.tokens()
                 if ks.triggered():
                     stop_reason = "killed"
-                    _kill_pgrp(proc)
-                    break
-                if (time.monotonic() - t0) >= db.max_wall_seconds:
+                elif (time.monotonic() - t0) >= db.max_wall_seconds:
                     stop_reason = "budget_wall"
-                    _kill_pgrp(proc)
-                    break
-                if db.max_dollars is not None and db.max_dollars > 0.0 and est_usd >= db.max_dollars:
+                elif pt + ct >= db.max_tokens:
+                    stop_reason = "budget_tokens"
+                elif priced and budget_usd is not None and (pt * float(db.input_usd_per_mtok or 0.0)
+                                                           + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6 >= budget_usd:
                     stop_reason = "budget_dollars"
+                elif stream.extra_tools():
+                    stop_reason = "driver_failure"
+                    stop_note = (f"The CLI offered the model tools that are not the door's "
+                                 f"({', '.join(stream.extra_tools()[:12])}): the session was stopped.")
+                elif len(buf) > MAX_CLI_LINE_BYTES:
+                    stop_reason = "error"
+                    stop_note = f"A line of the CLI's output passed {MAX_CLI_LINE_BYTES >> 20} MB."
+                if stop_reason is not None:
                     _kill_pgrp(proc)
                     break
                 rlist, _, _ = select.select([fd], [], [], 0.2)
@@ -1392,37 +1801,22 @@ def run_claude_cli_driver(
                     if proc.poll() is not None:
                         break
                     continue
-                line = proc.stdout.readline()
-                if not line:
+                chunk = os.read(fd, 1 << 16)
+                if not chunk:
                     break
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    ev = json.loads(line)
-                except ValueError:
-                    continue
-                if not isinstance(ev, dict):
-                    continue
-                etype = ev.get("type")
-                if etype == "assistant":
-                    turns += 1
-                    msg = ev.get("message") or {}
-                    if isinstance(msg.get("model"), str) and msg["model"]:
-                        served_model = str(msg["model"])
-                    u = msg.get("usage") or {}
-                    prompt_toks += int(u.get("input_tokens") or 0)
-                    comp_toks += int(u.get("output_tokens") or 0)
-                elif etype == "result":
-                    if isinstance(ev.get("total_cost_usd"), (int, float)):
-                        est_usd = float(ev["total_cost_usd"])
-                    if isinstance(ev.get("num_turns"), int):
-                        turns = max(turns, int(ev["num_turns"]))
-                    if isinstance(ev.get("result"), str):
-                        notes_parts.append(ev["result"])
-                    if ev.get("is_error"):
-                        stop_reason = "error"
-            proc.wait(timeout=5.0)
+                buf += chunk
+                while b"\n" in buf:
+                    raw, buf = buf.split(b"\n", 1)
+                    ev = _json_line(raw)
+                    if ev is not None:
+                        stream.feed(ev)
+            ev = _json_line(buf) if stop_reason is None else None
+            if ev is not None:
+                stream.feed(ev)
+            try:
+                proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:  # its output closed but it lives on: it is killed below
+                pass
         finally:
             if proc.poll() is None:
                 _kill_pgrp(proc)
@@ -1439,23 +1833,71 @@ def run_claude_cli_driver(
                     mcp_cfg_path.unlink()
                 except OSError:
                     pass
+    door = bridge.close()  # closed as the block ended; this is its report (what ran, what was running at the stop)
 
+    res = stream.result
+    if stop_reason is None:
+        subtype = str((res or {}).get("subtype") or "")
+        if res is None:
+            stop_reason, stop_note = "error", "The CLI ended without its result line."
+        elif subtype == "error_max_budget_usd":
+            stop_reason = "budget_dollars"
+        elif subtype == "error_max_turns":
+            stop_reason = "budget_turns"
+        elif res.get("is_error"):
+            stop_reason = "error"
+        else:
+            stop_reason = "kept_base_abstention"
+
+    denied = len(stream.denials())
+    other = stop_note if stop_reason == "driver_failure" else None
+    if other is None and stream.mcp_status not in (None, "connected", "pending"):
+        other = f"The door's MCP server did not connect (its status: {stream.mcp_status})."
+    failure = _door_failure(int(door["ok"]), int(door["errors"]), denied=denied, other=other)
+    if door.get("still_running"):
+        late = (door.get("running_at_stop") or {}).get("tool")
+        failure = ((failure + " ") if failure else "") + (
+            f"A door call ({late}) was still running {door['wait_bound_seconds']:g} s after the stop: what it writes "
+            "may land after this outcome.")
+    if failure and stop_reason in ("kept_base_abstention", "error"):
+        stop_reason = "driver_failure"
+
+    proposed_edit = None
+    proposed_knob = None
+    for c in bridge.calls:
+        if c.get("ok") and c.get("tool") == "claim":
+            proposed_edit = c.get("proposed")
+        elif c.get("ok") and c.get("tool") == "claim_knob":
+            proposed_knob = c.get("proposed")
+
+    pt, ct = stream.tokens()
+    cost = (res or {}).get("total_cost_usd")
+    est_usd = float(cost) if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost >= 0 else 0.0
+    if priced:
+        est_usd = max(est_usd, (pt * float(db.input_usd_per_mtok or 0.0) + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6)
+    notes = [str(res["result"])] if res is not None and isinstance(res.get("result"), str) else []
+    notes += [t for t in dict.fromkeys((stop_note, failure)) if t]
     return _extract_outcome_from_book(
         session,
         driver_family="claude",
-        driver_model=served_model,
+        driver_model=stream.model or model or "claude-cli",
         face="mcp_stdio",
         reasoning_effort=reasoning_effort,
         prompt_info=prompt_info,
         driver_budget=db,
         stop_reason=stop_reason,
-        turns=turns,
-        prompt_tokens=prompt_toks,
-        completion_tokens=comp_toks,
+        turns=stream.turns(),
+        prompt_tokens=pt,
+        completion_tokens=ct,
         reasoning_tokens=0,
         estimated_dollars=est_usd,
-        tool_errors=0,
-        notes="\n".join(notes_parts),
+        tool_errors=max(stream.tool_errors, int(door["errors"])),
+        notes="\n".join(notes),
+        proposed_edit=proposed_edit,
+        proposed_knob=proposed_knob,
+        driver_failure=failure,
+        door={**door, "denied": denied, "offered_tools": stream.offered, "other_tools_asked": stream.other_uses[:20],
+              "door_uses_seen": stream.door_uses, "mcp_status": stream.mcp_status},
     )
 
 
@@ -1543,6 +1985,8 @@ def run_driver(
             kill_switch=kill_switch,
             transport_fn=cfg.get("transport_fn"),
             extra_instructions=cfg.get("extra_instructions"),
+            input_usd_per_mtok=cfg.get("input_usd_per_mtok"),
+            output_usd_per_mtok=cfg.get("output_usd_per_mtok"),
         )
     if driver_family == "claude":
         return run_claude_cli_driver(

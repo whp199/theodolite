@@ -1,16 +1,40 @@
 """Levelling Phase 6: cheaper-knob readings and fresh knob claims (`backend/level_knobs.py`).
 
-Evaluates non-weight interventions — prompts, decoding settings (sampler, thinking toggle, logit bias), and transient
-activation steering pushes — on the untouched base model, under the same brief, kept-back frames, retention batteries,
-calibrated bar set, and statistical gates as weight-edit claims (`backend/level_claim.py`).
+Reads non-weight interventions (a prompt, decoding settings: the sampler, the thinking toggle, a logit bias, and
+transient steering pushes) on the untouched base model, under the same brief, kept-back frames, retention batteries,
+calibrated bar set and verdict engine as a weight edit's claim (`backend/level_claim.py`). Zero weights are modified;
+`weight_edits.assert_base` is asserted before and after every call.
 
-Why this exists (`verify/arbiter.md` §8, `design/synthesis.md` §ix):
-- Phase 6 compares weight-edit sessions against the same driver and the same budget allowed ONLY prompts, decoding, and
-  steering (`mode="knobs_only"`), replacing "with no search over cheaper knobs" with a matched-budget measurement.
-- Zero weights are ever modified. `weight_edits.assert_base` is asserted before and after every call.
-- Every reading logs to the chained level book (`kind="note"` with `note` in `"knob_practice"`,
-  `"knob_claim_registration"`, `"knob_claim_verdict"`), checks untouched-row bit-identity and null-row noise floors,
-  and evaluates both batch classes (`small` and `large`) for paired metrics.
+What a fresh knob claim shares with a weight claim, and how:
+- One budget of fresh readings a brief. A knob claim is asked `level_claim.fresh_reading_gate` (`what="knob"`) before
+  it is registered, the gate a weight claim and a trial are asked: practice on kept-back wording, a brief changed
+  under its name, frames seen in practice or read under another brief, bars not calibrated in the book, a knob read
+  before, and the brief's `m` spent. Its registration is a note `level_claim.brief_history` counts, so weight
+  claims, trials and knob claims spend the same `m` in one book, and the `m` in p_fw = m x p_emp is that one budget.
+- The same draw: kept-back items drawn after registration from `os.urandom(32)`, refusing items and frames seen in
+  practice.
+- The same verdict engine: `level_claim.judge_claim`, given the knob's own families of controls, with both batch
+  classes read for the target and the batteries (the larger battery figure kept), the reversed read (the knob with
+  its steering reversed and its logit bias negated), the near-miss size and its ratio to the effect, and the gating
+  and habitat batteries the bars name. Four choices of this gate are stricter than a weight claim's and are kept
+  (`STRICTER_SAY`): the noise floor is the larger class's for both classes; a near miss's size is the mean of each
+  item's size (`knob_batteries`); and, each where the engine's order puts its kind (`_stricter`), a frame CI that
+  does not clear zero is "did not replicate" and a labelled-panel KL that was not read counts as harm.
+- Its controls differ from the knob only in the steering: the knob's prompt, thinking setting, sampler and logit
+  bias apply to every control row as to the knob's. `neuron_mul` is the arithmetic of a weight edit that scales its
+  neurons' down_proj columns, and its controls are drawn as that edit's are (`weight_edits.matched_control_edits`,
+  `weight_edits.same_site_controls`) and read by the weight path's own per-row hooks. `direction` and `neuron_add`
+  are pushes added to the stream; their controls are pushes of the same length at the same layer along random
+  directions (`CONTROL_FAMILY_SAY`).
+
+Refused before a fresh reading is spent: a knob with no steering part (a prompt or a decoding setting has no family
+of controls, and a weight claim with none is refused), a knob that mixes `neuron_mul` with pushes, a `neuron_mul`
+that spares the start mark (no weight edit does that arithmetic), fewer than one control a family, and a part that
+cannot act on the brief's reading (`parts_that_cannot_act`).
+
+Every knob reading is read against the brief's chat settings: its system turn (or an item's own) and its thinking
+setting. The knob's prompt is added to that system turn and its thinking setting, when it has one, replaces the
+brief's; nothing else differs between the knob's row and the base row.
 
 Layers count from 0 in code and files; human-facing strings give both ("layer 50 (page layer 51)").
 Zero kept-out words appear in source, docstrings, or rendered sheets.
@@ -18,6 +42,7 @@ Zero kept-out words appear in source, docstrings, or rendered sheets.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import datetime
 import hashlib
 import json
@@ -43,7 +68,8 @@ from backend.causal_check import logits_fp32
 from backend.engine_runtime import SamplerSettings
 from backend.theodolite_math import FINAL_LOGIT_SOFTCAP
 
-KNOB_VERSION = 1
+KNOB_VERSION = 1  # the knob specification's version (it is hashed into a knob's id)
+KNOB_CLAIM_VERSION = 2  # 2 (20 November 2026): one budget with weight claims, judged by level_claim.judge_claim
 MAX_PROMPT_CHARS = 4000
 MAX_LOGIT_BIAS_TOKENS = 16
 MAX_LOGIT_BIAS = 10.0
@@ -54,6 +80,7 @@ MAX_MUL_NEURONS = 1024
 MAX_ADD_NEURONS = 64
 MAX_MUL_FACTOR = 64.0
 DEFAULT_KNOB_CONTROLS = 19
+NULL_ES = (-0.125, -0.03125, 0.03125, 0.125)  # the null rows: the layer's MLP output times 1 + e
 
 KNOB_VERDICTS = (
     "lead",
@@ -63,6 +90,75 @@ KNOB_VERDICTS = (
     "kept the base",
     "void",
 )
+
+# What each kind of steering term does, in the words a sheet and a driver read (`steering_words`).
+STEERING_SAY = {
+    "direction": ("a fixed push added to the residual stream at the output of layer {L} (page layer {P}): the given "
+                  "vector, projected off the layer's quiet mask, at length |dose x scale| = {mag:g}, the same at every "
+                  "position{bos}"),
+    "neuron_mul": ("the activations of {k} neuron(s) of layer {L} (page layer {P}) multiplied by {f:g} where they enter "
+                   "the down projection, at every position{bos}: the arithmetic of a weight edit that scales those "
+                   "neurons' down_proj columns by {f:g}"),
+    "neuron_add": ("a fixed push added to the residual stream at the output of layer {L} (page layer {P}), along the "
+                   "summed write direction of {k} neuron(s) (their down_proj columns times the post-feedforward norm's "
+                   "gain, summed and projected off the quiet mask), at length |dose x scale| = {mag:g} and the same at "
+                   "every position whatever the neurons do{bos}. It is not an add to the neurons' activations"),
+}
+# Each family of controls a knob claim is judged against: what its controls are, and what they are and are not
+# matched on. Printed on every knob sheet; the rule they are counted by is the weight claim's (`CONTROL_RULE_SAY`).
+CONTROL_FAMILY_SAY = {
+    "other_sites_matched": (
+        "other neurons of the same layers, drawn by the weight path's own matched draw "
+        "(weight_edits.matched_control_edits) for the weight edit whose arithmetic the knob is (its neurons' down_proj "
+        "columns scaled by its factor), and read as that edit's controls are read: each stand-in is within a factor of "
+        "{tol:g} of its neuron on what a base pre-pass over the items read, as the knob reads them, expects it to "
+        "deliver over the answer. Not matched on what they delivered as read, over the prompt, or at the last "
+        "position"),
+    "same_site": (
+        "the knob's own neurons, their down_proj columns changed along random directions off the layer's quiet mask, "
+        "each column's change as long in the stream as the knob's (weight_edits.same_site_controls), read as that "
+        "edit's controls are read. Matched on the size of each column's change, not on its direction"),
+    "random_directions": (
+        "pushes at the same layers, of the same length (|dose x scale|) and the same start-mark rule, along random "
+        "directions off each layer's quiet mask. Matched on the size of the push at the layer where it is added; not "
+        "on what it does further up, nor on how hard any neuron fires: a random direction is no neuron's write "
+        "direction, and a knob whose direction was chosen from readings is set beside directions that were not"),
+}
+CONTROL_RULE_SAY = (
+    "every family of controls is counted by the weight claim's rule as it stands, which the owner has left open: "
+    "p_fw = m x (1 + at_least) / (C + 1), at most alpha, in both batch classes (a control that gave no finite reading "
+    "counts as moving as much)")
+CONTROLS_SHARE_SAY = ("the controls share the knob's prompt, thinking setting, sampler and logit bias, and differ from "
+                      "it only in the steering")
+REVERSED_SAY = ("the reversed read is the knob with its steering reversed (a push's dose negated, a neuron_mul's factor "
+                "f read at 2 - f, as a weight edit at dose -1) and its logit bias negated; its prompt, thinking setting "
+                "and sampler are as in the knob")
+# What a weight claim reads and a knob claim does not: listed on every knob sheet.
+NOT_READ_SAY = (
+    "the brief's author prompt arms are not read beside a knob, so this sheet cannot say whether one of them does as "
+    "well",
+    "what each control changed in the stream as read (a weight claim prints it, and gates nothing on it)",
+    "the kernel's item gate (how many fresh items' forced answers sit under its bar)",
+)
+NOT_READ_WRITTEN_SAY = ("the written strata and the base settings audit a written weight claim prints (neither gates "
+                        "its verdict)")
+NOT_READ_SAMPLER_SAY = ("the harm of the knob's sampler: the retention batteries are read teacher-forced, where a "
+                        "sampler does nothing")
+STRICTER_SAY = (
+    "where this gate is stricter than a weight claim's: the noise floor is the larger of the two classes' for both; "
+    "a near miss's size is the mean of each item's size, never less than the size of the mean a weight claim reads; "
+    "a frame CI (large class) that does not clear zero reads \"did not replicate\"; and a labelled-panel KL that was "
+    "not read counts as harm")
+NO_CONTROLS_SAY = (
+    "A fresh knob claim needs a steering part: a prompt or a decoding setting alone has no family of controls to be "
+    "read against, and a claim with none is refused (a weight edit with no control family is refused the same way). "
+    "Practice readings of such a knob are open (knob_read, knob_write).")
+PROMPT_ARMS_SAY = "not compared with a knob"
+PRACTICE_CONTROLS_SAY = (
+    "Practice steering controls: for neuron_mul, other neurons of the same layer drawn at random, NOT matched on what "
+    "they deliver; for direction and neuron_add, random directions of the same length at the same layer. They share "
+    "the knob's prompt, thinking setting and logit bias. A fresh claim draws neuron_mul's controls as a weight edit's "
+    "are drawn.")
 
 
 class KnobRefused(ValueError):
@@ -477,16 +573,145 @@ def build_knob(
     )
 
 
+
+def steering_words(t: ResolvedSteerTerm) -> str:
+    """What one steering term does, in plain words (`STEERING_SAY`)."""
+    bos = " but the start mark" if t.spare_bos else ""
+    return STEERING_SAY[t.kind].format(L=t.layer, P=t.layer + 1, mag=abs(float(t.magnitude)), k=len(t.neurons),
+                                       f=float(t.factor), bos=bos)
+
+
+# ------------------------------------------------------------------------------------- what a knob reads against
+
+
+def _settings_of(brief: Optional[lbr.Brief]) -> Tuple[Optional[str], bool]:
+    """(the system turn, thinking on) of the brief's chat settings, which every knob reading is read against."""
+    cs = dict((brief.chat_settings if brief is not None else None) or {})
+    return cs.get("system"), bool(cs.get("thinking", False))
+
+
+def knob_system_turn(knob: KnobSpec, system: Optional[str]) -> Optional[str]:
+    """The system turn an item is read with under `knob`: `system` (the item's own, else the brief's) with the knob's
+    prompt on a new line after it, as `level_claim.prompt_arm_system` puts an author prompt arm."""
+    if knob.prompt is None:
+        return system
+    return f"{system}\n{knob.prompt}" if system else knob.prompt
+
+
+def _retokenised(h: lv.Handle, item: lv.Item, system: Optional[str], thinking: bool, what: str) -> lv.Item:
+    if item.question is None or item.answer is None:
+        raise KnobRefused(f'Item "{item.name}" has no question and answer text to read {what} on.')
+    try:
+        return lv._item(lv.chat_ids(h.tokenizer, item.question, system=system, thinking=thinking), item.answer_ids,
+                        item.name, item.question, item.answer, system)
+    except lv.Refused as exc:
+        raise KnobRefused(f'Item "{item.name}" under {what}: {exc}') from None
+
+
+def ref_and_knob_items(h: lv.Handle, item: lv.Item, knob: KnobSpec,
+                       brief: Optional[lbr.Brief]) -> Tuple[lv.Item, lv.Item]:
+    """(the base row's item, the knob's item) for a teacher-forced reading of `item`. Both are read under the brief's
+    chat settings: the item's own system turn (the brief's when it has none) and the brief's thinking setting. The
+    knob's item adds its prompt to that system turn and takes its thinking setting when it has one; nothing else
+    differs. (An item is made with thinking off; under a brief that reads with thinking on, both rows are made again
+    with it on, so a prompt knob is not read against a base with thinking off, nor a thinking-off knob against one.)"""
+    b_sys, b_think = _settings_of(brief)
+    ref_sys = item.system if item.system is not None else b_sys
+    ref = item if (ref_sys == item.system and not b_think) else _retokenised(h, item, ref_sys, b_think,
+                                                                             "the brief's chat settings")
+    k_sys = knob_system_turn(knob, ref_sys)
+    k_think = bool(knob.decoding.get("thinking", b_think))
+    kit = ref if (k_sys == ref_sys and k_think == b_think) else _retokenised(h, item, k_sys, k_think, "the knob")
+    return ref, kit
+
+
+def knob_texts(knob: KnobSpec, item: Any, brief: Optional[lbr.Brief]) -> Tuple[Optional[str], Optional[str],
+                                                                               Optional[str]]:
+    """The texts the model reads of `item` under `knob`, in order (system turn, question, answer): what a kept-back
+    guard (`level_briefs.KeptBack.hit`) is asked of, so a kept-back frame's wording is found in a knob's prompt as it
+    is in an item."""
+    b_sys, _think = _settings_of(brief)
+    own = getattr(item, "system", None)
+    return (knob_system_turn(knob, own if own is not None else b_sys), getattr(item, "question", None),
+            getattr(item, "answer", None))
+
+
+def brief_sampler(brief: lbr.Brief) -> Dict[str, Any]:
+    """The sampler a written brief's base is read with: `level_claim`'s written claims' own (temperature 1, top-k
+    64, top-p 0.95, no presence penalty, unless the brief's written_config says otherwise), so a knob's written
+    reading has the base row a weight claim's has."""
+    wcfg = dict(brief.written_config or {})
+    return {"temperature": round(float(wcfg.get("temperature", 1.0)), 6), "top_k": int(wcfg.get("top_k", 64)),
+            "top_p": round(float(wcfg.get("top_p", 0.95)), 6),
+            "presence_penalty": round(float(wcfg.get("presence_penalty", 0.0)), 6)}
+
+
+def parts_that_cannot_act(knob: KnobSpec, brief: Optional[lbr.Brief], *, written: bool) -> List[str]:
+    """The parts of `knob` that cannot act on a reading (teacher-forced, or written with `written`) under `brief`,
+    in plain words: a sampler where nothing is sampled, or the brief's own sampler; a thinking setting the brief
+    already reads with. Such a part reads exactly as the knob without it: it would be registered and printed and
+    never read, and a knob of such parts alone would spend a reading on nothing."""
+    _sys, b_think = _settings_of(brief)
+    out: List[str] = []
+    dec = knob.decoding
+    if "sampler" in dec:
+        if not written:
+            out.append("its sampler: a teacher-forced reading samples nothing")
+        elif brief is not None and dict(dec["sampler"]) == brief_sampler(brief):
+            out.append("its sampler: it is the brief's own")
+    if "thinking" in dec and bool(dec["thinking"]) == b_think:
+        out.append(f"its thinking setting: the brief already reads with thinking {'on' if b_think else 'off'}")
+    return out
+
+
+def _refuse_parts_that_cannot_act(knob: KnobSpec, brief: Optional[lbr.Brief], *, written: bool) -> None:
+    inert = parts_that_cannot_act(knob, brief, written=written)
+    if inert:
+        raise KnobRefused(
+            f"This knob has a part that cannot act on {'a written' if written else 'a teacher-forced'} reading, so it "
+            f"would read exactly as the knob without it: {'; '.join(inert)}. Leave that part out."
+        )
+
+
+def _anchor_layer(h: lv.Handle, knob: KnobSpec) -> int:
+    """Where the null rows sit: the lowest steered layer (as a weight reading puts them at its edit's lowest layer),
+    else the last layer (a prompt or a decoding setting enters at the input or the output, not at layer 0)."""
+    return min((t.layer for t in knob.steering_resolved), default=max(0, h.n_layers - 1))
+
+
+def _mirror_of(knob: KnobSpec) -> Tuple[Tuple[ResolvedSteerTerm, ...], Optional[Dict[str, float]]]:
+    """The reversed knob's steering and logit bias (`REVERSED_SAY`): a push's dose negated, a neuron_mul's factor f
+    at 2 - f (a weight edit at dose -1), the bias negated. Refused when the reverse is past the knob's caps."""
+    terms: List[ResolvedSteerTerm] = []
+    for t in knob.steering_resolved:
+        if t.kind == "neuron_mul":
+            f = 2.0 - float(t.factor)
+            if abs(f) > MAX_MUL_FACTOR:
+                raise KnobRefused(
+                    f"The reverse of a neuron_mul by {t.factor:g} is a factor of {f:g}, past the cap of "
+                    f"{MAX_MUL_FACTOR:g}: a fresh claim reads every knob's reverse on a signed brief.")
+            terms.append(dataclasses.replace(t, factor=f, canonical={**dict(t.canonical), "factor": round(f, 6),
+                                                                      "reversed": True}))
+        else:
+            terms.append(dataclasses.replace(t, magnitude=-float(t.magnitude),
+                                             canonical={**dict(t.canonical), "reversed": True}))
+    bias = knob.decoding.get("logit_bias")
+    return tuple(terms), ({str(k): -float(v) for k, v in bias.items()} if bias else None)
+
+
 def _draw_steering_controls(
     h: lv.Handle,
     terms: Sequence[ResolvedSteerTerm],
     count: int,
     seed: int,
 ) -> List[Tuple[ResolvedSteerTerm, ...]]:
-    """Build `count` matched random steering controls:
+    """Build `count` random steering controls, a tuple of terms each:
     - For `direction` / `neuron_add`: random Gaussian directions in the same layer, projected off `quiet_mask`,
-      unit-normalized, with the exact same magnitude and `spare_bos`.
-    - For `neuron_mul`: random disjoint other-site neurons of the same count, layer, factor, and `spare_bos`."""
+      unit-normalized, with the exact same magnitude and `spare_bos`: matched on the size of the push at its layer,
+      nothing else. A fresh claim's `random_directions` family is these.
+    - For `neuron_mul`: random other neurons of the same count, layer, factor, and `spare_bos`, NOT matched on what
+      they deliver. Practice readings only: a fresh claim draws a neuron_mul knob's controls as the weight edit's
+      whose arithmetic it is (`_draw_claim_controls`)."""
     if not terms or count <= 0:
         return []
     rng = np.random.default_rng(int(seed) & ((1 << 63) - 1))
@@ -646,6 +871,7 @@ def _apply_logit_bias(logits: torch.Tensor, logit_bias: Optional[Mapping[str, fl
     return out
 
 
+
 def _score_states_pair(
     h: lv.Handle,
     H_base: torch.Tensor,
@@ -703,208 +929,130 @@ def _score_states_pair(
     return out
 
 
-def _make_knob_item(
-    h: lv.Handle,
-    base_item: lv.Item,
-    knob: KnobSpec,
-    brief: Optional[lbr.Brief] = None,
-) -> lv.Item:
-    """Build the tokenized item seen by `knob` (applying prompt and/or thinking override if set)."""
-    base_sys = base_item.system
-    if brief is not None and base_sys is None:
-        base_sys = (brief.chat_settings or {}).get("system")
-    new_sys = base_sys
-    if knob.prompt is not None:
-        new_sys = f"{base_sys}\n{knob.prompt}" if base_sys else knob.prompt
-    base_think = bool((brief.chat_settings or {}).get("thinking", False)) if brief is not None else False
-    new_think = bool(knob.decoding.get("thinking", base_think))
-    if new_sys == base_item.system and new_think == base_think:
-        return base_item
-    if base_item.question is None or base_item.answer is None:
-        raise KnobRefused(f'Item "{base_item.name}" has no question/answer text to apply a prompt/thinking knob.')
-    p_ids = lv.chat_ids(h.tokenizer, base_item.question, system=new_sys, thinking=new_think)
-    a_ids = list(base_item.answer_ids)
-    try:
-        return lv._item(p_ids, a_ids, base_item.name, base_item.question, base_item.answer, new_sys)
-    except lv.Refused as exc:
-        raise KnobRefused(f'Prompt/thinking knob item "{base_item.name}": {exc}') from None
+
+# A row's program: None (untouched), a tuple of steering terms (this module's hooks), or a `weight_edits.Arm` (a
+# weight edit's control, read by the weight path's own per-row hooks).
+Program = Any
 
 
-def _eval_paired_item_class(
+@contextlib.contextmanager
+def _row_hooks(
+    lm: Any,
+    programs: Sequence[Program],
+    null_rows: Mapping[int, Tuple[int, float]],
+    bos_mask: Optional[torch.Tensor] = None,
+) -> Iterator[None]:
+    """Row r of every forward in the block runs `programs[r]`: steering terms through `_steering_hooks`, a weight
+    edit through `weight_edits.per_row` (the hooks the weight path reads its own control edits with). Rows are
+    disjoint: each hook touches its own rows only. Every hook comes off when the block ends."""
+    steer = [p if isinstance(p, tuple) and p else None for p in programs]
+    arms = [p if isinstance(p, we.Arm) else None for p in programs]
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(_steering_hooks(lm, steer, null_rows, bos_mask=bos_mask))
+        if any(a is not None for a in arms):
+            stack.enter_context(we.per_row(lm, arms))
+        yield
+
+
+def _eval_paired_arms(
     h: lv.Handle,
-    base_item: lv.Item,
+    ref_item: lv.Item,
     knob_item: lv.Item,
-    knob: KnobSpec,
-    controls: Sequence[Tuple[ResolvedSteerTerm, ...]],
+    arms: Sequence[Tuple[str, Program, Optional[Mapping[str, float]]]],
     readouts: Mapping[str, Any],
     metric: str,
     rows: int,
+    anchor_layer: int,
 ) -> Dict[str, Any]:
-    """Evaluate one item at one batch class (`rows`), checking untouched-row bit-identity and null-row floor."""
-    null_es = (-0.125, -0.03125, 0.03125, 0.125)
-    # Place null rows at the lowest steered layer (matching levelling.py), or at the final layer when no
-    # hidden-layer steering is active (prompt / decoding knobs enter at the input/output boundary, not layer 0).
-    anchor_layer = min((t.layer for t in knob.steering_resolved), default=max(0, h.n_layers - 1))
-    sp_b = lv._Span.of(base_item, h.device)
+    """Read `arms` ([(name, program, logit bias)]) on one item at one batch class of `rows` rows. The base row is
+    `ref_item` (the item under the brief's chat settings), with null rows at `anchor_layer` and an untouched twin
+    that must match it to the bit; every arm is read on `knob_item` (the item as the knob reads it) and scored against
+    the base row with its own logit bias added. Returns {"void", "forwards", "floor", "scores": {name: {"kl", "own",
+    "odds"}}}: `floor` is the largest |metric| of the null rows."""
+    if rows < len(NULL_ES) + 3:
+        raise KnobRefused(f"rows must be at least {len(NULL_ES) + 3} to hold base, twin, null rows, and knob; got {rows}.")
+    sp_b = lv._Span.of(ref_item, h.device)
     sp_k = lv._Span.of(knob_item, h.device)
-    same_tokens = (base_item.ids == knob_item.ids)
-    lb_map = knob.decoding.get("logit_bias")
+    same = ref_item.ids == knob_item.ids
+    bos_id = getattr(h.tokenizer, "bos_token_id", None)
     forwards = 0
 
-    def _run_batch(ids: Sequence[int], progs: List[Optional[Sequence[ResolvedSteerTerm]]], nulls: Dict[int, Tuple[int, float]]) -> torch.Tensor:
+    def run(ids: Sequence[int], progs: List[Program], nulls: Dict[int, Tuple[int, float]]) -> torch.Tensor:
         nonlocal forwards
-        bos_id = getattr(h.tokenizer, "bos_token_id", None)
         bos_m = None
         if bos_id is not None:
             row_bos = torch.tensor([int(t) == int(bos_id) for t in ids], dtype=torch.bool, device=h.device)
             bos_m = row_bos.unsqueeze(0).expand(len(progs), -1)
-        with _steering_hooks(h.lm, progs, nulls, bos_mask=bos_m):
+        with _row_hooks(h.lm, progs, nulls, bos_mask=bos_m):
             Hf = lv._whole(h, ids, len(progs))
         forwards += 1
         return Hf
 
-    # Available slots per forward: row 0 = base, last row = twin, rows 1..len(null_es) on forward 0 = null rows
-    if rows < len(null_es) + 3:
-        raise KnobRefused(f"rows must be at least {len(null_es) + 3} to hold base, twin, null rows, and knob; got {rows}.")
-
-    # Forward 0 on base_item: base (0), null rows (1..4), optional knob + controls when same_tokens, twin (rows-1)
-    progs0: List[Optional[Sequence[ResolvedSteerTerm]]] = [None] * rows
-    nulls0: Dict[int, Tuple[int, float]] = {1 + i: (anchor_layer, e) for i, e in enumerate(null_es)}
-    slot_start = 1 + len(null_es)
-    slot_end = rows - 1
-
-    knob_scores: Optional[Dict[str, Optional[float]]] = None
-    ctl_scores: List[Optional[float]] = []
-
-    if same_tokens:
-        # Pack knob + steering controls right into the same forward(s) as base and null rows!
-        arm_list: List[Tuple[str, Optional[Sequence[ResolvedSteerTerm]]]] = [("knob", knob.steering_resolved or None)]
-        for ci, c_terms in enumerate(controls):
-            arm_list.append((f"ctl_{ci}", c_terms))
-
-        idx = 0
-        # Forward 0
-        f0_arms: List[Tuple[int, str]] = []
-        for r in range(slot_start, slot_end):
-            if idx >= len(arm_list):
+    pending = list(arms)
+    progs0: List[Program] = [None] * rows
+    nulls0 = {1 + i: (anchor_layer, e) for i, e in enumerate(NULL_ES)}
+    placed0: List[Tuple[int, str, Optional[Mapping[str, float]]]] = []
+    if same:  # the arms share forward 0 with the base, null and twin rows
+        for r in range(1 + len(NULL_ES), rows - 1):
+            if not pending:
                 break
-            name_a, prog_a = arm_list[idx]
-            progs0[r] = prog_a
-            f0_arms.append((r, name_a))
-            idx += 1
-        Hf0 = _run_batch(base_item.ids, progs0, nulls0)
-        if not torch.isfinite(Hf0[0]).all():
-            return {"void": "non-finite base state", "forwards": forwards}
-        if not torch.equal(Hf0[0], Hf0[rows - 1]):
-            return {"void": "untouched twin row parted from base row", "forwards": forwards}
-        H0 = Hf0[0].detach()
-        # Measure null-row floor
-        null_vals: List[float] = []
-        for i in range(len(null_es)):
-            ns = _score_states_pair(h, H0, sp_b, Hf0[1 + i], sp_b, readouts)
-            mv = ns.get(metric)
-            if mv is not None:
-                null_vals.append(abs(float(mv)))
-        floor_val = max(null_vals) if null_vals else 0.0
-
-        for r, name_a in f0_arms:
-            sc = _score_states_pair(
-                h, H0, sp_b, Hf0[r], sp_b, readouts,
-                logit_bias=(lb_map if name_a == "knob" else None),
-            )
-            if name_a == "knob":
-                knob_scores = sc
-            else:
-                ctl_scores.append(sc.get(metric))
-
-        # Extra forwards for remaining controls
-        while idx < len(arm_list):
-            progs_n: List[Optional[Sequence[ResolvedSteerTerm]]] = [None] * rows
-            fn_arms: List[Tuple[int, str]] = []
-            for r in range(1, rows - 1):
-                if idx >= len(arm_list):
-                    break
-                name_a, prog_a = arm_list[idx]
-                progs_n[r] = prog_a
-                fn_arms.append((r, name_a))
-                idx += 1
-            Hfn = _run_batch(base_item.ids, progs_n, {})
-            if not torch.equal(Hfn[0], H0) or not torch.equal(Hfn[0], Hfn[rows - 1]):
+            name, prog, bias = pending.pop(0)
+            progs0[r] = prog
+            placed0.append((r, name, bias))
+    Hf0 = run(ref_item.ids, progs0, nulls0)
+    if not torch.isfinite(Hf0[0]).all():
+        return {"void": "non-finite base state", "forwards": forwards}
+    if not torch.equal(Hf0[0], Hf0[rows - 1]):
+        return {"void": "untouched twin row parted from base row", "forwards": forwards}
+    H0 = Hf0[0].detach()
+    null_vals = []
+    for i in range(len(NULL_ES)):
+        mv = _score_states_pair(h, H0, sp_b, Hf0[1 + i], sp_b, readouts).get(metric)
+        if mv is not None:
+            null_vals.append(abs(float(mv)))
+    floor_val = max(null_vals) if null_vals else 0.0
+    scores: Dict[str, Dict[str, Optional[float]]] = {}
+    for r, name, bias in placed0:
+        scores[name] = _score_states_pair(h, H0, sp_b, Hf0[r], sp_b, readouts, logit_bias=bias)
+    k_row0 = None
+    while pending:
+        progs: List[Program] = [None] * rows
+        placed: List[Tuple[int, str, Optional[Mapping[str, float]]]] = []
+        for r in range(1, rows - 1):
+            if not pending:
+                break
+            name, prog, bias = pending.pop(0)
+            progs[r] = prog
+            placed.append((r, name, bias))
+        Hf = run(ref_item.ids if same else knob_item.ids, progs, {})
+        if not torch.isfinite(Hf[0]).all():
+            return {"void": "non-finite knob base state", "forwards": forwards}
+        if same:
+            if not torch.equal(Hf[0], H0) or not torch.equal(Hf[0], Hf[rows - 1]):
                 return {"void": "later forward base or twin row parted from forward 0", "forwards": forwards}
-            for r, _name_a in fn_arms:
-                sc = _score_states_pair(h, H0, sp_b, Hfn[r], sp_b, readouts)
-                ctl_scores.append(sc.get(metric))
-    else:
-        # Different input tokens (prompt / thinking knob): run base forward for H0 + floor, then knob forward(s).
-        Hf_b = _run_batch(base_item.ids, progs0, nulls0)
-        if not torch.isfinite(Hf_b[0]).all():
-            return {"void": "non-finite base state", "forwards": forwards}
-        if not torch.equal(Hf_b[0], Hf_b[rows - 1]):
-            return {"void": "untouched base twin row parted from base row", "forwards": forwards}
-        H0 = Hf_b[0].detach()
-        null_vals = []
-        for i in range(len(null_es)):
-            ns = _score_states_pair(h, H0, sp_b, Hf_b[1 + i], sp_b, readouts)
-            mv = ns.get(metric)
-            if mv is not None:
-                null_vals.append(abs(float(mv)))
-        floor_val = max(null_vals) if null_vals else 0.0
-
-        # Knob forward(s) on knob_item: row 0 = prompted base (no steering), last row = twin, inner rows = knob + controls
-        arm_list = [("knob", knob.steering_resolved or None)]
-        for ci, c_terms in enumerate(controls):
-            arm_list.append((f"ctl_{ci}", c_terms))
-        idx = 0
-        Hk0_ref = None
-        while idx < len(arm_list):
-            progs_k: List[Optional[Sequence[ResolvedSteerTerm]]] = [None] * rows
-            fk_arms: List[Tuple[int, str]] = []
-            for r in range(1, rows - 1):
-                if idx >= len(arm_list):
-                    break
-                name_a, prog_a = arm_list[idx]
-                progs_k[r] = prog_a
-                fk_arms.append((r, name_a))
-                idx += 1
-            Hfk = _run_batch(knob_item.ids, progs_k, {})
-            if not torch.isfinite(Hfk[0]).all():
-                return {"void": "non-finite knob base state", "forwards": forwards}
-            if not torch.equal(Hfk[0], Hfk[rows - 1]):
+        else:
+            if not torch.equal(Hf[0], Hf[rows - 1]):
                 return {"void": "knob forward twin row parted from row 0", "forwards": forwards}
-            if Hk0_ref is None:
-                Hk0_ref = Hfk[0].detach()
-            elif not torch.equal(Hfk[0], Hk0_ref):
+            if k_row0 is None:
+                k_row0 = Hf[0].detach()
+            elif not torch.equal(Hf[0], k_row0):
                 return {"void": "later knob forward row 0 parted from first knob forward", "forwards": forwards}
-            for r, name_a in fk_arms:
-                sc = _score_states_pair(
-                    h, H0, sp_b, Hfk[r], sp_k, readouts,
-                    logit_bias=(lb_map if name_a == "knob" else None),
-                )
-                if name_a == "knob":
-                    knob_scores = sc
-                else:
-                    ctl_scores.append(sc.get(metric))
-
-    return {
-        "void": None,
-        "forwards": forwards,
-        "floor": float(floor_val),
-        "scores": knob_scores or {},
-        "control_scores": ctl_scores,
-    }
+        for r, name, bias in placed:
+            scores[name] = _score_states_pair(h, H0, sp_b, Hf[r], sp_b if same else sp_k, readouts, logit_bias=bias)
+    return {"void": None, "forwards": forwards, "floor": float(floor_val), "scores": scores}
 
 
 def _write_rows_with_bias(
     h: lv.Handle,
     rows_ids: Sequence[Sequence[int]],
-    progs: Sequence[Optional[Sequence[ResolvedSteerTerm]]],
+    progs: Sequence[Program],
     *,
     max_new: int,
     sampler: Optional[SamplerSettings],
     samples_of: Optional[Sequence[int]],
     row_biases: Sequence[Optional[Mapping[str, float]]],
 ) -> List[Dict[str, Any]]:
-    """Batched decode on the untouched base model with optional per-row steering hooks and per-row logit bias."""
+    """Batched decode on the untouched base model with per-row programs (`_row_hooks`) and per-row logit bias."""
     lm = h.lm
     W_U = h.W_U
     dev = h.device
@@ -925,7 +1073,7 @@ def _write_rows_with_bias(
     done = [False] * B
     ended = [False] * B
 
-    with torch.no_grad(), _steering_hooks(lm, progs, {}, bos_mask=bos_m):
+    with torch.no_grad(), _row_hooks(lm, progs, {}, bos_mask=bos_m):
         out = lm(input_ids=ids, attention_mask=mask, position_ids=pos, use_cache=True)
         cache = out.past_key_values
         last_h = out.last_hidden_state[:, -1]
@@ -980,116 +1128,99 @@ def _write_rows_with_bias(
     return rows_out
 
 
-def _eval_written_items(
+def _sampler_for(cfg: Mapping[str, Any], seed_val: int) -> Optional[SamplerSettings]:
+    t = float(cfg.get("temperature", 0.0))
+    if t <= 0.0:
+        return None
+    return SamplerSettings(
+        temperature=t,
+        top_k=int(cfg.get("top_k", 0)),
+        top_p=float(cfg.get("top_p", 1.0)),
+        presence_penalty=float(cfg.get("presence_penalty", 0.0)),
+        seed=int(seed_val),
+    )
+
+
+def _written_ids(h: lv.Handle, it: lv.Item, knob: KnobSpec, brief: lbr.Brief) -> Tuple[List[int], List[int]]:
+    """(the base row's prompt, the knob's prompt) for a written reading of `it`, under the brief's chat settings."""
+    if it.question is None:
+        raise KnobRefused(f'Item "{it.name}" has no question text to write from.')
+    b_sys, b_think = _settings_of(brief)
+    ref_sys = it.system if it.system is not None else b_sys
+    k_think = bool(knob.decoding.get("thinking", b_think))
+    return (lv.chat_ids(h.tokenizer, it.question, system=ref_sys, thinking=b_think),
+            lv.chat_ids(h.tokenizer, it.question, system=knob_system_turn(knob, ref_sys), thinking=k_think))
+
+
+def _eval_written_arms(
     h: lv.Handle,
     items: Sequence[lv.Item],
     knob: KnobSpec,
     brief: lbr.Brief,
-    controls: Sequence[Tuple[ResolvedSteerTerm, ...]],
+    arms: Sequence[Tuple[str, Program, Optional[Mapping[str, float]]]],
     *,
     max_new: Optional[int] = None,
     seeds: Optional[Sequence[int]] = None,
+    chunk_rows: int = lv.WRITTEN_ROWS_MAX,
 ) -> Dict[str, Any]:
-    """Evaluate a written_loop brief under `knob` vs base (and optional steering controls)."""
+    """Write each item under the brief's chat settings and sampler (the base row, with an untouched twin that must
+    write the same pieces) and under each of `arms` ([(name, program, logit bias)]: the knob's prompt, thinking
+    setting and sampler, each arm's own steering and bias), every seed of the brief's. Returns {"void", "forwards",
+    "deltas": {name: [an item's mean over seeds of (arm looped - base looped)]}, "base_loop_rate"}, loops counted
+    by the brief's own loop rule (`level_briefs.loop_rule_of`)."""
     wcfg = dict(brief.written_config or {})
     m_new = int(max_new if max_new is not None else wcfg.get("max_new_tokens", 128))
-    seed_list = list(seeds if seeds is not None else wcfg.get("seeds", [1, 2]))
-    loop_rule = str(wcfg.get("loop_rule", "either"))
-    base_think = bool((brief.chat_settings or {}).get("thinking", False))
-    base_sys = (brief.chat_settings or {}).get("system")
-    knob_think = bool(knob.decoding.get("thinking", base_think))
-    knob_sys = lcl.prompt_arm_system(brief, knob.prompt) if knob.prompt is not None else base_sys
-
-    def _sampler_for(cfg: Mapping[str, Any], seed_val: int) -> Optional[SamplerSettings]:
-        t = float(cfg.get("temperature", 0.0))
-        if t <= 0.0:
-            return None
-        return SamplerSettings(
-            temperature=t,
-            top_k=int(cfg.get("top_k", 0)),
-            top_p=float(cfg.get("top_p", 1.0)),
-            presence_penalty=float(cfg.get("presence_penalty", 0.0)),
-            seed=int(seed_val),
-        )
-
-    base_scfg = {
-        "temperature": float(wcfg.get("temperature", 0.0)),
-        "top_k": int(wcfg.get("top_k", 0)),
-        "top_p": float(wcfg.get("top_p", 1.0)),
-        "presence_penalty": float(wcfg.get("presence_penalty", 0.0)),
-    }
-    knob_scfg = dict(knob.decoding.get("sampler") or base_scfg)
-    lb_map = knob.decoding.get("logit_bias")
-
-    per_item_base: List[float] = []
-    per_item_knob: List[float] = []
-    per_item_ctl: List[List[float]] = [[] for _ in controls]
-    strata_rows: List[Tuple[str, bool, bool]] = []
+    seed_list = [int(s) for s in (seeds if seeds is not None else (wcfg.get("seeds") or [1, 2]))]
+    rule = lbr.loop_rule_of(brief)
+    base_s = brief_sampler(brief)
+    knob_s = dict(knob.decoding.get("sampler") or base_s)
+    chunk = max(1, int(chunk_rows))
+    deltas: Dict[str, List[float]] = {name: [] for name, _p, _b in arms}
+    base_rates: List[float] = []
     forwards = 0
-
     for it in items:
-        q = it.question or ""
-        b_p_ids = lv.chat_ids(h.tokenizer, q, system=base_sys, thinking=base_think)
-        k_p_ids = lv.chat_ids(h.tokenizer, q, system=knob_sys, thinking=knob_think)
-        b_loops = 0
-        k_loops = 0
-        c_loops = [0] * len(controls)
+        b_ids, k_ids = _written_ids(h, it, knob, brief)
+        per: Dict[str, List[float]] = {name: [] for name, _p, _b in arms}
+        b_loops: List[float] = []
         for sd in seed_list:
-            # Base decode (with twin row to verify untouched determinism)
             b_rows = _write_rows_with_bias(
-                h, [b_p_ids, b_p_ids], [None, None], max_new=m_new,
-                sampler=_sampler_for(base_scfg, sd), samples_of=[0, 0], row_biases=[None, None],
+                h, [b_ids, b_ids], [None, None], max_new=m_new, sampler=_sampler_for(base_s, sd), samples_of=[0, 0],
+                row_biases=[None, None],
             )
             forwards += 1
             if b_rows[0]["pieces"] != b_rows[1]["pieces"]:
                 return {"void": "written base twin row parted from base row", "forwards": forwards}
-            b_lp = lv.loop_flag(b_rows[0], loop_rule)
-            b_loops += int(b_lp)
-
-            # Knob decode
-            k_rows = _write_rows_with_bias(
-                h, [k_p_ids], [knob.steering_resolved or None], max_new=m_new,
-                sampler=_sampler_for(knob_scfg, sd), samples_of=[0], row_biases=[lb_map],
-            )
-            forwards += 1
-            k_lp = lv.loop_flag(k_rows[0], loop_rule)
-            k_loops += int(k_lp)
-            st_b = lv.written_stratum(b_rows[0]["ended"], b_lp, b_rows[0]["cut_off"])
-            strata_rows.append((st_b, b_lp, k_lp))
-
-            # Steering controls (if any)
-            if controls:
-                c_ids = [k_p_ids] * len(controls)
-                c_progs = [c for c in controls]
-                c_res = _write_rows_with_bias(
-                    h, c_ids, c_progs, max_new=m_new,
-                    sampler=_sampler_for(base_scfg, sd), samples_of=[0] * len(controls),
-                    row_biases=[None] * len(controls),
+            b_lp = 1.0 if lv.loop_flag(b_rows[0], rule) else 0.0
+            b_loops.append(b_lp)
+            for start in range(0, len(arms), chunk):
+                part = list(arms[start:start + chunk])
+                a_rows = _write_rows_with_bias(
+                    h, [k_ids] * len(part), [p for _n, p, _b in part], max_new=m_new,
+                    sampler=_sampler_for(knob_s, sd), samples_of=[0] * len(part),
+                    row_biases=[b for _n, _p, b in part],
                 )
                 forwards += 1
-                for ci, cr in enumerate(c_res):
-                    c_loops[ci] += int(lv.loop_flag(cr, loop_rule))
+                for (name, _p, _b), row in zip(part, a_rows):
+                    per[name].append((1.0 if lv.loop_flag(row, rule) else 0.0) - b_lp)
+        for name in deltas:
+            deltas[name].append(float(np.mean(per[name])))
+        base_rates.append(float(np.mean(b_loops)) if b_loops else 0.0)
+    return {"void": None, "forwards": forwards, "deltas": deltas,
+            "base_loop_rate": float(np.mean(base_rates)) if base_rates else 0.0}
 
-        n_s = max(1, len(seed_list))
-        per_item_base.append(b_loops / n_s)
-        per_item_knob.append(k_loops / n_s)
-        for ci in range(len(controls)):
-            per_item_ctl[ci].append(c_loops[ci] / n_s)
 
-    item_diffs = [k - b for b, k in zip(per_item_base, per_item_knob)]
-    ctl_means = [
-        float(np.mean([c - b for b, c in zip(per_item_base, per_item_ctl[ci])]))
-        for ci in range(len(controls))
-    ]
-    return {
-        "void": None,
-        "forwards": forwards,
-        "item_effects": item_diffs,
-        "base_loop_rate": float(np.mean(per_item_base)) if per_item_base else 0.0,
-        "knob_loop_rate": float(np.mean(per_item_knob)) if per_item_knob else 0.0,
-        "control_means": ctl_means,
-        "strata_rows": strata_rows,
-    }
+def _paired_forwards(rows: int, n_arms: int, same: bool) -> int:
+    """How many forwards `_eval_paired_arms` takes for `n_arms` arms at `rows` rows."""
+    inner = max(1, rows - 2)
+    if same:
+        extra = max(0, n_arms - max(0, rows - 2 - len(NULL_ES)))
+        return 1 + (math.ceil(extra / inner) if extra else 0)
+    return 1 + (math.ceil(n_arms / inner) if n_arms else 0)
+
+
+def _same_tokens(knob: KnobSpec, brief: Optional[lbr.Brief]) -> bool:
+    _sys, b_think = _settings_of(brief)
+    return knob.prompt is None and bool(knob.decoding.get("thinking", b_think)) == b_think
 
 
 def estimate_knob_reading(
@@ -1104,13 +1235,13 @@ def estimate_knob_reading(
     samples: int = 1,
     base_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Dry cost estimate (forwards and GPU-seconds) for a cheaper-knob reading without touching the GPU."""
+    """Dry cost estimate (forwards and GPU-seconds) for a cheaper-knob practice reading without touching the GPU."""
     knob = build_knob(h, spec, base_dir=base_dir)
     if not items:
         raise KnobRefused("estimate_knob_reading requires at least one item.")
     n_ctl = int(controls) if knob.steering_resolved else 0
     if kind == "written":
-        n_arm_batches = 2 + (1 if n_ctl > 0 else 0)
+        n_arm_batches = 1 + math.ceil((1 + n_ctl) / lv.WRITTEN_ROWS_MAX)
         fwds = len(items) * max(1, int(samples)) * n_arm_batches
         secs = round(fwds * int(max_new) * 0.095, 3)
         return {"kind": "written", "forwards": fwds, "seconds": secs, "knob_classes": list(knob.knob_classes)}
@@ -1123,14 +1254,7 @@ def estimate_knob_reading(
     for it in items.values():
         T = len(it.ids)
         for R in (r_sm, r_lg):
-            if same_tok:
-                cap0 = max(1, R - 6)
-                extra = max(0, (1 + n_ctl) - cap0)
-                cap_n = max(1, R - 2)
-                n_f = 1 + (math.ceil(extra / cap_n) if extra > 0 else 0)
-            else:
-                cap_n = max(1, R - 2)
-                n_f = 1 + math.ceil((1 + n_ctl) / cap_n)
+            n_f = _paired_forwards(R, 1 + n_ctl, same_tok)
             total_fwds += n_f
             total_s += n_f * lv.whole(R, T)
     return {
@@ -1140,6 +1264,17 @@ def estimate_knob_reading(
         "knob_classes": list(knob.knob_classes),
         "steering_controls": n_ctl,
     }
+
+
+def _items_as_read(knob: KnobSpec, items: Sequence[lv.Item], brief: Optional[lbr.Brief]) -> List[Dict[str, Any]]:
+    """What a practice note records of the items it read: each one's texts as the knob read them (its system turn
+    with the knob's prompt), in the form a reading's entry gives an item, so a later fresh claim's look through the
+    book for kept-back wording read in practice (`level_claim.brief_history`) finds it in a knob's prompt too."""
+    out = []
+    for it in items:
+        system, question, answer = knob_texts(knob, it, brief)
+        out.append({"item": {"name": it.name, "system": system, "question": question, "answer": answer}})
+    return out
 
 
 def read_knob_practice(
@@ -1158,12 +1293,15 @@ def read_knob_practice(
     book_path: Optional[Path] = None,
     name: str = "knob_practice",
 ) -> Dict[str, Any]:
-    """Run a gated paired practice reading of a cheaper knob (no word past a rank; logged in the level book)."""
+    """Run a gated paired practice reading of a cheaper knob (no word past a rank; logged in the level book, with the
+    items' texts as the knob read them). Refused for a knob with a part that cannot act on a teacher-forced reading.
+    The steering controls are `PRACTICE_CONTROLS_SAY`'s."""
     we.assert_base(h.lm, h.hooks_at_load)
     if not items:
         raise KnobRefused("read_knob_practice requires at least one item.")
     allowed_l = brief.allowed_layers if brief is not None else None
     knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=allowed_l)
+    _refuse_parts_that_cannot_act(knob, brief, written=False)
     ro = dict(readouts or (brief.readouts if brief is not None else {"kl": True, "own": True, "odds": None}))
     met = str(brief.metric if brief is not None else metric)
     sgn = 1.0 if (brief.direction if brief is not None else direction) == 0 else float(
@@ -1173,6 +1311,9 @@ def read_knob_practice(
     r_lg = int((rows or {}).get("large", lv.ROWS_LARGE))
     n_ctl = int(controls) if knob.steering_resolved else 0
     ctl_list = _draw_steering_controls(h, knob.steering_resolved, n_ctl, seed=int(seed)) if n_ctl > 0 else []
+    bias = knob.decoding.get("logit_bias")
+    arms = [("knob", knob.steering_resolved or None, bias)] + [(f"ctl:{i}", c, bias) for i, c in enumerate(ctl_list)]
+    anchor = _anchor_layer(h, knob)
 
     t0 = time.perf_counter()
     total_fwds = 0
@@ -1181,46 +1322,41 @@ def read_knob_practice(
     small_floors: List[float] = []
     large_floors: List[float] = []
     ctl_sm_acc: List[List[float]] = [[] for _ in ctl_list]
-    ctl_lg_acc: List[List[float]] = [[] for _ in ctl_list]
     unstable_count = 0
     void_why: Optional[str] = None
+    recorded = _items_as_read(knob, list(items.values()), brief)
 
     try:
         for _nm, it in items.items():
-            k_it = _make_knob_item(h, it, knob, brief=brief)
-            res_sm = _eval_paired_item_class(h, it, k_it, knob, ctl_list, ro, met, r_sm)
+            ref, kit = ref_and_knob_items(h, it, knob, brief)
+            res_sm = _eval_paired_arms(h, ref, kit, arms, ro, met, r_sm, anchor)
             total_fwds += int(res_sm.get("forwards", 0))
             if res_sm.get("void"):
                 void_why = str(res_sm["void"])
                 break
-            res_lg = _eval_paired_item_class(h, it, k_it, knob, ctl_list, ro, met, r_lg)
+            res_lg = _eval_paired_arms(h, ref, kit, arms, ro, met, r_lg, anchor)
             total_fwds += int(res_lg.get("forwards", 0))
             if res_lg.get("void"):
                 void_why = str(res_lg["void"])
                 break
-
-            v_sm = _clean_float((res_sm.get("scores") or {}).get(met))
-            v_lg = _clean_float((res_lg.get("scores") or {}).get(met))
+            v_sm = _clean_float(res_sm["scores"]["knob"].get(met))
+            v_lg = _clean_float(res_lg["scores"]["knob"].get(met))
             f_sm = float(res_sm.get("floor", 0.0))
             f_lg = float(res_lg.get("floor", 0.0))
             small_floors.append(f_sm)
             large_floors.append(f_lg)
             if v_sm is None or v_lg is None:
                 continue
-            signed_m = met in ("odds", "own")
-            ok_agree, _ratio = lv.agree(v_sm, v_lg, max(f_sm, f_lg), signed_m)
+            ok_agree, _ratio = lv.agree(v_sm, v_lg, max(f_sm, f_lg), met in ("odds", "own"))
             if not ok_agree:
                 unstable_count += 1
                 continue
             small_vals.append(v_sm)
             large_vals.append(v_lg)
             for ci in range(len(ctl_list)):
-                cs = _clean_float(res_sm["control_scores"][ci]) if ci < len(res_sm["control_scores"]) else None
-                cl = _clean_float(res_lg["control_scores"][ci]) if ci < len(res_lg["control_scores"]) else None
+                cs = _clean_float(res_sm["scores"][f"ctl:{ci}"].get(met))
                 if cs is not None:
                     ctl_sm_acc[ci].append(cs)
-                if cl is not None:
-                    ctl_lg_acc[ci].append(cl)
     finally:
         we.assert_base(h.lm, h.hooks_at_load)
 
@@ -1243,7 +1379,7 @@ def read_knob_practice(
 
     status = "void" if void_why else ("ok" if small_vals else "void")
     body = {
-        "note": "knob_practice",
+        "note_type": "knob_practice",
         "name": str(name),
         "status": status,
         "why": void_why,
@@ -1257,6 +1393,7 @@ def read_knob_practice(
         "steering_controls_rank": ctl_rank,
         "forwards": total_fwds,
         "seconds": elapsed,
+        "items": recorded,
     }
     entry = lb.append("note", body, path=book_path)
     return {
@@ -1274,7 +1411,8 @@ def read_knob_practice(
         "steering_controls_rank": ctl_rank,
         "forwards": total_fwds,
         "seconds": elapsed,
-        "note": "Practice knob reading only: returns aggregates and ranks, no word past a rank.",
+        "note": "Practice knob reading only: returns aggregates and ranks, no word past a rank. " + PRACTICE_CONTROLS_SAY,
+        "steering_said": [steering_words(t) for t in knob.steering_resolved],  # what each term does, in words
     }
 
 
@@ -1292,84 +1430,215 @@ def write_knob_practice(
     book_path: Optional[Path] = None,
     name: str = "knob_write_practice",
 ) -> Dict[str, Any]:
-    """Run a gated written practice reading of a cheaper knob on practice items."""
+    """Run a gated written practice reading of a cheaper knob on practice items (logged in the level book, with the
+    items' texts as the knob read them). Refused for a knob with a part that cannot act on a written reading."""
     we.assert_base(h.lm, h.hooks_at_load)
     if not items:
         raise KnobRefused("write_knob_practice requires at least one item.")
     knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=brief.allowed_layers)
+    _refuse_parts_that_cannot_act(knob, brief, written=True)
     n_ctl = int(controls) if knob.steering_resolved else 0
     ctl_list = _draw_steering_controls(h, knob.steering_resolved, n_ctl, seed=int(seed)) if n_ctl > 0 else []
+    bias = knob.decoding.get("logit_bias")
+    arms = [("knob", knob.steering_resolved or None, bias)] + [(f"ctl:{i}", c, bias) for i, c in enumerate(ctl_list)]
+    recorded = _items_as_read(knob, list(items.values()), brief)
     t0 = time.perf_counter()
     try:
-        wres = _eval_written_items(
-            h, list(items.values()), knob, brief, ctl_list, max_new=int(max_new), seeds=list(seeds),
-        )
+        wres = _eval_written_arms(h, list(items.values()), knob, brief, arms, max_new=int(max_new), seeds=list(seeds))
     finally:
         we.assert_base(h.lm, h.hooks_at_load)
     elapsed = round(time.perf_counter() - t0, 3)
     status = "void" if wres.get("void") else "ok"
-    effs = wres.get("item_effects") or []
+    effs = (wres.get("deltas") or {}).get("knob") or []
     sgn = 1.0 if brief.direction == 0 else float(brief.direction)
     mean_eff = float(np.mean(effs)) if effs else None
     dir_eff = (sgn * mean_eff) if mean_eff is not None else None
+    base_rate = wres.get("base_loop_rate")
+    ctl_rank = None
+    if ctl_list and dir_eff is not None:
+        dl = wres.get("deltas") or {}
+        at_least = 0
+        for i in range(len(ctl_list)):
+            xs = dl.get(f"ctl:{i}") or []
+            at_least += 1 if (not xs or sgn * float(np.mean(xs)) >= dir_eff) else 0  # none read counts as as much
+        ctl_rank = {"at_least": at_least, "of": len(ctl_list)}
     body = {
-        "note": "knob_write_practice",
+        "note_type": "knob_write_practice",
         "name": str(name),
         "status": status,
         "why": wres.get("void"),
         "knob": knob.to_dict(),
         "n_asked": len(items),
-        "base_loop_rate": wres.get("base_loop_rate"),
-        "knob_loop_rate": wres.get("knob_loop_rate"),
+        "base_loop_rate": base_rate,
+        "knob_loop_rate": (base_rate + mean_eff) if (base_rate is not None and mean_eff is not None) else None,
         "mean_effect": mean_eff,
         "directed_effect": dir_eff,
+        "steering_controls_rank": ctl_rank,
         "forwards": int(wres.get("forwards", 0)),
         "seconds": elapsed,
+        "items": recorded,
     }
     entry = lb.append("note", body, path=book_path)
     return {
         "book": {"seq": entry["seq"], "hash": entry["hash"]},
-        **{k: v for k, v in body.items() if k != "knob"},
+        **{k: v for k, v in body.items() if k not in ("knob", "items")},
         "knob_id": knob.id,
         "knob_classes": list(knob.knob_classes),
+        "note": "Practice knob reading only: returns aggregates and ranks, no word past a rank. " + PRACTICE_CONTROLS_SAY,
+        "steering_said": [steering_words(t) for t in knob.steering_resolved],  # what each term does, in words
     }
 
 
-def _knob_book_history(brief: lbr.Brief, book_path: Optional[Path]) -> Dict[str, Any]:
-    """Count prior fresh readings (weight claims, trials, and knob claims) and prior knob ids on `brief` in `book_path`."""
-    hist = lcl.brief_history(brief.id, book_path, name=brief.name)
-    knob_regs: List[Dict[str, Any]] = []
-    knob_verdicts: List[Dict[str, Any]] = []
-    knob_ids: set[str] = set()
-    p = Path(book_path) if book_path is not None else lb.book_path()
-    bkey = lcl._name_key(brief.name)
-    if p.exists():
-        for entry in lb.entries(p):
-            if entry.get("kind") != "note":
-                continue
-            body = entry.get("body") or {}
-            nt = body.get("note")
-            if nt == "knob_claim_registration":
-                same = (body.get("brief_id") == brief.id) or (
-                    body.get("brief_name") and lcl._name_key(body.get("brief_name")) == bkey
-                )
-                if same:
-                    knob_regs.append(body)
-                    if body.get("knob_id"):
-                        knob_ids.add(str(body["knob_id"]))
-            elif nt == "knob_claim_verdict":
-                same = (body.get("brief_id") == brief.id) or (
-                    body.get("brief_name") and lcl._name_key(body.get("brief_name")) == bkey
-                )
-                if same:
-                    knob_verdicts.append(body)
-    return {
-        "weight_hist": hist,
-        "knob_regs": knob_regs,
-        "knob_verdicts": knob_verdicts,
-        "knob_ids": knob_ids,
-        "total_fresh": int(hist["fresh_count"]) + len(knob_regs),
+# -------------------------------------------------------------------------------------------- fresh knob claims
+
+
+@dataclass(frozen=True)
+class _ClaimPlan:
+    """What a fresh knob claim will read, settled before anything is registered (`_claim_plan`)."""
+
+    knob: KnobSpec
+    written: bool
+    families: Tuple[str, ...]
+    C: int
+    eq_edit: Optional[we.Edit]  # neuron_mul: the weight edit whose arithmetic the knob is
+    mirror: Optional[Tuple[Tuple[ResolvedSteerTerm, ...], Optional[Dict[str, float]]]]
+    tol: float
+    rows: Dict[str, int]
+    written_rows: int
+    design: Dict[str, Any]
+
+
+def _claim_plan(
+    h: lv.Handle,
+    brief: lbr.Brief,
+    spec: Mapping[str, Any],
+    *,
+    base_dir: Optional[Path],
+    n_target: Any,
+    n_neutral: Any,
+    n_near: Any,
+    n_panel: Any,
+    rows: Optional[Mapping[str, int]],
+    written_rows: Any,
+    controls_override: Any,
+    match_tolerance: Any,
+    min_frames_per_half: int,
+) -> _ClaimPlan:
+    """Every refusal a fresh knob claim can be given without its book, in plain words (`KnobRefused`), and what it
+    will read: the knob, its families of controls and their count, the weight edit a neuron_mul knob's arithmetic
+    is, its reverse, and the design registered before the draw."""
+    knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=brief.allowed_layers)
+    written = brief.metric == "written_loop"
+    terms = knob.steering_resolved
+    if not terms:
+        raise KnobRefused(NO_CONTROLS_SAY)
+    kinds = {t.kind for t in terms}
+    if "neuron_mul" in kinds and kinds != {"neuron_mul"}:
+        raise KnobRefused(
+            "A fresh knob claim reads a neuron_mul knob against a weight edit's controls and a push against pushes "
+            "along random directions: a knob that mixes neuron_mul with direction or neuron_add terms has no one "
+            "family of controls, so it is refused. Claim the parts as knobs of their own."
+        )
+    _refuse_parts_that_cannot_act(knob, brief, written=written)
+    C = controls_override if controls_override is not None else brief.default_controls
+    for what, n, least in (("n_target", n_target, 2 * int(min_frames_per_half)), ("n_neutral", n_neutral, 1),
+                           ("n_near", n_near, 1), ("n_panel", n_panel, 1), ("controls a family", C, 1)):
+        if isinstance(n, bool) or not isinstance(n, int) or n < least:
+            raise KnobRefused(f"A fresh reading takes {what} as a whole number of {least} or more; {n!r} was given.")
+    rows_cfg = {"small": (rows or {}).get("small", lv.ROWS_SMALL), "large": (rows or {}).get("large", lv.ROWS_LARGE)}
+    for cls, r in rows_cfg.items():
+        if isinstance(r, bool) or not isinstance(r, int) or r < len(NULL_ES) + 3:
+            raise KnobRefused(f"A knob claim's {cls} class takes a whole number of rows of {len(NULL_ES) + 3} or more "
+                              f"(the base, its twin, {len(NULL_ES)} null rows and an arm); {r!r} was given.")
+    w_rows = lcl.DESIGN_DEFAULTS["written_rows"] if written_rows is None else written_rows
+    if isinstance(w_rows, bool) or not isinstance(w_rows, int) or not 1 <= w_rows <= lv.WRITTEN_ROWS_MAX:
+        raise KnobRefused(f"written_rows is a whole number from 1 to {lv.WRITTEN_ROWS_MAX}; {w_rows!r} was given.")
+    tol = lv.DEFAULT_MATCH_TOL if match_tolerance is None else match_tolerance
+    if isinstance(tol, bool) or not isinstance(tol, (int, float)) or not math.isfinite(float(tol)) or float(tol) < 1.0:
+        raise KnobRefused(f"The matched controls' tolerance is a finite factor of 1 or more; {match_tolerance!r} was given.")
+    eq_edit: Optional[we.Edit] = None
+    if kinds == {"neuron_mul"}:
+        if any(t.spare_bos for t in terms):
+            raise KnobRefused(
+                "A neuron_mul that spares the start mark is the arithmetic of no weight edit, so its controls cannot "
+                "be drawn and read as a weight edit's are: claim it without spare_bos."
+            )
+        try:
+            eq_edit = we.build(h.lm, [we.scale(t.layer, list(t.neurons), float(t.factor)) for t in terms],
+                               model_id=h.model_id, weights_id=h.weights_id,
+                               note="the weight edit whose arithmetic a neuron_mul knob is")
+            lcl._check_edit_allowed_by_brief(eq_edit, brief)
+        except (we.Refused, lcl.ClaimRefused) as exc:
+            raise KnobRefused(f"The weight edit whose arithmetic this neuron_mul knob is cannot be claimed: {exc}") from None
+        for d in ([1.0, -1.0] if brief.direction != 0 else [1.0]):
+            words = we.dose_refusal(eq_edit, d, h.dtype)
+            if words:
+                raise KnobRefused(f"The weight edit whose arithmetic this knob is cannot be read at dose {d:g}: {words}")
+        families: Tuple[str, ...] = ("other_sites_matched", "same_site")
+    else:
+        families = ("random_directions",)
+    mirror = _mirror_of(knob) if brief.direction != 0 else None
+    if knob.prompt is not None:
+        hit = lbr.KeptBack([brief], batteries=True).hit(knob.prompt)
+        if hit is not None:
+            whose = "of the retention batteries" if hit["brief"] == lbr.BATTERIES else f'of brief "{hit["brief"]}"'
+            raise KnobRefused(
+                f"The knob's prompt holds the {hit['how']} of a kept-back frame {whose} ({hit['frame']}): it would "
+                "stand in the system turn of every fresh item, so the reading would not be on fresh frames."
+            )
+    # a prompt or a thinking setting that cannot be made into an item is refused here, before anything is registered
+    sample = brief.generator.draw("practice", 1, seed_bytes=b"preflight_knob", tokenizer=h.tokenizer,
+                                  system_override=(brief.chat_settings or {}).get("system"))
+    if sample:
+        if written:
+            _written_ids(h, sample[0].item, knob, brief)
+        ref_and_knob_items(h, sample[0].item, knob, brief)
+    design = {
+        "n_target": int(n_target), "n_neutral": int(n_neutral), "n_near": int(n_near), "n_panel": int(n_panel),
+        "rows": {k: int(v) for k, v in rows_cfg.items()}, "written_rows": int(w_rows),
+        "controls_per_family": int(C), "control_families": list(families), "match_tolerance": float(tol),
+        "reversed": mirror is not None, "settings": {"system": _settings_of(brief)[0], "thinking": _settings_of(brief)[1]},
     }
+    if written:
+        design["loop_rule"] = lbr.loop_rule_of(brief)
+    return _ClaimPlan(knob=knob, written=written, families=families, C=int(C), eq_edit=eq_edit, mirror=mirror,
+                      tol=float(tol), rows={k: int(v) for k, v in rows_cfg.items()}, written_rows=int(w_rows),
+                      design=design)
+
+
+def _price(h: lv.Handle, brief: lbr.Brief, plan: _ClaimPlan) -> Dict[str, Any]:
+    """Forwards and GPU-seconds of the claim `plan` reads, with no forward (lengths from a sizing draw)."""
+    d = plan.design
+    prac = brief.generator.draw("practice", max(1, min(int(d["n_target"]), 4)), seed_bytes=b"est_knob",
+                                tokenizer=h.tokenizer, system_override=(brief.chat_settings or {}).get("system"))
+    sample_t = max((len(d_.item.ids) for d_ in prac), default=64) + (len(lv.chat_ids(h.tokenizer, "", plan.knob.prompt))
+                                                                       if plan.knob.prompt else 0)
+    same = _same_tokens(plan.knob, brief)
+    n_arms = 1 + (1 if plan.mirror is not None else 0) + plan.C * len(plan.families)
+    n_bat = int(d["n_neutral"]) + int(d["n_near"]) + int(d["n_panel"])
+    fwds = 0
+    secs = 0.0
+    if plan.eq_edit is not None:  # the matched draw's base pre-pass: one 1-row forward an item
+        fwds += int(d["n_target"])
+        secs += int(d["n_target"]) * lv.whole(1, sample_t)
+    for R in (plan.rows["small"], plan.rows["large"]):
+        bf = _paired_forwards(R, 1, same)
+        fwds += n_bat * bf
+        secs += n_bat * bf * lv.whole(R, sample_t)
+    if plan.written:
+        wcfg = dict(brief.written_config or {})
+        m_new = int(wcfg.get("max_new_tokens", 128))
+        n_seeds = max(1, len(wcfg.get("seeds") or [1, 2]))
+        dec = int(d["n_target"]) * n_seeds * (1 + math.ceil(n_arms / plan.written_rows))
+        fwds += dec
+        secs += dec * m_new * 0.095
+    else:
+        for R in (plan.rows["small"], plan.rows["large"]):
+            tf = _paired_forwards(R, n_arms, same)
+            fwds += int(d["n_target"]) * tf
+            secs += int(d["n_target"]) * tf * lv.whole(R, sample_t)
+    return {"forwards": int(fwds), "seconds": round(float(secs), 2), "knob_classes": list(plan.knob.knob_classes),
+            "steering_controls": plan.C, "control_families": list(plan.families), "arms": n_arms}
 
 
 def estimate_knob_claim(
@@ -1383,91 +1652,174 @@ def estimate_knob_claim(
     n_near: int = 4,
     n_panel: int = 4,
     rows: Optional[Mapping[str, int]] = None,
+    written_rows: Optional[int] = None,
     controls_override: Optional[int] = None,
+    match_tolerance: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Price one fresh cheaper-knob claim reading before registering it (zero GPU work)."""
-    knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=brief.allowed_layers)
-    n_ctl = int(controls_override if controls_override is not None else brief.default_controls) if knob.steering_resolved else 0
-    # Draw synthetic dummy items from practice split to size token lengths without touching kept-back frames
-    prac = brief.generator.draw("practice", max(1, min(int(n_target), 4)), seed_bytes=b"est_knob", tokenizer=h.tokenizer)
-    sample_t = max((len(d.item.ids) for d in prac), default=64)
-    if brief.metric == "written_loop":
-        wcfg = dict(brief.written_config or {})
-        m_new = int(wcfg.get("max_new_tokens", 128))
-        n_seeds = max(1, len(wcfg.get("seeds") or [1, 2]))
-        n_batches = 2 + (1 if n_ctl > 0 else 0)
-        fwds = int(n_target) * n_seeds * n_batches + (int(n_neutral) + int(n_near) + int(n_panel)) * 4
-        secs = round(int(n_target) * n_seeds * n_batches * m_new * 0.095 + (int(n_neutral) + int(n_near) + int(n_panel)) * 1.0, 2)
-        return {"forwards": fwds, "seconds": secs, "knob_classes": list(knob.knob_classes), "steering_controls": n_ctl}
-
-    r_sm = int((rows or {}).get("small", lv.ROWS_SMALL))
-    r_lg = int((rows or {}).get("large", lv.ROWS_LARGE))
-    same_tok = (knob.prompt is None) and ("thinking" not in knob.decoding)
-    fwds_per_tgt = 0
-    secs_per_tgt = 0.0
-    for R in (r_sm, r_lg):
-        if same_tok:
-            cap0 = max(1, R - 6)
-            extra = max(0, (1 + n_ctl) - cap0)
-            cap_n = max(1, R - 2)
-            nf = 1 + (math.ceil(extra / cap_n) if extra > 0 else 0)
-        else:
-            cap_n = max(1, R - 2)
-            nf = 1 + math.ceil((1 + n_ctl) / cap_n)
-        fwds_per_tgt += nf
-        secs_per_tgt += nf * lv.whole(R, sample_t)
-    # Retention batteries (no steering controls needed on batteries, just base + knob)
-    n_bat = int(n_neutral) + int(n_near) + int(n_panel)
-    fwds_bat = n_bat * (2 if same_tok else 4)
-    secs_bat = n_bat * (lv.whole(r_sm, sample_t) * (2 if same_tok else 4))
-    return {
-        "forwards": int(int(n_target) * fwds_per_tgt + fwds_bat),
-        "seconds": round(float(int(n_target) * secs_per_tgt + secs_bat), 2),
-        "knob_classes": list(knob.knob_classes),
-        "steering_controls": n_ctl,
-    }
+    """Price one fresh cheaper-knob claim reading before registering it (zero GPU work). Refuses, in the claim's own
+    words, every knob the claim would refuse without its book (`_claim_plan`)."""
+    plan = _claim_plan(h, brief, spec, base_dir=base_dir, n_target=n_target, n_neutral=n_neutral, n_near=n_near,
+                       n_panel=n_panel, rows=rows, written_rows=written_rows, controls_override=controls_override,
+                       match_tolerance=match_tolerance, min_frames_per_half=lcl.MIN_FRAMES_PER_HALF)
+    return _price(h, brief, plan)
 
 
-def _eval_knob_battery(
+def _draw_claim_controls(
+    h: lv.Handle,
+    plan: _ClaimPlan,
+    score_items: Sequence[lv.Item],
+    seed_u32: int,
+) -> Tuple[Optional[Dict[str, List[Program]]], Optional[Dict[str, Any]], Optional[str], int]:
+    """The claim's controls, a family each ({family: [program, ...]}), the matched draw's coverage, why they could not
+    be drawn (or None), and the forwards the draw took. A neuron_mul knob's are its weight edit's: other sites drawn
+    by the weight path's matched draw on a base pre-pass over `score_items` (the items as the knob reads them), and
+    same-site random directions, each read as a `weight_edits.Arm`. A push's are pushes along random directions."""
+    if plan.eq_edit is not None:
+        kind = "written" if plan.written else "paired"
+        scores = lv._score_sites(h, plan.eq_edit, list(score_items), kind)
+        matched, cov = we.matched_control_edits(plan.eq_edit, h.lm, scores, int(seed_u32), plan.C, tolerance=plan.tol)
+        cov_clean = lv._clean(cov)
+        for term in (cov_clean.get("terms") or ()) if isinstance(cov_clean, dict) else ():
+            if isinstance(term, dict):
+                term.pop("edit_scores", None)
+        if matched is None:
+            return None, cov_clean, (
+                f"Matched controls requested {cov.get('requested')} distinct control sets within factor "
+                f"{cov.get('tolerance')} of expected delivered magnitude, but only {cov.get('found')} were available "
+                "on these items."), len(score_items)
+        same = we.same_site_controls(plan.eq_edit, h.lm, int(seed_u32) + 1, plan.C)
+        return ({"other_sites_matched": [we.Arm(e, 1.0) for e in matched],
+                 "same_site": [we.Arm(e, 1.0) for e in same]}, cov_clean, None, len(score_items))
+    pushes = _draw_steering_controls(h, plan.knob.steering_resolved, plan.C, seed=int(seed_u32))
+    return {"random_directions": list(pushes)}, None, None, 0
+
+
+def _battery_classes(
     h: lv.Handle,
     items: Sequence[lv.Item],
     knob: KnobSpec,
     brief: lbr.Brief,
     readouts: Mapping[str, Any],
     metric: str,
-    rows: int,
+    rows: Mapping[str, int],
+    anchor: int,
 ) -> Dict[str, Any]:
-    """Evaluate one retention battery (`neutral_text`, `near_misses`, or `labelled_panel`) under `knob`."""
-    vals: List[float] = []
-    own_vals: List[float] = []
+    """One retention battery read under `knob` in both batch classes, as a weight claim reads its batteries:
+    {"void", "forwards", "given", "classes": {cls: {"mean", "abs_mean", "own_mean", "kl_mean", "n_read"}}}. Each item
+    is read against the base row under the brief's chat settings (`ref_and_knob_items`)."""
+    arm = [("knob", knob.steering_resolved or None, knob.decoding.get("logit_bias"))]
     forwards = 0
-    void_why = None
+    per: Dict[str, Dict[str, List[float]]] = {c: {"m": [], "own": [], "kl": []} for c in rows}
     for it in items:
-        k_it = _make_knob_item(h, it, knob, brief=brief)
-        res = _eval_paired_item_class(h, it, k_it, knob, [], readouts, metric, rows)
-        forwards += int(res.get("forwards", 0))
-        if res.get("void"):
-            void_why = str(res["void"])
-            break
-        sc = res.get("scores") or {}
-        mv = _clean_float(sc.get(metric))
-        if mv is not None:
-            vals.append(mv)
-        ov = _clean_float(sc.get("own"))
-        if ov is not None:
-            own_vals.append(ov)
-    mean_v = float(np.mean(vals)) if vals else None
-    mean_abs = float(np.mean([abs(v) for v in vals])) if vals else None
-    mean_own = float(np.mean(own_vals)) if own_vals else None
-    return {
-        "void": void_why,
-        "forwards": forwards,
-        "n_asked": len(items),
-        "n_read": len(vals),
-        "mean": mean_v,
-        "abs_mean": mean_abs,
-        "own_mean": mean_own,
-    }
+        ref, kit = ref_and_knob_items(h, it, knob, brief)
+        for cls, R in rows.items():
+            res = _eval_paired_arms(h, ref, kit, arm, readouts, metric, int(R), anchor)
+            forwards += int(res.get("forwards", 0))
+            if res.get("void"):
+                return {"void": f"{cls} class: {res['void']}", "forwards": forwards}
+            sc = res["scores"]["knob"]
+            for key, src in (("m", metric), ("own", "own"), ("kl", "kl")):
+                v = _clean_float(sc.get(src))
+                if v is not None:
+                    per[cls][key].append(v)
+    out: Dict[str, Any] = {}
+    for cls, acc in per.items():
+        out[cls] = {
+            "mean": float(np.mean(acc["m"])) if acc["m"] else None,
+            "abs_mean": float(np.mean([abs(v) for v in acc["m"]])) if acc["m"] else None,
+            "own_mean": float(np.mean(acc["own"])) if acc["own"] else None,
+            "kl_mean": float(np.mean(acc["kl"])) if acc["kl"] else None,
+            "n_read": len(acc["m"]),
+        }
+    return {"void": None, "forwards": forwards, "given": len(items), "classes": out}
+
+
+def _largest(vals: Sequence[Optional[float]]) -> Optional[float]:
+    got = [v for v in vals if v is not None]
+    return max(got) if got else None
+
+
+def _stricter(judged: Mapping[str, Any], ci_class: str, panel: Optional[Mapping[str, Any]]) -> Tuple[str, List[str]]:
+    """The verdict after the knob gate's two rules that are stricter than `level_claim.judge_claim`, each where the
+    engine's order puts its kind: a frame CI (in `ci_class`) whose lower end does not clear zero is "did not
+    replicate", which comes before the controls; a labelled-panel KL that was not read is harm, which comes after
+    them. Returns (verdict, the reasons added)."""
+    verdict = str(judged["verdict"])
+    added: List[str] = []
+    if verdict in ("no better than control edits", "works but harms", "lead"):
+        fr = ((judged.get("classes") or {}).get(ci_class) or {}).get("frames") or {}
+        lo = _clean_float((fr.get("directed_ci95") or [None, None])[0])
+        if lo is None or lo <= 0.0:
+            verdict = "did not replicate"
+            added.append(f"{ci_class} class frame CI does not clear zero (its lower end is {lo}): the knob gate "
+                         "reads that as not replicated, which a weight claim does not ask")
+    if verdict == "lead" and isinstance(panel, Mapping) and panel.get("mean_kl") is None:
+        verdict = "works but harms"
+        added.append("labelled_panel KL was not read: the knob gate counts that as harm")
+    return verdict, added
+
+
+def knob_batteries(bat: Mapping[str, Mapping[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """The retention batteries as `level_claim.judge_claim` takes them, from `_battery_classes`' readings of each
+    (`{name: {"given", "classes": {cls: ...}}}`), as a weight claim makes them: the larger figure of the two batch
+    classes, for the neutral battery's KL, the near misses' size, and the panel's KL and own-probability drop. A
+    near miss's size is the mean of each item's size (never less than the size of the mean, which a weight claim
+    takes), and a panel figure missing in either class is missing. The habitat battery is not run, as it is not for
+    a weight claim: no atlas passages index is mounted."""
+    out: Dict[str, Dict[str, Any]] = {}
+    for name in ("neutral_text", "near_misses", "labelled_panel"):
+        b = bat.get(name)
+        if not isinstance(b, Mapping):
+            continue
+        cl = dict(b.get("classes") or {})
+        items = {"read": min((int(c.get("n_read", 0)) for c in cl.values()), default=0), "given": b.get("given")}
+        if name == "neutral_text":
+            out[name] = {"mean_kl": _largest([c.get("mean") for c in cl.values()]), "items": items}
+        elif name == "near_misses":
+            out[name] = {"mean_effect": (cl.get("large") or {}).get("mean"),
+                         "abs_effect": _largest([c.get("abs_mean") for c in cl.values()]), "items": items}
+        else:
+            drops = [max(0.0, -c["own_mean"]) if c.get("own_mean") is not None else None for c in cl.values()]
+            kls = [c.get("kl_mean") for c in cl.values()]
+            out[name] = {"own_drop": None if (not drops or None in drops) else max(drops),
+                         "mean_kl": None if (not kls or None in kls) else max(kls), "items": items}
+    out["habitat"] = {"available": False, "note": "no atlas passages index mounted"}
+    return out
+
+
+def judge_knob(
+    *,
+    brief: lbr.Brief,
+    bars: lcl.BarSet,
+    classes: Mapping[str, Mapping[str, Any]],
+    batteries: Mapping[str, Mapping[str, Any]],
+    families: Sequence[str],
+    practice_count: int = 0,
+    practice_best: Optional[float] = None,
+    void_reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    """The verdict of a fresh knob claim: `level_claim.judge_claim` (the weight claim's engine: frames a half, the
+    house bar, half replication, the reversed read, every family of controls in every class, every gating battery
+    the bars name, the near-miss size and its ratio to the effect), given the knob's own `families`, and then the knob
+    gate's stricter rules (`_stricter`). The brief's author prompt arms are not read beside a knob. Pure: no reading.
+    Returns {"verdict", "reasons", "added" (the reasons `_stricter` gave), "judged" (the engine's whole result)}."""
+    judged = lcl.judge_claim(
+        brief=brief, bars=bars, classes=classes, batteries=batteries,
+        cheaper_knobs={"prompt_arms": [], "prompt_arms_state": PROMPT_ARMS_SAY}, selection_mode="free_pick",
+        practice_count=int(practice_count), practice_best=practice_best, void_reason=void_reason,
+        control_families=tuple(families),
+    )
+    ci_class = "written" if brief.metric == "written_loop" else "large"
+    verdict, added = _stricter(judged, ci_class, batteries.get("labelled_panel") if not void_reason else None)
+    if verdict not in KNOB_VERDICTS:
+        raise RuntimeError(f"judge_claim gave a knob claim the verdict {verdict!r}, which no knob claim can have.")
+    return {"verdict": verdict, "reasons": list(judged.get("reasons") or []) + added, "added": added,
+            "judged": judged}
+
+
+def _fmt(x: Any, digits: int = 4) -> str:
+    v = _clean_float(x)
+    return "n/a" if v is None else f"{v:.{digits}f}"
 
 
 def render_knob_sheet(
@@ -1478,49 +1830,59 @@ def render_knob_sheet(
     summary: Mapping[str, Any],
     meta: Mapping[str, Any],
 ) -> str:
-    """Render a bounded, plain-spoken Knob Claim Sheet (zero kept-out words)."""
+    """Render a bounded, plain-spoken Knob Claim Sheet (zero kept-out words): what was read, what its controls are
+    and are not matched on, what the verdict came from, and what a weight claim reads that this one does not."""
+    st = summary.get("settings") or {}
     lines = [
         f"# Cheaper-Knob Claim Sheet — {brief.name}",
         f"- Verdict: **{verdict}**",
-        f"- Knob id: `{knob.short()}` (classes: {', '.join(knob.knob_classes)})",
-        f"- Base: `{knob.model_id}` (weights `{str(knob.weights_id or 'none')[:12]}`), reading #{meta.get('reading_index')} of {brief.max_fresh_readings}",
-        f"- Brief: `{brief.short()}` (`{brief.metric}`, least effect M = {brief.least_effect:g}), bars `{bars.short()}`",
+        f"- Knob id: `{knob.short()}` (classes: {', '.join(knob.knob_classes)}); zero weights modified",
+        f"- Base: `{knob.model_id}` (weights `{str(knob.weights_id or 'none')[:12]}`), reading #{meta.get('reading_index')} "
+        f"of {brief.max_fresh_readings}: the brief's fresh readings are one budget, spent by weight claims, knob "
+        "claims and trials in this book alike",
+        f"- Brief: `{brief.short()}` (`{brief.metric}`, least effect M = {brief.least_effect:g}), bars `{bars.short()}` "
+        f"(alpha = {bars.alpha:g}); judged by {lcl.RULE_PRESET} v{lcl.RULE_VERSION} (level_claim.judge_claim)",
         f"- Book: `{meta.get('book_name')}` ({'default level book' if meta.get('is_default_book') else 'side book'})",
+        f"- Read under the brief's chat settings: system turn {'set' if st.get('system') else 'none'}, thinking "
+        f"{'on' if st.get('thinking') else 'off'}; the knob's prompt is added to that system turn and its thinking "
+        "setting, when it has one, replaces the brief's",
     ]
     if knob.prompt is not None:
-        lines.append(f"- Prompt knob: {len(knob.prompt)} chars (sha256 `{hashlib.sha256(knob.prompt.encode('utf-8')).hexdigest()[:12]}`)")
+        lines.append(f"- Prompt part: {len(knob.prompt)} chars (sha256 `{hashlib.sha256(knob.prompt.encode('utf-8')).hexdigest()[:12]}`)")
     if knob.decoding:
-        lines.append(f"- Decoding knob: `{json.dumps(knob.decoding, sort_keys=True)}`")
-    if knob.steering_raw:
-        lines.append(f"- Steering knob: {len(knob.steering_raw)} term(s), zero weights modified")
+        lines.append(f"- Decoding part: `{json.dumps(knob.decoding, sort_keys=True)}`")
+    for i, t in enumerate(knob.steering_resolved):
+        lines.append(f"- Steering term {i}: {steering_words(t)}")
     lines.append(
         f"- Target effect (directed): small = {summary.get('small_directed')}, large = {summary.get('large_directed')}, "
-        f"house bar = {summary.get('house_bar')}, replicated = {summary.get('replicated')}"
+        f"house bar = {summary.get('house_bar')} (floor {summary.get('floor_worst')}), replicated = {summary.get('replicated')}"
     )
-    if summary.get("controls_applicable"):
-        cs = summary.get("control_standing") or {}
-        lines.append(
-            f"- Steering controls: {cs.get('at_least')} of {cs.get('count')} matched random steering controls moved as much "
-            f"(p_fw = {cs.get('p_fw')}, passes = {cs.get('passes_alpha')})"
-        )
-    else:
-        lines.append("- Steering controls: not applicable (prompt/decoding-only knob; judged on house bar, frame CI, half replication, and harm bars)")
+    rv = summary.get("reversed") or {}
+    if rv:
+        lines.append("- Reversed read: " + ", ".join(f"{c} = {_fmt(v.get('directed'))}" for c, v in rv.items())
+                     + f" (directed; it fails when it reaches the house bar). {REVERSED_SAY}")
+    lines.append(f"- Controls ({summary.get('controls_per_family')} a family; {CONTROLS_SHARE_SAY}). "
+                 f"{CONTROL_RULE_SAY}:")
+    for fam in summary.get("control_families") or ():
+        lines.append(f"  - {fam}: {CONTROL_FAMILY_SAY[fam].format(tol=float(summary.get('match_tolerance') or lv.DEFAULT_MATCH_TOL))}")
+        for cls, by_fam in (summary.get("control_standing") or {}).items():
+            cs = by_fam.get(fam) or {}
+            lines.append(f"    {cls}: {cs.get('at_least')} of {cs.get('count')} moved the metric as much "
+                         f"(p_fw = {_fmt(cs.get('p_fw'))}, passes = {cs.get('passes_alpha')})")
     bats = summary.get("batteries") or {}
     lines.append(
-        f"- Retention batteries: neutral KL = {bats.get('neutral_kl')} (bar <= {bars.neutral_kl_max:g}); "
-        f"near-miss |delta| = {bats.get('near_miss_abs')} (bar <= {bars.near_miss_abs_max:g}); "
-        f"panel KL = {bats.get('panel_kl')} (bar <= {bars.panel_kl_max:g}), "
-        f"panel own drop = {bats.get('panel_own_drop')} (bar <= {bars.panel_own_drop_max:g})"
+        f"- Retention batteries (both batch classes, the larger figure kept): neutral KL = {bats.get('neutral_kl')} "
+        f"(bar <= {bars.neutral_kl_max:g}); near-miss size = {bats.get('near_miss_abs')} (bar <= "
+        f"{bars.near_miss_abs_max:g}; ratio to the effect = {bats.get('near_miss_ratio')}, bar <= "
+        f"{bars.near_miss_ratio_max:g}); panel KL = {bats.get('panel_kl')} (bar <= {bars.panel_kl_max:g}), panel own "
+        f"drop = {bats.get('panel_own_drop')} (bar <= {bars.panel_own_drop_max:g}); habitat: not run (no atlas passages "
+        f"index mounted); gating: {', '.join(bars.gating_batteries)}"
     )
+    lines.append(f"- {STRICTER_SAY}")
+    lines.append("- Not read for a knob claim: " + "; ".join(summary.get("not_read") or NOT_READ_SAY))
     if summary.get("reasons"):
         lines.append(f"- Reasons: {'; '.join(str(r) for r in summary['reasons'])}")
-    lines.append(
-        f"- Cost: {meta.get('forwards')} forward(s), {meta.get('seconds')} s; base verified untouched before and after."
-    )
-    lines.append(
-        "- Note: This reading evaluated a non-weight intervention (prompts, decoding, and/or transient steering) under "
-        "the same kept-back frames and calibrated harm bars used for weight edits."
-    )
+    lines.append(f"- Cost: {meta.get('forwards')} forward(s), {meta.get('seconds')} s; base verified untouched before and after.")
     return "\n".join(lines)
 
 
@@ -1534,96 +1896,85 @@ def run_fresh_knob_claim(
     forecast: Optional[Mapping[str, Any]] = None,
     practice_count: int = 0,
     practice_best: Optional[float] = None,
+    practice_item_ids: Optional[Sequence[str]] = None,
+    practice_frame_ids: Optional[Sequence[str]] = None,
     n_target: int = 8,
     n_neutral: int = 4,
     n_near: int = 4,
     n_panel: int = 4,
     rows: Optional[Mapping[str, int]] = None,
+    written_rows: Optional[int] = None,
     controls_override: Optional[int] = None,
+    match_tolerance: Optional[float] = None,
     book_path: Optional[Path] = None,
     alpha: Optional[float] = None,
+    _seed_override: Optional[bytes] = None,
 ) -> Dict[str, Any]:
-    """Run one registered Phase 6 fresh cheaper-knob claim on `brief`'s kept-back frames and calibrated `bars`."""
+    """Run one registered fresh cheaper-knob claim on `brief`'s kept-back frames and calibrated `bars`.
+
+    1. Refuse, before anything is registered, what `_claim_plan` refuses, and what the weight path's own gate
+       refuses (`level_claim.fresh_reading_gate`, what="knob": one budget with weight claims and trials).
+    2. Register (`knob_claim_registration`), then draw from `os.urandom(32)`: kept-back items refusing those seen in
+       practice, near misses, neutral and panel items.
+    3. Read the knob, its reverse and its controls on the target items in both batch classes (or written), and the
+       batteries in both classes; judge with `level_claim.judge_claim` and the knob gate's stricter rules
+       (`_stricter`); write the verdict (`knob_claim_verdict`) and the sheet."""
     we.assert_base(h.lm, h.hooks_at_load)
     if bars.brief_id != brief.id:
         raise KnobRefused(f"BarSet {bars.short()} is for brief {bars.brief_id[:12]}, not {brief.short()}.")
+    if alpha is not None and _clean_float(alpha) != float(bars.alpha):
+        raise KnobRefused(f"A knob claim is judged at its bars' level (alpha = {bars.alpha:g}), as a weight claim is; "
+                          f"{alpha!r} was given.")
     bk = Path(book_path).resolve() if book_path is not None else lb.book_path().resolve()
-    cal = lcl.calibration_note(bars, bk)
-    if cal is None:
-        raise KnobRefused(
-            f"Bar set {bars.short()} is not from a calibration reading recorded in {bk.name} for brief {brief.name!r}."
-        )
-    if cal.get("weights_id") and cal.get("weights_id") != h.weights_id:
-        raise KnobRefused(
-            f"Bar set {bars.short()} was calibrated on weights {str(cal.get('weights_id') or 'none')[:12]}, not {str(h.weights_id or 'none')[:12]}."
-        )
+    plan = _claim_plan(h, brief, spec, base_dir=base_dir, n_target=n_target, n_neutral=n_neutral, n_near=n_near,
+                       n_panel=n_panel, rows=rows, written_rows=written_rows, controls_override=controls_override,
+                       match_tolerance=match_tolerance, min_frames_per_half=bars.min_frames_per_half)
+    knob = plan.knob
+    try:
+        gate = lcl.fresh_reading_gate(h, brief, bars, None, bk, what="knob", knob_id=knob.id,
+                                      practice_item_ids=practice_item_ids, practice_frame_ids=practice_frame_ids)
+    except lcl.ClaimRefused as exc:
+        raise KnobRefused(str(exc)) from None
+    hist, cal_note, reading_index = gate["hist"], gate["cal_note"], int(gate["reading_index"])
+    practice_total = max(int(practice_count), int(hist["practice_readings"]))
+    priced = _price(h, brief, plan)
+    kb_frames = brief.generator.frames_for("kept_back")
+    published = lbr.published_template_ids(h.tokenizer)
+    kept_back_note = {"frames": len(kb_frames), "published": sum(1 for fr in kb_frames if fr.template_id in published),
+                      "template_ids": list(gate["kb_tids"])}
+    d = plan.design
+    r_sm, r_lg = plan.rows["small"], plan.rows["large"]
 
-    knob = build_knob(h, spec, base_dir=base_dir, allowed_layers=brief.allowed_layers)
-    khist = _knob_book_history(brief, bk)
-    whist = khist["weight_hist"]
-    if whist.get("other_brief_ids"):
-        raise KnobRefused(
-            f'Brief "{brief.name}" was already read in this book under another hash; refusing changed brief.'
-        )
-    if knob.id in khist["knob_ids"]:
-        raise KnobRefused(
-            f"Knob {knob.short()} has already had a fresh claim reading on brief {brief.name!r} in this book (read once)."
-        )
-    if khist["total_fresh"] >= int(brief.max_fresh_readings):
-        raise KnobRefused(
-            f'Brief "{brief.name}" has spent all {brief.max_fresh_readings} fresh reading(s) in this book.'
-        )
-    # Check kept-back practice leakage in the book
-    kb_guard = lbr.KeptBack([brief], batteries=True)
-    if bk.exists():
-        for entry in lb.entries(bk):
-            if entry.get("kind") in ("paired", "written"):
-                body = entry.get("body") or {}
-                nm = str((body.get("plan") or {}).get("name") or "")
-                if not nm.startswith(lcl.RESERVED_NAMES):
-                    for it_row in (body.get("items") or []):
-                        if isinstance(it_row, Mapping):
-                            hit = kb_guard.hit(it_row.get("system"), it_row.get("question"), it_row.get("answer"))
-                            if hit is not None:
-                                raise KnobRefused(
-                                    f"Book line {entry.get('seq')} holds a practice reading of kept-back wording "
-                                    f"({hit['frame']}); refusing fresh knob claim in this book."
-                                )
-
-    reading_index = khist["total_fresh"] + 1
-    r_sm = int((rows or {}).get("small", lv.ROWS_SMALL))
-    r_lg = int((rows or {}).get("large", lv.ROWS_LARGE))
-    eff_alpha = float(bars.alpha if alpha is None else alpha)
-    n_ctl = int(controls_override if controls_override is not None else brief.default_controls) if knob.steering_resolved else 0
-
-    # Pre-check that the prompt/thinking knob can tokenize on a sample practice item before spending a fresh reading
-    if knob.prompt is not None or "thinking" in knob.decoding:
-        sample_prac = brief.generator.draw("practice", 1, seed_bytes=b"preflight_knob", tokenizer=h.tokenizer)
-        if sample_prac:
-            _make_knob_item(h, sample_prac[0].item, knob, brief=brief)
-
-    # 1. Register BEFORE drawing fresh kept-back items from os.urandom(32)!
     reg_body = {
-        "note": "knob_claim_registration",
+        "note_type": "knob_claim_registration",
         "brief_id": brief.id,
         "brief_name": brief.name,
         "bars_sha256": bars.id,
+        "bars_calibration_seq": int(cal_note["seq"]),
         "knob_id": knob.id,
         "knob": knob.to_dict(),
+        "knob_classes": list(knob.knob_classes),
         "reading_index": reading_index,
         "max_fresh_readings": int(brief.max_fresh_readings),
-        "practice_count": int(practice_count),
+        "rule_preset": lcl.RULE_PRESET,
+        "rule_version": lcl.RULE_VERSION,
+        "knob_claim_version": KNOB_CLAIM_VERSION,
+        "practice_count": practice_total,
+        "practice_count_given": int(practice_count),
+        "practice_readings_in_book": int(hist["practice_readings"]),
         "practice_best": _clean_float(practice_best),
         "forecast": dict(forecast) if isinstance(forecast, Mapping) else None,
-        "design": {
-            "n_target": int(n_target),
-            "n_neutral": int(n_neutral),
-            "n_near": int(n_near),
-            "n_panel": int(n_panel),
-            "rows": {"small": r_sm, "large": r_lg},
-            "steering_controls": n_ctl,
-            "alpha": eff_alpha,
-        },
+        "design": d,
+        "priced": {"forwards": int(priced["forwards"]), "seconds": float(priced["seconds"])},
+        "kept_back": kept_back_note,
+        "book": gate["book"],
+        "book_fresh_readings": dict(hist["book_fresh_readings"]),
+        "prior_verdicts": [
+            {"seq": v["seq"], "edit_id": v.get("edit_id"), "knob_id": v.get("knob_id"), "verdict": v.get("verdict"),
+             "reading_index": v.get("reading_index"), "brief_id": v.get("brief_id")}
+            for v in hist["verdicts"]
+        ],
+        "prior_trials": lcl.prior_trials(hist),
         "model_id": h.model_id,
         "weights_id": h.weights_id,
     }
@@ -1631,145 +1982,161 @@ def run_fresh_knob_claim(
 
     t0 = time.perf_counter()
     total_fwds = 0
-    void_reasons: List[str] = []
-    reasons: List[str] = []
+    void_reason: Optional[str] = None
     sgn = 1.0 if brief.direction == 0 else float(brief.direction)
+    bias = knob.decoding.get("logit_bias")
+    anchor = _anchor_layer(h, knob)
+    cls_names: Tuple[str, ...] = ("written",) if plan.written else ("small", "large")
+    kept_drawn: List[lbr.DrawnItem] = []
+    effs: Dict[str, List[float]] = {c: [] for c in cls_names}
+    revs: Dict[str, List[float]] = {c: [] for c in cls_names}
+    ctl_acc: Dict[str, Dict[str, List[List[float]]]] = {}
+    floors: Dict[str, List[float]] = {c: [] for c in cls_names}
+    unstable_n = 0
+    coverage = None
+    bat: Dict[str, Any] = {}
+    seed_sha = None
 
     try:
-        # 2. Post-freeze OS-random draw of kept-back items and batteries
-        seed_bytes = os.urandom(32)
-        ctl_seed = int.from_bytes(seed_bytes[:8], "little") & ((1 << 31) - 1)
+        seed_bytes = bytes(_seed_override) if _seed_override is not None else os.urandom(32)
+        seed_sha = hashlib.sha256(seed_bytes).hexdigest()
+        seed_u32 = int.from_bytes(seed_bytes[:4], "little") & 0x7FFFFFFF
         sys_ovr = (brief.chat_settings or {}).get("system")
-        target_drawn = brief.generator.draw(
-            "kept_back", int(n_target), seed_bytes=seed_bytes + b":target",
-            tokenizer=h.tokenizer, system_override=sys_ovr, name_prefix=f"kcl_{reading_index}_tgt",
-        )
-        near_drawn = (
-            brief.near_miss_generator.draw(
-                "kept_back", int(n_near), seed_bytes=seed_bytes + b":near",
-                tokenizer=h.tokenizer, system_override=sys_ovr, name_prefix=f"kcl_{reading_index}_nm",
+        try:
+            target_drawn = brief.generator.draw(
+                "kept_back", int(d["n_target"]), seed_bytes=seed_bytes + b":target", tokenizer=h.tokenizer,
+                system_override=sys_ovr, forbid_item_ids=gate["forbid_items"], forbid_frame_ids=gate["forbid_frames"],
+                name_prefix=f"kcl_{reading_index}_tgt",
             )
-            if brief.near_miss_generator is not None else []
-        )
-        neu_drawn = lbr.neutral_chat_generator().draw(
-            "kept_back", int(n_neutral), seed_bytes=seed_bytes + b":neu",
-            tokenizer=h.tokenizer, name_prefix=f"kcl_{reading_index}_neu",
-        )
-        panel_rows = lbr.draw_labelled_sanity_panel(
-            int(n_panel), seed_bytes=seed_bytes + b":panel", tokenizer=h.tokenizer,
-        )
-        panel_items = [row["item"] for row in panel_rows]
+            near_drawn = brief.near_miss_generator.draw(
+                "kept_back", int(d["n_near"]), seed_bytes=seed_bytes + b":near", tokenizer=h.tokenizer,
+                system_override=sys_ovr, name_prefix=f"kcl_{reading_index}_nm",
+            )
+            neu_drawn = lbr.neutral_chat_generator().draw(
+                "kept_back", int(d["n_neutral"]), seed_bytes=seed_bytes + b":neu", tokenizer=h.tokenizer,
+                name_prefix=f"kcl_{reading_index}_neu",
+            )
+            panel_items = [row["item"] for row in lbr.draw_labelled_sanity_panel(
+                int(d["n_panel"]), seed_bytes=seed_bytes + b":panel", tokenizer=h.tokenizer)]
+        except lbr.BriefError as exc:
+            # a fresh item seen in practice is found only by the draw: the reading is void and says why
+            void_reason = f"The fresh draw was refused: {exc}"
+            target_drawn, near_drawn, neu_drawn, panel_items = [], [], [], []
 
-        # Verify zero overlap with any practice-drawn frame templates in this book
-        prac_tids = set(whist.get("practice_template_ids") or ())
-        for d in target_drawn + near_drawn:
-            if d.template_id in prac_tids:
-                void_reasons.append(f"drawn frame template {d.template_id[:12]} was seen in practice")
+        controls: Dict[str, List[Program]] = {}
+        pairs: Dict[str, Tuple[lv.Item, lv.Item]] = {}
+        if void_reason is None:
+            try:
+                if plan.written:
+                    score_items = [lv.item_from_ids(_written_ids(h, dd.item, knob, brief)[1], dd.item.answer_ids,
+                                                    name=dd.item.name) for dd in target_drawn]
+                else:
+                    pairs = {dd.item.name: ref_and_knob_items(h, dd.item, knob, brief) for dd in target_drawn}
+                    score_items = [pairs[dd.item.name][1] for dd in target_drawn]
+                got, coverage, why_not, pre_f = _draw_claim_controls(h, plan, score_items, seed_u32)
+            except (KnobRefused, lv.Refused, we.Refused) as exc:
+                # what only the items as drawn can tell (an item too long under the knob, say) ends it void
+                got, why_not, pre_f = None, f"The items as drawn cannot be read under this knob: {exc}", 0
+            total_fwds += pre_f
+            if got is None:
+                void_reason = why_not
+            else:
+                controls = got
+        ctl_acc = {c: {fam: [[] for _ in progs] for fam, progs in controls.items()} for c in cls_names}
+        arms: List[Tuple[str, Program, Optional[Mapping[str, float]]]] = [("knob", knob.steering_resolved, bias)]
+        if plan.mirror is not None:
+            arms.append(("reversed", plan.mirror[0], plan.mirror[1]))
+        for fam, progs in controls.items():
+            arms += [(f"{fam}:{c}", p, bias) for c, p in enumerate(progs)]
 
-        ctl_list = _draw_steering_controls(h, knob.steering_resolved, n_ctl, seed=ctl_seed) if n_ctl > 0 else []
-
-        # 3. Evaluate target kept-back items
-        small_effs: List[float] = []
-        large_effs: List[float] = []
-        kept_drawn: List[lbr.DrawnItem] = []
-        small_floors: List[float] = []
-        large_floors: List[float] = []
-        ctl_sm_acc: List[List[float]] = [[] for _ in ctl_list]
-        ctl_lg_acc: List[List[float]] = [[] for _ in ctl_list]
-        unstable_n = 0
-
-        if not void_reasons and brief.metric == "written_loop":
-            wres = _eval_written_items(h, [d.item for d in target_drawn], knob, brief, ctl_list)
+        if void_reason is None and plan.written:
+            wres = _eval_written_arms(h, [dd.item for dd in target_drawn], knob, brief, arms,
+                                      chunk_rows=plan.written_rows)
             total_fwds += int(wres.get("forwards", 0))
             if wres.get("void"):
-                void_reasons.append(str(wres["void"]))
+                void_reason = str(wres["void"])
             else:
-                small_effs = [float(x) for x in wres["item_effects"]]
-                large_effs = list(small_effs)
                 kept_drawn = list(target_drawn)
-                small_floors = [0.0]
-                large_floors = [0.0]
-                for ci, cm in enumerate(wres.get("control_means") or []):
-                    ctl_sm_acc[ci] = [float(cm)]
-                    ctl_lg_acc[ci] = [float(cm)]
-        elif not void_reasons:
-            for d in target_drawn:
-                k_it = _make_knob_item(h, d.item, knob, brief=brief)
-                r_s = _eval_paired_item_class(h, d.item, k_it, knob, ctl_list, brief.readouts, brief.metric, r_sm)
-                total_fwds += int(r_s.get("forwards", 0))
-                if r_s.get("void"):
-                    void_reasons.append(f"small class: {r_s['void']}")
+                dl = wres["deltas"]
+                effs["written"] = [float(x) for x in dl["knob"]]
+                revs["written"] = [float(x) for x in dl.get("reversed", [])]
+                for fam, progs in controls.items():
+                    for c in range(len(progs)):
+                        ctl_acc["written"][fam][c] = [float(x) for x in dl[f"{fam}:{c}"]]
+        elif void_reason is None:
+            metric = brief.metric
+            for dd in target_drawn:
+                ref, kit = pairs[dd.item.name]
+                got_cls = {}
+                for cls, R in (("small", r_sm), ("large", r_lg)):
+                    res = _eval_paired_arms(h, ref, kit, arms, brief.readouts, metric, R, anchor)
+                    total_fwds += int(res.get("forwards", 0))
+                    if res.get("void"):
+                        void_reason = f"{cls} class: {res['void']}"
+                        break
+                    got_cls[cls] = res
+                if void_reason is not None:
                     break
-                r_l = _eval_paired_item_class(h, d.item, k_it, knob, ctl_list, brief.readouts, brief.metric, r_lg)
-                total_fwds += int(r_l.get("forwards", 0))
-                if r_l.get("void"):
-                    void_reasons.append(f"large class: {r_l['void']}")
-                    break
-                v_s = _clean_float((r_s.get("scores") or {}).get(brief.metric))
-                v_l = _clean_float((r_l.get("scores") or {}).get(brief.metric))
-                f_s = float(r_s.get("floor", 0.0))
-                f_l = float(r_l.get("floor", 0.0))
-                small_floors.append(f_s)
-                large_floors.append(f_l)
+                v_s = _clean_float(got_cls["small"]["scores"]["knob"].get(metric))
+                v_l = _clean_float(got_cls["large"]["scores"]["knob"].get(metric))
+                f_s, f_l = float(got_cls["small"]["floor"]), float(got_cls["large"]["floor"])
+                floors["small"].append(f_s)
+                floors["large"].append(f_l)
                 if v_s is None or v_l is None:
                     continue
-                ok_agree, _ratio = lv.agree(v_s, v_l, max(f_s, f_l), brief.metric in ("odds", "own"))
+                ok_agree, _ratio = lv.agree(v_s, v_l, max(f_s, f_l), metric in ("odds", "own"))
                 if not ok_agree:
                     unstable_n += 1
                     continue
-                small_effs.append(v_s)
-                large_effs.append(v_l)
-                kept_drawn.append(d)
-                for ci in range(len(ctl_list)):
-                    cs = _clean_float(r_s["control_scores"][ci]) if ci < len(r_s["control_scores"]) else None
-                    cl = _clean_float(r_l["control_scores"][ci]) if ci < len(r_l["control_scores"]) else None
-                    if cs is not None:
-                        ctl_sm_acc[ci].append(cs)
-                    if cl is not None:
-                        ctl_lg_acc[ci].append(cl)
+                kept_drawn.append(dd)
+                for cls in ("small", "large"):
+                    sc = got_cls[cls]["scores"]
+                    effs[cls].append(_clean_float(sc["knob"].get(metric)))
+                    if "reversed" in sc:
+                        rv = _clean_float(sc["reversed"].get(metric))
+                        if rv is not None:
+                            revs[cls].append(rv)
+                    for fam, progs in controls.items():
+                        for c in range(len(progs)):
+                            cv = _clean_float(sc[f"{fam}:{c}"].get(metric))
+                            if cv is not None:
+                                ctl_acc[cls][fam][c].append(cv)
 
-        # 4. Evaluate retention batteries (exact same three gating batteries as Phase 3!)
-        bat_neutral = {"mean": None, "abs_mean": None, "own_mean": None, "n_read": 0}
-        bat_near = {"mean": None, "abs_mean": None, "own_mean": None, "n_read": 0}
-        bat_panel = {"mean": None, "abs_mean": None, "own_mean": None, "n_read": 0}
-        if not void_reasons:
-            bat_neutral = _eval_knob_battery(
-                h, [d.item for d in neu_drawn], knob, brief, {"kl": True, "own": True, "odds": None}, "kl", r_sm
-            )
-            total_fwds += int(bat_neutral.get("forwards", 0))
-            if bat_neutral.get("void"):
-                void_reasons.append(f"neutral battery: {bat_neutral['void']}")
-        if not void_reasons and near_drawn:
-            nm_metric = brief.metric if brief.metric in ("odds", "own") else "kl"
-            nm_ro = brief.readouts if nm_metric in ("odds", "own") else {"kl": True, "own": True, "odds": None}
-            bat_near = _eval_knob_battery(
-                h, [d.item for d in near_drawn], knob, brief, nm_ro, nm_metric, r_sm
-            )
-            total_fwds += int(bat_near.get("forwards", 0))
-            if bat_near.get("void"):
-                void_reasons.append(f"near-miss battery: {bat_near['void']}")
-        if not void_reasons:
-            bat_panel = _eval_knob_battery(
-                h, panel_items, knob, brief, {"kl": True, "own": True, "odds": None}, "kl", r_sm
-            )
-            total_fwds += int(bat_panel.get("forwards", 0))
-            if bat_panel.get("void"):
-                void_reasons.append(f"labelled panel battery: {bat_panel['void']}")
-
+        # the retention batteries: teacher-forced, both batch classes, as a weight claim reads them
+        nm_metric = brief.metric if brief.metric != "written_loop" else "kl"
+        nm_ro = dict(brief.readouts) if nm_metric == "odds" else {**dict(brief.readouts), "odds": None, nm_metric: True}
+        kl_ro = {"kl": True, "own": True, "odds": None}
+        for bname, items_b, ro, met in (("neutral_text", [dd.item for dd in neu_drawn], kl_ro, "kl"),
+                                        ("near_misses", [dd.item for dd in near_drawn], nm_ro, nm_metric),
+                                        ("labelled_panel", panel_items, kl_ro, "kl")):
+            if void_reason is not None:
+                break
+            try:
+                res_b = _battery_classes(h, items_b, knob, brief, ro, met, plan.rows, anchor)
+            except (KnobRefused, lv.Refused) as exc:
+                void_reason = f"{bname} battery: its items cannot be read under this knob: {exc}"
+                break
+            total_fwds += int(res_b.get("forwards", 0))
+            if res_b.get("void"):
+                void_reason = f"{bname} battery: {res_b['void']}"
+                break
+            bat[bname] = res_b
     except BaseException as exc:
         we.assert_base(h.lm, h.hooks_at_load)
         lb.append(
             "note",
             {
-                "note": "knob_claim_verdict",
+                "note_type": "knob_claim_verdict",
                 "brief_id": brief.id,
                 "brief_name": brief.name,
                 "bars_sha256": bars.id,
                 "knob_id": knob.id,
                 "knob_classes": list(knob.knob_classes),
                 "reading_index": reading_index,
+                "max_fresh_readings": int(brief.max_fresh_readings),
                 "registration_seq": int(reg_entry["seq"]),
                 "verdict": "void",
+                "reasons": [f"error during knob claim: {type(exc).__name__}: {exc}"],
                 "summary": {"verdict": "void", "reasons": [f"error during knob claim: {type(exc).__name__}: {exc}"]},
                 "cost": {"forwards": total_fwds, "seconds": round(time.perf_counter() - t0, 3)},
             },
@@ -1781,126 +2148,83 @@ def run_fresh_knob_claim(
 
     elapsed = round(time.perf_counter() - t0, 3)
 
-    # 5. Judge under the exact Phase 3 gate rules
-    floor_sm = max(small_floors) if small_floors else None
-    floor_lg = max(large_floors) if large_floors else None
-    floor_worst = (
-        max(f for f in (floor_sm, floor_lg) if f is not None)
-        if (floor_sm is not None or floor_lg is not None) else None
-    )
-    hb = lcl.house_bar(floor_worst, brief.least_effect)
+    # judge: the weight claim's engine, with the knob's families of controls
+    floor_worst = _largest([max(v) if v else None for v in floors.values()])
+    n_kept = len(kept_drawn)
+    classes: Dict[str, Dict[str, Any]] = {}
+    for cls in cls_names:
+        classes[cls] = {
+            "item_effects": [{"frame_id": dd.frame_id, "half": dd.half, "item_id": dd.item.id, "value": v}
+                             for dd, v in zip(kept_drawn, effs[cls])],
+            "floor": None if plan.written else floor_worst,  # the larger class's floor for both: stricter
+            "reversed_mean": float(np.mean(revs[cls])) if revs[cls] else None,
+            # a control's mean is None unless it read on every item kept (`control_standing` counts None against)
+            "controls": {fam: [float(np.mean(xs)) if (xs and len(xs) == n_kept) else None for xs in lists]
+                         for fam, lists in (ctl_acc.get(cls) or {}).items()},
+        }
+    batteries = knob_batteries(bat)
+    if void_reason is None and not kept_drawn:
+        void_reason = "no target items remained stable across batch classes"
+    jk = judge_knob(brief=brief, bars=bars, classes=classes, batteries=batteries, families=plan.families,
+                    practice_count=practice_total, practice_best=practice_best, void_reason=void_reason)
+    judged, verdict, reasons, added = jk["judged"], jk["verdict"], jk["reasons"], jk["added"]
 
-    sm_rows = [{"frame_id": d.frame_id, "half": d.half, "value": v} for d, v in zip(kept_drawn, small_effs)]
-    lg_rows = [{"frame_id": d.frame_id, "half": d.half, "value": v} for d, v in zip(kept_drawn, large_effs)]
-    f_sm = lcl.frame_statistics(sm_rows, direction=brief.direction)
-    f_lg = lcl.frame_statistics(lg_rows, direction=brief.direction)
-    sm_mean = _clean_float(f_sm.get("directed_mean"))
-    lg_mean = _clean_float(f_lg.get("directed_mean"))
-    sm_raw = _clean_float(f_sm.get("mean"))
-    lg_raw = _clean_float(f_lg.get("mean"))
-
-    ctl_standing = None
-    controls_pass = True
-    if ctl_list and sm_raw is not None and lg_raw is not None:
-        c_sm = [
-            float(np.mean(xs)) if len(xs) == len(kept_drawn) and xs else None
-            for xs in ctl_sm_acc
-        ]
-        c_lg = [
-            float(np.mean(xs)) if len(xs) == len(kept_drawn) and xs else None
-            for xs in ctl_lg_acc
-        ]
-        cs_sm = lcl.control_standing(sm_raw, c_sm, max_fresh_readings=brief.max_fresh_readings, alpha=eff_alpha)
-        cs_lg = lcl.control_standing(lg_raw, c_lg, max_fresh_readings=brief.max_fresh_readings, alpha=eff_alpha)
-        ctl_standing = cs_lg if not cs_lg["passes_alpha"] else cs_sm
-        controls_pass = bool(cs_sm["passes_alpha"] and cs_lg["passes_alpha"])
-
-    neu_kl = _clean_float(bat_neutral.get("mean"))
-    nm_abs = _clean_float(bat_near.get("abs_mean")) if near_drawn else 0.0
-    pan_kl = _clean_float(bat_panel.get("mean"))
-    pan_own = _clean_float(bat_panel.get("own_mean"))
-    pan_drop = max(0.0, -pan_own) if pan_own is not None else None
-
-    harm_reasons: List[str] = []
-    if neu_kl is None or neu_kl > bars.neutral_kl_max:
-        harm_reasons.append(f"neutral_kl {neu_kl} > bar {bars.neutral_kl_max:g}")
-    if near_drawn and (nm_abs is None or nm_abs > bars.near_miss_abs_max):
-        harm_reasons.append(f"near_miss_abs {nm_abs} > bar {bars.near_miss_abs_max:g}")
-    if pan_kl is None or pan_kl > bars.panel_kl_max:
-        harm_reasons.append(f"panel_kl {pan_kl} > bar {bars.panel_kl_max:g}")
-    if pan_drop is None or pan_drop > bars.panel_own_drop_max:
-        harm_reasons.append(f"panel_own_drop {pan_drop} > bar {bars.panel_own_drop_max:g}")
-
-    bar_val = hb.get("bar")
-    h0_n = int((f_lg.get("half_0") or {}).get("n_frames", 0))
-    h1_n = int((f_lg.get("half_1") or {}).get("n_frames", 0))
-    too_few_frames = (h0_n < bars.min_frames_per_half or h1_n < bars.min_frames_per_half)
-
-    def _halves_pass(fs: Mapping[str, Any]) -> bool:
-        if bar_val is None:
-            return False
-        h0 = _clean_float((fs.get("half_0") or {}).get("directed_mean"))
-        h1 = _clean_float((fs.get("half_1") or {}).get("directed_mean"))
-        req = float(bars.half_bar_fraction) * float(bar_val)
-        return bool(h0 is not None and h1 is not None and h0 > 0.0 and h1 > 0.0 and h0 >= req and h1 >= req)
-
-    ci_lg = f_lg.get("directed_ci95") or [None, None]
-    ci_ok = bool(ci_lg[0] is not None and float(ci_lg[0]) > 0.0)
-    replicated = bool(_halves_pass(f_sm) and _halves_pass(f_lg) and ci_ok)
-
-    if void_reasons or not kept_drawn or too_few_frames:
-        verdict = "void"
-        reasons = void_reasons or (
-            [f"too few kept-back frames per half ({h0_n}, {h1_n}; need >= {bars.min_frames_per_half})"]
-            if too_few_frames else ["no target items remained stable across batch classes"]
-        )
-    elif hb.get("floor_too_loud") or bar_val is None:
-        verdict = "kept the base"
-        reasons = [f"floor {floor_worst} too loud to set house bar (M={brief.least_effect:g})"]
-    elif sm_mean is None or lg_mean is None or sm_mean < bar_val or lg_mean < bar_val:
-        verdict = "kept the base"
-        reasons = [f"directed effect (small={sm_mean}, large={lg_mean}) did not clear house bar {bar_val:.4f}"]
-    elif not controls_pass:
-        verdict = "no better than control edits"
-        reasons = [f"matched random steering controls not cleared (p_fw={ctl_standing.get('p_fw')})"]
-    elif not replicated:
-        verdict = "did not replicate"
-        h0_m = (f_lg.get("half_0") or {}).get("directed_mean")
-        h1_m = (f_lg.get("half_1") or {}).get("directed_mean")
-        reasons = [f"half-split replication or frame CI failed (half0={h0_m}, half1={h1_m}, ci_ok={ci_ok})"]
-    elif harm_reasons:
-        verdict = "works but harms"
-        reasons = harm_reasons
-    else:
-        verdict = "lead"
-        reasons = []
-
-    is_default_book = (bk == lb.default_book_path().resolve())
+    jcls = judged.get("classes") or {}
+    jbat = judged.get("batteries") or {}
+    dirs = {c: _clean_float(((jcls.get(c) or {}).get("frames") or {}).get("directed_mean")) for c in cls_names}
+    hb = (jcls.get(cls_names[-1]) or {}).get("house_bar") or {}
+    harm_reasons = [f"{b}: {v}" for b, v in jbat.items() if v.get("gating") and not v.get("passed")]
+    harm_reasons += [a for a in added if "harm" in a]
+    not_read = list(NOT_READ_SAY) + ([NOT_READ_WRITTEN_SAY] if plan.written else []) \
+        + ([NOT_READ_SAMPLER_SAY] if "sampler" in knob.decoding else [])
     summary = {
         "verdict": verdict,
         "reasons": reasons,
-        "n_target_asked": int(n_target),
-        "n_target_read": len(kept_drawn),
+        "n_target_asked": int(d["n_target"]),
+        "n_target_read": n_kept,
         "unstable_target": unstable_n,
-        "small_directed": round(sm_mean, 5) if sm_mean is not None else None,
-        "large_directed": round(lg_mean, 5) if lg_mean is not None else None,
-        "floor_small": round(floor_sm, 6) if floor_sm is not None else None,
-        "floor_large": round(floor_lg, 6) if floor_lg is not None else None,
-        "house_bar": round(bar_val, 5) if bar_val is not None else None,
+        "small_directed": round(dirs[cls_names[0]], 5) if dirs[cls_names[0]] is not None else None,
+        "large_directed": round(dirs[cls_names[-1]], 5) if dirs[cls_names[-1]] is not None else None,
+        "floor_small": round(max(floors["small"]), 6) if floors.get("small") else None,
+        "floor_large": round(max(floors["large"]), 6) if floors.get("large") else None,
+        "floor_worst": round(floor_worst, 6) if floor_worst is not None else None,
+        "house_bar": round(hb["bar"], 5) if _clean_float(hb.get("bar")) is not None else None,
         "house_bar_dropped": bool(hb.get("floor_too_loud")),
-        "replicated": replicated,
-        "frame_stats": f_lg,
-        "controls_applicable": bool(ctl_list),
-        "control_standing": ctl_standing,
+        "replicated": bool(jcls) and all(bool(v.get("halves_ok")) and bool(v.get("reversed_ok", True))
+                                         for v in jcls.values())
+        and verdict not in ("did not replicate", "void", "kept the base"),
+        "frame_stats": (jcls.get(cls_names[-1]) or {}).get("frames"),
+        "controls_applicable": True,
+        "controls_per_family": plan.C,
+        "control_families": list(plan.families),
+        "match_tolerance": plan.tol,
+        "control_standing": {c: dict((jcls.get(c) or {}).get("controls") or {}) for c in cls_names} if jcls else None,
+        # each control's mean over the items kept, as judged (None: it did not read on every item, and is counted
+        # as moving as much)
+        "control_means": {c: dict(classes[c]["controls"]) for c in cls_names},
+        "controls_coverage": coverage,
+        # a weight edit's controls (a neuron_mul knob's) by their edit ids, as a weight reading's entry names them
+        "control_ids": {fam: [p.edit.id for p in progs] for fam, progs in controls.items()
+                        if progs and all(isinstance(p, we.Arm) for p in progs)},
+        "reversed": ({c: {"mean": (jcls.get(c) or {}).get("reversed_mean"),
+                          "directed": (sgn * jcls[c]["reversed_mean"]) if (jcls.get(c) or {}).get("reversed_mean")
+                          is not None else None,
+                          "ok": (jcls.get(c) or {}).get("reversed_ok")} for c in cls_names}
+                     if (plan.mirror is not None and jcls) else None),
+        "settings": d["settings"],
         "batteries": {
-            "neutral_kl": round(neu_kl, 5) if neu_kl is not None else None,
-            "near_miss_abs": round(nm_abs, 5) if nm_abs is not None else None,
-            "panel_kl": round(pan_kl, 5) if pan_kl is not None else None,
-            "panel_own_drop": round(pan_drop, 5) if pan_drop is not None else None,
+            "neutral_kl": _clean_float((batteries.get("neutral_text") or {}).get("mean_kl")),
+            "near_miss_abs": _clean_float((batteries.get("near_misses") or {}).get("abs_effect")),
+            "near_miss_ratio": _clean_float((jbat.get("near_misses") or {}).get("ratio_to_target")),
+            "panel_kl": _clean_float((batteries.get("labelled_panel") or {}).get("mean_kl")),
+            "panel_own_drop": _clean_float((batteries.get("labelled_panel") or {}).get("own_drop")),
             "harm_passed": not harm_reasons,
             "harm_reasons": harm_reasons,
+            "judged": jbat,
         },
+        "not_read": not_read,
     }
+    is_default_book = (bk == lb.default_book_path().resolve())
     meta = {
         "reading_index": reading_index,
         "book_name": bk.name,
@@ -1911,16 +2235,19 @@ def run_fresh_knob_claim(
     sheet = render_knob_sheet(brief, bars, knob, verdict, summary, meta)
 
     verdict_body = {
-        "note": "knob_claim_verdict",
+        "note_type": "knob_claim_verdict",
         "brief_id": brief.id,
         "brief_name": brief.name,
         "bars_sha256": bars.id,
         "knob_id": knob.id,
         "knob_classes": list(knob.knob_classes),
         "reading_index": reading_index,
+        "max_fresh_readings": int(brief.max_fresh_readings),
         "registration_seq": int(reg_entry["seq"]),
         "verdict": verdict,
-        "summary": summary,
+        "reasons": reasons,
+        "draw_seed_sha256": seed_sha,
+        "summary": lv._clean(summary),
         "cost": {"forwards": total_fwds, "seconds": elapsed},
     }
     verdict_entry = lb.append("note", verdict_body, path=bk)
@@ -1931,6 +2258,7 @@ def run_fresh_knob_claim(
         "knob_id": knob.id,
         "knob_classes": list(knob.knob_classes),
         "reading_index": reading_index,
+        "max_fresh_readings": int(brief.max_fresh_readings),
         "verdict": verdict,
         "summary": summary,
         "sheet": sheet,
@@ -1944,6 +2272,7 @@ def run_fresh_knob_claim(
         "verdict": verdict,
         "knob": knob.to_dict(),
         "summary": summary,
+        "judged": judged,
         "sheet": sheet,
         "driver_record": driver_record,
         "cost": {"forwards": total_fwds, "seconds": elapsed},

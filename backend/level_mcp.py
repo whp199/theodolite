@@ -28,10 +28,13 @@ import contextlib
 import fcntl
 import json
 import os
+import shutil
 import signal
 import socket
 import sys
+import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Tuple
 
@@ -39,6 +42,47 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+
+def serve_socket_bridge(sock_path: Path) -> int:
+    """Connect stdio JSON-RPC lines to a live parent `session_socket_bridge` Unix socket. It needs nothing past the
+    standard library, so `level_mcp.py --socket <path>` runs it before the session's modules (and torch) are imported:
+    a CLI driver's MCP child starts in a moment and small."""
+    sp = Path(sock_path).resolve()
+    cli = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        cli.connect(str(sp))
+    except OSError as exc:
+        raise SystemExit(f"Could not connect to MCP bridge socket {sp}: {exc}") from None
+    try:
+        rfile = cli.makefile("r", encoding="utf-8", errors="replace")
+        wfile = cli.makefile("w", encoding="utf-8")
+        with rfile, wfile:
+            for line in sys.stdin:
+                if not line.strip():
+                    continue
+                try:
+                    msg = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(msg, dict):
+                    continue
+                wfile.write(json.dumps(msg, ensure_ascii=True) + "\n")
+                wfile.flush()
+                if msg.get("id") is not None:
+                    resp_line = rfile.readline()
+                    if not resp_line:
+                        break
+                    sys.stdout.write(resp_line)
+                    sys.stdout.flush()
+    finally:
+        cli.close()
+    return 0
+
+
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--socket":
+    sys.exit(serve_socket_bridge(Path(sys.argv[2])))
+
+from backend import level_sandbox as ls  # noqa: E402
 from backend import level_session as lses  # noqa: E402
 
 _CARD_LOCK: Any = None  # the open file that holds the card's lock, kept until the process ends (`main`)
@@ -340,7 +384,8 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
         "name": "claim_knob",
         "description": (
             "Submit a cheaper knob (prompts, decoding, and/or transient steering; zero weight edits) for one registered "
-            "fresh claim reading on the bound brief's kept-back frames and calibrated bar set."
+            "fresh claim reading on the bound brief's kept-back frames and calibrated bar set. A fresh claim needs a "
+            "steering part: a prompt or decoding setting alone has no control edits to be judged against and is refused."
         ),
         "inputSchema": {
             "type": "object",
@@ -467,17 +512,30 @@ def handle_request(msg: Mapping[str, Any], session: lses.LevelSession) -> Option
         return {"jsonrpc": "2.0", "id": id_, "result": {"tools": tools_for_session(session)}}
     if method == "tools/call":
         p = msg.get("params") or {}
-        try:
-            out = dispatch_tool(session, str(p.get("name", "")), p.get("arguments") or {})
-            text = json.dumps(out, ensure_ascii=True)
-            return {"jsonrpc": "2.0", "id": id_, "result": {"content": [{"type": "text", "text": text}]}}
-        except Exception as exc:
-            return {"jsonrpc": "2.0", "id": id_, "result": {
-                "content": [{"type": "text", "text": f"error: {exc}"}], "isError": True,
-            }}
+        ok, _out, text = _call_tool(session, str(p.get("name", "")), p.get("arguments") or {})
+        return _tool_reply(id_, ok, text)
     if method == "ping":
         return {"jsonrpc": "2.0", "id": id_, "result": {}}
     return {"jsonrpc": "2.0", "id": id_, "error": {"code": -32601, "message": f"method not found: {method}"}}
+
+
+def _call_tool(session: lses.LevelSession, name: str, args: Any) -> Tuple[bool, Any, str]:
+    """One door call: `(True, its reply, the reply as JSON text)`, or `(False, None, "error: <why>")` for any refusal
+    or failure (a reply that cannot be written as JSON among them)."""
+    if not isinstance(args, Mapping):
+        return False, None, f'error: Tool "{name}" takes its arguments as a JSON object, not {type(args).__name__}.'
+    try:
+        out = dispatch_tool(session, name, args)
+        return True, out, json.dumps(out, ensure_ascii=True)
+    except Exception as exc:
+        return False, None, f"error: {exc}"
+
+
+def _tool_reply(id_: Any, ok: bool, text: str) -> Dict[str, Any]:
+    result: Dict[str, Any] = {"content": [{"type": "text", "text": text}]}
+    if not ok:
+        result["isError"] = True
+    return {"jsonrpc": "2.0", "id": id_, "result": result}
 
 
 def serve_stdio(session: lses.LevelSession) -> int:
@@ -510,39 +568,126 @@ def serve_stdio(session: lses.LevelSession) -> int:
     return 0
 
 
-@contextlib.contextmanager
-def session_socket_bridge(session: lses.LevelSession, sock_path: Path) -> Iterator[Path]:
-    """Serve `session` over a private mode-0600 AF_UNIX stream socket so a CLI driver's stdio MCP child
-    (`level_mcp.py --socket <path>`) reaches an already-loaded model without reloading weights.
+SOCKET_NAME = "door.sock"
+AF_UNIX_PATH_MAX = 107  # bytes a socket's path may take on Linux: sun_path holds 108, the last for its closing NUL
+DRAIN_GRACE_S = 120.0  # past the session's remaining wall-clock seconds, how long a closing bridge waits for a call
+CLOSING_WORDS = "the session is closing: the door takes no more calls."
 
-    `sock_path` MUST lie outside `session.work_dir` so sandboxed cells can never open it."""
-    sp = Path(sock_path).resolve()
-    if str(sp).startswith(str(session.work_dir) + os.sep) or sp == session.work_dir:
-        raise lses.SessionRefused("MCP bridge socket cannot live inside the session's writable work folder.")
-    if sp.exists():
-        sp.unlink()
-    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    prev_umask = os.umask(0o177)
-    try:
-        srv.bind(str(sp))
-    finally:
-        os.umask(prev_umask)
-    try:
-        os.chmod(sp, 0o600)
-    except OSError:
-        pass
-    srv.listen(4)
-    srv.settimeout(0.25)
-    stop_ev = threading.Event()
 
-    def _serve_conn(conn: socket.socket) -> None:
+def _within(p: Path, root: Path) -> bool:
+    return p == root or str(p).startswith(str(root) + os.sep)
+
+
+def _private_socket_dir(work_dir: Path) -> Path:
+    """A new mode-0700 folder for the bridge's socket, under `$XDG_RUNTIME_DIR` when it is set and usable, else the
+    system's temporary folder, else /tmp: the first where the socket's path fits AF_UNIX and lies outside the work
+    folder. A cell's sandbox mounts none of these (it has a /tmp of its own), so no cell can reach the socket."""
+    work = Path(work_dir).resolve()
+    bases: List[str] = []
+    for base in (os.environ.get("XDG_RUNTIME_DIR", "").strip(), tempfile.gettempdir(), "/tmp"):
+        if base and base not in bases:
+            bases.append(base)
+    for base in bases:
+        try:
+            d = Path(tempfile.mkdtemp(prefix="lvl-", dir=base)).resolve()  # mkdtemp makes it mode 0700
+        except OSError:
+            continue
+        if len(os.fsencode(str(d / SOCKET_NAME))) <= AF_UNIX_PATH_MAX and not _within(d, work):
+            os.chmod(d, 0o700)
+            return d
+        shutil.rmtree(d, ignore_errors=True)
+    raise lses.SessionRefused(
+        f"No private folder for the door's socket: under {', '.join(bases)} each was too long a path for a Unix "
+        "socket, inside the session's work folder, or could not be made."
+    )
+
+
+def _call_facts(name: str, args: Mapping[str, Any], out: Any) -> Dict[str, Any]:
+    """What a door call left behind, for a driver's outcome: the files a cell or a capture wrote, the book line a
+    reading wrote, a claim's verdict and what it put forward."""
+    if not isinstance(out, Mapping):
+        return {}
+    if name == "cell":
+        return {"files_written": [str(f.get("rel_path")) for f in (out.get("files_written") or [])][:50],
+                "cell_ok": bool(out.get("ok")), "stopped": bool(out.get("stopped"))}
+    if name == "capture":
+        return {"files_written": [str(out.get("rel_path"))]}
+    if name in ("read", "write"):
+        return {"book_seq": (out.get("book") or {}).get("seq")}
+    if name == "claim":
+        return {"verdict": out.get("verdict"), "edit_id": out.get("edit_id"), "proposed": args.get("edit")}
+    if name == "claim_knob":
+        return {"verdict": out.get("verdict"), "knob_id": out.get("knob_id"), "proposed": args.get("knob")}
+    return {}
+
+
+class SocketBridge:
+    """`session` served over a private AF_UNIX socket to a CLI driver's stdio MCP child (`level_mcp.py --socket
+    <path>`), so the child reaches the model a study has already loaded.
+
+    - The socket (`path`) sits in a new mode-0700 folder of its own (`_private_socket_dir`), is mode 0600 from bind,
+      and goes, with its folder, on `close`.
+    - One door call at a time, whatever connection it comes on, so each call's budget checks see every call before it.
+    - `close` takes no more calls (one that comes after is answered with an error), kills a cell that is running
+      (`level_sandbox.stop_cells`) and waits for a model reading that is running, for the session's remaining
+      wall-clock seconds and `DRAIN_GRACE_S` more (or `drain_seconds`), so what that call puts in the book or the work
+      folder is there before an outcome is read. `calls` lists every call that reached the door; `close` returns what
+      was running at the stop and how it ended."""
+
+    def __init__(self, session: lses.LevelSession, *, drain_seconds: Optional[float] = None) -> None:
+        self.session = session
+        self.drain_seconds = drain_seconds
+        self.dir = _private_socket_dir(session.work_dir)
+        self.path = self.dir / SOCKET_NAME
+        self.calls: List[Dict[str, Any]] = []
+        self.refused_after_stop = 0
+        self._call_lock = threading.Lock()  # one door call at a time
+        self._state_lock = threading.Lock()  # `_stopping` and `_active` change together under it
+        self._stopping = False
+        self._active: Optional[Dict[str, Any]] = None
+        self._conns: List[socket.socket] = []
+        self._report: Optional[Dict[str, Any]] = None
+        srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        prev_umask = os.umask(0o177)
+        try:
+            srv.bind(str(self.path))
+        except OSError:
+            srv.close()
+            shutil.rmtree(self.dir, ignore_errors=True)
+            raise
+        finally:
+            os.umask(prev_umask)
+        os.chmod(self.path, 0o600)
+        srv.listen(4)
+        srv.settimeout(0.25)
+        self._srv = srv
+        self._accept_thread = threading.Thread(target=self._accept_loop, daemon=True)
+        self._accept_thread.start()
+
+    def _accept_loop(self) -> None:
+        while True:
+            try:
+                conn, _ = self._srv.accept()
+            except socket.timeout:
+                with self._state_lock:
+                    if self._stopping:
+                        return
+                continue
+            except OSError:
+                return
+            with self._state_lock:
+                if self._stopping:
+                    conn.close()
+                    return
+                self._conns.append(conn)
+            threading.Thread(target=self._serve_conn, args=(conn,), daemon=True).start()
+
+    def _serve_conn(self, conn: socket.socket) -> None:
         try:
             rfile = conn.makefile("r", encoding="utf-8", errors="replace")
             wfile = conn.makefile("w", encoding="utf-8")
             with rfile, wfile:
                 for line in rfile:
-                    if stop_ev.is_set():
-                        break
                     if not line.strip():
                         continue
                     try:
@@ -551,11 +696,11 @@ def session_socket_bridge(session: lses.LevelSession, sock_path: Path) -> Iterat
                         continue
                     if not isinstance(msg, dict):
                         continue
-                    resp = handle_request(msg, session)
+                    resp = self._answer(msg)
                     if resp is not None:
                         wfile.write(json.dumps(resp, ensure_ascii=True) + "\n")
                         wfile.flush()
-        except OSError:
+        except (OSError, ValueError):
             pass
         finally:
             try:
@@ -563,67 +708,109 @@ def session_socket_bridge(session: lses.LevelSession, sock_path: Path) -> Iterat
             except OSError:
                 pass
 
-    def _accept_loop() -> None:
-        while not stop_ev.is_set():
+    def _answer(self, msg: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+        id_ = msg.get("id")
+        if id_ is None:
+            return None  # a notification
+        if msg.get("method") != "tools/call":
+            with self._state_lock:
+                closing = self._stopping
+                if closing:
+                    self.refused_after_stop += 1
+            if closing:
+                return {"jsonrpc": "2.0", "id": id_, "error": {"code": -32000, "message": CLOSING_WORDS}}
+            return handle_request(msg, self.session)
+        p = msg.get("params") or {}
+        name = str(p.get("name", ""))
+        args = p.get("arguments") or {}
+        with self._call_lock:
+            with self._state_lock:
+                if self._stopping:
+                    self.refused_after_stop += 1
+                    return _tool_reply(id_, False, f"error: {CLOSING_WORDS}")
+                rec: Dict[str, Any] = {"n": len(self.calls) + 1, "tool": name, "ok": None, "seconds": None,
+                                       "running_at_stop": False}
+                self.calls.append(rec)
+                self._active = rec
+            t0 = time.monotonic()
             try:
-                conn, _ = srv.accept()
-            except socket.timeout:
-                continue
-            except OSError:
-                break
-            t = threading.Thread(target=_serve_conn, args=(conn,), daemon=True)
-            t.start()
+                ok, out, text = _call_tool(self.session, name, args)
+            finally:
+                with self._state_lock:
+                    self._active = None
+            rec["seconds"] = round(time.monotonic() - t0, 3)
+            rec["ok"] = ok
+            if ok:
+                rec.update(_call_facts(name, args if isinstance(args, Mapping) else {}, out))
+            else:
+                rec["error"] = text[:300]
+        return _tool_reply(id_, ok, text)
 
-    thread = threading.Thread(target=_accept_loop, daemon=True)
-    thread.start()
-    try:
-        yield sp
-    finally:
-        stop_ev.set()
+    def _drain_bound(self) -> float:
+        if self.drain_seconds is not None:
+            return max(0.0, float(self.drain_seconds))
         try:
-            srv.close()
+            left = float(self.session.status()["remaining"]["wall_seconds"])
+        except Exception:
+            left = float(self.session.budget.max_wall_seconds)
+        return max(0.0, left) + DRAIN_GRACE_S
+
+    def close(self) -> Dict[str, Any]:
+        """Stop taking calls, kill a running cell, wait for a running reading (see the class), then remove the socket
+        and its folder. Returns what was running at the stop and how it ended; a second call returns the same."""
+        if self._report is not None:
+            return self._report
+        t0 = time.monotonic()
+        with self._state_lock:
+            self._stopping = True
+            running = self._active
+            if running is not None:
+                running["running_at_stop"] = True
+        try:
+            self._srv.close()
         except OSError:
             pass
-        thread.join(timeout=2.0)
-        try:
-            if sp.exists():
-                sp.unlink()
-        except OSError:
-            pass
-
-
-def serve_socket_bridge(sock_path: Path) -> int:
-    """Connect stdio JSON-RPC lines to a live parent `session_socket_bridge` Unix socket."""
-    sp = Path(sock_path).resolve()
-    cli = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        cli.connect(str(sp))
-    except OSError as exc:
-        raise SystemExit(f"Could not connect to MCP bridge socket {sp}: {exc}") from None
-    try:
-        rfile = cli.makefile("r", encoding="utf-8", errors="replace")
-        wfile = cli.makefile("w", encoding="utf-8")
-        with rfile, wfile:
-            for line in sys.stdin:
-                if not line.strip():
-                    continue
+        cells_stopped = ls.stop_cells(self.session.work_dir)
+        bound = self._drain_bound()
+        done = self._call_lock.acquire(timeout=bound)
+        if done:
+            self._call_lock.release()
+            ls.release_cells(self.session.work_dir)
+        with self._state_lock:
+            conns = list(self._conns)
+        for c in conns:
+            for fn in (lambda: c.shutdown(socket.SHUT_RDWR), c.close):
                 try:
-                    msg = json.loads(line)
-                except ValueError:
-                    continue
-                if not isinstance(msg, dict):
-                    continue
-                wfile.write(json.dumps(msg, ensure_ascii=True) + "\n")
-                wfile.flush()
-                if msg.get("id") is not None:
-                    resp_line = rfile.readline()
-                    if not resp_line:
-                        break
-                    sys.stdout.write(resp_line)
-                    sys.stdout.flush()
+                    fn()
+                except OSError:
+                    pass
+        self._accept_thread.join(timeout=2.0)
+        shutil.rmtree(self.dir, ignore_errors=True)
+        self._report = {
+            "calls": len(self.calls),
+            "ok": sum(1 for c in self.calls if c.get("ok") is True),
+            "errors": sum(1 for c in self.calls if c.get("ok") is False),
+            "refused_after_stop": int(self.refused_after_stop),
+            "running_at_stop": dict(running) if running is not None else None,
+            "still_running": not done,
+            "cells_stopped": int(cells_stopped),
+            "waited_seconds": round(time.monotonic() - t0, 3),
+            "wait_bound_seconds": round(bound, 1),
+            "socket_removed": not self.dir.exists(),
+        }
+        return self._report
+
+
+@contextlib.contextmanager
+def session_socket_bridge(session: lses.LevelSession, *, drain_seconds: Optional[float] = None) -> Iterator[SocketBridge]:
+    """Serve `session` to a CLI driver's MCP child over a private socket for the life of the block (`SocketBridge`;
+    its `path` is the socket's). Leaving the block closes it: no more calls, a running cell killed, a running reading
+    waited for."""
+    bridge = SocketBridge(session, drain_seconds=drain_seconds)
+    try:
+        yield bridge
     finally:
-        cli.close()
-    return 0
+        bridge.close()
 
 
 def main(argv: Optional[List[str]] = None) -> int:

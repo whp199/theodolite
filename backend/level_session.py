@@ -455,7 +455,7 @@ class LevelSession:
                     "controls_per_family": int(d["controls_override"] if d.get("controls_override") is not None
                                                else self._brief.default_controls),
                     "match_tolerance": float(d.get("match_tolerance", lv.DEFAULT_MATCH_TOL)),
-                    "prompt_arms": "always compared",
+                    "prompt_arms": "not compared with a knob" if self.mode == "knobs_only" else "always compared",
                 }
         return card
 
@@ -476,6 +476,35 @@ class LevelSession:
                     f'Item "{it.name}" holds the {got["how"]} of a kept-back frame {whose}. Those frames are for '
                     "fresh claim readings, not practice: draw practice items from the brief (draw_practice) or write "
                     "your own on other frames."
+                )
+
+    def _refuse_kept_back_knob(self, knob: Mapping[str, Any], items: Sequence[lv.Item], tool: str) -> None:
+        """`_refuse_kept_back` for the text a cheaper knob adds: its prompt, which is read in the system turn of every
+        item under it. Each item is asked of again as the knob reads it (`level_knobs.knob_texts`: its system turn
+        with the knob's prompt, its question, its answer), so wording that stands in the prompt, or in the prompt and
+        the item run together, is refused and counted as an item's is. With no items (a claim) the prompt is asked
+        of alone. A knob that does not build is left to the reading, which refuses it in its own words."""
+        if self._handle is None:
+            return
+        try:
+            kn = lkn.build_knob(self._handle, knob, base_dir=self.work_dir)
+        except lkn.KnobRefused:
+            return
+        if kn.prompt is None:
+            return
+        asked = ([(it.name, lkn.knob_texts(kn, it, self._brief)) for it in items] if items
+                 else [("the knob's prompt", (kn.prompt,))])
+        for name, texts in asked:
+            got = self._kept_back.hit(*texts)
+            if got is not None:
+                self.gate_refusals += 1
+                self._log("refused", {"tool": tool, "why": "kept_back", "whose": got["brief"], "frame": got["frame"],
+                                      "how": got["how"], "item_name": name, "in": "knob_prompt"})
+                whose = (f'of {got["brief"]}' if got["brief"] == lbr.BATTERIES else f'of brief "{got["brief"]}"')
+                where = f' (read in the system turn of item "{name}")' if items else ""
+                raise SessionRefused(
+                    f"The knob's prompt{where} holds the {got['how']} of a kept-back frame {whose}. A knob's text is "
+                    "kept from those frames as an item's is: they are for fresh claim readings, not practice."
                 )
 
     def _wall_seconds(self) -> float:
@@ -877,8 +906,9 @@ class LevelSession:
             "practice_frame_count": len(self._brief.generator.frames_for("practice")),
             "bars_sha256": self._bars.id if self._bars is not None else None,
             "practice_reads_this_session": int(self._practice_reads),
-            "prior_verdicts": [
-                {"reading_index": v.get("reading_index"), "edit_id": v.get("edit_id"), "verdict": v.get("verdict")}
+            "prior_verdicts": [  # weight claims and knob claims: one budget a brief
+                {"reading_index": v.get("reading_index"), "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
+                 **({"knob_id": v["knob_id"]} if v.get("knob_id") else {})}
                 for v in hist["verdicts"]
             ],
             # the trials that spent a fresh reading too (of record, a dry run, a re-run), so the count above adds up
@@ -1076,6 +1106,7 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         item_map = _as_item_map(items, self._handle.tokenizer)
         self._refuse_kept_back(list(item_map.values()), "knob_read")
+        self._refuse_kept_back_knob(knob, list(item_map.values()), "knob_read")
         n_ctl = int(self.budget.min_controls if controls is None else max(int(controls), self.budget.min_controls))
         try:
             est = lkn.estimate_knob_reading(
@@ -1138,6 +1169,7 @@ class LevelSession:
             raise SessionRefused("knob_write requires a bound brief.")
         item_map = _as_item_map(items, self._handle.tokenizer)
         self._refuse_kept_back(list(item_map.values()), "knob_write")
+        self._refuse_kept_back_knob(knob, list(item_map.values()), "knob_write")
         n_ctl = int(self.budget.min_written_controls if controls is None else max(int(controls), self.budget.min_written_controls))
         try:
             est = lkn.estimate_knob_reading(
@@ -1198,9 +1230,15 @@ class LevelSession:
             raise SessionRefused("No model handle is bound to this session.")
         if self.gpu_seconds_used >= float(self.budget.max_gpu_seconds):
             raise SessionRefused("GPU-second budget exhausted before knob claim reading.")
+        # the knob's own text is asked of the session's guard too (every starter brief's frames, the batteries'
+        # questions), and a refusal counted; the claim then asks it of the bound brief's (`level_knobs._claim_plan`)
+        self._refuse_kept_back_knob(knob, [], "claim_knob")
+        # how the reading is taken is the owner's, as for a weight claim (`claim_design`); a knob claim takes all of
+        # it, the controls a family and the matched controls' tolerance with the rest
         knob_design = {
             k: v for k, v in self._claim_design.items()
-            if k in ("n_target", "n_neutral", "n_near", "n_panel", "rows", "controls_override")
+            if k in ("n_target", "n_neutral", "n_near", "n_panel", "rows", "written_rows", "controls_override",
+                     "match_tolerance")
         }
         try:
             est = lkn.estimate_knob_claim(
@@ -1218,7 +1256,7 @@ class LevelSession:
                     forecast=forecast, practice_count=self._practice_reads, practice_best=practice_best,
                     book_path=self.book_path, **knob_design,
                 )
-        except lkn.KnobRefused as exc:
+        except (lkn.KnobRefused, lcl.ClaimRefused) as exc:
             raise SessionRefused(str(exc)) from None
         finally:
             elapsed = time.perf_counter() - t0

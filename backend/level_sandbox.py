@@ -10,7 +10,8 @@ Containment model (verified actively by `probe_sandbox`):
   private `--tmpfs /tmp`, and ONE writable session scratch folder mounted at `/work`.
 - Environment: `--clearenv` with a minimal allowlist (zero host credentials, tokens, or API keys).
 - Resources: `RLIMIT_AS` (sized above the read-only weight mmap plus working budget), `RLIMIT_FSIZE`, parent-side
-  resident-RAM (`VmRSS`) monitor, and hard wall-clock timeout with process-group `SIGKILL`.
+  resident-RAM (`VmRSS`) monitor, and hard wall-clock timeout with process-group `SIGKILL`; a cell still running when
+  its session closes is killed the same way (`stop_cells`).
 
 No pinned or live runtime module is imported inside the sandbox; cells interact with weights strictly through the
 read-only `WeightReader` (`W`) and persist float32 arrays to `/work` via `save_array(name, arr)` with sha256 hashes.
@@ -25,10 +26,11 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 WEIGHT_READER_PATH = ROOT_DIR / "backend" / "weight_reader.py"
@@ -44,6 +46,33 @@ DEFAULT_MAX_FILE_MB = 256
 
 class SandboxError(RuntimeError):
     """Raised when the `bwrap` sandbox cannot be launched or fails its containment check."""
+
+
+# A session that closes stops its cells: `stop_cells(work_dir)` marks the folder, and `run_cell`, which looks for the
+# mark between its polls, kills a cell running there and starts no new one until `release_cells(work_dir)`.
+_CELLS_LOCK = threading.Lock()
+_CELLS_STOPPING: Set[str] = set()
+_CELLS_RUNNING: Dict[str, int] = {}
+
+
+def stop_cells(work_dir: Path) -> int:
+    """Kill every cell running on `work_dir` (within about a fifth of a second) and start no new one there until
+    `release_cells`. Returns how many were running."""
+    key = str(Path(work_dir).resolve())
+    with _CELLS_LOCK:
+        _CELLS_STOPPING.add(key)
+        return int(_CELLS_RUNNING.get(key, 0))
+
+
+def release_cells(work_dir: Path) -> None:
+    """Let cells run on `work_dir` again (`stop_cells`)."""
+    with _CELLS_LOCK:
+        _CELLS_STOPPING.discard(str(Path(work_dir).resolve()))
+
+
+def _cells_stopping(key: str) -> bool:
+    with _CELLS_LOCK:
+        return key in _CELLS_STOPPING
 
 
 @dataclass(frozen=True)
@@ -384,6 +413,9 @@ def run_cell(
         raise SandboxError(f"Cell timeout must lie between 0.5 and {MAX_TIMEOUT_S:g} s; got {wall_cap!r}.")
 
     work = Path(cfg.work_dir).resolve()
+    work_key = str(work)
+    if _cells_stopping(work_key):
+        raise SandboxError("The session is closing: no new cell is started.")
     work.mkdir(parents=True, exist_ok=True)
     before_files = _snapshot_work_files(work)
 
@@ -404,6 +436,7 @@ def run_cell(
     t0 = time.perf_counter()
     timed_out = False
     oom_killed = False
+    stopped = False
     stdout_full = ""
     stderr_full = ""
     exit_code = -1
@@ -518,42 +551,52 @@ def run_cell(
         stdout_tmp = stage / "stdout.txt"
         stderr_tmp = stage / "stderr.txt"
         with open(stdout_tmp, "wb") as out_f, open(stderr_tmp, "wb") as err_f:
-            proc = subprocess.Popen(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                stdout=out_f,
-                stderr=err_f,
-                start_new_session=True,
-            )
-            deadline = time.perf_counter() + wall_cap
+            with _CELLS_LOCK:
+                if work_key in _CELLS_STOPPING:
+                    raise SandboxError("The session is closing: no new cell is started.")
+                _CELLS_RUNNING[work_key] = _CELLS_RUNNING.get(work_key, 0) + 1
             try:
-                while True:
-                    rc = proc.poll()
-                    if rc is not None:
-                        exit_code = int(rc)
-                        break
-                    now = time.perf_counter()
-                    if now >= deadline:
-                        timed_out = True
-                        _kill_group(proc.pid)
-                        proc.wait(timeout=5)
-                        exit_code = int(proc.returncode if proc.returncode is not None else -9)
-                        break
-                    rss = _proc_tree_rss_bytes(proc.pid)
-                    if rss > rss_cap_bytes:
-                        oom_killed = True
-                        _kill_group(proc.pid)
-                        proc.wait(timeout=5)
-                        exit_code = int(proc.returncode if proc.returncode is not None else -9)
-                        break
-                    time.sleep(0.05)
-            except BaseException:
-                _kill_group(proc.pid)
+                proc = subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.DEVNULL,
+                    stdout=out_f,
+                    stderr=err_f,
+                    start_new_session=True,
+                )
+                deadline = time.perf_counter() + wall_cap
                 try:
-                    proc.wait(timeout=5)
-                except Exception:
-                    pass
-                raise
+                    while True:
+                        rc = proc.poll()
+                        if rc is not None:
+                            exit_code = int(rc)
+                            break
+                        now = time.perf_counter()
+                        if now >= deadline:
+                            timed_out = True
+                        elif _cells_stopping(work_key):
+                            stopped = True  # its session is closing (`stop_cells`)
+                        elif _proc_tree_rss_bytes(proc.pid) > rss_cap_bytes:
+                            oom_killed = True
+                        if timed_out or stopped or oom_killed:
+                            _kill_group(proc.pid)
+                            proc.wait(timeout=5)
+                            exit_code = int(proc.returncode if proc.returncode is not None else -9)
+                            break
+                        time.sleep(0.05)
+                except BaseException:
+                    _kill_group(proc.pid)
+                    try:
+                        proc.wait(timeout=5)
+                    except Exception:
+                        pass
+                    raise
+            finally:
+                with _CELLS_LOCK:
+                    left = _CELLS_RUNNING.get(work_key, 1) - 1
+                    if left > 0:
+                        _CELLS_RUNNING[work_key] = left
+                    else:
+                        _CELLS_RUNNING.pop(work_key, None)
 
         stdout_full = stdout_tmp.read_text(encoding="utf-8", errors="replace")
         stderr_full = stderr_tmp.read_text(encoding="utf-8", errors="replace")
@@ -584,14 +627,17 @@ def run_cell(
         error = f"Cell exceeded wall-clock timeout ({wall_cap:g} s) and was killed."
     elif oom_killed:
         error = f"Cell exceeded resident memory cap ({cfg.max_mem_gib:g} GiB) and was killed."
+    elif stopped:
+        error = "Cell was killed: its session closed while it ran."
     elif exit_code != 0:
         error = f"Cell exited with code {exit_code}."
 
     return {
-        "ok": (exit_code == 0 and not timed_out and not oom_killed),
+        "ok": (exit_code == 0 and not timed_out and not oom_killed and not stopped),
         "exit_code": exit_code,
         "timed_out": timed_out,
         "oom_killed": oom_killed,
+        "stopped": stopped,
         "seconds": round(elapsed, 4),
         "stdout": stdout_shown,
         "stderr": stderr_shown,

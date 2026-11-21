@@ -9,15 +9,24 @@ Design & containment:
   read-only into `/opt/app/backend/level_atlas.py` beside `weight_reader.py`.
 - Allowlisted index files ONLY (`ATLAS_INDEX_FILES` and `ATLAS_INDEX_DIRS`): never opens `scientist/`, `uploads/`,
   `logs/`, `endpoints.json`, or any level book.
-- Enforces the instrument's label-gate provenance on every neuron label: below code layer 40 (page layer 41) on a
-  60-layer model, or where lens and naked-eye top-10 word-pieces share zero entries, labels are marked
-  `label_trusted: False` with plain reasons (still returning the raw words as leads to check causally).
+- Marks every neuron label with the instrument's label gate (`backend/label_gate.py`, rule "n1-gate-1"), restated
+  below because this file imports nothing but the standard library and NumPy: `held_back` below code layer 40 (page
+  layer 41), and, under the base-fitted J++ lens only, where the lens and naked-eye readings share none of their
+  first ten word-pieces. The gate only sets labels aside; a label it lets through is not thereby sound (as a cut, on
+  N1's sample, it kept 209 labels of which 160 were sound). `scripts/check_level_eval.py` section 1 holds this
+  restatement to `label_gate.label_check` case by case. The words are always returned, as leads to test.
+- Steer-lens words are set aside at layers where the steer lens's own check (`steer_check.json`, written by
+  `backend/steer_check.py` for the same build of the lens) found it a weak guide or did not check it, as the
+  instrument's pages do (`backend/atlas_index.py` `steer_weak`). The label gate reads the lens and the naked eye, not
+  the steer lens, so it says nothing of a steer reading.
 
 Layers count from 0 in code and files; human-facing strings give both ("layer 50 (page layer 51)").
 """
 from __future__ import annotations
 
 import json
+import os
+import stat
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -30,6 +39,7 @@ ATLAS_INDEX_FILES = (
     "wiring.npz",
     "steer_lens.npz",
     "steer_dose.json",
+    "steer_check.json",
     "layout_writes.npz",
     "wiring_check.npz",
     "vocab.json",
@@ -42,6 +52,92 @@ FORBIDDEN_ATLAS_ENTRIES = ("scientist", "uploads", "logs", "endpoints.json", "le
 LABEL_MIN_LAYER_31B = 40  # counting from 0 (page layer 41) on 60-layer Gemma 4 31B
 EMPTY_WIRING_Z = -1e4
 MAX_QUERY_RESULTS = 64
+
+# The label gate's rule, restated from backend/label_gate.py (rule "n1-gate-1"; counting layers from 0). Section 1 of
+# scripts/check_level_eval.py compares `gate_check` with `label_gate.label_check` on every layer, overlap, lens and
+# silenced case, so the two cannot part unseen.
+GATE_RULE = "n1-gate-1"
+GATE_MIN_LAYER = 40
+GATE_BAND = (40, 57)  # where the study measured the gate
+GATE_SAMPLED = (10, 20, 30, 40, 45, 50, 55, 57)
+GATE_ONE_READING_LAYER = 59  # J++[59] is the identity: the lens and the naked eye are one reading there
+GATE_TOPK = 10
+GATE_CUT = 0  # a label is set aside when its two readings share at most this many of their first ten
+GATE_VALIDATED_LENS_ID = "jpp-base"  # the only lens the agreement half of the gate was validated for
+GATE_SAYS = (
+    "The label gate (rule n1-gate-1) marks a label held_back below layer 40 (counting from 0), and, under the "
+    "base-fitted J++ lens (jpp-base) below layer 59, where its lens and naked-eye readings share none of their first "
+    "ten word-pieces; under any other lens only the layer counts (lens_validated false). It only sets labels aside: "
+    "as a cut it did much less well than as a graded score (on N1's sample it kept 209 labels, of which 160 were "
+    "sound; AUC 0.64), so a label it lets through is a lead to test, not a finding."
+)
+STEER_SET_ASIDE = ("weak", "unchecked")  # backend/atlas_index.py steer_weak: a layer the steer check did not back
+STEER_SAYS = (
+    "Steer-lens words are set aside at layers where the steer lens's own check (steer_check.json) found it a weak "
+    "guide beside the layer's census or did not check it (on the 31B it agrees at layers 39 to 52); the label gate "
+    "reads the lens and the naked eye, not the steer lens, and says nothing of a steer reading."
+)
+
+
+def gate_band(layer_idx: int) -> str:
+    """Where a layer (counting from 0) stands against the study's sample (`label_gate.band_of`)."""
+    l = int(layer_idx)
+    if l < GATE_SAMPLED[0]:
+        return "below_sampled"
+    if l <= 30:
+        return "chance_where_sampled"
+    if l < GATE_BAND[0]:
+        return "not_sampled"
+    if l <= GATE_BAND[1]:
+        return "band"
+    if l < GATE_ONE_READING_LAYER:
+        return "above_band"
+    return "one_reading"
+
+
+def gate_check(
+    layer_idx: int,
+    lens_ids: Optional[Sequence[int]],
+    eye_ids: Optional[Sequence[int]],
+    lens_id: Optional[str],
+    silenced: bool = False,
+) -> Dict[str, Any]:
+    """`label_gate.label_check` restated for one face of a 60-layer model's index, which reads the shipped weights
+    (so `edited` is always false): `shared_top10`, `held_back`, `reasons`, `band`, `sampled_layer`,
+    `in_measured_band`, `lens_validated`, `edited`."""
+    l = int(layer_idx)
+    lens_l = [int(i) for i in list(lens_ids)] if lens_ids is not None else []
+    eye_l = [int(i) for i in list(eye_ids)] if eye_ids is not None else []
+    shared: Optional[int] = None
+    if lens_l and eye_l and not silenced:
+        shared = len(set(lens_l[:GATE_TOPK]) & set(eye_l[:GATE_TOPK]))
+    base = lens_id == GATE_VALIDATED_LENS_ID
+    reasons: List[str] = []
+    if l < GATE_MIN_LAYER:
+        reasons.append("below_layer_40")
+    if shared is not None and shared <= GATE_CUT and l < GATE_ONE_READING_LAYER and base:
+        reasons.append("shares_nothing")
+    if silenced:
+        reasons.append("writes_nothing")
+    return {
+        "shared_top10": shared,
+        "held_back": bool(reasons),
+        "reasons": reasons,
+        "band": gate_band(l),
+        "sampled_layer": l in GATE_SAMPLED,
+        "in_measured_band": GATE_BAND[0] <= l <= GATE_BAND[1],
+        "lens_validated": bool(base),
+        "edited": False,
+    }
+
+
+def _plain_entry(p: Path, *, want_dir: bool = False) -> bool:
+    """Whether `p` is itself a plain file (or a plain folder), not a symlink: the sandbox binds what it names."""
+    try:
+        st = os.lstat(p)
+    except OSError:
+        return False
+    return stat.S_ISDIR(st.st_mode) if want_dir else stat.S_ISREG(st.st_mode)
 
 
 class AtlasReaderError(ValueError):
@@ -65,21 +161,30 @@ def resolve_atlas_index_dir(path: Path) -> Path:
 
 
 def collect_atlas_binds(path: Path) -> List[Tuple[Path, str]]:
-    """Return `(resolved_host_path, container_dst)` pairs for ONLY allowlisted read-only atlas index files and
-    `passages.d/` inside `path`. Never binds `scientist/`, `uploads/`, `logs/`, or level books."""
+    """Return `(host_path, container_dst)` pairs for ONLY allowlisted read-only atlas index files and `passages.d/`
+    inside `path`. Never binds `scientist/`, `uploads/`, `logs/`, or level books. A symlink where an allowlisted name
+    stands is refused, not followed: it could name any file the owner can read."""
     idx_dir = resolve_atlas_index_dir(path)
     binds: List[Tuple[Path, str]] = []
     for fn in ATLAS_INDEX_FILES:
         fp = idx_dir / fn
-        if fp.is_file():
-            binds.append((fp.resolve(), f"/atlas/{fn}"))
+        if fp.is_symlink():
+            raise AtlasReaderError(f"Atlas index entry {fp} is a symlink; the sandbox binds only plain files.")
+        if _plain_entry(fp):
+            binds.append((fp, f"/atlas/{fn}"))
     for dn in ATLAS_INDEX_DIRS:
         dp = idx_dir / dn
-        if dp.is_dir():
+        if dp.is_symlink():
+            raise AtlasReaderError(f"Atlas index folder {dp} is a symlink; the sandbox binds only plain folders.")
+        if _plain_entry(dp, want_dir=True):
             # Bind only plain .npy and meta.json files inside passages.d/
             for child in sorted(dp.iterdir()):
-                if child.is_file() and (child.suffix == ".npy" or child.name == "meta.json"):
-                    binds.append((child.resolve(), f"/atlas/{dn}/{child.name}"))
+                if not (child.suffix == ".npy" or child.name == "meta.json"):
+                    continue
+                if child.is_symlink():
+                    raise AtlasReaderError(f"Atlas index entry {child} is a symlink; the sandbox binds only plain files.")
+                if _plain_entry(child):
+                    binds.append((child, f"/atlas/{dn}/{child.name}"))
     if not binds:
         raise AtlasReaderError(f"Atlas index directory {idx_dir} has no readable index files.")
     return binds
@@ -181,11 +286,26 @@ class AtlasReader:
         raise AtlasReaderError(f"Could not determine (n_layers, n_neurons) from {self.index_dir}.")
 
     def _label_min_layer(self, n_layers: int) -> int:
-        # On 60-layer Gemma 4 31B, code layer 40 (page layer 41) is the study's measured gate floor.
-        # On smaller stand-in models (e.g. 6 layers), scale proportionally so checks can exercise both sides.
-        return LABEL_MIN_LAYER_31B if n_layers >= 60 else max(0, (n_layers * 2) // 3)
+        # The gate's layer floor is the 31B's (code layer 40, page layer 41). A stand-in model of another depth (the
+        # CPU checks use 6 layers) gets the floor scaled to two thirds of its depth, so checks can exercise both
+        # sides; such a reading says so (`floor_scaled_for_stand_in`) and has no band.
+        return LABEL_MIN_LAYER_31B if n_layers == 60 else max(0, (n_layers * 2) // 3)
 
-    def _label_trust(
+    def _lens_id(self) -> Optional[str]:
+        """The id of the lens the index's lens labels were read through (lens.npz `meta`, else `lens_id`)."""
+        lens = self._npz("lens.npz")
+        if lens is None:
+            return None
+        if "meta" in lens:
+            meta = _clean_json_meta(lens["meta"])
+            if isinstance(meta, dict) and meta.get("lens_id") is not None:
+                return str(meta.get("lens_id"))
+        if "lens_id" in lens:
+            raw = _clean_json_meta(lens["lens_id"])
+            return None if raw is None else str(raw)
+        return None
+
+    def _label_gate(
         self,
         layer: int,
         n_layers: int,
@@ -193,21 +313,43 @@ class AtlasReader:
         eye_ids: Optional[Sequence[int]],
         silenced: bool = False,
     ) -> Dict[str, Any]:
-        if silenced:
-            return {"trusted": False, "shared_top10": None, "reason": "writes_nothing"}
-        min_l = self._label_min_layer(n_layers)
-        shared = None
-        if lens_ids is not None and eye_ids is not None:
-            shared = len(set(int(x) for x in lens_ids[:10]) & set(int(x) for x in eye_ids[:10]))
-        if layer < min_l:
-            return {
-                "trusted": False,
-                "shared_top10": shared,
-                "reason": f"below_layer_{min_l}",
-            }
-        if shared is not None and shared <= 0:
-            return {"trusted": False, "shared_top10": 0, "reason": "shares_nothing"}
-        return {"trusted": True, "shared_top10": shared, "reason": None}
+        """The label gate's check of one face (`gate_check`); on a stand-in of another depth, the same rule with the
+        layer floor scaled (no band: the study's bands are the 31B's)."""
+        lens_id = self._lens_id()
+        if n_layers == 60:
+            return gate_check(layer, lens_ids, eye_ids, lens_id, silenced=silenced)
+        floor = self._label_min_layer(n_layers)
+        g = gate_check(GATE_MIN_LAYER if layer >= floor else 0, lens_ids, eye_ids, lens_id, silenced=silenced)
+        g["reasons"] = [f"below_layer_{floor}" if r == "below_layer_40" else r for r in g["reasons"]]
+        g.update({"band": None, "sampled_layer": False, "in_measured_band": False, "floor_scaled_for_stand_in": True})
+        return g
+
+    def _steer_check(self, layer: int) -> Dict[str, Any]:
+        """What the steer lens's own check found at `layer` (`steer_check.json`), as `backend/atlas_index.py` reads
+        it: `standing` ("agrees", "weak", "unchecked"), or None when no check was written for this build of the lens
+        (then nothing is known of the lens there). `set_aside`: the words are left out at this layer."""
+        if "steer_check" not in self._cache:
+            rec = None
+            p = self.index_dir / "steer_check.json"
+            if _plain_entry(p):
+                try:
+                    rec = json.loads(p.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    rec = None
+            st = self._npz("steer_lens.npz")
+            meta = _clean_json_meta(st["meta"]) if st is not None and "meta" in st else None
+            built = meta.get("built_at") if isinstance(meta, dict) else None
+            if not isinstance(rec, dict) or (rec.get("lens") or {}).get("built_at") != built or built is None:
+                rec = None
+            self._cache["steer_check"] = rec
+        rec = self._cache["steer_check"]
+        row = ((rec or {}).get("layers") or {}).get(str(int(layer))) if rec else None
+        standing = row.get("standing") if isinstance(row, dict) else None
+        return {
+            "standing": standing,
+            "set_aside": standing in STEER_SET_ASIDE,
+            "check_written": rec is not None,
+        }
 
     def info(self) -> Dict[str, Any]:
         """Summary of available index files, shape, built layers, and label-gate floor."""
@@ -229,11 +371,11 @@ class AtlasReader:
             "vocab_size": len(self._vocab) if self._vocab is not None else 0,
             "built_layers_count": len(built_layers) if built_layers is not None else None,
             "label_min_layer": self._label_min_layer(n_layers),
+            "lens_id": self._lens_id(),
             "lens_meta": lens_meta,
-            "caution": (
-                "Atlas labels are leads to check causally, not settled findings; labels below label_min_layer "
-                "or with zero lens/eye top-10 overlap are marked trusted=False."
-            ),
+            "label_gate": GATE_SAYS,
+            "steer_words": STEER_SAYS,
+            "caution": "Atlas words are leads to test by a reading, not findings.",
         }
 
     def search_words(
@@ -245,11 +387,19 @@ class AtlasReader:
         face: str = "pos",
         source: str = "lens",
         top_k: int = 20,
-        trusted_only: bool = False,
+        gate_passes_only: bool = False,
         substring: bool = False,
+        trusted_only: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Search neurons whose top words match `query` (exact word token by default, `substring=True` for substring,
-        or exact token id `id:123`). Falls back to substring only if no exact token exists."""
+        or exact token id `id:123`). Falls back to substring only if no exact token exists.
+
+        Each hit carries the label gate's check of that face (`label_gate`, of its lens and naked-eye readings), and a
+        steer-source hit also what the steer lens's own check found at its layer (`steer_check`). Hits the gate lets
+        through come first. `gate_passes_only` leaves out faces the gate marks held_back and, for the steer source,
+        layers where the steer check sets the steer words aside. `trusted_only` is an older name for it."""
+        if trusted_only is not None:
+            gate_passes_only = bool(gate_passes_only or trusted_only)
         q_raw = str(query or "")
         if not q_raw.strip():
             raise AtlasReaderError("search_words requires a non-empty query string.")
@@ -340,8 +490,10 @@ class AtlasReader:
                 is_sil = bool(silenced_arr[l_i, n_i]) if silenced_arr is not None else False
                 l_ids = lens_other_arr[l_i, n_i].tolist() if has_both else None
                 e_ids = eye_other_arr[l_i, n_i].tolist() if has_both else None
-                trust = self._label_trust(l_i, n_layers, l_ids, e_ids, silenced=is_sil)
-                if trusted_only and not trust["trusted"]:
+                gate = self._label_gate(l_i, n_layers, l_ids, e_ids, silenced=is_sil)
+                steer = self._steer_check(l_i) if source == "steer" else None
+                set_aside = bool(gate["held_back"]) or bool(steer and steer["set_aside"])
+                if gate_passes_only and set_aside:
                     continue
                 row_ids = [int(x) for x in mat[n_i].tolist()]
                 words = [_decode_piece(self._vocab, x) for x in row_ids[:10]]
@@ -353,22 +505,26 @@ class AtlasReader:
                     "best_rank": best_rank,
                     "matched_words": matched_words,
                     "top_words": words,
-                    "label_trusted": trust["trusted"],
-                    "shared_top10": trust["shared_top10"],
-                    "trust_reason": trust["reason"],
+                    "label_gate": gate,
                 }
-                hits.append((0 if trust["trusted"] else 1, best_rank, -l_i, rec))
+                if steer is not None:
+                    rec["steer_check"] = steer
+                hits.append((1 if set_aside else 0, best_rank, -l_i, rec))
 
         hits.sort(key=lambda t: (t[0], t[1], t[2], t[3]["neuron"]))
         out_hits = [t[3] for t in hits[:k_lim]]
-        return {
+        out = {
             "query": q_raw,
             "source": source,
             "face": face,
             "matched_token_ids": len(match_ids),
             "total_hits": len(hits),
             "hits": out_hits,
+            "label_gate": GATE_SAYS,
         }
+        if source == "steer":
+            out["steer_words"] = STEER_SAYS
+        return out
 
     def neuron_card(self, layer: int, neuron: int, *, top_wiring: int = 8) -> Dict[str, Any]:
         """Bounded read-only card for one neuron: lens/eye/steer words, activation extremes, and top wiring."""
@@ -400,8 +556,8 @@ class AtlasReader:
                 card["lens_neg"] = [_decode_piece(self._vocab, x) for x in ln[:10]]
                 card["eye_pos"] = [_decode_piece(self._vocab, x) for x in ep[:10]]
                 card["eye_neg"] = [_decode_piece(self._vocab, x) for x in en[:10]]
-                card["label_trust_pos"] = self._label_trust(l_i, n_layers, lp, ep, silenced=is_sil)
-                card["label_trust_neg"] = self._label_trust(l_i, n_layers, ln, en, silenced=is_sil)
+                card["label_gate_pos"] = self._label_gate(l_i, n_layers, lp, ep, silenced=is_sil)
+                card["label_gate_neg"] = self._label_gate(l_i, n_layers, ln, en, silenced=is_sil)
         act_pos = self._arr("act_scale.npz", "pos")
         act_neg = self._arr("act_scale.npz", "neg")
         if act_pos is not None and act_neg is not None:
@@ -421,6 +577,12 @@ class AtlasReader:
                     "up": float(st_uk[l_i, n_i]),
                     "down": float(st_dk[l_i, n_i]),
                 }
+            # The steer words are shown with what the steer lens's own check found at this layer: set aside where it
+            # found the lens weak or did not check it (the label gate above reads the lens and the eye, not these).
+            card["steer_check"] = self._steer_check(l_i)
+            card["steer_words"] = STEER_SAYS
+        if "label_gate_pos" in card:
+            card["label_gate"] = GATE_SAYS
         if top_wiring > 0 and self._npz("wiring.npz") is not None:
             card["wiring_down"] = self.top_wiring(l_i, n_i, direction="down", top_k=top_wiring)["links"]
             card["wiring_up"] = self.top_wiring(l_i, n_i, direction="up", top_k=top_wiring)["links"]
@@ -518,7 +680,7 @@ class AtlasReader:
                 face=str(a.get("face", "pos")),
                 source=str(a.get("source", "lens")),
                 top_k=int(a.get("top_k", 20)),
-                trusted_only=bool(a.get("trusted_only", False)),
+                gate_passes_only=bool(a.get("gate_passes_only", False) or a.get("trusted_only", False)),
                 substring=bool(a.get("substring", False)),
             )
         if op == "neuron_card":

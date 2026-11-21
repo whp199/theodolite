@@ -2660,7 +2660,7 @@ def run_trial_of_record(
             "reworded_origin": reworded_origin(reworded, brief),
             "reworded_use_index": rw_uses_before + 1,
             "prior_verdicts": [
-                {"seq": v["seq"], "edit_id": v.get("edit_id"), "verdict": v.get("verdict"),
+                {"seq": v["seq"], "edit_id": v.get("edit_id"), "knob_id": v.get("knob_id"), "verdict": v.get("verdict"),
                  "reading_index": v.get("reading_index"), "brief_id": v.get("brief_id")}
                 for v in hist["verdicts"]
             ],

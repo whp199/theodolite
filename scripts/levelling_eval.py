@@ -2,13 +2,22 @@
 """Owner's command line for Levelling Phase 6: driver evaluation ("Whether agents help"; `scripts/levelling_eval.py`).
 
 Subcommands:
-- `plan`: build, validate, and estimate a Phase 6 multi-session comparison study (reach ladder + matched-budget
-  cheaper-knobs competitor + optional second driver family and `--bare` ablation).
-- `run`: execute a study plan JSON (`--stand-in` on CPU or live 31B on the card with `gpu.lock`).
-- `knobs`: run one owner cheaper-knob fresh claim reading (prompts, decoding, and/or transient steering).
-- `rebuild`: emit a <= 200-word rebuild description from a recorded paired reading, and optionally verify it.
-- `cold-page`: print the <= 1-page cold-driver brief naming no site or layer.
-- `report`: model-free verification and report rendering from `<study_dir>/study_book.jsonl`.
+- `plan`: build and validate a Phase 6 multi-session study plan (reach ladder + matched-budget cheaper-knobs arm +
+  optional second driver family and `--bare` ablation), and print its bounds. A plan that does not validate is
+  refused and nothing is written.
+- `run`: run a study plan JSON (`--stand-in` on CPU, or the live 31B on the card under `gpu.lock`). The plan is read
+  and validated, and the study folder checked unused and free of a STOP file, before the model is loaded or the lock
+  taken.
+- `knobs`: one owner cheaper-knob fresh claim reading (prompts, decoding, and/or transient steering), entered in the
+  book named by `--book` (required: it never falls back to the default book). With `--stand-in` it writes nothing in
+  the working folder.
+- `rebuild`: print a rebuild description of a recorded paired reading (at most 200 words, each word and number of its
+  spec counted), and with `--replay` read it again in this process and compare. That is a same-process replay, not
+  the ruling's fresh-session rebuild test, which has not been run.
+- `cold-page`: print the one-page sheet a cold driver would be given, and whether it names a site. The ruling's
+  cold-driver test has not been run.
+- `report`: reload a study from `<study_dir>/study_book.jsonl` with no model, check every side book against it, and
+  print its report.
 
 Zero kept-out words appear here or in printed outputs.
 """
@@ -36,8 +45,10 @@ from backend import levelling as lv  # noqa: E402
 from backend.weight_reader import export_stand_in_safetensors  # noqa: E402
 
 
-def _load_handle(stand_in: bool, out_dir: Path, *, port: int = lmcp.SERVER_PORT) -> tuple[Any, Optional[Path], Optional[Path], Any]:
-    """Load either the CPU stand-in or the live 31B runtime (taking gpu.lock on the card)."""
+def _load_handle(stand_in: bool, export_dir: Optional[Path], *, port: int = lmcp.SERVER_PORT) -> tuple[Any, Optional[Path], Optional[Path], Any]:
+    """Load either the CPU stand-in or the live 31B runtime (taking gpu.lock on the card). The stand-in's weights and
+    atlas index are exported into `export_dir` only when one is given (a study's reaches need them); with None nothing
+    is written."""
     if stand_in:
         import torch
         from scripts.atlas_stand_in import stand_in as make_stand_in, use_stand_in_atlas
@@ -46,8 +57,10 @@ def _load_handle(stand_in: bool, out_dir: Path, *, port: int = lmcp.SERVER_PORT)
         use_stand_in_atlas()
         rt, _vault = make_stand_in()
         h = lv.handle(rt)
-        wdir = export_stand_in_safetensors(h.lm, out_dir / "_stand_in_weights", model_id=h.model_id)
-        adir = la.build_stand_in_atlas_index(h.lm, h.W_U, h.tokenizer, out_dir / "_stand_in_atlas", model_id=h.model_id)
+        if export_dir is None:
+            return h, None, None, None
+        wdir = export_stand_in_safetensors(h.lm, export_dir / "_stand_in_weights", model_id=h.model_id)
+        adir = la.build_stand_in_atlas_index(h.lm, h.W_U, h.tokenizer, export_dir / "_stand_in_atlas", model_id=h.model_id)
         return h, wdir, adir, None
 
     lock_f = lmcp.hold_card()
@@ -71,6 +84,20 @@ def _load_handle(stand_in: bool, out_dir: Path, *, port: int = lmcp.SERVER_PORT)
     except la.AtlasReaderError:
         adir = None
     return h, wdir, adir, lock_f
+
+
+def _validation_lines(val: dict) -> List[str]:
+    lines = [
+        f"{val['arms']} arms x {val['sessions_per_arm']} sessions = {val['total_sessions']} sessions; "
+        f"study sha256 {val['study_sha256'][:12]}",
+        f"upper bounds: {val['upper_bound_gpu_seconds']:g} GPU-s, {val['upper_bound_practice_forwards']} practice forwards, "
+        f"{val['upper_bound_wall_seconds']:g} wall s (cap {val['max_total_wall_seconds']:g}), "
+        f"dollars {val['upper_bound_dollars'] if val['upper_bound_dollars'] is not None else 'not capped'}",
+    ]
+    if not val.get("paths_checked"):
+        lines.append("reach folders not checked here (no --weights-dir or --atlas-dir); `run` checks them")
+    lines += [f"warning: {w}" for w in val.get("warnings") or []]
+    return lines
 
 
 def _cmd_plan(args: argparse.Namespace) -> int:
@@ -106,28 +133,55 @@ def _cmd_plan(args: argparse.Namespace) -> int:
         session_budget=sb,
         driver_budget=db,
         claim_design=claim_design,
+        max_total_dollars=args.max_total_dollars,
+        max_total_wall_seconds=args.max_total_wall_seconds,
     )
+    check_paths = args.weights_dir is not None or args.atlas_dir is not None
+    try:
+        val = lev.validate_study_plan(plan, weights_dir=args.weights_dir, atlas_dir=args.atlas_dir, check_paths=check_paths)
+    except (lev.EvalRefused, lses.SessionRefused) as exc:
+        raise SystemExit(f"refused: {exc}") from None
     doc = plan.canonical_dict()
     doc["study_sha256"] = plan.sha256
     if args.out:
         out_p = Path(args.out)
         out_p.parent.mkdir(parents=True, exist_ok=True)
         out_p.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-        print(f"Wrote study plan ({len(plan.arms)} arms x {plan.sessions_per_arm} sessions, sha256 {plan.sha256[:12]}) to {out_p}")
+        print(f"Wrote study plan to {out_p}")
     else:
         print(json.dumps(doc, indent=2))
+    for line in _validation_lines(val):
+        print(line, file=sys.stderr if not args.out else sys.stdout)
     return 0
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
-    raw = json.loads(Path(args.plan).read_text(encoding="utf-8"))
-    plan = lev.study_plan_from_dict(raw)
+    try:
+        raw = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"refused: cannot read the plan {args.plan}: {exc}") from None
     out_dir = Path(args.out).resolve()
+    stop_file = Path(args.stop_file) if args.stop_file else (out_dir / "STOP")
+    wdir_arg = Path(args.weights_dir).resolve() if args.weights_dir else None
+    adir_arg = Path(args.atlas_dir).resolve() if args.atlas_dir else None
+    # Everything that can be checked is checked before the model is loaded or the card's lock taken
+    try:
+        plan = lev.study_plan_from_dict(raw)
+        lev.validate_study_plan(plan, weights_dir=wdir_arg, atlas_dir=adir_arg, check_paths=False)
+        if wdir_arg is not None and not wdir_arg.is_dir():
+            raise lev.EvalRefused(f"--weights-dir {wdir_arg} is not a folder.")
+        if adir_arg is not None:
+            la.resolve_atlas_index_dir(adir_arg)
+        lev.refuse_used_study_dir(out_dir)
+    except (lev.EvalRefused, lses.SessionRefused, la.AtlasReaderError) as exc:
+        raise SystemExit(f"refused: {exc}") from None
+    if stop_file.exists():
+        raise SystemExit(f"refused: a STOP file is at {stop_file}; remove it to run the study (nothing was started).")
     out_dir.mkdir(parents=True, exist_ok=True)
-    h, auto_w, auto_a, lock_f = _load_handle(bool(args.stand_in), out_dir, port=int(args.port))
-    wdir = Path(args.weights_dir).resolve() if args.weights_dir else auto_w
-    adir = Path(args.atlas_dir).resolve() if args.atlas_dir else auto_a
-    ks = ldrv.KillSwitch(stop_file=Path(args.stop_file) if args.stop_file else (out_dir / "STOP"))
+    h, auto_w, auto_a, lock_f = _load_handle(bool(args.stand_in), out_dir if args.stand_in else None, port=int(args.port))
+    wdir = wdir_arg or auto_w
+    adir = adir_arg or auto_a
+    ks = ldrv.KillSwitch(stop_file=stop_file)
     try:
         res = lev.run_eval_study(
             h,
@@ -148,9 +202,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_knobs(args: argparse.Namespace) -> int:
-    knob_raw = json.loads(Path(args.knob).read_text(encoding="utf-8"))
-    out_dir = Path(args.book).resolve().parent if args.book else Path.cwd()
-    h, _w, _a, lock_f = _load_handle(bool(args.stand_in), out_dir, port=int(args.port))
+    try:
+        knob_raw = json.loads(Path(args.knob).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise SystemExit(f"refused: cannot read the knob {args.knob}: {exc}") from None
+    book = Path(args.book).resolve()
+    h, _w, _a, lock_f = _load_handle(bool(args.stand_in), None, port=int(args.port))
     try:
         starters = lbr.starter_briefs(h.tokenizer)
         b_path = Path(args.brief)
@@ -162,10 +219,10 @@ def _cmd_knobs(args: argparse.Namespace) -> int:
             bars,
             knob_raw,
             base_dir=Path(args.knob).resolve().parent,
-            book_path=Path(args.book) if args.book else None,
+            book_path=book,
             controls_override=args.controls,
         )
-    except (lkn.KnobRefused, lbr.BriefError, lcl.ClaimRefused, KeyError) as exc:
+    except (lkn.KnobRefused, lbr.BriefError, lcl.ClaimRefused, KeyError, OSError) as exc:
         raise SystemExit(f"refused: {exc}") from None
     finally:
         if lock_f is not None:
@@ -180,16 +237,19 @@ def _cmd_rebuild(args: argparse.Namespace) -> int:
     except lev.EvalRefused as exc:
         raise SystemExit(f"refused: {exc}") from None
     print(desc["description"])
-    print(f"\n[{desc['word_count']} words, sha256={desc['sha256'][:12]}]")
-    if args.check:
-        out_book = Path(args.out_book) if args.out_book else (Path(args.book).resolve().parent / "rebuild_check_book.jsonl")
-        h, _w, _a, lock_f = _load_handle(bool(args.stand_in), out_book.parent, port=int(args.port))
+    print(f"\n[{desc['word_count']} words counted with every word and number of the spec, "
+          f"{desc['characters']} characters, sha256={desc['sha256'][:12]}]")
+    if args.replay:
+        out_book = Path(args.out_book) if args.out_book else (Path(args.book).resolve().parent / "rebuild_replay_book.jsonl")
+        h, _w, _a, lock_f = _load_handle(bool(args.stand_in), None, port=int(args.port))
         try:
-            chk = lev.run_rebuild_check(h, desc["description"], Path(args.book), int(args.seq), out_book=out_book)
+            chk = lev.run_rebuild_replay(h, desc["description"], Path(args.book), int(args.seq), out_book=out_book)
+        except lev.EvalRefused as exc:
+            raise SystemExit(f"refused: {exc}") from None
         finally:
             if lock_f is not None:
                 lock_f.close()
-        print(json.dumps(chk, indent=2))
+        print(json.dumps({k: v for k, v in chk.items() if k != "comparisons"}, indent=2))
         return 0 if chk["ok"] else 1
     return 0
 
@@ -206,6 +266,10 @@ def _cmd_cold_page(args: argparse.Namespace) -> int:
     page = lev.render_cold_driver_page(brief)
     print(page["text"])
     print(f"\n[{page['word_count']} words, prompt_named_site={page['prompt_named_site']}, sha256={page['sha256'][:12]}]")
+    if page["prompt_named_site"]:
+        print("This page names a site (" + (", ".join(page["sites_named_in_page"]) or "the brief says so")
+              + "): it is not a cold page.")
+    print(page["ruling_test"])
     return 0
 
 
@@ -218,8 +282,6 @@ def _cmd_report(args: argparse.Namespace) -> int:
         print(json.dumps(loaded["summary"], indent=2))
     else:
         print(loaded["report"])
-    if loaded["session_books_bad"]:
-        raise SystemExit(f"Session book verification failures: {loaded['session_books_bad']}")
     return 0
 
 
@@ -227,7 +289,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Levelling Phase 6 owner CLI: driver evaluation, reach ladders, and cheaper knobs.")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    p_plan = sub.add_parser("plan", help="Build and estimate a Phase 6 multi-session study plan JSON.")
+    p_plan = sub.add_parser("plan", help="Build, validate and bound a Phase 6 multi-session study plan JSON.")
     p_plan.add_argument("--name", default="phase6_study")
     p_plan.add_argument("--brief", default="pronoun_pull")
     p_plan.add_argument("--sessions", type=int, default=3, help="Independent sessions per arm (>= 3 recommended).")
@@ -245,8 +307,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_plan.add_argument("--max-turns", type=int, default=24)
     p_plan.add_argument("--max-tokens", type=int, default=200000)
     p_plan.add_argument("--max-dollars", type=float, default=None)
+    p_plan.add_argument("--max-total-dollars", type=float, default=None)
+    p_plan.add_argument("--max-total-wall-seconds", type=float, default=None,
+                        help="The study's wall cap; by default what every planned session needs at its wall cap.")
     p_plan.add_argument("--claim-controls", type=int, default=None)
     p_plan.add_argument("--claim-n-target", type=int, default=None)
+    p_plan.add_argument("--weights-dir", type=Path, default=None, help="Check the weights reaches against this folder.")
+    p_plan.add_argument("--atlas-dir", type=Path, default=None, help="Check the atlas reach against this index.")
     p_plan.add_argument("--out", type=Path, default=None)
     p_plan.set_defaults(func=_cmd_plan)
 
@@ -265,26 +332,27 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_kn.add_argument("--brief", required=True)
     p_kn.add_argument("--knob", required=True, type=Path)
     p_kn.add_argument("--bars", required=True, type=Path)
-    p_kn.add_argument("--book", type=Path, default=None)
+    p_kn.add_argument("--book", required=True, type=Path, help="The book the reading is entered in (required).")
     p_kn.add_argument("--controls", type=int, default=None)
     p_kn.add_argument("--stand-in", action="store_true")
     p_kn.add_argument("--port", type=int, default=lmcp.SERVER_PORT)
     p_kn.set_defaults(func=_cmd_knobs)
 
-    p_rb = sub.add_parser("rebuild", help="Emit and optionally verify a <= 200-word rebuild description.")
+    p_rb = sub.add_parser("rebuild", help="Print a <= 200-word rebuild description, and optionally replay it here.")
     p_rb.add_argument("--book", required=True, type=Path)
     p_rb.add_argument("--seq", required=True, type=int)
-    p_rb.add_argument("--check", action="store_true")
+    p_rb.add_argument("--replay", action="store_true",
+                      help="Read the description again in this process and compare (not the ruling's fresh-session test).")
     p_rb.add_argument("--out-book", type=Path, default=None)
     p_rb.add_argument("--stand-in", action="store_true")
     p_rb.add_argument("--port", type=int, default=lmcp.SERVER_PORT)
     p_rb.set_defaults(func=_cmd_rebuild)
 
-    p_cp = sub.add_parser("cold-page", help="Render the <= 1-page cold-driver brief.")
+    p_cp = sub.add_parser("cold-page", help="Render the one-page sheet a cold driver would be given.")
     p_cp.add_argument("--brief", default="pronoun_pull")
     p_cp.set_defaults(func=_cmd_cold_page)
 
-    p_rep = sub.add_parser("report", help="Model-free verification and report regeneration from study_book.jsonl.")
+    p_rep = sub.add_parser("report", help="Model-free check and report of a study from its study_book.jsonl.")
     p_rep.add_argument("study_dir", type=Path)
     p_rep.add_argument("--json", action="store_true")
     p_rep.set_defaults(func=_cmd_report)
