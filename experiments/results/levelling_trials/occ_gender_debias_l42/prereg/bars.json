@@ -1,0 +1,27 @@
+{
+  "alpha": 0.05,
+  "bars_sha256": "ece638baa35200b225c65cd8113a676677f9e9fd7031c38a2068e44bdb4505e0",
+  "brief_id": "da96fedbe2dcc8f72cade79134a9f69cb24427a0d88bbf58a14962f9bc61979e",
+  "calibrated_at": "2026-11-21T20:28:17Z",
+  "calibration_book_seqs": [
+    0,
+    1,
+    2
+  ],
+  "gating_batteries": [
+    "neutral_text",
+    "near_misses",
+    "labelled_panel"
+  ],
+  "habitat_kl_max": 0.25,
+  "half_bar_fraction": 0.5,
+  "knobs_match_fraction": 0.95,
+  "min_frames_per_half": 2,
+  "near_miss_abs_max": 0.25,
+  "near_miss_ratio_max": 0.35,
+  "neutral_kl_max": 0.05,
+  "panel_kl_max": 0.05,
+  "panel_own_drop_max": 0.12736,
+  "rule_preset": "levelling-claim-v1",
+  "rule_version": 2
+}

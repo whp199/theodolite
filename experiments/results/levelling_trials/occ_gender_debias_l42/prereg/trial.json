@@ -1,0 +1,199 @@
+{
+  "v": 4,
+  "rule_preset": "trial-4",
+  "trial_name": "occ_gender_debias_l42",
+  "brief_id": "da96fedbe2dcc8f72cade79134a9f69cb24427a0d88bbf58a14962f9bc61979e",
+  "brief_name": "occupational_gender_debias",
+  "max_fresh_readings": 2,
+  "bars_sha256": "ece638baa35200b225c65cd8113a676677f9e9fd7031c38a2068e44bdb4505e0",
+  "bars_calibration": {
+    "seq": 3,
+    "at": "2026-11-21T20:28:17Z",
+    "hash": "521770a9568ad2ad1cbb4205b69cbe6d75385947fbe24caab81218704986682c",
+    "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+    "bars_sha256": "ece638baa35200b225c65cd8113a676677f9e9fd7031c38a2068e44bdb4505e0",
+    "book": "level_book.jsonl",
+    "book_seqs": [
+      0,
+      1,
+      2
+    ],
+    "settings": {
+      "layer": 42,
+      "mult": 2.0,
+      "n_cols": 10,
+      "n_controls": 3,
+      "n_near": 4,
+      "n_neutral": 4,
+      "n_panel": 4,
+      "rows": {
+        "large": 32,
+        "small": 12
+      },
+      "seed": 0
+    }
+  },
+  "edit_id": "6789c6b18fce8824c3eb0414f3a7d2c565bb8b58ae913052415275d99bc3f411",
+  "edit_linears": [
+    "layers.42.mlp.down_proj"
+  ],
+  "edit_provenance": "carried",
+  "all_rebuilt": false,
+  "payload_sha256": "24c11d69cff0a57f657539293fb6867abb7dc7b789cb602e8341f9fe2cc90ba7",
+  "base": {
+    "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+    "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+    "tensors": {
+      "layers.42.mlp.down_proj": "311323c589a6695be0fdac7acf2d7a281e6cf7371c3bc2b95c4da65f11dfad70"
+    }
+  },
+  "main_dose": 1.0,
+  "selection_mode": "free_pick",
+  "declared_rule": null,
+  "sham_recipes": [],
+  "sham_edit_ids": [],
+  "controls_per_family": 119,
+  "reworded_id": "4bd947f95eb9a4f543699444e5a699dccc85c6874326bcb2f597dba02849dc20",
+  "reworded_wordings": [
+    "1e446d1ad13de29ac01b2c376d161d7ec8707dd50f4bd9fabe072c1a5d75ef72",
+    "c884866c8f947892f2cb304ef3cfe172431bac922b1204788aa2780e23d1725f",
+    "3525e049abc43dce9bbdc2b1591752418088dadfb3347ec355ff81c1510b6ed9",
+    "c9d4d3c904d19496e9a86ae9c19f3d7b738459ec7e7a47a8411371717dd6163f",
+    "89485ce9c7eda15032d52c832f277f17d69c6a72a6a33f4e039e47260af677af",
+    "4f76605c04f9f627800790b0f563ac028af19128d6838e5863abb76d72a5c604",
+    "c841f415553b8bcf3582d43660f1181e613e92df4701bf3866f4f49dd9dab966",
+    "c0ea35f6c4c9eff26006337e3ea35d0b2ef67b8c0c48b8f9b1a3ee2cf5950571"
+  ],
+  "reworded_marks": [
+    "a:2cfeab54d4f891d511772a2db3c517681e3139e06b8f98c9bb2538f8f46da2cd",
+    "a:50321326aefb1551fc6f298cc3e56d13260f976dcdf31ee4f08b471c67d2abd3",
+    "a:55cd27b9b2a0cdbf009881e488f862b63ba18e110639f1ff10d6a2d73700dea0",
+    "a:63dbab480332c38263f474bc2d8ef201c50e4ce40b40e5aa62a460f058ce6985",
+    "a:aaed041ae425ecf914bff464212b26a9daccf08535af679766dc8d96681a8dbc",
+    "a:ae4f6d833e1fa21e43d6a7c3d41b7a219b7fddda72fc496ef73b3aa1828b64ef",
+    "a:c22073c86d88e9dd9a7c4d853bdc93cb175e115bc32bc67f83c3de0849c660cc",
+    "a:d78b21e90fa74c769bf064d6415ad1088eafbbf4c8ebb01d670e6c01612cca08",
+    "q:3e379eb30dec59c73db4484cbf5fae095d134c6089d6e6832e3935d12913ab34",
+    "q:791a82d4b1fe5d718c1d0157ff28f57cb9b0c44098ed69430d3a98a2cc4ee7b2",
+    "q:8716173f28c7f8b539058d09e3030e04e62d3d03f8396ded652123994463c5ba",
+    "q:9a751c6cfc30b454ddc6dd474bccd6744f6835d3f65c96cfbb38d7ee86d6671a",
+    "q:a9b99726d742be6b5cd6c9b2683460e16e47054833341644d59313423b69ab80",
+    "q:ba2728abf16f794e9e01c550d9c4c719bff2b7a6633f9a7095459eb3807701d2",
+    "q:ce539c4efff08cfda9f75eedb494f5813c7ef78693b3abc351b366c93c069e78",
+    "q:dc27cd22b9726d15901e43d53f1b4e94a4ece0950e962ae5899fa0bc877a22f0"
+  ],
+  "reworded_origin": "from a file given at registration",
+  "reworded_controls": 59,
+  "n_target": 16,
+  "n_neutral": 8,
+  "n_near": 8,
+  "n_panel": 8,
+  "rows": {
+    "small": 12,
+    "large": 32
+  },
+  "match_tolerance": 2.0,
+  "folded_tol_floor_mult": 1.5,
+  "folded_tol_rel": 0.05,
+  "folded_tol_min": 0.02,
+  "forecast": {
+    "expected_odds_shift": 2.8,
+    "expected_near_miss_abs": 0.16,
+    "expected_neutral_kl": 3e-05
+  },
+  "registered_at": "2026-11-21T20:37:42Z",
+  "repo_commit": "43ee61cee016cb9a12a0d3a1d3cbd52ef43e5aba",
+  "git_dirty": false,
+  "sources": {
+    "backend/__init__.py": "4af5cefc7edd058ef3353b6992f42cf22fa8d3a7cd8e4a8b3ecca376808293c0",
+    "backend/atlas.py": "831e2678a56f7167b3855ada6fd1398e434095f306f1ba5a178d9a2e4562b230",
+    "backend/atlas_build.py": "35694442977ce7c01d29aead18b2ad377fd8f87cb5915ad236f0e07f05c4e3bd",
+    "backend/atlas_index.py": "0bd3d4e3ffcd3db8e61fddfbae88d034384ba5cfb16cb2ccb1aa858badabb85d",
+    "backend/atlas_ops.py": "6d48b9139e88f28c247133abe5a37a6b4845ebfe309631f67e480e9d32b1b5dc",
+    "backend/causal_check.py": "02a1e1dcdc345c502982cd64229372b7b373ed9e94500246aebf7a886521beae",
+    "backend/census.py": "93541501012284466e8592730731a79528055d8fecaee246a882da309711a80e",
+    "backend/census_volunteer.py": "906228d67aa75fff8add5013c5344721427e4c46282738b8e84cc4db9bdaddeb",
+    "backend/control_vector.py": "516756b930e35f7b0376db887764736236f79a4bc133499dc9584e200695b77f",
+    "backend/cpu_memory.py": "f2df8695d0cf7681d1d49ef4d9ae0cf471fc4e3dbff5b80c8bfb9124db22b192",
+    "backend/engine_runtime.py": "f1a0b4c3e9bbda9271f5df7766a9a75f5eea0bacb81e8779ffac61e3847033f2",
+    "backend/field_notes.py": "b34452eec4c059dc2f2d6d983c432b3a709adcf565c3ee60dab93bf3c6e9648e",
+    "backend/gguf_fast.py": "2a32aafe76175137f58d064077f1cc75716add2a3c66ca2d01746f25fcbd3cf5",
+    "backend/gguf_model.py": "41982db11429250251b332617c34489353a8f001fcb8b53dfda025464d56f8c9",
+    "backend/gguf_runtime.py": "ce27fee12f5792444972538e3449952c67b7d235aa317769e03ddcbf89d2733d",
+    "backend/gguf_weights.py": "63a4d4640c5ad2a4b076786f4bffa90b65f45d8d24a42adab5b40cb2a08021a7",
+    "backend/int4_cpu.py": "39e9e4e6bafb81e7941a7b5de28a549895b9d299c412551aaf283695d258bbca",
+    "backend/label_gate.py": "83a998b746249b07a52e29b0dd1a06e999206d27a518f2f8271f439b946c136e",
+    "backend/larql_vault.py": "3d68b3f0c84d1962b1c4de42e2d23c52b6079ee30ed75c9e63d81704052a7460",
+    "backend/level_atlas.py": "6805cae31dc7bc5f906a8079147175b38c3d3992e7c9ee6fc7b4103063821df0",
+    "backend/level_book.py": "817d2654f1602a34abb40cad81dc9eb2140173c32424b6f67ee1172d6b968e12",
+    "backend/level_briefs.py": "053409113ccabbdc31860137589071fb6997be6e9a43b3fecbf704b3d4d48000",
+    "backend/level_claim.py": "cbf46972dfbcf69324674426c1c65d352daa6dec9a68a53b8b65c3c361d5af19",
+    "backend/level_drivers.py": "31d9fc2daaa79e7e420dc4d3181de534af242448ef729e366aaf9e71703bb3b9",
+    "backend/level_eval.py": "43addcfd131b70068bb0d92d9f415cca7fda2c26161d99f54cc5414b14df54f3",
+    "backend/level_export.py": "fcfd8da38ecbe9e211c3b48ee7099725d921a17bc5a4b457a89de7e36d0498ae",
+    "backend/level_knobs.py": "f6e0c7788175b8d8438bfd40d7a1aec2e8323e5f2164dbbe731ccd47e15178fe",
+    "backend/level_mcp.py": "1f850359df6dc4abc777bcf0d1aa88260c9df3d7c333c1df9a4aa1b9f2aa95ea",
+    "backend/level_rerun.py": "c64fecbda325ef5960b19332bf31543a6d97e8dca4c81fbea02c18579d2e240e",
+    "backend/level_routes.py": "9b9ac725f83107d877f42eecbf01659b400f344a6e03ce643669a97843c95ba5",
+    "backend/level_sandbox.py": "34655e2f2de473ccd7eac8272f6e22112fb68aa1622c172f23661201cf673c05",
+    "backend/level_session.py": "50b9d569f91a48d6731aab90cc79ce887c9fcb47aef6acff2e474378f18d89f5",
+    "backend/level_trial.py": "7fb95096a99da856969ee8778687f20ec3ddc54e69dc7bae2a9a8dbf478cb0ba",
+    "backend/levelling.py": "0421406125704b525c2a006e2c56ee22ce43d48640a0e52febe2514707eb471d",
+    "backend/local_only.py": "daf730444a1745df8a63cd676abc686c0f915c263440c12cbfb2604b74633217",
+    "backend/mcp_scientist.py": "c13ccbf2619b4c5bd5ff95815b0111f96868ed1fe85a994457e0d215791ea978",
+    "backend/pattern_tests.py": "b42ae98935548ed70880234e0c075a657f404d88848cad61de2e45378abb6944",
+    "backend/runtime_factory.py": "d9938f3c20612767e4f0c0fcfdf460d41ba9bc0c932a179e3bf9d06b30bd08ac",
+    "backend/sampler_request.py": "e7c88fb558e49da4fbf653a7c64f29ca7c04b3769614e7a186f558ba8774af36",
+    "backend/saved_prompts.py": "628a72b5ab2dc3a5ba700300c419ff03efedef84923fd9daef7029f2d5aca79b",
+    "backend/scientist_chat.py": "2b3483d850b590ff9c6e596a5c0e72f7a00441d60acd4cab7ddc0a61558a613c",
+    "backend/scientist_mcp.py": "1c28ff07f8fb5275f000eae2e1c0bcd4c20be2f3e681551d19d9e7f0ffdb6411",
+    "backend/scientist_tools.py": "d29618f89ea40f383ccaed6900a069036847ecf25c270f2c56c5e151ed17cb46",
+    "backend/server.py": "934a66115944f6cb57e5686c6773761a8c4d8d075a8bcc58ac230484bd5509b7",
+    "backend/steer_check.py": "7d5894708c606ca7061ef8c5abe2562e19280ef60c6bebbfccb74a7561b2f973",
+    "backend/theodolite_math.py": "d738dc2ff14d428ad3ba01e7789b301dbff137d3f707e3af04862b504a1479fb",
+    "backend/w4a16_fast.py": "95475f229484dd27a78accec81ee319e781bf92c8794e8a3798c6c7aa56148a4",
+    "backend/weight_edits.py": "8bb30d8e9cee2bae2c3f271940bce95322a19ace2358ec7e43edee750109961c",
+    "backend/weight_reader.py": "5f247efe4a394e95a8ed642932e033b0b618514ebef24ea97f4091649bef14e0",
+    "scripts/levelling_trial.py": "30cc39adc70a362fa5df7d6b957f0c80f053b1b9666b83d6cd5ef5f88215338e",
+    "scripts/levelling_rerun.py": "4b2d920a6a6c324fb00aa5ddc4af9a1b4d6baac6da075710456c240d0ffc7911"
+  },
+  "implant_check": {
+    "checked": true,
+    "flagged": false,
+    "late_layer_cutoff": 54,
+    "cosine_bar": 0.85,
+    "examined": 0,
+    "not_examined": [
+      "layers.42.mlp.down_proj (cols): below the last tenth of the layers"
+    ],
+    "hits": []
+  },
+  "priced": {
+    "forwards": 1064,
+    "seconds": 179.62
+  },
+  "sizing": {
+    "matched": {
+      "control_edits": 119,
+      "found": 119,
+      "all_drawn": true,
+      "fewest_eligible": 269,
+      "disjoint_sets": 98,
+      "counted_as": 98,
+      "needs": 39,
+      "could_pass": true
+    },
+    "reworded": {
+      "control_edits": 59,
+      "found": 59,
+      "all_drawn": true,
+      "fewest_eligible": 496,
+      "disjoint_sets": 59,
+      "counted_as": 59,
+      "needs": 19,
+      "could_pass": true
+    },
+    "note": "taken with the base alone on a sizing draw of the brief's frames and on the reworded set; the count that judges the trial is the one its own readings give, and the look does not see whether the control edits will be as loud as the edit"
+  },
+  "look_seq": 11
+}
