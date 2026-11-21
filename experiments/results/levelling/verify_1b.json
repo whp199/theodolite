@@ -424,7 +424,7 @@
      }
     }
    },
-   "seconds": 43.43
+   "seconds": 43.14
   },
   "3": {
    "lines": [
@@ -498,7 +498,7 @@
      ]
     }
    },
-   "seconds": 6.39
+   "seconds": 6.14
   },
   "4": {
    "lines": [
@@ -532,6 +532,7 @@
         "linear": "layers.20.mlp.down_proj",
         "count": 2,
         "min_eligible": 486,
+        "min_distinct": 10,
         "median_eligible": 7474.5,
         "union_eligible": 14949,
         "drawn": 10,
@@ -541,12 +542,14 @@
          "max": 0.23120154957345873
         }
        }
-      ]
+      ],
+      "draw": "independent",
+      "disjoint_sets": 10
      },
      "seconds": {
       "predicted": 3.709385,
-      "actual": 3.57669257701491,
-      "ratio": 0.9642279183786288,
+      "actual": 3.6494258389993774,
+      "ratio": 0.9838358215713325,
       "parts": {
        "forwards": 3.487625,
        "readout": 0.22175999999999998,
@@ -569,6 +572,7 @@
        "linear": "layers.20.mlp.down_proj",
        "count": 2,
        "min_eligible": 0,
+       "min_distinct": 0,
        "median_eligible": 0.0,
        "union_eligible": 0,
        "drawn": 0,
@@ -578,10 +582,12 @@
         "max": 0.010898293720639168
        }
       }
-     ]
+     ],
+     "draw": "independent",
+     "disjoint_sets": 0
     }
    },
-   "seconds": 4.88
+   "seconds": 4.97
   },
   "5": {
    "lines": [
@@ -636,7 +642,7 @@
      ]
     }
    },
-   "seconds": 2.42
+   "seconds": 2.45
   },
   "6": {
    "lines": [
@@ -650,76 +656,76 @@
     },
     {
      "ok": true,
-     "what": "verify_1b ledger chain is whole ({'ok': True, 'entries': 12, 'head': '175c65f765cde546011bf57f84e2363be6600e03d824bf8e40fabc6b02403ef8', 'first_bad': None, 'why': None})"
+     "what": "verify_1b ledger chain is whole ({'ok': True, 'entries': 24, 'head': 'f832fd2bb5082815bef3968f54ddf24276eb17c97c154a8608e5d3e0814a7a65', 'first_bad': None, 'why': None})"
     }
    ],
    "figures": {
     "max_allocated_gib": 18.611
    },
-   "seconds": 0.01
+   "seconds": 0.02
   }
  },
  "readings": [
   {
    "name": "verify_1b: row gate_proj scale1.5",
    "status": "ok",
-   "seq": 0
+   "seq": 12
   },
   {
    "name": "verify_1b: row gate_proj set",
    "status": "ok",
-   "seq": 1
+   "seq": 13
   },
   {
    "name": "verify_1b: row gate_proj add",
    "status": "ok",
-   "seq": 2
+   "seq": 14
   },
   {
    "name": "verify_1b: row up_proj scale1.5",
    "status": "ok",
-   "seq": 3
+   "seq": 15
   },
   {
    "name": "verify_1b: row up_proj set",
    "status": "ok",
-   "seq": 4
+   "seq": 16
   },
   {
    "name": "verify_1b: row up_proj add",
    "status": "ok",
-   "seq": 5
+   "seq": 17
   },
   {
    "name": "verify_1b: written row edit",
    "status": "ok",
-   "seq": 6
+   "seq": 18
   },
   {
    "name": "verify_1b: remove_direction + same_site",
    "status": "ok",
-   "seq": 7
+   "seq": 19
   },
   {
    "name": "verify_1b: other_sites_matched",
    "status": "ok",
-   "seq": 8
+   "seq": 20
   },
   {
    "name": "verify_1b: sham_target",
    "status": "ok",
-   "seq": 9,
+   "seq": 21,
    "peak_gib": 18.361
   },
   {
    "name": "verify_1b: matched coverage void",
    "status": "void",
-   "seq": 10
+   "seq": 22
   },
   {
    "name": "verify_1b: stacked col+row",
    "status": "ok",
-   "seq": 11
+   "seq": 23
   }
  ],
  "runtime": {
@@ -729,12 +735,12 @@
   "transformers": "5.20.0",
   "interp_engine": "1.14.0",
   "compressed_tensors": "0.19.0",
-  "git": "7f558a7c36d5eef6d25a9900ac38bbffb1d23896",
+  "git": "da43cf7430090332de9fe30b410caab2ae4eee0e",
   "git_clean": false,
   "act_scale_sha256": null
  },
- "load_s": 29.02,
- "total_s": 86.2,
+ "load_s": 26.14,
+ "total_s": 82.9,
  "passed": 68,
  "failed": 0
 }

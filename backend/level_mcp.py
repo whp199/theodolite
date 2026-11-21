@@ -398,6 +398,34 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
             "additionalProperties": False,
         },
     },
+    "propose_repair": {
+        "name": "propose_repair",
+        "description": (
+            "Submit one candidate repair edit recipe (or null to abstain explicitly) in a blinded diagnostic session "
+            "for post-session scoring. Allowed once per session."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "edit": {
+                    "type": ["object", "null"],
+                    "description": "Candidate edit recipe object, or null to abstain if no change is warranted.",
+                },
+                "diagnosis": {
+                    "type": "string",
+                    "description": "Short plain-text summary of your diagnostic findings.",
+                    "default": "",
+                },
+                "confidence": {
+                    "type": ["number", "null"],
+                    "minimum": 0.0,
+                    "maximum": 1.0,
+                    "description": "Optional confidence between 0 and 1.",
+                },
+            },
+            "additionalProperties": False,
+        },
+    },
 }
 
 
@@ -491,6 +519,12 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             a["knob"],
             forecast=a.get("forecast"),
             practice_best=a.get("practice_best"),
+        )
+    if name == "propose_repair":
+        return session.propose_repair(
+            a.get("edit"),
+            diagnosis=str(a.get("diagnosis", "")),
+            confidence=a.get("confidence"),
         )
     raise lses.SessionRefused(f'Unknown tool "{name}".')
 
@@ -619,6 +653,10 @@ def _call_facts(name: str, args: Mapping[str, Any], out: Any) -> Dict[str, Any]:
         return {"verdict": out.get("verdict"), "edit_id": out.get("edit_id"), "proposed": args.get("edit")}
     if name == "claim_knob":
         return {"verdict": out.get("verdict"), "knob_id": out.get("knob_id"), "proposed": args.get("knob")}
+    if name == "propose_repair":
+        return {"recorded": bool(out.get("recorded")), "abstained": bool(out.get("abstained")),
+                "edit_id": out.get("edit_id"),
+                "proposed": args.get("edit") if isinstance(args.get("edit"), Mapping) else None}
     return {}
 
 

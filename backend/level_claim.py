@@ -1419,21 +1419,19 @@ def read_at_end(brief: lbr.Brief) -> bool:
     return brief.metric == "odds" and isinstance(odds, Mapping) and odds.get("at", "end") == "end"
 
 
-def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float]) -> bool:
-    """Whether a control edit changed the stream LESS than the edit did, by one figure; a figure missing on either
-    side is apart too. A control edit counts for the edit only when it was at least as loud: one that changed the
-    stream less shows nothing of what a change of the edit's size does. A band about the edit's figure, which this
-    was, let through control edits that sat at about two thirds of the edit's on the 31B, and with such control
-    edits the printed level is too small (in a reviewer's simulation, where a set moves the metric by what it
-    delivered times a random factor and the 39 are drawn again and again from the record's control edits that
-    were in the band, an edit that is nothing special topped all 39 in 8 to 9% of draws with a normal factor and
-    in 5.4 to 5.7% with a Student's t of three degrees of freedom, not 2.5%). There is no upper side: a louder
-    control edit that moves the metric more counts against the edit, which errs on the careful side, and so the
-    registered matching factor has no part in this. As it stands the rule is one no trial is expected to meet
-    (`level_trial.RULE_STANDS_SAY`): what a pass should ask of its control edits is the owner's to settle."""
+def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float], *, min_ratio: float = 1.0) -> bool:
+    """Whether a control edit changed the stream LESS than `min_ratio` times what the edit did, by one figure; a
+    figure missing on either side is apart too. At the default `min_ratio=1.0`, a control edit must be at least as
+    loud as the edit (`ctl_d < edit_d`). In `trial-4`, the same-site family and declared-rule sham edits answer for
+    disturbance size at `min_ratio=SAME_SITE_MIN_RATIO` (0.85), allowing the small (~1–3%) norm cross-term difference
+    on matched-norm random directions while rejecting genuinely quiet controls. There is no upper side: a louder
+    control edit that moves the metric more counts against the edit, which errs on the careful side."""
     if edit_d is None or ctl_d is None:
         return True
-    return ctl_d < edit_d
+    mr = float(min_ratio)
+    if mr == 1.0:
+        return ctl_d < edit_d
+    return edit_d > 0.0 and ctl_d < mr * edit_d
 
 
 def set_apart_aside(dv: Mapping[str, Any], ctl_means: Sequence[Optional[float]]) -> Tuple[List[Optional[float]], int]:
@@ -1458,6 +1456,7 @@ def _delivered_of(
     *,
     compare: bool = False,
     at_end: bool = False,
+    min_ratio: float = 1.0,
 ) -> Optional[Dict[str, Any]]:
     """How much the edit and this reading's control edits each changed the stream, over the items read in `cls_name`:
     the mean over items of what `levelling._delivered_hook` records for an arm (the relative change of the stream at
@@ -1539,8 +1538,10 @@ def _delivered_of(
     }
     if compare:
         places = ["prompt", "answer"] + (["end"] if at_end else [])
-        apart = [any((not recorded[p]) or delivered_apart(edit_at[p], per[p][c]) for p in places) for c in range(C)]
+        apart = [any((not recorded[p]) or delivered_apart(edit_at[p], per[p][c], min_ratio=min_ratio) for p in places)
+                 for c in range(C)]
         out["compared_at"] = places
+        out["min_ratio"] = float(min_ratio)
         out["apart"] = apart
         out["as_loud"] = C - sum(apart)
         out["of_controls"] = C
@@ -2951,19 +2952,30 @@ def _stand_in_words(dv: Mapping[str, Any]) -> str:
 
 def _same_site_words(dv: Mapping[str, Any]) -> str:
     """What a sentence says of how loud a reading's same-site control edits were beside the edit, as read: the median
-    of their change to the stream over the edit's, at each place it was recorded. The same-site family is not asked
-    for the loudness a matched or sham control edit must have to count: for a column edit it is built to the edit's
-    stream-side length and sits near 1; for a row edit nothing ties it there, so the figure is printed."""
+    of their change to the stream over the edit's, at each place it was recorded. In a trial (`trial-4`), same-site
+    control edits answer for disturbance size at `min_ratio` and quieter ones are set aside; in a claim reading, the
+    same-site family is not gated on loudness and its median ratios are printed."""
     got = []
     for place, _key, say in _DELIVERED_AT:
         e = _clean_float(dv.get("edit" if place == "answer" else f"edit_{place}"))
         m = _clean_float(dv.get("controls_median" if place == "answer" else f"controls_median_{place}"))
         if e and m is not None:
             got.append(f"{_fmt(m / e, 2)} {say}")
+    med_part = (
+        "as read, their median change to the stream was "
+        + ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + got[-1] + " times the edit's; "
+        if got else ""
+    )
+    if dv.get("not_comparable") is not None and dv.get("as_loud") is not None:
+        mr = _clean_float(dv.get("min_ratio"))
+        bar_w = f"at least {mr:g} times as loud as the edit" if (mr is not None and mr != 1.0) else "at least as loud as the edit"
+        return (
+            f"size-checked ({dv['as_loud']} of {dv.get('of_controls')} {bar_w} {_places_words(dv)}; "
+            f"{dv['not_comparable']} quieter or missing counted as moving as much); {med_part}"
+        )
     if not got:
         return ""
-    return ("not asked to be as loud as the edit: as read, their median change to the stream was "
-            + ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + got[-1] + " times the edit's; ")
+    return "not asked to be as loud as the edit: " + med_part
 
 
 def _places_words(dv: Mapping[str, Any]) -> str:
@@ -2975,9 +2987,9 @@ def _places_words(dv: Mapping[str, Any]) -> str:
 
 def delivered_words(dv: Mapping[str, Any], cs: Mapping[str, Any]) -> str:
     """One line of a sheet: what the edit and a family's control edits each changed the stream by as read
-    (`_delivered_of`) over the prompt, over the answer and at the last position; how many control edits were at
-    least as loud as the edit where it counts, and how far above it those sat; how many were set aside; and how
-    many separate draws the sets are counted as."""
+    (`_delivered_of`) over the prompt, over the answer and at the last position; how many control edits met the
+    loudness bar where it counts, and how far above it those sat; how many were set aside; and how many separate draws
+    the sets are counted as."""
     at = []
     for place, _key, say in _DELIVERED_AT:
         e = dv.get("edit" if place == "answer" else f"edit_{place}")
@@ -2990,12 +3002,15 @@ def delivered_words(dv: Mapping[str, Any], cs: Mapping[str, Any]) -> str:
                   + (f" ({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})" if place == "answer" else ""))
     ratios = [f"{_fmt(dv.get(f'as_loud_ratio_{p}'), 2)} {say}" for p, _key, say in _DELIVERED_AT
               if p in (dv.get("compared_at") or ()) and dv.get(f"as_loud_ratio_{p}") is not None]
+    mr = _clean_float(dv.get("min_ratio"))
+    bar_w = f"at least {mr:g} times as loud as the edit" if (mr is not None and mr != 1.0) else "at least as loud as the edit"
+    quiet_w = f"below {mr:g} times the edit's" if (mr is not None and mr != 1.0) else "quieter than the edit"
     return (
         "delivered (stream change at the highest edited layer, a mean over the items read) " + "; ".join(at)
-        + (f"; {dv['as_loud']} of {dv.get('of_controls')} at least as loud as the edit {_places_words(dv)}"
+        + (f"; {dv['as_loud']} of {dv.get('of_controls')} {bar_w} {_places_words(dv)}"
            + (f" (those a median {', '.join(ratios)} times the edit's)" if ratios else "")
            if dv.get("as_loud") is not None else "")
-        + (f"; {dv['not_comparable']} of them quieter than the edit at one of those, or with no figure, and counted "
+        + (f"; {dv['not_comparable']} of them {quiet_w} at one of those, or with no figure, and counted "
            "as moving as much" if dv.get("not_comparable") else "")
         + _stand_in_words(dv)
         + (f", so counted as {cs['effective_count']} draws"
@@ -3054,16 +3069,20 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
                 + _stand_in_words(dvm)
                 + "; ") if tol_now is not None else ""
     # what the level printed beside the matched control edits takes for granted. A claim's takes every one of them
-    # as a control and as a separate draw, whatever the two counts before it say; a trial's does not
+    # as a control and as a separate draw, whatever the two counts before it say; a trial counts them as separate
+    # disjoint draws (and in trial-4 as read, with the same-site family answering for disturbance size)
     if not osm.get("count"):
         level_part = ""
     elif tail:
         level_part = (f", a level that takes all {osm.get('count')} as control edits and as separate draws, whatever "
                       "they delivered and however many share sites")
-    else:
+    elif dvm.get("not_comparable") is not None:
         level_part = (f", a level at which the {osm.get('non_finite') or 0} that were quieter than the edit, or gave "
                       f"no figure, are counted as moving as much, and the sets as "
                       f"{osm.get('effective_count', osm.get('count'))} separate draws")
+    else:
+        level_part = (f", counted as read over {osm.get('effective_count', osm.get('count'))} separate draws "
+                      "(with the same-site family answering for disturbance size)")
     dvs = (lg.get("delivered") or {}).get("same_site") if isinstance(lg.get("delivered"), Mapping) else None
     ss_part = _same_site_words(dvs if isinstance(dvs, Mapping) else {})
     knobs = judged.get("cheaper_knobs") or {}

@@ -1644,6 +1644,39 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             <M>GET /api/level/book</M> with no model loaded.
           </EntryApparatus>
         </Entry>
+
+        <Entry
+          id="trial-of-record"
+          aliases={ALIASES["trial-of-record"]}
+          head="a trial of record"
+          tech="dry run · re-run · folded form · reworded set · not run"
+        >
+          <Body>
+            The owner’s formal confirmation of a weight edit: registered and hashed in a committed folder, read once in
+            a fresh process from a clean checkout in the default level book, with a checksum over every stored weight
+            before and after.
+          </Body>
+          <Note>
+            A <strong>dry run</strong> takes the same readings when any condition of record is missing (a side book, a
+            process that already read, or an uncommitted folder); it never prints a verdict of record. A{" "}
+            <strong>re-run</strong> repeats the home trial’s exact items on a volunteer’s card into a book of its own,
+            which the intake judges figure by figure against the home book.
+          </Note>
+          <Note>
+            Every trial checks the <strong>folded form</strong>—the change written into the unpacked weights beside the
+            per-row form—and an independent <strong>reworded set</strong> written outside the brief’s generator. On the
+            compare tab’s replay table, a battery that was not measured reads <strong>not run</strong> rather than
+            passing by silence.
+          </Note>
+          <Onward to={href.vault()}>replay recorded trials in the vault →</Onward>
+          <EntryApparatus title="a trial of record">
+            Implemented in <M>backend/level_trial.py</M>, <M>backend/level_export.py</M>, and{" "}
+            <M>backend/level_rerun.py</M> (<M>scripts/levelling_trial.py</M>, <M>levelling_export.py</M>,{" "}
+            <M>levelling_rerun.py</M>; rule preset <M>trial-4</M>). Same-site control edits answer for disturbance size
+            at ≥ 0.85× edit loudness; matched other-site control edits are drawn spread, counted by disjoint sets, and
+            judged as read with their delivered stream change printed beside the edit’s.
+          </EntryApparatus>
+        </Entry>
       </EntryGrid>
     </LexSection>
 

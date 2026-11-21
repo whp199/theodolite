@@ -395,11 +395,15 @@ def run_section_3() -> None:
     check('aria-invalid={showError(' in cmp_txt and 'aria-describedby={showError(' in cmp_txt and 'aria-live="polite"' in cmp_txt,
           "ComparePanel syncs aria-invalid, dynamic aria-describedby, and single polite live region")
 
-    # Lexicon Arbiter Row 30
+    # Lexicon Arbiter Row 30 + Phase 5 trial-of-record entry
     check('id="control-edit"' in lex_txt and 'id: "control-edit"' in ent_txt, "Lexicon adds control-edit entry and index")
     check("compare tab" in lex_txt and "never left on the model" in lex_txt,
           "Lexicon addresses 'An edit stays until you undo it' for transient compare readings")
     check(lex_txt.count('id="control-edit"') == 1, "Lexicon has exactly one control-edit entry (no duplicates)")
+    check('id="trial-of-record"' in lex_txt and 'id: "trial-of-record"' in ent_txt
+          and all(k in ent_txt for k in ('"dry-run"', '"re-run"', '"folded-form"', '"reworded-set"', '"not-run"')),
+          "Lexicon adds trial-of-record entry and index/aliases for Phase 5 page words")
+    check(lex_txt.count('id="trial-of-record"') == 1, "Lexicon has exactly one trial-of-record entry (no duplicates)")
 
     # Zero kept-out words across ALL 12 Levelling backend/CLI files AND all 3 new Phase 4 frontend files
     audit_files = [

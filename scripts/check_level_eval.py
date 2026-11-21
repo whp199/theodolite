@@ -3111,10 +3111,150 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                   f"({b_summary['canary_abstention_note']})")
             check(pr["scored_as"] == "plumbing check (answer given)" and "localization" not in pr
                   and (pr.get("answer_given_sites") or {}).get("site_recall") == 1.0
-                  and by_cid["planted_noref"]["scored_as"] == "cannot propose"
-                  and b_summary["planted_layer_hit_rate"] is None and str(b_summary["planted_layer_hit_note"]).startswith("unmeasured"),
-                  f"6: a replay given the answer is a plumbing check, not localization, and no planted case is a measurement "
-                  f"({b_summary['planted_scored_as']})")
+                  and by_cid["planted_noref"]["scored_as"] == "measurement"
+                  and by_cid["planted_noref"]["can_propose"] is True
+                  and b_summary["planted_layer_hit_rate"] == 0.0
+                  and str(b_summary["planted_layer_hit_note"]).startswith("measured on 1 planted case"),
+                  f"6: a replay given the answer is a plumbing check, not localization, while a real driver with "
+                  f"propose_repair is scored as a measurement ({b_summary['planted_scored_as']})")
+
+            # Live measurement via propose_repair: a mock OpenAI driver submits a checkpoint-faithful `add` repair on a
+            # planted case and an explicit abstention on a canary case, with identical door surfaces and zero leakage.
+            _mod0 = we._linear_of(h.lm, we.linear_name(0, "down_proj"))
+            _w0_cols = we.dense_cols(_mod0, we._long([2, 3])).float().cpu().numpy().astype(np.float32)  # [2, D]
+            def _fsha(p: Path) -> str:
+                return hashlib.sha256(p.read_bytes()).hexdigest()
+
+            def _make_blind_transport(propose_args: Dict[str, Any]) -> Any:
+                step_i = {"n": 0}
+                def _tx(_payload: Dict[str, Any], _hdrs: Dict[str, str], _url: str, _timeout: float) -> Dict[str, Any]:
+                    step_i["n"] += 1
+                    if step_i["n"] == 1:
+                        return {
+                            "model": "mock-blind",
+                            "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": [
+                                {"id": "c1", "type": "function", "function": {"name": "status", "arguments": "{}"}}
+                            ]}}],
+                            "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+                        }
+                    if step_i["n"] == 2:
+                        return {
+                            "model": "mock-blind",
+                            "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": [
+                                {"id": "c2", "type": "function", "function": {
+                                    "name": "propose_repair",
+                                    "arguments": json.dumps(propose_args),
+                                }}
+                            ]}}],
+                            "usage": {"prompt_tokens": 60, "completion_tokens": 20},
+                        }
+                    return {
+                        "model": "mock-blind",
+                        "choices": [{"message": {"role": "assistant", "content": "Done."}}],
+                        "usage": {"prompt_tokens": 40, "completion_tokens": 5},
+                    }
+                return _tx
+
+            # Use a planted `add` fault so adding its exact negation composes identically on a checkpoint!
+            _m_dir = tmp / "blinded_measured"
+            _m_dir.mkdir(parents=True, exist_ok=True)
+            _delta_vec = np.full((2, _w0_cols.shape[1]), 0.05, dtype=np.float32)
+            _plant_add_p = _m_dir / "blind_plant_add.npy"
+            np.save(_plant_add_p, _delta_vec)
+            _plant_add_rec = {"terms": [{"layer": 0, "add": [2, 3], "vectors": "blind_plant_add.npy",
+                                         "sha256": _fsha(_plant_add_p)}]}
+            _neg_ref_p = tmp / "neg_ref.npy"
+            np.save(_neg_ref_p, np.full((2, _w0_cols.shape[1]), -0.05, dtype=np.float32))
+            _neg_ref_sha = _fsha(_neg_ref_p)
+
+            def _make_planted_add_transport() -> Any:
+                step_i = {"n": 0}
+                def _tx(_payload: Dict[str, Any], _hdrs: Dict[str, str], _url: str, _timeout: float) -> Dict[str, Any]:
+                    step_i["n"] += 1
+                    if step_i["n"] == 1:
+                        code = (
+                            "import numpy as np\n"
+                            f"arr = np.full((2, {_w0_cols.shape[1]}), -0.05, dtype=np.float32)\n"
+                            "info = save_array('neg.npy', arr)\n"
+                            "print(info['sha256'])\n"
+                        )
+                        return {
+                            "model": "mock-blind",
+                            "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": [
+                                {"id": "c1", "type": "function", "function": {"name": "cell", "arguments": json.dumps({"code": code})}}
+                            ]}}],
+                            "usage": {"prompt_tokens": 50, "completion_tokens": 20},
+                        }
+                    if step_i["n"] == 2:
+                        rec = {"terms": [{"layer": 0, "add": [2, 3], "vectors": "neg.npy", "sha256": _neg_ref_sha}]}
+                        return {
+                            "model": "mock-blind",
+                            "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": [
+                                {"id": "c2", "type": "function", "function": {
+                                    "name": "propose_repair",
+                                    "arguments": json.dumps({"edit": rec, "diagnosis": "localized layer 0 cols 2,3", "confidence": 0.9}),
+                                }}
+                            ]}}],
+                            "usage": {"prompt_tokens": 60, "completion_tokens": 30},
+                        }
+                    return {
+                        "model": "mock-blind",
+                        "choices": [{"message": {"role": "assistant", "content": "Submitted."}}],
+                        "usage": {"prompt_tokens": 40, "completion_tokens": 5},
+                    }
+                return _tx
+
+            _local_ep = {"base_url": "http://127.0.0.1:1234/v1"}
+            m_cases = [
+                lev.BlindedCase("diag_alpha", "planted", reach="activations", plant_recipe=_plant_add_rec,
+                                driver_family="openai", driver_model="mock-blind",
+                                driver_config={**_local_ep, "transport_fn": _make_planted_add_transport()}),
+                lev.BlindedCase("diag_beta", "canary", reach="activations",
+                                driver_family="openai", driver_model="mock-blind",
+                                driver_config={**_local_ep, "transport_fn": _make_blind_transport(
+                                    {"edit": None, "diagnosis": "no anomaly found", "confidence": 0.85}
+                                )}),
+            ]
+            m_summ = lev.run_blinded_benchmark(
+                h, m_cases, tmp / "blinded_measured", weights_dir=weights_dir,
+                session_budget=lses.SessionBudget(min_controls=1),
+                driver_budget=ldrv.DriverBudget(max_turns=8, max_dollars=1.0,
+                                                input_usd_per_mtok=1.0, output_usd_per_mtok=1.0),
+                probe_sandbox=False,
+            )
+            m_by = {r["case_id"]: r for r in m_summ["cases"]}
+            mp_c, mc_c = m_by["diag_alpha"], m_by["diag_beta"]
+            check(m_summ["door_surface_equal_by_reach"] == {"activations": True}
+                  and m_summ["kind_or_id_words_shown"] == {}
+                  and mp_c["scored_as"] == "measurement" and mc_c["scored_as"] == "measurement"
+                  and (mp_c.get("localization") or {}).get("layer_hit") is True
+                  and (mp_c.get("localization") or {}).get("site_recall") == 1.0
+                  and mp_c.get("recovery_fraction") == 1.0 and mp_c.get("recovery_holds_on_checkpoint") is True
+                  and mc_c.get("honest_abstention") is True
+                  and m_summ["planted_layer_hit_rate"] == 1.0 and m_summ["canary_abstention_rate"] == 1.0,
+                  f"6: blinded propose_repair enables real driver measurements with identical door surface, zero "
+                  f"leakage, checkpoint-faithful recovery and canary abstention "
+                  f"(scored={mp_c.get('scored_as')}/{mc_c.get('scored_as')}, loc={mp_c.get('localization')}, "
+                  f"rec={mp_c.get('recovery_fraction')}, ckpt={mp_c.get('recovery_holds_on_checkpoint')}, "
+                  f"abst={mc_c.get('honest_abstention')})")
+            # Non-blinded session refuses propose_repair; blinded session refuses a second propose_repair call
+            s_nb = lses.LevelSession(h, tmp / "nb_sess", reach="behaviour", backend="local",
+                                     book_path=tmp / "nb_book.jsonl", probe_on_start=False)
+            s_bl2 = lses.LevelSession(h, tmp / "bl2_sess", reach="behaviour", backend="local",
+                                      book_path=tmp / "bl2_book.jsonl", probe_on_start=False, canary=True)
+            try:
+                check("propose_repair" not in s_nb.allowed_tools() and "propose_repair" in s_bl2.allowed_tools(),
+                      "6: propose_repair is served on blinded sessions only")
+                check(refuses(lambda: s_nb.propose_repair(None), lses.SessionRefused),
+                      "6: non-blinded session refuses propose_repair")
+                r_first = s_bl2.propose_repair(None, diagnosis="clean", confidence=0.9)
+                check(r_first["recorded"] is True and r_first["abstained"] is True and s_bl2.proposal_submitted is True,
+                      "6: first propose_repair call succeeds and marks submission")
+                check(refuses(lambda: s_bl2.propose_repair(None, diagnosis="again"), lses.SessionRefused),
+                      "6: second propose_repair call in the same session is refused")
+            finally:
+                s_nb.close()
+                s_bl2.close()
             comp = pr.get("repair_composition") or {}
             check(pr.get("kl_plant_alone") is not None and pr["kl_plant_alone"] > 0.0
                   and pr.get("kl_after_repair") == 0.0 and pr.get("figures_by") == "arithmetic"

@@ -249,6 +249,8 @@ def build_driver_prompt(
                 sys_lines.append("- atlas_query searches read-only neuron labels and wiring. Every word is a lead to test by a reading; each label carries the label gate's check (label_gate: held_back, reasons), and steer words what the steer lens's own check found.")
             if "claim" in tools:
                 sys_lines.append("- When a candidate clears practice controls and floor, submit it once via claim for a fresh verdict.")
+            if "propose_repair" in tools:
+                sys_lines.append("- When your investigation is finished, call propose_repair once with your candidate repair recipe (or with edit=null to abstain if no change is warranted).")
 
     if extra_instructions:
         sys_lines += ["", str(extra_instructions).strip()]
@@ -262,6 +264,10 @@ def build_driver_prompt(
             f"Allowed tensors: {', '.join(brief_card.get('allowed_tensors') or ())}.",
             f"Fresh readings this book has left for the brief: {_fresh_readings_left(session, brief_card)}.",
             "Call status and brief_info first if needed, explore on practice items, and either submit one candidate or stop and keep the base.",
+        ]
+    elif "propose_repair" in tools:
+        user_lines = [
+            "No claim brief is bound (blinded diagnostic session). Call status first, investigate whether the live model exhibits an anomaly, and call propose_repair once with your candidate repair recipe or with edit=null to abstain.",
         ]
     else:
         user_lines = [
@@ -863,6 +869,12 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
                 claim_refused = _refusal_words(cl_res)
         else:
             stop_reason = "kept_base_abstention"
+    elif "propose_repair" in allowed and not _stopped():
+        ok_pr, _pr_res = _step("propose_repair", {
+            "edit": None,
+            "diagnosis": "scripted baseline submits abstention in blinded diagnostic session",
+        })
+        stop_reason = "kept_base_abstention" if ok_pr else "error"
     elif _stopped():
         stop_reason = _stopped() or "killed"
 
@@ -1161,6 +1173,10 @@ def run_replay_driver(
             elif tool == "claim_knob":
                 proposed_knob = args.get("knob")
                 stop_reason = "claimed"
+            elif tool == "propose_repair":
+                ed_arg = args.get("edit")
+                proposed_edit = dict(ed_arg) if isinstance(ed_arg, Mapping) else None
+                stop_reason = "proposed_repair" if proposed_edit is not None else "kept_base_abstention"
             elif tool == "read" and step.get("propose"):
                 plan_arg = args.get("plan")
                 if isinstance(plan_arg, Mapping) and isinstance(plan_arg.get("edit"), Mapping):
@@ -1693,7 +1709,7 @@ def run_openai_driver(
 
         tcalls = msg.get("tool_calls") or []
         if not isinstance(tcalls, list) or not tcalls:
-            if stop_reason != "claimed":
+            if stop_reason not in ("claimed", "proposed_repair"):
                 stop_reason = "kept_base_abstention"
             break
 
@@ -1734,6 +1750,10 @@ def run_openai_driver(
                     elif tname == "claim_knob":
                         proposed_knob = parsed_args.get("knob")
                         stop_reason = "claimed"
+                    elif tname == "propose_repair":
+                        ed_arg = parsed_args.get("edit")
+                        proposed_edit = dict(ed_arg) if isinstance(ed_arg, Mapping) else None
+                        stop_reason = "proposed_repair" if proposed_edit is not None else "kept_base_abstention"
                     out_str = json.dumps(res, ensure_ascii=True)
                     if len(out_str) > 16000:
                         out_str = out_str[:16000] + "... [truncated]"
@@ -2111,6 +2131,8 @@ def run_claude_cli_driver(
             proposed_edit = c.get("proposed")
         elif c.get("ok") and c.get("tool") == "claim_knob":
             proposed_knob = c.get("proposed")
+        elif c.get("ok") and c.get("tool") == "propose_repair":
+            proposed_edit = c.get("proposed")
         elif c.get("ok") is False and c.get("tool") in CLAIM_TOOLS:
             claim_refused = _refusal_words(c.get("error") or "")
 

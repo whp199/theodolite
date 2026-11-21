@@ -284,6 +284,8 @@ class LevelSession:
         self._plant: Optional[we.Edit] = plant
         self._canary: bool = bool(canary)
         self._blinded: bool = (plant is not None) or bool(canary)
+        self._proposed_repair: Optional[Dict[str, Any]] = None
+        self._proposal_submitted: bool = False
 
         # Layout: session_dir holds work/ (the ONLY folder mounted writable into bwrap), cells/, transcript.jsonl, session.json.
         self.session_dir = Path(session_dir).resolve()
@@ -402,6 +404,8 @@ class LevelSession:
             tools += ["brief_info", "draw_practice"]
             if self._bars is not None and self._handle is not None and not self._blinded:
                 tools.append("claim")
+        if self._blinded and self._handle is not None:
+            tools.append("propose_repair")
         return tools
 
     def harness_card(self) -> Dict[str, Any]:
@@ -1279,6 +1283,103 @@ class LevelSession:
             "gpu_seconds_charged": drv["gpu_seconds_charged"],
         })
         return drv
+
+    @property
+    def proposed_repair(self) -> Optional[Dict[str, Any]]:
+        """The edit recipe submitted via `propose_repair` in a blinded session, or None (abstention / none yet)."""
+        return dict(self._proposed_repair) if self._proposed_repair is not None else None
+
+    @property
+    def proposal_submitted(self) -> bool:
+        """Whether `propose_repair` has been called (with an edit or an explicit abstention) in this session."""
+        return bool(self._proposal_submitted)
+
+    def propose_repair(
+        self,
+        edit: Optional[Mapping[str, Any]] = None,
+        *,
+        diagnosis: str = "",
+        confidence: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Submit one candidate repair recipe (or `edit=None` to abstain explicitly) in a blinded diagnostic session.
+
+        Serves identically whether or not an in-memory edit is active: validates any submitted recipe against the
+        untouched base model (never touching or disclosing session-internal state), records the submission once in the
+        session's book and transcript, and returns no ground-truth feedback during the session."""
+        self._check_open_and_wall()
+        if not self._blinded:
+            raise SessionRefused("propose_repair is only available in blinded diagnostic sessions.")
+        if self._handle is None:
+            raise SessionRefused("No model handle is bound to this session.")
+        if self._proposal_submitted:
+            raise SessionRefused("A repair or abstention has already been submitted in this session.")
+        if confidence is not None:
+            if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
+                raise SessionRefused("confidence must be a number between 0 and 1 (or null).")
+            cf = float(confidence)
+            if not (0.0 <= cf <= 1.0):
+                raise SessionRefused(f"confidence must lie between 0 and 1; got {cf:g}.")
+        else:
+            cf = None
+        if not isinstance(diagnosis, str):
+            raise SessionRefused("diagnosis must be a string.")
+        diag_clean = diagnosis.strip()[:2000]
+        rec_out: Optional[Dict[str, Any]] = None
+        edit_id: Optional[str] = None
+        if edit is not None:
+            if not isinstance(edit, Mapping):
+                raise SessionRefused("edit must be an edit recipe object or null (to abstain).")
+            # Validate cleanly against the base model (identical on every blinded session, regardless of internal state)
+            try:
+                got = we.from_recipe(dict(edit), self.work_dir)
+                with self._hold_model() as mh:
+                    if isinstance(got, (str, Path)):
+                        built = we.load(got, mh.lm, model_id=mh.model_id, weights_id=mh.weights_id)
+                    else:
+                        built = we.build(
+                            mh.lm,
+                            got,
+                            model_id=mh.model_id,
+                            weights_id=mh.weights_id,
+                            note=str(edit.get("note") or ""),
+                        )
+            except (we.Refused, ValueError, TypeError, OSError) as exc:
+                raise SessionRefused(f"Proposed repair recipe refused by the edit gate: {exc}") from None
+            rec_out = dict(edit)
+            edit_id = built.id
+
+        self._proposed_repair = rec_out
+        self._proposal_submitted = True
+        ent = lb.append(
+            "note",
+            {
+                "note_type": "blinded_proposal",
+                "session_id": self.session_id,
+                "abstained": rec_out is None,
+                "edit_id": edit_id,
+                "edit": rec_out,
+                "diagnosis": diag_clean,
+                "confidence": cf,
+            },
+            path=self.book_path,
+        )
+        self._book_seqs.append(int(ent["seq"]))
+        self._log("propose_repair", {
+            "abstained": rec_out is None,
+            "edit_id": edit_id,
+            "diagnosis": diag_clean,
+            "confidence": cf,
+            "book_seq": int(ent["seq"]),
+        })
+        return {
+            "ok": True,
+            "recorded": True,
+            "abstained": rec_out is None,
+            "edit_id": edit_id,
+            "book": {"seq": int(ent["seq"]), "hash": ent["hash"]},
+            "remaining": self._remaining(),
+            "note": "Recorded for post-session scoring.",
+        }
 
     def book_view(self, *, seq: Optional[int] = None, tail: int = 10) -> Dict[str, Any]:
         """Read entries from the level book strictly through `level_book.driver_view` (redacted aggregates only)."""

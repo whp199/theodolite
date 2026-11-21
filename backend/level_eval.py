@@ -2227,19 +2227,24 @@ def door_surface(sess: lses.LevelSession) -> Dict[str, Any]:
 
 
 def _how_driver_proposes(case: BlindedCase, served: Sequence[str]) -> Tuple[bool, str]:
-    """Whether the case's driver has a way to propose an edit in its session, and which, as `level_drivers` is built:
-    by a claim, where the session serves a claim tool (a blinded session serves none); a replay also by a read step
-    marked "propose". The scripted, openai and claude drivers propose only by a claim: what each proposes is the edit
-    it submitted, never a practice candidate it kept to itself."""
-    if "claim" in served or "claim_knob" in served:
-        return True, "the session serves a claim tool"
+    """Whether the case's driver has a way to propose a repair in its session, and which:
+    - For `replay`, a step calling `propose_repair` or a `read` step marked `"propose"` (always scored as a plumbing
+      check, never a driver measurement).
+    - For `scripted`, `openai`, `claude`, and `codex`, `propose_repair` (or a claim tool) served by the door: what each
+      proposes is the edit it submitted via `propose_repair`, or an explicit abstention (`edit=None`)."""
     fam = case.driver_family
     if fam == "replay":
         steps = (case.driver_config or {}).get("steps") or []
+        if any(isinstance(s, Mapping) and s.get("tool") == "propose_repair" for s in steps):
+            return True, "a replay step calling propose_repair"
         if any(isinstance(s, Mapping) and s.get("tool") == "read" and s.get("propose") for s in steps):
             return True, "a replay step marked propose"
-        return False, "no step of this replay is a read marked propose, and a blinded session serves no claim tool"
-    return False, f"the {fam} driver proposes an edit only by a claim, and a blinded session serves no claim tool"
+        return False, "no step of this replay calls propose_repair or a read marked propose"
+    if "propose_repair" in served:
+        return True, "the session serves propose_repair"
+    if "claim" in served or "claim_knob" in served:
+        return True, "the session serves a claim tool"
+    return False, f"the {fam} driver has no propose_repair or claim tool in this session"
 
 
 def run_blinded_benchmark(
@@ -2263,12 +2268,11 @@ def run_blinded_benchmark(
       id that its status reply, harness card, driver prompt or work path (below `out_dir`) showed; a case that shows
       any is scored "not blinded".
     - `scored_as` for each case: "not blinded"; "did not run to an end" (`why_not_counted`: the driver failed, or was
-      stopped, or no door call succeeded, as a study counts sessions); "cannot propose" (`_how_driver_proposes`: a
-      blinded session serves no claim tool, and the scripted, openai and claude drivers propose only by a claim);
-      "plumbing check (answer given)" (a replay of steps typed by someone who knew the plant); "plumbing check
-      (scripted steps)" (a replay canary); or "measurement" (a driver that chose what to propose). The localization
-      and abstention rates are taken over measurements only, and are None, unmeasured, when there are none. As the
-      drivers are built, no driver can be a measurement here: the benchmark checks plumbing.
+      stopped, or no door call succeeded, as a study counts sessions); "cannot propose" (`_how_driver_proposes`: no
+      proposal path in the session); "plumbing check (answer given)" (a replay of steps typed by someone who knew the
+      plant); "plumbing check (scripted steps)" (a replay canary); or "measurement" (a driver that chose what to
+      propose or explicitly abstain via `propose_repair`). The localization and abstention rates are taken over
+      measurements only, and are None, unmeasured, when there are none.
     - The repair is read: plant plus repair (`weight_edits.stack`) against the healthy base. When the two come to no
       change at all in the harness, the composite is the unedited model and is not read (`NO_CHANGE_SAY`): its KL is 0
       by arithmetic, and `figures_by` says so. `repair_composition` says, column by column, whether the composite is
@@ -2400,7 +2404,7 @@ def run_blinded_benchmark(
                 "readouts": {"kl": True, "own": True, "odds": None},
             }
             with _use_book(eval_book):
-                r_pl = lv.read(h, plan_base_plant, eval_items)
+                r_pl = lv.read(h, plan_base_plant, eval_items, edit=plant_edit)
             edit_key = lv._key("edit", 1.0)
             pl_arms = (((r_pl.get("summary") or {}).get("classes") or {}).get("small") or {}).get("arms") or {}
             kl_plant = _clean_float(((pl_arms.get(edit_key) or {}).get("kl") or {}).get("mean_over_items"))

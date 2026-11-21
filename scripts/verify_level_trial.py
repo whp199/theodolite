@@ -310,17 +310,27 @@ def main() -> int:
                 again_loud[f"{key}{cls_name}"] = loud_again(body_of(role), names_now, cls_name)
         same_loud = {cls_name: loud_again(body_of("same_site"), {r["name"] for r in rj["drawn"]["target"]}, cls_name)
                      for cls_name in ("small", "large")}
+        same_as_read = {}
+        for cls_name in ("small", "large"):
+            ce = t_res["fresh_judged"]["classes"].get(cls_name) or {}
+            dvs = (ce.get("delivered") or {}).get("same_site") or {}
+            css = (ce.get("controls") or {}).get("same_site") or {}
+            same_as_read[cls_name] = {**{k: dvs.get(k) for k in keys_dv}, "min_ratio": dvs.get("min_ratio"),
+                                      "at_least": css.get("at_least"), "p_fw": css.get("p_fw")}
         check("matched_controls_as_read_31b",
               all(isinstance(v["as_loud"], int) and v["as_loud"] == again_loud[k]["as_loud_everywhere"]
-                  and v["not_comparable"] == v["of_controls"] - again_loud[k]["as_loud_everywhere"]
-                  and v["at_least"] >= v["not_comparable"] and v["read_at_end"] is True and v["edit_end"] is not None
+                  and v["not_comparable"] is None and v["read_at_end"] is True and v["edit_end"] is not None
                   and v["edit_prompt"] is not None and v["compared_at"] == ["prompt", "answer", "end"]
                   and v["draw"] == "spread" and type(v["disjoint_sets"]) is int
                   and v["effective_count"] == min(v["of_controls"], v["disjoint_sets"])
                   for k, v in as_read.items())
+              and all(isinstance(v["as_loud"], int) and v["not_comparable"] == v["of_controls"] - v["as_loud"]
+                      and v["min_ratio"] == lt.SAME_SITE_MIN_RATIO and v["at_least"] >= v["not_comparable"]
+                      for v in same_as_read.values())
               and as_read["small"]["of_controls"] == as_read["large"]["of_controls"] == 39,
-              {"as_judged": as_read, "counted_again_from_the_readings_arms": again_loud,
-               "the_same_site_family_which_is_not_asked_to_be_as_loud": same_loud})
+              {"matched_as_judged": as_read, "same_site_size_checked": same_as_read,
+               "counted_again_from_the_readings_arms": again_loud,
+               "same_site_arms_summary": same_loud})
         # what the control edits moved the metric by, as read: a family can fail because its control edits were set
         # aside as quieter than the edit, with none that was read moving the metric as much, and the record says which
         moved = {}
@@ -339,7 +349,9 @@ def main() -> int:
         check("control_edits_as_read_moved_the_metric_31b",
               all(v["control_edits_read"] == 39 and v["at_least"] == v["as_read_at_least"] + v["set_aside_or_no_reading"]
                   and (v["as_read_at_least"] <= v["moved_as_much_as_read"]) for v in moved.values())
-              and all(moved[f"{c}:same_site"]["as_read_at_least"] == moved[f"{c}:same_site"]["moved_as_much_as_read"]
+              and all(moved[f"{c}:other_sites_matched"]["as_read_at_least"]
+                      == moved[f"{c}:other_sites_matched"]["moved_as_much_as_read"]
+                      and moved[f"{c}:other_sites_matched"]["set_aside_or_no_reading"] == 0
                       for c in ("small", "large")), moved)
         # how many of the items each verdict rests on the kernel read under its item gate (the base gives their forced
         # answers under -6 nats a piece): said on the sheet, and recorded here

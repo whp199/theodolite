@@ -551,22 +551,18 @@ def main() -> int:
                            "no more separate draws than the control edits found to share no site with one another",
                            "a site is a neuron of a layer, whatever projection a control edit changes it in",
                            "a reading that records no such count is counted as one draw",
-                           "The same-site family is not asked this",
+                           "The same-site family (and sham-target edits for a declared rule) answers for disturbance size",
+                           "The matched other-site family is judged as read",
                            "At this trial's level at most `0` of the `39` control edits of a family on the fresh items, "
                            "and `0` of the reworded set's `19`, may move as much or be counted so",
-                           "As the rule stands a trial is not expected to pass it. Each stand-in is drawn from a band "
-                           "on BOTH sides",
-                           "a trial read of record is expected to spend the edit's one trial on a verdict the rule has "
-                           "settled, not the edit",
+                           "Under trial-4, the same-site control family",
                            "when this folder is written and again before it is entered in the book",
                            "A look taken at registration, with the base alone, counted",
                            "The look sees the count alone",
-                           "counts for the edit only when, as read, it changed the stream at least as much as the edit did",
+                           f"changed the stream by at least `{lt.SAME_SITE_MIN_RATIO:g}` times what the edit did",
                            "over the prompt's positions, over the positions that predict the answer, and at the last "
                            "position, where this brief's metric is read",
-                           "and a control edit or an edit with no such figure, is counted as moving as much",
-                           "The matching factor has no part in this",
-                           "rule preset: `trial-3` (version 3)",
+                           "rule preset: `trial-4` (version 4)",
                            "and no code where the runner",
                            "the look taken at registration did not say it could not pass"):
                 check(needle in rules_txt, f"3: RULES.md says \"{needle}\"")
@@ -584,11 +580,11 @@ def main() -> int:
                   f"3: a registration records the look taken at how many separate draws its control sets count as, and "
                   f"its rules print it ({sz_reg['matched']})")
             check(reg["rule_stands"] == lt.RULE_STANDS_SAY + "." and lt.RULE_STANDS_SAY in rules_txt
-                  and "not expected to pass" in reg["rule_stands"] and "ROADMAP section viii" in reg["rule_stands"]
+                  and "trial-4" in reg["rule_stands"] and "same-site" in reg["rule_stands"]
                   and lt._most_aside(39, 2, 0.05) == 0 and lt._most_aside(99, 2, 0.05) == 1 and lt._most_aside(19, 1, 0.05) == 0
                   and lt._most_aside(99, 5, 0.05) == 0 and lt._most_aside(199, 2, 0.05) == 4,
-                  "3: a registration says, in its result and in its rules, that as the rule stands a trial is not "
-                  "expected to pass its matched control edits, and how many of them the level lets move as much")
+                  "3: a registration states the trial-4 control rule in its result and RULES.md, and how many controls "
+                  "the level allows")
             check(look_note["seq"] == reg["trial"]["look_seq"] == lb.verify(cal_book)["entries"] - 1
                   and look_note["body"]["trial_name"] == "standin_rebuilt_trial" and look_note["body"]["edit_id"] == e_trial.id
                   and look_note["body"]["sizing"] == sz_reg and look_note["body"]["match_tolerance"] == 20.0
@@ -1052,11 +1048,14 @@ def main() -> int:
                            "process: had begun"):
                 check(needle in t_res["sheet"], f"5: the sheet prints \"{needle}\"")
             dv_small = t_res["fresh_judged"]["classes"]["small"]["delivered"]["other_sites_matched"]
+            dv_ss_small = t_res["fresh_judged"]["classes"]["small"]["delivered"]["same_site"]
             cs_small = t_res["fresh_judged"]["classes"]["small"]["controls"]["other_sites_matched"]
             ig_small = t_res["fresh_judged"]["classes"]["small"]["item_gate"]
             matched_plan = next(lb.entries(cal_book, start=t_res["book"]["all_seqs"][1], limit=1))["body"]
             check("driver prompt named site" not in t_res["sheet"] and "as reported with the claim:" not in t_res["sheet"]
-                  and dv_small["as_loud"] + dv_small["not_comparable"] == dv_small["of_controls"] == 39
+                  and "not_comparable" not in dv_small and dv_small["of_controls"] == 39
+                  and dv_ss_small["as_loud"] + dv_ss_small["not_comparable"] == dv_ss_small["of_controls"] == 39
+                  and dv_ss_small["min_ratio"] == lt.SAME_SITE_MIN_RATIO
                   and dv_small["compared_at"] == ["prompt", "answer", "end"] and "tolerance" not in dv_small
                   and isinstance(dv_small["fewest_eligible"], int)
                   and dv_small["read_at_end"] is True and dv_small["edit_end"] is not None and dv_small["edit_end"] > 0.0
@@ -1079,16 +1078,16 @@ def main() -> int:
                       "-6.00 nats a piece" in t_res["sheet"]
                   and ig_small["no_figure"] == 0
                   and "reworded items that read are under the kernel's bar" in t_res["sheet"]
-                  and t_res["fresh_judged"]["classes"]["small"]["delivered"]["same_site"]["read_at_end"] is True
+                  and dv_ss_small["read_at_end"] is True
                   and "calibrated under v" not in t_res["sheet"]
                   and f"(calibrated under v{bars_v1.rule_version} of the rule: a calibration gives the four bars"
                       in lcl.render_sheet(brief, bars_v1, t_res["fresh_judged"], t_res["meta"], None),
-                  "5: the sheet of a trial has no line that is a claim's alone, says what the edit and its matched control "
-                  f"edits delivered over the prompt, over the answer and at the last position, where this brief's metric "
-                  f"is read ({dv_small['as_loud']} of 39 at least as loud as the edit at all three), how many of the sets "
-                  f"share no site (39, drawn spread from {dv_small['fewest_eligible']} eligible sites a neuron), how many "
-                  f"items the kernel read under its item gate ({ig_small['under_bar']} of 4), and how many of a battery's "
-                  f"items read")
+                  "5: the sheet of a trial has no line that is a claim's alone, says what the edit and its matched and "
+                  f"same-site control edits delivered over the prompt, over the answer and at the last position "
+                  f"(matched {dv_small['as_loud']} of 39 >= edit; same-site {dv_ss_small['as_loud']} of 39 >= "
+                  f"{lt.SAME_SITE_MIN_RATIO:g}x), how many sets share no site (39, drawn spread from "
+                  f"{dv_small['fewest_eligible']} eligible sites a neuron), how many items were under the item gate "
+                  f"({ig_small['under_bar']} of 4), and how many of a battery's items read")
             check(t_res["meta"]["book_head_before"] == next(lb.entries(cal_book, start=t_res["book"]["registration_seq"] - 1,
                                                                         limit=1))["hash"]
                   and t_res["meta"]["book_head_before"][:12] in t_res["sheet"] and t_res["meta"]["priced"]["forwards"] > 0,
@@ -1663,11 +1662,12 @@ def main() -> int:
                                                        ("labelled_panel", "labelled panel")))
                   and sent_live.count("-1.5000") >= 6 and "fresh reading 1 of 2" in sent_live
                   and "0 of 39 matched other-site" in sent_live and "0 of 19 matched control edits moved as much" in sent_live
-                  and "a level at which the 0 that were quieter than the edit, or gave no figure, are counted as moving "
-                      "as much, and the sets as 39 separate draws" in sent_live
-                  and "same-site (not asked to be as loud as the edit: as read, their median change to the stream was "
-                      "1.00 over the prompt, 1.00 over the answer and 1.00 at the last position times the edit's; p_fw"
+                  and "counted as read over 39 separate draws (with the same-site family answering for disturbance size)"
                       in sent_live
+                  and f"same-site (size-checked (39 of 39 at least {lt.SAME_SITE_MIN_RATIO:g} times as loud as the edit "
+                      "over the prompt, over the answer and at the last position; 0 quieter or missing counted as "
+                      "moving as much); as read, their median change to the stream was 1.00 over the prompt, 1.00 "
+                      "over the answer and 1.00 at the last position times the edit's; p_fw" in sent_live
                   and "the same bits on 4 of 4 items" in sent_live and "No claim reading of this edit stands in this book" in sent_live
                   and "which no earlier fresh reading in this book had read" in sent_live
                   and (" Passed. " in sent_live or " Passed, matched by a cheaper knob. " in sent_live)
@@ -1727,7 +1727,12 @@ def main() -> int:
 
             def quiet_over_the_prompt(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
                 for arm in arms_in(body, "control:"):
-                    arm["delivered_prompt"] = 0.0099  # one part in a hundred under the edit's
+                    arm["delivered_prompt"] = 0.0080  # below SAME_SITE_MIN_RATIO (0.85) of the edit's 0.01
+
+            def near_edit_loudness(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
+                for arm in arms_in(body, "control:"):
+                    for key in ("delivered", "delivered_end", "delivered_prompt"):
+                        arm[key] = 0.0090  # 0.90x edit's 0.01: within SAME_SITE_MIN_RATIO (0.85)
 
             def louder(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
                 for arm in arms_in(body, "control:"):
@@ -1747,14 +1752,24 @@ def main() -> int:
                     arm.pop("delivered_end", None)
 
             in_pass = jp["inputs"]["classes"]["small"]
-            got_x = {tag: judged_with(tag, fn) for tag, fn in (
-                ("quiet_at_end", quiet_at_end), ("few_stand_ins", few_stand_ins), ("edit_no_figure", edit_no_figure),
-                ("edit_delivered_nothing", edit_delivered_nothing), ("old_reading", old_reading), ("no_count", no_count),
-                ("no_prompt_figure", no_prompt_figure), ("quiet_over_the_prompt", quiet_over_the_prompt),
-                ("louder", louder), ("no_disjoint", no_disjoint), ("count_no_whole_number", count_no_whole_number),
-                ("count_a_truth", count_a_truth))}
-
-            got_x["reworded_quiet_at_end"] = judged_with("reworded_quiet_at_end", quiet_at_end, which="_reworded")
+            got_x = {tag: judged_with(tag, fn, which=wh) for tag, fn, wh in (
+                # Under trial-4, same_site answers for disturbance size at SAME_SITE_MIN_RATIO:
+                ("quiet_at_end", quiet_at_end, "_same_site"),
+                ("quiet_over_the_prompt", quiet_over_the_prompt, "_same_site"),
+                ("near_edit_loudness", near_edit_loudness, "_same_site"),
+                ("louder", louder, "_same_site"),
+                ("edit_no_figure", edit_no_figure, "_same_site"),
+                ("edit_delivered_nothing", edit_delivered_nothing, "_same_site"),
+                ("old_reading", old_reading, "_same_site"),
+                ("no_prompt_figure", no_prompt_figure, "_same_site"),
+                # Matched other-site controls are judged as read (even when quieter), gated on separate_draws:
+                ("matched_quiet_passes", quiet_at_end, "_matched"),
+                ("few_stand_ins", few_stand_ins, "_matched"),
+                ("no_count", no_count, "_matched"),
+                ("no_disjoint", no_disjoint, "_matched"),
+                ("count_no_whole_number", count_no_whole_number, "_matched"),
+                ("count_a_truth", count_a_truth, "_matched"),
+            )}
 
             def small_of(tag: str) -> Dict[str, Any]:
                 return got_x[tag]["judged"]["fresh_judged"]["classes"]["small"]
@@ -1762,46 +1777,50 @@ def main() -> int:
             def why_x(tag: str) -> str:
                 return " | ".join(got_x[tag]["judged"]["trial"]["reasons"])
 
-            check(all(isinstance(v, float) for v in in_pass["controls_as_read"]["other_sites_matched"])
-                  and in_pass["controls_aside"]["other_sites_matched"] == [False] * 39
-                  and in_pass["controls"]["other_sites_matched"] == in_pass["controls_as_read"]["other_sites_matched"]
+            check(all(isinstance(v, float) for v in in_pass["controls_as_read"]["same_site"])
+                  and in_pass["controls_aside"]["same_site"] == [False] * 39
+                  and in_pass["controls"]["same_site"] == in_pass["controls_as_read"]["same_site"]
+                  and "other_sites_matched" not in in_pass["controls_aside"]
+                  # Matched other-site quieter than edit still passes under trial-4 (same-site answers for size)
+                  and got_x["matched_quiet_passes"]["verdict"] in lt.PASSED
+                  and small_of("matched_quiet_passes")["delivered"]["other_sites_matched"]["as_loud"] == 0
+                  # Same-site at 0.90x edit passes (>= SAME_SITE_MIN_RATIO = 0.85)
+                  and got_x["near_edit_loudness"]["verdict"] in lt.PASSED
+                  and small_of("near_edit_loudness")["delivered"]["same_site"]["as_loud"] == 39
+                  and small_of("near_edit_loudness")["delivered"]["same_site"]["not_comparable"] == 0
+                  # Same-site below 0.85x edit at end or over prompt fails
                   and got_x["quiet_at_end"]["verdict"] == "failed"
                   and got_x["quiet_at_end"]["fresh_verdict"] == "no better than control edits"
-                  and small_of("quiet_at_end")["delivered"]["other_sites_matched"]["not_comparable"] == 39
-                  and small_of("quiet_at_end")["delivered"]["other_sites_matched"]["as_loud"] == 0
-                  and small_of("quiet_at_end")["controls"]["other_sites_matched"]["at_least"] == 39
-                  and got_x["quiet_at_end"]["judged"]["inputs"]["classes"]["small"]["controls_aside"]["other_sites_matched"] == [True] * 39
+                  and small_of("quiet_at_end")["delivered"]["same_site"]["not_comparable"] == 39
+                  and small_of("quiet_at_end")["delivered"]["same_site"]["as_loud"] == 0
+                  and small_of("quiet_at_end")["controls"]["same_site"]["at_least"] == 39
+                  and got_x["quiet_at_end"]["judged"]["inputs"]["classes"]["small"]["controls_aside"]["same_site"] == [True] * 39
                   and {k: v for k, v in got_x["quiet_at_end"]["figures"].items() if ":loud:" not in k}
                       == {k: v for k, v in rj_pass["figures"].items() if ":loud:" not in k}
                   and "did not change the stream as much as the edit did" in why_x("quiet_at_end")
                   and "of the control edits that were read and count, 0 moved the metric as much" in why_x("quiet_at_end")
-                  and small_of("quiet_at_end")["controls"]["other_sites_matched"]["as_read_at_least"] == 0
+                  and small_of("quiet_at_end")["controls"]["same_site"]["as_read_at_least"] == 0
                   and got_x["quiet_over_the_prompt"]["verdict"] == "failed"
-                  and small_of("quiet_over_the_prompt")["delivered"]["other_sites_matched"]["as_loud"] == 0
-                  # the reworded set's control edits, quiet at the last position: the same words in its reason
-                  and got_x["reworded_quiet_at_end"]["verdict"] == "failed"
-                  and got_x["reworded_quiet_at_end"]["fresh_verdict"] in lcl.LEADS
-                  and 'Reworded small failed "other_sites_matched" controls (at_least=19/19' in why_x("reworded_quiet_at_end")
-                  and "19 of them gave no finite reading, or did not change the stream as much as the edit did, and are "
-                      "counted as moving as much: of the control edits that were read and count, 0 moved the metric as "
-                      "much" in why_x("reworded_quiet_at_end"),
-                  "5: control edits as loud as the edit over the answer and a hundredth as loud at the last position, "
-                  "where the metric is read, or one part in a hundred quieter over the prompt, are each counted as moving "
-                  "as much: a book that would pass then fails, with every other figure as read the same "
-                  f"({got_x['quiet_at_end']['verdict']}: {why_x('quiet_at_end')[:150]})")
+                  and small_of("quiet_over_the_prompt")["delivered"]["same_site"]["as_loud"] == 0,
+                  "5: under trial-4, matched other-site controls are judged as read even when quieter than the edit, "
+                  "while same-site controls answer for disturbance size (>= 0.85x over prompt, answer and end): "
+                  "0.90x passes, while 0.80x over the prompt or 0.01x at the last position fails with every other "
+                  f"figure unchanged ({got_x['quiet_at_end']['verdict']}: {why_x('quiet_at_end')[:150]})")
             m_quiet: Dict[str, Any] = {}
             for ent in lb.entries(real_book):
                 body = json.loads(json.dumps(ent["body"]))
                 would_pass(ent, body)
-                if ent["kind"] == "paired" and str(body.get("name", "")).endswith("_matched"):
+                if ent["kind"] == "paired" and str(body.get("name", "")).endswith("_same_site"):
                     quiet_at_end(ent, body)
                     m_quiet = body
             note_real = [e["body"] for e in lb.entries(real_book) if e["kind"] == "note"
                          and e["body"].get("note_type") == lt.NOTE_OF_RECORD][-1]
             drawn_real = lt._as_drawn(note_real["drawn"]["target"])
             dose_real = float(reg_real["trial"]["main_dose"])
-            d_span = lcl._delivered_of(m_quiet, drawn_real, "small", dose_real, compare=True, at_end=False)
-            d_end = lcl._delivered_of(m_quiet, drawn_real, "small", dose_real, compare=True, at_end=True)
+            d_span = lcl._delivered_of(m_quiet, drawn_real, "small", dose_real, compare=True, at_end=False,
+                                       min_ratio=lt.SAME_SITE_MIN_RATIO)
+            d_end = lcl._delivered_of(m_quiet, drawn_real, "small", dose_real, compare=True, at_end=True,
+                                      min_ratio=lt.SAME_SITE_MIN_RATIO)
             check(lcl.read_at_end(brief) is True
                   and lcl.read_at_end(SimpleNamespace(metric="odds", readouts={"odds": {"at": "span"}})) is False
                   and lcl.read_at_end(SimpleNamespace(metric="own", readouts={"odds": {"at": "end"}})) is False
@@ -1811,12 +1830,12 @@ def main() -> int:
                   "is not asked of it: the same reading counts all 39 control edits there and none for a metric read at "
                   "the end")
             check(got_x["louder"]["verdict"] in lt.PASSED
-                  and small_of("louder")["delivered"]["other_sites_matched"]["as_loud"] == 39
-                  and small_of("louder")["delivered"]["other_sites_matched"]["not_comparable"] == 0
+                  and small_of("louder")["delivered"]["same_site"]["as_loud"] == 39
+                  and small_of("louder")["delivered"]["same_site"]["not_comparable"] == 0
                   and got_x["edit_delivered_nothing"]["verdict"] in lt.PASSED
-                  and small_of("edit_delivered_nothing")["delivered"]["other_sites_matched"]["as_loud"] == 39,
-                  "5: there is no upper side: control edits fifty times as loud as the edit count for it when they move "
-                  "the metric less, and so do control edits louder than an edit that changed nothing over the answer")
+                  and small_of("edit_delivered_nothing")["delivered"]["same_site"]["as_loud"] == 39,
+                  "5: there is no upper side: same-site control edits fifty times as loud as the edit count for it "
+                  "when they move the metric less, and so do controls louder than an edit that changed nothing")
             check(got_x["few_stand_ins"]["verdict"] == "failed"
                   and small_of("few_stand_ins")["controls"]["other_sites_matched"]["effective_count"] == 18
                   and small_of("few_stand_ins")["controls"]["other_sites_matched"]["at_least"] == 0
@@ -1839,20 +1858,22 @@ def main() -> int:
                   "though it records 39 different stand-ins a neuron, and so is one whose count is no whole number "
                   f"({why_x('few_stand_ins')[:170]})")
             check(all(got_x[tag]["verdict"] == "failed"
-                      and small_of(tag)["delivered"]["other_sites_matched"]["not_comparable"] == 39
-                      and small_of(tag)["delivered"]["other_sites_matched"]["as_loud"] == 0
+                      and small_of(tag)["delivered"]["same_site"]["not_comparable"] == 39
+                      and small_of(tag)["delivered"]["same_site"]["as_loud"] == 0
                       for tag in ("edit_no_figure", "old_reading", "no_prompt_figure"))
-                  and "quieter than the edit at one of those, or with no figure" in lcl.delivered_words(
-                      small_of("edit_no_figure")["delivered"]["other_sites_matched"],
-                      small_of("edit_no_figure")["controls"]["other_sites_matched"])
+                  and f"below {lt.SAME_SITE_MIN_RATIO:g} times the edit's" in lcl.delivered_words(
+                      small_of("edit_no_figure")["delivered"]["same_site"],
+                      small_of("edit_no_figure")["controls"]["same_site"])
                   and lcl.delivered_apart(None, 0.5) and lcl.delivered_apart(0.5, None)
                   and not lcl.delivered_apart(0.0, 0.5) and not lcl.delivered_apart(0.0, 0.0)
                   and lcl.delivered_apart(1.0, 0.5) and not lcl.delivered_apart(1.0, 2.0)
                   and lcl.delivered_apart(1.0, 0.9999) and not lcl.delivered_apart(1.0, 1.0)
-                  and not lcl.delivered_apart(1.0, 50.0),
-                  "5: when the edit has no delivered figure, and when a reading records no figure at the last position "
-                  "(for a metric read there) or none over the prompt, no control edit is taken to have been as loud as "
-                  "the edit: each is counted as moving as much, and the trial fails")
+                  and not lcl.delivered_apart(1.0, 50.0)
+                  and lcl.delivered_apart(1.0, 0.84, min_ratio=0.85)
+                  and not lcl.delivered_apart(1.0, 0.86, min_ratio=0.85),
+                  "5: when the edit has no delivered figure, or a same-site reading records no figure at the last "
+                  "position (for a metric read there) or none over the prompt, every same-site control is set aside "
+                  "and the trial fails")
 
 
             # the command line
@@ -2535,15 +2556,15 @@ def main() -> int:
                   and not failed(iv_ids, "reading_matched_is_the_home_reading"),
                   f"7: a card that drew other control edits from the same seed is a disagreement the intake names "
                   f"({iv_ids['outcome']}: {iv_ids['disagree_reasons'][:1]})")
-            # a control edit at the bound of the matching tolerance: set aside on one card and not on the other. Its
-            # mean as read is the home's, so no figure is "missing"; the intake says which trials set aside what.
-            aside_home = [rj["judged"]["inputs"]["classes"][c]["controls_aside"]["other_sites_matched"] for c in ("small", "large")]
+            # a same-site control edit at the bound of SAME_SITE_MIN_RATIO: set aside on one card and not on the other.
+            # Its mean as read is the home's, so no figure is "missing"; the intake says which trials set aside what.
+            aside_home = [rj["judged"]["inputs"]["classes"][c]["controls_aside"]["same_site"] for c in ("small", "large")]
             c_in = next((c for c in range(39) if not aside_home[0][c] and not aside_home[1][c]), None)
             c_out = next((c for c in range(39) if aside_home[0][c] and aside_home[1][c]), None)
             c_flip, flip_to = (c_in, 1e-9) if c_in is not None else (c_out, 1.0)  # one that counted is made quiet, else one set aside loud
 
             def one_control_flipped(ent: Dict[str, Any], body: Dict[str, Any]) -> None:
-                if named("_matched", ent, body):
+                if named("_same_site", ent, body):
                     for it in body["items"]:
                         for cls in ("small", "large"):
                             for arm in it["classes"][cls]["arms"]:
@@ -2555,8 +2576,8 @@ def main() -> int:
             check(c_flip is not None and iv_bound["class_diffs"]["target:small:controls"]["missing"] == 0
                   and iv_bound["class_diffs"]["target:small:controls"]["largest_difference"] == 0.0
                   and iv_bound["class_diffs"]["target:small:controls"]["items"] == 78
-                  and iv_bound["control_edits_set_aside_differently"] == {"target:small:other_sites_matched": 1,
-                                                                           "target:large:other_sites_matched": 1}
+                  and iv_bound["control_edits_set_aside_differently"] == {"target:small:same_site": 1,
+                                                                           "target:large:same_site": 1}
                   and iv_bound["class_diffs"]["target:small:delivered"]["outside_tolerance"] == 3
                   and iv_bound["class_diffs"]["target:small:delivered"]["missing"] == 0
                   and iv_bound["outcome"] == "disagreed" and failed(iv_bound, "figures_agree_target_small_delivered")
@@ -2586,7 +2607,7 @@ def main() -> int:
                   and iv_loud["class_diffs"]["target:small"]["outside_tolerance"] == 0
                   and iv_draws["outcome"] != "accepted" and failed(iv_draws, "figures_agree_target_small_other")
                   and iv_draws["class_diffs"]["target:small:other"]["outside_tolerance"] == 1
-                  and iv_ok["class_diffs"]["target:small:delivered"]["items"] == 3 * 40
+                  and iv_ok["class_diffs"]["target:small:delivered"]["items"] == 2 * 3 * 40
                   and any(k == "target:small:draws:other_sites_matched" and v == 39.0 for k, v in rj["figures"].items()),
                   f"7: a returned book whose control edits delivered three times as much, or were counted as 30 draws "
                   f"where the home's were 39, is not taken for the same figures ({iv_loud['outcome']}, {iv_draws['outcome']})")

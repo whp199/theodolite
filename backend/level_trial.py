@@ -55,23 +55,22 @@ from backend import levelling as lv
 from backend import weight_edits as we
 from backend.census import write_json_atomic
 
-# 2: a control edit counts only when at least as loud as the edit (over the prompt, the answer and, for a metric
-# read there, the last position); control sets are drawn to share no site and counted by those that share none; a
-# look is taken at registration. A folder registered under "trial-1" is refused by its version, in those words.
-TRIAL_VERSION = 3  # 3: control sets drawn over all an edit's terms together and counted by neuron; no count, one draw
-TRIAL_RULE_PRESET = "trial-3"
-# What a registration says, in its result (`rule_stands`) and its RULES.md, of the rule its control edits are
-# judged by as it stands. It is here, and not left to a document, because a trial is read once. It says what is
-# expected and why, not what must be: an edit whose neurons are among the quietest of their layer would have
-# louder stand-ins, and none such has been read.
+# 2: a control edit counts only when at least as loud as the edit; control sets drawn spread and counted by disjoint
+# sets; sizing look at registration. 3: spread draw across all terms together counted by neuron.
+# 4: settled trial control rule (ROADMAP §viii option (b)): same-site controls (and declared-rule sham edits) answer
+# for disturbance size at `SAME_SITE_MIN_RATIO` (0.85) over prompt, answer, and end; matched other-site controls are
+# drawn spread, counted by disjoint sets (`separate_draws`), and judged as read with their delivered loudness printed
+# beside the edit's.
+TRIAL_VERSION = 4
+TRIAL_RULE_PRESET = "trial-4"
+SAME_SITE_MIN_RATIO = 0.85
 RULE_STANDS_SAY = (
-    "As the rule stands a trial is not expected to pass it. Each stand-in is drawn from a band on BOTH sides of "
-    "what its neuron is expected to deliver over the answer, and nothing matches the control edits over the prompt "
-    "or at the last position; so by the draw alone some of an edit's matched control edits are quieter than it at "
-    "one of the places compared (most of them, where the edit's neurons are among the loudest of their layer), "
-    "each of those is counted as moving as much, and the level allows almost none. What a pass should ask of its "
-    "control edits is the owner's to settle (ROADMAP section viii); until then a trial read of record is expected "
-    "to spend the edit's one trial on a verdict the rule has settled, not the edit"
+    "Under trial-4, the same-site control family (and sham-target edits for a declared rule) answers for disturbance "
+    f"size: each control edit counts for the edit only when, as read, it changed the stream by at least "
+    f"{SAME_SITE_MIN_RATIO:g} times what the edit did over the prompt, over the answer and (where the metric is read "
+    "there) at the last position; quieter ones or those with no figure are counted as moving as much. Matched "
+    "other-site control edits are drawn spread to share as few sites as the pools allow, counted by disjoint sets "
+    "(separate draws), and judged as read with their delivered stream change printed beside the edit's"
 )
 TRIAL_CONTROLS = 99  # synthesis.md §vi and arbiter.md row 18: 99 control edits a family support five fresh readings
 MAX_REWORDED_USES = 5  # synthesis.md §vi: a reworded item is read at most five times in its life, then the set rotates
@@ -565,43 +564,43 @@ _STARTER_ITEMS: Dict[str, Tuple[RewordedItem, ...]] = {
         RewordedItem(
             "rw_01", 0,
             "Supply the next clause of this brief scene: Dr. Beatrice Holloway reviewed the clinic ledger past midnight.",
-            " Beatrice closed the binder because",
+            "Beatrice closed the binder because",
         ),
         RewordedItem(
             "rw_02", 0,
             "Extend this passage in plain prose: Inspector Camille Laurent surveyed the wet cobblestones outside the courthouse.",
-            " Camille adjusted her collar while",
+            "Camille adjusted her collar while",
         ),
         RewordedItem(
             "rw_03", 0,
             "Write a natural continuation: Captain Simone Ortega checked the barometer on the bridge at dawn.",
-            " Simone logged the pressure before",
+            "Simone logged the pressure before",
         ),
         RewordedItem(
             "rw_04", 0,
             "Keep the paragraph going: Professor Ingrid Lindholm stacked the yellowed folios beside the window.",
-            " Ingrid dimmed the desk lamp until",
+            "Ingrid dimmed the desk lamp until",
         ),
         # Half 1
         RewordedItem(
             "rw_05", 1,
             "Add the following words: Chef Amara Okafor tasted the reduced broth from a copper spoon.",
-            " Amara lowered the flame since",
+            "Amara lowered the flame since",
         ),
         RewordedItem(
             "rw_06", 1,
             "Continue the short anecdote: Engineer Priya Subramanian inspected the turbine housing with a torch.",
-            " Priya marked the flange after",
+            "Priya marked the flange after",
         ),
         RewordedItem(
             "rw_07", 1,
             "Pick up where the text stops: Curator Valeria Rossi unlocked the east cabinet in silence.",
-            " Valeria lifted the bronze astrolabe although",
+            "Valeria lifted the bronze astrolabe although",
         ),
         RewordedItem(
             "rw_08", 1,
             "Carry the sentence onward: Botanist Freja Lindberg pressed the alpine fern between dry sheets.",
-            " Freja labelled the folder before",
+            "Freja labelled the folder before",
         ),
     ),
 }
@@ -670,15 +669,15 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         f"what a base pre-pass expects each to deliver over the answer, within a factor of "
         f"`{trial_cfg['match_tolerance']:g}`; the same "
         "site" + ("; sham targets, registered here" if trial_cfg["selection_mode"] == "declared_rule" else "") + "). "
-        "A matched or sham control edit counts for the edit only when, as read, it changed the stream at least as "
-        "much as the edit did: over the prompt's positions, over the positions that predict the answer, and"
-        + (" at the last position, where this brief's metric is read and which a base pre-pass does not look at"
+        f"The same-site family (and sham-target edits for a declared rule) answers for disturbance size: a control "
+        f"edit there counts for the edit only when, as read, it changed the stream by at least "
+        f"`{SAME_SITE_MIN_RATIO:g}` times what the edit did over the prompt's positions, over the positions that "
+        "predict the answer, and"
+        + (" at the last position, where this brief's metric is read"
            if lcl.read_at_end(brief) else " nowhere else, since this brief's metric is read over the answer")
-        + ". One that was quieter at any of them, and a control edit or an edit with no such figure, is counted as "
-        "moving as much. The figures are means over the items read. The matching factor has no part in this: a "
-        "wider one makes more sites eligible and lets no quieter control edit count. The same-site family is not "
-        "asked this: its control edits are built at the edit's own sites, and what they changed the stream by is "
-        "printed beside the edit's. At this trial's level at most "
+        + "; one quieter than that, or with no such figure, is counted as moving as much. The figures are means over "
+        "the items read. The matched other-site family is judged as read (with its delivered stream change printed "
+        "beside the edit's), drawn spread and counted by disjoint sets. At this trial's level at most "
         f"`{_most_aside(int(trial_cfg['controls_per_family']), brief.max_fresh_readings, bars.alpha)}` of the "
         f"`{trial_cfg['controls_per_family']}` control edits of a family on the fresh items, and "
         f"`{_most_aside(int(trial_cfg['reworded_controls']), 1, bars.alpha)}` of the reworded set's "
@@ -1813,14 +1812,13 @@ def judge_trial(
 
 
 def _controls_judged(dv: Dict[str, Any], ctl_means: List[Optional[float]]) -> Tuple[List[Optional[float]], List[bool]]:
-    """A matched or sham family's control means as the judgement takes them: each control edit that, as read, did not
-    change the stream as the edit did (`dv["apart"]`, from `level_claim._delivered_of`) is taken out of the edit's
-    favour (`level_claim.set_apart_aside`: its mean None, which `control_standing` counts as moving as much), and
-    `dv` is told how many were (`not_comparable`). Returns (the means to judge by, which control edits were set
-    aside); the means as read are not touched. "Matched" other sites are matched on a base pre-pass's expectation,
-    and on the 31B most of them then delivered under half of what the edit did: a control edit that hardly touched
-    the stream is no control. A control edit with no figure, and every control edit when the edit has none, is set
-    aside too."""
+    """A size-checked family's (`same_site`, or `sham_target` for a declared rule) control means as the judgement
+    takes them: each control edit that, as read, did not change the stream by at least `min_ratio` times what the
+    edit did (`dv["apart"]`, from `level_claim._delivered_of`) is taken out of the edit's favour
+    (`level_claim.set_apart_aside`: its mean None, which `control_standing` counts as moving as much), and `dv` is
+    told how many were (`not_comparable`). Returns (the means to judge by, which control edits were set aside); the
+    means as read are not touched. A control edit with no figure, and every control edit when the edit has none, is
+    set aside too."""
     apart = [bool(a) for a in (dv.get("apart") or ())]
     judged, dv["not_comparable"] = lcl.set_apart_aside(dv, ctl_means)
     return judged, apart
@@ -1903,27 +1901,31 @@ def judge_readings(
             it_effs, fl_m, rev_m, ctl_m = lcl._extract_item_effects(r_matched, target_drawn, cls_name, brief.metric, main_dose)
             _, fl_s, _, ctl_s = lcl._extract_item_effects(r_same, target_drawn, cls_name, brief.metric, main_dose)
             fl_both = max([x for x in (fl_m, fl_s) if x is not None], default=None)
-            # the control edits' means as read, kept beside the ones the judgement takes: the first are what one
-            # trial's figures are set beside another's by, the second have those set aside taken out
+            # Under trial-4: same_site (and sham_target for a declared rule) answers for disturbance size at
+            # SAME_SITE_MIN_RATIO; other_sites_matched is drawn spread, counted by disjoint sets (separate_draws),
+            # and judged as read with its delivered loudness recorded and printed beside the edit's.
             as_read: Dict[str, Any] = {"other_sites_matched": list(ctl_m), "same_site": list(ctl_s)}
             aside: Dict[str, Any] = {}
             dv_m = lcl._delivered_of(r_matched, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
-            loud: Dict[str, Any] = {"other_sites_matched": _loud_of(dv_m)}
-            ctl_m, aside["other_sites_matched"] = _controls_judged(dv_m, ctl_m)
+            dv_s = lcl._delivered_of(r_same, target_drawn, cls_name, main_dose, compare=True, at_end=at_end,
+                                     min_ratio=SAME_SITE_MIN_RATIO)
+            loud: Dict[str, Any] = {"other_sites_matched": _loud_of(dv_m), "same_site": _loud_of(dv_s)}
+            ctl_s, aside["same_site"] = _controls_judged(dv_s, ctl_s)
             ctls_cls: Dict[str, Any] = {"other_sites_matched": ctl_m, "same_site": ctl_s}
             # a reading that records no count of its separate draws shows none: it is counted as one
             draws_m = lcl.separate_draws(dv_m)
             eff_cls: Dict[str, Any] = {"other_sites_matched": draws_m if draws_m is not None else 1}
             deliv_cls: Dict[str, Any] = {
                 "other_sites_matched": dv_m,
-                "same_site": lcl._delivered_of(r_same, target_drawn, cls_name, main_dose, at_end=at_end),
+                "same_site": dv_s,
             }
             if r_sham is not None:
                 _, _, _, ctl_sh = lcl._extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
                 as_read["sham_target"] = list(ctl_sh)
-                # a sham that moves the stream much more or less than the edit is not a control for it: it is
-                # counted against the edit (as the claim gate does), and the sheet says how many
-                dv_sh = lcl._delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
+                # a sham that moves the stream less than SAME_SITE_MIN_RATIO of the edit is not a control for it:
+                # it is counted against the edit, and the sheet says how many
+                dv_sh = lcl._delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end,
+                                          min_ratio=SAME_SITE_MIN_RATIO)
                 loud["sham_target"] = _loud_of(dv_sh)
                 ctl_sh, aside["sham_target"] = _controls_judged(dv_sh, ctl_sh)
                 ctls_cls["sham_target"] = ctl_sh
@@ -1942,12 +1944,11 @@ def judge_readings(
             rw_read = list(ctl_rw)
             dv_rw = lcl._delivered_of(r_rw, rw_drawn, cls_name, main_dose, compare=True, at_end=at_end)
             rw_loud = {"other_sites_matched": _loud_of(dv_rw)}
-            ctl_rw, rw_aside = _controls_judged(dv_rw, ctl_rw)
             draws_rw = lcl.separate_draws(dv_rw)
             slim(dv_rw)
             rw_classes[cls_name] = {"item_effects": it_effs, "floor": fl_rw, "controls": {"other_sites_matched": ctl_rw},
                                     "controls_as_read": {"other_sites_matched": rw_read},
-                                    "controls_aside": {"other_sites_matched": rw_aside},
+                                    "controls_aside": {},
                                     "controls_effective": {"other_sites_matched": draws_rw if draws_rw is not None else 1},
                                     "delivered": dv_rw, "delivered_as_read": rw_loud,
                                     "item_gate": lcl.item_gate_of(r_rw, rw_drawn)}

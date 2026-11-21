@@ -3537,6 +3537,20 @@ def check_1b(Fb: Box, Pb: Box, hF: Any, hP: Any) -> None:
                 ok_ss = (ok_ss and np.array_equal(tc.idx, e_r1.terms[0].idx) and bool((dW_c[:, qm] == 0.0).all())
                          and bool(np.allclose(cnorms, enorms, rtol=1e-4, atol=1e-6)) and r1_share >= 1.0 - 1e-5)
             check(ok_ss, "15e: same_site controls share exact sites, have zero quiet energy, match stream norms and preserve rank-1 coherence")
+            # 1b. same_site on a correlated multi-column (non-rank-1) edit: exact Gram matrix match in stream space
+            e_multi = Fb.build(we.silence(2, [3, 7, 11, 15]))
+            ss_m = we.same_site_controls(e_multi, Fb.lm, seed=11, count=3)
+            mod_d2 = we._linear_of(Fb.lm, we.linear_name(2, "down_proj"))
+            dW_m = we._term_delta_f64(mod_d2, e_multi.terms[0])
+            dS_m = dW_m * wp64[None, :]
+            gram_m = dS_m @ dS_m.T
+            ok_gram = len(ss_m) == 3 and len({c.id for c in ss_m}) == 3
+            for c in ss_m:
+                dW_c = c.terms[0].vectors.astype(np.float64)
+                dS_c = dW_c * wp64[None, :]
+                ok_gram = (ok_gram and bool((dW_c[:, qm] == 0.0).all())
+                           and bool(np.allclose(dS_c @ dS_c.T, gram_m, rtol=1e-4, atol=1e-5)))
+            check(ok_gram, "15e: multi-column same_site controls preserve exact stream-space Gram matrix with zero quiet energy")
         finally:
             ln2.weight.data.copy_(orig_wp)
         r_ss = lv.read(hP, {**paired_base, "name": "1b same_site", "controls": {"family": "same_site", "count": 4, "seed": 2},
