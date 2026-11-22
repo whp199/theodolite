@@ -14,8 +14,8 @@ import type { ReplayCard } from "./compare";
 export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
   {
     "seq": 10,
-    "at": "2026-11-19T06:09:48Z",
-    "hash": "0c28778b9ad8bc10",
+    "at": "2026-11-22T10:18:44Z",
+    "hash": "ea80c24ece006b91",
     "kind": "note",
     "status": "works but harms",
     "why": null,
@@ -24,26 +24,28 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
     "edit_linears": [
       "layers.50.mlp.down_proj"
     ],
-    "seconds": 44.75,
+    "seconds": 38.61,
     "base_after": null,
     "note_type": "claim_verdict",
     "brief_name": "pronoun_pull",
-    "brief_id": "92c7776f8ed0788eb12354893e8c3fe78dc5b167b8788a8e98a821b6c0bccd3e",
+    "brief_id": "935d9f723200a38d42a715d1a8b405b3106fb90f1639a7a7bdc3ff7b2f4b676b",
     "verdict": "works but harms",
     "reasons": [
-      "near_misses abs effect (0.8008685111999512, ratio 0.4862498339144315) exceeded bar (abs <= 0.25, ratio <= 0.35)."
+      "near_misses abs effect (1.0118346214294434, ratio 1.2373741971736372) exceeded bar (abs <= 0.25, ratio <= 0.35)."
     ],
     "claim_sentence": null,
     "summary": {
       "large": {
         "ci95": [
-          -2.6625279898725225,
-          -0.6933515553392694
+          -2.0591650698309243,
+          0.37844849563887717
         ],
         "controls": {
           "other_sites_matched": {
+            "as_read_at_least": 0,
             "at_least": 0,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
             "p_emp": 0.025,
             "p_fw": 0.05,
@@ -51,8 +53,10 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
             "tops_every_control": true
           },
           "same_site": {
+            "as_read_at_least": 0,
             "at_least": 0,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
             "p_emp": 0.025,
             "p_fw": 0.05,
@@ -61,42 +65,84 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
           },
           "sham_target": {
             "count": 0,
-            "note": "selection not matched, 1 read in practice",
+            "note": "selection not matched, 1 practice readings in this book",
             "p_emp": null,
             "p_fw": null,
             "passes_alpha": null
           }
         },
-        "directed_mean": 1.677939772605896,
+        "delivered": {
+          "other_sites_matched": {
+            "as_loud": 0,
+            "as_loud_ratio_answer": null,
+            "as_loud_ratio_end": null,
+            "as_loud_ratio_prompt": null,
+            "compared_at": [
+              "prompt",
+              "answer",
+              "end"
+            ],
+            "controls_max": 0.018185526365414262,
+            "controls_median": 0.006868030875921249,
+            "controls_median_end": 0.003659663867438212,
+            "controls_median_prompt": 0.003479682927718386,
+            "controls_min": 0.004119543562410399,
+            "controls_read": 39,
+            "disjoint_sets": 19,
+            "draw": "independent",
+            "edit": 0.013793226389680058,
+            "edit_end": 0.02630000122007914,
+            "edit_prompt": 0.010326140327379107,
+            "fewest_distinct": 19,
+            "fewest_eligible": 30,
+            "of_controls": 39,
+            "read_at_end": true
+          },
+          "same_site": {
+            "controls_max": 0.013726360921282321,
+            "controls_median": 0.013687497761566192,
+            "controls_median_end": 0.02546828699996695,
+            "controls_median_prompt": 0.010120352439116687,
+            "controls_min": 0.01363189151743427,
+            "controls_read": 39,
+            "edit": 0.013793226389680058,
+            "edit_end": 0.02630000122007914,
+            "edit_prompt": 0.010326140327379107,
+            "read_at_end": true
+          }
+        },
+        "directed_mean": 0.8403582870960236,
         "half_0": {
-          "directed_mean": 1.8444660902023315,
-          "mean": -1.8444660902023315,
+          "directed_mean": 0.3939182758331299,
+          "mean": -0.3939182758331299,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": 1.5114134550094604,
-          "mean": -1.5114134550094604,
+          "directed_mean": 1.2867982983589172,
+          "mean": -1.2867982983589172,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.35251792780961516,
-          "floor": 0.16569185256958008,
+          "bar": 0.3040909429029966,
+          "floor": 0.12329506874084473,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 4.526474828839563
+          "ratio_m_over_f": 6.08296834301162
         },
-        "mean": -1.677939772605896,
+        "mean": -0.8403582870960236,
         "n_frames": 8
       },
       "small": {
         "ci95": [
-          -2.667993781519038,
-          -0.6260680580614981
+          -2.0582735291348007,
+          0.4228189936504867
         ],
         "controls": {
           "other_sites_matched": {
+            "as_read_at_least": 0,
             "at_least": 0,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
             "p_emp": 0.025,
             "p_fw": 0.05,
@@ -104,8 +150,10 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
             "tops_every_control": true
           },
           "same_site": {
+            "as_read_at_least": 0,
             "at_least": 0,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
             "p_emp": 0.025,
             "p_fw": 0.05,
@@ -114,31 +162,71 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
           },
           "sham_target": {
             "count": 0,
-            "note": "selection not matched, 1 read in practice",
+            "note": "selection not matched, 1 practice readings in this book",
             "p_emp": null,
             "p_fw": null,
             "passes_alpha": null
           }
         },
-        "directed_mean": 1.647030919790268,
+        "delivered": {
+          "other_sites_matched": {
+            "as_loud": 0,
+            "as_loud_ratio_answer": null,
+            "as_loud_ratio_end": null,
+            "as_loud_ratio_prompt": null,
+            "compared_at": [
+              "prompt",
+              "answer",
+              "end"
+            ],
+            "controls_max": 0.018157439306378365,
+            "controls_median": 0.006890708056744188,
+            "controls_median_end": 0.0034723250864772126,
+            "controls_median_prompt": 0.0035029210266657174,
+            "controls_min": 0.004160105308983475,
+            "controls_read": 39,
+            "disjoint_sets": 19,
+            "draw": "independent",
+            "edit": 0.013824402471072972,
+            "edit_end": 0.026464300783118233,
+            "edit_prompt": 0.01033506472595036,
+            "fewest_distinct": 19,
+            "fewest_eligible": 30,
+            "of_controls": 39,
+            "read_at_end": true
+          },
+          "same_site": {
+            "controls_max": 0.013776610663626343,
+            "controls_median": 0.013719892187509686,
+            "controls_median_end": 0.02568600806989707,
+            "controls_median_prompt": 0.01011133607244119,
+            "controls_min": 0.013668540806975216,
+            "controls_read": 39,
+            "edit": 0.013824402471072972,
+            "edit_end": 0.026464300783118233,
+            "edit_prompt": 0.01033506472595036,
+            "read_at_end": true
+          }
+        },
+        "directed_mean": 0.817727267742157,
         "half_0": {
-          "directed_mean": 1.8218348026275635,
-          "mean": -1.8218348026275635,
+          "directed_mean": 0.3512570858001709,
+          "mean": -0.3512570858001709,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": 1.4722270369529724,
-          "mean": -1.4722270369529724,
+          "directed_mean": 1.284197449684143,
+          "mean": -1.284197449684143,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.28977507320005236,
-          "floor": 0.11195945739746094,
+          "bar": 0.335552616092475,
+          "floor": 0.15012741088867188,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 6.698853472801922
+          "ratio_m_over_f": 4.995756574768136
         },
-        "mean": -1.647030919790268,
+        "mean": -0.817727267742157,
         "n_frames": 8
       }
     },
@@ -153,28 +241,43 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
       "labelled_panel": {
         "available": true,
         "gating": true,
+        "items": {
+          "given": 4,
+          "read": 3,
+          "under_item_gate": 1
+        },
         "kl_bar": 0.05,
-        "mean_kl": 4.906697448348041e-08,
+        "mean_kl": 6.20622628844103e-08,
         "own_drop": 0.0,
         "own_drop_bar": 0.1,
         "passed": true
       },
       "near_misses": {
         "abs_bar": 0.25,
-        "abs_effect": 0.8008685111999512,
+        "abs_effect": 1.0118346214294434,
         "available": true,
         "gating": true,
-        "mean_effect": 0.7701230049133301,
+        "items": {
+          "given": 4,
+          "read": 4,
+          "under_item_gate": 4
+        },
+        "mean_effect": 1.0118346214294434,
         "passed": false,
         "ratio_bar": 0.35,
-        "ratio_to_target": 0.4862498339144315
+        "ratio_to_target": 1.2373741971736372
       },
       "neutral_text": {
         "available": true,
         "bar": 0.05,
-        "control_kl_max": 6.430346093111439e-05,
+        "control_kl_max": 4.0776191212898993e-05,
         "gating": true,
-        "mean_kl": 6.926778496563202e-05,
+        "items": {
+          "given": 4,
+          "read": 4,
+          "under_item_gate": 3
+        },
+        "mean_kl": 3.2802249734231737e-05,
         "passed": true
       }
     },
@@ -188,18 +291,26 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
         "gating": false,
         "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"
       },
-      "matched_by": null,
+      "matched_arm": {
+        "directed_effect": 8.1468985080719,
+        "index": 0,
+        "near_miss": "within the registered bar as a share of its own effect",
+        "near_miss_abs": 1.9119431972503662,
+        "near_miss_share": 0.2346835664340269
+      },
+      "matched_by": "prompt arm 0",
       "prompt_arms": [
         {
-          "directed_effect": 8.115991353988647,
+          "directed_effect": 8.1468985080719,
           "index": 0,
-          "mean_effect": -8.115991353988647,
-          "near_miss_abs": 1.8319659233093262,
+          "mean_effect": -8.1468985080719,
+          "near_miss_abs": 1.9119431972503662,
           "prompt_sha256": "255cdbb968d4"
         }
-      ]
+      ],
+      "prompt_arms_state": "run"
     },
-    "bars_sha256": "80a466b7f6649e5bc3c8c8ca2675eb903d9413ead4316346d11fc0762ef18571",
+    "bars_sha256": "170f517707593622d7a84e3a4eb8d1f5b2250524231a43611258d829b0744d12",
     "book_seqs": [
       4,
       5,
@@ -208,12 +319,12 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
       8,
       9
     ],
-    "recorded_tag": "recorded on the 31B card (19 November 2026, verify_claim_book.jsonl)"
+    "recorded_tag": "recorded on the 31B card (22 November 2026, verify_claim_book.jsonl)"
   },
   {
     "seq": 17,
-    "at": "2026-11-19T06:10:34Z",
-    "hash": "b78d9dc4a9ab7eea",
+    "at": "2026-11-22T10:19:23Z",
+    "hash": "e72d551b9833b5e2",
     "kind": "note",
     "status": "kept the base",
     "why": null,
@@ -222,125 +333,214 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
     "edit_linears": [
       "layers.50.mlp.down_proj"
     ],
-    "seconds": 45.1,
+    "seconds": 39.07,
     "base_after": null,
     "note_type": "claim_verdict",
     "brief_name": "pronoun_pull",
-    "brief_id": "92c7776f8ed0788eb12354893e8c3fe78dc5b167b8788a8e98a821b6c0bccd3e",
+    "brief_id": "935d9f723200a38d42a715d1a8b405b3106fb90f1639a7a7bdc3ff7b2f4b676b",
     "verdict": "kept the base",
     "reasons": [
-      "small class directed mean (0.03061985969543457) is below house bar (0.2762680684735599).",
-      "small class failed \"same_site\" controls (at_least=3/39, p_fw=0.2, alpha=0.05).",
-      "large class directed mean (0.010810941457748413) is below house bar (0.30963461415684396).",
-      "large class failed \"other_sites_matched\" controls (at_least=18/39, p_fw=0.95, alpha=0.05).",
-      "large class failed \"same_site\" controls (at_least=20/39, p_fw=1.0, alpha=0.05)."
+      "small class directed mean (0.012635082006454468) is below house bar (0.3135638249236034).",
+      "small class failed \"other_sites_matched\" controls (at_least=10/39, p_fw=0.55, alpha=0.05).",
+      "small class failed \"same_site\" controls (at_least=23/39, p_fw=1.0, alpha=0.05).",
+      "large class directed mean (0.001885145902633667) is below house bar (0.21093919541419348).",
+      "large class failed \"other_sites_matched\" controls (at_least=36/39, p_fw=1.0, alpha=0.05).",
+      "large class failed \"same_site\" controls (at_least=37/39, p_fw=1.0, alpha=0.05)."
     ],
     "claim_sentence": null,
     "summary": {
       "large": {
         "ci95": [
-          -0.053028025534114114,
-          0.03140614261861729
+          -0.031482581879716476,
+          0.027712290074449145
         ],
         "controls": {
           "other_sites_matched": {
-            "at_least": 18,
+            "as_read_at_least": 36,
+            "at_least": 36,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.475,
-            "p_fw": 0.95,
+            "p_emp": 0.925,
+            "p_fw": 1.0,
             "passes_alpha": false,
             "tops_every_control": false
           },
           "same_site": {
-            "at_least": 20,
+            "as_read_at_least": 37,
+            "at_least": 37,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.525,
+            "p_emp": 0.95,
             "p_fw": 1.0,
             "passes_alpha": false,
             "tops_every_control": false
           },
           "sham_target": {
             "count": 0,
-            "note": "selection not matched, 1 read in practice",
+            "note": "selection not matched, 1 practice readings in this book",
             "p_emp": null,
             "p_fw": null,
             "passes_alpha": null
           }
         },
-        "directed_mean": 0.010810941457748413,
+        "delivered": {
+          "other_sites_matched": {
+            "as_loud": 0,
+            "as_loud_ratio_answer": null,
+            "as_loud_ratio_end": null,
+            "as_loud_ratio_prompt": null,
+            "compared_at": [
+              "prompt",
+              "answer",
+              "end"
+            ],
+            "controls_max": 0.0026263989857397974,
+            "controls_median": 0.0020477364014368504,
+            "controls_median_end": 0.0018567527658888139,
+            "controls_median_prompt": 0.0019526628020685166,
+            "controls_min": 0.001664399926085025,
+            "controls_read": 39,
+            "disjoint_sets": 35,
+            "draw": "independent",
+            "edit": 0.0023328641545958817,
+            "edit_end": 0.0023019198124529794,
+            "edit_prompt": 0.002599397615995258,
+            "fewest_distinct": 36,
+            "fewest_eligible": 748,
+            "of_controls": 39,
+            "read_at_end": true
+          },
+          "same_site": {
+            "controls_max": 0.002226215467089787,
+            "controls_median": 0.0021957585704512894,
+            "controls_median_end": 0.0022906774538569152,
+            "controls_median_prompt": 0.00249435257865116,
+            "controls_min": 0.002175567511585541,
+            "controls_read": 39,
+            "edit": 0.0023328641545958817,
+            "edit_end": 0.0023019198124529794,
+            "edit_prompt": 0.002599397615995258,
+            "read_at_end": true
+          }
+        },
+        "directed_mean": 0.001885145902633667,
         "half_0": {
-          "directed_mean": -0.020874977111816406,
-          "mean": 0.020874977111816406,
+          "directed_mean": 0.021150588989257812,
+          "mean": -0.021150588989257812,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": 0.04249686002731323,
-          "mean": -0.04249686002731323,
+          "directed_mean": -0.01738029718399048,
+          "mean": 0.01738029718399048,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.30963461415684396,
-          "floor": 0.12783145904541016,
+          "bar": 0.21093919541419348,
+          "floor": 0.059327125549316406,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 5.867100364813751
+          "ratio_m_over_f": 12.64177209085502
         },
-        "mean": -0.010810941457748413,
+        "mean": -0.001885145902633667,
         "n_frames": 8
       },
       "small": {
         "ci95": [
-          -0.09394557161178839,
-          0.03270585222091925
+          -0.059670764552924756,
+          0.03440060054001582
         ],
         "controls": {
           "other_sites_matched": {
-            "at_least": 0,
+            "as_read_at_least": 10,
+            "at_least": 10,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.025,
-            "p_fw": 0.05,
-            "passes_alpha": true,
-            "tops_every_control": true
+            "p_emp": 0.275,
+            "p_fw": 0.55,
+            "passes_alpha": false,
+            "tops_every_control": false
           },
           "same_site": {
-            "at_least": 3,
+            "as_read_at_least": 23,
+            "at_least": 23,
             "count": 39,
+            "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.1,
-            "p_fw": 0.2,
+            "p_emp": 0.6,
+            "p_fw": 1.0,
             "passes_alpha": false,
             "tops_every_control": false
           },
           "sham_target": {
             "count": 0,
-            "note": "selection not matched, 1 read in practice",
+            "note": "selection not matched, 1 practice readings in this book",
             "p_emp": null,
             "p_fw": null,
             "passes_alpha": null
           }
         },
-        "directed_mean": 0.03061985969543457,
+        "delivered": {
+          "other_sites_matched": {
+            "as_loud": 0,
+            "as_loud_ratio_answer": null,
+            "as_loud_ratio_end": null,
+            "as_loud_ratio_prompt": null,
+            "compared_at": [
+              "prompt",
+              "answer",
+              "end"
+            ],
+            "controls_max": 0.002564726455602795,
+            "controls_median": 0.0020804620726266876,
+            "controls_median_end": 0.0018635017549968325,
+            "controls_median_prompt": 0.0019173656910425052,
+            "controls_min": 0.0016491347050759941,
+            "controls_read": 39,
+            "disjoint_sets": 35,
+            "draw": "independent",
+            "edit": 0.0022795830736868083,
+            "edit_end": 0.0023312990815611556,
+            "edit_prompt": 0.0026011753361672163,
+            "fewest_distinct": 36,
+            "fewest_eligible": 748,
+            "of_controls": 39,
+            "read_at_end": true
+          },
+          "same_site": {
+            "controls_max": 0.0022822227037977427,
+            "controls_median": 0.002203506388468668,
+            "controls_median_end": 0.0022799261641921476,
+            "controls_median_prompt": 0.002491638093488291,
+            "controls_min": 0.0021703827660530806,
+            "controls_read": 39,
+            "edit": 0.0022795830736868083,
+            "edit_end": 0.0023312990815611556,
+            "edit_prompt": 0.0026011753361672163,
+            "read_at_end": true
+          }
+        },
+        "directed_mean": 0.012635082006454468,
         "half_0": {
-          "directed_mean": 0.048035621643066406,
-          "mean": -0.048035621643066406,
+          "directed_mean": 0.0037364959716796875,
+          "mean": -0.0037364959716796875,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": 0.013204097747802734,
-          "mean": -0.013204097747802734,
+          "directed_mean": 0.021533668041229248,
+          "mean": -0.021533668041229248,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.2762680684735599,
-          "floor": 0.10176539421081543,
+          "bar": 0.3135638249236034,
+          "floor": 0.13109636306762695,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 7.36989234715991
+          "ratio_m_over_f": 5.720982508211211
         },
-        "mean": -0.03061985969543457,
+        "mean": -0.012635082006454468,
         "n_frames": 8
       }
     },
@@ -355,28 +555,43 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
       "labelled_panel": {
         "available": true,
         "gating": true,
+        "items": {
+          "given": 4,
+          "read": 4,
+          "under_item_gate": 2
+        },
         "kl_bar": 0.05,
-        "mean_kl": 1.2809641125599569e-08,
-        "own_drop": 0.007652769486043098,
+        "mean_kl": 2.8246645022989014e-08,
+        "own_drop": 0.00765275458496717,
         "own_drop_bar": 0.1,
         "passed": true
       },
       "near_misses": {
         "abs_bar": 0.25,
-        "abs_effect": 0.01995706558227539,
+        "abs_effect": 0.02995896339416504,
         "available": true,
         "gating": true,
-        "mean_effect": 0.005430698394775391,
+        "items": {
+          "given": 4,
+          "read": 4,
+          "under_item_gate": 4
+        },
+        "mean_effect": 0.02995896339416504,
         "passed": true,
         "ratio_bar": 0.35,
-        "ratio_to_target": 1.8460062576670204
+        "ratio_to_target": 15.892119200063236
       },
       "neutral_text": {
         "available": true,
         "bar": 0.05,
-        "control_kl_max": 3.4018107726296876e-05,
+        "control_kl_max": 4.705491460299527e-05,
         "gating": true,
-        "mean_kl": 2.9289720032465993e-05,
+        "items": {
+          "given": 4,
+          "read": 4,
+          "under_item_gate": 3
+        },
+        "mean_kl": 3.8006565318937646e-05,
         "passed": true
       }
     },
@@ -390,18 +605,26 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
         "gating": false,
         "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"
       },
-      "matched_by": null,
+      "matched_arm": {
+        "directed_effect": 7.369401693344116,
+        "index": 0,
+        "near_miss": "within the registered bar as a share of its own effect",
+        "near_miss_abs": 0.9159023761749268,
+        "near_miss_share": 0.1242844961215983
+      },
+      "matched_by": "prompt arm 0",
       "prompt_arms": [
         {
-          "directed_effect": 7.676213845610619,
+          "directed_effect": 7.369401693344116,
           "index": 0,
-          "mean_effect": -7.676213845610619,
-          "near_miss_abs": 1.9546449184417725,
+          "mean_effect": -7.369401693344116,
+          "near_miss_abs": 0.9159023761749268,
           "prompt_sha256": "255cdbb968d4"
         }
-      ]
+      ],
+      "prompt_arms_state": "run"
     },
-    "bars_sha256": "80a466b7f6649e5bc3c8c8ca2675eb903d9413ead4316346d11fc0762ef18571",
+    "bars_sha256": "170f517707593622d7a84e3a4eb8d1f5b2250524231a43611258d829b0744d12",
     "book_seqs": [
       11,
       12,
@@ -410,6 +633,10 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
       15,
       16
     ],
-    "recorded_tag": "recorded on the 31B card (19 November 2026, verify_claim_book.jsonl)"
+    "recorded_tag": "recorded on the 31B card (22 November 2026, verify_claim_book.jsonl)"
   }
 ];
+
+/** The book the cards are from: its last run, as the server dates a recorded book, and its head. */
+export const RECORDED_BOOK_LAST_RUN = "last run 22 Nov 2026, UTC";
+export const RECORDED_BOOK_HEAD = "98992e66303f513f";

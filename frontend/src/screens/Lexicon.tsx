@@ -1644,6 +1644,45 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             <M>GET /api/level/book</M> with no model loaded.
           </EntryApparatus>
         </Entry>
+
+        <Entry
+          id="trial-of-record"
+          aliases={ALIASES["trial-of-record"]}
+          head="a trial of record"
+          tech="dry run · re-run · folded form · reworded set · not run"
+        >
+          <Body>
+            The owner’s formal confirmation of a weight edit: registered and hashed in a committed folder, read once in
+            a fresh process from a clean checkout in the default level book, with a checksum over every stored weight
+            before and after.
+          </Body>
+          <Note>
+            A <strong>dry run</strong> takes the same readings when any condition of record is missing (a side book, a
+            process that already read, or an uncommitted folder); it never prints a verdict of record. A{" "}
+            <strong>re-run</strong> repeats the home trial’s exact items on a volunteer’s card into a book of its own,
+            which the intake judges figure by figure against the home book.
+          </Note>
+          <Note>
+            Every trial checks the <strong>folded form</strong>—the change written into the unpacked weights beside the
+            per-row form—and an independent <strong>reworded set</strong> written outside the brief’s generator. On the
+            compare tab’s replay table, a battery that was not measured reads <strong>not run</strong> rather than
+            passing by silence.
+          </Note>
+          <Onward to={href.vault()}>replay recorded trials in the vault →</Onward>
+          <EntryApparatus title="a trial of record">
+            Implemented in <M>backend/level_trial.py</M>, <M>backend/level_export.py</M>, and{" "}
+            <M>backend/level_rerun.py</M> (<M>scripts/levelling_trial.py</M>, <M>levelling_export.py</M>,{" "}
+            <M>levelling_rerun.py</M>; rule preset <M>trial-3</M>). A matched other-site control edit counts for the
+            edit only when, as read, it changed the stream at least as much as the edit did; a quieter one is counted
+            as moving as much. Same-site control edits are built at the edit’s own sites. An edit has one trial: the
+            trial is refused when the book holds, under any brief, a trial of the edit’s direction (the payload over
+            every site either edit changes, equal up to a scale, sign included, with each entry at its own site or
+            with a neuron’s scale one site at its down_proj column or up_proj row, or its gate_proj row at factor 0,
+            and a neuron scaled to 0 that site alone) or a claim of it that read no lead. A lead of it read at another
+            dose, or a reading of another edit that may change what it changes and that it cannot tell apart, refuses
+            the trial too.
+          </EntryApparatus>
+        </Entry>
       </EntryGrid>
     </LexSection>
 

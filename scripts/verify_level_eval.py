@@ -669,12 +669,13 @@ print("ATL_CELL:" + json.dumps({
         part_rec = {"terms": [{"layer": 50, "scale": [5313, 8801], "factor": 1.5}]}
 
         def _replay_proposing(rec: Dict[str, Any]) -> Dict[str, Any]:
+            # a replay proposes as every driver does, by a propose_repair the door takes (a read is never a proposal),
+            # and the repair scored is the edit as built when it was submitted
             return {
                 "steps": [
                     {"tool": "status", "args": {}},
                     {
                         "tool": "read",
-                        "propose": True,
                         "args": {
                             "plan": {
                                 "name": "blind_fix_31b",
@@ -688,6 +689,7 @@ print("ATL_CELL:" + json.dumps({
                             "items": {"p0": {"question": "Answer briefly: Alice called Bob because", "answer": " she smiled."}},
                         },
                     },
+                    {"tool": "propose_repair", "args": {"edit": rec, "diagnosis": "the answer typed in"}},
                 ]
             }
 
@@ -753,6 +755,11 @@ print("ATL_CELL:" + json.dumps({
             and b_summ["canary_abstention_rate"] is None
             and b_summ["planted_layer_hit_rate"] is None
             and pr.get("scored_as") == "plumbing check (answer given)"
+            and pr.get("answer") == "proposed a repair"
+            and pp.get("answer") == "proposed a repair"
+            and isinstance(pr.get("scored_edit_id"), str)
+            and pr.get("scored_edit_saved") == lev.SCORED_EDIT_FOLDER
+            and (pr.get("answer_given_sites") or {}).get("site_recall") == 1.0
             and pr.get("kl_plant_alone") is not None
             and pr["kl_plant_alone"] > 0.0
             and pr.get("kl_after_repair") == 0.0

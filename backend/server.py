@@ -119,25 +119,38 @@ async def lifespan(_app: FastAPI):
     if asked is not None and asked not in w4a16_fast.MODES:
         raise w4a16_fast.Refused(f"${w4a16_fast.UNPACKER_ENV} names the unpackers {', '.join(w4a16_fast.MODES)}, not "
                                  f"{asked!r}; nothing was loaded.")
-    logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
-    _RUNTIME = make_runtime(load_jlens=False).load()  # THEODOLITE_GGUF / THEODOLITE_DEVICE (backend/runtime_factory.py)
-    if asked is not None:
-        try:
-            w4a16_fast.install(_RUNTIME, asked, log=logger.info)
-        except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as census_run.py and atlas_build.py do
-            raise SystemExit(str(exc)) from exc
-    else:
-        try:
-            w4a16_fast.install(_RUNTIME, w4a16_fast.default_mode(_RUNTIME), log=logger.info)
-        except w4a16_fast.Refused as exc:  # none was asked for, so the server still starts: on the reference, and says why
-            logger.warning("%s The server runs on the reference unpacker (set $%s to choose one).", exc, w4a16_fast.UNPACKER_ENV)
-            w4a16_fast.install(_RUNTIME, "reference", log=logger.info)
-    # DESCRIBE POLE returns a neuron's field notes with its record: the vault reads them through this reader, which
-    # only reads (no lock to wait for in the statement's worker thread, nothing written; backend/field_notes.py)
-    _VAULT = LarqlVaultEngine(_RUNTIME, field_notes=peek_neuron)
-    bind_runtime(_RUNTIME, _VAULT)
-    logger.info("TheodoliteRuntime & LarqlVaultEngine bound and ready.")
-    yield
+    card_lock = None
+    dev_env = os.environ.get("THEODOLITE_DEVICE", "").strip().lower()
+    if dev_env != "cpu" and not os.environ.get("THEODOLITE_SKIP_CARD_LOCK") and torch.cuda.is_available():
+        from backend.level_mcp import hold_card
+
+        card_lock = hold_card()
+    try:
+        logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
+        _RUNTIME = make_runtime(load_jlens=False).load()  # THEODOLITE_GGUF / THEODOLITE_DEVICE (backend/runtime_factory.py)
+        if asked is not None:
+            try:
+                w4a16_fast.install(_RUNTIME, asked, log=logger.info)
+            except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as census_run.py and atlas_build.py do
+                raise SystemExit(str(exc)) from exc
+        else:
+            try:
+                w4a16_fast.install(_RUNTIME, w4a16_fast.default_mode(_RUNTIME), log=logger.info)
+            except w4a16_fast.Refused as exc:  # none was asked for, so the server still starts: on the reference, and says why
+                logger.warning("%s The server runs on the reference unpacker (set $%s to choose one).", exc, w4a16_fast.UNPACKER_ENV)
+                w4a16_fast.install(_RUNTIME, "reference", log=logger.info)
+        # DESCRIBE POLE returns a neuron's field notes with its record: the vault reads them through this reader, which
+        # only reads (no lock to wait for in the statement's worker thread, nothing written; backend/field_notes.py)
+        _VAULT = LarqlVaultEngine(_RUNTIME, field_notes=peek_neuron)
+        bind_runtime(_RUNTIME, _VAULT)
+        logger.info("TheodoliteRuntime & LarqlVaultEngine bound and ready.")
+        yield
+    finally:
+        if card_lock is not None:
+            try:
+                card_lock.close()
+            except OSError:
+                pass
 
 
 app = FastAPI(

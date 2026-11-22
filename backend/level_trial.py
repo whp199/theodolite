@@ -6,7 +6,12 @@ of a claim reading (`verify/arbiter.md` §4 rows 18, 25, 30 to 32, §5.3; `desig
 - It is a FRESH READING, so it is asked what a claim reading is asked before it is registered
   (`level_claim.fresh_reading_gate`: kept-back wording practised in the book, a brief changed under its name, bars that
   no calibration in the book produced or that were calibrated on other weights, the brief's budget `m`), it spends one
-  of the brief's `m`, an edit has one trial, and every later sheet of the brief lists it.
+  of the brief's `m`, an edit has one trial, and every later sheet of the brief lists it. "An edit" is its direction,
+  under any brief's name in the book (`level_claim.same_direction`: the payload over every site either edit changes,
+  equal up to a scale, sign included): a trial of it, or a claim of it that read no lead, refuses a trial of a
+  rescaled or negated copy, or of one with a site more whose change is too small to count.
+- A folder registered under trial-4 (`NOT_ADOPTED`), a rule the owner never adopted, is refused in one sentence, and
+  an adapter's export does not carry its verdict.
 - It reads the edit in BOTH batch classes against matched other-site and same-site control edits (and sham-target
   ones for a site chosen by a declared rule), with the FOLDED form (the change written into the weights) read beside
   the per-row form on every item, and on a REWORDED SET: items written outside the brief's generator, kept in a file,
@@ -60,6 +65,11 @@ from backend.census import write_json_atomic
 # look is taken at registration. A folder registered under "trial-1" is refused by its version, in those words.
 TRIAL_VERSION = 3  # 3: control sets drawn over all an edit's terms together and counted by neuron; no count, one draw
 TRIAL_RULE_PRESET = "trial-3"
+# Rules a folder may be registered under that this code was never to read, each with the one sentence a refusal of
+# such a folder says (`level_claim.RULES_NOT_ADOPTED`, where a sheet and an adapter's export read it too). Trial-4
+# (registered on 21 November 2026 by code the owner did not adopt) is kept as a record in its committed folders and
+# is not read or judged here.
+NOT_ADOPTED = lcl.RULES_NOT_ADOPTED
 # What a registration says, in its result (`rule_stands`) and its RULES.md, of the rule its control edits are
 # judged by as it stands. It is here, and not left to a document, because a trial is read once. It says what is
 # expected and why, not what must be: an edit whose neurons are among the quietest of their layer would have
@@ -565,43 +575,43 @@ _STARTER_ITEMS: Dict[str, Tuple[RewordedItem, ...]] = {
         RewordedItem(
             "rw_01", 0,
             "Supply the next clause of this brief scene: Dr. Beatrice Holloway reviewed the clinic ledger past midnight.",
-            " Beatrice closed the binder because",
+            "Beatrice closed the binder because",
         ),
         RewordedItem(
             "rw_02", 0,
             "Extend this passage in plain prose: Inspector Camille Laurent surveyed the wet cobblestones outside the courthouse.",
-            " Camille adjusted her collar while",
+            "Camille adjusted her collar while",
         ),
         RewordedItem(
             "rw_03", 0,
             "Write a natural continuation: Captain Simone Ortega checked the barometer on the bridge at dawn.",
-            " Simone logged the pressure before",
+            "Simone logged the pressure before",
         ),
         RewordedItem(
             "rw_04", 0,
             "Keep the paragraph going: Professor Ingrid Lindholm stacked the yellowed folios beside the window.",
-            " Ingrid dimmed the desk lamp until",
+            "Ingrid dimmed the desk lamp until",
         ),
         # Half 1
         RewordedItem(
             "rw_05", 1,
             "Add the following words: Chef Amara Okafor tasted the reduced broth from a copper spoon.",
-            " Amara lowered the flame since",
+            "Amara lowered the flame since",
         ),
         RewordedItem(
             "rw_06", 1,
             "Continue the short anecdote: Engineer Priya Subramanian inspected the turbine housing with a torch.",
-            " Priya marked the flange after",
+            "Priya marked the flange after",
         ),
         RewordedItem(
             "rw_07", 1,
             "Pick up where the text stops: Curator Valeria Rossi unlocked the east cabinet in silence.",
-            " Valeria lifted the bronze astrolabe although",
+            "Valeria lifted the bronze astrolabe although",
         ),
         RewordedItem(
             "rw_08", 1,
             "Carry the sentence onward: Botanist Freja Lindberg pressed the alpine fern between dry sheets.",
-            " Freja labelled the folder before",
+            "Freja labelled the folder before",
         ),
     ),
 }
@@ -704,9 +714,21 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         "",
         "A trial is a fresh reading of the brief's kept-back frames. It is asked what a claim reading is asked,",
         "when this folder is written and again before it is entered in the book. It",
-        "spends one of the brief's fresh readings, an edit has one trial, and it is read once. Where the book",
-        "holds a claim reading of the edit, the trial follows it only if that claim read",
-        "a lead. It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
+        "spends one of the brief's fresh readings, an edit has one trial, and it is read once. The edit is its",
+        "direction: any edit under any brief's name in the book whose payload, taken over every site either edit",
+        "changes, is this one's up to a scale, sign included. Where the book holds a trial of that direction the",
+        "trial is refused; where it holds a claim reading of it, the trial follows it only if that claim read a",
+        "lead, at the dose of the direction it read. The payload is read two ways, and two edits are one",
+        "direction when either finds them so: with each entry at its own site, which finds a copy written with",
+        "the factors another dose gives the edit, at the ratio of the two doses; and with a neuron's scale one",
+        "site whichever projection writes it (its down_proj column or up_proj row by any factor, its gate_proj",
+        "row by 0: one model as the edit is written), and a neuron scaled to 0 that site alone, whatever else an",
+        "edit with no low-rank term on that layer writes on it. Where the book holds a reading of another edit",
+        "whose direction cannot be told, the trial is refused too: one whose note names a site this one changes,",
+        "or names only its linears, one of them a linear this one changes or of a layer whose neurons it scales,",
+        "or names neither, when its numbers are neither in its note nor in the edits folder and neither the",
+        "sketch its note records nor this edit's own payload tells the two apart.",
+        "It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
         "clean (nothing changed, nothing untracked, no file git is told to overlook, and no code where the runner",
         "imports from that no commit holds), this folder is committed as it stands, the runner and reader are the",
         "files hashed in `trial.json`, it is read in the level book and not a side book, the seed of its draw was",
@@ -1013,7 +1035,8 @@ def register_trial(
     bars that no calibration reading in `book_path` produced, that were calibrated on other weights, or whose
     calibration note does not follow from the book's own readings (`level_claim.calibration_follows`), whatever
     else a fresh reading is refused for in that book as it stands (`level_claim.fresh_reading_gate`: kept-back
-    wording read in practice, a brief changed under its name, an edit that has had its trial or whose claim read
+    wording read in practice, a brief changed under its name, an edit (or a copy of its direction at any scale,
+    under any brief) that has had its trial or whose claim read
     no lead, a budget that is spent; all of it asked again when the trial is read), a reworded set the tokenizer
     cannot make items of, any reading of the trial that the kernel would refuse as planned (`preflight_trial`),
     and a folder that cannot be written. The folder is made before the look is taken, so that no look leaves its
@@ -1352,6 +1375,11 @@ def verify_registration(prereg_dir: Path, *, kit: bool = False) -> Dict[str, Any
         raise TrialRefused(f"Cannot parse registration JSON in {folder}: {exc}") from None
     if not isinstance(trial_cfg, dict) or not isinstance(edit_man, dict):
         raise TrialRefused(f"trial.json and edit_manifest.json of {folder} are JSON objects.")
+    preset = trial_cfg.get("rule_preset")
+    if isinstance(preset, str) and preset in NOT_ADOPTED:
+        raise TrialRefused(f"{NOT_ADOPTED[preset][0].upper()}{NOT_ADOPTED[preset][1:]} (trial "
+                           f"\"{trial_cfg.get('trial_name')}\" in {folder} is version {trial_cfg.get('v')!r} of rule "
+                           f"{preset!r}).")
     if trial_cfg.get("v") != TRIAL_VERSION or trial_cfg.get("rule_preset") != TRIAL_RULE_PRESET:
         raise TrialRefused(
             f"trial.json is version {trial_cfg.get('v')!r} of rule {trial_cfg.get('rule_preset')!r}; this code reads "
@@ -1388,7 +1416,11 @@ def verify_registration(prereg_dir: Path, *, kit: bool = False) -> Dict[str, Any
     if small["RULES.md"] != rules_now:
         raise TrialRefused(
             "RULES.md is not the rules this code writes for trial.json: the rules a person reads there are not the "
-            "ones the trial is judged by (the file was changed by hand, or the registration was written by other code)."
+            "ones the trial is judged by (the file was changed by hand, or the registration was written by other code, "
+            "such as code from before 22 November 2026, whose RULES.md did not say that an edit is its direction on "
+            "any brief, or code of that day whose RULES.md did not say that the payload is read both with each entry "
+            "at its own site and with a neuron's scale one site, or that a reading whose direction cannot be told "
+            "refuses a trial: register the trial again)."
         )
     if small["registered_at"] != f"{trial_cfg.get('registered_at')}\n" or small["repo_commit"] != f"{trial_cfg.get('repo_commit')}\n":
         raise TrialRefused("registered_at or repo_commit is not what trial.json records.")
@@ -2053,6 +2085,32 @@ def _kind_words(meta: Mapping[str, Any]) -> str:
     return "of record" if meta.get("of_record") else "a dry run"
 
 
+def folded_settings_words(trial_cfg: Mapping[str, Any]) -> str:
+    """What a sheet and a sentence of record say when a registration's folded-form tolerance was not set as the
+    code's defaults set it: each setting that differs, with its value and the default; "" when none does."""
+    said = []
+    for key, default, what in (("folded_tol_floor_mult", DEFAULT_FOLDED_FLOOR_MULT, "floor multiplier"),
+                               ("folded_tol_rel", DEFAULT_FOLDED_REL_TOL, "share of the per-row effect"),
+                               ("folded_tol_min", DEFAULT_FOLDED_MIN_TOL, "least tolerance")):
+        v = _clean_float(trial_cfg.get(key))
+        if v is not None and v != float(default):
+            said.append(f"a {what} of {v:g}, where the code's default is {float(default):g}")
+    if not said:
+        return ""
+    return ("registered with " + "; ".join(said) + " (the tolerance is the largest of the floor multiplier times "
+            "the floor, the share of the per-row effect and the least tolerance, and never more than half the house "
+            "bar)")
+
+
+def _same_direction_line(meta: Mapping[str, Any]) -> str:
+    """The sheet's line of the earlier readings of the edit's direction on any brief, as the gate found them."""
+    rows = meta.get("same_direction")
+    if not isinstance(rows, list):
+        return "same direction on any brief: not recorded for this trial"
+    return (f"same direction on any brief ({lcl.DIRECTION_WORDS}), before this trial in this book: "
+            + lcl.same_direction_words(rows))
+
+
 def trial_sentence(
     brief: lbr.Brief,
     trial_cfg: Mapping[str, Any],
@@ -2097,7 +2155,14 @@ def trial_sentence(
                if rw_ig and rw_ig.get("under_bar") else "")
     src = meta.get("source_claim")
     src_part = (f" It follows the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})."
-                if isinstance(src, Mapping) else " No claim reading of this edit stands in this book before it.")
+                if isinstance(src, Mapping)
+                else " No claim reading of this edit on this brief stands in this book before it.")
+    sd_rows = meta.get("same_direction")
+    if isinstance(sd_rows, list):
+        src_part += (f" Of this edit's direction ({lcl.DIRECTION_WORDS}) the book had before it, on any brief, "
+                     f"{lcl.same_direction_words(sd_rows)}.")
+    fold_w = folded_settings_words(trial_cfg)
+    fold_part = f" Its folded-form tolerance was {fold_w}." if fold_w else ""
     kf = trial_judged.get("cheaper_knob")
     knob_part = (
         f" The cheaper knob: {kf.get('name')}, one of the brief's own prompts and no change to the weights, moved "
@@ -2122,7 +2187,7 @@ def trial_sentence(
         f"on the same items (largest gap from the per-row form {_fmt(fl.get('max_abs_gap'))}, tolerance "
         f"{_fmt(fl.get('tolerance'))}; the same bits on {fl.get('same_bits_count')} of {fl.get('taken_count')} items), "
         f"and {_fmt((fl_s.get('frames') or {}).get('mean'))} in the small class (largest gap "
-        f"{_fmt(fl_s.get('max_abs_gap'))}). "
+        f"{_fmt(fl_s.get('max_abs_gap'))}).{fold_part} "
         f"On reworded set {str(trial_cfg.get('reworded_id'))[:12]} ({trial_cfg.get('reworded_origin')}; read "
         f"{meta.get('reworded_use_index')} of at most {MAX_REWORDED_USES} times in this book{rw_gate}) it moved {brief.metric} by "
         f"{_fmt(rw_fr.get('mean'))} (half 0 {_fmt((rw_fr.get('half_0') or {}).get('mean'))}, half 1 "
@@ -2201,7 +2266,12 @@ def render_trial_sheet(
     src = meta.get("source_claim")
     out.append(f"follows: the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')}"
                + (f", read at dose {src['main_dose']:g}" if isinstance(src.get("main_dose"), (int, float)) else "") + ")"
-               if isinstance(src, Mapping) else "follows: no claim reading of this edit stands in this book")
+               if isinstance(src, Mapping) else
+               "follows: no claim reading of this edit on this brief stands in this book")
+    out.append(_same_direction_line(meta))
+    fold_w = folded_settings_words(trial_cfg)
+    if fold_w:
+        out.append(f"folded tolerance: {fold_w}")
     k = int(meta.get("earlier_fresh_readings") or 0)
     out.append("fresh items: new fillings of the brief's kept-back frames, which "
                + (f"{k} earlier fresh reading{'s' if k != 1 else ''} of the brief in this book had already read"
@@ -2430,8 +2500,8 @@ def run_trial_of_record(
     Before anything is written: the folder is verified (`verify_registration`); the trial is refused if this
     registration is already in the book or `out_dir` holds a trial's seed or result; the registered edit is built
     again on `h` and kept to its id; the fresh-reading gate is asked (`level_claim.fresh_reading_gate`, as for a
-    claim, with the brief's budget counting claims and trials together, one trial an edit, a trial only after a
-    claim that read a lead, and a calibration that follows from the book); the bars must be the calibration the
+    claim, with the brief's budget counting claims and trials together, one trial an edit's direction on any brief,
+    a trial only after a claim of it that read a lead, and a calibration that follows from the book); the bars must be the calibration the
     folder records, in this book; the reworded set must not be worn out (`MAX_REWORDED_USES`) or read in practice
     here, and must make items on this model; every reading the trial will take is asked of the kernel with no
     forward (`preflight_trial`); the conditions of record are looked at (`record_conditions`); and `out_dir` is made
@@ -2642,6 +2712,10 @@ def run_trial_of_record(
             "edit_id": edit.id,
             "edit_linears": edit.linears(),
             "edit_provenance": we.edit_provenance(edit),
+            # its sites and a sketch of its payload (a later trial of this direction is refused by them, with no
+            # payload at hand), and the earlier readings of its direction on any brief, which the gate let through
+            "direction": gate["direction"]["record"],
+            "same_direction": gate["direction"]["same"],
             "main_dose": main_dose,
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
@@ -2843,6 +2917,7 @@ def run_trial_of_record(
                 "book_seqs": book_seqs,
                 "prior_verdicts": reg_body["prior_verdicts"],
                 "prior_trials": reg_body["prior_trials"],
+                "same_direction": reg_body["same_direction"],
                 "prompt_named_site": brief.prompt_named_site,
                 "chat_settings": dict(brief.chat_settings),
                 "forecast": dict(trial_cfg.get("forecast") or {}),

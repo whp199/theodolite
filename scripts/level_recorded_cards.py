@@ -12,6 +12,10 @@ that line's. This script is the only writer of the file:
   `verify_claim.json`, the report of the same run, which is refused unless its ledger head is the book's), and the tag
   that says where the card was recorded.
 
+After the cards the file exports the book's last run in words, as the server dates a recorded book
+(`level_routes.last_run_words`: the UTC date of its last whole line), and the first 16 characters of its head, which
+the tab's offline picker and caption show.
+
     .venv/bin/python -I scripts/level_recorded_cards.py           # is the file what the book gives? (exit 1 if not)
     .venv/bin/python -I scripts/level_recorded_cards.py --write   # rewrite it from the book
 
@@ -115,9 +119,27 @@ def cards() -> List[Dict[str, Any]]:
     return out
 
 
+def book_words() -> Dict[str, str]:
+    """{"last_run": the book's last run in words, as the server dates a recorded book, "head": the first 16
+    characters of its head}. `CardsRefused` when the book is not whole or names no date."""
+    from backend import level_routes
+
+    whole = lb.verify(BOOK)
+    if not whole["ok"]:
+        raise CardsRefused(f"{BOOK.name} is not whole at line {whole['first_bad']}: {whole['why']}")
+    when = level_routes.last_run_words(BOOK, int(whole["entries"]))
+    if not when:
+        raise CardsRefused(f"The last line of {BOOK.name} names no time a date can be read from.")
+    return {"last_run": when, "head": str(whole["head"])[:16]}
+
+
 def render() -> str:
     """The whole text of `compareRecorded.ts`."""
-    return HEADER + json.dumps(cards(), indent=2, ensure_ascii=False, allow_nan=False) + ";\n"
+    words = book_words()
+    return (HEADER + json.dumps(cards(), indent=2, ensure_ascii=False, allow_nan=False) + ";\n\n"
+            + "/** The book the cards are from: its last run, as the server dates a recorded book, and its head. */\n"
+            + f"export const RECORDED_BOOK_LAST_RUN = {json.dumps(words['last_run'], ensure_ascii=False)};\n"
+            + f"export const RECORDED_BOOK_HEAD = {json.dumps(words['head'])};\n")
 
 
 def main() -> int:

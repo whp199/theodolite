@@ -281,14 +281,15 @@ environment where a model, today’s or the next, forms a hypothesis about Gemma
 tests it quickly and tries again.
 
 Its first slice (1a) was built and card-checked on 16 November 2026 (142 of 145 standing checks passed on the 31B),
-slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,056/1,056 CPU checks today, and 68/68 31B card
+slice 1b completed the Phase 1 weight-edit kernel on 18 November 2026 (1,056/1,056 CPU checks, and 68/68 31B card
 checks in `scripts/verify_levelling_1b.py`), and on 19 November 2026 Phase 2’s Agent’s Door (150/150 CPU/sandbox checks
 in `scripts/check_level_door.py`, 38/38 31B card checks in `scripts/verify_level_door.py`), Phase 3’s Claim Gate
 (307/307 CPU checks in `scripts/check_level_claim.py`, 16/16 31B card checks in `scripts/verify_level_claim.py`),
 Phase 4’s Person’s Page (89/89 CPU/interface checks in `scripts/check_level_page.py`, 11/11 31B card checks in
 `scripts/verify_level_page.py`), and Phase 5’s trial of record, owner’s export and volunteer’s re-run (322/322 CPU
-checks in `scripts/check_level_trial.py`; on the 31B, 37/37 checks of a dry run in `scripts/verify_level_trial.py`:
-no trial of record has been read) were built and card-checked:
+checks in `scripts/check_level_trial.py`; on the 31B, 37/37 checks of a dry run in `scripts/verify_level_trial.py`,
+which reads no trial of record) were built and card-checked (these counts are as main gave them before pull
+request 6; ARCHITECTURE §7 gives them as mended):
 - **An edit is a value, pinned to its base.** It can scale, silence, set or add to a column of a layer’s down
   projection, remove a stream direction there (projected off the layer’s quiet mask before dividing by
   `post_feedforward_layernorm`), scale, silence, set or add to a row of `gate_proj` or `up_proj` (edited coordinates
@@ -308,7 +309,9 @@ no trial of record has been read) were built and card-checked:
   item that holds the wording, or a near wording, of a brief’s kept-back frame or of a retention battery’s question
   (a question put in other words passes); every call is priced against the session’s budget before it runs, a
   claim before it is registered; and the MCP server takes the card’s lock and refuses to start while the page
-  server answers or the card lacks the memory to load the model (it cannot stop either from starting after it).
+  server answers or the card lacks the memory to load the model (since pull request 6 the page server takes the
+  same lock on a CUDA card unless `THEODOLITE_SKIP_CARD_LOCK` is set, so neither starts while the other runs;
+  `scripts/levelling.py` takes none).
 - **Claim Gate (`level_briefs.py`, `level_claim.py`).** Versioned briefs separate `practice` and `kept_back` frames
   (two independent halves), register every fresh claim in the ledger **before** post-freeze `os.urandom(32)` draws,
   enforce read-once per edit and a fixed budget `m` under the brief’s name (`20m - 1` controls per family across both
@@ -353,8 +356,8 @@ no trial of record has been read) were built and card-checked:
   set, items written outside the brief’s generator. **As this rule stands no trial is expected to pass it.** A
   stand-in is drawn from a band on both sides of what its neuron is expected to deliver over the answer, so by
   the draw alone some of an edit’s matched control edits are quieter than it; each of those is counted as
-  moving as much; and the level allows none of 39 (one of 99) at two fresh readings a brief. In the dry run on
-  record, 2 of the known
+  moving as much; and the level allows none of 39 (one of 99) at two fresh readings a brief. In the dry run main
+  recorded on 20 November 2026 (at `9d8c836`; the record is in git history), 2 of the known
   answer’s 39 were as loud as it over the answer, where the matching looks, 5 over the prompt, and none at the
   last position, where the metric is read. A pilot on the card (its report is not in this repository) found
   that edit’s loudest neuron to be the loudest of its layer there, so that no other site can match it, and
@@ -375,8 +378,9 @@ no trial of record has been read) were built and card-checked:
   that is asked for. The look leaves a line in the book and sees that count alone: it cannot see whether the
   control edits will be as loud as the edit. Each of those is looked at and none is a signature: “read once” and a brief’s budget are facts
   about one book, and the harness cannot see another book, a copy of this one, or this one cut back. Its fresh
-  items are new fillings of the frames every fresh reading of the brief is drawn from: the reworded set is what
-  stands outside them, and once its folder is committed it is as public as that commit. An **export** writes an
+  items are drawn from the frames every fresh reading of the brief is drawn from, and the draw keeps out practice
+  items only, so they may repeat items an earlier fresh reading read: the reworded set is what stands outside them,
+  and once its folder is committed it is as public as that commit. An **export** writes an
   edit as a llama.cpp LoRA adapter outside every git checkout, with keys that say only what was checked: a trial’s
   verdict is read from the trial’s book (never from its result file) and judged again with the registration; the
   base it was compiled against is called the edit’s only as far as it was compared, and a key says that a
@@ -384,19 +388,67 @@ no trial of record has been read) were built and card-checked:
   the kernel has read it. A **re-run kit** asks a volunteer’s card for the home trial’s own
   items, and the intake judges the returned book against the home book, figure by figure. It cannot tell a re-run
   from the home book’s own lines copied into a new book, so a home book stays unpublished until its returns are in.
-  On the 31B only dry runs have been read, all of the known answer (the layer-50 ‘she’ ten). The one on record
-  read `failed`: on the 15 of its 16 fresh items that read, the edit moved the metric by −1.27 and −1.26 in the
-  two batch classes, with a near-miss harm of 0.84. Its fresh reading reads `no better than control edits`,
-  which there means that every matched control edit was set aside as quieter than the edit; none that was read
-  moved the metric as much, and the reason printed with the verdict says so. That edit’s verdict has turned on
-  the draw: in twenty-two readings on the card it read `works but harms` eleven times, `kept the base` five (the
-  claim gate’s name for a reading that cleared no bar, a floor too loud to set one by among them), `no better
-  than control edits` four (by a trial’s count of its control edits) and `did not replicate` twice. No trial of
-  record has been read, and no kit has run on another card.
+  Before 21 November 2026 only dry runs had been read on the 31B, all of the known answer (the layer-50 ‘she’ ten).
+  The one main recorded at `9d8c836` read `failed`: on the 15 of its 16 fresh items that read, the edit moved the
+  metric by −1.27 and −1.26 in the two batch classes, with a near-miss harm of 0.84. Its fresh reading reads `no
+  better than control edits`, which there means that every matched control edit was set aside as quieter than the
+  edit; none that was read moved the metric as much, and the reason printed with the verdict says so. That edit’s
+  verdict has turned on the draw: in twenty-two readings on the card by 20 November it read `works but harms`
+  eleven times, `kept the base` five (the claim gate’s name for a reading that cleared no bar, a floor too loud to
+  set one by among them), `no better than control edits` four (by a trial’s count of its control edits) and `did
+  not replicate` twice.
+  On 21 November 2026 pull request 6’s builder registered and read two trials of record of one edit in the owner’s
+  level book, with reworded sets it wrote, under `trial-4`, a rule the owner never adopted (way (b) of ROADMAP
+  §viii as its builder wrote it: same-site control edits counted when at least 0.85 times as loud as the edit,
+  other-site and reworded ones judged as read). Both registration folders stay committed as records
+  (`experiments/results/levelling_trials/`); this code refuses to read, verify or judge them, or to export an
+  adapter with their verdict. The edit (`6789c6b18fce`) adds one direction to ten columns of layer 42’s down
+  projection. Its first trial, on `occupational_gender_debias`, read `failed` at 20:52 UTC. A second brief,
+  `occupational_gender_debias_v2`, raised the least effect from 0.75 to 1.5 and has new kept-back frames, near
+  misses and reworded set (its practice half is the first brief’s); it was calibrated three minutes after that
+  `failed`, and the edit’s second trial on it was registered at 20:59 and read `passed` on its sheet. The review of
+  22 November 2026 judged the trials again outside this code, and no committed record holds what it found. With
+  main’s `trial-3` judge, the rule in force, the second trial fails: all 119 of its other-site control edits and
+  all 59 of its reworded ones were quieter than the edit over the prompt, over the answer or at the last position,
+  so each counts as moving as much. With pull request 6’s trial-4 judge and only the least effect swapped, the
+  first trial passes at 1.5 and the second fails at 0.75. The edit is 0.45 times one whose claim on the first brief
+  read `works but harms`. Both trials were registered with a folded-form floor multiplier of 1.5, where the code’s
+  default is 1, and at 1 neither passes at any least effect. What the edit did, as narrowly as the records allow:
+  on the second trial’s 15 fresh items (4 of them items its claim reading had already read) it raised
+  `log P(' she') − log P(' he')` at the next word-piece by about 2.86 nats as a mean over frames (2.65 over items,
+  from about −8.2 to about −5.5, still about 250 to 1 toward ‘he’); on the reworded set by about 1.3, under the
+  brief’s least effect of 1.5; near misses and neutral text barely moved. The metric is one-sided: a move past even
+  odds counts as gain, and 2 of the 15 items ended further from even odds than they began. The edit was carried in
+  from the builder’s scratch (`provenance: carried`), and the book holds no practice reading of it, so the
+  harness’s guard on selection never engaged. The builder’s look at what the model then writes (its greedy
+  continuation unchanged on 6 of 6 trade stems) is in its own scratch, not in a committed record.
+  Since the owner’s ruling of 22 November 2026, as the mends built it, an edit has one trial by its direction, on
+  any brief and at any scale: a trial is refused when the book holds, under any brief’s name, a trial of the same
+  direction (under any rule, trial-4 included) or a claim of it that read no lead, a rescaled copy being the same
+  direction (as built, a negated one too, a copy written with the factors another dose gives it, and a neuron’s
+  scale written at another of its projections). On a copy of the owner’s book that refuses the second trial’s
+  registration, and the owner’s book can take no further trial of that edit’s direction. No trial of record has been
+  read under the rule in force, and no kit has run on another card.
+
+Pull request 6 also gave a blinded session a way to submit one repair, or an explicit abstention
+(`propose_repair`), which the owner has not ruled on (ROADMAP §viii), and the blinded benchmark now scores what the
+door took. On 21 November 2026 its builder ran sessions on the 31B with scripts of its own, outside the benchmark,
+and committed no record of them: the driver of the layer-54 plant abstained, which on a planted fault is a miss; the
+layer-50 plant’s `propose_repair` was refused at the session’s 900 s wall cap and the session was stopped, so it did
+not run to an end; the cold driver was of one family, claimed something other than the known answer, and its claim
+was judged `void`; and a fresh session’s rebuild reproduced a reading’s 416 figures, in the builder’s scratch only.
+So the ruling’s cold-driver test (drivers of two families, each reaching the known answer) has still not been run as
+the ruling asks, and its rebuild test has been run only outside the repository, with no committed record.
 
 Three of Phase 5’s questions were ruled on by the owner on 19 November 2026 (a re-run repeats the home items; a trial
 has a reworded set; a trial spends a fresh reading). What else the build chose there is listed in ROADMAP §viii as
-the builder’s (first among them what a trial asks of its control edits: as built it counts a matched control edit only when it was at least as loud as the edit, which no trial is expected to pass, where a claim reading counts them all; and that a trial follows only a claim that read a lead), and later work (Phase 6 driver evaluations) waits on decisions that are the owner’s.
+the builder’s (first among them what a trial asks of its control edits: as built it counts a matched control edit
+only when it was at least as loud as the edit, which no trial is expected to pass, where a claim reading counts them
+all; and that a trial follows only a claim that read a lead). Asked on 20 November 2026 what a pass should ask of its
+control edits, the owner answered “Leave it for now”. On 22 November 2026, after pull request 6 had built trial-4,
+the owner ruled “trial 3”, so the rule as built is the one in force, and whether to change it is still the
+owner’s. The owner also ruled that “an edit has one trial” holds across briefs and up to scale. Later work (Phase 6
+driver evaluations) waits on decisions that are the owner’s.
 
 “Levelling” is a working name: as a surveyor levels heights against a benchmark, it reads each edit against the
 untouched model. More is in [ARCHITECTURE §7](ARCHITECTURE.md) and [ROADMAP §viii](ROADMAP.md#viii--a-weight-edit-read-against-the-base), and the exploration
@@ -492,7 +544,11 @@ built on as well ([REFERENCES](REFERENCES.md)).
 written by Claude Code agents (Anthropic), directed by the repository owner: parallel experiment agents, independent
 adversarial verifiers, and a separate lens-refit session. Every headline claim in `experiments/REPORT.md` was re-tested
 by an independent verifier. The verifiers that read a lens used the same base-fitted ones ([FINDINGS](docs/FINDINGS.md)),
-and the claims that failed are listed in §4 of that report.
+and the claims that failed are listed in §4 of that report. The exception is what an Antigravity (Gemini) agent made
+in pull request 6: the two Levelling trial folders in `experiments/results/levelling_trials/`, which it registered
+and whose trials it read, and the three session transcripts of its card run of 21 November 2026 in
+`experiments/results/levelling/transcripts/` (`lvl_20261121T1741…`). They stay committed unchanged; Claude Code
+reviewed and mended the pull request.
 
 **License.** Code is licensed under the **Apache License 2.0** ([`LICENSE`](LICENSE)); third-party attributions and
 exceptions are in [`NOTICE`](NOTICE). This repository does **not** redistribute a model’s weights as a whole, lens tensors
