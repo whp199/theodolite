@@ -1437,7 +1437,9 @@ class LevelSession:
         }
 
     def book_view(self, *, seq: Optional[int] = None, tail: int = 10) -> Dict[str, Any]:
-        """Read entries from the level book strictly through `level_book.driver_view` (redacted aggregates only)."""
+        """Read entries from the level book strictly through `level_book.driver_view` (redacted aggregates only). In
+        a session that is not blinded a trial registered under a rule the owner never adopted carries that rule and
+        its sentence (`_with_rule`)."""
         self._check_open_and_wall()
         v = lb.verify(self.book_path)
         if not v["ok"]:
@@ -1460,7 +1462,33 @@ class LevelSession:
             rows = [self._unmeasured(r) if r.get("seq") in own
                     else {"seq": r.get("seq"), "kind": r.get("kind"), "redacted": "another session's line"}
                     for r in rows]
+        else:
+            rows = [self._with_rule(r) for r in rows]
         return {"entries": rows, "total": total, "head": v["head"], "redacted": True}
+
+    def _with_rule(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """A trial's registration or verdict line with the rule it was registered under, when that is a rule the
+        owner never adopted (`level_claim.RULES_NOT_ADOPTED`): `rule_preset`, and `rule_note`, the sentence said of
+        such a trial. A verdict note names its registration's line and not its rule, so that line is read."""
+        body = row.get("body") if isinstance(row.get("body"), dict) else {}
+        nt = body.get("note_type")
+        preset = None
+        if nt == "trial_registration":
+            preset = body.get("rule_preset")
+        elif (nt in lcl.TRIAL_VERDICT_NOTES and type(body.get("registration_seq")) is int
+              and body["registration_seq"] >= 0):
+            try:
+                reg = next(lb.entries(self.book_path, start=int(body["registration_seq"]), limit=1), None)
+            except (lb.BookBroken, OSError, ValueError):
+                reg = None
+            reg_body = reg.get("body") if isinstance(reg, dict) else None
+            if isinstance(reg_body, Mapping) and reg_body.get("note_type") == "trial_registration":
+                preset = reg_body.get("rule_preset")
+        note = lcl.not_adopted_note(preset)
+        if note is not None:
+            row["rule_preset"] = preset
+            row["rule_note"] = note
+        return row
 
     def close(self) -> Dict[str, Any]:
         """Close the session and copy its transcript into `<book_dir>/transcripts/<session_id>.jsonl`."""

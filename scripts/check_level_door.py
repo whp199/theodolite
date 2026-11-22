@@ -32,6 +32,7 @@ import torch  # noqa: E402
 torch.set_num_threads(1)
 
 from backend import level_book as lb  # noqa: E402
+from backend import level_claim as lcl  # noqa: E402
 from backend import level_mcp as lmcp  # noqa: E402
 from backend import level_sandbox as ls  # noqa: E402
 from backend import level_session as lses  # noqa: E402
@@ -601,6 +602,31 @@ print("OUT:" + json.dumps({"neurons": neurons, "sha256": meta["sha256"]}))
     check(bv["redacted"] is True and len(bv["entries"]) == 2
           and all(e["body"]["items"]["redacted"] is True for e in bv["entries"]),
           "5: book_view returns redacted driver_view entries only")
+    # a trial registered under trial-4, a rule the owner never adopted, is shown to a session that is not blinded
+    # with its rule and the sentence said of it, its verdict line too (which names its registration's line alone)
+    t4_book = tmp / "trial4_door_book.jsonl"
+    t4_common = {"brief_name": "occ", "brief_id": "b" * 64, "edit_id": "e" * 64}
+    t4_seqs: Dict[str, int] = {}
+    for rule in ("trial-4", "trial-3"):
+        r_ent = lb.append("note", {**t4_common, "note_type": "trial_registration", "trial_name": rule,
+                                   "of_record": True, "rule_preset": rule, "main_dose": 1.0}, path=t4_book)
+        t4_seqs[rule] = int(r_ent["seq"])
+        lb.append("note", {**t4_common, "note_type": "trial_of_record", "trial_name": rule, "verdict": "passed",
+                           "registration_seq": int(r_ent["seq"]), "of_record": True}, path=t4_book)
+    s_t4 = lses.LevelSession(hP, tmp / "sess_trial4", reach="tools_only", backend="openai",
+                             budget=lses.SessionBudget(max_forwards=1, max_cells=0), book_path=t4_book,
+                             probe_on_start=False)
+    bv_t4 = {e["seq"]: e for e in s_t4.book_view(tail=10)["entries"]}
+    bv_one = s_t4.book_view(seq=t4_seqs["trial-4"] + 1)["entries"][0]
+    s_t4.close()
+    note4 = lcl.not_adopted_note("trial-4")
+    check(note4 is not None
+          and bv_t4[t4_seqs["trial-4"]].get("rule_note") == note4
+          and bv_t4[t4_seqs["trial-4"]]["rule_preset"] == "trial-4"
+          and bv_t4[t4_seqs["trial-4"] + 1].get("rule_note") == note4 and bv_one.get("rule_note") == note4
+          and "rule_note" not in bv_t4[t4_seqs["trial-3"]] and "rule_note" not in bv_t4[t4_seqs["trial-3"] + 1],
+          f"5: book_view names a trial-4 trial's rule on its registration and its verdict line ({note4}); a trial-3 "
+          "trial's lines carry no such note")
 
     # Close copies transcript into <book_dir>/transcripts/<session_id>.jsonl and blocks further calls
     closed = sess.close()

@@ -17,6 +17,7 @@ No kept-out words appear in code, messages, or responses.
 from __future__ import annotations
 
 import asyncio
+import datetime
 import math
 import time
 from pathlib import Path
@@ -30,6 +31,7 @@ from backend import atlas as atlas_routes
 from backend import atlas_ops as ao
 from backend import level_book as lb
 from backend import level_briefs as lbr
+from backend import level_claim as lcl
 from backend import levelling as lv
 from backend import weight_edits as we
 
@@ -109,16 +111,39 @@ def _book_catalog() -> Dict[str, Dict[str, Any]]:
             "recorded": False,
         }
     }
+    # a recorded book's label is dated from the book itself where it is shown (`last_run_words`), not here
     candidates = [
-        ("verify_trial", "31B trial dry run check (20 Nov 2026)", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
-        ("verify_claim", "31B claim gate check (19 Nov 2026)", RECORDED_BOOKS_DIR / "verify_claim_book.jsonl"),
-        ("verify_door", "31B agent door check (20 Nov 2026)", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
-        ("verify_1b", "31B slice 1b check (18 Nov 2026)", RECORDED_BOOKS_DIR / "verify_1b_book.jsonl"),
+        ("verify_trial", "31B trial dry run check", RECORDED_BOOKS_DIR / "verify_trial_book.jsonl"),
+        ("verify_claim", "31B claim gate check", RECORDED_BOOKS_DIR / "verify_claim_book.jsonl"),
+        ("verify_door", "31B agent door check", RECORDED_BOOKS_DIR / "verify_door_book.jsonl"),
+        ("verify_1b", "31B slice 1b check", RECORDED_BOOKS_DIR / "verify_1b_book.jsonl"),
     ]
     for bid, label, p in candidates:
         if p.exists():
             out[bid] = {"id": bid, "label": label, "path": p, "exists": True, "recorded": True}
     return out
+
+
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def last_run_words(path: Path, entries: int) -> str:
+    """"last run 22 Nov 2026, UTC": the UTC date of a book's last whole line (`entries` is how many whole lines
+    `level_book.verify` found), so a book appended over two runs is dated by its last; "" when that line cannot be
+    read or names no time."""
+    if entries <= 0:
+        return ""
+    try:
+        ent = next(lb.entries(path, start=int(entries) - 1, limit=1), None)
+    except (lb.BookBroken, OSError, ValueError):
+        return ""
+    try:
+        when = datetime.datetime.fromisoformat(str((ent or {}).get("at") or "").replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    if when.tzinfo is not None:
+        when = when.astimezone(datetime.timezone.utc)
+    return f"last run {when.day} {_MONTHS[when.month - 1]} {when.year}, UTC"
 
 
 def _resolve_book(book_id: str) -> Tuple[str, Path, bool]:
@@ -440,15 +465,20 @@ def _extract_edit_linears(
     return None
 
 
-def _book_linears_by_edit(path: Path) -> Dict[str, List[str]]:
+def _book_index(path: Path) -> Tuple[Dict[str, List[str]], Dict[int, Any]]:
     """Scan a book once to map `edit_id -> sorted linears`, so note entries written without inline `edit_linears`
-    (such as earlier `claim_verdict` or `claim_registration` notes) still display their linears on live replay."""
+    (such as earlier `claim_verdict` or `claim_registration` notes) still display their linears on live replay; and
+    to map each trial registration's line to the rule it was registered under, since a trial's verdict note names its
+    registration's line and not its rule."""
     out: Dict[str, List[str]] = {}
+    rules: Dict[int, Any] = {}
     try:
         for ent in lb.entries(path):
             body = ent.get("body")
             if not isinstance(body, Mapping):
                 continue
+            if body.get("note_type") == "trial_registration" and type(ent.get("seq")) is int:
+                rules[int(ent["seq"])] = body.get("rule_preset")
             edit_blk = body.get("edit") if isinstance(body.get("edit"), Mapping) else {}
             eid = edit_blk.get("id") or body.get("edit_id")
             if not isinstance(eid, str) or eid in out:
@@ -458,15 +488,20 @@ def _book_linears_by_edit(path: Path) -> Dict[str, List[str]]:
                 out[eid] = lins
     except lb.BookBroken:
         pass  # a damaged line ends the scan, not the replay: the whole lines before it are still shown, as before
-    return out
+    return out, rules
 
 
 def build_replay_card(
     entry: Mapping[str, Any],
     *,
     linears_by_edit: Optional[Mapping[str, List[str]]] = None,
+    rule_by_registration: Optional[Mapping[int, Any]] = None,
 ) -> Dict[str, Any]:
-    """Turn any level-book entry (`written`, `paired`, or `note`) into a model-free replay card for the UI."""
+    """Turn any level-book entry (`written`, `paired`, or `note`) into a model-free replay card for the UI.
+
+    A trial registered under a rule the owner never adopted (`level_claim.RULES_NOT_ADOPTED`; its registration's
+    rule is found by `rule_by_registration`, line -> rule, for a verdict note) is shown with that rule: its status
+    names it (and so takes no verdict colour on the page), it is not of record, and `rule_note` says why."""
     kind = str(entry.get("kind") or "")
     body = entry.get("body") if isinstance(entry.get("body"), Mapping) else {}
     edit_blk = body.get("edit") if isinstance(body.get("edit"), Mapping) else {}
@@ -528,6 +563,11 @@ def build_replay_card(
             base_card["reworded_summary"] = body.get("reworded")
             base_card["trial_sha256"] = body.get("trial_sha256")
             base_card["cheaper_knob"] = body.get("cheaper_knob")  # the arm that matched a pass, with its figure
+            reg_seq = body.get("registration_seq")
+            preset = body.get("rule_preset")
+            if type(reg_seq) is int and rule_by_registration and reg_seq in rule_by_registration:
+                preset = rule_by_registration[reg_seq]
+            _rule_on_card(base_card, preset)
         elif nt == "trial_registration":
             base_card["status"] = "registered"
             base_card["name"] = f'register trial · {body.get("trial_name") or body.get("brief_name")}'
@@ -537,6 +577,7 @@ def build_replay_card(
             base_card["controls_per_family"] = body.get("controls_per_family")
             base_card["bars_sha256"] = body.get("bars_sha256")
             base_card["trial_sha256"] = body.get("trial_sha256")
+            _rule_on_card(base_card, body.get("rule_preset"))
         elif nt == "brief_calibration":
             base_card["status"] = "calibrated"
             base_card["name"] = f'bars for {body.get("brief_name")}'
@@ -553,6 +594,20 @@ def build_replay_card(
             base_card["status"] = "practice"
             base_card["name"] = f'practice draw ({body.get("count")} items)'
     return base_card
+
+
+def _rule_on_card(card: Dict[str, Any], preset: Any) -> None:
+    """A trial card's rule: under a rule the owner never adopted, its name and status say so (a verdict's name is no
+    longer "trial of record"), it is not of record, and `rule_note` carries the `RULES_NOT_ADOPTED` sentence."""
+    card["rule_preset"] = preset
+    note = lcl.not_adopted_note(preset)
+    if note is not None:
+        what, sep, whose = str(card.get("name") or "").partition(" · ")
+        what = "trial" if what == "trial of record" else what
+        card["name"] = f"{what} under {preset}, never adopted{sep}{whose}"
+        card["status"] = f"{card.get('status')}{lcl.not_adopted_words(preset)}"
+        card["of_record"] = False
+        card["rule_note"] = note
 
 
 # --------------------------------------------------------------------------------------------- endpoints
@@ -593,9 +648,10 @@ def level_status() -> Dict[str, Any]:
         v = lb.verify(p) if p.exists() else {"ok": True, "entries": 0, "head": lb.GENESIS, "first_bad": None, "why": None}
         if bid == "live":
             live_verify = v
+        when = last_run_words(p, int(v["entries"])) if info["recorded"] and p.exists() else ""
         books_out.append({
             "id": bid,
-            "label": info["label"],
+            "label": f"{info['label']} ({when})" if when else info["label"],
             "recorded": info["recorded"],
             "exists": p.exists(),
             "entries": v["entries"],
@@ -769,10 +825,10 @@ def level_book_list(
     start = max(0, total - int(tail))
     cards: List[Dict[str, Any]] = []
     if total > 0:
-        linears_map = _book_linears_by_edit(path)
+        linears_map, rules_map = _book_index(path)
         for ent in lb.entries(path, start=start, limit=int(tail)):
             src = lb.driver_view(ent) if redacted else ent
-            cards.append(build_replay_card(src, linears_by_edit=linears_map))
+            cards.append(build_replay_card(src, linears_by_edit=linears_map, rule_by_registration=rules_map))
     cards.reverse()  # newest first for quick inspection
     return {
         "book": bid,
@@ -799,12 +855,12 @@ def level_book_entry(
     ent = next(lb.entries(path, start=seq, limit=1), None)
     if ent is None:
         raise HTTPException(status_code=404, detail=f"Line {seq} could not be read.")
-    linears_map = _book_linears_by_edit(path)
+    linears_map, rules_map = _book_index(path)
     shown = lb.driver_view(ent) if redacted else ent
     return {
         "book": bid,
         "recorded": recorded,
         "verify": v,
-        "card": build_replay_card(shown, linears_by_edit=linears_map),
+        "card": build_replay_card(shown, linears_by_edit=linears_map, rule_by_registration=rules_map),
         "entry": shown,
     }

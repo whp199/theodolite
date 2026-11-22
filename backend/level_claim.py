@@ -27,7 +27,7 @@ import hashlib
 import json
 import math
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -1136,14 +1136,31 @@ def prior_trials(hist: Mapping[str, Any]) -> List[Dict[str, Any]]:
 # "An edit has one trial" holds for the edit's direction, on any brief and at any scale (the owner's ruling of 22
 # November 2026). An edit's payload is what a dose multiplies, site by site: a scaled column's or row's factor less
 # one; a set or added one's change (an added vector, or a set vector less the base's own column, which is read from
-# the model); and a low-rank term's B @ A over every column or row of its linear. Two edits are one direction when
-# their payloads, each taken over every site either edit changes (nothing where an edit leaves a site alone), are one
-# up to a nonzero scale, sign included: the absolute cosine of the two is at least SAME_DIRECTION_COS. So the same
-# sites with proportional payloads are one direction; so are a set and an add with one change; and so is an edit
-# that adds a site whose change is too small to move the cosine below that. A scaled entry's payload is a factor and
-# an added one's a vector, and no weights are read to make the two one: a scale written again as the add of its
-# change is another direction.
-DIRECTION_VERSION = 1
+# the model); and a low-rank term's B @ A over every column or row of its linear. A neuron's scale is one site, keyed
+# by its layer and index whichever projection writes it: its down_proj column or its up_proj row scaled by a factor,
+# and its gate_proj row scaled by 0, are one model as written, since the feed-forward is down(act(gate x) * (up x))
+# with no biases and act(0) = 0. Several such entries on one neuron are the product of their factors, less one. A
+# neuron whose product is 0 is silent whatever else the edit writes on it, so its gate_proj row's scale by another
+# factor, and a set or add on its gate_proj or up_proj row or its down_proj column, change nothing as written and are
+# no sites of the payload (`_fold_silenced`). A gate_proj row scaled by anything but 0 is otherwise a site of its own,
+# as is every other set or added entry. A single scale of a neuron is one model at its column and its up_proj row at
+# every dose; the rest are one model as written, at dose 1 alone. The kernel scales each entry by its own 1 + dose x
+# (factor - 1), so at another dose a gate_proj row's silence, a neuron scaled at two projections, or a silenced
+# neuron's other entries, are not that dose of the other form: for such an edit "up to a scale" and the dose rule
+# hold at dose 1, and a copy of a neuron scaled at two projections, written with the factors another dose gives it,
+# is not found to be its direction. All of this is of an edit with no low-rank term on that layer's down_proj (a
+# trial never has one): a low-rank term is added after a column's scale, so there a column's scale and an up_proj
+# row's are two models though the neuron key joins them, and no silenced neuron's entries are dropped. Two edits
+# are one direction when their payloads, each taken over every site either edit changes (nothing where an edit
+# leaves a site alone), are one up to a nonzero scale, sign included: the absolute cosine of the two is at least
+# SAME_DIRECTION_COS. So the same sites with proportional payloads are one direction; so are a set and an add with
+# one change; and so is an edit that adds a site whose change is too small to move the cosine below that. A scaled
+# entry's payload is a factor and an added one's a vector, and no weights are read to make the two one: a scale
+# written again as the add of its change is another direction. DIRECTION_VERSION 1 keyed a neuron's scale by its
+# linear, so the sketch a note of that version records is of other sites and is not compared with one of this
+# version's (its linears and its length still are).
+DIRECTION_VERSION = 2
+DIRECTION_VERSIONS_LINEARS = (1, 2)  # the versions whose record's linears and length are read as this one's
 SAME_DIRECTION_COS = 0.9999
 # a sketch's cosine at or past this and short of SAME_DIRECTION_COS does not tell: the two payloads are wanted
 SKETCH_NEAR_COS = 0.999
@@ -1151,7 +1168,9 @@ SAME_DOSE_REL = 1e-4  # one direction read at two doses reads one change when th
 SKETCH_DIMS = 128  # the numbers in the sketch of a payload that a registration note records
 _SKETCH_KEY = 0x7468656F646F6C69  # fixed for good: a sketch written now is compared with one worked later
 _SKETCH_ROWS = 256  # the sites hashed at a time
-DIRECTION_WORDS = "the payload over every site either edit changes, equal up to a scale, sign included"
+DIRECTION_WORDS = ("the payload over every site either edit changes (a neuron's scale one site, at its down_proj "
+                   "column or up_proj row, or its gate_proj row at factor 0, and a neuron scaled to 0 that site "
+                   "alone), equal up to a scale, sign included")
 # Trial rules a trial may have been registered under that this code was never to read, each with the one sentence
 # said of such a trial wherever its verdict would be carried (`level_trial.verify_registration` refuses its folder
 # in it, an adapter's export refuses its verdict, a sheet names it with the rule). Trial-4 was registered on 21
@@ -1168,6 +1187,15 @@ _ENDED_NOTES = ("claim_verdict", "knob_claim_verdict", "trial_of_record", "trial
 def not_adopted_words(preset: Any) -> str:
     """", under trial-4, a rule the owner never adopted" for a trial registered under such a rule, else ""."""
     return f", under {preset}, a rule the owner never adopted" if isinstance(preset, str) and preset in RULES_NOT_ADOPTED else ""
+
+
+def not_adopted_note(preset: Any) -> Optional[str]:
+    """The `RULES_NOT_ADOPTED` sentence of a rule the owner never adopted, as a sentence of its own, for what shows
+    such a trial's registration or verdict; None for any other rule."""
+    if isinstance(preset, str) and preset in RULES_NOT_ADOPTED:
+        s = RULES_NOT_ADOPTED[preset]
+        return f"{s[0].upper()}{s[1:]}."
+    return None
 
 
 def _keep_fresh(entry: Mapping[str, Any], body: Mapping[str, Any], nt: Any, fresh_any: List[Dict[str, Any]],
@@ -1210,19 +1238,28 @@ def fresh_readings_in_book(book_path: Path, *, before_seq: Optional[int] = None)
     return {"fresh_any": fresh_any, "ended_any": ended_any}
 
 
-_Key = Tuple[str, str, str, int]  # a site of a payload: (linear, kind, "factor" or "change", index)
+_Key = Tuple[str, str, str, int]  # a site of a payload: (linear, kind, "factor" or "change", index); a neuron's
+#                                   scale is ("layers.L.mlp", NEURON_SITE, "factor", neuron)
+NEURON_SITE = "neuron"
 
 
 @dataclass
 class _Payload:
     """An edit's payload as `same_direction` compares it: each column's or row's numbers by its site (float64; None
-    where a note names the site and not its numbers), and each low-rank term as (linear, A, B) (None arrays where
-    only its linear is known)."""
+    where a note names the site and not its numbers), each neuron's scale by its neuron, each low-rank term as
+    (linear, A, B) (None arrays where only its linear is known), and the linears its terms change as written."""
 
     sites: Dict[_Key, Optional[np.ndarray]]
     lowrank: List[Tuple[str, Optional[np.ndarray], Optional[np.ndarray]]]
+    lins: set = field(default_factory=set)
 
     def linears(self) -> set:
+        """The linears the edit changes, as its terms are written."""
+        return (set(self.lins) | {k[0] for k in self.sites if k[1] != NEURON_SITE}
+                | {lin for lin, _a, _b in self.lowrank})
+
+    def regions(self) -> set:
+        """Where the edit changes a site, by the first part of its key: a linear, or a layer's neurons."""
         return {k[0] for k in self.sites} | {lin for lin, _a, _b in self.lowrank}
 
     def known(self) -> bool:
@@ -1233,6 +1270,78 @@ class _Payload:
 def _less_one(f: Any) -> np.ndarray:
     """A scaled entry's payload: its factor, as the kernel keeps it (float32), less one."""
     return np.asarray([float(np.float32(float(f))) - 1.0], dtype=np.float64)
+
+
+def _mlp_of(linear: str) -> Optional[str]:
+    """"layers.L.mlp", the neurons of a feed-forward linear's layer; None for a name that is no such linear."""
+    try:
+        layer, _which = we._parse(str(linear))
+    except we.Refused:
+        return None
+    return f"layers.{layer}.mlp"
+
+
+def _neuron_key(linear: str, kind: str, n: int, f32: float) -> Optional[_Key]:
+    """The one site of a neuron's scale, whichever projection writes it: its down_proj column or up_proj row at any
+    factor, its gate_proj row at factor 0. None for a scale that is a site of its own (a gate_proj row's at another
+    factor)."""
+    try:
+        layer, which = we._parse(str(linear))
+    except we.Refused:
+        return None
+    if (kind == "cols" and which == "down_proj") or (kind == "rows" and (
+            which == "up_proj" or (which == "gate_proj" and f32 == 0.0))):
+        return (f"layers.{layer}.mlp", NEURON_SITE, "factor", int(n))
+    return None
+
+
+def _scale_entry(sites: Dict[_Key, Optional[np.ndarray]], prod: Dict[_Key, float], linear: str, kind: str, n: int,
+                 f: Any) -> None:
+    """A scaled column or row into a payload: a neuron's scale onto its neuron's running product (`prod`, put into
+    `sites` by `_close_neurons`), any other at its own site."""
+    f32 = float(np.float32(float(f)))
+    nk = _neuron_key(linear, kind, n, f32)
+    if nk is None:
+        sites[(linear, kind, "factor", int(n))] = np.asarray([f32 - 1.0], dtype=np.float64)
+    else:
+        prod[nk] = prod.get(nk, 1.0) * f32
+
+
+def _close_neurons(sites: Dict[_Key, Optional[np.ndarray]], prod: Mapping[_Key, float],
+                   low: Sequence[Tuple[str, Any, Any]] = ()) -> None:
+    """Each neuron's scale is the product of its entries' factors, less one; and a neuron whose product is 0 is that
+    site alone (`_fold_silenced`)."""
+    for k, g in prod.items():
+        sites[k] = np.asarray([float(g) - 1.0], dtype=np.float64)
+    _fold_silenced(sites, prod, low)
+
+
+def _fold_silenced(sites: Dict[_Key, Optional[np.ndarray]], prod: Mapping[_Key, float],
+                   low: Sequence[Tuple[str, Any, Any]]) -> None:
+    """A neuron whose scale's product is 0 is silent whatever else the edit writes on it (its contribution is
+    down[:, n] * act(gate[n] x) * (up[n] x), and one of the three is 0): its gate_proj row's scale by another factor,
+    and a set or add on its gate_proj or up_proj row or its down_proj column, change nothing as written, and are
+    dropped. Not where the edit has a low-rank term on that layer's down_proj, which is added after a column's scale,
+    so that a column scaled by 0 there is not 0."""
+    lows = {str(lin) for lin, _a, _b in low}
+    for (mlp, _s, _f, n), g in prod.items():
+        if float(g) != 0.0 or f"{mlp}.down_proj" in lows:
+            continue
+        for k in ((f"{mlp}.gate_proj", "rows", "factor", n), (f"{mlp}.gate_proj", "rows", "change", n),
+                  (f"{mlp}.up_proj", "rows", "change", n), (f"{mlp}.down_proj", "cols", "change", n)):
+            sites.pop(k, None)
+
+
+def _regions_of_linears(lins: Iterable[Any]) -> set:
+    """Where an edit known by its linears alone may change a site: each linear, and the neurons of each feed-forward
+    linear's layer (a neuron's scale is one site, whichever projection writes it)."""
+    out: set = set()
+    for x in lins:
+        out.add(str(x))
+        mlp = _mlp_of(str(x))
+        if mlp is not None:
+            out.add(mlp)
+    return out
 
 
 def base_reader(lm: Any) -> Any:
@@ -1257,6 +1366,7 @@ def _edit_payload(terms: Sequence[we.Term], base: Any = None) -> _Payload:
     """An edit's payload from its terms. A set entry's change needs the base's column (`base`, `base_reader`):
     with none at hand, or none read, it is not known."""
     sites: Dict[_Key, Optional[np.ndarray]] = {}
+    prod: Dict[_Key, float] = {}
     low: List[Tuple[str, Optional[np.ndarray], Optional[np.ndarray]]] = []
     for t in terms:
         if t.kind == "lowrank":
@@ -1274,7 +1384,7 @@ def _edit_payload(terms: Sequence[we.Term], base: Any = None) -> _Payload:
         for j, n in enumerate(idx.tolist()):
             o = int(ops[j])
             if o == 0:
-                sites[(t.linear, t.kind, "factor", int(n))] = _less_one(t.factor[j])
+                _scale_entry(sites, prod, t.linear, t.kind, int(n), t.factor[j])
             elif o == 2:
                 sites[(t.linear, t.kind, "change", int(n))] = np.asarray(t.vectors[j], dtype=np.float64).ravel()
             else:
@@ -1282,7 +1392,8 @@ def _edit_payload(terms: Sequence[we.Term], base: Any = None) -> _Payload:
                 sites[(t.linear, t.kind, "change", int(n))] = (
                     v - W[k_set] if W is not None and W.shape[0] > k_set and W.shape[1] == v.size else None)
                 k_set += 1
-    return _Payload(sites, low)
+    _close_neurons(sites, prod, low)
+    return _Payload(sites, low, {t.linear for t in terms})
 
 
 def _prov_payload(prov: Any) -> Optional[_Payload]:
@@ -1292,10 +1403,13 @@ def _prov_payload(prov: Any) -> Optional[_Payload]:
     if not isinstance(prov, Mapping) or not isinstance(prov.get("terms"), list) or not prov["terms"]:
         return None
     sites: Dict[_Key, Optional[np.ndarray]] = {}
+    prod: Dict[_Key, float] = {}
     low: List[Tuple[str, Optional[np.ndarray], Optional[np.ndarray]]] = []
+    lins: set = set()
     try:
         for tp in prov["terms"]:
             linear, kind = str(tp["linear"]), str(tp["kind"])
+            lins.add(linear)
             if kind == "lowrank":
                 low.append((linear, None, None))
             elif kind not in ("cols", "rows"):
@@ -1308,7 +1422,7 @@ def _prov_payload(prov: Any) -> Optional[_Payload]:
                     return None
                 for n, o, f in zip(idx, ops, fac):
                     if o == "scale":
-                        sites[(linear, kind, "factor", n)] = _less_one(f)
+                        _scale_entry(sites, prod, linear, kind, n, f)
                     elif o in ("set", "add"):
                         sites[(linear, kind, "change", n)] = None
                     else:
@@ -1322,35 +1436,38 @@ def _prov_payload(prov: Any) -> Optional[_Payload]:
                 if len(fac) != len(idx):
                     return None
                 for n, f in zip(idx, fac):
-                    sites[(linear, kind, "factor", n)] = _less_one(f)
+                    _scale_entry(sites, prod, linear, kind, n, f)
             else:
                 return None
     except (KeyError, TypeError, ValueError, StopIteration):
         return None
-    return _Payload(sites, low)
+    _close_neurons(sites, prod, low)
+    return _Payload(sites, low, lins)
 
 
 def _knob_payload(knob: Any) -> Optional[_Payload]:
     """The payload of the weight edit whose arithmetic a neuron_mul knob is (its twin, `backend/level_knobs.py`), as
-    the knob's note records it: one scale of down_proj columns a layer, each column by the knob's factor. None when
-    the knob is not that arithmetic alone."""
+    the knob's note records it: one scale of down_proj columns a layer, each column by the knob's factor (a neuron's
+    scale, keyed by its neuron). None when the knob is not that arithmetic alone, or names a neuron twice."""
     steer = knob.get("steering") if isinstance(knob, Mapping) else None
     if not isinstance(steer, list) or not steer:
         return None
     sites: Dict[_Key, Optional[np.ndarray]] = {}
+    lins: set = set()
     try:
         for t in steer:
             if t.get("kind") != "neuron_mul" or t.get("spare_bos"):
                 return None
             linear, f = we.linear_name(int(t["layer"]), "down_proj"), float(t["factor"])
+            lins.add(linear)
             for n in t["neurons"]:
-                key = (linear, "cols", "factor", int(n))
-                if key in sites:
+                key = _neuron_key(linear, "cols", int(n), float(np.float32(f)))
+                if key is None or key in sites:
                     return None
                 sites[key] = _less_one(f)
     except (KeyError, TypeError, ValueError, AttributeError):
         return None
-    return _Payload(sites, [])
+    return _Payload(sites, [], lins)
 
 
 def _saved_payload(edit_id: str, base: Any = None) -> Tuple[Optional[_Payload], str]:
@@ -1455,8 +1572,9 @@ def _site_hash(linear: str, kind: str, slot: str) -> np.uint64:
 
 def sketch_buckets(linear: str, kind: str, slot: str, idx: Sequence[int], width: int) -> Tuple[np.ndarray, np.ndarray]:
     """Where `payload_sketch` adds each number of these sites: (bucket [K, width], sign [K, width]), both from a
-    fixed hash of the site (linear, kind, slot, index) and the number's place in it, so one site's numbers go to
-    the same buckets in every edit that changes it."""
+    fixed hash of the site (its key: linear, kind, slot and index, or for a neuron's scale "layers.L.mlp",
+    NEURON_SITE, "factor" and the neuron) and the number's place in it, so one site's numbers go to the same buckets
+    in every edit that changes it."""
     zc = _mix64(np.asarray([int(n) for n in idx], dtype=np.uint64) ^ _site_hash(linear, kind, slot))
     z = _mix64(zc[:, None] ^ np.arange(int(width), dtype=np.uint64)[None, :])
     return (z % np.uint64(SKETCH_DIMS)).astype(np.int64), np.where((z >> np.uint64(63)) == np.uint64(1), -1.0, 1.0)
@@ -1519,31 +1637,37 @@ def _against(r: Mapping[str, Any], other: str, mine: _Payload, base: Any,
     """How an earlier reading's edit stands to this one (`mine`): ("other", None, ""), ("compared", (cosine, scale)
     or None, how), or ("unresolved", None, why its direction cannot be told). Exact first: the payload its note holds
     (every number), else its saved folder; its sketch only when neither has its numbers, and then only a cosine
-    clear of SKETCH_NEAR_COS tells."""
+    clear of SKETCH_NEAR_COS tells, and only a sketch of this DIRECTION_VERSION. Before the sketch is read, and
+    before a reading is called not told, this edit's own payload bounds the cosine (`_share_bound`): below
+    SAME_DIRECTION_COS the two are other directions, whatever the earlier edit's numbers are."""
     rec = r.get("direction") if isinstance(r.get("direction"), Mapping) else {}
     rec_ok = rec.get("v") == DIRECTION_VERSION and isinstance(rec.get("linears"), list)
+    rec_lin = (rec.get("v") in DIRECTION_VERSIONS_LINEARS and not isinstance(rec.get("v"), bool)
+               and isinstance(rec.get("linears"), list))
     is_knob = r.get("kind") == "knob claim"
     noted = _knob_payload(r.get("knob")) if is_knob else _prov_payload(r.get("edit_provenance"))
-    their_lin: Optional[set] = None
-    if rec_ok:
-        their_lin = {str(x) for x in rec["linears"]}
-    elif noted is not None:
-        their_lin = noted.linears()
+    their_reg: Optional[set] = None
+    if noted is not None:
+        their_reg = noted.regions()
+    elif rec_lin:
+        their_reg = _regions_of_linears(rec["linears"])
     elif isinstance(r.get("edit_linears"), list):
-        their_lin = {str(x) for x in r["edit_linears"]}
-    # what changes none of this edit's linears, or none of its sites, is another direction: no numbers are wanted
-    if their_lin is not None and not (their_lin & mine.linears()):
+        their_reg = _regions_of_linears(r["edit_linears"])
+    # what changes none of this edit's linears (nor its layers' neurons), or none of its sites, is another direction:
+    # no numbers are wanted
+    if their_reg is not None and not (their_reg & mine.regions()):
         return "other", None, ""
     if noted is not None and not _shares(mine, noted):
         return "other", None, ""
-    if rec_ok and _clean_float(rec.get("norm")) == 0.0:
-        return "other", None, ""  # an edit that changes nothing is no direction
+    if rec_lin and _clean_float(rec.get("norm")) == 0.0:
+        return "other", None, ""  # an edit that changes nothing is no direction, by any version's length
     theirs: Optional[_Payload] = None
     how = ""
     if noted is not None and noted.known():
         theirs, how = noted, ("the knob's arithmetic, as its note records it" if is_knob
                               else "the numbers its note records")
     saved_why = ""
+    saved: Optional[_Payload] = None
     if theirs is None:
         saved, saved_why = _saved_payload(other, base)
         if saved is not None and not _shares(mine, saved):
@@ -1555,6 +1679,9 @@ def _against(r: Mapping[str, Any], other: str, mine: _Payload, base: Any,
             return "unresolved", None, ("this edit sets a column, and with no model at hand its change from the base "
                                         "cannot be worked out")
         return "compared", _cos_scale(mine, theirs), how
+    bound = _share_bound(mine, noted if noted is not None else saved, their_reg)
+    if bound is not None and bound < SAME_DIRECTION_COS:
+        return "other", None, ""
     sk, nb = rec.get("sketch"), _clean_float(rec.get("norm"))
     mine_sk = payload_sketch(mine)
     if rec_ok and isinstance(sk, list) and len(sk) == SKETCH_DIMS and nb and mine_sk is not None:
@@ -1570,11 +1697,39 @@ def _against(r: Mapping[str, Any], other: str, mine: _Payload, base: Any,
                 f"the sketch its note records puts it at cosine {c:.6f} to this edit, too near {SAME_DIRECTION_COS:g} "
                 f"for a sketch to tell, and {saved_why}")
         return "other", None, ""
-    if their_lin is None:
+    if their_reg is None:
         return "unresolved", None, f"its note records neither its sites nor a sketch of its payload, and {saved_why}"
+    old_sketch = rec_lin and not rec_ok and isinstance(sk, list)
     return "unresolved", None, (
-        f"it changes {'sites' if noted is not None else 'a linear'} this edit changes, its note records no sketch of "
-        f"its payload, and {saved_why}")
+        f"it changes {'sites' if noted is not None else 'a linear'} this edit changes, its note records "
+        + (f"a sketch of its payload of direction version {rec.get('v')}, which keyed a neuron's scale by its linear "
+           f"and is not compared with a sketch of version {DIRECTION_VERSION}" if old_sketch
+           else "no sketch of its payload")
+        + f", and {saved_why}")
+
+
+def _share_bound(mine: _Payload, keyed: Optional[_Payload], their_reg: Optional[set]) -> Optional[float]:
+    """A bound on the absolute cosine of this edit's payload (`mine`) with an earlier edit's whose numbers are not at
+    hand, from this edit's own: that edit is nothing off the sites it changes, so the cosine is at most the part of
+    this edit's length on those sites (Cauchy-Schwarz; a column's and a row's change are never on one linear, so a
+    low-rank term's slices there have no more length than the term). The sites are `keyed`'s (the earlier edit's,
+    named by its note or its saved folder), with every change of this edit on a linear where that edit has a low-rank
+    term; else, with only its linears known (`their_reg`), every site of this edit on those linears and those layers'
+    neurons. None with neither, or for an edit of this one's with a low-rank term or a number not known."""
+    if mine.lowrank or not mine.known():
+        return None
+    total = sum(float(np.dot(v, v)) for v in mine.sites.values())
+    if not (total > 0.0 and math.isfinite(total)):
+        return None
+    if keyed is not None:
+        low = {lin for lin, _a, _b in keyed.lowrank}
+        on = sum(float(np.dot(v, v)) for k, v in mine.sites.items()
+                 if k in keyed.sites or (k[2] == "change" and k[0] in low))
+    elif their_reg is not None:
+        on = sum(float(np.dot(v, v)) for k, v in mine.sites.items() if k[0] in their_reg)
+    else:
+        return None
+    return math.sqrt(min(on, total) / total)
 
 
 def same_direction(edit: we.Edit, fresh_any: Sequence[Mapping[str, Any]], ended_any: Mapping[int, Mapping[str, Any]],
@@ -1582,9 +1737,11 @@ def same_direction(edit: we.Edit, fresh_any: Sequence[Mapping[str, Any]], ended_
     """Every fresh reading in a book (`fresh_any`, of any brief) that read this edit's direction (`DIRECTION_WORDS`),
     with what it came to (`ended_any`). Another edit's payload is taken from its note when the note holds every
     number (every term rebuilt, or a neuron_mul knob's arithmetic), else from its saved folder in the edits folder,
-    else from the sketch its note records (`direction_record`), which tells only a cosine clear of SKETCH_NEAR_COS.
-    The linears and sites a note names are looked at first, so numbers are wanted only where the two edits change a
-    site in common. `base` (`base_reader`) reads the base's columns for a set entry's change. A reading whose
+    else from the sketch its note records (`direction_record`, of this DIRECTION_VERSION), which tells only a cosine
+    clear of SKETCH_NEAR_COS. The linears and sites a note names are looked at first (a neuron's scale is one site
+    whichever of its projections writes it), so numbers are wanted only where the two edits change a site in common;
+    and where they are not at hand, this edit's own payload is asked whether it bounds the cosine below
+    SAME_DIRECTION_COS. `base` (`base_reader`) reads the base's columns for a set entry's change. A reading whose
     direction cannot be told is in "unresolved", with why: a trial refuses it.
 
     Returns {"record": this edit's `direction_record`, "rows": [one a reading of this direction: its line, kind,
@@ -1697,14 +1854,17 @@ def fresh_reading_gate(
     and was the edit's arithmetic and nothing else (no prompt, no decoding setting), at dose 1, since a trial promotes
     what the claim read.
 
-    A trial is asked of its edit's direction too, on every brief of the book (`same_direction`: the payload over
-    every site either edit changes, equal up to a scale, sign included): refused when the book holds a trial of that
-    direction (of record, a dry run or a re-run, under any brief's name, of this edit or of a rescaled or negated copy
-    of it, or of one with a site more whose change is too small to count); a claim reading of it that did not read a
-    lead (or never ended); a knob claim of it that read more than the edit's arithmetic; a claim reading of it at
-    another dose of that direction (this trial's dose times the scale between the two edits); or a reading whose
-    direction cannot be told (another edit that changes a site this one changes, whose numbers are neither in its note
-    nor in the edits folder and whose sketch, if its note records one, is too near to tell; it is named). A set
+    A trial is asked of its edit's direction too, on every brief of the book (`same_direction`: `DIRECTION_WORDS`):
+    refused when the book holds a trial of that direction (of record, a dry run or a re-run, under any brief's name,
+    of this edit or of a rescaled or negated copy of it, of one that writes a neuron's scale at another of its
+    projections, of one that writes more on a neuron it silences, or of one with a site more whose change is too
+    small to count); a claim reading of it that did not read a lead (or never ended); a knob claim of it that read
+    more than the edit's arithmetic; a claim reading of it at another dose of that direction (this trial's dose times
+    the scale between the two edits); or a reading whose direction cannot be told (another edit whose note names a
+    site this one changes, or names only its linears, one of them a linear this one changes or of a layer whose
+    neurons it scales, or names neither; whose numbers are neither in its note nor in the edits folder; whose sketch,
+    if its note records one, is too near to tell or of an earlier direction version; and whose sites, or linears and
+    their layers' neurons, this edit's own payload does not bound below SAME_DIRECTION_COS; it is named). A set
     entry's change is read from `h`'s model.
 
     A trial is asked two things more of its bars. The calibration note must name the weights it was taken on (a

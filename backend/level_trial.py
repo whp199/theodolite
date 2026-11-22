@@ -718,7 +718,14 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         "direction: any edit under any brief's name in the book whose payload, taken over every site either edit",
         "changes, is this one's up to a scale, sign included. Where the book holds a trial of that direction the",
         "trial is refused; where it holds a claim reading of it, the trial follows it only if that claim read a",
-        "lead, at the dose of the direction it read.",
+        "lead, at the dose of the direction it read. A neuron's scale is one site whichever projection writes it",
+        "(its down_proj column or up_proj row by any factor, its gate_proj row by 0: one model as the edit is",
+        "written), and a neuron scaled to 0 is that site alone, whatever else an edit with no low-rank term on",
+        "that layer writes on it. Where the book holds a reading of another edit whose direction cannot be told,",
+        "the trial is refused too: one whose note names a site this one changes, or names only its linears, one",
+        "of them a linear this one changes or of a layer whose neurons it scales, or names neither, when its",
+        "numbers are neither in its note nor in the edits folder and neither the sketch its note records nor",
+        "this edit's own payload tells the two apart.",
         "It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
         "clean (nothing changed, nothing untracked, no file git is told to overlook, and no code where the runner",
         "imports from that no commit holds), this folder is committed as it stands, the runner and reader are the",
@@ -1409,7 +1416,8 @@ def verify_registration(prereg_dir: Path, *, kit: bool = False) -> Dict[str, Any
             "RULES.md is not the rules this code writes for trial.json: the rules a person reads there are not the "
             "ones the trial is judged by (the file was changed by hand, or the registration was written by other code, "
             "such as code from before 22 November 2026, whose RULES.md did not say that an edit is its direction on "
-            "any brief: register the trial again)."
+            "any brief, or code of that day whose RULES.md did not say that a neuron's scale is one site and that a "
+            "reading whose direction cannot be told refuses a trial: register the trial again)."
         )
     if small["registered_at"] != f"{trial_cfg.get('registered_at')}\n" or small["repo_commit"] != f"{trial_cfg.get('repo_commit')}\n":
         raise TrialRefused("registered_at or repo_commit is not what trial.json records.")
@@ -2144,7 +2152,8 @@ def trial_sentence(
                if rw_ig and rw_ig.get("under_bar") else "")
     src = meta.get("source_claim")
     src_part = (f" It follows the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})."
-                if isinstance(src, Mapping) else " No claim reading of this edit stands in this book before it.")
+                if isinstance(src, Mapping)
+                else " No claim reading of this edit on this brief stands in this book before it.")
     sd_rows = meta.get("same_direction")
     if isinstance(sd_rows, list):
         src_part += (f" Of this edit's direction ({lcl.DIRECTION_WORDS}) the book had before it, on any brief, "
@@ -2254,7 +2263,8 @@ def render_trial_sheet(
     src = meta.get("source_claim")
     out.append(f"follows: the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')}"
                + (f", read at dose {src['main_dose']:g}" if isinstance(src.get("main_dose"), (int, float)) else "") + ")"
-               if isinstance(src, Mapping) else "follows: no claim reading of this edit stands in this book")
+               if isinstance(src, Mapping) else
+               "follows: no claim reading of this edit on this brief stands in this book")
     out.append(_same_direction_line(meta))
     fold_w = folded_settings_words(trial_cfg)
     if fold_w:

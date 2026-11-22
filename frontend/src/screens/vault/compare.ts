@@ -176,6 +176,9 @@ export interface ReplayCard {
   trial_sha256?: string | null;
   of_record?: boolean | null;
   not_of_record?: string[] | null;
+  /** The rule a trial was registered under, and, for a rule the owner never adopted, the sentence said of it. */
+  rule_preset?: string | null;
+  rule_note?: string | null;
   recorded_tag?: string | null;
 }
 

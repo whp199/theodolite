@@ -296,6 +296,10 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
         <p style={{ margin: 0, fontSize: 20, fontWeight: 500, color: "var(--ink)" }}>{card.name}</p>
       ) : null}
 
+      {card.rule_note ? (
+        <p style={{ margin: 0, fontSize: 15, fontStyle: "italic" }}>{card.rule_note}</p>
+      ) : null}
+
       {card.edit_id ? (
         <p className="num" style={{ margin: 0, fontSize: 15, color: "var(--muted)" }}>
           edit <code style={{ fontFamily: MONO, fontSize: 14 }}>{card.edit_id.slice(0, 16)}</code>

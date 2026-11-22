@@ -586,6 +586,15 @@ def main() -> int:
                            "taken over every site either edit\nchanges, is this one's up to a scale, sign included. "
                            "Where the book holds a trial of that direction the\ntrial is refused",
                            "at the dose of the direction it read",
+                           "A neuron's scale is one site whichever projection writes it\n(its down_proj column or up_proj "
+                           "row by any factor, its gate_proj row by 0: one model as the edit is\nwritten), and a neuron "
+                           "scaled to 0 is that site alone, whatever else an edit with no low-rank term on\nthat layer "
+                           "writes on it.",
+                           "Where the book holds a reading of another edit whose direction cannot be told,\nthe trial is "
+                           "refused too: one whose note names a site this one changes, or names only its linears, one\nof "
+                           "them a linear this one changes or of a layer whose neurons it scales, or names neither, when "
+                           "its\nnumbers are neither in its note nor in the edits folder and neither the sketch its note "
+                           "records nor\nthis edit's own payload tells the two apart.",
                            "A look taken at registration, with the base alone, counted",
                            "The look sees the count alone",
                            "counts for the edit only when, as read, it changed the stream at least as much as the edit did",
@@ -1070,7 +1079,7 @@ def main() -> int:
                   and isinstance(reg_note["edit_provenance"], dict) and reg_note["edit_provenance"]["rebuilt_recipe"]["terms"]
                   and len(reg_note["kept_back"]["template_ids"]) == 8 and reg_note["process"]["readings"] > 0,
                   "5: the book's notes say dry run, which fresh reading it was, the dose, the edit's recipe and the frames read")
-            check(reg_note["direction"] == lcl.direction_record(e_trial) and reg_note["direction"]["v"] == 1
+            check(reg_note["direction"] == lcl.direction_record(e_trial) and reg_note["direction"]["v"] == 2
                   and len(reg_note["direction"]["sketch"]) == lcl.SKETCH_DIMS
                   and reg_note["direction"]["sites_say"] == "layers.2.mlp.down_proj: 2 columns (scale)"
                   and reg_note["same_direction"] == [] and t_res["meta"]["same_direction"] == [],
@@ -1100,7 +1109,7 @@ def main() -> int:
             for needle in ("CLAIM SHEET", "earlier fresh readings on this brief (0)", "earlier trials on this brief (0)",
                            "habitat (info): not run", "fresh items: new fillings of the brief's kept-back frames, which no "
                            "earlier fresh reading in this book had read",
-                           "follows: no claim reading of this edit stands in this book",
+                           "follows: no claim reading of this edit on this brief stands in this book",
                            "book: trial_book.jsonl (a side book, not the level book); the trial was entered at line",
                            "Read once and counted in this book: the harness cannot see another book",
                            "a probe of 2 columns at layer 2 (page layer 3) against 2 control edits (seed 0); each bar is "
@@ -1514,7 +1523,8 @@ def main() -> int:
                   f"that add's direction; and with no model at hand a set's change is not told ({w10['lrf'][:150]})")
             # exact before the sketch: two scales of columns whose numbers fall in one bucket with one sign of the
             # sketch are told apart by the numbers their note holds, and only by the sketch where it holds none
-            sk_b, sk_s = lcl.sketch_buckets("layers.2.mlp.down_proj", "cols", "factor", list(range(N)), 1)
+            k_col = next(iter(lcl._edit_payload(build([we.scale(2, [0], 0.5)], "a column's key").terms).sites))
+            sk_b, sk_s = lcl.sketch_buckets(k_col[0], k_col[1], k_col[2], list(range(N)), 1)
             seen_b: Dict[Any, int] = {}
             pair: Optional[Any] = None
             for i_c in range(N):
@@ -2022,7 +2032,8 @@ def main() -> int:
                   and "same-site (not asked to be as loud as the edit: as read, their median change to the stream was "
                       "1.00 over the prompt, 1.00 over the answer and 1.00 at the last position times the edit's; p_fw"
                       in sent_live
-                  and "the same bits on 4 of 4 items" in sent_live and "No claim reading of this edit stands in this book" in sent_live
+                  and "the same bits on 4 of 4 items" in sent_live
+                  and "No claim reading of this edit on this brief stands in this book" in sent_live
                   and "which no earlier fresh reading in this book had read" in sent_live
                   and (" Passed. " in sent_live or " Passed, matched by a cheaper knob. " in sent_live)
                   # a figure that was not there prints as "none" or "None" (a stand-in has no weights id, and says so)
