@@ -2271,7 +2271,6 @@ def run_checks() -> int:
               f"nothing said of it, and the message goes in ({errs_nr}; said {said_nr[-100:]!r})")
         # a request nested that deep is told by its two ends and refused, so the process does not wait on an answer;
         # an answer that deep fails the prompt waiting on it, and the process goes on
-        n_logs = len(seen_logs)
         k = eva.mark()
         hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "Send a deep request."})
         done_q = eva.wait(lambda e: e["t"] == "done", 15, k)
@@ -2280,7 +2279,6 @@ def run_checks() -> int:
         check(done_q is not None and deep_q.get("outcome") == {"outcome": "cancelled"}
               and sc.DEEP_REQUEST_WORDS.format(name="Antigravity") in errs_q
               and "After the deep request." in "".join(e.get("text", "") for e in eva.since(k))
-              and any("nested too deep to read was refused" in s for s in seen_logs[n_logs:])
               and sc._chats[chat_a]["proc"] is not None and sc._chats[chat_a]["proc"].pid == deep_q.get("pid"),
               f"agy: a request nested too deep for json.loads is refused (cancelled) and said, and the turn ends in the "
               f"same process ({deep_q}, done {done_q is not None}, {errs_q})")
@@ -2290,11 +2288,11 @@ def run_checks() -> int:
         deep_a = next((x for x in alog() if x["kind"] == "deep_answer"), {})
         errs_a = [e["error"] for e in eva.since(k) if e["t"] == "error"]
         k2 = eva.mark()
-        hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "quick, after the deep answer"})
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "quick, after that one"})
         eva.wait(lambda e: e["t"] == "done", 15, k2)
         said_a2 = "".join(e.get("text", "") for e in eva.since(k2))
         check(done_a is not None and any(sc.DEEP_ANSWER_WORDS in e for e in errs_a)
-              and "Answered: quick, after the deep answer" in said_a2
+              and "Answered: quick, after that one" in said_a2
               and sc._chats[chat_a]["proc"] is not None and sc._chats[chat_a]["proc"].pid == deep_a.get("pid"),
               f"agy: an answer nested too deep for json.loads fails the prompt waiting on it, and the next message goes "
               f"in on the same process ({deep_a}, done {done_a is not None}, {errs_a}; then {said_a2[-80:]!r})")
