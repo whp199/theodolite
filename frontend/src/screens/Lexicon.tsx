@@ -1676,10 +1676,11 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             edit only when, as read, it changed the stream at least as much as the edit did; a quieter one is counted
             as moving as much. Same-site control edits are built at the edit’s own sites. An edit has one trial: the
             trial is refused when the book holds, under any brief, a trial of the edit’s direction (the payload over
-            every site either edit changes, a neuron’s scale one site at its down_proj column or up_proj row, or its
-            gate_proj row at factor 0, and a neuron scaled to 0 that site alone, equal up to a scale, sign included)
-            or a claim of it that read no lead. A lead of it read at another dose, or a reading of another edit that
-            may change what it changes and that it cannot tell apart, refuses the trial too.
+            every site either edit changes, equal up to a scale, sign included, with each entry at its own site or
+            with a neuron’s scale one site at its down_proj column or up_proj row, or its gate_proj row at factor 0,
+            and a neuron scaled to 0 that site alone) or a claim of it that read no lead. A lead of it read at another
+            dose, or a reading of another edit that may change what it changes and that it cannot tell apart, refuses
+            the trial too.
           </EntryApparatus>
         </Entry>
       </EntryGrid>

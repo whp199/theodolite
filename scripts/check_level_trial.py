@@ -586,15 +586,17 @@ def main() -> int:
                            "taken over every site either edit\nchanges, is this one's up to a scale, sign included. "
                            "Where the book holds a trial of that direction the\ntrial is refused",
                            "at the dose of the direction it read",
-                           "A neuron's scale is one site whichever projection writes it\n(its down_proj column or up_proj "
-                           "row by any factor, its gate_proj row by 0: one model as the edit is\nwritten), and a neuron "
-                           "scaled to 0 is that site alone, whatever else an edit with no low-rank term on\nthat layer "
-                           "writes on it.",
-                           "Where the book holds a reading of another edit whose direction cannot be told,\nthe trial is "
-                           "refused too: one whose note names a site this one changes, or names only its linears, one\nof "
-                           "them a linear this one changes or of a layer whose neurons it scales, or names neither, when "
-                           "its\nnumbers are neither in its note nor in the edits folder and neither the sketch its note "
-                           "records nor\nthis edit's own payload tells the two apart.",
+                           "The payload is read two ways, and two edits are one\ndirection when either finds them so: "
+                           "with each entry at its own site, which finds a copy written with\nthe factors another dose "
+                           "gives the edit, at the ratio of the two doses; and with a neuron's scale one\nsite whichever "
+                           "projection writes it (its down_proj column or up_proj row by any factor, its gate_proj\nrow "
+                           "by 0: one model as the edit is written), and a neuron scaled to 0 that site alone, whatever "
+                           "else an\nedit with no low-rank term on that layer writes on it.",
+                           "Where the book holds a reading of another edit\nwhose direction cannot be told, the trial is "
+                           "refused too: one whose note names a site this one changes,\nor names only its linears, one of "
+                           "them a linear this one changes or of a layer whose neurons it scales,\nor names neither, when "
+                           "its numbers are neither in its note nor in the edits folder and neither the\nsketch its note "
+                           "records nor this edit's own payload tells the two apart.",
                            "A look taken at registration, with the base alone, counted",
                            "The look sees the count alone",
                            "counts for the edit only when, as read, it changed the stream at least as much as the edit did",
@@ -1079,7 +1081,7 @@ def main() -> int:
                   and isinstance(reg_note["edit_provenance"], dict) and reg_note["edit_provenance"]["rebuilt_recipe"]["terms"]
                   and len(reg_note["kept_back"]["template_ids"]) == 8 and reg_note["process"]["readings"] > 0,
                   "5: the book's notes say dry run, which fresh reading it was, the dose, the edit's recipe and the frames read")
-            check(reg_note["direction"] == lcl.direction_record(e_trial) and reg_note["direction"]["v"] == 2
+            check(reg_note["direction"] == lcl.direction_record(e_trial) and reg_note["direction"]["v"] == 3
                   and len(reg_note["direction"]["sketch"]) == lcl.SKETCH_DIMS
                   and reg_note["direction"]["sites_say"] == "layers.2.mlp.down_proj: 2 columns (scale)"
                   and reg_note["same_direction"] == [] and t_res["meta"]["same_direction"] == [],

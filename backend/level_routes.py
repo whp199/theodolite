@@ -130,7 +130,7 @@ _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
 def last_run_words(path: Path, entries: int) -> str:
     """"last run 22 Nov 2026, UTC": the UTC date of a book's last whole line (`entries` is how many whole lines
     `level_book.verify` found), so a book appended over two runs is dated by its last; "" when that line cannot be
-    read or names no time."""
+    read or names no time, or a time with no UTC date (one that would fall before year 1 or after year 9999)."""
     if entries <= 0:
         return ""
     try:
@@ -139,10 +139,10 @@ def last_run_words(path: Path, entries: int) -> str:
         return ""
     try:
         when = datetime.datetime.fromisoformat(str((ent or {}).get("at") or "").replace("Z", "+00:00"))
-    except ValueError:
+        if when.tzinfo is not None:
+            when = when.astimezone(datetime.timezone.utc)
+    except (ValueError, OverflowError):
         return ""
-    if when.tzinfo is not None:
-        when = when.astimezone(datetime.timezone.utc)
     return f"last run {when.day} {_MONTHS[when.month - 1]} {when.year}, UTC"
 
 

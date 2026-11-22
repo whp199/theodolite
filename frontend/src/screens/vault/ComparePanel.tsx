@@ -23,10 +23,11 @@ import {
   fmtMetric,
   fmtSigned,
   formatPlainEdit,
+  notOfRecordWords,
   statusTone,
   validateCompareForm,
 } from "./compare";
-import { RECORDED_REPLAY_CARDS } from "./compareRecorded";
+import { RECORDED_BOOK_HEAD, RECORDED_BOOK_LAST_RUN, RECORDED_REPLAY_CARDS } from "./compareRecorded";
 import { useVaultUi } from "./ui";
 
 const radioStyle: React.CSSProperties = { width: 18, height: 18, accentColor: "var(--rubric)", margin: 0 };
@@ -267,6 +268,7 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
   const bats = card.batteries as Record<string, Record<string, unknown>> | null | undefined;
   const isTrialNote =
     card.note_type === "trial_of_record" || card.note_type === "trial_dry_run" || card.note_type === "trial_rerun";
+  const notOfRecord = notOfRecordWords(card);
   return (
     <div
       style={{
@@ -300,6 +302,8 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
         <p style={{ margin: 0, fontSize: 15, fontStyle: "italic" }}>{card.rule_note}</p>
       ) : null}
 
+      {notOfRecord ? <p style={{ margin: 0, fontSize: 15, fontStyle: "italic" }}>{notOfRecord}</p> : null}
+
       {card.edit_id ? (
         <p className="num" style={{ margin: 0, fontSize: 15, color: "var(--muted)" }}>
           edit <code style={{ fontFamily: MONO, fontSize: 14 }}>{card.edit_id.slice(0, 16)}</code>
@@ -314,13 +318,6 @@ const ReplayInspector: React.FC<{ card: ReplayCard }> = ({ card }) => {
 
       {card.note_type === "claim_verdict" || isTrialNote ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {isTrialNote && card.note_type !== "trial_of_record" ? (
-            <p style={{ margin: 0, fontSize: 15, fontStyle: "italic" }}>
-              {card.note_type === "trial_rerun" ? "A volunteer’s re-run of a trial" : "A dry run of a trial"}: not a
-              verdict of record
-              {card.not_of_record && card.not_of_record.length ? ` (${card.not_of_record.join("; ")})` : ""}.
-            </p>
-          ) : null}
           {card.claim_sentence ? (
             <blockquote
               style={{
@@ -683,7 +680,7 @@ export const ComparePanel: React.FC = () => {
   const isScaleOp = form.op === "scale" || form.op === "scale_rows";
   const vaultDirty = activeEdits.length > 0 || (status?.active_vault_edits ?? 0) > 0;
   const availableBooks: BookInfo[] = status?.books ?? [
-    { id: "recorded", label: "recorded 31B claim check (19 Nov 2026)", recorded: true, exists: true, entries: RECORDED_REPLAY_CARDS.length, ok: true, head: "6cf3621dbee8c2a3" },
+    { id: "recorded", label: `recorded 31B claim check (${RECORDED_BOOK_LAST_RUN})`, recorded: true, exists: true, entries: RECORDED_REPLAY_CARDS.length, ok: true, head: RECORDED_BOOK_HEAD },
   ];
 
   return (
@@ -1130,7 +1127,7 @@ export const ComparePanel: React.FC = () => {
           </p>
         ) : bookOffline ? (
           <p style={{ margin: 0, fontSize: 15, fontStyle: "italic", color: "var(--gilt-text)" }}>
-            Showing recorded 31B card Phase 3 verdicts (19 November 2026) offline—no server required.
+            Showing recorded 31B card Phase 3 verdicts ({RECORDED_BOOK_LAST_RUN}) offline—no server required.
           </p>
         ) : null}
 

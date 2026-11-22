@@ -524,6 +524,27 @@ export function statusTone(status: string | null | undefined): "good" | "warn" |
   return "neutral";
 }
 
+/**
+ * The line a replay card shows when it is a trial's and not of record: a dry run's, a volunteer's re-run's, a trial
+ * verdict's whose card says it is not of record, and any card with a `rule_note` (a trial registered under a rule the
+ * owner never adopted, its registration's card included). Null for every other card.
+ */
+export function notOfRecordWords(card: ReplayCard): string | null {
+  const nt = card.note_type;
+  const trialNote = nt === "trial_of_record" || nt === "trial_dry_run" || nt === "trial_rerun";
+  if (!card.rule_note && !(trialNote && (nt !== "trial_of_record" || card.of_record === false))) return null;
+  const what =
+    nt === "trial_rerun"
+      ? "A volunteer’s re-run of a trial"
+      : nt === "trial_dry_run"
+        ? "A dry run of a trial"
+        : card.rule_note
+          ? `A trial registered under ${card.rule_preset ?? "a rule"}, a rule the owner never adopted`
+          : "A trial";
+  const why = card.not_of_record && card.not_of_record.length ? ` (${card.not_of_record.join("; ")})` : "";
+  return `${what}: ${trialNote ? "not a verdict of record" : "not of record"}${why}.`;
+}
+
 /** Label and tone for a retention battery chip (never calls an unavailable battery "passed"). */
 export function batteryOutcome(
   bv: Record<string, unknown> | null | undefined,
