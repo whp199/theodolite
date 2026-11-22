@@ -324,6 +324,13 @@ elif MODE == "linger":
     reply(3, 833, 26, 20, 0, text="Keeping the base.")
     result({"input_tokens": 900000, "output_tokens": 81, "thinking_tokens": 48, "cache_read_tokens": 0, "total_tokens": 900081})
     time.sleep(30)
+elif MODE == "no_result":  # a door call and a long reply, then it ends with no result line
+    write_store(expected)
+    init()
+    step(0, state="DONE", step_type="user_input")
+    reply(1, 688, 55, 28, 0)
+    tool(2, "mcp_levelling_status", call="status")
+    reply(3, 833, 26, 20, 0, text="I will now read the rows one by one. " * 20)
 '''
 
 
@@ -654,6 +661,17 @@ def _agy_driver_checks(h: Any, tmp: Path, claude_wall_out: Optional[Dict[str, An
           f"4c: agy's stop reasons are level_eval's own ({sorted(names)}): STOP is not counted, a cap after a door call "
           f"counts, and a wall stop before any door call reads as the Claude driver's does "
           f"({lev.why_not_counted(wl_out)!r})")
+    # A run that ends with no result line after a door call and a long reply stops in an error, and the reason it is
+    # not counted quotes the driver's own stop note (`stop_note`), not the model's words that open its notes
+    nr_out, _, _ = _run("no_result")
+    nr_why = str(lev.why_not_counted(nr_out))
+    check(nr_out["stop_reason"] == "error" and nr_out["driver_failure"] is None and nr_out["door"]["ok"] == 1
+          and nr_out.get("stop_note") == "The CLI ended without its result line."
+          and str(nr_out.get("notes") or "").startswith("I will now read the rows one by one.")
+          and nr_why.startswith("it ended in an error (The CLI ended without its result line.)")
+          and "I will now read" not in nr_why,
+          f"4c: an agy run that ends with no result line after a long reply is not counted for the driver's own stop "
+          f"note, not for the model's words that open its notes ({nr_out['stop_reason']}; {nr_why[:120]!r})")
 
     # A study with an agy arm says in its limitations that the arm was not door tools only, that its runs reached a
     # second model, and that its dollars came from the plan's prices; one without says none of it
@@ -695,7 +713,24 @@ if MODE in ("wall", "wall_long"):  # it goes on past the driver's wall cap and n
          + (" I read the rows one by one." * 120 if MODE == "wall_long" else "")})
     time.sleep(30)
     sys.exit(0)
+if MODE == "no_result":  # a long reply, then it ends with no result line
+    say({"type": "message", "role": "assistant", "content": "I will now read the rows one by one. " * 20})
+    mcp.stdin.close(); mcp.wait(); sys.exit(0)
+if MODE == "no_result_error":  # a short reply and an error event, then it ends with no result line
+    say({"type": "message", "role": "assistant", "content": "Reading the rows."})
+    say({"type": "error", "severity": "error",
+         "message": "[API Error: 429 RESOURCE_EXHAUSTED: You exceeded your current quota.]"})
+    mcp.stdin.close(); mcp.wait(); sys.exit(1)
 stats = {"input_tokens": 500000, "output_tokens": 50000, "total_tokens": 560000, "cached": 400000, "input": 100000, "tool_calls": 1}
+if MODE == "invalid_stream":  # as Gemini CLI 0.70 ends an empty reply: an error event, then a result line of status
+    # "error" that holds no error
+    say({"type": "message", "role": "assistant", "content": "Reading the rows."})
+    say({"type": "error", "severity": "warning", "message": "Loop detected, stopping execution"})
+    say({"type": "error", "severity": "error",
+         "message": "The model returned an empty response with no text or thoughts. "
+                    "This may be a transient API issue; please try again."})
+    say({"type": "result", "status": "error", "stats": stats})
+    mcp.stdin.close(); mcp.wait(); sys.exit(0)
 if MODE == "turn_limit":
     say({"type": "result", "status": "error", "error": {"type": "FatalTurnLimitedError",
          "message": "Reached max session turns for this session. Increase the number of turns by specifying maxSessionTurns in settings.json."},
@@ -791,12 +826,15 @@ def _gemini_cap_checks(h: Any, tmp: Path, brief: Any, bars: Any, cal_book: Path)
                                                         "reach": "behaviour", "mode": "weight_edit", "bare": False,
                                                         "reasoning_effort": None, "driver_config": {}}]})
     wl_rep = (wl_sum["arms"][0].get("replicates") or [{}])[0]
+    # the report's own list of such sessions (the limitations, which every report prints, also hold "usage not known")
+    wl_report = lev.render_study_report(wl_sum).splitlines()
     check(str(wl_rep.get("usage_not_known") or "").startswith("usage not known")
           and wl_sum["arms"][0]["cost"].get("sessions_usage_not_known") == 1
           and "usage not known" in " ".join(wl_sum.get("limitations") or [])
-          and "usage not known" in lev.render_study_report(wl_sum),
-          f"4b: the study's row, the arm's cost, the limitations and the report say that session's usage is not known "
-          f"({wl_rep.get('usage_not_known')})")
+          and any(ln.startswith("Sessions whose usage is not known") for ln in wl_report)
+          and any(ln.startswith("- `gm_r0`: usage not known") for ln in wl_report),
+          f"4b: the study's row, the arm's cost, the limitations and the report's list of sessions whose usage is not "
+          f"known say that session's usage is not known ({wl_rep.get('usage_not_known')})")
     handed = lev._charge_unknown(wl_out, 0.7)
     free = lev._charge_unknown({**wl_out, "caps_after_run": {**wl_caps, "dollars_known": True}}, 0.7)
     check(handed is not None and handed["dollars"] == 0.7 and "usage not known" in handed["why"] and free is None
@@ -830,6 +868,48 @@ def _gemini_cap_checks(h: Any, tmp: Path, brief: Any, bars: Any, cal_book: Path)
           f"4b: a Gemini run stopped before its result line at prices of 0 says its tokens are not known and its dollars "
           f"are 0, and after a long reply its notes still end with that, the reply cut to leave it room (say "
           f"{wf_caps.get('say')!r}; notes {len(wf_notes)} chars ending {wf_notes[-90:]!r}; row {wf_row.get('usage_not_known')!r})")
+    # A run that ends with no result line after a door call and a long reply stops in an error, and the reason it is
+    # not counted quotes the driver's own stop note (`stop_note`), not the model's words that open its notes
+    s_nr = lses.LevelSession(h, tmp / "s_gm_no_result", reach="behaviour", backend="gemini",
+                             book_path=tmp / "b_gm_no_result.jsonl", probe_on_start=False)
+    nr_out = ldrv.run_gemini_cli_driver(s_nr, gemini_bin=str(_mock_g("no_result", {"name": "status", "arguments": {}})),
+                                        allow_mock_cli=True, driver_budget=ldrv.DriverBudget(**priced))
+    nr_why = str(lev.why_not_counted(nr_out))
+    check(nr_out["stop_reason"] == "error" and nr_out["driver_failure"] is None and nr_out["door"]["ok"] == 1
+          and nr_out.get("stop_note") == "The CLI ended without its result line."
+          and str(nr_out.get("notes") or "").startswith("I will now read the rows one by one.")
+          and nr_why.startswith("it ended in an error (The CLI ended without its result line.)")
+          and "I will now read" not in nr_why,
+          f"4b: a Gemini run that ends with no result line after a long reply is not counted for the driver's own stop "
+          f"note, not for the model's words that open its notes ({nr_out['stop_reason']}; {nr_why[:120]!r})")
+    # Where the CLI printed an error event, the reason quotes the CLI's own words: after a run that ended with no result
+    # line, and where its result line says "error" and holds none (as 0.70 ends an invalid stream). The words are said
+    # once in the notes
+    quota = "[API Error: 429 RESOURCE_EXHAUSTED: You exceeded your current quota.]"
+    empty = ("The model returned an empty response with no text or thoughts. This may be a transient API issue; please "
+             "try again.")
+    gm_err: Dict[str, Any] = {}
+    for mode in ("no_result_error", "invalid_stream"):
+        s_ge = lses.LevelSession(h, tmp / f"s_gm_{mode}", reach="behaviour", backend="gemini",
+                                 book_path=tmp / f"b_gm_{mode}.jsonl", probe_on_start=False)
+        gm_err[mode] = ldrv.run_gemini_cli_driver(
+            s_ge, gemini_bin=str(_mock_g(mode, {"name": "status", "arguments": {}})), allow_mock_cli=True,
+            driver_budget=ldrv.DriverBudget(**priced))
+    ne_out, is_out = gm_err["no_result_error"], gm_err["invalid_stream"]
+    ne_why, is_why = str(lev.why_not_counted(ne_out)), str(lev.why_not_counted(is_out))
+    check(ne_out["stop_reason"] == "error" and ne_out["driver_failure"] is None and ne_out["door"]["ok"] == 1
+          and ne_out.get("stop_note") == f"The CLI ended without its result line. The last error it printed: {quota}"
+          and ne_why == f"it ended in an error (The CLI ended without its result line. The last error it printed: "
+                        f"{quota})"
+          and str(ne_out.get("notes") or "").count(quota) == 1,
+          f"4b: a Gemini run that printed an error event and ended with no result line is not counted for the driver's "
+          f"stop note, which quotes the CLI's last error, said once in its notes ({ne_why[:160]!r})")
+    check(is_out["stop_reason"] == "error" and is_out["driver_failure"] is None and is_out["door"]["ok"] == 1
+          and is_out.get("stop_note") == empty and is_why == f"it ended in an error ({empty})"
+          and str(is_out.get("notes") or "").count(empty) == 1,
+          f"4b: a Gemini run whose result line says error and holds none (an invalid stream) is not counted for the "
+          f"last error event the CLI printed, not for the line's bare status, and its notes say it once "
+          f"({is_out.get('stop_note')!r}; {is_why[:160]!r})")
     check(ldrv.gemini_mcp_timeout_ms(60.0) == 60000 and ldrv.gemini_mcp_timeout_ms(3e6) == 2**31 - 1
           and ldrv.gemini_mcp_timeout_ms(1e-6) == 1 and ldrv.GEMINI_MCP_TIMEOUT_MAX_MS == 2**31 - 1,
           f"4b: the door's per-call timeout is the wall cap in milliseconds, but never past the longest timer Node keeps "
@@ -2844,6 +2924,32 @@ print(json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 250.
                   f"4: the Claude CLI driver's outcomes carry driver_failure, stop_reason and door {{calls, ok, errors}} "
                   f"too, and a CLI its own cap stopped before any door call is no driver failure "
                   f"({', '.join(k for k, o in cli_outs.items() if _carries(o))}; wall cap: {hang_out['driver_failure']!r})")
+
+            # A run that ends with no result line after a door call stops in an error: the driver's own stop note is
+            # kept apart from its notes (`stop_note`), and the reason the session is not counted quotes it
+            nores_cli = _mock("noresult_claude.py", """import json, subprocess, sys
+cfg = json.loads(open(sys.argv[sys.argv.index("--mcp-config") + 1]).read())["mcpServers"]["levelling"]
+req = "\\n".join([
+    json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}),
+    json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "status", "arguments": {}}}),
+]) + "\\n"
+subprocess.run([cfg["command"], *cfg["args"]], input=req, text=True, capture_output=True, timeout=10)
+print(json.dumps({"type": "assistant", "message": {"id": "m1", "model": "claude-mock-4", "usage": {"input_tokens": 50, "output_tokens": 5},
+                  "content": [{"type": "text", "text": "I will now read the rows one by one. " * 20}]}}), flush=True)
+""")
+            s_nores = lses.LevelSession(h, tmp / "s_cl_nores", reach="behaviour", backend="claude",
+                                        book_path=tmp / "b_cl_nores.jsonl", probe_on_start=False)
+            nores_out = ldrv.run_claude_cli_driver(
+                s_nores, claude_bin=str(nores_cli), allow_mock_cli=True,
+                driver_budget=ldrv.DriverBudget(max_turns=4, max_dollars=1.0, max_wall_seconds=15.0),
+            )
+            nores_why = str(lev.why_not_counted(nores_out))
+            check(nores_out["stop_reason"] == "error" and nores_out["driver_failure"] is None
+                  and (nores_out.get("door") or {}).get("ok") == 1
+                  and nores_out.get("stop_note") == "The CLI ended without its result line."
+                  and nores_why.startswith("it ended in an error (The CLI ended without its result line.)"),
+                  f"4: a Claude Code run that ends with no result line after a door call keeps the driver's own stop "
+                  f"note apart (stop_note), and is not counted for it ({nores_out['stop_reason']}; {nores_why[:120]!r})")
 
             # A door call still running when STOP kills the CLI: the mock asks for one call, waits until it is
             # running (its marker is in the work folder), then writes the STOP file

@@ -1471,6 +1471,9 @@ OVERLONG_WORDS = {
     "other": "{name} sent a message too long for Theodolite to read, so it was passed over.",
 }
 OVERLONG_ANSWER_WORDS = "its answer was too long for Theodolite to read"
+# a line nested too deep for json.loads (`_too_deep`): a request is refused, an answer fails what waits on it
+DEEP_REQUEST_WORDS = "{name} asked for something in a message nested too deep for Theodolite to read, so it was refused."
+DEEP_ANSWER_WORDS = "its answer was nested too deep for Theodolite to read"
 # a message's keys that may come after its id and method (Gemini CLI 0.70 writes jsonrpc, id, method, params, or
 # jsonrpc, id, result), and its id as its last key (Antigravity 1.5.14 writes jsonrpc, result, id)
 _ACP_BODY_KEY = re.compile(rb',\s*"(params|result|error)"\s*:')
@@ -1530,9 +1533,10 @@ def _overlong_what(head: bytes, tail: bytes) -> Tuple[Dict[str, Any], str]:
 
 async def _overlong(c: Dict[str, Any], proc: Any, head: bytes, tail: bytes) -> None:
     """A message too long to read (`_acp_lines`), told by its first and last parts (`_overlong_what`): an answer to a
-    request of ours fails that request (OVERLONG_ANSWER_WORDS); a request of its own is refused (cancelled, as what it
-    offers could not be read), so it does not wait on an answer; an update is not shown. During a turn the thread says
-    so (OVERLONG_WORDS), unless the conversation is being loaded or the process was stopped."""
+    request of ours fails that request (OVERLONG_ANSWER_WORDS); a request of its own, one with an id and a method or
+    params (its method may come after its params, unread), is refused (cancelled, as what it offers could not be
+    read), so it does not wait on an answer; an update is not shown. During a turn the thread says so
+    (OVERLONG_WORDS), unless the conversation is being loaded or the process was stopped."""
     logger.warning("scientist chat %s: a message from %s too long to read was passed over (%r … %r)", c.get("session"),
                    c["agent"], head[:120], tail[-80:])
     d, key = _overlong_what(head, tail)
@@ -1541,7 +1545,7 @@ async def _overlong(c: Dict[str, Any], proc: Any, head: bytes, tail: bytes) -> N
         if fut and not fut.done():
             fut.set_result({"id": d["id"], "error": {"message": OVERLONG_ANSWER_WORDS}})
         return
-    if "id" in d and d.get("method"):
+    if "id" in d and (d.get("method") or key == "params"):  # an id and params: a request, whatever its method
         await _write(proc, {"jsonrpc": "2.0", "id": d["id"], "result": {"outcome": _refused_outcome(None)}})
         what = "request"
     else:
@@ -1550,15 +1554,40 @@ async def _overlong(c: Dict[str, Any], proc: Any, head: bytes, tail: bytes) -> N
         _emit(c, {"t": "error", "error": OVERLONG_WORDS[what].format(name="Antigravity" if c["agent"] == "agy" else "Gemini CLI")})
 
 
+async def _too_deep(c: Dict[str, Any], proc: Any, line: bytes) -> None:
+    """A line nested too deep for `json.loads` (a RecursionError), told by its first and last parts as one too long is
+    (`_overlong_what`): an answer to a request of ours fails that request (DEEP_ANSWER_WORDS); a request of its own, one
+    with an id and a method or params, is refused (cancelled), so that it does not wait on an answer, and during a turn
+    the thread says so (DEEP_REQUEST_WORDS); an update, or a line told as neither, is passed over unshown."""
+    d, key = _overlong_what(line[:4096], line[-256:])
+    if "id" not in d:
+        return
+    if key in ("result", "error") and "method" not in d:
+        logger.warning("scientist chat %s: an answer from %s nested too deep to read failed its request (%r)",
+                       c.get("session"), c["agent"], line[:120])
+        fut = c["rpc"]["pending"].pop(d["id"], None)
+        if fut and not fut.done():
+            fut.set_result({"id": d["id"], "error": {"message": DEEP_ANSWER_WORDS}})
+        return
+    if d.get("method") or key == "params":
+        logger.warning("scientist chat %s: a request from %s nested too deep to read was refused (%r)", c.get("session"),
+                       c["agent"], line[:120])
+        await _write(proc, {"jsonrpc": "2.0", "id": d["id"], "result": {"outcome": _refused_outcome(None)}})
+        if c["busy"] and not c.get("loading") and c.get("halted") is not proc:
+            _emit(c, {"t": "error", "error": DEEP_REQUEST_WORDS.format(name="Antigravity" if c["agent"] == "agy" else "Gemini CLI")})
+
+
 async def _pump_gemini(c: Dict[str, Any], proc: Any) -> None:
     """An ACP process's output (Gemini CLI or Antigravity) turned into chat events, until it exits. Its stderr is read
     as it comes, its last part kept for the error when it exits, so that a long chat cannot stall on a full pipe. An
-    Antigravity chat that acts on its own is stopped here (`_agy_own_work`). A message that is not a JSON object is
-    passed over, and so is one too long to read (`_overlong`: a request refused, an answer failing what waits on it);
-    one whose handling fails is logged, and when it is a request it is refused (`_refused_outcome`), so that the
-    process does not wait on an answer, and the reading goes on. When the reading itself fails, nothing would read the
-    process's output again: what waits on an answer from it is failed (PUMP_FAILED_WORDS) and the process is ended,
-    so the turn ends and the next message starts it again."""
+    Antigravity chat that acts on its own is stopped here (`_agy_own_work`). A line that is not a JSON object is passed
+    over; one nested too deep for `json.loads` (a RecursionError, about 10,000 levels deep on CPython 3.12.15) and one
+    too long to read are told by their two ends (`_too_deep`, `_overlong`: a request refused, an answer failing what
+    waits on it, an update passed over); one whose handling
+    fails is logged, and when it is a request it is refused (`_refused_outcome`), so that the process does not wait on
+    an answer, and the reading goes on. When the reading itself fails, nothing would read the process's output again:
+    what waits on an answer from it is failed (PUMP_FAILED_WORDS) and the process is ended, so the turn ends and the
+    next message starts it again."""
     rpc = c["rpc"]
     tail = bytearray()
 
@@ -1574,15 +1603,20 @@ async def _pump_gemini(c: Dict[str, Any], proc: Any) -> None:
     try:
         async for line, head, last in _acp_lines(proc.stdout):
             m: Optional[Dict[str, Any]] = None
+            deep = False
             if line is not None:
                 try:
                     m = json.loads(line)
-                except ValueError:
+                except RecursionError:  # nested too deep for the parser: told by its two ends (`_too_deep`)
+                    deep = True
+                except ValueError:  # not JSON
                     continue
-                if not isinstance(m, dict):
+                if not deep and not isinstance(m, dict):
                     continue
             try:
-                if m is None:
+                if deep:
+                    await _too_deep(c, proc, line)
+                elif m is None:
                     await _overlong(c, proc, head, last)
                 else:
                     await _pump_message(c, proc, m)

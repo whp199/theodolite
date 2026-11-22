@@ -3144,12 +3144,13 @@ in order:
   Levelling drivers), ruled on 22 November 2026: the scientist starts on Claude Code, “as before”, and agy is the
   default only within the Gemini family (“we just want agy to be default when selecting Gemini, not default for
   everything”); the agy Levelling driver is to stay (“Mend it and keep it”). Reviewed and mended on 22 November 2026;
-  what a review of those mends found was mended in a second round the same day (`d2c6065`).
+  what a review of those mends found was mended in a second round the same day (`d2c6065`), and what a check of that
+  round found in a third.
   Phase 6’s drivers above grow by two: a Gemini CLI driver, built to Claude Code’s shape with no ruling of its own,
   and an Antigravity CLI driver, refused until the owner accepts the three tools agy offers every run; both need
   prices in the plan under a dollar cap, and neither has worked the door on the 31B. CPU checks (no card run checks
-  PR 7's changes), after the second round: `check_scientist.py` 336/336, `check_level_eval.py` 281/281 (22 November
-  2026); the mended PR 6's other checks passed on the tree before that round. On the real CLIs,
+  PR 7's changes), after the third round: `check_scientist.py` 339/339, `check_level_eval.py` 286/286 (22 November
+  2026); the mended PR 6's other checks passed on the tree before the second round. On the real CLIs,
   22 November 2026: `verify_scientist_gemini_cli.py` 38 checks on Gemini CLI 0.70.0 against a stand-in API; seven
   live Antigravity chat turns at the folder reach on agy 1.5.14, none at the home reach; and four runs of
   `verify_level_agy.py` on agy 1.5.14 against a stand-in door with no model (each spends a little of the owner’s agy
@@ -3189,6 +3190,6 @@ in order:
     Gemini CLI reader now does (today their reading stops at such a line);
   - whether the Claude Code, Codex and agy drivers should keep their own stop and failure notes whole after a long
     reply, as the Gemini CLI driver now does (`_notes_with_room`; today those notes come after the model’s text and can
-    be cut at 2,000 characters).
+    be cut at 2,000 characters; the Claude Code and agy drivers’ stop notes are also kept apart, in `stop_note`).
 - **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
   terms; fine-tuned LoRA adapters as a cheaper-knob arm; gradients.

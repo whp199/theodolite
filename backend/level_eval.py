@@ -160,7 +160,8 @@ def why_not_counted(outcome: Mapping[str, Any]) -> Optional[str]:
     It ran to an end when its driver did not fail (`driver_failure` is None), its stop is not one of
     `NOT_TO_AN_END_STOPS` (the kill switch, an error, a driver failure, a call still running), and the door saw at least
     one call succeed (`door.ok` of 1 or more). An outcome that records no `door` does not count; nor does a session
-    refused before it ran."""
+    refused before it ran. An error is said with a claim the door refused, in its words, else with the driver's own
+    stop note (`stop_note`, a CLI driver's), else with the start of the outcome's notes."""
     if outcome.get("refused"):
         return f"refused before it ran: {outcome.get('refusal')}"
     why: List[str] = []
@@ -172,7 +173,7 @@ def why_not_counted(outcome: Mapping[str, Any]) -> Optional[str]:
         say = NOT_TO_AN_END_STOPS[str(stop)]
         refused_claim = str(outcome.get("claim_refused") or "").strip()
         note = (f"a claim the door refused: {refused_claim}" if refused_claim
-                else str(outcome.get("notes") or "").strip())
+                else str(outcome.get("stop_note") or "").strip() or str(outcome.get("notes") or "").strip())
         why.append(f"{say} ({note[:400]})" if stop == "error" and note else say)
     door = outcome.get("door")
     if not isinstance(door, Mapping):

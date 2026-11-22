@@ -648,8 +648,9 @@ if mcp is not None:
 
 # Antigravity CLI 1.5.14 over ACP as far as the chat meets it. Its environment is built from nothing, so where it logs
 # is written into it ({LOG}); `{LOG}.version` holds the version it says it is, `{LOG}.nodir` makes it say nothing of
-# its own data folder, `{LOG}.huge_replay` makes a conversation it loads send a stored edit of a large file again. Its
-# sessions are kept in that folder, and only those load.
+# its own data folder, `{LOG}.huge_replay` makes a conversation it loads send a stored edit of a large file again, and
+# `{LOG}.nested_replay` an update nested too deep for the server's JSON reader. Its sessions are kept in that folder,
+# and only those load.
 FAKE_AGY = r'''#!{PY} -I
 import json, os, queue, subprocess, sys, threading, time
 from pathlib import Path
@@ -703,6 +704,11 @@ def boot():  # what agy 1.5.14 does as a session starts: its app data folder, sa
 STORE = Path(gdir, "antigravity-cli", "fake_sessions.json")
 sid = None
 work_dir = next((sys.argv[i + 1] for i in range(len(sys.argv) - 1) if sys.argv[i] == "--add-dir"), "")
+def nested_update():  # an update nested 100,000 deep, written by hand (json.dumps raises RecursionError there)
+    sys.stdout.write('{"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": %s, "update": {'
+                     '"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "NESTED_SHOWN"}, "x": '
+                     % json.dumps(sid) + "[" * 100000 + "]" * 100000 + "}}}\n")
+    sys.stdout.flush()
 def ask_perm(rid, name, args, id_last=False):  # id_last: the id written as the message's last key
     msg = {"jsonrpc": "2.0", "id": rid, "method": "session/request_permission", "params": {
         "sessionId": sid,
@@ -750,6 +756,8 @@ while True:
             send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": sid, "update": {
                 "sessionUpdate": "tool_call_update", "toolCallId": "call_big", "status": "completed",
                 "content": [{"type": "diff", "path": os.path.join(work_dir, "big.md"), "oldText": "x" * 150000, "newText": "y" * 150000}]}}})
+        if os.path.exists(LOG + ".nested_replay"):  # an update nested too deep to parse, sent again as it loads
+            nested_update()
         send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": sid, "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "REPLAY_SUPPRESSED"}}}})
         send({"jsonrpc": "2.0", "id": mid, "result": {}})
     elif meth == "session/set_model":
@@ -767,6 +775,32 @@ while True:
             log("nul", w=p_nw, r=p_nr, pid=os.getpid())
             note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "After the NUL paths."}})
             send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}})
+            continue
+        if "nested line" in txt:  # an update nested too deep for the server's JSON reader, then the turn goes on
+            log("nested", pid=os.getpid())
+            nested_update()
+            note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "After the nested line."}})
+            send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}})
+            continue
+        if "deep request" in txt:  # a request nested too deep for the server's JSON reader: it must still be answered
+            sys.stdout.write('{"jsonrpc": "2.0", "id": 924, "method": "session/request_permission", "params": {"sessionId": %s, '
+                             '"toolCall": {"toolCallId": "call_924", "name": "write_file", "status": "pending", "args": {"x": '
+                             % json.dumps(sid) + "[" * 100000 + "]" * 100000 + "}}, \"options\": []}}\n")
+            sys.stdout.flush()
+            while True:
+                rm = inbox.get()
+                if rm is None or (not rm.get("method") and rm.get("id") == 924):
+                    break
+                inbox.put(rm)
+            log("deep_request", outcome=((rm or {}).get("result") or {}).get("outcome"), pid=os.getpid())
+            note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "After the deep request."}})
+            send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}})
+            continue
+        if "deep answer" in txt:  # the answer to the prompt nested too deep to read: the prompt fails, the process goes on
+            log("deep_answer", pid=os.getpid())
+            sys.stdout.write('{"jsonrpc": "2.0", "id": %s, "result": {"stopReason": "end_turn", "x": ' % json.dumps(mid)
+                             + "[" * 100000 + "]" * 100000 + "}}\n")
+            sys.stdout.flush()
             continue
         if "boom" in txt:  # a request the server fails to handle (the check makes its gate raise for this tool)
             p_b = ask_perm(922, "boom_tool", {"Path": os.path.join(work_dir, "x.md")})
@@ -2110,6 +2144,59 @@ def run_checks() -> int:
           f"the ACP reader: each line too long to hold is given once, by its first and last parts, and read past, whether "
           f"its end has come or is still to come, and what it is (a request, an update, an answer, its id before its params or "
           f"last) is read from those parts: {[ln for ln, _, _ in lines_got]} {whats}")
+
+    # and what is done with such a line, in each order of its keys: a request is refused (its id before its params,
+    # or last, its method before its params or after them), an answer fails what waits on it, an update is not shown
+    # and nothing is written back
+    async def overlong_done() -> Dict[str, Any]:
+        class _In:
+            def __init__(self) -> None:
+                self.out: List[Any] = []
+
+            def write(self, b: bytes) -> None:
+                self.out.append(json.loads(b))
+
+            async def drain(self) -> None:
+                pass
+
+        class _Proc:
+            def __init__(self) -> None:
+                self.stdin = _In()
+
+        big = b'{"c":"' + b"q" * 6000 + b'"}'
+        perm = b'"method":"session/request_permission"'
+        orders = {
+            "jsonrpc, id, method, params": b'{"jsonrpc":"2.0","id":5,' + perm + b',"params":' + big + b"}",
+            "jsonrpc, method, params, id": b'{"jsonrpc":"2.0",' + perm + b',"params":' + big + b',"id":6}',
+            "jsonrpc, params, method, id": b'{"jsonrpc":"2.0","params":' + big + b"," + perm + b',"id":7}',
+            "jsonrpc, result, id": b'{"jsonrpc":"2.0","result":' + big + b',"id":3}',
+            "jsonrpc, method, params (an update)": b'{"jsonrpc":"2.0","method":"session/update","params":' + big + b"}",
+            "jsonrpc, params, method (an update)": b'{"jsonrpc":"2.0","params":' + big + b',"method":"session/update"}',
+        }
+        done: Dict[str, Any] = {}
+        for name, raw in orders.items():
+            proc = _Proc()
+            fut = asyncio.get_running_loop().create_future()
+            c = {"session": "overlong-unit", "agent": "agy", "busy": True, "loading": False, "listeners": [], "turn": [],
+                 "rpc": {"pending": {3: fut}}}
+            await sc._overlong(c, proc, raw[:4096], raw[-256:])
+            done[name] = ([(o.get("id"), (o.get("result") or {}).get("outcome")) for o in proc.stdin.out],
+                          ((fut.result().get("error") or {}).get("message") if fut.done() else None),
+                          [e.get("error") for e in c["turn"]])
+        return done
+
+    ov = asyncio.run(overlong_done())
+    ov_words = {w: sc.OVERLONG_WORDS[w].format(name="Antigravity") for w in sc.OVERLONG_WORDS}
+    cancelled = {"outcome": "cancelled"}
+    check(ov == {"jsonrpc, id, method, params": ([(5, cancelled)], None, [ov_words["request"]]),
+                 "jsonrpc, method, params, id": ([(6, cancelled)], None, [ov_words["request"]]),
+                 "jsonrpc, params, method, id": ([(7, cancelled)], None, [ov_words["request"]]),
+                 "jsonrpc, result, id": ([], sc.OVERLONG_ANSWER_WORDS, []),
+                 "jsonrpc, method, params (an update)": ([], None, [ov_words["update"]]),
+                 "jsonrpc, params, method (an update)": ([], None, [ov_words["other"]])},
+          f"the ACP reader: a line too long to read that is a request is refused (cancelled) whether its id comes before "
+          f"its params or last and its method before its params or after them; an answer fails what waits on it; an "
+          f"update is not shown and nothing is written back: {ov}")
     seen_logs: List[str] = []
 
     class _Keep(logging.Handler):
@@ -2150,6 +2237,67 @@ def run_checks() -> int:
               and sc._chats[chat_a]["proc"].pid == boom.get("pid") and sc._chats[chat_a]["busy"] is False,
               f"agy: a request the server fails to handle is refused (its reject option) and logged, and the reading goes on "
               f"in the same process ({boom}, done {done_b is not None}, logged {seen_logs})")
+        # an update nested 100,000 deep, which json.loads cannot take (RecursionError, not a ValueError), is passed
+        # over like any line that is not a JSON object, in a turn and in the replay of a conversation as it loads
+        n_logs = len(seen_logs)
+        k = eva.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "Send a nested line."})
+        done_d = eva.wait(lambda e: e["t"] == "done", 15, k)
+        nested = next((x for x in alog() if x["kind"] == "nested"), {})
+        said_d = "".join(e.get("text", "") for e in eva.since(k))
+        errs_d = [e["error"] for e in eva.since(k) if e["t"] == "error"]
+        check(done_d is not None and "After the nested line." in said_d and "NESTED_SHOWN" not in said_d and not errs_d
+              and len(seen_logs) == n_logs and sc._chats[chat_a]["busy"] is False
+              and sc._chats[chat_a]["proc"] is not None and sc._chats[chat_a]["proc"].returncode is None
+              and sc._chats[chat_a]["proc"].pid == nested.get("pid"),
+              f"agy: an update nested too deep for json.loads is passed over, and the turn ends as any does in the same "
+              f"process ({nested}, done {done_d is not None}, {errs_d}, logged {seen_logs[n_logs:]})")
+        nested_replay = agy_log.parent / (agy_log.name + ".nested_replay")
+        nested_replay.write_text("")
+        hc.post("/api/atlas/scientist/restart", json={"chat": chat_a})
+        n_st = len([x for x in alog() if x["kind"] == "start"])
+        try:
+            k = eva.mark()
+            hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "quick, resumed past the nested update"})
+            eva.wait(lambda e: e["t"] == "done", 15, k)
+        finally:
+            nested_replay.unlink()
+        said_nr = "".join(e.get("text", "") for e in eva.since(k))
+        errs_nr = [e["error"] for e in eva.since(k) if e["t"] == "error"]
+        check(len([x for x in alog() if x["kind"] == "start"]) == n_st + 1 and any(x["kind"] == "load" for x in alog()[-6:])
+              and "Answered: quick, resumed past the nested update" in said_nr and "REPLAY_SUPPRESSED" not in said_nr
+              and "NESTED_SHOWN" not in said_nr and not errs_nr and sc._chats[chat_a]["proc"] is not None,
+              f"agy: a conversation whose replay holds an update nested too deep for json.loads is loaded all the same, "
+              f"nothing said of it, and the message goes in ({errs_nr}; said {said_nr[-100:]!r})")
+        # a request nested that deep is told by its two ends and refused, so the process does not wait on an answer;
+        # an answer that deep fails the prompt waiting on it, and the process goes on
+        n_logs = len(seen_logs)
+        k = eva.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "Send a deep request."})
+        done_q = eva.wait(lambda e: e["t"] == "done", 15, k)
+        deep_q = next((x for x in alog() if x["kind"] == "deep_request"), {})
+        errs_q = [e["error"] for e in eva.since(k) if e["t"] == "error"]
+        check(done_q is not None and deep_q.get("outcome") == {"outcome": "cancelled"}
+              and sc.DEEP_REQUEST_WORDS.format(name="Antigravity") in errs_q
+              and "After the deep request." in "".join(e.get("text", "") for e in eva.since(k))
+              and any("nested too deep to read was refused" in s for s in seen_logs[n_logs:])
+              and sc._chats[chat_a]["proc"] is not None and sc._chats[chat_a]["proc"].pid == deep_q.get("pid"),
+              f"agy: a request nested too deep for json.loads is refused (cancelled) and said, and the turn ends in the "
+              f"same process ({deep_q}, done {done_q is not None}, {errs_q})")
+        k = eva.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "Send a deep answer."})
+        done_a = eva.wait(lambda e: e["t"] == "done", 15, k)
+        deep_a = next((x for x in alog() if x["kind"] == "deep_answer"), {})
+        errs_a = [e["error"] for e in eva.since(k) if e["t"] == "error"]
+        k2 = eva.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "message": "quick, after the deep answer"})
+        eva.wait(lambda e: e["t"] == "done", 15, k2)
+        said_a2 = "".join(e.get("text", "") for e in eva.since(k2))
+        check(done_a is not None and any(sc.DEEP_ANSWER_WORDS in e for e in errs_a)
+              and "Answered: quick, after the deep answer" in said_a2
+              and sc._chats[chat_a]["proc"] is not None and sc._chats[chat_a]["proc"].pid == deep_a.get("pid"),
+              f"agy: an answer nested too deep for json.loads fails the prompt waiting on it, and the next message goes "
+              f"in on the same process ({deep_a}, done {done_a is not None}, {errs_a}; then {said_a2[-80:]!r})")
         old_limit, sc.ACP_LINE_LIMIT = sc.ACP_LINE_LIMIT, 1 << 16  # read as a process starts: a new chat's
         chat_h = str(uuid.uuid4())
         evh = Events(srv.url, chat_h)

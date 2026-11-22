@@ -1245,22 +1245,29 @@ same first one, in the browser too. The backends:
   starting afresh with no memory of the turns shown. Antigravity chats begun before the scientist had that data folder,
   and Gemini CLI chats begun before each had a working folder of its own, must be started again.
 - What an Antigravity or Gemini CLI process prints cannot stop the chat (`_pump_gemini`, the reader both use). A line
-  that is not a JSON object is passed over. A message the server fails to handle is logged and, if it is a request,
-  refused, and the reading goes on. A path with a NUL in it is refused by the gate.
+  that is not a JSON object is passed over. One nested too deep for `json.loads`, which raises RecursionError at about
+  10,000 levels on CPython 3.12.15, is told by its two ends as a long line is (below, `_too_deep`): an update is passed
+  over unshown, in a turn or as a conversation loads, so such a conversation still resumes; a request is refused
+  (cancelled) and the thread says so; an answer fails the request that waits on it.
+  A message the server fails to handle is logged and, if it is a request, refused, and the reading goes on. A path
+  with a NUL in it is refused by the gate.
   - A line longer than 16 MiB (`ACP_LINE_LIMIT`) is passed over and the reading goes on. Gemini CLI 0.70 sends a
     file's whole old and new text when it writes or edits one: in the update, in a request to go ahead, and again when
     a conversation is loaded.
-  - What that line was is read from its first 4 KiB and last 256 bytes (`_overlong_what`). Its id may come before its
-    params (as Gemini CLI writes) or last (as Antigravity 1.5.14 writes its answers). An update is not shown; during a
-    turn the thread says so, and nothing is said while a conversation loads, so such a conversation still resumes. A
-    request is refused (cancelled). An answer to Theodolite's own request fails that request. The order of the keys in
-    Antigravity's own requests was not seen, only in its answers: a long request whose id is neither first nor last
-    cannot be answered, and its turn waits for Stop or the prompt timeout.
+  - What that line was is read from its first 4 KiB and last 256 bytes (`_overlong_what`): the keys before its params,
+    result or error, and its id where that is its last key. Its id may come before its params (as Gemini CLI writes)
+    or last (as Antigravity 1.5.14 writes its answers). An update is not shown; during a turn the thread says so, and
+    nothing is said while a conversation loads, so such a conversation still resumes. A request, any such line with
+    an id and a method or params, is refused (cancelled), whether its method comes before its params or after them.
+    An answer to Theodolite's own request fails that request. The order of the keys in Antigravity's own requests was
+    not seen, only in its answers: a long request whose id is neither before its params nor last, or whose first key
+    is its params, cannot be answered, and its turn waits for Stop or the prompt timeout.
   - If the reading fails for any other reason, the prompt waiting on it fails with words saying so and the process is
     ended (`PUMP_FAILED_WORDS`). The next message starts it again; the words say to start a new chat if the same
     happens again.
-  - These were checked against a mock Antigravity in `scripts/check_scientist.py`, with the limit lowered, and not on
-    either live CLI. The Claude Code and Codex chats' readers still stop at a line longer than 16 MiB.
+  - These were checked against a mock Antigravity in `scripts/check_scientist.py` (the long lines with the limit
+    lowered), and not on either live CLI. The Claude Code and Codex chats' readers still stop at a line longer than
+    16 MiB.
 - None of the CLI processes gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
   (`reach`). Under the home reach the page asks once for each backend, in that browser and in that backend's own words;
   an acknowledgement kept from before, one for every backend at once, is asked again.
@@ -1364,7 +1371,7 @@ the same for 3 rows as for 24, so the prompt tells the scientist to fill a call 
 set) rather than send several. What the scientist makes for the person is a file in its work folder, linked in its
 reply as `[name](/api/atlas/scientist/work/name)`; the page turns only such a link, or one to `/api/atlas/exports/`,
 into a link, and puts one under the last call that wrote each file. scripts/check_scientist.py checks the tools, the
-MCP server and all five backends against fakes, over real connections (336 checks, 22 November 2026).
+MCP server and all five backends against fakes, over real connections (339 checks, 22 November 2026).
 scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on PATH) against a stand-in
 Messages API, with no model, no network and no login: what each allows and refuses, the atlas's tools through the real
 MCP server, and that no planted CLAUDE.md or rules file reaches a request and no planted hook runs (it records the CLI's
@@ -2640,7 +2647,12 @@ yet measured.
   not the same program, so they are lower bounds, and each puts forward only what the gate can take), a replay driver,
   an OpenAI-compatible driver, Claude Code, the Gemini CLI, and the Antigravity CLI (agy), which is refused until the
   owner accepts the three tools it offers every run; Codex stays refused. Every outcome says whether the driver worked
-  the door (`door`, `driver_failure`), why it stopped, and a refusal's own words.
+  the door (`door`, `driver_failure`), why it stopped, and a refusal's own words. A CLI driver's outcome (Claude Code,
+  the Gemini CLI, agy) also keeps the driver's own stop note, where it has one, apart from its notes (`stop_note`).
+  The Gemini driver's quotes the last error event the CLI printed where its result line holds no error, or where the
+  CLI ended on its own with no result line; a run the driver stopped keeps the driver's reason.
+  The reason a session that ended in an error is not counted quotes a refused claim's own words, else that stop note,
+  else the start of the notes, which can open with the model's text (`level_eval.why_not_counted`).
   - Claude Code gets the door's tools and nothing else (the owner's ruling, 20 November 2026): no built-in tool, no
     settings, memory or CLAUDE.md, no saved session, an environment of named variables, and the CLI's own spending
     cap (`--max-budget-usd`). The Gemini CLI driver is built to the same shape: no built-in tool (`tools.core = []`),
@@ -2662,7 +2674,8 @@ yet measured.
     dollars are not known and no cap was checked (`GEMINI_USAGE_UNKNOWN_SAY`), or, at prices of 0 for both, that its
     tokens are not known and its dollars are 0 (`GEMINI_USAGE_UNKNOWN_FREE_SAY`). The driver's own notes are kept whole
     within the outcome's 2,000 characters by cutting the model's text first (`_notes_with_room`); this holds for the
-    Gemini driver only, and the other CLI drivers' notes can still be cut after a long reply.
+    Gemini driver only, and the other CLI drivers' notes can still be cut after a long reply (their stop note is also
+    kept apart, in `stop_note`).
   - A study charges such a session the dollar cap it was handed against its total (`dollars_charged`), so the next
     session is handed what is left; that cap does not bound what the run spent. A session handed no cap is charged
     nothing, and its dollars are left out; at prices of 0 for both nothing is charged. Its row names it
@@ -2718,7 +2731,7 @@ yet measured.
     dollar cap stops nothing, which the study's limitations say. `scripts/levelling_eval.py plan` has no price flags,
     so a Gemini CLI or Antigravity CLI plan made there with a dollar cap is refused (and both drivers need one): such
     a plan's prices go in the plan file's `driver_budget`, and an agy arm's acceptance in its `driver_config`.
-  - In the CPU checks (`scripts/check_level_eval.py`, 281 checks in all, 22 November 2026) the agy driver meets mock
+  - In the CPU checks (`scripts/check_level_eval.py`, 286 checks in all, 22 November 2026) the agy driver meets mock
     agy CLIs only, with agy's own event shapes and a store in agy's own layout. The real binary is checked by
     `scripts/verify_level_agy.py`. It is the owner's to run, as it runs under the owner's own sign-in and spends a
     little of that account's quota. It loads no model: the driver works a stand-in door, a `LevelSession` with no model

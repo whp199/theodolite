@@ -351,6 +351,7 @@ def _extract_outcome_from_book(
     claim_refused: Optional[str] = None,
     extra_usage: Optional[Mapping[str, Any]] = None,
     caps_after_run: Optional[Mapping[str, Any]] = None,
+    stop_note: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Assemble the canonical `SessionOutcome` from `session` and its verified level book (never trusting driver prose).
 
@@ -363,7 +364,10 @@ def _extract_outcome_from_book(
     (an endpoint's own token figures beside the counted ones). `caps_after_run`, from a driver whose caps could be
     counted only once the run had ended (the Gemini CLI's tokens and dollars), says which caps were checked that way
     and which the run passed (`passed`), or, for a run that ended with no usage to read, that none was (`checked`
-    empty, `usage_known` false); its `stop_reason` is left as the run ended."""
+    empty, `usage_known` false); its `stop_reason` is left as the run ended. `stop_note`, from a CLI driver (Claude
+    Code, the Gemini CLI, agy), is the driver's own words for why the run stopped, where it has them, kept apart from
+    `notes` (which can open with the model's text), so that the reason an 'error' stop is not counted quotes the driver
+    (`level_eval.why_not_counted`)."""
     door_d = dict(door) if isinstance(door, Mapping) else {}
     for k in ("calls", "ok", "errors"):
         door_d[k] = int(door_d.get(k) or 0)
@@ -532,6 +536,7 @@ def _extract_outcome_from_book(
         "claim_refused": claim_refused,
         "door": door_d,
         **({"caps_after_run": dict(caps_after_run)} if isinstance(caps_after_run, Mapping) else {}),
+        **({"stop_note": str(stop_note)[:NOTES_CUT]} if stop_note else {}),
         "notes": notes[:NOTES_CUT],
     }
 
@@ -2251,6 +2256,7 @@ def run_claude_cli_driver(
         door={**door, "denied": denied, "offered_tools": stream.offered, "other_tools_asked": stream.other_uses[:20],
               "door_uses_seen": stream.door_uses, "mcp_status": stream.mcp_status,
               "cli_ended_at_seconds": round(t_cli_end - t0, 3), "outcome_after_cli_seconds": waited_after_cli},
+        stop_note=stop_note,
     )
 
 
@@ -2535,6 +2541,10 @@ def run_gemini_cli_driver(
       `GEMINI_USAGE_UNKNOWN_FREE_SAY`), and its notes say so, the driver's own notes kept whole within the outcome's
       `NOTES_CUT` by cutting the model's text first (`_notes_with_room`); a study charges such a session, at prices
       that are not 0 for both, the dollar cap it was handed (`level_eval`).
+    - A run that ends in an error has a stop note (`stop_note`): the result line's error; else, where that line holds
+      none (as 0.70 ends an invalid stream), or where the CLI ended on its own with no result line, the last error
+      event the CLI printed, said there only. A run the driver stopped (a line past `MAX_CLI_LINE_BYTES`, say) keeps
+      the driver's own reason.
     - The door's MCP server is given the driver's wall cap as its per-call timeout (`gemini_mcp_timeout_ms`), so a
       long door call is bounded by that cap and not by Gemini CLI's own 10 minutes a call; a wall cap past
       `GEMINI_MCP_TIMEOUT_MAX_MS` (about 24.8 days, the longest timer Node keeps) leaves a call bounded by that.
@@ -2669,6 +2679,11 @@ def run_gemini_cli_driver(
     waited_after_cli = round(time.monotonic() - t_cli_end, 3)
 
     res = stream.result
+    # the last error event the CLI printed, which an 'error' stop note quotes where the result line does not say why
+    # (Gemini CLI 0.70 ends an invalid stream, such as an empty reply, a safety block or a reply cut at its token limit,
+    # with an error event and then a result line of status "error" that holds no error)
+    last_err = stream.errors[-1] if stream.errors else None
+    quoted_err: Optional[str] = None
     if stop_reason is None:
         if stream.other_succeeded:
             stop_reason = "driver_failure"
@@ -2676,12 +2691,21 @@ def run_gemini_cli_driver(
                          f"({', '.join(stream.other_succeeded[:12])}): the session was stopped.")
         elif res is None:
             stop_reason, stop_note = "error", "The CLI ended without its result line."
+            if last_err:
+                stop_note, quoted_err = f"{stop_note} The last error it printed: {last_err}", last_err
         elif stream.turn_limited():
             stop_reason = "budget_turns"
         elif str(res.get("status") or "").lower() != "success":
             err_obj = res.get("error")
             stop_reason = "error"
-            stop_note = str(err_obj.get("message", err_obj) if isinstance(err_obj, dict) else (err_obj or res.get("status")))[:400]
+            if isinstance(err_obj, dict):
+                stop_note = str(err_obj.get("message", err_obj))[:400]
+            elif err_obj:
+                stop_note = str(err_obj)[:400]
+            elif last_err:
+                stop_note = quoted_err = last_err
+            else:
+                stop_note = str(res.get("status"))[:400]
         else:
             stop_reason = "kept_base_abstention"
 
@@ -2729,9 +2753,11 @@ def run_gemini_cli_driver(
     linger_note = (f"The CLI printed its result line but had not exited {CLI_EXIT_GRACE_SECONDS:g} s later: it was "
                    "killed, and the session is judged by that line.") if lingered else None
     unknown_note = None if usage_known else caps_after_run["say"]
-    # the driver's own notes are kept whole, the model's text and the CLI's errors cut to leave them room
+    # the driver's own notes are kept whole, the model's text and the CLI's errors cut to leave them room (an error the
+    # stop note quotes is said there only)
     own = [t for t in dict.fromkeys((stop_note, failure, wait_note, cap_note, linger_note, unknown_note)) if t]
-    said = [t for t in dict.fromkeys(("".join(stream.assistant_chunks).strip(), *stream.errors)) if t and t not in own]
+    said = [t for t in dict.fromkeys(("".join(stream.assistant_chunks).strip(), *stream.errors))
+            if t and t not in own and t != quoted_err]
     return _extract_outcome_from_book(
         session,
         driver_family="gemini",
@@ -2756,6 +2782,7 @@ def run_gemini_cli_driver(
               "cli_ended_at_seconds": round(t_cli_end - t0, 3), "outcome_after_cli_seconds": waited_after_cli},
         extra_usage=None if usage_known else {"usage_known": False},
         caps_after_run=caps_after_run,
+        stop_note=stop_note,
     )
 
 
@@ -3438,6 +3465,7 @@ def run_agy_cli_driver(
               "door_uses_seen": stream.door_uses, "agy_version": version, "init_ok": stream.init is not None,
               "run_files_removed": removed, "cli_ended_at_seconds": round(t_cli_end - t0, 3),
               "outcome_after_cli_seconds": waited_after_cli},
+        stop_note=stop_note,
     )
 
 
