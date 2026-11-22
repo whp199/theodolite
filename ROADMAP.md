@@ -3002,7 +3002,7 @@ in order:
   reworded set’s from `6e9f06d28bc9` to `0da8ec1ceb3b`: a bar set calibrated under the old id is refused, and a
   book that read `pronoun_pull` fresh under it refuses new claims of the brief (the review found neither on disk).
   The adapter the builder exported from the second trial, outside the repository, carries that trial’s verdict and
-  says “earlier trials 0”; this code refuses such an export. CPU checks and the card run, at `b230b3f`, are in
+  says “earlier trials 0”; this code refuses such an export. CPU checks and the card run, at `495bb8b`, are in
   ARCHITECTURE §7.
 - **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
   trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the

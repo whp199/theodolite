@@ -2796,8 +2796,8 @@ being kept):
   - Cold pages ran 220 to 242 words and named no site. A rebuild description of 191 words (1,646 characters) was
     replayed in the same process, with all 144 figures equal and the same runtime.
 
-- **Pull request 6 as mended (whp199/theodolite#6; built 21 November 2026, mended 22 November 2026; code at
-  `b230b3f`, card records `b6b132e`).** It gives blinded sessions `propose_repair` and the benchmark its scoring (Phase 6, above), makes
+- **Pull request 6 as mended (whp199/theodolite#6; built 21 November 2026, mended 22 November 2026 in three rounds;
+  code at `495bb8b`, card records `1f992d5`).** It gives blinded sessions `propose_repair` and the benchmark its scoring (Phase 6, above), makes
   the page server take the card's lock, makes "an edit has one trial" hold by direction on any brief, refuses trial-4 folders, names the folded
   tolerance on a sheet when it was registered off the defaults (Phase 5, above), and takes the leading space off
   `pronoun_pull`'s answer stems and the starter reworded items. The trial-4 rule and the Gram-preserving
@@ -2805,13 +2805,13 @@ being kept):
   The two trials of record its builder registered and read on 21 November 2026 under trial-4 are kept as records
   and refused here; judged again by trial-3 in the review of 22 November 2026, outside this code, the one whose
   sheet read `passed` fails (README, ROADMAP §viii).
-  - CPU, at `b230b3f` (the page check after the records were committed): `check_levelling.py` 1,057/1,057, `check_level_door.py` 157/157,
-    `check_level_claim.py` 311/311, `check_level_trial.py` 343/343,
-    `check_level_page.py` 91/91, `check_level_eval.py` 233/233,
+  - CPU, at `495bb8b` (the page check after the records were committed): `check_levelling.py` 1,057/1,057,
+    `check_level_door.py` 158/158, `check_level_claim.py` 326/326, `check_level_trial.py` 345/345,
+    `check_level_page.py` 100/100, `check_level_eval.py` 233/233,
     `check_local_only.py` 1,310/1,310, `check_lora_export.py` 76/76,
     `check_interface_defaults.py` 291/291; `check_vault_voice.py` 249/249; `npm run build` clean. The counts
     given with each script further up are of the commits they name, or of main before this pull request.
-  - The 31B card, in one run on the 5090 from a clean tree at `b230b3f` (the paths a later record counts as changed
+  - The 31B card, in one run on the 5090 from a clean tree at `495bb8b` (the paths a later record counts as changed
     are the records the earlier scripts of that run wrote; the code digests match): `verify_levelling_1b.py` 68/68,
     `verify_level_door.py` 38/38, `verify_level_claim.py` 16/16,
     `verify_level_trial.py` 37/37 (a dry run), `verify_level_eval.py` 19/19,
