@@ -68,8 +68,10 @@ SHEETS_COLLECTED: List[str] = []
 
 
 # where the payload sketch puts a site's numbers (bucket, sign), fixed for good: a sketch a note records now is compared
-# with one worked later (level_claim.sketch_buckets)
-PINNED_SKETCH = [[[48, 43, 65], [-1.0, -1.0, -1.0]], [[70, 122, 116, 56], [-1.0, 1.0, 1.0, 1.0]]]
+# with one worked later (level_claim.sketch_buckets); the third is a neuron's scale, the site the neuron keying gives it
+# (recorded as `neuron_sketch` from direction version 3)
+PINNED_SKETCH = [[[48, 43, 65], [-1.0, -1.0, -1.0]], [[70, 122, 116, 56], [-1.0, 1.0, 1.0, 1.0]],
+                 [[59, 30, 43], [-1.0, -1.0, 1.0]]]
 
 
 def check(cond: bool, msg: str) -> None:
@@ -909,7 +911,9 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     c_true = lcl._cos_scale(lcl._edit_payload(e_v_other.terms), pv)
     bk_pin, sg_pin = lcl.sketch_buckets("layers.0.mlp.down_proj", "cols", "factor", [0, 1, 2], 1)
     bk_pin2, sg_pin2 = lcl.sketch_buckets("layers.0.mlp.down_proj", "cols", "change", [7], 4)
-    pins = [[bk_pin[:, 0].tolist(), sg_pin[:, 0].tolist()], [bk_pin2[0].tolist(), sg_pin2[0].tolist()]]
+    bk_pin3, sg_pin3 = lcl.sketch_buckets("layers.0.mlp", lcl.NEURON_SITE, "factor", [0, 1, 2], 1)
+    pins = [[bk_pin[:, 0].tolist(), sg_pin[:, 0].tolist()], [bk_pin2[0].tolist(), sg_pin2[0].tolist()],
+            [bk_pin3[:, 0].tolist(), sg_pin3[:, 0].tolist()]]
     check(float(np.abs(sk3 + 3.0 * sk).max()) <= 1e-6 * float(np.abs(sk).max())
           and abs(c_sk + 1.0) < 1e-9 and abs(lcl._cos_scale(lcl._edit_payload(e_v3.terms), pv)[1] + 3.0) < 1e-6
           and abs(c_other - c_true[0]) < 0.3 and abs(c_other) < lcl.SAME_DIRECTION_COS
@@ -967,6 +971,361 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
           f"a set column's payload is its change from the base's column (cosine {cs_set[0] if cs_set else 0:.10f} with the "
           f"add of that change), not known with no model at hand; a low-rank term whose change is those columns is "
           f"that add (cosine {cs_lr[0] if cs_lr else 0:.12f})")
+    # a neuron's scale is one site whichever projection writes it: its down_proj column or its up_proj row by a
+    # factor, and its gate_proj or up_proj row by 0, are one model as written (the feed-forward has no biases and
+    # act(0) = 0); a gate_proj row by another factor is not, and keeps a site of its own
+    def built(terms: Any) -> we.Edit:
+        return we.build(h.lm, terms, model_id=h.model_id, weights_id=h.weights_id)
+
+    e_ncol, e_nup = built([we.scale(2, [3, 7], 0.25)]), built([we.scale_rows(2, "up_proj", [3, 7], 0.25)])
+    e_scol, e_sgate = built([we.silence(2, [3, 7])]), built([we.silence_rows(2, "gate_proj", [3, 7])])
+    e_sup = built([we.silence_rows(2, "up_proj", [3, 7])])
+    e_ngate = built([we.scale_rows(2, "gate_proj", [3, 7], 0.25)])
+    e_two = built([we.scale(2, [3], 0.5), we.scale_rows(2, "up_proj", [3], 0.5)])
+
+    def same_sites(a: Any, b: Any) -> bool:
+        return sorted(a.sites) == sorted(b.sites) and all(np.array_equal(a.sites[k], b.sites[k]) for k in a.sites)
+
+    p_ncol = lcl._edit_payload(e_ncol.terms)
+    knob_n = {"steering": [{"kind": "neuron_mul", "layer": 2, "neurons": [3, 7], "factor": 0.25, "spare_bos": False}]}
+    k_two = ("layers.2.mlp", lcl.NEURON_SITE, "factor", 3)
+    check(same_sites(p_ncol, lcl._edit_payload(e_nup.terms))
+          and same_sites(p_ncol, lcl._prov_payload(we.edit_provenance(e_nup)))
+          and same_sites(p_ncol, lcl._knob_payload(knob_n))
+          and same_sites(lcl._edit_payload(e_scol.terms), lcl._edit_payload(e_sgate.terms))
+          and same_sites(lcl._edit_payload(e_scol.terms), lcl._prov_payload(we.edit_provenance(e_sup)))
+          and sorted(lcl._edit_payload(e_ngate.terms).sites) == [("layers.2.mlp.gate_proj", "rows", "factor", 3),
+                                                                ("layers.2.mlp.gate_proj", "rows", "factor", 7)]
+          and list(lcl._edit_payload(e_two.terms).sites) == [k_two]
+          and float(lcl._edit_payload(e_two.terms).sites[k_two][0]) == 0.25 - 1.0
+          and lcl.direction_record(e_nup).get("neuron_sketch") == lcl.direction_record(e_ncol).get("neuron_sketch")
+          and lcl.direction_record(e_nup)["sketch"] != lcl.direction_record(e_ncol)["sketch"]
+          and lcl.direction_record(e_nup)["linears"] == ["layers.2.mlp.up_proj"]
+          and lcl.direction_record(e_ncol)["v"] == lcl.DIRECTION_VERSION == 3,
+          "with a neuron's scale one site, its scale is one site at its down_proj column or up_proj row (in the edit, "
+          "its note and a neuron_mul knob), a silence at its gate_proj or up_proj row is the column's silence, a "
+          "gate_proj row by 0.25 keeps its own sites, and two scales of one neuron are the product of their factors "
+          "less one; a record's neuron_sketch is of that keying, its sketch of each entry at its own site")
+    OTHER_B = {"brief_name": "another_brief", "brief_id": "b" * 64, "reading_index": 1}
+
+    def sd_of(earlier: Any, trial: Any, tag: str, kind: str = "trial_registration", said: str = "failed",
+              **noted: Any) -> Dict[str, Any]:
+        """`same_direction` of `trial` in a book holding one reading of `earlier` (another brief's, at dose 1 unless
+        `noted` gives its main_dose, ended `said`), whose note records `noted`."""
+        bk_d = tmp / f"dir_{tag}.jsonl"
+        body = {**OTHER_B, "note_type": kind, "edit_id": earlier.id, "main_dose": 1.0, **noted}
+        if kind == "trial_registration":
+            body.update(trial_name=tag, of_record=True, rule_preset="trial-3")
+        ent = lb.append("note", body, path=bk_d)
+        lb.append("note", {**OTHER_B, "edit_id": earlier.id, "registration_seq": int(ent["seq"]), "verdict": said,
+                           "note_type": "trial_of_record" if kind == "trial_registration" else "claim_verdict"},
+                  path=bk_d)
+        got = lcl.fresh_readings_in_book(bk_d)
+        return lcl.same_direction(trial, got["fresh_any"], got["ended_any"])
+
+    def against(earlier: Any, trial: Any, tag: str, kind: str = "trial_registration", said: str = "failed",
+                dose: float = 1.0, **noted: Any) -> str:
+        """The direction gate's word on a trial of `trial` at `dose` in a book holding one reading of `earlier`
+        (`sd_of`); a trial it takes lists each reading of its direction as [line, how, scale, keying]."""
+        try:
+            sd = sd_of(earlier, trial, tag, kind, said, **noted)
+            lcl._direction_gate(sd, dose)
+        except lcl.ClaimRefused as exc:
+            return "REFUSED " + str(exc)
+        except Exception as exc:  # a check that fails, not one that ends the run
+            return f"RAISED {type(exc).__name__}: {exc}"
+        return "TAKEN " + json.dumps([[r["seq"], r["how"], round(r["scale"], 6), r.get("keying")] for r in sd["rows"]])
+
+    def with_note(e: Any) -> Dict[str, Any]:
+        return {"edit_provenance": we.edit_provenance(e), "direction": lcl.direction_record(e)}
+
+    g_n = {"up": against(e_ncol, e_nup, "n_up", **with_note(e_ncol)),
+           "gate0": against(e_scol, e_sgate, "n_gate0", **with_note(e_scol)),
+           "up0": against(e_sgate, e_sup, "n_up0", **with_note(e_sgate)),
+           "gate": against(e_ncol, e_ngate, "n_gate", **with_note(e_ncol)),
+           "claim": against(e_nup, e_ncol, "n_claim", kind="claim_registration", said="did not replicate",
+                           edit_provenance=we.edit_provenance(e_nup))}
+    check(all(g_n[k].startswith("REFUSED An edit has one trial") for k in ("up", "gate0", "up0"))
+          and all("(this edit is 1 times it)" in g_n[k] for k in ("up", "gate0", "up0"))
+          and g_n["gate"] == "TAKEN []"
+          and g_n["claim"].startswith("REFUSED A claim reading of this edit's direction")
+          and "a neuron's scale one site" in g_n["up"],
+          f"after a failed trial of a neuron's scale or silence at one projection, a trial of it at another is refused "
+          f"as that trial read again (and after a claim of it that read no lead); a gate_proj row by 0.25 is another "
+          f"direction ({g_n['up'][:160]})")
+    # with its numbers neither in its note nor saved, an earlier edit is told by the sketch its note records: this
+    # version's, and version 1's, which is of each entry at its own site; a version-2 sketch (the mends' second
+    # round's, of a neuron's scale as one site in version 1's field) is not read
+    rng_n = np.random.default_rng(5)
+    V_n = (rng_n.standard_normal((2, D_out)) * 0.05).astype(np.float32)
+    e_an, e_an2 = (built([we.add_to_columns(2, [5, 9], V_n)]),
+                   built([we.add_to_columns(2, [5, 9], V_n * np.float32(2.0))]))
+    rec_an = lcl.direction_record(e_an)
+    v1_an = {k: rec_an[k] for k in ("linears", "sites_say", "norm", "sketch")}
+    g_v = {"v3": against(e_an, e_an2, "v_three", kind="claim_registration", said="did not replicate", direction=rec_an),
+           "v1": against(e_an, e_an2, "v_one", kind="claim_registration", said="did not replicate",
+                         direction={"v": 1, **v1_an}),
+           "v2": against(e_an, e_an2, "v_two", kind="claim_registration", said="did not replicate",
+                         direction={"v": 2, **v1_an})}
+    check(all(g_v[k].startswith("REFUSED A claim reading of this edit's direction")
+              and "(this edit is about 2 times it, by the sketch its note records)" in g_v[k] for k in ("v3", "v1"))
+          and g_v["v2"].startswith(f"REFUSED Whether edit {e_an.id} ")
+          and "its note records a sketch of its payload of direction version 2, which this code does not read, and no "
+              "saved edit of it is in" in g_v["v2"],
+          f"a sketch of this direction version or of version 1 tells an earlier edit's direction; one of version 2 is "
+          f"not read, and the trial is refused as not told ({g_v['v2'][:200]})")
+    # the card book's version-1 records were written before the neuron keying: the sketch, length, linears and sites
+    # this version records with each entry at its own site are theirs bit for bit, so such a sketch tells a dose copy
+    # (the same ten columns halved, a trial at half its dose); with a neuron's scale one site that record has no
+    # sketch, so a silence of those neurons at their gate_proj rows (one model with the column silence as written) is
+    # not told by it. The version-2 record round two's code would have written of it is not read
+    card_book = ROOT_DIR / "experiments" / "results" / "levelling" / "verify_claim_book.jsonl"
+    note_v1 = next(e["body"] for e in lb.entries(card_book) if e["body"].get("note_type") == "claim_registration")
+    rec_v1 = note_v1["direction"]
+    cols_v1 = [int(n) for n in note_v1["edit_provenance"]["rebuilt_recipe"]["terms"][0]["silence"]]
+
+    def at_50(which: str, kind: str, factor: float, tag: str) -> Any:
+        """An edit of layer 50 (which the stand-in has not) on the recorded edit's neurons, by its terms alone."""
+        return SimpleNamespace(id=tag * 64, terms=[we.Term(
+            f"layers.50.mlp.{which}", kind, 50, which, idx=np.asarray(cols_v1, dtype=np.int64),
+            op=np.zeros(len(cols_v1), dtype=np.uint8), factor=np.full(len(cols_v1), factor, dtype=np.float32))])
+
+    e50, e50_half, e50_gate = at_50("down_proj", "cols", 0.0, "5"), at_50("down_proj", "cols", 0.5, "6"), \
+        at_50("gate_proj", "rows", 0.0, "7")
+    rec_50 = lcl.direction_record(e50)
+    earlier_50 = SimpleNamespace(id=note_v1["edit_id"])
+    rec_v2 = {"v": 2, "linears": rec_v1["linears"], "sites_say": rec_v1["sites_say"],
+              "norm": rec_50.get("neuron_norm"), "sketch": rec_50.get("neuron_sketch")}
+    g_c1 = {"half": against(earlier_50, e50_half, "v1_half", kind="claim_registration", said="did not replicate",
+                            direction=rec_v1),
+            "gate": against(earlier_50, e50_gate, "v1_gate", kind="claim_registration", said="did not replicate",
+                            direction=rec_v1),
+            "v2": against(earlier_50, e50_half, "v2_half", kind="claim_registration", said="did not replicate",
+                          direction=rec_v2)}
+    check(rec_v1.get("v") == 1 and len(cols_v1) == 10
+          and all(rec_50.get(k) == rec_v1[k] for k in ("linears", "sites_say", "norm", "sketch"))
+          and g_c1["half"].startswith("REFUSED A claim reading of this edit's direction")
+          and f"of edit {note_v1['edit_id'][:12]} (this edit is about 0.5 times it, by the sketch its note records)"
+              in g_c1["half"]
+          and g_c1["gate"].startswith(f"REFUSED Whether edit {note_v1['edit_id']} ")
+          and "with a neuron's scale one site, it changes a linear this edit changes, its note records a sketch of its "
+              "payload of direction version 1, which keys each entry at its own site" in g_c1["gate"]
+          and g_c1["v2"].startswith(f"REFUSED Whether edit {note_v1['edit_id']} ")
+          and "direction version 2, which this code does not read" in g_c1["v2"],
+          f"the card book's version-1 record is this version's sketch with each entry at its own site, bit for bit, "
+          f"and is read again: it tells a dose copy ({g_c1['half'][:60]}...), and with a neuron's scale one site it "
+          f"tells nothing ({g_c1['gate'][-160:]}); a version-2 record is not read")
+    # a recorded sketch that is not 128 finite numbers tells nothing: the trial is refused as not told, never a crash,
+    # and never let through as another direction
+    rec_g = lcl.direction_record(built([we.silence_rows(2, "gate_proj", [5])]))
+    e_g_half = built([we.scale_rows(2, "gate_proj", [5], 0.5)])
+    e_g_sil = built([we.silence_rows(2, "gate_proj", [5])])
+    g_bad = {name: against(e_g_sil, e_g_half, f"bad_{i}", kind="claim_registration", said="lead",
+                           direction={**rec_g, "sketch": bad, "neuron_sketch": bad})
+             for i, (name, bad) in enumerate((("null", [None] * lcl.SKETCH_DIMS),
+                                              ("huge", [10 ** 400] * lcl.SKETCH_DIMS),
+                                              ("nan words", ["nan"] * lcl.SKETCH_DIMS),
+                                              ("too large", [1e308] * lcl.SKETCH_DIMS)))}
+    check(all(w.startswith(f"REFUSED Whether edit {e_g_sil.id} ")
+              and "it changes a linear this edit changes, the sketch its note records is not 128 finite numbers, and "
+                  "no saved edit of it is in" in w for w in g_bad.values()),
+          f"a recorded sketch of nulls, of a number too large for a float, of words, or too long to measure is no "
+          f"sketch: the trial is refused as not told ({ {k: v[:90] for k, v in g_bad.items()} })")
+    # a note's own numbers too large for a float (a factor in its edit_provenance, rebuilt or carried, or a neuron_mul
+    # knob's factor) are not its payload: with no sketch and no saved edit, a trial on its layer or on another is
+    # refused as not told, never a crash
+    e_h = built([we.scale(2, [5, 11], 0.5)])
+    e_h_add = built([we.add_to_columns(2, [5, 11], np.full((2, D_out), 0.05, dtype=np.float32))])
+    # (also one finite in float64 but past float32, as the kernel keeps a factor, and the words "inf" and "nan")
+    g_huge = {}
+    for b_name, bad in (("int", 10 ** 400), ("past float32", 1e308), ("inf words", "inf"), ("nan words", "nan"),
+                        ("1e400 words", "1e400")):
+        p_rb, p_rbs, p_car = (json.loads(json.dumps(we.edit_provenance(e))) for e in (e_h, e_h, e_h_add))
+        p_rb["terms"][0]["recipe_term"]["factor"] = bad
+        del p_rbs["terms"][0]["recipe_term"]["factor"]
+        p_rbs["terms"][0]["recipe_term"]["factors"] = [0.5, bad]
+        p_car["terms"][0]["factors"] = [bad, bad]
+        knob_h = {"steering": [{"kind": "neuron_mul", "layer": 2, "neurons": [5, 11], "factor": bad,
+                                "spare_bos": False}]}
+        for t_name, e_t in (("same layer", built([we.silence(2, [5, 11])])),
+                            ("other layer", built([we.silence(0, [2])]))):
+            for n_name, earlier, kw in (("rebuilt factor", e_h, {"edit_provenance": p_rb}),
+                                        ("rebuilt factors", e_h, {"edit_provenance": p_rbs}),
+                                        ("carried factors", e_h_add, {"edit_provenance": p_car}),
+                                        ("knob factor", e_h, {"kind": "knob_claim_registration", "knob": knob_h,
+                                                              "knob_id": "c" * 64, "twin_edit_id": e_h.id})):
+                kw = {"kind": "claim_registration", **kw}
+                g_huge[f"{b_name}: {n_name}, {t_name}"] = (earlier.id, against(
+                    earlier, e_t, f"huge_{len(g_huge)}", said="did not replicate", **kw))
+    check(p_car["terms"][0]["provenance"] == "carried" and "factor" in p_rb["terms"][0]["recipe_term"]
+          and all(w.startswith(f"REFUSED Whether edit {eid} ")
+                  and "cannot be told: its note records neither its sites nor a sketch of its payload, and no saved "
+                      "edit of it is in" in w for eid, w in g_huge.values()),
+          f"a note's factor that is no finite number as the kernel keeps it (too large for a float or for float32, or "
+          f"the words inf or nan; rebuilt, carried, or a knob's) gives no payload: the trial is refused as not told, "
+          f"never a crash nor let through ({ {k: w[:90] for k, (_e, w) in g_huge.items()} })")
+    # an earlier edit is nothing off the sites it changes, so this edit's own payload bounds the cosine: an add that
+    # shares one column of ten with an earlier, unsaved add is another direction; on a note that names its linear
+    # alone the bound is the whole of this edit, and its direction is not told
+    U_o = (rng_n.standard_normal((10, D_out)) * 0.05).astype(np.float32)
+    U_m = (rng_n.standard_normal((10, D_out)) * 0.05).astype(np.float32)
+    e_old10 = built([we.add_to_columns(2, list(range(10)), U_o)])
+    e_one = built([we.add_to_columns(2, [9] + list(range(20, 29)), U_m)])
+    p_one = lcl._edit_payload(e_one.terms)
+    bnd = lcl._share_bound(p_one, lcl._prov_payload(we.edit_provenance(e_old10)), None)
+    exact = lcl._cos_scale(p_one, lcl._edit_payload(e_old10.terms))
+    g_b = {"prov": against(e_old10, e_one, "b_prov", kind="claim_registration", said="did not replicate",
+                           edit_provenance=we.edit_provenance(e_old10)),
+           "lin": against(e_old10, e_one, "b_lin", kind="claim_registration", said="did not replicate",
+                          edit_linears=e_old10.linears())}
+    check(bnd is not None and exact is not None and abs(exact[0]) <= bnd < lcl.SAME_DIRECTION_COS
+          and lcl._share_bound(p_one, None, {"layers.2.mlp.down_proj"}) == 1.0
+          and g_b["prov"] == "TAKEN []"
+          and g_b["lin"].startswith(f"REFUSED Whether edit {e_old10.id} ")
+          and "it changes a linear this edit changes, its note records no sketch of its payload" in g_b["lin"],
+          f"an earlier unsaved add sharing one column of ten is told another direction by this edit's own payload "
+          f"(|cos| {abs(exact[0]) if exact else float('nan'):.4f} <= bound "
+          f"{bnd if bnd is not None else float('nan'):.4f}); "
+          f"one known by its linear alone is not told ({g_b['lin'][:120]})")
+    # the bound where an earlier, unsaved edit has a low-rank term: every change of this edit on that linear counts
+    # as on its sites, so an add on it is not told; an add with nearly all its length on another layer is another
+    # direction
+    rng_s = np.random.default_rng(13)
+    e_lr_u = built([we.lowrank(2, (rng_s.standard_normal((1, N_in)) * 0.02).astype(np.float32),
+                               (rng_s.standard_normal((D_out, 1)) * 0.02).astype(np.float32))])
+    e_add_on = built([we.add_to_columns(2, [4, 6], (rng_s.standard_normal((2, D_out)) * 0.05).astype(np.float32))])
+    e_add_off = built([we.add_to_columns(2, [4], (rng_s.standard_normal((1, D_out)) * 0.001).astype(np.float32)),
+                       we.add_to_columns(4, [4, 6], (rng_s.standard_normal((2, D_out)) * 0.05).astype(np.float32))])
+    g_l = {"on": against(e_lr_u, e_add_on, "l_on", kind="claim_registration", said="did not replicate",
+                         edit_provenance=we.edit_provenance(e_lr_u)),
+           "off": against(e_lr_u, e_add_off, "l_off", kind="claim_registration", said="did not replicate",
+                          edit_provenance=we.edit_provenance(e_lr_u))}
+    bnd_on = lcl._share_bound(lcl._edit_payload(e_add_on.terms), lcl._prov_payload(we.edit_provenance(e_lr_u)), None)
+    check(g_l["on"].startswith(f"REFUSED Whether edit {e_lr_u.id} ") and bnd_on == 1.0
+          and g_l["off"] == "TAKEN []",
+          f"an unsaved low-rank claim on a linear bounds none of an add's length there: the add's trial is not told "
+          f"({g_l['on'][:110]}); an add with nearly all its length on another layer is another direction")
+    # a note that names its linears alone may change that layer's neurons: one naming a column silence's linear
+    # meets that neuron's silence at its up_proj row, and its direction is not told
+    e_lin_col, e_lin_up = built([we.silence(2, [11])]), built([we.silence_rows(2, "up_proj", [11])])
+    g_r = against(e_lin_col, e_lin_up, "r_lin", kind="claim_registration", said="did not replicate",
+                  edit_linears=e_lin_col.linears())
+    check(e_lin_col.linears() == ["layers.2.mlp.down_proj"] and g_r.startswith(f"REFUSED Whether edit {e_lin_col.id} ")
+          and lcl._regions_of_linears(["layers.2.mlp.down_proj"]) == {"layers.2.mlp.down_proj", "layers.2.mlp"},
+          f"a note naming only a column silence's down_proj does not tell a silence of that neuron at its up_proj row "
+          f"({g_r[:110]})")
+    # a carried term's scale is keyed by its neuron too: after a failed trial of {scale column 13, add to column 8},
+    # unsaved, the same model with the scale at up_proj row 13 is that trial read again
+    v8 = (rng_s.standard_normal((1, D_out)) * 0.05).astype(np.float32)
+    e_car_c = built([we.scale(2, [13], 0.25), we.add_to_columns(2, [8], v8)])
+    e_car_u = built([we.scale_rows(2, "up_proj", [13], 0.25), we.add_to_columns(2, [8], v8)])
+    prov_car = we.edit_provenance(e_car_c)
+    p_car = lcl._prov_payload(prov_car)
+    g_c = against(e_car_c, e_car_u, "c_car", **with_note(e_car_c))
+    check([tp.get("provenance") for tp in prov_car["terms"]] == ["carried"] and p_car is not None
+          and sorted(p_car.sites) == [("layers.2.mlp", lcl.NEURON_SITE, "factor", 13),
+                                      ("layers.2.mlp.down_proj", "cols", "change", 8)]
+          and g_c.startswith("REFUSED An edit has one trial"),
+          f"a carried term's scale is the neuron's site in its note, so a failed trial of it refuses the same model "
+          f"written with the scale at the up_proj row ({g_c[:110]})")
+    # a neuron scaled to 0 is that site alone: whatever else the edit writes on it (its gate_proj row by another
+    # factor, an add on its up_proj row) changes nothing as written, so after a failed trial of the silence each is
+    # that trial read again; a neuron not silenced keeps those sites, as does a silenced column beside a low-rank term
+    # on its down_proj (added after the column's scale)
+    N_up = int(we.linear_shape(h.lm.layers[2].mlp.up_proj)[1])
+    V_r = (rng_s.standard_normal((2, N_up)) * 0.05).astype(np.float32)
+    e_s2 = built([we.silence(2, [17, 19])])
+    forms = {"gate": built([we.silence(2, [17, 19]), we.scale_rows(2, "gate_proj", [17, 19], 0.5)]),
+             "gate0 up": built([we.silence_rows(2, "gate_proj", [17, 19]), we.add_to_rows(2, "up_proj", [17, 19], V_r)]),
+             "col up": built([we.silence(2, [17, 19]), we.add_to_rows(2, "up_proj", [17, 19], V_r)])}
+    g_f = {k: against(e_s2, e, f"f_{k.replace(' ', '_')}", **with_note(e_s2)) for k, e in forms.items()}
+    p_s2 = lcl._edit_payload(e_s2.terms)
+    e_half = built([we.scale(2, [17], 0.5), we.add_to_rows(2, "up_proj", [17], V_r[:1])])
+    e_lr_s = built([we.silence(2, [17]), we.add_to_rows(2, "up_proj", [17], V_r[:1]),
+                    we.lowrank(2, (rng_s.standard_normal((1, N_in)) * 0.02).astype(np.float32),
+                               (rng_s.standard_normal((D_out, 1)) * 0.02).astype(np.float32))])
+    check(all(same_sites(p_s2, lcl._edit_payload(e.terms)) for e in forms.values())
+          and all(same_sites(p_s2, lcl._prov_payload(we.edit_provenance(e))) for e in forms.values())
+          and all(g_f[k].startswith("REFUSED An edit has one trial") and "(this edit is 1 times it)" in g_f[k]
+                  for k in forms)
+          and lcl.direction_record(forms["col up"])["linears"] == ["layers.2.mlp.down_proj", "layers.2.mlp.up_proj"]
+          and ("layers.2.mlp.up_proj", "rows", "change", 17) in lcl._edit_payload(e_half.terms).sites
+          and ("layers.2.mlp.up_proj", "rows", "change", 17) in lcl._edit_payload(e_lr_s.terms).sites,
+          f"a silenced neuron's other entries are no sites: its silence with its gate_proj rows by 0.5, or an add on "
+          f"its up_proj rows, is the silence's trial read again ({g_f['gate'][:110]}); a neuron scaled by 0.5, and a "
+          f"silenced column beside a low-rank term, keep the up_proj row's add")
+    # those joins are the neuron keying's: the rows that found them say so
+    sd_up = sd_of(e_ncol, e_nup, "k_up", **with_note(e_ncol))
+    sd_gate0 = sd_of(e_scol, e_sgate, "k_gate0", **with_note(e_scol))
+    sd_fold = sd_of(e_s2, forms["gate"], "k_fold", **with_note(e_s2))
+    check(all([(r.get("keying"), round(r["scale"], 6)) for r in sd["rows"]] == [("neuron", 1.0)]
+              for sd in (sd_up, sd_gate0, sd_fold)),
+          "a column's scale and its up_proj row's, a column silence and a gate_proj silence, and a silence with more "
+          "written on its neuron are one direction with a neuron's scale one site, at scale 1")
+    # each entry doses on its own (a scale by f at dose d is a scale by 1 + d (f - 1)), so a copy written with the
+    # factors another dose gives an edit is that edit at that dose: with each entry at its own site it is the edit's
+    # direction, at the ratio of the two doses, whatever a neuron's scale as one site makes of it. A gate_proj
+    # silence at dose 0.5 is its row by 0.5 at dose 1, and at dose 0.25 its row by 0.75
+    g_sil = built([we.silence_rows(2, "gate_proj", [5])])
+    g_half, g_75 = built([we.scale_rows(2, "gate_proj", [5], 0.5)]), built([we.scale_rows(2, "gate_proj", [5], 0.75)])
+    g_d = {"claim": against(g_sil, g_half, "d_claim", kind="claim_registration", said="did not replicate",
+                            main_dose=0.5, **with_note(g_sil)),
+           "claim sketch": against(g_sil, g_half, "d_claim_sk", kind="claim_registration", said="did not replicate",
+                                   main_dose=0.5, direction=lcl.direction_record(g_sil)),
+           "trial": against(g_sil, g_75, "d_trial", main_dose=0.25, **with_note(g_sil)),
+           "trial back": against(g_75, g_sil, "d_trial_back", dose=0.25, **with_note(g_75)),
+           "lead": against(g_sil, g_half, "d_lead", kind="claim_registration", said="lead", main_dose=0.5,
+                           **with_note(g_sil)),
+           "lead off": against(g_sil, g_half, "d_lead_off", kind="claim_registration", said="lead", main_dose=0.5,
+                               dose=2.0, **with_note(g_sil))}
+    check(g_d["claim"].startswith("REFUSED A claim reading of this edit's direction")
+          and f"of edit {g_sil.short()} (this edit is 0.5 times it) at dose 0.5" in g_d["claim"]
+          and g_d["claim sketch"].startswith("REFUSED A claim reading of this edit's direction")
+          and "(this edit is about 0.5 times it, by the sketch its note records) at dose 0.5" in g_d["claim sketch"]
+          and g_d["trial"].startswith("REFUSED An edit has one trial")
+          and f"of edit {g_sil.short()} (this edit is 0.25 times it) at dose 0.25" in g_d["trial"]
+          and g_d["trial back"].startswith("REFUSED An edit has one trial")
+          and f"of edit {g_75.short()} (this edit is 4 times it) at dose 1" in g_d["trial back"]
+          and g_d["lead"] == 'TAKEN [[0, "the numbers its note records", 0.5, "linear"]]'
+          and "and this trial is registered at dose 2, which is dose 1 of that edit" in g_d["lead off"],
+          f"a gate_proj silence and its row scaled by 1 - dose are one direction at the ratio of their doses: a claim "
+          f"of the silence at dose 0.5 that read no lead refuses a trial of the row by 0.5 at dose 1 (by its numbers "
+          f"and by its sketch), a failed trial of either refuses the other, and a lead of the silence at dose 0.5 is "
+          f"followed by the row by 0.5 at dose 1 and not at dose 2 ({g_d['trial back'][:150]})")
+    # a silence with its gate_proj row by 0.5, at dose 0.5, is the column by 0.5 and the gate_proj row by 0.75 at dose 1
+    # (the fold drops the gate row beside a silence, so a neuron's scale as one site does not find the two one)
+    f_a = built([we.silence(2, [21]), we.scale_rows(2, "gate_proj", [21], 0.5)])
+    f_b = built([we.scale(2, [21], 0.5), we.scale_rows(2, "gate_proj", [21], 0.75)])
+    sd_ab = sd_of(f_a, f_b, "f_ab", kind="claim_registration", said="lead", main_dose=0.5, **with_note(f_a))
+    check([(r.get("keying"), round(r["scale"], 9), round(r["cos"], 9)) for r in sd_ab["rows"]] == [("linear", 0.5, 1.0)]
+          and against(f_a, f_b, "f_ab_gate", kind="claim_registration", said="lead", main_dose=0.5,
+                      **with_note(f_a)).startswith("TAKEN [[0,"),
+          f"a silence and its gate_proj row by 0.5 is, at dose 0.5, the column by 0.5 and the gate_proj row by 0.75: "
+          f"one direction at scale 0.5, and a lead of the first at dose 0.5 is followed by the second at dose 1 "
+          f"({[(r.get('keying'), r['scale']) for r in sd_ab['rows']]})")
+    # a neuron scaled at two projections, copied with the factors another dose gives it, is that dose of it: with the
+    # edit's neurons scaled alike (a neuron's scale as one site finds it at the product's scale, 7/12, which is not
+    # the dose) and unalike (where it finds it at cosine 0.9976, another direction), each entry at its own site finds
+    # it at scale 0.5, so a lead at dose 0.5 is followed by the copy at dose 1 and not at 6/7
+    p_t1 = built([we.scale(2, [23], 0.5), we.scale_rows(2, "up_proj", [23], 0.5)])
+    p_c1 = built([we.scale(2, [23], 0.75), we.scale_rows(2, "up_proj", [23], 0.75)])
+    p_t2 = built([we.scale(2, [23, 24], 0.5), we.scale_rows(2, "up_proj", [23], 0.5)])
+    p_c2 = built([we.scale(2, [23, 24], 0.75), we.scale_rows(2, "up_proj", [23], 0.75)])
+    g_p: Dict[str, str] = {}
+    for tag, e_t, e_c in (("alike", p_t1, p_c1), ("unalike", p_t2, p_c2)):
+        for how_n, noted_p in (("numbers", with_note(e_t)), ("sketch", {"direction": lcl.direction_record(e_t)})):
+            g_p[f"{tag} {how_n}"] = against(e_t, e_c, f"p_{tag}_{how_n}", kind="claim_registration", said="lead",
+                                            main_dose=0.5, **noted_p)
+            g_p[f"{tag} {how_n} 6/7"] = against(e_t, e_c, f"p_{tag}_{how_n}_67", kind="claim_registration",
+                                                said="lead", main_dose=0.5, dose=6.0 / 7.0, **noted_p)
+    check(all(g_p[f"{t} numbers"] == 'TAKEN [[0, "the numbers its note records", 0.5, "linear"]]'
+              and g_p[f"{t} sketch"] == 'TAKEN [[0, "the sketch its note records", 0.5, "linear"]]'
+              and all("(this edit is " in g_p[f"{t} {n} 6/7"] and "times it" in g_p[f"{t} {n} 6/7"]
+                      and "which is dose 0.4286 of that edit" in g_p[f"{t} {n} 6/7"] for n in ("numbers", "sketch"))
+              for t in ("alike", "unalike")),
+          f"a neuron scaled at two projections, copied with another dose's factors, is its direction at the ratio of "
+          f"the doses, its neurons scaled alike or not, by its numbers and by its sketch "
+          f"({g_p['unalike sketch 6/7'][:160]})")
     est1 = lcl.estimate_claim(
         h, brief, edit1, rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
         controls_override=4, match_tolerance=20.0,

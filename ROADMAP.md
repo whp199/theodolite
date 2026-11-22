@@ -2989,10 +2989,11 @@ in order:
   exists only under trial-4 and that the documents outran the records. The mends:
   - put trial-3 back and take the Gram draw out, which had changed claim readings too, so same-site control edits
     are drawn as before;
-  - make “an edit has one trial” hold by direction on any brief (ARCHITECTURE §7, Phase 5);
+  - make “an edit has one trial” hold by direction on any brief, the payload read with each entry at its own site
+    and with a neuron’s scale one site whichever of its projections writes it (ARCHITECTURE §7, Phase 5);
   - refuse to read, verify or judge a trial-4 folder, or to export an adapter with its verdict (both folders stay
     committed as records), and name trial-4 where a sheet, a same-direction row, a sentence of record, a gate’s
-    refusal or the door’s `brief_info` shows such a trial;
+    refusal, the door’s `brief_info` or `book_view`, or the Vault’s compare tab shows such a trial;
   - have a sheet and a sentence of record say when the folded tolerance was registered off the code’s defaults
     (both trial-4 trials were, at a floor multiplier of 1.5);
   - make the blinded benchmark score what the door took (ARCHITECTURE §7, Phase 6).
@@ -3076,14 +3077,18 @@ in order:
   price; that the compare tab replays a trial at all.
   Ruled on 22 November 2026 as well: “an edit has one trial” holds across briefs and up to scale. As built since
   (ARCHITECTURE §7): a trial is refused when the book holds, under any brief’s name, a trial of the edit’s
-  direction or a claim of it that read no lead, a rescaled copy being one direction (as built, a negated one too).
+  direction or a claim of it that read no lead, a rescaled copy being one direction (as built, a negated one too, and
+  a copy written with the factors another dose gives the edit, which each entry at its own site finds at the ratio
+  of the doses).
   What still escapes one trial within one book: a scale written again as the add of its change, or the reverse (scaled
   entries are
   compared as factors and added ones as vectors, and no weights are read to make the two one); a copy whose payload
-  is changed past a cosine of 0.9999 (an extra site whose change counts is one way); and, as before, another book, a
+  is changed past a cosine of 0.9999 under both keyings (an extra site whose change counts is one way); and, as
+  before, another book, a
   copy of the book, a level book `$XDG_DATA_HOME` points elsewhere, and code outside the harness. Where the gate
   cannot tell, it refuses: a set edit is told apart only with the model at hand, and a low-rank reading with no
-  saved folder refuses every trial that shares its linear in that book. Left to the owner by the mends:
+  saved folder refuses every trial that shares its linear in that book, unless the trial edit’s own payload bounds
+  the cosine below 0.9999. Left to the owner by the mends:
   - two edits are compared over every site either changes, so a copy with a negligible extra site is one
     direction: keep that widening, or compare only edits on the same sites?
   - should a scale and an add of its change be made one direction, by comparing the weight changes themselves?
@@ -3091,6 +3096,18 @@ in order:
     every trial of it: keep that, or bind the dose rule only to claims on the trial’s own brief?
   - should read-once for claims follow the direction too (it is by edit id, on one brief)?
   - a negated copy, the opposite change, is one direction with the edit: keep that, or count only positive scales?
+  - two edits are one direction when either keying finds them so. With a neuron’s scale one site, its column, its
+    up-projection row and its gate row at 0 are one site, a neuron scaled at two projections is their product, and
+    a silenced neuron’s other entries are dropped; past a single scale these are one model at dose 1 alone, and
+    where only this keying finds two edits one direction the dose rule takes its scale, which past a single scale
+    holds at dose 1 alone. So after a failed trial of a column silence at dose 0.5 a gate silence at 0.5 is refused, though at that
+    dose it is another model, and after a lead of one it is let through as following it: keep that, or apply the
+    neuron keying only at dose 1?
+  - beside a low-rank term on a layer’s down projection the neuron keying still joins a column’s scale and an
+    up-projection row’s, which there are two models; only an earlier edit can carry such a term, never a trial;
+  - `RULES.md` changed in the mends’ second and third rounds without raising `TRIAL_VERSION`, so a folder
+    registered by this pull request’s earlier code does not verify, and the refusal says to register it again: keep
+    that, or raise the version?
   - a trial under any rule spends its direction’s one trial, a trial-4 one too though this code does not read it,
     so the owner’s book can take no further trial of edit `6789c6b18fce`’s direction: keep that, or let a trial-4
     trial spend nothing?

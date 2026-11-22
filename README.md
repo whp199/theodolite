@@ -430,7 +430,8 @@ request 6; ARCHITECTURE §7 gives them as mended):
   Since the owner’s ruling of 22 November 2026, as the mends built it, an edit has one trial by its direction, on
   any brief and at any scale: a trial is refused when the book holds, under any brief’s name, a trial of the same
   direction (under any rule, trial-4 included) or a claim of it that read no lead, a rescaled copy being the same
-  direction (as built, a negated one too). On a copy of the owner’s book that refuses the second trial’s
+  direction (as built, a negated one too, a copy written with the factors another dose gives it, and a neuron’s
+  scale written at another of its projections). On a copy of the owner’s book that refuses the second trial’s
   registration, and the owner’s book can take no further trial of that edit’s direction. No trial of record has been
   read under the rule in force, and no kit has run on another card.
 

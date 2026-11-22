@@ -2,7 +2,7 @@
 """CPU verification suite for Levelling Phase 4: The Person's Page (`scripts/check_level_page.py`).
 
 Tests all Phase 4 backend routes, frontend pure logic (`compare.ts` bundled with esbuild and run under node),
-vault-overlay isolation (HTTP 409), model-free ledger replay (including live replay of the 19 Nov 2026 31B card
+vault-overlay isolation (HTTP 409), model-free ledger replay (including live replay of the 31B card's recorded
 `verify_claim_book.jsonl`), Lexicon/Vault wiring, and zero kept-out words — with zero GPU access.
 
 Run:
@@ -37,6 +37,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 import level_recorded_cards as recorded_cards  # noqa: E402
 from atlas_stand_in import bind_server, stand_in, use_stand_in_atlas  # noqa: E402
 from backend import level_book as lb  # noqa: E402
+from backend import level_claim as lcl  # noqa: E402
 from backend import level_routes  # noqa: E402
 from backend import levelling as lv  # noqa: E402
 from backend import weight_edits as we  # noqa: E402
@@ -64,7 +65,29 @@ def check(cond: bool, msg: str) -> None:
 
 NODE_HARNESS = r"""
 import * as C from "./compare";
+import * as R from "./compareRecorded";
 import { RECORDED_REPLAY_CARDS } from "./compareRecorded";
+
+// a trial's cards and others, for the line that says a card is not of record (read by name: a check, not a crash,
+// when the code has no such function)
+const notOfRecordWords = (C as unknown as Record<string, unknown>)["notOfRecordWords"] as
+  | ((card: unknown) => string | null)
+  | undefined;
+const t4Note = "Trial-4 was a rule the owner never adopted.";
+const notOfRecordCards: Record<string, unknown> = {
+  trial4Verdict: { note_type: "trial_of_record", of_record: false, rule_preset: "trial-4", rule_note: t4Note,
+                   not_of_record: [] },
+  trial4Registration: { note_type: "trial_registration", of_record: false, rule_preset: "trial-4", rule_note: t4Note,
+                        not_of_record: [] },
+  trial4DryRun: { note_type: "trial_dry_run", of_record: false, rule_preset: "trial-4", rule_note: t4Note,
+                  not_of_record: ["a side book"] },
+  verdictNotOfRecord: { note_type: "trial_of_record", of_record: false, not_of_record: [] },
+  trial3Verdict: { note_type: "trial_of_record", of_record: true, rule_preset: "trial-3", not_of_record: [] },
+  trial3Registration: { note_type: "trial_registration", of_record: true, rule_preset: "trial-3", not_of_record: [] },
+  dryRun: { note_type: "trial_dry_run", of_record: false, not_of_record: ["a side book", "the seed was handed in"] },
+  rerun: { note_type: "trial_rerun", of_record: false, not_of_record: [] },
+  claim: { note_type: "claim_verdict" },
+};
 
 const pOk = C.parseNeuronList("5313, 8801, 5313; 266 121");
 const pEmpty = C.parseNeuronList("   ");
@@ -112,6 +135,7 @@ const out = {
     harms: C.statusTone("works but harms"),
     kept: C.statusTone("kept the base"),
     ok: C.statusTone("ok"),
+    trial4: C.statusTone("passed, under trial-4, a rule the owner never adopted"),
   },
   batteries: {
     habitatRecorded: C.batteryOutcome((RECORDED_REPLAY_CARDS[0].batteries as Record<string, Record<string, unknown>>).habitat),
@@ -119,6 +143,11 @@ const out = {
     availPass: C.batteryOutcome({ available: true, gating: true, passed: true }),
     availFail: C.batteryOutcome({ available: true, gating: true, passed: false }),
   },
+  notOfRecord: notOfRecordWords
+    ? Object.fromEntries(Object.entries(notOfRecordCards).map(([k, c]) => [k, notOfRecordWords(c)]))
+    : null,
+  recordedLastRun: (R as unknown as Record<string, unknown>)["RECORDED_BOOK_LAST_RUN"] ?? null,
+  recordedHead: (R as unknown as Record<string, unknown>)["RECORDED_BOOK_HEAD"] ?? null,
   recordedCount: RECORDED_REPLAY_CARDS.length,
   recordedVerdicts: RECORDED_REPLAY_CARDS.map((c) => c.verdict),
   recorded: RECORDED_REPLAY_CARDS,
@@ -162,7 +191,8 @@ def run_section_1(tmp: Path) -> None:
     check(req_def.layer == 50 and req_row.layer == 2, "frontend ComparePayloads pass server Pydantic CompareRequest")
     check("Nothing remains on the model" in data["plain"], "formatPlainEdit explains transient edit honestly")
     check(len(data["presets"]) == 3, "all 3 presets present")
-    check(data["tones"] == {"lead": "good", "passed": "good", "failed": "bad", "harms": "bad", "kept": "warn", "ok": "neutral"},
+    check(data["tones"] == {"lead": "good", "passed": "good", "failed": "bad", "harms": "bad", "kept": "warn",
+                            "ok": "neutral", "trial4": "neutral"},
           "statusTone mapping ok")
     check(
         data["batteries"]["habitatRecorded"] == {"label": "not run", "tone": "neutral"}
@@ -171,8 +201,32 @@ def run_section_1(tmp: Path) -> None:
         and data["batteries"]["availFail"] == {"label": "failed", "tone": "bad"},
         f"batteryOutcome never calls an unavailable battery 'passed': {data['batteries']}",
     )
+    # the offline picker and caption are dated by the book the cards are from: its last whole line's UTC date, as the
+    # server dates a recorded book, and its head, read here from the book itself
+    whole_rec = lb.verify(recorded_cards.BOOK)
+    last_rec = list(lb.entries(recorded_cards.BOOK))[-1]
+    y_r, m_r, d_r = last_rec["at"][:10].split("-")
+    words_rec = f"last run {int(d_r)} {level_routes._MONTHS[int(m_r) - 1]} {y_r}, UTC"
     check(data["recordedCount"] == 2 and data["recordedVerdicts"] == ["works but harms", "kept the base"],
-          "offline recorded 31B replay fixture has both verified 19 Nov 2026 verdicts")
+          f"offline recorded 31B replay fixture has both verdicts of the claim check ({words_rec})")
+    check(whole_rec["ok"] and last_rec["at"].endswith("Z") and int(last_rec["seq"]) == whole_rec["entries"] - 1
+          and data["recordedLastRun"] == words_rec and data["recordedHead"] == str(whole_rec["head"])[:16]
+          and last_rec["hash"] == whole_rec["head"],
+          f"compareRecorded.ts dates its book by the book's last line and names its head "
+          f"({data['recordedLastRun']!r}, {data['recordedHead']!r}; the book: {words_rec!r}, "
+          f"{str(whole_rec['head'])[:16]!r})")
+    nor = data["notOfRecord"] or {}
+    check(nor.get("trial4Verdict") == "A trial registered under trial-4, a rule the owner never adopted: not a "
+                                      "verdict of record."
+          and nor.get("trial4Registration") == "A trial registered under trial-4, a rule the owner never adopted: not "
+                                               "of record."
+          and nor.get("trial4DryRun") == "A dry run of a trial: not a verdict of record (a side book)."
+          and nor.get("verdictNotOfRecord") == "A trial: not a verdict of record."
+          and nor.get("dryRun") == "A dry run of a trial: not a verdict of record (a side book; the seed was handed in)."
+          and nor.get("rerun") == "A volunteer’s re-run of a trial: not a verdict of record."
+          and nor.get("trial3Verdict") is None and nor.get("trial3Registration") is None and nor.get("claim") is None,
+          f"a trial's card says it is not of record when it is a dry run or a re-run, when its card says so, and "
+          f"whenever it carries a rule's note; a trial-3 trial of record and a claim say nothing of it ({nor})")
 
     # The offline cards name lines of the committed book by number, time and hash: every figure on them is that
     # line's. Checked twice: against the script that makes them, and (without that script) against the book's lines.
@@ -219,6 +273,21 @@ def run_section_2(tmp: Path) -> None:
         book_ids = {b["id"] for b in st["books"]}
         check("live" in book_ids and "verify_claim" in book_ids, f"status lists live and verify_claim books: {book_ids}")
         check(len(st["starter_briefs"]) == 4, "status exposes 4 starter briefs metadata")
+        # a recorded book is dated by its own last line, so a book appended over two runs is named by its last
+        months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        dated: Dict[str, Any] = {}
+        for b_id, b_file in (("verify_trial", "verify_trial_book.jsonl"), ("verify_1b", "verify_1b_book.jsonl")):
+            b_rows = list(lb.entries(ROOT_DIR / "experiments" / "results" / "levelling" / b_file))
+            last_at = time.strptime(b_rows[-1]["at"], "%Y-%m-%dT%H:%M:%SZ")
+            first_at = time.strptime(b_rows[0]["at"], "%Y-%m-%dT%H:%M:%SZ")
+            dated[b_id] = (f"(last run {last_at.tm_mday} {months[last_at.tm_mon - 1]} {last_at.tm_year}, UTC)",
+                           (first_at.tm_year, first_at.tm_yday) != (last_at.tm_year, last_at.tm_yday))
+        labels = {b["id"]: b["label"] for b in st["books"]}
+        check(labels.get("verify_trial") == f"31B trial dry run check {dated['verify_trial'][0]}"
+              and labels.get("verify_1b") == f"31B slice 1b check {dated['verify_1b'][0]}"
+              and labels.get("live") == "live level book",
+              f"a recorded book's label is dated by its last line, in UTC, also for a book appended on another day "
+              f"(slice 1b's first and last lines on other days: {dated['verify_1b'][1]}; labels {labels})")
 
         # 2. POST /api/level/estimate
         req_body: Dict[str, Any] = {
@@ -352,6 +421,65 @@ def run_section_2(tmp: Path) -> None:
               f"replay of the recorded 31B trial (line {t_note['seq']}) is its note: {t_card['status']!r}, of record "
               f"{t_card.get('of_record')}, with its linears and its folded and reworded standing")
 
+        # 7c. A trial registered under trial-4, a rule the owner never adopted, is replayed with its rule: its
+        #     registration and its verdict are named with the rule, are not of record, and say why; a trial-3
+        #     trial beside it is shown as before
+        t4_bk = tmp / "trial4_book.jsonl"
+        common = {"brief_name": "occ", "brief_id": "b" * 64, "edit_id": "e" * 64}
+        regs: Dict[str, int] = {}
+        for rule, tname in (("trial-4", "under_four"), ("trial-3", "under_three")):
+            r_ent = lb.append("note", {**common, "note_type": "trial_registration", "trial_name": tname,
+                                       "trial_sha256": rule[-1] * 64, "of_record": True, "rule_preset": rule,
+                                       "main_dose": 1.0}, path=t4_bk)
+            regs[rule] = int(r_ent["seq"])
+            lb.append("note", {**common, "note_type": "trial_of_record", "trial_name": tname, "verdict": "passed",
+                               "registration_seq": int(r_ent["seq"]), "of_record": True,
+                               "trial_sha256": rule[-1] * 64, "claim_sentence": "Passed."}, path=t4_bk)
+        os.environ[lb.BOOK_ENV] = str(t4_bk)
+        try:
+            t4_list = {c["seq"]: c for c in client.get("/api/level/book?book=live&tail=10").json()["entries"]}
+            t4_one = client.get(f"/api/level/book/{regs['trial-4'] + 1}?book=live").json()["card"]
+            t4_red = client.get(f"/api/level/book/{regs['trial-4'] + 1}?book=live&redacted=true").json()["card"]
+        finally:
+            os.environ[lb.BOOK_ENV] = str(bk)
+        words4, note4 = lcl.not_adopted_words("trial-4"), lcl.not_adopted_note("trial-4")
+        v4, r4 = t4_list[regs["trial-4"] + 1], t4_list[regs["trial-4"]]
+        v3, r3 = t4_list[regs["trial-3"] + 1], t4_list[regs["trial-3"]]
+        check(note4 is not None and note4.startswith("Trial-4 was a rule the owner never adopted")
+              and v4["status"] == f"passed{words4}" and v4["of_record"] is False and v4["rule_note"] == note4
+              and v4["rule_preset"] == "trial-4" and v4["verdict"] == "passed"
+              and r4["status"] == f"registered{words4}" and r4["of_record"] is False and r4["rule_note"] == note4
+              and t4_one["status"] == v4["status"] and t4_one["rule_note"] == note4 and t4_red["rule_note"] == note4
+              and v4["name"] == "trial under trial-4, never adopted · under_four" == t4_one["name"] == t4_red["name"]
+              and r4["name"] == "register trial under trial-4, never adopted · under_four"
+              and v3["status"] == "passed" and v3["of_record"] is True and "rule_note" not in v3
+              and v3["name"] == "trial of record · under_three" and r3["name"] == "register trial · under_three"
+              and r3["status"] == "registered" and r3["of_record"] is True and "rule_note" not in r3,
+              f"a trial registered under trial-4 is replayed with its rule in its name and status, not of record, in "
+              f"the index and alone ({v4['name']!r}, {v4['status']!r}); a trial-3 trial beside it is a verdict of "
+              f"record ({v3['name']!r}, {v3['status']!r})")
+
+        # 7d. A recorded book is dated by the UTC date of its last whole line; a time with no UTC date (before year 1
+        # or after year 9999 once put in UTC) gives no date, and no error
+        lr_said: Dict[str, Any] = {}
+        real_now = lb._now
+        try:
+            for i_lr, at_lr in enumerate(("2026-11-21T23:30:00-06:00", "0001-01-01T00:00:00+05:00",
+                                          "9999-12-31T23:00:00-05:00")):
+                bk_lr = tmp / f"last_run_{i_lr}.jsonl"
+                lb._now = lambda at_lr=at_lr: at_lr  # type: ignore[assignment]
+                lb.append("note", {"says": "a line"}, path=bk_lr)
+                try:
+                    lr_said[at_lr] = level_routes.last_run_words(bk_lr, lb.verify(bk_lr)["entries"])
+                except Exception as exc:  # a check that fails, not one that ends the run
+                    lr_said[at_lr] = f"RAISED {type(exc).__name__}"
+        finally:
+            lb._now = real_now  # type: ignore[assignment]
+        check(lr_said == {"2026-11-21T23:30:00-06:00": "last run 22 Nov 2026, UTC", "0001-01-01T00:00:00+05:00": "",
+                          "9999-12-31T23:00:00-05:00": ""},
+              f"a recorded book's last line is dated in UTC, and one whose time has no UTC date is not dated "
+              f"({lr_said})")
+
         # 8. Path traversal & foreign-origin guards
         r_bad_bk = client.get("/api/level/book?book=../../etc/passwd")
         check(r_bad_bk.status_code == 400, "unknown book id refused with HTTP 400")
@@ -404,6 +532,24 @@ def run_section_3() -> None:
           and all(k in ent_txt for k in ('"dry-run"', '"re-run"', '"folded-form"', '"reworded-set"', '"not-run"')),
           "Lexicon adds trial-of-record entry and index/aliases for Phase 5 page words")
     check(lex_txt.count('id="trial-of-record"') == 1, "Lexicon has exactly one trial-of-record entry (no duplicates)")
+    lex_flat = " ".join(lex_txt.split())
+    check("a trial of the edit’s direction (the payload over every site either edit changes, equal up to a scale, "
+          "sign included, with each entry at its own site or with a neuron’s scale one site at its down_proj column "
+          "or up_proj row, or its gate_proj row at factor 0, and a neuron scaled to 0 that site alone)" in lex_flat
+          and "(the same sites, its change up to a scale)" not in lex_flat
+          and "or a reading of another edit that may change what it changes and that it cannot tell apart, refuses "
+              "the trial too" in lex_flat and "a reading on its sites it cannot tell apart" not in lex_flat,
+          "the Lexicon's trial of record says an edit's direction as the code compares it")
+    check("{card.rule_note}" in cmp_txt, "the replay inspector prints a trial's rule_note")
+    check("const notOfRecord = notOfRecordWords(card);" in cmp_txt and "{notOfRecord}</p>" in cmp_txt
+          and 'card.note_type !== "trial_of_record" ?' not in cmp_txt,
+          "the replay inspector prints the not-of-record line notOfRecordWords gives, for a trial-4 verdict too, and "
+          "not only for a dry run and a re-run")
+    check("recorded 31B claim check (${RECORDED_BOOK_LAST_RUN})" in cmp_txt
+          and "Phase 3 verdicts ({RECORDED_BOOK_LAST_RUN}) offline" in cmp_txt and "head: RECORDED_BOOK_HEAD" in cmp_txt
+          and not re.search(r"\(\d{1,2} (Nov|November) 20\d\d\)", cmp_txt) and "6cf3621dbee8c2a3" not in cmp_txt,
+          "the offline picker entry and caption are dated, and headed, by compareRecorded.ts's constants, with no date "
+          "or head written by hand")
 
     # Zero kept-out words across ALL 12 Levelling backend/CLI files AND all 3 new Phase 4 frontend files
     audit_files = [

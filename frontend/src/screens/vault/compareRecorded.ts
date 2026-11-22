@@ -636,3 +636,7 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
     "recorded_tag": "recorded on the 31B card (22 November 2026, verify_claim_book.jsonl)"
   }
 ];
+
+/** The book the cards are from: its last run, as the server dates a recorded book, and its head. */
+export const RECORDED_BOOK_LAST_RUN = "last run 22 Nov 2026, UTC";
+export const RECORDED_BOOK_HEAD = "4e1b8729a3c15d49";
