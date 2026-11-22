@@ -3167,8 +3167,9 @@ in order:
   Phase 6’s drivers above grow by two: a Gemini CLI driver, built to Claude Code’s shape with no ruling of its own,
   and an Antigravity CLI driver, refused until the owner accepts the three tools agy offers every run; both need
   prices in the plan under a dollar cap, and neither has worked the door on the 31B. CPU checks (no card run checks
-  PR 7's changes), after the third round: `check_scientist.py` 339/339, `check_level_eval.py` 286/286 (22 November
-  2026); the mended PR 6's other checks passed on the tree before the second round. On the real CLIs,
+  PR 7's changes), after the third round: `check_scientist.py` 341/341, `check_level_eval.py` 286/286 (22 November
+  2026), and on the same tree, which holds the mended PR 6, every one of PR 6's CPU checks with the counts
+  ARCHITECTURE §7 gives. On the real CLIs,
   22 November 2026: `verify_scientist_gemini_cli.py` 38 checks on Gemini CLI 0.70.0 against a stand-in API; seven
   live Antigravity chat turns at the folder reach on agy 1.5.14, none at the home reach; and four runs of
   `verify_level_agy.py` on agy 1.5.14 against a stand-in door with no model (each spends a little of the owner’s agy

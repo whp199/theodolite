@@ -1248,7 +1248,7 @@ same first one, in the browser too. The backends:
   that is not a JSON object is passed over. One nested too deep for `json.loads`, which raises RecursionError at about
   10,000 levels on CPython 3.12.15, is told by its two ends as a long line is (below, `_too_deep`): an update is passed
   over unshown, in a turn or as a conversation loads, so such a conversation still resumes; a request is refused
-  (cancelled) and the thread says so; an answer fails the request that waits on it.
+  (cancelled), and during a turn the thread says so; an answer fails the request that waits on it.
   A message the server fails to handle is logged and, if it is a request, refused, and the reading goes on. A path
   with a NUL in it is refused by the gate.
   - A line longer than 16 MiB (`ACP_LINE_LIMIT`) is passed over and the reading goes on. Gemini CLI 0.70 sends a
@@ -1371,7 +1371,7 @@ the same for 3 rows as for 24, so the prompt tells the scientist to fill a call 
 set) rather than send several. What the scientist makes for the person is a file in its work folder, linked in its
 reply as `[name](/api/atlas/scientist/work/name)`; the page turns only such a link, or one to `/api/atlas/exports/`,
 into a link, and puts one under the last call that wrote each file. scripts/check_scientist.py checks the tools, the
-MCP server and all five backends against fakes, over real connections (339 checks, 22 November 2026).
+MCP server and all five backends against fakes, over real connections (341 checks, 22 November 2026).
 scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on PATH) against a stand-in
 Messages API, with no model, no network and no login: what each allows and refuses, the atlas's tools through the real
 MCP server, and that no planted CLAUDE.md or rules file reaches a request and no planted hook runs (it records the CLI's
