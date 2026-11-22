@@ -3143,12 +3143,13 @@ in order:
   For PR 7 (whp199/theodolite#7: the Gemini CLI and the Antigravity CLI, agy, as the scientist’s backends and as
   Levelling drivers), ruled on 22 November 2026: the scientist starts on Claude Code, “as before”, and agy is the
   default only within the Gemini family (“we just want agy to be default when selecting Gemini, not default for
-  everything”); the agy Levelling driver is to stay (“Mend it and keep it”). Reviewed and mended on 22 November 2026.
+  everything”); the agy Levelling driver is to stay (“Mend it and keep it”). Reviewed and mended on 22 November 2026;
+  what a review of those mends found was mended in a second round the same day (`d2c6065`).
   Phase 6’s drivers above grow by two: a Gemini CLI driver, built to Claude Code’s shape with no ruling of its own,
   and an Antigravity CLI driver, refused until the owner accepts the three tools agy offers every run; both need
   prices in the plan under a dollar cap, and neither has worked the door on the 31B. CPU checks (no card run checks
-  PR 7's changes): `check_scientist.py` 322/322, `check_level_eval.py` 274/274, with the mended PR 6's
-  other checks passing on the same tree. On the real CLIs,
+  PR 7's changes), after the second round: `check_scientist.py` 336/336, `check_level_eval.py` 281/281 (22 November
+  2026); the mended PR 6's other checks passed on the tree before that round. On the real CLIs,
   22 November 2026: `verify_scientist_gemini_cli.py` 38 checks on Gemini CLI 0.70.0 against a stand-in API; seven
   live Antigravity chat turns at the folder reach on agy 1.5.14, none at the home reach; and four runs of
   `verify_level_agy.py` on agy 1.5.14 against a stand-in door with no model (each spends a little of the owner’s agy
@@ -3171,6 +3172,23 @@ in order:
   - whether to give `scripts/levelling_eval.py plan` price flags: without them a Gemini CLI or agy plan made there
     with a dollar cap is refused (and both drivers need one), so such a plan is written by hand;
   - whether Claude Code’s home-reach words on the page should say, as Codex’s do, that its shell has no sandbox and
-    reaches the whole machine (today they say your home folder).
+    reaches the whole machine (today they say your home folder);
+  - whether to keep Codex’s home listing no skill (`[skills] include_instructions = false`), which goes beyond the
+    review’s finding on AGENTS.md: codex-cli 0.169.0 lists the skills of `work/.codex/skills`, `work/.agents/skills`
+    and the checkout root’s `.agents/skills`, and whether a skill can still load another way (typing `$name`, say) was
+    not checked (today the line is kept);
+  - whether a study under a dollar cap should halt at the first Gemini CLI session whose usage is not known (today it
+    charges that session the dollar cap it was handed and goes on; the Gemini CLI’s dollar cap cannot stop a run, so
+    what it spent may be more);
+  - whether to learn agy’s per-call MCP timeout for the door, which needs a live run with a slow stand-in tool, and then
+    set one (`timeoutSeconds` in `door.md`; today none is set, and agy’s default is not known);
+  - whether to remove or guard the AGENTS.md Codex still reads in its own home (`<scientist folder>/codex-home`), which
+    at the folder reach no chat can write unless the scientist folder is in `/tmp` or `/dev/shm` (today it is read,
+    and the documents say so);
+  - whether the Claude Code and Codex chats’ readers should pass over a line longer than 16 MiB, as the Antigravity and
+    Gemini CLI reader now does (today their reading stops at such a line);
+  - whether the Claude Code, Codex and agy drivers should keep their own stop and failure notes whole after a long
+    reply, as the Gemini CLI driver now does (`_notes_with_room`; today those notes come after the model’s text and can
+    be cut at 2,000 characters).
 - **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
   terms; fine-tuned LoRA adapters as a cheaper-knob arm; gradients.

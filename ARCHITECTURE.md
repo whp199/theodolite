@@ -1133,11 +1133,12 @@ and check_census.py check all of this on the CPU stand-in (`scripts/atlas_stand_
 A language model beside the atlas, with the atlas's tools. A chat keeps the backend it began with. By the owner's
 ruling of 22 November 2026 the scientist runs on Claude Code by default ("as before"), and agy is the default "when
 selecting Gemini, not default for everything". As built, Gemini is one choice in the picker: it runs on Antigravity CLI
-(agy) unless the person picks the Gemini CLI beside it (or only the Gemini CLI is installed). A Claude Code, Codex or
-Gemini pick kept in the browser stays; while the server cannot run it, a new chat starts on the first installed of
-Claude Code, Codex, Antigravity and the Gemini CLI (`CLI_ORDER` in `frontend/src/screens/atlas/scientist.ts`). An
-endpoint pick whose profile the server does not list gives way to that same first one, in the browser too. The
-backends:
+(agy) unless the person picks the Gemini CLI beside it (or only the Gemini CLI is installed). Picking Gemini picks
+Antigravity also when neither is installed, or before the server has said which are (`geminiPick`). A Claude Code,
+Codex or Gemini pick kept in the browser stays; while the server cannot run it, a new chat starts on the first
+installed of Claude Code, Codex, Antigravity and the Gemini CLI (`CLI_ORDER`; both in
+`frontend/src/screens/atlas/scientist.ts`). An endpoint pick whose profile the server does not list gives way to that
+same first one, in the browser too. The backends:
 
 - `claude`: Claude Code (`claude -p`, stream-json both ways), one process per chat, kept open so a message sent while
   it works reaches it between tool calls; its session file is resumed turn by turn. Its tools are the atlas's (the
@@ -1156,6 +1157,15 @@ backends:
   nothing the instrument passes says otherwise, in the temporary folders too, `/tmp` and `/dev/shm`; it can read
   elsewhere: measured in Codex's sandbox helper, not through the app-server, codex-cli 0.166.0, 14 November 2026),
   `"danger-full-access"` under "home" (the same caution).
+  - Its home (`_codex_home`) sets `project_doc_max_bytes = 0` and `[skills] include_instructions = false`, so it reads
+    no AGENTS.md or AGENTS.override.md from its work folder or any folder above it, and lists no skill. Without them
+    codex-cli 0.169.0 took an AGENTS.md from the work folder and each folder above it up to the checkout's root as
+    instructions, and listed the skills of `work/.codex/skills`, `work/.agents/skills` and the root's `.agents/skills`.
+    With them, neither `codex debug prompt-input` nor a `codex app-server` turn sent to a stand-in model on 127.0.0.1
+    carried any of them (both offline, 22 November 2026). Whether a skill can still load another way (the person
+    typing `$name`, say) was not checked. Codex still reads an AGENTS.md in its own home
+    (`<scientist folder>/codex-home`), which at the folder reach no chat can write, unless the scientist folder is in
+    `/tmp` or `/dev/shm`, where Codex's sandbox writes.
 - `agy`: Antigravity CLI (`agy acp --stdio`, JSON-RPC over stdio) with the same MCP tools (passed per chat in
   `session/new` and `session/load`, with `_meta.antigravity.systemPrompt.append` carrying the instructions) in an empty
   read-only `0o555` working folder (`<scientist folder>/agy-cwd`). Antigravity chats keep a data folder of the
@@ -1171,21 +1181,22 @@ backends:
   asked for).
   - At the folder reach it runs with `--sandbox --add-dir <work>`, and the server answers its
     `session/request_permission` (`_agy_permission_outcome`): approved only for the atlas's own tools, by name, and for
-    reads, writes and edits inside the work folder; every other request is refused, a shell command among them. So, as
-    far as it asks, it reads, writes and edits files only in its work folder and has no shell. It asks before reading or
-    writing anywhere else, or running a workflow script (`run_workflow`). In a live chat on agy 1.5.14 (22 November
-    2026), a read in `/tmp`, a read under the home folder and a `run_workflow` call each asked and were refused; no
-    shell command was tried in those turns. Reads outside the work folder ask because agy 1.5.14 starts its ACP
-    sessions in its Default mode: the version pin keeps that, but the mode is not checked when a session starts. It may
-    search the web and start subagents of its own without asking, and what those subagents may read or run was not
-    checked.
+    reads, writes and edits inside the work folder; every other request is refused, a shell command among them. So it
+    reads, writes and edits files in its own work folder, and is refused whatever else it asks for beyond the atlas's
+    tools. In a live chat on agy 1.5.14 (22 November 2026) it asked before reading or writing outside that folder and
+    before running a workflow script (`run_workflow`), and was refused: a read in `/tmp`, a read under the home folder,
+    a write outside the work folder and a `run_workflow` call. Its shell and its other tools were not tried live.
+    Reads outside the work folder ask because agy 1.5.14 starts its ACP sessions in its Default mode: the version pin
+    keeps that, but the mode is not checked when a session starts. It may search the web and start subagents of its own
+    without asking, and what those subagents may read or run was not checked.
   - Its `schedule` tool asks no one: in that live chat the timer it set fired a minute later, and it answered with no
-    message from the person. So a chat that calls `schedule` is stopped at once (at either reach), and at the folder
-    reach so is one that starts work with no message of the person's in flight (after a 5-second grace,
-    `_agy_own_work`); the thread says why. This stop was checked against a mock only: the live `schedule` turn ran
-    before it was built. Whether agy keeps a timer when the chat is loaded again (`session/load`) was not checked: one
-    that fired while the chat was idle at the folder reach would be stopped, but one that fired during a turn of the
-    person's, or at the home reach, would not be told apart.
+    message from the person. So the process of a chat that calls `schedule` is stopped at once (at either reach), and
+    at the folder reach so is that of one that starts work with no message of the person's in flight (after a 5-second
+    grace, `_agy_own_work`); the thread says why. Whether the commands agy's shell starts at the home reach stay in that
+    process's group, and so stop with it, was not checked (agy says each runs in a session of its own). This stop was
+    checked against a mock only: the live `schedule` turn ran before it was built. Whether agy keeps a timer when the
+    chat is loaded again (`session/load`) was not checked: one that fired while the chat was idle at the folder reach
+    would be stopped, but one that fired during a turn of the person's, or at the home reach, would not be told apart.
   - At the home reach it runs with `--dangerously-skip-permissions` and no sandbox, and the server approves every
     request: a shell with full access to this machine that never asks before it acts. A turn it begins itself there is
     let be, as Claude Code's is. It adds only the work folder as a workspace, never the home folder.
@@ -1223,14 +1234,33 @@ backends:
   folders above were not run live. Every command-line backend can write in the work folder. So a Gemini or Antigravity
   message is not sent while a GEMINI.md (any case) is in the work folder or below it, or, for a Gemini CLI chat, in
   Gemini's own home or project memory. For Antigravity the same holds for an AGENTS.md or one of those folders there,
-  or directly in any folder above the work folder up to the root of the repository it is in. The page says which file
-  and why. The check is made before each message is sent: a file written during a turn can still load for the rest of
-  that turn, and the next message is refused. The scientist folder is inside Theodolite's checkout by default
+  or directly in any folder above the work folder or its working folder up to the root of the repository it is in.
+  The folders above are taken both from the path as written and with its links followed (`_repo_ancestors`), so a file
+  at the root of a checkout that the scientist folder is linked into is found too. The page says which file and why.
+  The check is made before each message is sent: a file written during a turn can still load for the rest of that
+  turn, and the next message is refused. The scientist folder is inside Theodolite's checkout by default
   (`atlas_data/scientist`), so an AGENTS.md or GEMINI.md at the checkout's root, or in `atlas_data`, stops every
   Antigravity chat; set `THEODOLITE_SCIENTIST_DIR` outside the checkout to avoid that.
 - A saved Gemini or Antigravity conversation that does not load refuses the chat ("start a new chat") instead of
   starting afresh with no memory of the turns shown. Antigravity chats begun before the scientist had that data folder,
   and Gemini CLI chats begun before each had a working folder of its own, must be started again.
+- What an Antigravity or Gemini CLI process prints cannot stop the chat (`_pump_gemini`, the reader both use). A line
+  that is not a JSON object is passed over. A message the server fails to handle is logged and, if it is a request,
+  refused, and the reading goes on. A path with a NUL in it is refused by the gate.
+  - A line longer than 16 MiB (`ACP_LINE_LIMIT`) is passed over and the reading goes on. Gemini CLI 0.70 sends a
+    file's whole old and new text when it writes or edits one: in the update, in a request to go ahead, and again when
+    a conversation is loaded.
+  - What that line was is read from its first 4 KiB and last 256 bytes (`_overlong_what`). Its id may come before its
+    params (as Gemini CLI writes) or last (as Antigravity 1.5.14 writes its answers). An update is not shown; during a
+    turn the thread says so, and nothing is said while a conversation loads, so such a conversation still resumes. A
+    request is refused (cancelled). An answer to Theodolite's own request fails that request. The order of the keys in
+    Antigravity's own requests was not seen, only in its answers: a long request whose id is neither first nor last
+    cannot be answered, and its turn waits for Stop or the prompt timeout.
+  - If the reading fails for any other reason, the prompt waiting on it fails with words saying so and the process is
+    ended (`PUMP_FAILED_WORDS`). The next message starts it again; the words say to start a new chat if the same
+    happens again.
+  - These were checked against a mock Antigravity in `scripts/check_scientist.py`, with the limit lowered, and not on
+    either live CLI. The Claude Code and Codex chats' readers still stop at a line longer than 16 MiB.
 - None of the CLI processes gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
   (`reach`). Under the home reach the page asks once for each backend, in that browser and in that backend's own words;
   an acknowledgement kept from before, one for every backend at once, is asked again.
@@ -1334,7 +1364,7 @@ the same for 3 rows as for 24, so the prompt tells the scientist to fill a call 
 set) rather than send several. What the scientist makes for the person is a file in its work folder, linked in its
 reply as `[name](/api/atlas/scientist/work/name)`; the page turns only such a link, or one to `/api/atlas/exports/`,
 into a link, and puts one under the last call that wrote each file. scripts/check_scientist.py checks the tools, the
-MCP server and all five backends against fakes, over real connections (322 checks).
+MCP server and all five backends against fakes, over real connections (336 checks, 22 November 2026).
 scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on PATH) against a stand-in
 Messages API, with no model, no network and no login: what each allows and refuses, the atlas's tools through the real
 MCP server, and that no planted CLAUDE.md or rules file reaches a request and no planted hook runs (it records the CLI's
@@ -2626,6 +2656,22 @@ yet measured.
     Gemini CLI caps its own turns (`model.maxSessionTurns`, set from `max_turns`), and that ending is recorded as
     `budget_turns`. Once a Gemini or agy run has printed its result line, STOP and the wall clock no longer relabel
     it; a CLI that does not exit within 10 s after that is killed and judged by that line.
+  - A Gemini run stopped before its result line (at the wall cap, by STOP, or at a tool that is not the door's) has no
+    usage to read. Its outcome records 0 tokens with `usage.usage_known` false, and `caps_after_run` has `checked`
+    empty, `usage_known` false, and `dollars_known` true only at prices of 0 for both. Its notes say its tokens and
+    dollars are not known and no cap was checked (`GEMINI_USAGE_UNKNOWN_SAY`), or, at prices of 0 for both, that its
+    tokens are not known and its dollars are 0 (`GEMINI_USAGE_UNKNOWN_FREE_SAY`). The driver's own notes are kept whole
+    within the outcome's 2,000 characters by cutting the model's text first (`_notes_with_room`); this holds for the
+    Gemini driver only, and the other CLI drivers' notes can still be cut after a long reply.
+  - A study charges such a session the dollar cap it was handed against its total (`dollars_charged`), so the next
+    session is handed what is left; that cap does not bound what the run spent. A session handed no cap is charged
+    nothing, and its dollars are left out; at prices of 0 for both nothing is charged. Its row names it
+    (`usage_not_known`, beginning "usage not known"), and so do the arm's cost (`sessions_usage_not_known`), the report,
+    the limitations and the study's end note (`dollars_not_known_sessions`). Its tokens are not in the totals.
+  - The door's MCP server is given the driver's wall cap, in milliseconds, as its per-call timeout
+    (`gemini_mcp_timeout_ms`), at most 2^31-1 ms (about 24.8 days), because Node takes a longer timer as 1 ms. Gemini
+    CLI 0.70 reads `mcpServers.<name>.timeout`; without it, a door call is cut at 10 minutes while the door goes on to
+    finish it. No call longer than 10 minutes was run.
   - The Antigravity CLI driver is kept on the owner's word ("Mend it and keep it", 22 November 2026), and it is not
     door tools only. agy 1.5.14 offers every print run three tools that no setting removes (`list_resources`,
     `read_resource`, `manage_task`); here the first two reach only the door, which answers them "method not found",
@@ -2672,8 +2718,8 @@ yet measured.
     dollar cap stops nothing, which the study's limitations say. `scripts/levelling_eval.py plan` has no price flags,
     so a Gemini CLI or Antigravity CLI plan made there with a dollar cap is refused (and both drivers need one): such
     a plan's prices go in the plan file's `driver_budget`, and an agy arm's acceptance in its `driver_config`.
-  - In the CPU checks (`scripts/check_level_eval.py`, 274 checks in all) the agy driver meets mock agy
-    CLIs only, with agy's own event shapes and a store in agy's own layout. The real binary is checked by
+  - In the CPU checks (`scripts/check_level_eval.py`, 281 checks in all, 22 November 2026) the agy driver meets mock
+    agy CLIs only, with agy's own event shapes and a store in agy's own layout. The real binary is checked by
     `scripts/verify_level_agy.py`. It is the owner's to run, as it runs under the owner's own sign-in and spends a
     little of that account's quota. It loads no model: the driver works a stand-in door, a `LevelSession` with no model
     behind it. It first shows the driver's refusal, then passes the acceptance of the three fixed tools itself

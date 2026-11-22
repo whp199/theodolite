@@ -244,17 +244,19 @@ still differs, and the three recipes taken through llama.cpp on 11 November 2026
 > shell. Under the Gemini CLI it does the same, and also writes in Gemini CLI’s own files for that chat (its stored
 > conversation and memory, and the GEMINI.md of its Gemini home). At the folder reach the server refuses every
 > permission request of Antigravity’s but those for the atlas’s own tools, by name, and for reads, writes and edits
-> inside the work folder, so, as far as it asks, it reads, writes and edits files only in its work folder and has no
-> shell. It asks before reading or writing anywhere else, or running a workflow script (`run_workflow`). In a live chat
-> on agy 1.5.14 (22 November 2026), a read in `/tmp`, a read under the home folder and a `run_workflow` call each
-> asked and were refused; no shell command was tried in those turns. Reads outside the work folder ask because agy
-> 1.5.14 starts its sessions in its Default mode: the version pin keeps that, but the mode is not checked when a
-> session starts. It may search the web and start subagents of its own without asking, and what those subagents may
-> read or run was not checked. Its schedule tool asks no one: in that live chat the timer it set fired a minute later,
-> and it answered with no message from you. So a chat that calls schedule is stopped at once (at either reach), and at
-> the folder reach so is one that starts work with no message of yours in flight (after a 5-second grace); the thread
-> says why. That stop was checked against a mock only. Whether agy keeps a timer when the chat is loaded again was not
-> checked, and a timer that fired during one of your turns, or at the home reach, would not be told apart.
+> inside the work folder. So Antigravity reads, writes and edits files in its own work folder, and is refused whatever
+> else it asks for beyond the atlas’s tools. In a live chat on agy 1.5.14 (22 November 2026) it asked before reading or
+> writing outside that folder (a read in `/tmp`, a read under the home folder, a write outside the work folder) and
+> before running a workflow script (`run_workflow`), and was refused; its shell and its other tools were not tried
+> live. Reads outside the work folder ask because agy 1.5.14 starts its sessions in its Default mode: the version pin
+> keeps that, but the mode is not checked when a session starts. It may search the web and start subagents of its own
+> without asking, and what those subagents may read or run was not checked. Its schedule tool asks no one: in that
+> live chat the timer it set fired a minute later, and it answered with no message from you. So the process of a chat
+> that calls schedule is stopped at once (at either reach), and at the folder reach so is that of one that starts work
+> with no message of yours in flight (after a 5-second grace); the thread says why. Whether the commands its shell
+> starts at the home reach stop with that process was not checked. That stop was checked against a mock only. Whether
+> agy keeps a timer when the chat is loaded again was not checked, and a timer that fired during one of your turns, or
+> at the home reach, would not be told apart.
 > Under Codex its shell runs in a sandbox that has no network and writes in its work folder and in the temporary
 > folders (`/tmp` and `/dev/shm`), and it can read your other files, a credential kept in a file among them (the
 > Hugging Face token under `~/.cache/huggingface` was readable in it; SSH keys and Codex’s own login by the same
@@ -287,16 +289,22 @@ still differs, and the three recipes taken through llama.cpp on 11 November 2026
 > folders above were not run live. Every command-line backend can write in the work folder. So a Gemini or
 > Antigravity message is not sent while a GEMINI.md (any case) is in the work folder or below it, or, for a Gemini CLI
 > chat, in Gemini’s own home or project memory. For Antigravity the same holds for an AGENTS.md or one of those
-> folders there, or directly in any folder above the work folder up to the root of the repository it is in. The page
-> says which file and why. The check is made before each message is sent: a file written during a turn can still load
-> for the rest of that turn, and the next message is refused. The scientist folder is inside Theodolite’s checkout by
-> default (`atlas_data/scientist`), so an AGENTS.md or GEMINI.md at the checkout’s root, or in `atlas_data`, stops
-> every Antigravity chat; set `THEODOLITE_SCIENTIST_DIR` outside the checkout to avoid that. These Gemini CLI rules
-> were checked on 0.70.0 against a stand-in API (`scripts/verify_scientist_gemini_cli.py`: 38 checks, run inside
-> `bwrap --dev-bind / / --unshare-net`, 22 November 2026; no record of that run is committed). The Antigravity chat has
-> mocks in `scripts/check_scientist.py` and seven live folder-reach turns on agy 1.5.14 (22 November 2026): writes
-> inside and outside the work folder, rules files, reads outside the work folder, `run_workflow` and schedule. None was
-> at the home reach, and no record of those turns is committed.
+> folders there, or directly in any folder above the work folder up to the root of the repository it is in, the
+> folders above taken both from the path as written and with its links followed. The page says which file and why.
+> The check is made before each message is sent: a file written during a turn can still load for the rest of that
+> turn, and the next message is refused. The scientist folder is inside Theodolite’s checkout by default
+> (`atlas_data/scientist`), so an AGENTS.md or GEMINI.md at the checkout’s root, or in `atlas_data`, stops every
+> Antigravity chat; set `THEODOLITE_SCIENTIST_DIR` outside the checkout to avoid that. Codex reads no AGENTS.md from
+> its work folder or any folder above it, and lists no skill: its own home sets `project_doc_max_bytes = 0` and
+> `[skills] include_instructions = false` (checked offline on codex-cli 0.169.0, 22 November 2026, with
+> `codex debug prompt-input` and a `codex app-server` turn sent to a stand-in model). It still reads an AGENTS.md in
+> that home (`<scientist folder>/codex-home`), which at the folder reach no chat can write, unless the scientist folder
+> is in `/tmp` or `/dev/shm`. These Gemini CLI rules were checked on 0.70.0 against a stand-in API
+> (`scripts/verify_scientist_gemini_cli.py`: 38 checks, run inside `bwrap --dev-bind / / --unshare-net`, 22 November
+> 2026; no record of that run is committed). The Antigravity chat has mocks in `scripts/check_scientist.py` and seven
+> live folder-reach turns on agy 1.5.14 (22 November 2026): writes inside and outside the work folder, rules files,
+> reads outside the work folder, `run_workflow` and schedule. None was at the home reach, and no record of those turns
+> is committed.
 >
 > Antigravity chats keep a data folder of the scientist’s own, one for all of them (`<scientist folder>/agy-gemini`,
 > passed as an absolute `--gemini-dir`), so your own Antigravity settings, plugins, skills, rules, subagents and plugin
