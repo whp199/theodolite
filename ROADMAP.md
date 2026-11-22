@@ -2764,10 +2764,13 @@ in order:
     loudness, at most 0.58 (one reading). Not read there: kept-back items, the reworded set, the folded form,
     any other edit, brief, layer or card.
   - **Left open, and known.**
-    The fresh items of a trial are new fillings of the brief’s kept-back frames (8 for the pronoun brief), the
-    frames the claim that made the edit a lead has read: the frames are not new to the edit. The reworded set is
-    what stands outside them, and the one set written so far is the starter set in the source, which anyone can
-    read; a trial of record wants a set of the owner’s own, kept in a file, and a kit sends even that out in clear.
+    The fresh items of a trial are drawn from the brief’s kept-back frames (8 for the pronoun brief), the frames
+    the claim that made the edit a lead has read: the frames are not new to the edit, and since the draw keeps out
+    practice items only, some items may not be either (4 of the 15 that read in the second trial-4 trial had been
+    read by its claim). The reworded set is what stands outside them. The sets written so far are the starter set
+    in the source, which anyone can read, and the two that pull request 6’s builder wrote for its trial-4 trials,
+    committed in their folders; a trial of record wants a set of the owner’s own, kept in a file, and a kit sends
+    even that out in clear.
     The harness cannot see another book: a budget, a reworded item’s uses and “read once” are a book’s.
     A returned book is a volunteer’s word: a hash chain holds no secret. The intake shows it is whole, is this
     trial, and agrees or not with the home’s figures.
@@ -2775,14 +2778,17 @@ in order:
     ruling’s known positive (the vault’s own example, row 37).
     `ffn_gate` and `ffn_up` adapters are unread through llama.cpp, no adapter of this exporter has been served
     there, and compiling against a quantised GGUF was checked on a small F32 file only.
-    The page’s new words (trial of record, dry run, re-run, folded form, reworded set, not run) have no Lexicon
-    entry yet.
-    The trial’s command line takes the card’s lock; the page server still takes none.
+    Since pull request 6 the Lexicon has an entry for the page’s new words (trial of record, dry run, re-run,
+    folded form, reworded set, not run): “a trial of record”.
+    The trial’s command line takes the card’s lock, and since pull request 6 the page server takes it too on a
+    CUDA card.
     **What “of record” does not show.** Each condition is looked at; none is a signature. A copy of the level
     book, or the book cut back to an earlier line, takes the same trial again, and so does a level book the
     environment points elsewhere (`$XDG_DATA_HOME`): the harness sees one book. Code that calls the model itself,
     before the trial, is not seen by the kernel’s count. These guard an honest owner against a mistake; they do
     not stand against one who sets out to get round them, and the sheet and `RULES.md` now say so of the book.
+    Within one book, a renamed brief or a rescaled or negated copy of an edit no longer gets a second trial (the
+    owner’s ruling of 22 November 2026, as the mends built it); what still does is under “What waits on the owner”.
     A trial after a claim that did not read a lead is refused. The known answer’s own claim has never read a
     lead (its harm to near misses is real), so in a book that holds its claim it has no trial, which is what a
     trial would say of it; but an edit that is a lead and whose claim drew `kept the base` or `did not replicate`
@@ -2974,6 +2980,29 @@ in order:
     November 2026): 19 of 19, with the figures in `ARCHITECTURE.md`. On `pronoun_pull` the scripted baselines found
     no lead at any reach in three sessions an arm. The knob twin of the known answer read “works but harms”, as the
     weight edit does in most draws.
+- **Pull request 6 (whp199/theodolite#6), reviewed and mended** (built 21 November 2026, reviewed and mended 22
+  November 2026). Built by another agent, it gave blinded sessions `propose_repair`, made the page server take the
+  card’s lock, took the leading space off
+  `pronoun_pull`’s answer stems and the starter reworded items, and built way (b) of “What waits on the owner”
+  as rule `trial-4`, with a new Gram-preserving same-site draw; two trials of record of one edit were read under
+  it (README). Its documents called the second the first passed trial of record. The review found that the pass
+  exists only under trial-4 and that the documents outran the records. The mends:
+  - put trial-3 back and take the Gram draw out, which had changed claim readings too, so same-site control edits
+    are drawn as before;
+  - make “an edit has one trial” hold by direction on any brief (ARCHITECTURE §7, Phase 5);
+  - refuse to read, verify or judge a trial-4 folder, or to export an adapter with its verdict (both folders stay
+    committed as records), and name trial-4 where a sheet, a same-direction row, a sentence of record, a gate’s
+    refusal or the door’s `brief_info` shows such a trial;
+  - have a sheet and a sentence of record say when the folded tolerance was registered off the code’s defaults
+    (both trial-4 trials were, at a floor multiplier of 1.5);
+  - make the blinded benchmark score what the door took (ARCHITECTURE §7, Phase 6).
+
+  The stems’ lost space moves `pronoun_pull`’s brief id from `d977dba69441` to `ea85a5b84c48` and its starter
+  reworded set’s from `6e9f06d28bc9` to `0da8ec1ceb3b`: a bar set calibrated under the old id is refused, and a
+  book that read `pronoun_pull` fresh under it refuses new claims of the brief (the review found neither on disk).
+  The adapter the builder exported from the second trial, outside the repository, carries that trial’s verdict and
+  says “earlier trials 0”; this code refuses such an export. CPU checks and the card run, at `b230b3f`, are in
+  ARCHITECTURE §7.
 - **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
   trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the
   builders there and the owner’s to change. **First, because nothing can pass until it is settled: what a trial
@@ -3004,6 +3033,25 @@ in order:
   Whichever is chosen, 39 control edits at two fresh readings a brief leave no slack: a pass needs all 39 sets
   to share no site and none to move as much. And until it is settled, whether a trial may be read of record at
   all is the owner’s too: as built it may, with a notice printed at registration and before the read.
+  Asked on 20 November 2026 what a pass should ask of its control edits, the owner answered “Leave it for now”. Pull
+  request 6’s builder then built way (b) as rule `trial-4` without the owner adopting it: same-site control edits
+  (and sham edits) counted for the edit when at least 0.85 times as loud as it over the prompt, over the answer and
+  at the last position, other-site and reworded control edits judged as read, and a Gram-preserving same-site draw
+  for down-projection edits of 2 to 256 columns that are not rank 1 (which the trials’ rank-1 edit never reached).
+  It registered and read two trials of record of one edit under it on 21 November 2026, with reworded sets it
+  wrote and with no ruling from the owner on whether a trial may be read of record; the second read `passed` on its
+  sheet and fails when the review judged it again by trial-3 (README). The design has only the owner count a trial
+  in, from a reworded set of the owner’s own, and the review put to the owner whether that second trial counts as
+  of record at all. On 22 November 2026 the owner ruled “trial 3”, and the mends took trial-4 and its same-site draw
+  out: the rule in force is trial-3, and whether to change it is still the owner’s. The mends also kept trial-4’s
+  two committed folders as records, which this code refuses to read, verify or judge, or to export an adapter with
+  their verdicts. The coordinating review (a Claude Code session) had recommended (b) on 20 November, and withdrew the
+  recommendation on 22 November in its review of pull
+  request 6: for a rank-1 edit along a direction aligned with the metric, the same-site control edits pass by how
+  they are made, and the other-site ones, judged as read, were about a sixth as loud as the edit where the metric is
+  read, so a pass under (b) tests the direction, not the sites. That review names a pilot worth running before any
+  rule changes: for an edit that adds to columns, as that one did, scaling each other-site control edit to the
+  change the edit delivers where the metric is read is linear (unlike a silence past dose 1, under (c)).
   Then: whether a claim should judge its control
   edits as a trial does and draw its sets spread; whether the starter briefs’ items, of which every one of the
   pronoun brief’s on record is read under the kernel’s item gate on the 31B, should be ones the base finds
@@ -3015,13 +3063,37 @@ in order:
   prompt arm matches the known answer); that a trial follows only a claim that read a lead, at its dose; that a
   trial of record is
   read in the level book; 99 control edits a family by default and 19 for the reworded set, which is judged
-  alone at the level; 16 fresh items (the proposal spoke of 256); the folded tolerance; five uses of a reworded
+  alone at the level; 16 fresh items (the proposal spoke of 256); that a trial’s draw keeps out practice items
+  only, so it may repeat an item an earlier fresh reading of the brief read (4 of the second trial-4 trial’s 15
+  had been read by its claim); the folded tolerance, and that a registrant may set its floor multiplier, share and
+  least tolerance through `register_trial` (both trial-4 trials were registered at a floor multiplier of 1.5, and
+  at the default of 1 neither passes at any least effect); five uses of a reworded
   item; the tolerances of an intake (a figure within one home floor or 5% of the home figure, never under 0.02;
   a delivered figure within 5% of the home’s and never closer than 1e-5; a count of draws the same; the same
   figures to 1e-6) and its two leaves; that an adapter is exported off the model only for an edit a
   book shows the kernel has read, and with no trial behind it, saying so, and never past the kernel’s cap on a
   dose; a blinded reply’s wait of twice its
   price; that the compare tab replays a trial at all.
+  Ruled on 22 November 2026 as well: “an edit has one trial” holds across briefs and up to scale. As built since
+  (ARCHITECTURE §7): a trial is refused when the book holds, under any brief’s name, a trial of the edit’s
+  direction or a claim of it that read no lead, a rescaled copy being one direction (as built, a negated one too).
+  What still escapes one trial within one book: a scale written again as the add of its change, or the reverse (scaled
+  entries are
+  compared as factors and added ones as vectors, and no weights are read to make the two one); a copy whose payload
+  is changed past a cosine of 0.9999 (an extra site whose change counts is one way); and, as before, another book, a
+  copy of the book, a level book `$XDG_DATA_HOME` points elsewhere, and code outside the harness. Where the gate
+  cannot tell, it refuses: a set edit is told apart only with the model at hand, and a low-rank reading with no
+  saved folder refuses every trial that shares its linear in that book. Left to the owner by the mends:
+  - two edits are compared over every site either changes, so a copy with a negligible extra site is one
+    direction: keep that widening, or compare only edits on the same sites?
+  - should a scale and an add of its change be made one direction, by comparing the weight changes themselves?
+  - the dose rule follows the direction across briefs, so two leads at different doses on two briefs would refuse
+    every trial of it: keep that, or bind the dose rule only to claims on the trial’s own brief?
+  - should read-once for claims follow the direction too (it is by edit id, on one brief)?
+  - a negated copy, the opposite change, is one direction with the edit: keep that, or count only positive scales?
+  - a trial under any rule spends its direction’s one trial, a trial-4 one too though this code does not read it,
+    so the owner’s book can take no further trial of edit `6789c6b18fce`’s direction: keep that, or let a trial-4
+    trial spend nothing?
   For Phase 6, ruled on 20 November 2026: Claude Code gets the door’s tools and nothing else. Chosen by the builders
   in the mends, and the owner’s to change:
   - a fresh knob claim needs a steering part;
@@ -3034,41 +3106,24 @@ in order:
   - when a driver is stopped, a running reading is waited for however long it takes (a call that never ended would
     hang a study);
   - the rebuild’s 200 words count every word and number of its record.
+  Chosen in the mends of pull request 6, and the owner’s to change:
+  - the two trial-4 folders stay committed as records, which this code refuses to read, verify or judge; the other
+    way is to take them out of the repository;
+  - in the blinded benchmark, a case with no proposal recorded (the driver never called `propose_repair`, a cap
+    stopped it first, or the door refused every call) is left out of both rates and tallied apart; the other way is
+    to count it, a canary as not abstaining and a plant as a miss;
+  - a blinded case whose driver is a stand-in (a transport that types fixed replies, a mock CLI) is scored as a
+    measurement and marked `driver_stand_in`, not set apart as a plumbing check.
 
-  **Settled and verified on the live 31B (21 November 2026, `43ee61c`–`e79b40f`):**
-  - **Trial control rule settled as `trial-4` (option (b) above):** Gram-preserving Haar-Stiefel multi-column
-    `same_site` controls (`SAME_SITE_MIN_RATIO = 0.85` over prompt, answer, and end; same bar for `sham_target` under
-    `declared_rule`), with `other_sites_matched` drawn `spread`, counted by disjoint sets (`separate_draws`), and
-    judged as read with delivered loudness printed beside the edit’s. `backend/server.py` takes `gpu.lock`, `Lexicon`
-    documents `trial-of-record`, and `pronoun_pull` leading-space stems were corrected. Verified 3,821/3,821 CPU &
-    frontend checks (clean `npm run build`) and 178/178 live 31B card checks across all 5 verification scripts (0
-    unpacker fallbacks).
-  - **Blinded repair (`propose_repair`) and Phase 6 protocol tests run on live 31B:** blinded sessions now offer
-    `propose_repair(edit=None, diagnosis="", confidence=None)` over an identical door surface. On live 31B: canary
-    abstained honestly (`edit: null`, confidence 0.85) and two sub-threshold plants (`kl_plant_alone = 0.0111` at L50,
-    `0.0076` at L54) drew no fabricated repairs; a cold driver given only the 238-word page with no site named ran 63
-    calls across all 10 door tools, independently rediscovered `L50:5313` (`0.5`) + `L58:20479` (`-1.0`), and
-    submitted a claim honestly judged `void` (30/39 matched peers); a fresh session given only a 195-word rebuild
-    description replayed all 416 arm figures bit-identically (`max_abs_gap = 0.0`).
-  - **First live `passed` Trial of Record on Gemma-4-31B-it (`occ_gender_debias_l42_v2`):** 10-neuron
-    selectivity-weighted `add_to_columns` edit on layer 42 `down_proj` (`6789c6b18fce`, `amp = 0.2610`, fitted on 16
-    practice trade clauses). In the append-only default level book (`~/.local/share/theodolite/level_book.jsonl`),
-    earlier brief `occupational_gender_debias` (`M = 0.75`) recorded `works but harms` at `amp = 0.58` (`near_misses
-    0.360 > 0.25`) and a `failed` Trial of Record at `amp = 0.2610` (`lead` on kept-back `+3.04/+3.06`, `0/119`,
-    near-miss `0.063`, but `M = 0.75 < 4F` on reworded `F = 0.270` and one `0.1932 vs 0.1745` large folded gap). On
-    disjoint `occupational_gender_debias_v2` (`M = 1.50`), the same edit `6789c6b18fce` read `lead` on Claim Reading 1
-    (`+3.7300`, `0/119`, near-miss `0.0228`) and **`passed`** (`of_record = True`, registration `38d4357be5fc`, clean
-    commit `e79b40f6485a`, book lines 32–39, 0 fallbacks) on Trial of Record `occ_gender_debias_l42_v2`: `+2.8552/+2.8611`
-    (`0/119` matched `119/119` disjoint `p_fw = 0.017`, `0/119` same-site `119/119 >= 0.85×`, folded `+2.8182/+2.8700`),
-    reworded `+1.2746/+1.3451` (`0/59`, `p = 0.017`, folded `+1.2629/+1.3345`), neutral KL `7.98e-5`, near-miss
-    `0.0686` (`2.40%` of target vs author prompt arm `10.6594`), `matched_by: none`. Exported outside git as a 1.08 MB
-    rank-10 llama.cpp LoRA adapter (`max_abs_err = 0.0`, verdict re-judged from book line 39).
-
-  Still open:
-  - running a second cold-driver model family and a multi-session agent study across reaches (more than 3 sessions an
-    arm so Fisher/permutation comparisons can separate arms at `p < 0.05`);
-  - running a volunteer re-run kit on a second card, and re-measuring an exported LoRA adapter over a served GGUF;
-  - how a dollar ceiling is approved (today it is the figure in the owner’s plan).
+  Open:
+  - whether a blinded session should have a way to propose a repair: pull request 6 added one (`propose_repair`)
+    with no word from the owner, and none has been given; no driver that is an agent has used it in the benchmark;
+  - the ruling’s two driver tests, a cold driver of two families and a rebuild in a fresh session: the sessions of
+    21 November 2026 ran outside the benchmark with no committed record (ARCHITECTURE §7). The cold driver was of
+    one family and did not reach the known answer, so that test has not been run as the ruling asks; a fresh
+    session’s rebuild reproduced 416 figures in the builder’s scratch, and has no record in the repository;
+  - how a dollar ceiling is approved (today it is the figure in the owner’s plan);
+  - the first study with an agent driver, which at three sessions an arm could separate nothing.
   The ruling’s decisions (`experiments/results/weight_space_exploration/verify/arbiter.md`
   §9): who it is for first, the agent’s door or the page (0); what waits for the census and the volunteers (1); what
   each driver may do (2); the registered gate’s rule and what a stop stops (3); gradients, after pilot F (4); the public
