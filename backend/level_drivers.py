@@ -196,6 +196,12 @@ def _fresh_readings_left(session: lses.LevelSession, brief_card: Mapping[str, An
         return m
 
 
+BLINDED_KEEP_BASE_SAY = (
+    "To keep the base model, call propose_repair once with edit=null: that is an abstention. A session that ends "
+    "without a propose_repair the door takes gives no answer, and no answer is not an abstention."
+)
+
+
 def build_driver_prompt(
     session: lses.LevelSession,
     *,
@@ -213,6 +219,9 @@ def build_driver_prompt(
     mode = card.get("mode", "weight_edit")
     reach = card.get("reach", "sandbox")
 
+    # In a blinded session the base model is kept by saying so, a propose_repair with edit null: a session that stops
+    # without one gives no answer, which the benchmark never counts as an abstention (level_eval.ANSWER_SAYS)
+    blinded = "propose_repair" in tools
     if is_bare:
         sys_lines = [
             f"You are driving a Theodolite Levelling session (mode={mode}, reach={reach}).",
@@ -221,7 +230,8 @@ def build_driver_prompt(
                 f"Budgets: max_gpu_seconds={bud['max_gpu_seconds']:g}, max_forwards={bud['max_forwards']}, "
                 f"max_cells={bud['max_cells']}, max_wall_seconds={bud['max_wall_seconds']:g}."
             ),
-            "Keeping the untouched base model (submitting nothing when no candidate works) is a valid outcome.",
+            (BLINDED_KEEP_BASE_SAY if blinded
+             else "Keeping the untouched base model (submitting nothing when no candidate works) is a valid outcome."),
         ]
     else:
         sys_lines = [
@@ -233,7 +243,8 @@ def build_driver_prompt(
             "- Never rely on priors or literature; only measurements from your tool calls count.",
             "- Practice tools return aggregate summaries and ranks against control edits, never a verdict.",
             "- Kept-back frames and retention batteries are refused in practice; use draw_practice or write your own items.",
-            "- Keeping the base model (stopping without a claim if nothing clears the noise floor and controls) is an honest ending.",
+            ("- " + BLINDED_KEEP_BASE_SAY if blinded else
+             "- Keeping the base model (stopping without a claim if nothing clears the noise floor and controls) is an honest ending."),
             (
                 f"- Hard budgets: {bud['max_gpu_seconds']:g} GPU-seconds, {bud['max_forwards']} practice forwards, "
                 f"{bud['max_cells']} cells, {bud['max_wall_seconds']:g} wall seconds."
@@ -895,6 +906,8 @@ print("LR_JSON:" + json.dumps({{"B": mb, "A": ma}}))
         else:
             stop_reason = "kept_base_abstention"
     elif "propose_repair" in allowed and not _stopped():
+        # A blinded session: the baseline abstains by rule, whatever it read. That checks propose_repair's path and is
+        # never a measurement (level_eval.run_blinded_benchmark scores it "plumbing check (scripted baseline)")
         ok_pr, _pr_res = _step("propose_repair", {
             "edit": None,
             "diagnosis": "scripted baseline submits abstention in blinded diagnostic session",
@@ -1199,13 +1212,10 @@ def run_replay_driver(
                 proposed_knob = args.get("knob")
                 stop_reason = "claimed"
             elif tool == "propose_repair":
+                # a replay proposes only as any driver does, by a propose_repair the door takes (a read is never one)
                 ed_arg = args.get("edit")
                 proposed_edit = dict(ed_arg) if isinstance(ed_arg, Mapping) else None
                 stop_reason = "proposed_repair" if proposed_edit is not None else "kept_base_abstention"
-            elif tool == "read" and step.get("propose"):
-                plan_arg = args.get("plan")
-                if isinstance(plan_arg, Mapping) and isinstance(plan_arg.get("edit"), Mapping):
-                    proposed_edit = dict(plan_arg["edit"])
 
     stop_reason, failure, door = _plain_ending(stop_reason, turns, tool_errors)
     return _extract_outcome_from_book(

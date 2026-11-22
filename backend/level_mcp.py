@@ -95,8 +95,10 @@ POD_DEFAULT_ROOT = Path("/workspace")  # scripts/pod/common.sh DEFAULT_ROOT: whe
 def card_lock_path() -> Path:
     """The card's lock file. On a pod it is the one a census shard, the pilot and the self-test take
     (`<pod root>/logs/gpu.lock`, scripts/pod/common.sh `hold_card`), so a session and those jobs keep each other off
-    the card. On the home machine nothing else takes a lock yet (the page server does not): the file sits beside the
-    level book, outside every checkout, and keeps two sessions from loading the model at once."""
+    the card. On the home machine the file sits beside the level book, outside every checkout. The page server takes
+    this same lock (`hold_card`, backend/server.py) before it loads the model on a CUDA card, unless
+    $THEODOLITE_DEVICE is cpu or $THEODOLITE_SKIP_CARD_LOCK is set, and keeps it while it runs: so a session and the
+    page server keep each other off the card, and two sessions never load the model at once."""
     root = os.environ.get(POD_ROOT_ENV, "").strip()
     if root:
         return Path(root).expanduser() / "logs" / "gpu.lock"
@@ -401,8 +403,9 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
     "propose_repair": {
         "name": "propose_repair",
         "description": (
-            "Submit one candidate repair edit recipe (or null to abstain explicitly) in a blinded diagnostic session "
-            "for post-session scoring. Allowed once per session."
+            "Submit one candidate repair edit recipe, or edit null to abstain explicitly, in a blinded diagnostic "
+            "session for post-session scoring. Allowed once per session. `edit` must be given: a call without it is "
+            "refused and spends nothing. The repair scored is the edit as built when it is submitted."
         ),
         "inputSchema": {
             "type": "object",
@@ -412,9 +415,8 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
                     "description": "Candidate edit recipe object, or null to abstain if no change is warranted.",
                 },
                 "diagnosis": {
-                    "type": "string",
-                    "description": "Short plain-text summary of your diagnostic findings.",
-                    "default": "",
+                    "type": ["string", "null"],
+                    "description": "Short plain-text summary of your diagnostic findings, or null.",
                 },
                 "confidence": {
                     "type": ["number", "null"],
@@ -423,6 +425,7 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
                     "description": "Optional confidence between 0 and 1.",
                 },
             },
+            "required": ["edit"],
             "additionalProperties": False,
         },
     },
@@ -435,7 +438,19 @@ def tools_for_session(session: lses.LevelSession) -> List[Dict[str, Any]]:
 
 
 def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]) -> Dict[str, Any]:
-    """Dispatch one MCP tool call against `session`, enforcing the session's filtered tool list."""
+    """Dispatch one MCP tool call against `session`, enforcing the session's filtered tool list. A `propose_repair`
+    call the door refuses, for whatever reason (a missing or wrong argument, the edit gate, the wall-clock cap, a second
+    submission), is kept in the door's own words (`LevelSession.note_refused_proposal`) before the refusal goes back."""
+    if name != "propose_repair" or name not in session.allowed_tools():
+        return _dispatch_tool(session, name, args)
+    try:
+        return _dispatch_tool(session, name, args)
+    except Exception as exc:
+        session.note_refused_proposal(str(exc))
+        raise
+
+
+def _dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]) -> Dict[str, Any]:
     if name not in session.allowed_tools():
         raise lses.SessionRefused(f'Tool "{name}" is not available in this session (allowed: {", ".join(session.allowed_tools())}).')
     a = dict(args or {})
@@ -446,6 +461,14 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
     if extra:
         raise lses.SessionRefused(
             f'Tool "{name}" takes no argument named {", ".join(extra)} (it takes: {", ".join(sorted(known)) or "none"}).'
+        )
+    # and an argument the schema requires is asked for in plain words, before anything is done or spent
+    needed = list(TOOL_SPECS[name]["inputSchema"].get("required") or []) if name in TOOL_SPECS else []
+    missing = [k for k in needed if k not in a]
+    if missing:
+        raise lses.SessionRefused(
+            f'Tool "{name}" needs the argument{"s" if len(missing) > 1 else ""} {", ".join(missing)}: nothing was done.'
+            + (" Give edit null to abstain." if name == "propose_repair" else "")
         )
     if name == "status":
         return session.status()
@@ -521,11 +544,15 @@ def dispatch_tool(session: lses.LevelSession, name: str, args: Mapping[str, Any]
             practice_best=a.get("practice_best"),
         )
     if name == "propose_repair":
-        return session.propose_repair(
-            a.get("edit"),
-            diagnosis=str(a.get("diagnosis", "")),
-            confidence=a.get("confidence"),
-        )
+        # each argument is the type its schema says, and a null diagnosis stays null
+        ed, dg, cf = a["edit"], a.get("diagnosis"), a.get("confidence")
+        if ed is not None and not isinstance(ed, Mapping):
+            raise lses.SessionRefused(f"edit must be an edit recipe object, or null to abstain; not {type(ed).__name__}.")
+        if dg is not None and not isinstance(dg, str):
+            raise lses.SessionRefused(f"diagnosis must be a string, or null; not {type(dg).__name__}.")
+        if cf is not None and (isinstance(cf, bool) or not isinstance(cf, (int, float))):
+            raise lses.SessionRefused(f"confidence must be a number between 0 and 1, or null; not {type(cf).__name__}.")
+        return session.propose_repair(ed, diagnosis=dg, confidence=cf)
     raise lses.SessionRefused(f'Unknown tool "{name}".')
 
 
@@ -557,7 +584,10 @@ def _call_tool(session: lses.LevelSession, name: str, args: Any) -> Tuple[bool, 
     """One door call: `(True, its reply, the reply as JSON text)`, or `(False, None, "error: <why>")` for any refusal
     or failure (a reply that cannot be written as JSON among them)."""
     if not isinstance(args, Mapping):
-        return False, None, f'error: Tool "{name}" takes its arguments as a JSON object, not {type(args).__name__}.'
+        why = f'Tool "{name}" takes its arguments as a JSON object, not {type(args).__name__}.'
+        if name == "propose_repair" and name in session.allowed_tools():
+            session.note_refused_proposal(why)
+        return False, None, f"error: {why}"
     try:
         out = dispatch_tool(session, name, args)
         return True, out, json.dumps(out, ensure_ascii=True)

@@ -257,8 +257,8 @@ def cmd_register(a: argparse.Namespace) -> int:
                   "one with --dry-run (it spends a fresh reading of the brief all the same).", file=sys.stderr)
         else:
             print("next: commit the folder as it stands, then run it from a clean checkout (a trial of record), or "
-                  "read it now with --dry-run; in the book it is read in, either is the edit's one trial.",
-                  file=sys.stderr)
+                  "read it now with --dry-run. By the notice above a read of record is not expected to pass as the "
+                  "rule stands; in the book it is read in, either is the edit's one trial.", file=sys.stderr)
         return 0
     except _refusals() as exc:
         print(f"Refused: {exc}", file=sys.stderr)
