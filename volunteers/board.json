@@ -104,7 +104,8 @@
   7052821894,
   7053068555,
   7053421069,
-  7062884005
+  7062884005,
+  7071951155
  ],
  "claims": [
   {
@@ -1318,7 +1319,7 @@
    "kit": "7",
    "via": "github",
    "at": "2026-11-20T23:43Z",
-   "state": "running",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-11-20T23:43Z",
@@ -1343,12 +1344,35 @@
      "via": "github",
      "what": "claim=0471bd29 done=53% eta=2026-11-22T00:53Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-22T01:03Z",
+     "via": "github",
+     "what": "claim=0471bd29 sha256=0dcf211f67a4b9f7 size=951MB link=https://github.com/Asynonymous/theodolite/releases/download/L54-match_things-0471bd29/L54-match_things-0471bd29.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-22T15:13Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-11-22T15:21Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-11-22T15:24Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
     }
    ],
    "started_at": "2026-11-20T23:43Z",
    "bits": "own",
    "done": "53%",
-   "eta": "2026-11-22T00:53Z"
+   "eta": "2026-11-22T00:53Z",
+   "submitted_at": "2026-11-22T01:03Z",
+   "bundle_sha256": "0dcf211f67a4b9f7",
+   "size": "951MB",
+   "link": "https://github.com/Asynonymous/theodolite/releases/download/L54-match_things-0471bd29/L54-match_things-0471bd29.tar",
+   "note": "own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
   }
  ],
  "layers": {
@@ -1617,8 +1641,10 @@
    "note": "19-20 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's two gates, read whole"
   },
   "54": {
-   "state": "open",
-   "note": "match_things; its trial passed, 19 November 2026; twice the answers, about 30 hours on a 5090"
+   "state": "done",
+   "by": "anon 0471bd29",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "20-22 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole"
   },
   "55": {
    "state": "stopped",
@@ -1641,5 +1667,5 @@
    "note": "not trialled with this kit's push strengths: not taken"
   }
  },
- "updated_at": "2026-11-21T17:03Z"
+ "updated_at": "2026-11-22T16:07Z"
 }

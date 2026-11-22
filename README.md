@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <sub>The census: twenty-four of the sixty layers done, one being taken, none open (21 November 2026).
+  <sub>The census: twenty-five of the sixty layers done, none being taken, none open (22 November 2026).
   <a href="https://github.com/whp199/theodolite/issues/1">The board</a> · <a href="VOLUNTEERS.md">take a layer</a>.</sub>
 </p>
 
@@ -86,9 +86,10 @@ by the home card and by volunteers on their own. The first eleven layers taken (
 - **Checked against the home card.** Each volunteer run’s first batch is compared with the home card’s: bit for bit
   on the same kind of card, and within bars measured beforehand on another.
 
-On 21 November 2026 twenty-four layers were done (31–54, counting 1–60 as the pages do; the board counts 0–59). One of
-them, layer 31 (the board's 30), read whole falls short of its trial on one figure, and the board says so. One was
-being taken (kit 7's layer 55, the board's 54), none was open, and the rest wait for a push that passes a trial there.
+On 22 November 2026 twenty-five layers were done (31–55, counting 1–60 as the pages do; the board counts 0–59). One of
+them, layer 31 (the board's 30), read whole falls short of its trial on one figure, and the board says so. None was
+being taken and none was open: every layer a kit offered is done, and the rest wait for a push that passes a trial
+there.
 [How to take a layer](VOLUNTEERS.md) · [the board](https://github.com/whp199/theodolite/issues/1) · [the atlas and the
 census at length](docs/ATLAS.md) · [every figure](ROADMAP.md#vi--the-atlas).
 

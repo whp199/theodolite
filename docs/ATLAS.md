@@ -85,10 +85,14 @@ that took 38 and 40, bit for bit, leads by 0.694 (0.675 in its trial) and says m
 0.586, and 1,893 have q ≤ 0.05. On 21 November two more came home. 54 (53 on the board), from the RTX 5090 that took
 38–40, bit for bit, passes both of its trial's checks read whole, close to its trial: it leads by 0.747 (0.751), its
 words carry by 0.585 and 0.593, 3,640 have q ≤ 0.05 and 1,466 beat all 2,048, and its strongest random directions
-stand 6 to 10 deviations out writing “thought” run together. The steer lens agrees with it, the highest layer it has
-been checked at. 31 (30), from the RTX PRO 6000 that took 32–36, misses both of its trial's checks on that one figure,
-its words carrying by 0.558 and 0.553, and says little of single neurons: none has q ≤ 0.05 and 49 beat all 2,048.
-55 (54) is being taken, and none is open. Every figure is in ROADMAP §vi.
+stand 6 to 10 deviations out writing “thought” run together. The steer lens agrees with it. 31 (30), from the RTX
+PRO 6000 that took 32–36, misses both of its trial's checks on that one figure, its words carrying by 0.558 and 0.553,
+and says little of single neurons: none has q ≤ 0.05 and 49 beat all 2,048.
+On 22 November 55 (54) came home from the RTX PRO 6000 that took 31–36, and passes both of its trial's checks read
+whole, a little above its trial: it leads by 0.727 (0.712), its words carry by 0.621 and 0.625, 5,481 have q ≤ 0.05
+and 4,254 beat all 2,048, and its strongest random directions stand 6 deviations out writing “thought” run together.
+The steer lens agrees with it, now the highest layer it has been checked at. None is being taken and none is open.
+Every figure is in ROADMAP §vi.
 
 <table>
   <tr>

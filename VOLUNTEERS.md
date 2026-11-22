@@ -13,7 +13,8 @@ done with that miss named on the board. From 17 to 19 November 2026 six more cam
 and 52**, and each passed every check its trial was read by (two at layer 31, three at the others). On 21 November
 2026 two more came from volunteers, **30 and 53**. Layer 53 passed both checks its trial was read by. Layer 30 missed
 both on one figure, how its words carry between the question halves (0.553 against 0.57): its trial had passed on a
-kind draw of random directions, and the volunteer's card was not the cause (ROADMAP §vi).
+kind draw of random directions, and the volunteer's card was not the cause (ROADMAP §vi). On 22 November 2026 one more
+came from a volunteer, **54**, and it passed both checks its trial was read by.
 
 Layers 40 to 50 are the eleven the first push strengths, ±1 and ±2 of the stream, were calibrated for. **A layer outside
 them is not offered blind.** We first take a trial of it on our own card: about a thousand of its neurons against
@@ -335,8 +336,8 @@ by those two (`census_wide_trials/prereg/`, `census_things_trial/prereg/` and `c
 push strengths are counted calibrated at eleven of the fourteen layers whose trial passed. Kit 3 opened nine of them,
 layer 36 was held for our own card and taken there, kit 5 added layer 31, kit 6 layer 30, and kit 7 adds 53 and 54.
 At those three they are not counted calibrated yet: that is the owner's to decide, and nothing has been changed.
-Read whole by these checks (16 to 21 November 2026), layers 32 to 35, 37 to 39, 51 and 52 pass all three, layers 31
-and 53 pass their two, layer 36 passes two and misses the gentler push's check on one figure, 0.564 against 0.57, and
+Read whole by these checks (16 to 22 November 2026), layers 32 to 35, 37 to 39, 51 and 52 pass all three, layers 31,
+53 and 54 pass their two, layer 36 passes two and misses the gentler push's check on one figure, 0.564 against 0.57, and
 layer 30 misses both of its two on one figure, how its words carry between the question halves, 0.553 against 0.57.
 Whether the push strengths stay counted calibrated at 36 is the owner's to decide; nothing has been changed. At any other layer the atlas marks a census "doses not calibrated at this layer", and its strongest neurons are
 drawn on the map without gilt.

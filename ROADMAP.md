@@ -1715,6 +1715,32 @@ layers, the determinism run and the sampled push on 29 October). In this section
       not widened for `match_things` anywhere (the owner’s word).
     - **The board**: twenty-four layers done, 30–53, eighteen of them by volunteers; 54 running under kit 7 (anon,
       0471bd29, an RTX PRO 6000, 53% on 21 November); none open.
+  - **Layer 54 read whole** (22 November 2026), taken with kit 7 by anon (Asynonymous, 0471bd29), who took 30 to 35, on
+    the RTX PRO 6000 Blackwell card class. Begun 20 November at 23:29Z by the run’s record, in one session; DONE 22
+    November at 01:03Z, as a GitHub release, its sha256 matching the DONE line. Its spot chunks (198, 526, 762, 990
+    and 1267 of 1,473): the first word-piece the home card’s in 0.993 of answers (bar 0.90), log-probabilities apart
+    by a median 0.0037 (0.0091) and 0.112 at the 99th percentile (0.26). Read by its walk’s registered reader, N1 and
+    N3 ([`census_L54_whole/`](experiments/results/census_L54_whole/), `census/trials/things_walk/prereg`, hashed 18
+    November at 16:18Z), each reading’s figures given as for 30 and 53 above (bars 0.60, 0.58, 0.57, 0.56):
+
+    | layer, doses | every answer | the neurons the controls cover | its trial, every answer |
+    |---|---|---|---|
+    | 54, ±2.18 and ±2.34 ceilings | 0.727, 0.720, 0.621 and 0.625, 0.727 | 97 in 100; 0.724, 0.717, 0.614 and 0.619, 0.726 | 0.712, 0.714, 0.627 and 0.620, 0.709 |
+
+    - **54 passes both gates**, a little above its trial on the lead, and with room: its least gated figure, 0.614,
+      clears its bar by 0.044, twice what another draw of controls moved layer 30’s. Reported, gating nothing: the
+      lower dose alone again passes what N2 asks (0.645, 0.667, 0.578 and 0.587, 0.598; its trial 0.645, 0.656, 0.575
+      and 0.583, 0.597), so a design of that dose alone is still possible there; the upper dose alone leads (0.702)
+      but its words carry 0.569 and 0.576 (0.593 and 0.591 in its trial). Three questions a half carry 0.589 and
+      0.589, and 0.601 and 0.602. By the length rule it keeps 48 word-pieces (at 32 it passes too, lead 0.682, words
+      0.580 and 0.588). The neurons lose 0.11 to 0.12 of their distinct 4-grams at the lower dose and 0.22 to 0.23 at
+      the upper, the controls 0.12 and 0.28 to 0.29; all but a few controls’ answers run to the cut. Per neuron it says
+      much: 4,254 above all 2,048 controls (10.5 by chance), 5,481 with q ≤ 0.05 (5,710 with the five strongest set
+      aside), 4,731 more than five SDs over the controls’ median. Its strongest controls stand 5.7 to 6.3 SDs out
+      writing “thought” run together, as at 53. The steer lens, unchecked at 54 until now, agrees: a word shared with
+      0.798 of the 7,110 neurons above 95 in 100 controls (0.009 shuffled).
+    - **The board**: twenty-five layers done, 30–54, nineteen of them by volunteers; none running, none open: every
+      layer a kit offered is done. `DOSES_CALIBRATED` is not widened for `match_things` (the owner’s word).
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
