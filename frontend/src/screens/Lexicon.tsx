@@ -1672,9 +1672,11 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <EntryApparatus title="a trial of record">
             Implemented in <M>backend/level_trial.py</M>, <M>backend/level_export.py</M>, and{" "}
             <M>backend/level_rerun.py</M> (<M>scripts/levelling_trial.py</M>, <M>levelling_export.py</M>,{" "}
-            <M>levelling_rerun.py</M>; rule preset <M>trial-4</M>). Same-site control edits answer for disturbance size
-            at ≥ 0.85× edit loudness; matched other-site control edits are drawn spread, counted by disjoint sets, and
-            judged as read with their delivered stream change printed beside the edit’s.
+            <M>levelling_rerun.py</M>; rule preset <M>trial-3</M>). A matched other-site control edit counts for the
+            edit only when, as read, it changed the stream at least as much as the edit did; a quieter one is counted
+            as moving as much. Same-site control edits are built at the edit’s own sites. An edit has one trial: the
+            trial is refused when the book holds, under any brief, a trial of the edit’s direction (the same sites, its
+            change up to a scale) or a claim of it that read no lead.
           </EntryApparatus>
         </Entry>
       </EntryGrid>
