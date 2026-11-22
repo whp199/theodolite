@@ -2064,7 +2064,7 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/levelling.py` | items, the plan of a reading, the cost estimate, the paired and the written reading (short greedy or long sampled / thinking-on with loop & cut-off detectors), `capture_direction`, the read-outs, what a person reads (`lines`) |
 | `backend/level_book.py` | the append-only ledger, each line carrying the sha256 of the line before, plus `driver_view` redaction |
 | `backend/level_sandbox.py` | off-card CPU Python cell runner under `bwrap` (`--unshare-all`, no GPU, no `$HOME`, read-only `/weights`, a read-only `/atlas` of the index's own files at the atlas reach, read-only `/opt/app`, writable `/work`, `RLIMIT_AS` + descendant `VmRSS` cap, wall-clock kill, active `probe_sandbox`); links, pipes and the like a cell leaves in `/work` are removed unread before the host reads the folder |
-| `backend/level_session.py` | Phase 2 and 6 practice-only Agent's Door (`LevelSession`: the reaches `behaviour`, `activations`, `weights` and `atlas`, and Phase 2's names; `mode="weight_edit"` or `mode="knobs_only"`; `--bare`; GPU-second, forward, cell and wall budgets; the `status`, `cell`, `capture`, `atlas_query`, `estimate`, `read`, `write`, `knob_read`, `knob_write`, `book_view`, `claim` and `claim_knob` gates, the kept-back guard on items and on a knob's own text; blinded in-memory planted and canary sessions with matched `estimate`/`read` normalization; transcript copy on close) |
+| `backend/level_session.py` | Phase 2 and 6 practice-only Agent's Door (`LevelSession`: the reaches `behaviour`, `activations`, `weights` and `atlas`, and Phase 2's names; `mode="weight_edit"` or `mode="knobs_only"`; `--bare`; GPU-second, forward, cell and wall budgets; the `status`, `cell`, `capture`, `atlas_query`, `estimate`, `read`, `write`, `knob_read`, `knob_write`, `book_view`, `claim` and `claim_knob` gates, the kept-back guard on items and on a knob's own text; blinded in-memory planted and canary sessions with matched `estimate`/`read` normalization and one `propose_repair`; transcript copy on close) |
 | `backend/level_mcp.py` | thin stdio JSON-RPC MCP server projecting `LevelSession` for any MCP driver, plus `--mode`, `--bare` and `--socket`: a Unix-socket bridge in a private folder outside `/work`, one call at a time, so a CLI driver's sessions share one loaded model; when the driver stops, it kills a running cell and waits for a running reading |
 | `backend/level_briefs.py` | Phase 3 versioned briefs, policy guard, disjoint practice/kept-back frame generators, wording-overlap `KeptBack`, retention battery generators, 4 starter briefs |
 | `backend/level_claim.py` | Phase 3 calibrated hashed `BarSet`s, the gate every fresh reading is asked before it is registered (`fresh_reading_gate`, a claim's and a trial's alike), post-freeze `os.urandom(32)` claim execution, dual-batch-class control/battery/knob judgement, bounded Claim Sheets |
@@ -2075,7 +2075,7 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`); binds the index's own files only and refuses a symlink; marks each lens or eye label with the label gate's check in the gate's own words (`gate_check`, checked equal to `label_gate.label_check`), and sets steer words aside by the steer lens's own check |
 | `backend/level_knobs.py` | Phase 6 cheaper knobs (`KnobSpec`: a system prompt; decoding `thinking`, `sampler`, `logit_bias`; transient `direction`, `neuron_add`, `neuron_mul` steering), `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (asked `fresh_reading_gate`, spends one of the brief's m, needs a steering part; a `neuron_mul` knob faces its weight-edit twin's control edits and is read once with it; judged by `judge_claim`, with the knob gate's stricter frame interval and panel figure), `render_knob_sheet` |
 | `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `AgyCLIDriver`, `ClaudeCLIDriver` and `GeminiCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, caps and extra-tool guard; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
-| `backend/level_eval.py` | Phase 6 studies (`EvalStudyPlan`; `run_eval_study`: one calibration, each session in a side book of its own scored on its own lines, arms in turn, a session counted only when it ran to an end; `summarize_study`: Wilson intervals, exact Fisher and permutation tests, never pooled, no arm named ahead without p < 0.05; `load_study_from_book`, which works each outcome out again from its side book; `render_study_report`; `run_blinded_benchmark`, plumbing checks with neutral case ids and `repair_composition`; `render_cold_driver_page`; `make_rebuild_description` and `run_rebuild_replay`) |
+| `backend/level_eval.py` | Phase 6 studies (`EvalStudyPlan`; `run_eval_study`: one calibration, each session in a side book of its own scored on its own lines, arms in turn, a session counted only when it ran to an end; `summarize_study`: Wilson intervals, exact Fisher and permutation tests, never pooled, no arm named ahead without p < 0.05; `load_study_from_book`, which works each outcome out again from its side book; `render_study_report`; `run_blinded_benchmark`, which scores what the door took, with neutral case ids and `repair_composition`; `render_cold_driver_page`; `make_rebuild_description` and `run_rebuild_replay`) |
 | `docs/SCAFFOLD.md` | Phase 6 register of the trust boundaries a driver never loses and the conveniences a study can take away (`--bare` takes away the page's two convenience paragraphs) |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
 | `scripts/levelling_trial.py` | `reworded`, `register`, `verify`, `run` (the owner's command line for a trial; `run --dry-run` reads what would not be of record) |
@@ -2186,10 +2186,11 @@ CUDA: JSON header parsing opens the 23.26 GB 31B checkpoint in ~4 ms (`0.0039 s`
   refuses `"codex"` until probed with private compile cache), enforces hard caps in GPU-seconds, forward requests,
   cells, and wall-clock time, exposes a filtered tool list (`status`, `cell`, `capture`, `estimate`, `read`, `write`,
   `book_view`, plus `brief_info`, `draw_practice`, and `claim` when bound to a Phase 3 brief and bar set on non-blinded
-  sessions), asserts `weight_edits.assert_base` before and after every model call, enforces minimum control counts,
-  returns `level_book.driver_view` aggregates only (no word past a rank in practice), copies the transcript to
-  `<book_dir>/transcripts/` on `close()`, and supports in-memory-only planted faults and blinded canaries with
-  identical harness cards and `folded="never"` (zero disk/transcript leakage, nothing left on the model).
+  sessions, and `propose_repair` in blinded ones), asserts `weight_edits.assert_base` before and after every model
+  call, enforces minimum control counts, returns `level_book.driver_view` aggregates only (no word past a rank in
+  practice), copies the transcript to `<book_dir>/transcripts/` on `close()`, and supports in-memory-only planted
+  faults and blinded canaries with identical harness cards and `folded="never"` (zero disk/transcript leakage,
+  nothing left on the model).
   Three things the gates enforce since 19 November 2026. Kept-back frames: a practice reading, a written reading or
   a capture on an item that holds the wording of any starter brief's or the bound brief's kept-back frame (target
   or near-miss), a near wording of one (most of its pairs of neighbouring fixed words), or a question of the
@@ -2208,8 +2209,10 @@ CUDA: JSON header parsing opens the 23.26 GB 31B checkpoint in ~4 ms (`0.0039 s`
   (`claim_design`, `--claim-*`), all shown on the harness card. The MCP server loads the model itself, so it first
   takes the card's lock for the life of the process (`hold_card`: the pod's `logs/gpu.lock` on a pod, a file beside
   the level book at home) and refuses to start while the page server answers on its port, no CUDA device answers,
-  or under 22 GiB of the card is free (`card_refusal`). The page server and the command line take no lock: nothing
-  stops either from starting after a session has.
+  or under 22 GiB of the card is free (`card_refusal`). The page server takes the same lock before it loads the
+  model on a CUDA card (`backend/server.py`; not with `THEODOLITE_DEVICE=cpu` or `THEODOLITE_SKIP_CARD_LOCK` set)
+  and keeps it while it runs, so a session and the page server keep each other off the card. The command line
+  (`scripts/levelling.py`) takes no lock.
 
 **Phase 3: The Claim Gate** (`backend/level_briefs.py`, `backend/level_claim.py`, wired into `level_session.py`,
 `level_mcp.py`, and `scripts/levelling.py` `brief`/`calibrate`/`claim`): separates practice exploration from registered
@@ -2287,8 +2290,27 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   its trial or whose claim read no lead, the brief's budget `m`); it spends one of the brief's `m`; an edit has one
   trial and nothing is read of it on that brief after; where the book holds a claim reading of the edit, a trial
   follows it only if that claim read a lead, and at the dose the claim read (a trial promotes a lead; after
-  anything else it would be a second draw at one question); and every later sheet of the brief, a claim's or a trial's, lists it. A trial's bars are asked
-  more than a claim's: the calibration note must name the weights it was taken on, and must follow from its book
+  anything else it would be a second draw at one question); and every later sheet of the brief, a claim's or a trial's, lists it.
+  For a trial, "the edit" is its direction, on any brief and at any scale (the owner's ruling of 22 November 2026,
+  as the mends built it; `level_claim.same_direction`). An edit's payload is what a dose multiplies, site by site:
+  a scaled column's or row's factor less 1, a set or added one's change (an added vector, or a set vector less the
+  base's own column,
+  read from the model), a low-rank term's B @ A. Two edits are one direction when their payloads, each taken over
+  every site either changes (nothing where an edit leaves a site alone), have an absolute cosine of at least 0.9999
+  (`SAME_DIRECTION_COS`): a rescaled or negated copy is one, and so is a copy with an extra site whose change is too
+  small to move that cosine. A trial is refused when the book holds, under any brief's name, a trial of its
+  direction (of record, dry run or re-run, under any rule), a claim of it that read no lead or never ended, a knob
+  claim of it that also read a prompt or a decoding setting, a claim of it at another dose of the direction, or a
+  reading on a site it changes whose direction cannot be told (the refusal names that edit's full id). An earlier
+  edit is compared by the sites its note names, then the numbers its note holds, then its saved folder, and only
+  then the sketch its note records. From 22 November 2026 every claim and trial registration records `direction`
+  (the linears, the sites in words, the payload's length and a 128-number sketch of the normalised payload, keyed
+  by site; none for a low-rank term, for a set with no model at hand, or for an edit that changes nothing), and a
+  trial's registration also `same_direction`, the earlier readings of that direction on any brief that the gate
+  let through; its sheet, its sentence of record and an exported adapter's `book_before_it` list them, and
+  `RULES.md` says that the edit is its direction. A claim is still read once by its edit id on one brief. A
+  trial's bars are asked more than a claim's: the calibration note must name the weights it was taken on, and
+  must follow from its book
   (`calibration_follows`: its three readings stand before it, are the harness's own calibration readings of the
   brief, and give exactly the recorded bar set by the note's own `mult`), so bars typed into a note are not a
   calibration (a note follows by the version of the claim gate's rule its bar set names, so a calibration taken
@@ -2348,7 +2370,9 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read
   matches on its effect alone: `level_claim.KNOB_RULE`), `failed`, `void` (`judge_readings`; the
   folded form's mean and its largest item gap within one floor or 5% of the per-row form's and never more than half
-  the house bar).
+  the house bar). The floor multiplier, the share and the least tolerance (1, 0.05 and 0.02 by default) can be
+  registered otherwise through `register_trial`, not the command line; when they were, the sheet says so with each
+  value and its default, and so does the sentence of record (`folded_settings_words`).
   `run_trial_of_record` asks all of the above again before anything is written, makes and writes to the result
   folder, and only then enters the trial in the book; the seed of the draw is kept in `trial_seed.json` at once; and
   a trial that is entered always gets a verdict note (whatever raises after that is written as `void` and raised
@@ -2372,9 +2396,11 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   draws the sets were counted as), how loud its same-site control edits were beside the edit, how many of each
   battery's items read and how many of those under the item gate, how many of its fresh and reworded items that
   read the kernel read under its item gate, and that it was read once in one book. What a `passed` does not show:
-  the fresh items are new fillings of the frames every fresh reading of the brief is drawn from, so where a claim
-  came first the frames are not new to the edit; the reworded set is what stands outside them, the starter set in
-  the source is published, and any set is as public as the commit that holds its registration folder. And what "of
+  the fresh items are drawn from the frames every fresh reading of the brief is drawn from, and the draw keeps out
+  practice items only, so where a claim came first the frames are not new to the edit and some items may not be
+  either (4 of the 15 that read in the second trial-4 trial had been read by its claim); the reworded set is what
+  stands outside them, the starter set in the source is published, and any set is as public as the commit that holds
+  its registration folder. And what "of
   record" does not show: each condition is looked at and none is a signature. The harness sees one book: a copy of
   it, the book cut back to an earlier line, or another book the environment names as the level book would take the
   same trial again. `rejudge_trial` judges a trial again from the lines its note names and returns every figure the
@@ -2382,7 +2408,15 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   then set it aside, which `controls_aside` says; what the edit and each matched or sham control edit changed the
   stream by, at each place; and how many separate draws the sets were counted as); a book typed by hand is refused
   in words, never by another error. A registration folder is of rule preset `trial-3`: one written under an
-  earlier preset is refused by its version.
+  earlier preset is refused by its version. One registered under `trial-4`, a rule the owner never adopted, is
+  refused in one sentence (`level_claim.RULES_NOT_ADOPTED`): it is kept as a record and is not read, verified or
+  judged by this code, and an export refuses to carry its verdict. The two such folders, of 21 November 2026, are
+  committed in `experiments/results/levelling_trials/`. Where such a trial's verdict is shown (a sheet's earlier
+  trials, a same-direction row, a sentence of record, a gate's refusal, the door's `brief_info`) its rule is named
+  with it. A `trial-3`
+  folder registered by code from before 22 November 2026 does not verify, since its `RULES.md` lacks the words that
+  make an edit its direction, and must be
+  registered again; none is in the repository or the owner's trials folder.
 - **The owner's export.** `export_lora_adapter` writes a llama.cpp LoRA `.gguf` and a `.manifest.json` to
   `$THEODOLITE_EXPORT_DIR`, else `~/.local/share/theodolite/exports`, or to a path given; any path inside a git
   checkout, `atlas_data/`, a registration folder or a session's folder is refused (it cannot know every folder a tool
@@ -2445,8 +2479,8 @@ shell of its own could run the scripts: what keeps one from them is the door's s
 `backend/level_eval.py`, `docs/SCAFFOLD.md`, `scripts/levelling_eval.py`, with changes to `level_session.py`,
 `level_mcp.py`, `level_sandbox.py`, `level_claim.py` and `level_trial.py`; `level_eval` and `level_drivers` are imported
 by none of `level_mcp.py`, `level_session.py`, `level_routes.py`, `scientist_tools.py`, `scientist_mcp.py` or
-`server.py`). As built it can run a driver that is an agent; none has been run, so whether agents help is not yet
-measured.
+`server.py`). As built it can run a driver that is an agent; none has been run by it, so whether agents help is not
+yet measured.
 - **Four reaches.** `behaviour` (the practice, claim and book tools, nothing else), `activations` (and `cell` and
   `capture`), `weights` (and the read-only `/weights` in a cell), `atlas` (and the atlas index). A study never pools
   them.
@@ -2502,11 +2536,50 @@ measured.
   are listed apart. Arms are compared by Fisher's exact test and a permutation test with Wilson intervals, never
   pooled; no arm is named ahead without a two-sided p under 0.05 with at least three sessions a side, and at three
   sessions an arm none can be (the smallest such p is 0.1), which every report says.
-- **Blinded repair, rebuild, and cold-driver protocols (updated 21 November 2026, `43ee61c`).**
-  - **Blinded planted-fault & canary benchmark (`propose_repair`):** blinded sessions now expose `propose_repair(edit=None, diagnosis="", confidence=None)` over an identical door surface for planted and canary cases (refused on non-blinded sessions or on a second call). On the live 31B card (21 November 2026), the canary case (`456d6d8bc35b07c8`, 26 door calls) abstained honestly (`edit: null`, confidence 0.85), and two sub-threshold planted faults (`169622cf7b284243`, layer 50 `kl_plant_alone = 0.0111`; `72a5fcc7a242b9e0`, layer 54 `kl_plant_alone = 0.0076`, both below the 0.05-nat neutral KL bar) drew no fabricated repairs over 34 and 40 door calls (second recorded honest abstention at confidence 0.82). Where a plant-and-repair figure is read, the record still notes whether the repair would apply on a checkpoint with the planted weights (a scale repair of a planted silence recovers under additive `stack` deltas, not on such a checkpoint).
-  - **Fresh-session <=200-word rebuild (`arbiter.md` §5):** a live 31B reading (`L50 silence [5313, 8801, 266]`, `rows={12, 32}`, `3 other_sites_matched`, `seed=7`) distilled to 195 words (1,675 chars) by `make_rebuild_description` was handed alone to a fresh session; its standalone script replayed all 416 arm figures in a fresh GPU process bit-identically (`max_abs_gap = 0.000e+00`).
-  - **Cold-driver run (`arbiter.md` §5):** given only the 238-word cold page for `pronoun_pull` (`prompt_named_site = false`), a fresh session ran 63 live 31B door calls across all 10 door tools, independently rediscovered `L50:5313` (`factor=0.5`) + `L58:20479` (`factor=-1.0`), and submitted a claim (`edit_id = 556497fb6a65`) that honestly ended `void` (`other_sites_matched` found 30/39 eligible peers for that high-magnitude neuron pair).
-- **Trial rule `trial-4` and Gram-preserving `same_site` controls (`43ee61c`).** `TRIAL_VERSION = 4`, `TRIAL_RULE_PRESET = "trial-4"`, `SAME_SITE_MIN_RATIO = 0.85`: `same_site_controls` draws Haar-Stiefel orthonormal multi-column rotations (`_random_orthonormal_masked`, `_GRAM_SAME_SITE_MAX_K = 256`) preserving exact column Gram products in stream space; `same_site` (and `sham_target` for `declared_rule`) answers for disturbance size at `>= 0.85×` across prompt, answer, and end; `other_sites_matched` stays drawn `spread`, counted by disjoint sets (`separate_draws`), and judged as read with delivered loudness printed beside the edit's. `backend/server.py` acquires/releases `level_mcp.hold_card()` (`gpu.lock`) around CUDA lifespan, and `Lexicon.tsx` carries the `trial-of-record` entry.
+- **Built, measuring no driver yet.**
+  - The blinded planted-fault benchmark. Since pull request 6 a blinded session offers `propose_repair(edit,
+    diagnosis=None, confidence=None)`, once a session (adding a way to propose was the owner's by the text before
+    it, and the owner has not ruled on it: ROADMAP §viii). `edit` must be given, and null is an explicit
+    abstention. A call the door refuses spends nothing: one without `edit`, one with an argument of the wrong type
+    or arguments that are not a JSON object, one whose edit the gate refuses, one after the session's wall-clock
+    cap. The session's one submission is spent only when the door records it, a null diagnosis is kept as null,
+    and the door logs its own words for every refused call as a `propose_repair_refused` transcript event, and keeps
+    the first 20 of them, with a count of all, in `proposal_refusals`. A blinded driver's prompt, standard and
+    `--bare`, says that a call with edit null is an abstention and that a session ending with no `propose_repair` the
+    door took gives no answer.
+  - Its scoring takes what the door took, never a driver's own account. The repair scored is the edit as built when
+    it was submitted, not a rebuild from `/work`, so files the driver writes after proposing change nothing; each
+    case names it (`scored_edit_id`) and saves it in its case folder (`scored_edit/`, outside `work/`), and the id
+    must match the case book's `blinded_proposal` note, in a book that verifies. A case that does not is scored
+    `proposal record does not match the book`, and the run then gives no rate. Each case's answer is `abstained`,
+    `proposed a repair` or `no proposal recorded`. A canary is an honest abstention only where its driver submitted
+    `propose_repair` with edit null; on a plant an abstention is a miss. `no proposal recorded` (a driver that never
+    called it, or that a cap stopped first, or whose every call the door refused) is a category of its own, left out
+    of both rates and tallied in `planted_scored_as` and `canary_scored_as`; a session that did not run to an end is
+    not scored. Localization is read from the edits as built: a column or row whose change is zero names no site,
+    and a saved-edit proposal names the sites it changes. The scripted baseline abstains by rule in every blinded
+    session and is scored `plumbing check (scripted baseline)`, in neither rate; a replay proposes only by a
+    `propose_repair` step, and is a plumbing check. A measurement is any case whose driver family chooses what to
+    submit (openai, claude, codex); the family is all that is checked, so a case with a stand-in in its
+    `driver_config` (a transport that types fixed replies, a mock CLI) is scored the same way and marked
+    `driver_stand_in`, and the rates' notes count such cases. No driver that is an agent has been run through it.
+    Where a plant-and-repair figure is read, the record says whether the repair would hold on a checkpoint with the
+    planted weights: the harness adds the two edits' deltas, so a scale repair of a planted silence recovers in the
+    harness and not on such a checkpoint.
+  - The rebuild description: a reading's plan, base and items in at most 200 words, counting every word and number,
+    and its same-process replay. The ruling's test, a fresh session rebuilding the reading from the description, has
+    been run only outside the repository, with no committed record (below); the harness's own record of a replay
+    still says it has not been run (`REBUILD_REPLAY_WHAT`).
+  - The cold-driver page: at most 600 words, saying when it names a site. The ruling's test, two driver families
+    reaching the brief from it, has not been run as the ruling asks (below).
+  - Sessions on the 31B on 21 November 2026, outside the benchmark. Pull request 6's builder ran blinded,
+    cold-driver and rebuild sessions with scripts of its own and a subagent of its own as the driver, and committed
+    no record of them (every session records backend `local`). The layer-54 plant's driver abstained: on a planted
+    fault, a miss. The layer-50 plant's `propose_repair` was refused at the 900 s wall cap and the session was then
+    stopped, so it did not run to an end. The cold driver, of one family and handed a page the builder had edited by
+    hand, claimed `L50:5313 ×0.5` with `L58:20479 ×−1.0`, not the known answer, and the claim was judged `void`; an
+    earlier cold run ended on a quota error. A fresh session's rebuild replayed 416 figures with no gap, in the
+    builder's scratch only. None of these went through `run_blinded_benchmark` or a study, so no rate includes them.
 
 **The ledger** (`backend/level_book.py`): `$THEODOLITE_LEVEL_BOOK`, else
 `~/.local/share/theodolite/level_book.jsonl`, outside every checkout. One line of canonical JSON a call, the whole
@@ -2702,16 +2775,34 @@ being kept):
     baseline submitted 3 of 3: kept the base 2, void 1. There was no lead anywhere, and at three sessions an arm none
     could have been told apart (p ≥ 0.1).
   - The blinded benchmark (plumbing): neutral case ids, and the same door surface for planted and canary cases at
-    both reaches. Its rates are unmeasured, since no driver can propose. A scale ×2 repair of the planted silence
-    comes to the unedited model (KL 0 by arithmetic, not read), and would not hold on a checkpoint. A ×1.5 repair read
+    both reaches. Its rates were unmeasured, since at that commit no driver could propose. A scale ×2 repair of the
+    planted silence comes to the unedited model (KL 0 by arithmetic, not read), and would not hold on a checkpoint. A
+    ×1.5 repair read
     0.00118 against the plant's 0.00460, 0.74 of the way back, and would not hold on a checkpoint either.
   - Cold pages ran 220 to 242 words and named no site. A rebuild description of 191 words (1,646 characters) was
     replayed in the same process, with all 144 figures equal and the same runtime.
 
-- **Updated full-suite verification and first live `passed` Trial of Record (21 November 2026).**
-  - **CPU & frontend (`43ee61c`):** `check_levelling.py` 1,057/1,057, `check_level_door.py` 150/150, `check_level_claim.py` 307/307, `check_level_trial.py` 320/320, `check_level_page.py` 91/91, `check_level_eval.py` 219/219, `check_local_only.py` 1,310/1,310, `check_lora_export.py` 76/76, `check_interface_defaults.py` 291/291 (3,821/3,821 checks, 0 kept-out words, `npm --prefix frontend run build` clean).
-  - **Live 31B card verification (`43ee61c`, 178/178 checks, 0 unpacker fallbacks):** `verify_levelling_1b.py` 68/68 (82.9 s), `verify_level_door.py` 38/38 (87.5 s, peak 18.342 GiB), `verify_level_claim.py` 16/16 (132.2 s, peak 18.710 GiB), `verify_level_trial.py` 37/37 (256.8 s, peak 18.545 GiB; 39/39 Gram-preserving `same_site` at 0.98–0.99× edit loudness across prompt/answer/end; 908/908 re-run figures identical `0.0` diff), `verify_level_eval.py` 19/19 (573.0 s, peak 18.55 GiB).
-  - **First live `passed` Trial of Record (`occ_gender_debias_l42_v2`, 21 November 2026, default `~/.local/share/theodolite/level_book.jsonl`):** 10-neuron selectivity-weighted `add_to_columns` edit on `layers.42.mlp.down_proj` (neurons `[1665, 3022, 3505, 6152, 8075, 11714, 11973, 13008, 16454, 19049]`, fitted on 16 practice skilled-trade clauses). Prior readings in the same append-only book: `occupational_gender_debias` (`da96fedbe2dc`, `M = 0.75`) Reading 1 (`06ed817630d5`, `amp = 0.58`) read `works but harms` (`+6.29/+6.26`, `1/99` matched, `0/99` same-site, `near_misses = 0.360 > 0.25`); Reading 2 Trial of Record (`6789c6b18fce`, `0.45×` dose `amp = 0.2610`, registration `e6ad676758a6`, clean commit `3f2b665`) read `lead` on kept-back items (`+3.04/+3.06`, `0/119` matched & same-site, `near_misses = 0.063`, `matched_by: none`) and `+1.98/+2.01` (`0/59`) on reworded items, but ended `failed` because `M = 0.75 < 4F` on the reworded bf16 floor (`F = 0.270`) and capped `folded_tolerance` at `0.1745` (vs `max_gap = 0.1932`, `mean_diff = 0.0137`). On disjoint `occupational_gender_debias_v2` (`0e60747b9516`, `M = 1.50`, 8 new templates, 16 new trades, 8 new reworded items `0c2a1c4c460d`) with the same saved edit `6789c6b18fce`: Claim Reading 1 read `lead` (`+3.7300`, `0/119` matched & same-site, near-miss `0.0228`, neutral KL `9.0e-5`, prompt arm near-miss `9.3812`); Trial of Record **`occ_gender_debias_l42_v2`** (registration `38d4357be5fc`, clean commit `e79b40f6485a`, fresh `-I` process, book lines 32–39, `base_checksum` unchanged over 410 linears / 1,652 tensors, 0 unpacker fallbacks) read **`passed`** (`of_record = True`): large/small `+2.8552/+2.8611` (`95% CI [0.8219, 4.8885]`, `h0 +3.2880`, `h1 +2.4224`, `reversed -1.8503`), `0/119` matched (`119/119` disjoint, `p_fw = 0.017`) and `0/119` same-site (`119/119 >= 0.85×`, median `1.00/1.00/1.02`, `p_fw = 0.017`), folded `+2.8182/+2.8700` (`max_gap 0.1577 <= 0.2244` / `0.1158 <= 0.2750`), reworded `+1.2746/+1.3451` (`0/59` matched, `p = 0.017`, folded `+1.2629/+1.3345`), gating batteries `neutral_text` KL `7.98e-5`, `near_misses` `0.0686` (`2.40%` of target vs author prompt arm `10.6594`), `labelled_panel` own drop `0.0624` (KL `1.93e-5`), `matched_by: none`. Exported outside git to `~/.local/share/theodolite/exports/occ_gender_debias_l42_v2_31b.gguf` (1,081,504 bytes, rank 10 on `blk.42.ffn_down.weight`, `verify` `ok = True`, `max_abs_err = 0.0`, verdict re-judged from book line 39).
+- **Pull request 6 as mended (whp199/theodolite#6; built 21 November 2026, mended 22 November 2026; code at
+  `b230b3f`, card records `b6b132e`).** It gives blinded sessions `propose_repair` and the benchmark its scoring (Phase 6, above), makes
+  the page server take the card's lock, makes "an edit has one trial" hold by direction on any brief, refuses trial-4 folders, names the folded
+  tolerance on a sheet when it was registered off the defaults (Phase 5, above), and takes the leading space off
+  `pronoun_pull`'s answer stems and the starter reworded items. The trial-4 rule and the Gram-preserving
+  same-site draw it first added are taken out, so same-site control edits, a claim's too, are drawn as before it.
+  The two trials of record its builder registered and read on 21 November 2026 under trial-4 are kept as records
+  and refused here; judged again by trial-3 in the review of 22 November 2026, outside this code, the one whose
+  sheet read `passed` fails (README, ROADMAP §viii).
+  - CPU, at `b230b3f` (the page check after the records were committed): `check_levelling.py` 1,057/1,057, `check_level_door.py` 157/157,
+    `check_level_claim.py` 311/311, `check_level_trial.py` 343/343,
+    `check_level_page.py` 91/91, `check_level_eval.py` 233/233,
+    `check_local_only.py` 1,310/1,310, `check_lora_export.py` 76/76,
+    `check_interface_defaults.py` 291/291; `check_vault_voice.py` 249/249; `npm run build` clean. The counts
+    given with each script further up are of the commits they name, or of main before this pull request.
+  - The 31B card, in one run on the 5090 from a clean tree at `b230b3f` (the paths a later record counts as changed
+    are the records the earlier scripts of that run wrote; the code digests match): `verify_levelling_1b.py` 68/68,
+    `verify_level_door.py` 38/38, `verify_level_claim.py` 16/16,
+    `verify_level_trial.py` 37/37 (a dry run), `verify_level_eval.py` 19/19,
+    `verify_level_page.py` 11/11. The figures in the paragraphs on these scripts above are of the
+    records as they stood before this pull request (main at `2d07fb1`).
 
 **Not built:** attention, embedding and norm edits; a folded form for low-rank terms; fine-tuned LoRA adapters as a
 cheaper-knob arm; gradients. Each is in `verify/arbiter.md` §8 and `BUILD_SPEC_1a.md` §8.
