@@ -926,7 +926,11 @@ class LevelSession:
             # the trials that spent a fresh reading too (of record, a dry run, a re-run), so the count above adds up
             "prior_trials": [
                 {"reading_index": t.get("reading_index"), "edit_id": t.get("edit_id"), "kind": t.get("kind"),
-                 "verdict": t.get("verdict")}
+                 "verdict": t.get("verdict"), "rule_preset": t.get("rule_preset"),
+                 # a trial registered under a rule the owner never adopted (trial-4) is named with that rule, so its
+                 # verdict is never shown as a plain one
+                 **({"rule_note": lcl.not_adopted_words(t.get("rule_preset")).lstrip(", ")}
+                    if lcl.not_adopted_words(t.get("rule_preset")) else {})}
                 for t in lcl.prior_trials(hist)
             ],
         }
