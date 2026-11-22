@@ -2945,7 +2945,7 @@ in order:
     - cheaper knobs: a system prompt, decoding settings and transient steering, claimed through the weight path’s
       own gate;
     - drivers: two scripted baselines, a replay driver, an OpenAI-compatible driver, and Claude Code with the door’s
-      tools only;
+      tools only (PR 7 adds the Gemini CLI and the Antigravity CLI, below);
     - studies of arms of drivers;
     - three pieces that measure no driver yet: a blinded planted-fault benchmark, a rebuild description and a
       cold-driver page.
@@ -3157,5 +3157,58 @@ in order:
   the bar; on the raw recipe cut with no start mark two controls clear of the floor read 31.1 and 6.4 times apart,
   and that item now reads “ok”); and,
   from the build’s review, that a reading handed an edit object cannot be rebuilt from the ledger unless it was saved.
+
+  For PR 7 (whp199/theodolite#7: the Gemini CLI and the Antigravity CLI, agy, as the scientist’s backends and as
+  Levelling drivers), ruled on 22 November 2026: the scientist starts on Claude Code, “as before”, and agy is the
+  default only within the Gemini family (“we just want agy to be default when selecting Gemini, not default for
+  everything”); the agy Levelling driver is to stay (“Mend it and keep it”). Reviewed and mended on 22 November 2026;
+  what a review of those mends found was mended in a second round the same day (`d2c6065`), and what a check of that
+  round found in a third.
+  Phase 6’s drivers above grow by two: a Gemini CLI driver, built to Claude Code’s shape with no ruling of its own,
+  and an Antigravity CLI driver, refused until the owner accepts the three tools agy offers every run; both need
+  prices in the plan under a dollar cap, and neither has worked the door on the 31B. CPU checks (no card run checks
+  PR 7's changes), after the third round: `check_scientist.py` 341/341, `check_level_eval.py` 286/286 (22 November
+  2026), and on the same tree, which holds the mended PR 6, every one of PR 6's CPU checks with the counts
+  ARCHITECTURE §7 gives. On the real CLIs,
+  22 November 2026: `verify_scientist_gemini_cli.py` 38 checks on Gemini CLI 0.70.0 against a stand-in API; seven
+  live Antigravity chat turns at the folder reach on agy 1.5.14, none at the home reach; and four runs of
+  `verify_level_agy.py` on agy 1.5.14 against a stand-in door with no model (each spends a little of the owner’s agy
+  quota), by the sessions mending PR 7 and before those mends were committed (7fbe902), the last 11 of 11; it has
+  not been run since. None of these live runs has a committed record. The owner’s to settle (ARCHITECTURE §4.8 and §7
+  say what each means):
+  - whether to accept agy’s three fixed tools (`list_resources`, `read_resource`, `manage_task`) for Levelling runs
+    (`agy_fixed_tools_accepted`); until then the agy driver is refused;
+  - whether to turn off the Antigravity account’s “Enable Telemetry” setting, which agy’s print runs (the driver’s)
+    follow and the driver can neither set nor read; the chat’s runs pass `--disable-telemetry`, and whether the
+    setting still applies to them was not checked;
+  - whether to keep the pin to agy 1.5.14 (the chat and the driver refuse any other build), or to allow newer builds;
+  - whether the Gemini CLI’s file tools should reach the home folder at the home reach (today they reach only the work
+    folder and the chat’s own store, as a home folder among its workspace folders would make Gemini read every
+    GEMINI.md under it; its shell reaches the whole machine either way);
+  - whether to leave the scientist folder inside the checkout by default, where a GEMINI.md or AGENTS.md at the
+    checkout’s root, or in `atlas_data`, stops every Antigravity chat (`THEODOLITE_SCIENTIST_DIR` moves it out);
+  - whether a Gemini pick the server cannot run should fall back to the other Gemini backend first (today a new chat
+    then starts on the first installed of Claude Code, Codex, Antigravity and the Gemini CLI);
+  - whether to give `scripts/levelling_eval.py plan` price flags: without them a Gemini CLI or agy plan made there
+    with a dollar cap is refused (and both drivers need one), so such a plan is written by hand;
+  - whether Claude Code’s home-reach words on the page should say, as Codex’s do, that its shell has no sandbox and
+    reaches the whole machine (today they say your home folder);
+  - whether to keep Codex’s home listing no skill (`[skills] include_instructions = false`), which goes beyond the
+    review’s finding on AGENTS.md: codex-cli 0.169.0 lists the skills of `work/.codex/skills`, `work/.agents/skills`
+    and the checkout root’s `.agents/skills`, and whether a skill can still load another way (typing `$name`, say) was
+    not checked (today the line is kept);
+  - whether a study under a dollar cap should halt at the first Gemini CLI session whose usage is not known (today it
+    charges that session the dollar cap it was handed and goes on; the Gemini CLI’s dollar cap cannot stop a run, so
+    what it spent may be more);
+  - whether to learn agy’s per-call MCP timeout for the door, which needs a live run with a slow stand-in tool, and then
+    set one (`timeoutSeconds` in `door.md`; today none is set, and agy’s default is not known);
+  - whether to remove or guard the AGENTS.md Codex still reads in its own home (`<scientist folder>/codex-home`), which
+    at the folder reach no chat can write unless the scientist folder is in `/tmp` or `/dev/shm` (today it is read,
+    and the documents say so);
+  - whether the Claude Code and Codex chats’ readers should pass over a line longer than 16 MiB, as the Antigravity and
+    Gemini CLI reader now does (today their reading stops at such a line);
+  - whether the Claude Code, Codex and agy drivers should keep their own stop and failure notes whole after a long
+    reply, as the Gemini CLI driver now does (`_notes_with_room`; today those notes come after the model’s text and can
+    be cut at 2,000 characters; the Claude Code and agy drivers’ stop notes are also kept apart, in `stop_note`).
 - **Not built** (the ruling’s §8 and the spec’s §8): attention, embedding and norm edits; a folded form for low-rank
   terms; fine-tuned LoRA adapters as a cheaper-knob arm; gradients.

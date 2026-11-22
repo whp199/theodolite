@@ -2,9 +2,11 @@
  * The scientist's chat as the page holds it (after the explorer's Claude tab; backend/scientist_chat.py): one chat at a
  * time, its thread kept in this browser, its events read from one stream (GET /api/atlas/scientist/events). Messages
  * go in any time: mid-reply they reach the scientist between tool calls. Stop ends the reply only. A chat runs on the
- * backend it started with (Claude Code, Codex, or an OpenAI-compatible endpoint and model); the pick applies to the next
- * new chat. A chat whose instructions or tools changed after it started says so (`note` when it was started again on
- * them, `stale` when it runs the old ones until it is restarted: restartChat).
+ * backend it started with (Claude Code, Codex, Gemini through Antigravity or the Gemini CLI, or an OpenAI-compatible
+ * endpoint and model); the pick applies to the next new chat. With no pick kept in this browser it is Claude Code; Gemini
+ * is one family, Antigravity by default (`GEMINI_FAMILY`). A chat whose instructions or tools changed after it started
+ * says so (`note` when it was started again on them, `stale` when it runs the old ones until it is restarted:
+ * restartChat).
  */
 import { create } from "zustand";
 import { AtlasError, get, post, streamLines, type Backends, type ChatEvent, type PastChat } from "./api";
@@ -23,7 +25,17 @@ export type Part =
   | { t: "stopped" }
   | { t: "usename"; name: string; layer: number; n: number };
 export type Item = { kind: "user"; msg: string; shown: string; atts: Att[] } | { kind: "assistant"; parts: Part[] };
-export type Agent = "claude" | "codex" | "openai";
+export type Agent = "agy" | "claude" | "codex" | "gemini" | "openai";
+/** The Gemini family's backends, its default first: picking Gemini picks Antigravity, the Gemini CLI its other choice. */
+export const GEMINI_FAMILY: Agent[] = ["agy", "gemini"];
+/** The command-line backends in the order a page falls back to when its pick is not installed: main's (Claude Code,
+ * then Codex), the Gemini family after. */
+export const CLI_ORDER: Agent[] = ["claude", "codex", "agy", "gemini"];
+/** Whether the server can run a command-line backend. */
+export const installed = (b: Backends | null, a: Agent): boolean => (a === "openai" ? false : !!b?.[a]?.available);
+/** What picking Gemini picks: Antigravity, unless only the Gemini CLI is installed (Antigravity when neither is, or
+ * before the server has said). */
+export const geminiPick = (b: Backends | null): Agent => GEMINI_FAMILY.find((a) => installed(b, a)) ?? GEMINI_FAMILY[0];
 export interface Pick {
   agent: Agent;
   profile: string | null;
@@ -72,7 +84,7 @@ const keptPick = loadJson<Pick>(PICK_KEY);
 export const useScientist = create<SciState>(() => ({
   backends: null,
   backendsError: null,
-  pick: keptPick && ["claude", "codex", "openai"].includes(keptPick.agent) ? keptPick : { agent: "claude", profile: null, model: null },
+  pick: keptPick && ["agy", "claude", "codex", "gemini", "openai"].includes(keptPick.agent) ? keptPick : { agent: "claude", profile: null, model: null },
   chat: kept?.chat ?? null,
   chatPick: kept?.chatPick ?? null,
   // a reply that was being written when the page closed is replayed by the server into a fresh box
@@ -122,8 +134,16 @@ export async function loadBackends() {
     const b = await get<Backends>("/api/atlas/scientist/backends");
     set({ backends: b, backendsError: null });
     const p = st().pick;
+    // the first installed in main's order, the Gemini family after; Claude Code when none is
+    const firstCli = (): Agent => CLI_ORDER.find((a) => installed(b, a)) ?? "claude";
     if (p.agent === "openai" && p.profile && b.openai.some((x) => x.name === p.profile)) void loadModels(p.profile);
-    else if (p.agent === "openai") setPick({ agent: b.claude.available ? "claude" : "codex", profile: null, model: null });
+    else if (p.agent === "openai") setPick({ agent: firstCli(), profile: null, model: null });
+    else if (!installed(b, p.agent)) {
+      // a pick the server cannot run gives way, for now, to the first that it can; the pick kept in this browser stays
+      // as it is, and is the pick again once the server can run it
+      const next = firstCli();
+      if (next !== p.agent && installed(b, next)) set({ pick: { agent: next, profile: null, model: null } });
+    }
   } catch (e) {
     set({ backendsError: errText(e) });
   }
@@ -222,6 +242,7 @@ function onEvent(e: ChatEvent) {
     return;
   }
   if (e.t === "ping" || e.t === "sent" || e.t === "user") return;
+  if (e.t === "reset") return resetReply();
   if (e.t === "stale") return void set({ stale: e.stale === true });
   if (e.t === "ui") return void scientistUi(e).catch(() => undefined);
   if (e.t === "done") return finishTurn();
@@ -239,6 +260,21 @@ function onEvent(e: ChatEvent) {
     editParts(b, (parts) => parts.map((p) => (p.t === "tool" && p.id === e.id ? { ...p, output: String(e.output ?? ""), error: !!e.error } : p)));
   else if (e.t === "error") pushPart(b, { t: "error", text: String(e.error ?? "") });
   else if (e.t === "note") pushPart(b, { t: "note", text: String(e.text ?? "") });
+}
+
+/** Gemini CLI retried a reply cut off mid-stream: what had come of it (the text since the reply's last tool call) goes,
+ * as the server's history leaves it out too, so it is not shown twice. */
+function resetReply() {
+  const b = st().box;
+  if (b === null) return;
+  editParts(b, (parts) => {
+    let from = parts.length;
+    while (from > 0 && parts[from - 1].t !== "tool") from--;
+    const gone = parts.slice(from).filter((p) => p.t === "md");
+    const dropped = gone.map((p) => (p as { text: string }).text).join("");
+    if (dropped && reply.endsWith(dropped)) reply = reply.slice(0, reply.length - dropped.length);
+    return parts.filter((p, i) => i < from || p.t !== "md");
+  });
 }
 
 function finishTurn() {

@@ -2,27 +2,65 @@
 model and points at things on the person's screen.
 
 After the explorer's chat (lyramakesmusic/neuron-explorer, explorer/server.py, "Claude: autointerp and chat"), with
-three backends; a chat keeps the one it starts with:
+five backends; a chat keeps the one it starts with. A page with no pick of its own starts a chat on Claude Code; Gemini
+is one family on the page, Antigravity by default and the Gemini CLI as its other choice.
+- "agy": Antigravity CLI (`agy acp --stdio`, JSON-RPC over stdio): the same MCP tools (passed per chat in
+  `session/new` / `session/load`, with `_meta.antigravity.systemPrompt.append` for the instructions) and Antigravity's
+  own tools, within its reach, in an empty read-only working folder (`0o555`), with `--gemini-dir` pointed at a folder
+  of the scientist's own (`agy_gemini_dir`: so the person's own Antigravity settings, plugins, skills, rules and
+  subagents do not load and its conversations stay out of their store), `--include-default-customizations=false`,
+  `--disable-telemetry`, an environment built from nothing (`child_env`: the login is in the system keyring, over
+  D-Bus), and at the default reach `--sandbox`, gating permissions via `session/request_permission`
+  (`_agy_permission_outcome`). Checked on agy 1.5.14 only, and started on no other (`AGY_VERSION`). A chat cannot be
+  taken back (/rewind is refused): Antigravity's ACP has no way to drop a turn. One that sets itself a timer (its
+  `schedule` tool asks no permission) is stopped, and so, at the folder reach, is one that starts work with no message
+  of the person's in flight (`_agy_own_work`).
 - "claude": Claude Code (`claude -p`, stream-json in and out), one process per chat kept open, so a message sent while
   it works reaches it between tool calls and an interrupt stops the reply without ending the process. Its tools are
   the atlas's (backend/scientist_mcp.py, over MCP) and its own file tools, within its reach (`reach`). The conversation
   is Claude Code's own session (`~/.claude/projects/.../<chat>.jsonl`), resumed turn by turn.
 - "codex": Codex (`codex app-server`, JSON-RPC), the same MCP tools and Codex's own shell, within its reach, in a
-  Codex home of its own (the person's login, model and effort, nothing else).
+  Codex home of its own (the person's login, model and effort, nothing else), taking no AGENTS.md from the work folder
+  or the folders above it and listing no skill (`_codex_home`).
+- "gemini": Gemini CLI (`gemini --acp`, JSON-RPC over stdio; for `$GEMINI_API_KEY` / Vertex AI / Enterprise users),
+  the same MCP tools (passed per chat in `session/new` / `session/load`) and Gemini's own tools, within its reach, in
+  a Gemini home of its own (`$GEMINI_CLI_HOME`: the person's login and model preference, nothing else; usage statistics
+  and telemetry off) and an empty read-only working folder (`0o555`) so no planted `work/.gemini/settings.json`, hook,
+  skill or rogue MCP server loads. Its temporary files (Gemini CLI writes a whole conversation there when a request
+  fails) go to a folder of the chat's own (`chat_tmp`).
 
-Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code to reading, writing and editing files in
-its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (no network; it writes in the
-work folder and in the temporary folders, /tmp and /dev/shm, and can read files elsewhere: measured in Codex's own
-sandbox helper, codex-cli 0.166.0, 14 November 2026, not through a chat). "home" is the explorer's own setting, taken
-only when the person sets it: Claude Code's Read, Glob, Grep, Write, Edit and Bash pre-approved over the home folder,
-Codex with full access and never asking. Either way Claude Code
-loads no settings file, hook, rules file or CLAUDE.md (`--setting-sources ""`: a CLAUDE.md it wrote in its work folder
-would otherwise reach every later chat as instructions, and so would one in any folder above it, and a
+Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code and Gemini to reading, writing and
+editing files in their work folder, with no shell, refuses Antigravity whatever it asks for beyond the atlas's tools and
+the work folder's files (in a live chat on agy 1.5.14, 22 November 2026, two reads outside the work folder, one in /tmp,
+a write outside it and a run_workflow call each asked and were refused; its shell and its other tools were not tried
+live, and it may search the web and start subagents without asking), and runs Codex's shell in its workspace-write
+sandbox (no network; it writes in the work folder and in the temporary folders, /tmp and /dev/shm, and can read files
+elsewhere: measured in Codex's own sandbox helper, codex-cli 0.166.0, 14 November 2026, not through a chat). "home" is
+the explorer's own setting, taken only when the person sets it: Claude Code's Read, Glob, Grep, Write, Edit and Bash
+pre-approved over the home folder; Gemini's shell, never asking, with its file tools in the work folder; Antigravity
+approving everything, with no sandbox; Codex with full access and never asking. Either way
+Claude Code loads no settings file, hook, rules file or CLAUDE.md (`--setting-sources ""`: a CLAUDE.md it wrote in its
+work folder would otherwise reach every later chat as instructions, and so would one in any folder above it, and a
 .claude/settings.json written there, by a Codex chat whose sandbox may write in that folder, say, would run its hooks as
-shell commands), neither process is given the endpoints' keys nor the Hugging Face and cloud credentials in the server's
-environment (`child_env`; each keeps its own login), and the page says what the chosen backend can do (`REACH_WORDS`),
-asking once before the first chat when it is "home". What a scientist reads (model output, census answers, names and
-notes, attachments) can carry instructions; with a shell over the home folder nothing stands between them and it.
+shell commands), Gemini loads no workspace settings, hooks, skills, extensions or ancestor GEMINI.md files
+(`memoryBoundaryMarkers: []`, `--extensions none`, empty read-only cwd, Policy Engine allowing only `atlas` MCP tools
+over `tools.core`), and each Gemini chat has a working folder of its own (`gemini_cwd`), so the store its file tools
+may write (its conversation, its memory) is its own. Gemini CLI 0.70.0 would still read any GEMINI.md in its work
+folder, or in a folder below it, as instructions (at a session's start, and beside any file it reads), and no setting
+of its turns that off; Antigravity reads GEMINI.md, AGENTS.md and a `.agents` folder (or `.agent`, `_agents`,
+`_agent`: rules, skills, hooks, plugins) as its own, there and in each folder above up to the repository's root. Every
+backend can write in the work folder, so one chat could leave standing instructions for every later one: a Gemini or
+Antigravity turn is refused while such a file is there (`context_files`), and Gemini's file tools are given only the
+work folder, never the home folder. Codex 0.169.0 would read an AGENTS.md (or AGENTS.override.md) in its work folder
+and in each folder above it up to the repository's root, and list the skills of a `.codex/skills` or `.agents/skills`
+folder there: its own home turns both off (`project_doc_max_bytes = 0`, `skills.include_instructions = false`), and with
+them neither `codex debug prompt-input` nor a turn of `codex app-server` sent to a stand-in model on 127.0.0.1, both
+run offline, carried any of them (22 November 2026). It still reads an AGENTS.md in that home folder of its own, which at the folder reach no chat can
+write, unless the scientist folder is in /tmp or /dev/shm, where Codex's sandbox writes. Each process is given its own
+login and no other: not the endpoints' keys, not another CLI's, not the Hugging Face, cloud, GitHub or other tokens
+in the server's environment (`child_env`), and the page says what the chosen backend can do (`REACH_WORDS`), asking
+once for each backend before its first chat when it is "home". What a scientist reads (model output, census answers,
+names and notes, attachments) can carry instructions; with a shell nothing stands between them and it.
 - "openai": any OpenAI-compatible Chat Completions endpoint (LM Studio, Ollama, OpenRouter, vLLM, llama.cpp's server)
   that supports tool calling. The endpoint runs no tools, so the server runs the loop: it streams the model's reply,
   runs each tool call through the atlas's own routes in this process, sends the results back, and goes on until the
@@ -76,7 +114,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -96,20 +134,48 @@ MCP_SCRIPT = ROOT_DIR / "backend" / "scientist_mcp.py"
 # what a Claude Code or Codex chat's process reads when it starts, besides prompt.local.md (`agent_files`)
 AGENT_FILES = (*PROMPT_FILES, MCP_SCRIPT, ROOT_DIR / "backend" / "scientist_tools.py")
 SCIENTIST_DIR_ENV = "THEODOLITE_SCIENTIST_DIR"
-AGENTS = ("claude", "codex", "openai")
+AGENTS = ("agy", "claude", "codex", "gemini", "openai")
 FILE_TOOLS = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
+GEMINI_FOLDER_TOOLS = ["read_file", "write_file", "replace", "list_directory"]
+GEMINI_HOME_TOOLS = ["read_file", "write_file", "replace", "list_directory", "glob", "grep_search", "run_shell_command"]
+GEMINI_TOOL_NAMES = {"read_file": "Read", "view_file": "Read", "write_file": "Write", "write_to_file": "Write",
+                     "replace": "Edit", "replace_file_content": "Edit", "multi_replace_file_content": "Edit", "edit_file": "Edit",
+                     "list_directory": "List", "list_dir": "List", "glob": "Glob", "find_by_name": "Glob",
+                     "grep_search": "Grep", "run_shell_command": "Bash", "run_command": "Bash"}
+# Antigravity's file tools (agy 1.5.14 offers read_file, write_file and edit_file; earlier builds the others)
+AGY_WRITE_TOOLS = frozenset({"write_to_file", "write_file", "edit_file", "replace_file_content", "multi_replace_file_content"})
+AGY_READ_TOOLS = frozenset({"read_file", "view_file", "list_dir", "find_by_name", "grep_search"})
+# the one Antigravity CLI build the chat was checked on (its own data folder, its permission requests, 22 November 2026)
+AGY_VERSION = "1.5.14"
+GEMINI_AUTH_FILES = ("oauth_creds.json", "google_accounts.json", "google_account_id", "installation_id", "state.json")
+# what Gemini CLI 0.70.0 and Antigravity read as instructions from their workspace (any case): `context_files`
+GEMINI_CONTEXT_NAMES = frozenset({"gemini.md"})
+AGY_CONTEXT_NAMES = frozenset({"gemini.md", "agents.md", ".agents", ".agent", "_agents", "_agent"})
 REACH_ENV = "THEODOLITE_SCIENTIST_REACH"
 # what each backend can do beyond the atlas's tools, said on the page
 REACH_WORDS = {
-    "folder": {"claude": "reads, writes and edits files only in its own work folder, and has no shell",
+    "folder": {"agy": "reads, writes and edits files in its own work folder, and is refused whatever else it asks for beyond the atlas's "
+                      "tools (in a live chat on agy 1.5.14 it asked before reading or writing outside that folder and before "
+                      "running a workflow, and was refused; its shell and its other tools were not tried live); it may search the "
+                      "web and start subagents of its own without asking; if it sets itself a timer, or starts work of its own "
+                      "with no message from you, the chat is stopped",
+               "claude": "reads, writes and edits files only in its own work folder, and has no shell",
                "codex": "runs commands in a sandbox that has no network and writes in its own work folder and the temporary folders "
                         "(/tmp, /dev/shm); it can read files elsewhere, credentials kept in files among them",
+               "gemini": "reads, writes and edits files only in its own work folder and in Gemini CLI's own files for it (this "
+                         "chat's stored conversation and memory, the GEMINI.md of its Gemini home), and has no shell",
                "openai": "has the atlas's tools and nothing else: no shell, no files"},
-    "home": {"claude": "has a shell, and reads, changes and runs anything in your home folder without asking",
+    "home": {"agy": "has a shell with no sandbox and full access to this machine, and never asks before it acts (web search and "
+                    "subagents of its own included); if it sets itself a timer with its schedule tool, the chat's process is "
+                    "stopped",
+             "claude": "has a shell, and reads, changes and runs anything in your home folder without asking",
              "codex": "has a shell with full access to this machine, and never asks before it acts",
+             "gemini": "has a shell with full access to this machine, and never asks before it acts; its file tools reach only "
+                       "its own work folder and Gemini CLI's own files for it",
              "openai": "has the atlas's tools and nothing else: no shell, no files"},
 }
 MCP_PREFIX = "mcp__atlas__"
+GEMINI_MCP_PREFIX = "mcp_atlas_"
 CHAT_IDLE = 30 * 60  # seconds without listeners or turns before a chat's input is closed (it exits once its work is done)
 MAX_ROUNDS = 40  # tool rounds in one openai turn
 TOOL_CUT = 16000  # characters of a tool's reply an openai-compatible model reads
@@ -176,28 +242,74 @@ def reach() -> str:
     return "home" if os.environ.get(REACH_ENV, "").strip().lower() == "home" else "folder"
 
 
-# Credentials no scientist needs, kept from both processes: the checkpoint's host and the accounts a GPU is rented with
+# Credentials no scientist needs, kept from every process: the checkpoint's host and the accounts a GPU is rented with
 # (the census on a pod, say). Every AWS_* and AZURE_* variable counts, as their credentials have many names.
 SECRET_ENV = {"HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_API_TOKEN", "RUNPOD_API_KEY", "VAST_API_KEY", "LAMBDA_API_KEY",
               "MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "GOOGLE_APPLICATION_CREDENTIALS", "NEURONARY_TOKEN"}
 SECRET_PREFIXES = ("AWS_", "AZURE_")
-# Never a CLI's own login. Claude Code's (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or its login
-# under ~/.claude) and Codex's (OPENAI_API_KEY, CODEX_*, or ~/.codex/auth.json, linked into its own home) are not
-# touched; and when Claude Code is told to reach its model through Bedrock, Vertex or Foundry (its flag 1, true, yes or
-# on, as Claude Code reads it), the cloud's variables it then reads are its login, and pass to it (not to Codex, whose
-# own home names no such provider).
+# Anything named like a credential (GH_TOKEN, GITHUB_TOKEN, GITHUB_PAT, NPM_TOKEN, NPM_CONFIG__AUTH, MISTRAL_API_KEY,
+# DEEPSEEK_KEY, ..._SECRET, ..._PASSWORD, DB_PASS) is kept from every process too, but a CLI's own variables, which only
+# that CLI is given, its login among them: Claude Code's (ANTHROPIC_* and CLAUDE_*: ANTHROPIC_API_KEY,
+# ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, ANTHROPIC_FOUNDRY_API_KEY and the rest it reads, or its login under
+# ~/.claude), Codex's (OPENAI_API_KEY and CODEX_*: CODEX_API_KEY, CODEX_ACCESS_TOKEN, or ~/.codex/auth.json, linked into
+# its own home) and Gemini CLI's (GEMINI_*, GOOGLE_GENAI_*, GOOGLE_API_KEY, GOOGLE_CLOUD_ACCESS_TOKEN, or its login under
+# ~/.gemini, linked into its own home). Antigravity's login is in the system keyring, reached over D-Bus, and its
+# environment is built from nothing (`AGY_ENV_PASS`): no key, which would switch how it signs in (GEMINI_API_KEY,
+# AGY_ADC_AUTH among them).
+CREDENTIAL_NAME = re.compile(r"(?:^|_)(?:TOKEN|AUTHTOKEN|API_KEY|APIKEY|KEY|SECRET|SECRET_KEY|ACCESS_KEY|PASSWORD|PASSWD|PASS|PAT|AUTH"
+                             r"|CREDENTIALS)$", re.I)
+OWN_LOGINS = {"claude": ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"),
+              "codex": ("OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN"),
+              "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_CLOUD_ACCESS_TOKEN")}
+# each CLI's own namespace: what is named so goes to that CLI and no other
+OWN_LOGIN_PREFIXES = {"claude": ("ANTHROPIC_", "CLAUDE_"), "codex": ("CODEX_",), "gemini": ("GEMINI_", "GOOGLE_GENAI_")}
+LOGIN_ENV = frozenset(k for ks in OWN_LOGINS.values() for k in ks)
+LOGIN_PREFIXES = tuple(p for ps in OWN_LOGIN_PREFIXES.values() for p in ps)
+# When Claude Code is told to reach its model through Bedrock, Vertex or Foundry (its flag 1, true, yes or on, as Claude
+# Code reads it), or Gemini CLI through Vertex AI, the cloud's variables it then reads are its login, and pass to it (not
+# to Codex, whose own home names no such provider)
 CLAUDE_CLOUD_LOGINS = {"CLAUDE_CODE_USE_BEDROCK": ("AWS_",), "CLAUDE_CODE_USE_VERTEX": ("GOOGLE_APPLICATION_CREDENTIALS",),
                        "CLAUDE_CODE_USE_FOUNDRY": ("AZURE_",)}
+GEMINI_CLOUD_LOGINS = {"GOOGLE_GENAI_USE_VERTEXAI": ("GOOGLE_APPLICATION_CREDENTIALS",)}
+# what an Antigravity process is given of this one's environment (the probe of agy 1.5.14, 22 November 2026): its HOME
+# (the home reach reads it), who it runs as, its language, and the session bus its keyring login is reached over
+AGY_ENV_PASS = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR")
 
 
 def child_env(agent: str = "claude", **extra: str) -> Dict[str, str]:
-    """The environment a Claude Code (`agent` "claude") or Codex ("codex") process starts with: this one's, less every
-    endpoint's key and the credentials above, but with that process's own login."""
+    """The environment an Antigravity (`agent` "agy"), Claude Code ("claude"), Codex ("codex") or Gemini CLI ("gemini")
+    process starts with: this one's, less every endpoint's key, the credentials above and every other credential-named
+    variable, but with that process's own variables (its login among them) and no other CLI's; for Antigravity, only
+    `AGY_ENV_PASS`."""
+    if agent == "agy":
+        return {**{k: os.environ[k] for k in AGY_ENV_PASS if k in os.environ}, "NO_COLOR": "1", **extra}
     keys = {p.get("key_env") for p in profiles().values()} | {"THEODOLITE_OPENAI_API_KEY", "OPENROUTER_API_KEY"}
     on = lambda v: (v or "").strip().lower() in ("1", "true", "yes", "on")  # noqa: E731
-    own = tuple(p for flag, ps in CLAUDE_CLOUD_LOGINS.items() if agent == "claude" and on(os.environ.get(flag)) for p in ps)
-    secret = lambda k: (k in SECRET_ENV or k.startswith(SECRET_PREFIXES)) and not k.startswith(own)  # noqa: E731
-    return {**{k: v for k, v in os.environ.items() if k not in keys and not secret(k)}, **extra}
+    cloud = CLAUDE_CLOUD_LOGINS if agent == "claude" else (GEMINI_CLOUD_LOGINS if agent == "gemini" else {})
+    cloud_own = tuple(p for flag, ps in cloud.items() if on(os.environ.get(flag)) for p in ps)
+    own, own_prefixes = set(OWN_LOGINS.get(agent, ())), OWN_LOGIN_PREFIXES.get(agent, ())
+
+    def passes(k: str) -> bool:
+        if k in keys:
+            return False
+        if k in own or (own_prefixes and k.startswith(own_prefixes)) or (cloud_own and k.startswith(cloud_own)):
+            return True
+        return not (k in SECRET_ENV or k.startswith(SECRET_PREFIXES) or k in LOGIN_ENV or k.startswith(LOGIN_PREFIXES)
+                    or CREDENTIAL_NAME.search(k))
+
+    return {**{k: v for k, v in os.environ.items() if passes(k)}, **extra}
+
+
+def chat_tmp(cid: str) -> Path:
+    """A chat's own temporary folder (0700), its process's TMPDIR: Gemini CLI writes a whole conversation to its
+    temporary folder when a request fails, and the system's is open to everyone on the machine."""
+    root = scientist_dir() / "tmp"
+    root.mkdir(parents=True, exist_ok=True)
+    os.chmod(root, 0o700)
+    d = root / os.path.basename(cid)
+    d.mkdir(exist_ok=True)
+    os.chmod(d, 0o700)
+    return d.resolve()
 
 
 def agent_files() -> List[Path]:
@@ -240,6 +352,42 @@ You are running as Codex, your shell in a sandbox: it writes in `{WORK}` and in 
 `/dev/shm`), can read files elsewhere, and has no network, so a script cannot reach the instrument's API; use the
 atlas's tools for every reading. A script that only writes a file in `{WORK}` from numbers you already have (a page,
 a table) you can run yourself: run it, and link what it wrote."""
+AGY_NOTE = """
+
+## This session
+
+You are running as Antigravity CLI (`agy`). Where these instructions name Read, Write, Edit or Bash, use `read_file`,
+`write_file`, `edit_file` and `run_command` (and `run_command` where they name Glob or Grep). Your work folder is
+`{WORK}` (use paths inside `{WORK}` when writing deliverables, and link them as `{WORK_URL}<name>`); if a file tool
+refuses a path outside it, use `run_command`. Start anything that runs longer than about a minute detached
+(`nohup {PYTHON} script.py > script.log 2>&1 &`), say where the log is, and end your reply; read the log in a later
+turn. Never use the `schedule` tool, nor start work that goes on after your reply ends: a chat that does is stopped."""
+AGY_FOLDER_NOTE = """
+
+## This session
+
+You are running as Antigravity CLI (`agy`) with no shell. Where these instructions name Read, Write or Edit, use
+`read_file`, `write_file` and `edit_file`. Your work folder is `{WORK}`: always write inside `{WORK}` (your starting
+working directory is read-only; a write anywhere else is refused, and so is a read), and link anything you write there
+as `{WORK_URL}<name>`. Never use the `schedule` tool, nor start work that goes on after your reply ends: a chat that
+does is stopped."""
+GEMINI_NOTE = """
+
+## This session
+
+You are running as Gemini CLI. Where these instructions name Read, Glob, Grep, Write, Edit or Bash, use `read_file`,
+`glob`, `grep_search`, `write_file`, `replace` and `run_shell_command`. Your work folder is `{WORK}` (use paths inside
+`{WORK}` when writing deliverables, and link them as `{WORK_URL}<name>`). Your file tools reach only `{WORK}`: read or
+change a file anywhere else with `run_shell_command`. Start anything that runs longer than about a minute detached
+(`nohup {PYTHON} script.py > script.log 2>&1 &`), say where the log is, and end your reply; read the log in a later
+turn."""
+GEMINI_FOLDER_NOTE = """
+
+## This session
+
+You are running as Gemini CLI with no shell. Where these instructions name Read, Write or Edit, use `read_file`,
+`write_file`, `replace` and `list_directory`. Your work folder is `{WORK}`: always pass paths inside `{WORK}` (your
+starting working directory is read-only), and link anything you write there as `{WORK_URL}<name>`."""
 OPENAI_NOTE = """
 
 ## This session
@@ -262,12 +410,20 @@ def system_prompt(agent: str, self_url: str) -> str:
         text = cut(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END) + OPENAI_NOTE
     elif reach() == "home":
         text = keep(cut(text, FOLDER_START, FOLDER_END), SHELL_START, SHELL_END)
-        if agent == "codex":
+        if agent == "agy":
+            text += AGY_NOTE
+        elif agent == "codex":
             text += CODEX_NOTE
+        elif agent == "gemini":
+            text += GEMINI_NOTE
     else:
         text = keep(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END)
-        if agent == "codex":
+        if agent == "agy":
+            text += AGY_FOLDER_NOTE
+        elif agent == "codex":
             text += CODEX_FOLDER_NOTE
+        elif agent == "gemini":
+            text += GEMINI_FOLDER_NOTE
     return (text.replace("{ROOT}", str(ROOT_DIR)).replace("{API}", self_url).replace("{WORK_URL}", WORK_ROUTE)
             .replace("{WORK}", str(work_dir())).replace("{PYTHON}", sys.executable).strip() + "\n")
 
@@ -456,7 +612,7 @@ def _emit(c: Dict[str, Any], ev: Dict[str, Any]) -> None:
     c["last"] = time.time()
     if ev.get("t") != "ui":
         c["turn"].append(ev)
-        if c["agent"] in ("codex", "openai") and ev.get("t") in ("text", "tool", "tool_result", "error", "done"):
+        if c["agent"] in ("agy", "codex", "gemini", "openai") and ev.get("t") in ("text", "reset", "tool", "tool_result", "error", "done"):
             _log(c["session"], ev)
     for q in list(c["listeners"]):
         q.put_nowait(ev)
@@ -525,7 +681,7 @@ async def _take_up_changes(c: Dict[str, Any]) -> None:
         return
     if c["files"] == _agent_files_stamp():
         return
-    if c["agent"] == "claude" and c.get("reach") == "folder" and not c.get("waiting"):
+    if c["agent"] in ("agy", "claude", "gemini") and c.get("reach") == "folder" and not c.get("waiting"):
         await _end_chat(c)
         _emit(c, {"t": "note", "text": RESTARTED_WORDS})
     else:
@@ -728,7 +884,16 @@ def _upload(fid: str) -> Tuple[Optional[Dict[str, Any]], bytes]:
 
 def _codex_home() -> str:
     """Codex's own home for the scientist: the person's login, their model and effort, and nothing else (no plugins,
-    apps, memories or global instructions), so its tools are the atlas's and its shell."""
+    apps or memories), so its tools are the atlas's and its shell. Every chat can write in the work folder, Codex's
+    cwd, so no AGENTS.md or AGENTS.override.md is read from it or from a folder above it (`project_doc_max_bytes = 0`)
+    and no skill is listed (`skills.include_instructions = false`: codex-cli 0.169.0 would list those of a
+    `.codex/skills` or `.agents/skills` folder there). Offline, in the work folder of a scratch checkout,
+    `codex debug prompt-input` showed an AGENTS.md planted at its root, in atlas_data and in the work folder (an
+    AGENTS.override.md), and two planted skills, without these lines, and none of them with them; a turn of
+    `codex app-server` (thread/start, turn/start, as `_ensure_codex` starts one) sent to a stand-in model on 127.0.0.1
+    carried a root and a work-folder AGENTS.md and a planted skill without them, and none with them (22 November
+    2026). An AGENTS.md in this home folder it still reads, as its global instructions: at the folder
+    reach no chat can write here, unless the scientist folder is in /tmp or /dev/shm, where Codex's sandbox writes."""
     import tomllib
 
     home = scientist_dir() / "codex-home"
@@ -741,7 +906,8 @@ def _codex_home() -> str:
     except (OSError, ValueError):
         user = {}
     lines = [f"{k} = {json.dumps(user[k])}" for k in ("model", "model_reasoning_effort") if isinstance(user.get(k), str)]
-    lines += ["", "[features]", "apps = false", "memories = false"]
+    lines += ["project_doc_max_bytes = 0", "", "[features]", "apps = false", "memories = false", "", "[skills]",
+              "include_instructions = false"]
     (home / "config.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return str(home)
 
@@ -749,12 +915,18 @@ def _codex_home() -> str:
 async def _rpc(c: Dict[str, Any], method: str, params: Dict[str, Any], timeout: float = 120) -> Dict[str, Any]:
     rpc = c["rpc"]
     rpc["next"] += 1
+    rid = rpc["next"]
     fut = asyncio.get_running_loop().create_future()
-    rpc["pending"][rpc["next"]] = fut
-    await _write(c["proc"], {"jsonrpc": "2.0", "id": rpc["next"], "method": method, "params": params})
-    r = await asyncio.wait_for(fut, timeout)
+    rpc["pending"][rid] = fut
+    try:
+        await _write(c["proc"], {"jsonrpc": "2.0", "id": rid, "method": method, "params": params})
+        r = await asyncio.wait_for(fut, timeout)
+    finally:  # a request that timed out (or failed to go) waits for nothing more
+        rpc["pending"].pop(rid, None)
     if "error" in r:
-        raise RuntimeError(f"codex {method}: {r['error'].get('message', r['error'])}")
+        err = r["error"]
+        msg = err.get("message", err) if isinstance(err, dict) else err
+        raise RuntimeError(f"{c['agent']} {method}: {msg}")
     return r.get("result") or {}
 
 
@@ -869,6 +1041,1001 @@ def _codex_input(fid: str) -> Optional[Dict[str, Any]]:
     if meta["type"] == "application/pdf" or meta["name"].lower().endswith(".pdf"):
         return None
     return {"type": "text", "text": _file_text(meta["name"], raw), "text_elements": []}
+
+
+# ------------------------------------------------------------------------------------------------------- Gemini CLI
+
+
+def _reset_ro_cwd(cwd: Path) -> None:
+    """An empty read-only directory (0o555) used as Gemini CLI's cwd so no workspace `.gemini/settings.json`, hook,
+    skill, agent or policy inside `work/` can ever be discovered or written there."""
+    if cwd.exists():
+        try:
+            has_entries = any(cwd.iterdir())
+        except OSError:
+            has_entries = True
+        if has_entries:
+            os.chmod(cwd, 0o700)
+            for child in list(cwd.iterdir()):
+                if child.is_dir() and not child.is_symlink():
+                    shutil.rmtree(child, ignore_errors=True)
+                else:
+                    try:
+                        child.unlink()
+                    except OSError:
+                        pass
+    else:
+        cwd.mkdir(parents=True, exist_ok=True)
+    os.chmod(cwd, 0o555)
+
+
+def gemini_cwd(cid: str) -> Path:
+    """A Gemini CLI chat's own empty read-only working folder. Gemini keeps a project's conversations and memory in a
+    folder named for its working folder (`.gemini/tmp/<project>`) and lets its file tools write there, so each chat has
+    one of its own: one chat cannot write into another's stored conversation."""
+    return scientist_dir() / "gemini-home" / "cwds" / os.path.basename(cid)
+
+
+def _gemini_home(cid: str) -> Tuple[Path, Path, Path]:
+    """Gemini CLI's own home for the scientist (`$GEMINI_CLI_HOME`): the person's login and model preference, nothing
+    else (no extensions, hooks, skills, user GEMINI.md or workspace settings), with usage statistics and telemetry off
+    (they are on by default, and the person's own opt-out is not read from their settings). Returns `(gemini_home,
+    ro_cwd, policy_path)`, `ro_cwd` the chat's own (`gemini_cwd`)."""
+    home = scientist_dir() / "gemini-home"
+    gdir = home / ".gemini"
+    pdir = gdir / "policies"
+    cwd = gemini_cwd(cid)
+    pdir.mkdir(parents=True, exist_ok=True)
+    cwd.parent.mkdir(parents=True, exist_ok=True)
+    _reset_ro_cwd(cwd)
+
+    user_gdir = Path(os.path.expanduser("~/.gemini"))
+    for fname in GEMINI_AUTH_FILES:
+        dst, src = gdir / fname, user_gdir / fname
+        if not os.path.lexists(dst) and src.exists():
+            os.symlink(src, dst)
+
+    try:
+        user_cfg = json.loads((user_gdir / "settings.json").read_text(encoding="utf-8"))
+        if not isinstance(user_cfg, dict):
+            user_cfg = {}
+    except (OSError, ValueError):
+        user_cfg = {}
+
+    on = lambda v: (v or "").strip().lower() in ("1", "true", "yes", "on")  # noqa: E731
+    user_auth = ((user_cfg.get("security") or {}).get("auth") or {}).get("selectedType")
+    if os.environ.get("GEMINI_API_KEY"):
+        selected_auth: Optional[str] = "gemini-api-key"
+    elif on(os.environ.get("GOOGLE_GENAI_USE_VERTEXAI")):
+        selected_auth = "vertex-ai"
+    elif isinstance(user_auth, str) and user_auth:
+        selected_auth = user_auth
+    elif on(os.environ.get("GOOGLE_GENAI_USE_GCA")):
+        selected_auth = "oauth-personal"
+    else:
+        selected_auth = None
+
+    user_model = (user_cfg.get("model") or {}).get("name")
+    preview = (user_cfg.get("general") or {}).get("previewFeatures")
+    settings: Dict[str, Any] = {
+        "security": {
+            "auth": {"selectedType": selected_auth} if selected_auth else {},
+            "folderTrust": {"enabled": True},
+        },
+        "context": {
+            "memoryBoundaryMarkers": [],
+            # read only by the interactive /directory add on 0.70.0, not at a session's start: what keeps GEMINI.md
+            # out is `context_files`
+            "loadMemoryFromIncludeDirectories": False,
+            "includeDirectoryTree": False,
+        },
+        # Clearcut usage statistics (sent to play.googleapis.com with the account or installation id) and telemetry
+        "privacy": {"usageStatisticsEnabled": False},
+        "telemetry": {"enabled": False},
+        "hooksConfig": {"enabled": False},
+        "hooks": {},
+        "skills": {"enabled": False},
+        "general": {
+            **({"previewFeatures": preview} if isinstance(preview, bool) else {}),
+            "enableAutoUpdate": False,
+            "enableAutoUpdateNotification": False,
+            "enablePromptCompletion": False,
+        },
+        "tools": {
+            "core": list(GEMINI_HOME_TOOLS if reach() == "home" else GEMINI_FOLDER_TOOLS),
+            "discoveryCommand": "",
+            "callCommand": "",
+        },
+        "mcp": {"allowed": ["atlas"]},
+        "mcpServers": {},
+    }
+    if isinstance(user_model, str) and user_model:
+        settings["model"] = {"name": user_model}
+    (gdir / "settings.json").write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+
+    # Policy Engine priority 500 in the user tier (4.500) sits above tools.core's "*" deny (4.24) for MCP tools only,
+    # while mcp.allowed + --allowed-mcp-server-names limit MCP connections to the single "atlas" server.
+    policy_path = pdir / "theodolite.toml"
+    policy_path.write_text(
+        '[[rule]]\nmcpName = "*"\ntoolName = "*"\ndecision = "allow"\npriority = 500\n',
+        encoding="utf-8",
+    )
+    return home, cwd, policy_path
+
+
+def _gemini_cmd(policy_path: Path) -> List[str]:
+    """Gemini CLI's command line. Its workspace is its empty read-only cwd and the work folder, at either reach: a
+    workspace folder is where Gemini reads GEMINI.md files from (`context_files`), so the home folder is never one; at
+    the home reach its shell reaches the rest."""
+    cmd = [
+        _bin("gemini"), "--acp",
+        "--approval-mode", "yolo",
+        "--extensions", "none",
+        "--allowed-mcp-server-names", "atlas",
+        "--policy", str(policy_path),
+        "--include-directories", str(work_dir()),
+    ]
+    if os.environ.get("THEODOLITE_GEMINI_MODEL"):
+        cmd += ["--model", os.environ["THEODOLITE_GEMINI_MODEL"]]
+    return cmd
+
+
+def _repo_ancestors(p: Path) -> List[Path]:
+    """The folders above `p`, up to the root of the repository it is in (the folder holding `.git`), that one included;
+    none when it is in no repository. Above `p` as it is written (Antigravity is handed it so, and walks up from it)
+    and above it with its links followed, so a scientist folder reached through a link out of a checkout, or into
+    one, is looked above either way."""
+    out: List[Path] = []
+    for walk in (lambda: Path(os.path.abspath(p)).parents, lambda: p.resolve().parents):
+        try:
+            parents = list(walk())
+        except (OSError, ValueError):  # a path with a NUL in it is a ValueError
+            continue
+        for i, d in enumerate(parents):
+            if os.path.lexists(d / ".git"):
+                out += [a for a in parents[: i + 1] if a not in out]
+                break
+    return out
+
+
+def context_files(agent: str) -> List[str]:
+    """The files a Gemini CLI ("gemini") or Antigravity ("agy") chat would take as standing instructions from where a
+    chat can write (module docstring): any GEMINI.md, and for Antigravity any AGENTS.md or customization folder
+    (`.agents`, `.agent`, `_agents`, `_agent`), in any case, anywhere in the work folder or the chats' own working
+    folders; for Gemini also a GEMINI.md in its own home and its projects' memory (MEMORY.md, GEMINI.md), which a chat
+    can write; for Antigravity also one directly in any folder above the work folder or its working folder, up to the
+    root of the repository they are in (the scientist folder is inside Theodolite's by default), as written and with
+    links followed (`_repo_ancestors`). Gemini CLI 0.70.0 reads
+    a workspace folder's GEMINI.md when a session starts and any between a file it reads and that folder (its "just in
+    time" context); `context.fileName` only adds names to GEMINI.md and nothing turns either off. Antigravity 1.5.14
+    took a work/AGENTS.md and a work/GEMINI.md as its rules in a live chat (22 November 2026; a work/.agents/rules file
+    it did not), and its own documentation says it reads GEMINI.md, AGENTS.md and those folders (rules, skills, hooks,
+    plugins, MCP servers) from its working folder up to the repository's root. A turn is refused while any is there.
+    It walks the whole work folder: run it off the event loop (`_context_refusal_async`)."""
+    names = AGY_CONTEXT_NAMES if agent == "agy" else GEMINI_CONTEXT_NAMES
+    roots = [work_dir(), scientist_dir() / ("agy-cwd" if agent == "agy" else "gemini-home/cwds")]
+    hits: List[str] = []
+    for root in roots:
+        for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+            hits += [os.path.join(dirpath, n) for n in (*dirnames, *filenames) if n.lower() in names]
+    if agent == "gemini":
+        gdir = scientist_dir() / "gemini-home" / ".gemini"
+        listed = [(gdir, names), *((m, names | {"memory.md"}) for m in gdir.glob("tmp/*/memory"))]
+    else:
+        listed = [(d, names) for d in sorted({a for root in roots for a in _repo_ancestors(root)})]
+    for d, ns in listed:
+        try:
+            hits += [str(d / n) for n in os.listdir(d) if n.lower() in ns]
+        except OSError:
+            pass
+    return sorted(set(hits))
+
+
+def _context_refusal(agent: str) -> Optional[str]:
+    """Why a Gemini or Antigravity turn is not sent (`context_files`), in plain words; None when nothing stands in the
+    way."""
+    hits = context_files(agent)
+    if not hits:
+        return None
+    shown = ", ".join(hits[:4]) + (f" and {len(hits) - 4} more" if len(hits) > 4 else "")
+    what = ("Antigravity would read it as its own rules, skills, hooks or plugins" if agent == "agy"
+            else "Gemini CLI would read it as standing instructions, and has no setting that turns that off")
+    return (f"Not sent: {shown} is where {what}. A chat can write there (every chat can write in the work folder), so one "
+            "chat could steer every later one this way. Remove or rename it, then send again.")
+
+
+async def _context_refusal_async(agent: str) -> Optional[str]:
+    """`_context_refusal`, in a thread: a large work folder takes a while to walk, and the server goes on meanwhile."""
+    return await asyncio.to_thread(_context_refusal, agent)
+
+
+def _gemini_mcp_servers(cid: str, self_url: str) -> List[Dict[str, Any]]:
+    return [{
+        "name": "atlas",
+        "command": sys.executable,
+        "args": ["-I", str(MCP_SCRIPT)],
+        "env": [
+            {"name": "THEODOLITE_URL", "value": self_url},
+            {"name": "THEODOLITE_CHAT", "value": cid},
+        ],
+    }]
+
+
+def _gemini_tool_info(upd: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
+    """Extract `(tool_call_id, shown_name, input_dict)` from an ACP `tool_call` or `tool_call_update` payload."""
+    tcid = str(upd.get("toolCallId") or "")
+    raw = str(upd.get("name") or (tcid.split("__", 1)[0] if "__" in tcid else upd.get("title") or "tool"))
+    if raw.startswith(GEMINI_MCP_PREFIX):
+        name = raw[len(GEMINI_MCP_PREFIX):]
+    else:
+        name = GEMINI_TOOL_NAMES.get(raw, raw)
+    if isinstance(upd.get("rawInput"), dict):
+        inp: Dict[str, Any] = dict(upd["rawInput"])
+    elif isinstance(upd.get("args"), dict):
+        inp = dict(upd["args"])
+    else:
+        inp = {}
+    locs = upd.get("locations") or []
+    first_path = next((x.get("path") for x in locs if isinstance(x, dict) and x.get("path")), None)
+    if name in ("Read", "Write", "Edit", "List") and "file_path" not in inp:
+        cand = inp.get("TargetFile") or inp.get("Path") or inp.get("filePath") or first_path
+        if isinstance(cand, str) and cand:
+            inp["file_path"] = cand
+    elif not inp and name == "Bash" and upd.get("title"):
+        inp["command"] = str(upd["title"])
+    elif not inp and upd.get("title") and not str(upd["title"]).endswith("(atlas MCP Server)"):
+        inp["title"] = str(upd["title"])
+    return tcid, name, inp
+
+
+def _path_in_work(path: Any) -> bool:
+    """Whether `path`, its links followed, is the work folder or in it; False for anything else, a path that cannot be
+    looked up among them (one with a NUL in it, which Antigravity's model may write, is a ValueError)."""
+    if not isinstance(path, str) or not path.strip():
+        return False
+    try:
+        target = Path(os.path.realpath(path))
+        root = Path(os.path.realpath(str(work_dir())))
+        return target == root or root in target.parents
+    except (OSError, ValueError):
+        return False
+
+
+# the atlas's tools as Antigravity names them (`mcp_<server>_<tool>`), the only MCP tools the folder reach approves
+AGY_ATLAS_TOOLS = frozenset(GEMINI_MCP_PREFIX + t["name"] for t in st.TOOLS)
+
+
+def _agy_permission_outcome(prm: Dict[str, Any]) -> Dict[str, Any]:
+    """Decide an ACP `session/request_permission` prompt from Antigravity CLI (`agy acp`).
+    At `home` reach all tools are approved; at `folder` reach only the atlas's own tools, by name (`AGY_ATLAS_TOOLS`),
+    and file reads/writes whose resolved target lies inside `work_dir()` are approved, and everything else (shell,
+    browser, other MCP servers, external paths) is rejected."""
+    opts = prm.get("options") or []
+    allow_id = next((o.get("optionId") for o in opts if isinstance(o, dict) and o.get("kind") == "allow_once"), None)
+    reject_id = next((o.get("optionId") for o in opts if isinstance(o, dict) and o.get("kind") == "reject_once"), None)
+    if reach() == "home":
+        return {"outcome": "selected", "optionId": allow_id} if allow_id else {"outcome": "cancelled"}
+    tc = prm.get("toolCall") or {}
+    raw = str(tc.get("name") or "")
+    args = tc.get("args") if isinstance(tc.get("args"), dict) else (tc.get("rawInput") if isinstance(tc.get("rawInput"), dict) else {})
+    locs = tc.get("locations") or []
+    first_loc = next((x.get("path") for x in locs if isinstance(x, dict) and x.get("path")), None)
+    allowed = False
+    if raw in AGY_ATLAS_TOOLS:
+        allowed = True
+    elif raw in AGY_WRITE_TOOLS:
+        target = args.get("TargetFile") or args.get("Path") or args.get("file_path") or first_loc
+        allowed = _path_in_work(target)
+    elif raw in AGY_READ_TOOLS:
+        target = args.get("Path") or args.get("DirectoryPath") or args.get("SearchPath") or args.get("SearchDirectory") or first_loc
+        allowed = _path_in_work(target)
+    if allowed and allow_id:
+        return {"outcome": "selected", "optionId": allow_id}
+    return {"outcome": "selected", "optionId": reject_id} if reject_id else {"outcome": "cancelled"}
+
+
+def _refused_outcome(prm: Any) -> Dict[str, Any]:
+    """A request from an ACP process refused, whatever shape its params have: its reject-once option where it offers
+    one, else cancelled."""
+    opts = prm.get("options") if isinstance(prm, dict) else None
+    reject_id = (next((o.get("optionId") for o in opts if isinstance(o, dict) and o.get("kind") == "reject_once"), None)
+                 if isinstance(opts, list) else None)
+    return {"outcome": "selected", "optionId": reject_id} if reject_id else {"outcome": "cancelled"}
+
+
+def _gemini_tool_output(upd: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    for item in upd.get("content") or []:
+        if not isinstance(item, dict):
+            continue
+        kind = item.get("type")
+        if kind == "content":
+            inner = item.get("content")
+            if isinstance(inner, dict) and inner.get("text") is not None:
+                parts.append(str(inner["text"]))
+        elif kind == "diff":
+            path = item.get("path") or ""
+            parts.append(f"updated {path}" if path else "updated file")
+    if parts:
+        return "\n".join(parts)
+    if upd.get("rawOutput") is not None:
+        return str(upd["rawOutput"])
+    return str(upd.get("status") or "")
+
+
+# Antigravity's `schedule` tool sets a timer (or a recurring one) that starts a turn of its own when it fires, with no
+# message from the person; it asks no permission (live, agy 1.5.14, folder reach, 22 November 2026: the timer fired a
+# minute later and the model answered its prompt)
+AGY_SELF_STARTERS = frozenset({"schedule"})
+AGY_SCHEDULE_WORDS = ("Antigravity set itself a timer (its schedule tool, which asks no one), to act later with no message from "
+                      "you, so its process was stopped before it could. Send a message to go on, and ask it not to schedule "
+                      "anything.")
+AGY_OWN_WORK_WORDS = "Antigravity began work of its own, with no message from you, so its process was stopped. Send a message to go on."
+# how long after a turn ends what Antigravity still sends is taken as that turn's (a stopped reply's last words)
+AGY_IDLE_GRACE = 5.0
+
+
+def _agy_own_work(c: Dict[str, Any], kind: Any, upd: Dict[str, Any]) -> Optional[str]:
+    """Why an Antigravity chat is stopped at this update, or None: a call of a tool that sets it to act later on its own
+    (`AGY_SELF_STARTERS`), at either reach; or, at the folder reach, the start of work (words, thoughts, a tool call)
+    while no message of the person's is in flight, after the last turn's grace (`AGY_IDLE_GRACE`). At the home reach a
+    turn it begins itself is let be, as Claude Code's is (a command it left running has finished, say): it has a shell
+    there that never asks, and ending its process group could end what it left running there. Whether the commands its
+    shell starts stay in that group (agy says each runs in a session of its own) was not checked, so the stop for a timer
+    is said to stop its process, not what it started."""
+    if kind in ("tool_call", "tool_call_update") and _gemini_tool_info(upd)[1] in AGY_SELF_STARTERS:
+        return AGY_SCHEDULE_WORDS
+    if (c.get("reach") == "folder" and kind in ("agent_message_chunk", "agent_thought_chunk", "tool_call") and not c["busy"]
+            and time.time() - float(c.get("idle_since") or 0) > AGY_IDLE_GRACE):
+        return AGY_OWN_WORK_WORDS
+    return None
+
+
+async def _end_this(c: Dict[str, Any], proc: Any) -> None:
+    """Ends the chat's process if it is still `proc` (not one started since)."""
+    if c.get("proc") is proc:
+        await _end_chat(c)
+
+
+async def _pump_message(c: Dict[str, Any], proc: Any, m: Dict[str, Any]) -> None:
+    """One message from an ACP process (`_pump_gemini`): an answer to a request of ours, a request of its own (answered
+    here), or an update, turned into chat events."""
+    rpc = c["rpc"]
+    if "id" in m and ("result" in m or "error" in m) and "method" not in m:
+        fut = rpc["pending"].pop(m["id"], None)
+        if fut and not fut.done():
+            fut.set_result(m)
+        return
+    meth, prm = m.get("method"), m.get("params") or {}
+    if "id" in m and meth:
+        if c["agent"] == "agy" and meth == "session/request_permission":
+            outcome = _agy_permission_outcome(prm)
+        else:
+            # Unexpected agent->client RPC (e.g. a permission prompt outside YOLO): decline cleanly
+            outcome = {"outcome": "cancelled"}
+        await _write(proc, {"jsonrpc": "2.0", "id": m["id"], "result": {"outcome": outcome}})
+        return
+    if meth != "session/update" or c.get("loading") or c.get("halted") is proc:
+        return
+    upd = prm.get("update") or {}
+    kind = upd.get("sessionUpdate")
+    why = _agy_own_work(c, kind, upd) if c["agent"] == "agy" else None
+    if why:  # it is stopped before it goes on: what it sends from here is not shown
+        c["halted"] = proc
+        _emit(c, {"t": "error", "error": why})
+        if not c["busy"]:  # the page takes work it did not ask for as a turn, and waits for its end
+            _emit(c, {"t": "done"})
+            c["turn"] = []
+        c["halt"] = asyncio.create_task(_end_this(c, proc))
+        return
+    if kind == "agent_thought_chunk":
+        txt = str(((upd.get("content") or {}).get("text")) or "")
+        if txt.startswith("****\n"):
+            txt = txt[5:]
+        if txt:
+            _emit(c, {"t": "thinking", "text": txt})
+    elif kind == "agent_message_chunk":
+        # Gemini CLI marks the first chunk after it retried a reply cut off mid-stream (`_meta` retry and reset):
+        # what came of that reply before goes (a `reset` event), so it is not shown twice
+        if (upd.get("_meta") or {}).get("reset") is True:
+            _emit(c, {"t": "reset"})
+        txt = str(((upd.get("content") or {}).get("text")) or "")
+        if txt:
+            _emit(c, {"t": "text", "text": txt})
+    elif kind == "tool_call":
+        tcid, name, inp = _gemini_tool_info(upd)
+        seen = c.setdefault("seen_tools", set())
+        if tcid not in seen:
+            seen.add(tcid)
+            _emit(c, {"t": "tool", "id": tcid, "name": name, "input": inp})
+    elif kind == "tool_call_update":
+        status = upd.get("status")
+        if status in ("completed", "failed"):
+            tcid, name, inp = _gemini_tool_info(upd)
+            seen = c.setdefault("seen_tools", set())
+            if tcid not in seen:
+                seen.add(tcid)
+                _emit(c, {"t": "tool", "id": tcid, "name": name, "input": inp})
+            _emit(c, {"t": "tool_result", "id": tcid, "error": status == "failed", "output": _cut(_gemini_tool_output(upd))})
+
+
+# the longest line of an ACP process (Gemini CLI or Antigravity) that is read: a longer one is passed over (`_acp_lines`,
+# `_overlong`), so the reading goes on past it (Gemini CLI 0.70 sends a file's whole old and new text when it writes or
+# edits one, in the update and in a request to go ahead, and sends them again when a conversation is loaded)
+ACP_LINE_LIMIT = 1 << 24
+PUMP_FAILED_WORDS = ("Theodolite could not go on reading {name}'s output ({why}), so its process was ended. Send the message "
+                     "again to start it again; if the same happens again, start a new chat.")
+OVERLONG_WORDS = {
+    "update": "{name} sent an update too long for Theodolite to read (the edit of a very large file, say), so it is not shown.",
+    "request": "{name} asked for something in a message too long for Theodolite to read, so it was refused.",
+    "other": "{name} sent a message too long for Theodolite to read, so it was passed over.",
+}
+OVERLONG_ANSWER_WORDS = "its answer was too long for Theodolite to read"
+# a line nested too deep for json.loads (`_too_deep`): a request is refused, an answer fails what waits on it
+DEEP_REQUEST_WORDS = "{name} asked for something in a message nested too deep for Theodolite to read, so it was refused."
+DEEP_ANSWER_WORDS = "its answer was nested too deep for Theodolite to read"
+# a message's keys that may come after its id and method (Gemini CLI 0.70 writes jsonrpc, id, method, params, or
+# jsonrpc, id, result), and its id as its last key (Antigravity 1.5.14 writes jsonrpc, result, id)
+_ACP_BODY_KEY = re.compile(rb',\s*"(params|result|error)"\s*:')
+_ACP_LAST_ID = re.compile(rb',\s*"id"\s*:\s*(-?\d+|"(?:[^"\\]|\\.)*")\s*\}\s*$')
+
+
+async def _acp_lines(stream: Any) -> AsyncIterator[Tuple[Optional[bytes], bytes, bytes]]:
+    """The lines an ACP process writes, as they come, each as (line, b"", b""). A line longer than the reader holds
+    (ACP_LINE_LIMIT, as the process was started) is read past, and given once its end has come as (None, its first
+    4 KiB, its last 256 bytes), so the lines after it are read as they come."""
+    head: Optional[bytes] = None  # the first part of a line too long to hold, while the rest of it is read past
+    last = b""
+    while True:
+        try:
+            line = await stream.readuntil(b"\n")
+        except asyncio.IncompleteReadError as e:  # the output has ended: its last line, if it had no newline
+            if head is not None:
+                yield None, head, (last + e.partial)[-256:]
+            elif e.partial:
+                yield e.partial, b"", b""
+            return
+        except asyncio.LimitOverrunError as e:  # what the reader holds of the line, taken out of it
+            piece = await stream.read(e.consumed)
+            if head is None:
+                head = piece[:4096]
+            last = (last + piece)[-256:]
+            continue
+        if head is not None:  # the end of that long line
+            yield None, head, (last + line)[-256:]
+            head, last = None, b""
+            continue
+        yield line, b"", b""
+
+
+def _overlong_what(head: bytes, tail: bytes) -> Tuple[Dict[str, Any], str]:
+    """What can be told of a message too long to read from its first and last parts: its method and id where they
+    come before its params, result or error, or its id where it is the message's last key; and which of those three
+    it has ("" when that cannot be read)."""
+    d: Dict[str, Any] = {}
+    key = ""
+    m = _ACP_BODY_KEY.search(head)
+    if m:
+        try:
+            first = json.loads(head[: m.start()] + b"}")
+        except ValueError:
+            first = None
+        if isinstance(first, dict):
+            d, key = first, m.group(1).decode()
+    t = _ACP_LAST_ID.search(tail)
+    if key and "id" not in d and t:
+        try:
+            d["id"] = json.loads(t.group(1))
+        except ValueError:
+            pass
+    return d, key
+
+
+async def _overlong(c: Dict[str, Any], proc: Any, head: bytes, tail: bytes) -> None:
+    """A message too long to read (`_acp_lines`), told by its first and last parts (`_overlong_what`): an answer to a
+    request of ours fails that request (OVERLONG_ANSWER_WORDS); a request of its own, one with an id and a method or
+    params (its method may come after its params, unread), is refused (cancelled, as what it offers could not be
+    read), so it does not wait on an answer; an update is not shown. During a turn the thread says so
+    (OVERLONG_WORDS), unless the conversation is being loaded or the process was stopped."""
+    logger.warning("scientist chat %s: a message from %s too long to read was passed over (%r … %r)", c.get("session"),
+                   c["agent"], head[:120], tail[-80:])
+    d, key = _overlong_what(head, tail)
+    if "id" in d and key in ("result", "error") and "method" not in d:
+        fut = c["rpc"]["pending"].pop(d["id"], None)
+        if fut and not fut.done():
+            fut.set_result({"id": d["id"], "error": {"message": OVERLONG_ANSWER_WORDS}})
+        return
+    if "id" in d and (d.get("method") or key == "params"):  # an id and params: a request, whatever its method
+        await _write(proc, {"jsonrpc": "2.0", "id": d["id"], "result": {"outcome": _refused_outcome(None)}})
+        what = "request"
+    else:
+        what = "update" if d.get("method") == "session/update" else "other"
+    if c["busy"] and not c.get("loading") and c.get("halted") is not proc:
+        _emit(c, {"t": "error", "error": OVERLONG_WORDS[what].format(name="Antigravity" if c["agent"] == "agy" else "Gemini CLI")})
+
+
+async def _too_deep(c: Dict[str, Any], proc: Any, line: bytes) -> None:
+    """A line nested too deep for `json.loads` (a RecursionError), told by its first and last parts as one too long is
+    (`_overlong_what`): an answer to a request of ours fails that request (DEEP_ANSWER_WORDS); a request of its own, one
+    with an id and a method or params, is refused (cancelled), so that it does not wait on an answer, and during a turn
+    the thread says so (DEEP_REQUEST_WORDS); an update, or a line told as neither, is passed over unshown."""
+    d, key = _overlong_what(line[:4096], line[-256:])
+    if "id" not in d:
+        return
+    if key in ("result", "error") and "method" not in d:
+        logger.warning("scientist chat %s: an answer from %s nested too deep to read failed its request (%r)",
+                       c.get("session"), c["agent"], line[:120])
+        fut = c["rpc"]["pending"].pop(d["id"], None)
+        if fut and not fut.done():
+            fut.set_result({"id": d["id"], "error": {"message": DEEP_ANSWER_WORDS}})
+        return
+    if d.get("method") or key == "params":
+        logger.warning("scientist chat %s: a request from %s nested too deep to read was refused (%r)", c.get("session"),
+                       c["agent"], line[:120])
+        await _write(proc, {"jsonrpc": "2.0", "id": d["id"], "result": {"outcome": _refused_outcome(None)}})
+        if c["busy"] and not c.get("loading") and c.get("halted") is not proc:
+            _emit(c, {"t": "error", "error": DEEP_REQUEST_WORDS.format(name="Antigravity" if c["agent"] == "agy" else "Gemini CLI")})
+
+
+async def _pump_gemini(c: Dict[str, Any], proc: Any) -> None:
+    """An ACP process's output (Gemini CLI or Antigravity) turned into chat events, until it exits. Its stderr is read
+    as it comes, its last part kept for the error when it exits, so that a long chat cannot stall on a full pipe. An
+    Antigravity chat that acts on its own is stopped here (`_agy_own_work`). A line that is not a JSON object is passed
+    over; one nested too deep for `json.loads` (a RecursionError, about 10,000 levels deep on CPython 3.12.15) and one
+    too long to read are told by their two ends (`_too_deep`, `_overlong`: a request refused, an answer failing what
+    waits on it, an update passed over); one whose handling
+    fails is logged, and when it is a request it is refused (`_refused_outcome`), so that the process does not wait on
+    an answer, and the reading goes on. When the reading itself fails, nothing would read the process's output again:
+    what waits on an answer from it is failed (PUMP_FAILED_WORDS) and the process is ended, so the turn ends and the
+    next message starts it again."""
+    rpc = c["rpc"]
+    tail = bytearray()
+
+    async def drain() -> None:  # read in pieces, not lines: a line longer than the reader holds cannot stop it
+        try:
+            while chunk := await proc.stderr.read(1 << 16):
+                tail.extend(chunk)
+                del tail[: max(0, len(tail) - (1 << 16))]
+        except OSError:
+            pass
+
+    drainer = asyncio.create_task(drain()) if proc.stderr is not None else None
+    try:
+        async for line, head, last in _acp_lines(proc.stdout):
+            m: Optional[Dict[str, Any]] = None
+            deep = False
+            if line is not None:
+                try:
+                    m = json.loads(line)
+                except RecursionError:  # nested too deep for the parser: told by its two ends (`_too_deep`)
+                    deep = True
+                except ValueError:  # not JSON
+                    continue
+                if not deep and not isinstance(m, dict):
+                    continue
+            try:
+                if deep:
+                    await _too_deep(c, proc, line)
+                elif m is None:
+                    await _overlong(c, proc, head, last)
+                else:
+                    await _pump_message(c, proc, m)
+            except Exception:  # noqa: BLE001 - one message that cannot be handled does not stop the reading
+                logger.exception("scientist chat %s: a message from %s could not be handled", c.get("session"), c["agent"])
+                if m is not None and "id" in m and m.get("method"):
+                    try:
+                        await _write(proc, {"jsonrpc": "2.0", "id": m["id"], "result": {"outcome": _refused_outcome(m.get("params"))}})
+                    except Exception:  # noqa: BLE001 - the process is gone
+                        pass
+    except Exception as exc:  # noqa: BLE001 - the reading failed: what waits on it is failed, and the process ended
+        logger.exception("scientist chat %s: reading %s's output failed", c.get("session"), c["agent"])
+        name = "Antigravity" if c["agent"] == "agy" else "Gemini CLI"
+        failed = RuntimeError(PUMP_FAILED_WORDS.format(name=name, why=f"{type(exc).__name__}: {str(exc)[:200]}"))
+        for fut in list(rpc["pending"].values()):
+            if not fut.done():
+                fut.set_exception(failed)
+        rpc["pending"].clear()
+        if c.get("proc") is proc:
+            await _end_chat(c)
+        else:  # the chat has a process of its own since: this one, which nothing reads, is ended all the same
+            await _stop_proc(proc)
+
+    if drainer is not None:
+        try:
+            await asyncio.wait_for(drainer, 5)
+        except asyncio.TimeoutError:
+            drainer.cancel()
+    code = await proc.wait()
+    exit_msg = tail.decode(errors="replace").strip()[-600:] or f"{c['agent']} exited {code}"
+    for fut in list(rpc["pending"].values()):
+        if not fut.done():
+            fut.set_exception(RuntimeError(exit_msg))
+    rpc["pending"].clear()
+    if c.get("proc") is proc:
+        c["proc"] = None
+        _mark_stale(c, False)
+        if c["busy"] and c.get("task") is None:
+            c["busy"] = False
+            _emit(c, {"t": "error", "error": exit_msg})
+            _emit(c, {"t": "done"})
+            c["turn"] = []
+
+
+# how long one ACP prompt (Gemini CLI or Antigravity) may run before it is given up
+GEMINI_PROMPT_TIMEOUT = 3600
+LOAD_FAILED_WORDS = ("This chat's conversation could not be loaded into {name} ({why}), so it would go on with no memory of the "
+                     "turns shown here. Start a new chat.")
+
+
+async def _load_or_new(c: Dict[str, Any], key: str, name: str, params: Dict[str, Any]) -> str:
+    """The chat's ACP session: the one saved for it (`key` in chats.json), loaded, its replay not shown; else a new one,
+    saved. A saved one that does not load is not replaced by a new one, which would know none of the turns the page
+    shows: the chat is refused (LOAD_FAILED_WORDS)."""
+    saved = _meta().get(c["session"], {}).get(key)
+    if saved:
+        c["loading"] = True
+        try:
+            await _rpc(c, "session/load", {"sessionId": saved, **params})
+        except Exception as exc:
+            raise RuntimeError(LOAD_FAILED_WORDS.format(name=name, why=str(exc)[:200])) from None
+        finally:
+            c["loading"] = False
+        return str(saved)
+    r = await _rpc(c, "session/new", params)
+    sid = str(r.get("sessionId") or "")
+    if not sid:
+        raise RuntimeError(f"{name} session/new returned no sessionId")
+    _meta_set(c["session"], **{key: sid})
+    return sid
+
+
+async def _ensure_gemini(c: Dict[str, Any], self_url: str) -> Any:
+    proc = c.get("proc")
+    if proc is not None and proc.returncode is None:
+        return proc
+    if not shutil.which(_bin("gemini")):
+        raise RuntimeError("Gemini CLI (the `gemini` command) is not installed where the server runs.")
+    files = _agent_files_stamp()
+    ghome, ro_cwd, policy_path = _gemini_home(c["session"])
+    pfile = prompt_file("gemini", self_url)
+    env = child_env(
+        "gemini",
+        GEMINI_CLI_HOME=str(ghome),
+        GEMINI_CLI_TRUST_WORKSPACE="true",
+        GEMINI_SYSTEM_MD=str(pfile),
+        GEMINI_TELEMETRY_ENABLED="false",
+        TMPDIR=str(chat_tmp(c["session"])),
+    )
+    proc = c["proc"] = await asyncio.create_subprocess_exec(
+        *_gemini_cmd(policy_path),
+        cwd=str(ro_cwd),
+        env=env,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        limit=ACP_LINE_LIMIT,
+        start_new_session=True,
+    )
+    _started(c, files)
+    c["rpc"], c["seen_tools"], c["loading"] = {"next": 0, "pending": {}}, set(), False
+    c["pump"] = asyncio.create_task(_pump_gemini(c, proc))
+    try:
+        await _rpc(c, "initialize", {
+            "protocolVersion": 1,
+            "clientCapabilities": {},
+            "clientInfo": {"name": "theodolite", "version": "1"},
+        })
+        params = {"cwd": str(ro_cwd), "mcpServers": _gemini_mcp_servers(c["session"], self_url)}
+        c["gemini_session"] = await _load_or_new(c, "gemini_session", "Gemini CLI", params)
+    except Exception:
+        await _end_chat(c)
+        raise
+    return proc
+
+
+def _gemini_prompt_parts(msg: str, attachments: List[str]) -> List[Dict[str, Any]]:
+    parts: List[Dict[str, Any]] = [{"type": "text", "text": msg}]
+    for fid in attachments:
+        meta, raw = _upload(fid)
+        if meta is None:
+            continue
+        kind = meta["type"]
+        if kind in ("image/png", "image/jpeg", "image/gif", "image/webp"):
+            parts.append({"type": "image", "mimeType": kind, "data": base64.b64encode(raw).decode()})
+        elif kind == "application/pdf" or meta["name"].lower().endswith(".pdf"):
+            parts.append({"type": "text", "text": f"[a PDF, {meta['name']}, was attached; Gemini CLI ACP takes text and images]"})
+        else:
+            parts.append({"type": "text", "text": _file_text(meta["name"], raw)})
+    return parts
+
+
+def _not_sent(c: Dict[str, Any], queued: List[List[Dict[str, Any]]], why: str) -> None:
+    """Messages sent during a turn that never reached the scientist, said so in the thread and the replay log (an
+    error event), each by its first words."""
+    if not queued:
+        return
+    said = "; ".join("“" + _cut(_shown_text(str((p[0] if p else {}).get("text", ""))).strip(), 60) + "”" for p in queued)
+    n = len(queued)
+    _emit(c, {"t": "error", "error": f"Not sent: {'this message' if n == 1 else f'these {n} messages'}, sent while it worked, "
+                                     f"did not reach the scientist ({said}). {why}"})
+
+
+async def _gemini_turn(c: Dict[str, Any], first_parts: List[Dict[str, Any]]) -> None:
+    """Runs ACP `session/prompt` calls (Gemini CLI or Antigravity), one for the message that began the turn and one for
+    each sent while it ran (`c['pending']`), in the order sent, until none is left. A stop (POST /interrupt) ends the
+    prompt in flight, and only that one: the messages sent during it go in after it, before any sent later. A prompt
+    the process answers with an error (a rate limit, say) is said to have failed, and the next goes in. One that cannot
+    go in (a context file in the way, the process gone or stopped for what it did, a reply given up after
+    `GEMINI_PROMPT_TIMEOUT`) is said to be not sent (`_not_sent`)."""
+    queue: List[List[Dict[str, Any]]] = [first_parts]
+    try:
+        while queue or c["pending"]:
+            parts = queue.pop(0) if queue else c["pending"].pop(0)
+            why = await _context_refusal_async(c["agent"])
+            if why:
+                _not_sent(c, [parts, *c["pending"]], why)
+                c["pending"].clear()
+                break
+            c["seen_tools"] = set()
+            c["cancel"].clear()  # a stop ends the prompt in flight: this one, from here
+            running = c.get("proc")
+            try:
+                await _rpc(c, "session/prompt", {"sessionId": c["gemini_session"], "prompt": parts}, timeout=GEMINI_PROMPT_TIMEOUT)
+            except Exception as exc:
+                proc = c.get("proc")
+                if running is not None and c.get("halted") is running:  # stopped for what it did (`_agy_own_work`), said
+                    why = "The scientist was stopped first; send them again."
+                    _not_sent(c, list(c["pending"]), why)
+                    c["pending"].clear()
+                    break
+                if isinstance(exc, TimeoutError):  # given up, and stopped: nothing more goes in behind it
+                    _emit(c, {"t": "error", "error": f"The reply did not end within {GEMINI_PROMPT_TIMEOUT // 60} minutes, and was stopped."})
+                    try:
+                        await _write(proc, {"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": c["gemini_session"]}})
+                    except Exception:  # noqa: BLE001 - the process is gone
+                        pass
+                elif not c["cancel"].is_set():
+                    _emit(c, {"t": "error", "error": str(exc)[:600]})
+                if isinstance(exc, TimeoutError):
+                    why = f"The reply before them did not end within {GEMINI_PROMPT_TIMEOUT // 60} minutes; send them again."
+                elif proc is None or proc.returncode is not None or isinstance(exc, OSError):
+                    why = "The scientist's process ended first; send them again."
+                else:  # the process answered this prompt with an error (a rate limit, say): the next one goes in
+                    continue
+                _not_sent(c, list(c["pending"]), why)
+                c["pending"].clear()
+                break
+    finally:
+        c["busy"], c["task"], c["seen_tools"], c["idle_since"] = False, None, set(), time.time()
+        c["cancel"].clear()
+        _emit(c, {"t": "done"})
+        c["turn"] = []
+
+
+def _gemini_session_file(sid: Optional[str]) -> Optional[Path]:
+    """Locate Gemini CLI's stored JSONL session file for `sid` inside `<scientist folder>/gemini-home`."""
+    if not sid:
+        return None
+    root = scientist_dir() / "gemini-home" / ".gemini" / "tmp"
+    if not root.exists():
+        return None
+    for p in root.glob("*/chats/session-*.jsonl"):
+        try:
+            with open(p, "rb") as f:
+                first = f.readline()
+            rec = json.loads(first) if first.strip() else None
+            if isinstance(rec, dict) and rec.get("sessionId") == sid:
+                return p
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def _gemini_messages(path: Any) -> List[Dict[str, Any]]:
+    """Gemini CLI 0.70.0's session file read back as its own loader reads it (chatRecordingService): a message record
+    (an `id`, no `$patch`) sets that message, where it first stood; `{"$rewindTo": id}` drops that message and every one
+    after it (all of them when it is not there); `$patch` changes (`updates`), drops (`removeIds`) and reorders
+    (`orderIds`) them; `$set.messages`, and a header's `messages`, replace them. The messages, in order."""
+    msgs: Dict[str, Dict[str, Any]] = {}
+    valid = lambda m: isinstance(m, dict) and isinstance(m.get("id"), str) and "$patch" not in m  # noqa: E731
+    for _, r in _jsonl(path):
+        if isinstance(r.get("$rewindTo"), str):
+            ids = list(msgs)
+            for i in (ids[ids.index(r["$rewindTo"]):] if r["$rewindTo"] in msgs else ids):
+                del msgs[i]
+        elif isinstance(r.get("$patch"), dict):
+            p = r["$patch"]
+            for u in ([p] if isinstance(p.get("id"), str) else []) + [u for u in p.get("updates") or [] if isinstance(u, dict)]:
+                if u.get("id") in msgs and "content" in u:
+                    msgs[u["id"]] = {**msgs[u["id"]], "content": u["content"]}
+            for i in p.get("removeIds") or []:
+                if isinstance(i, str):
+                    msgs.pop(i, None)
+            if isinstance(p.get("orderIds"), list):
+                order = [i for i in p["orderIds"] if isinstance(i, str) and i in msgs]
+                msgs = {i: msgs[i] for i in [*(i for i in msgs if i not in set(order)), *order]}
+        elif valid(r):
+            msgs[r["id"]] = r
+        elif isinstance(r.get("$set"), dict):
+            if isinstance(r["$set"].get("messages"), list):
+                msgs = {m["id"]: m for m in r["$set"]["messages"] if valid(m)}
+        elif isinstance(r.get("sessionId"), str) and isinstance(r.get("messages"), list):
+            msgs.update({m["id"]: m for m in r["messages"] if valid(m)})
+    return list(msgs.values())
+
+
+def _gemini_person_text(m: Dict[str, Any]) -> Optional[str]:
+    """What the person typed, of a message in Gemini's session file (as the page shows it); None for anything else.
+    Gemini 0.70.0 records three kinds of "user" message: the person's, each tool round's functionResponse, and the
+    <session_context> it opens a session with."""
+    if m.get("type") != "user":
+        return None
+    content = m.get("content")
+    parts = [{"text": content}] if isinstance(content, str) else [p for p in content if isinstance(p, dict)] if isinstance(content, list) else []
+    if any("functionResponse" in p for p in parts):
+        return None
+    texts = [p["text"] for p in parts if isinstance(p.get("text"), str)]
+    if not texts or "".join(texts).lstrip().startswith(("<session_context>", "<hook_context>")):
+        return None
+    return _shown_text(texts[0])
+
+
+GEMINI_REWIND_UNSURE = ("This chat cannot be taken back safely: the same words were sent more than once and Gemini no longer "
+                        "holds one of them (a stopped reply can make it drop the message it was answering), so which of its "
+                        "messages is the last one shown here cannot be told. Start a new chat to ask again.")
+
+
+def _rewind_gemini_session(cid: str, sid: Optional[str], said: List[str]) -> Optional[str]:
+    """Takes Gemini CLI's stored conversation back to before the person's last message, as the replay log is taken
+    back (`said`: the person's messages there, in order; the last one goes): by appending `{"$rewindTo": <its id>}`,
+    which Gemini's own loader honours, after a backup; the file goes, and `gemini_session` with it, when that message was
+    the person's first. Gemini may not hold that message at all (a stopped reply can make it drop the message it was
+    answering, and what it had answered): then nothing is cut. When which of its messages that is cannot be told (the
+    same words sent more than once, and Gemini holding fewer of them than the log), nothing is cut and the reason is
+    returned, for the rewind to be refused; else None."""
+    path = _gemini_session_file(sid)
+    if path is None or not said:
+        return None
+    persons = [(m, t.strip()) for m in _gemini_messages(path) if (t := _gemini_person_text(m)) is not None]
+    last = said[-1].strip()
+    if not persons or persons[-1][1] != last:
+        return None
+    if sum(t == last for _, t in persons) != sum(s.strip() == last for s in said):
+        return GEMINI_REWIND_UNSURE
+    shutil.copy(path, f"{path}.bak-{int(time.time())}")
+    if len(persons) == 1:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        _meta_set(cid, gemini_session=None)
+        return None
+    with open(path, "rb+") as f:
+        f.seek(0, os.SEEK_END)
+        if f.tell():
+            f.seek(-1, os.SEEK_END)
+            if f.read(1) != b"\n":  # a last line cut off mid-write stays a line of its own, which the loader skips
+                f.write(b"\n")
+        f.write((json.dumps({"$rewindTo": persons[-1][0]["id"]}) + "\n").encode("utf-8"))
+    return None
+
+
+# --------------------------------------------------------------------------------------------- Antigravity CLI (ACP)
+
+AGY_NO_REWIND = ("An Antigravity chat cannot be taken back: Antigravity gives no way to drop its last turn, so it would still "
+                 "have in mind what the page takes away. Start a new chat to ask again.")
+
+
+def agy_gemini_dir() -> Path:
+    """Antigravity's own data folder for the scientist (`--gemini-dir`; 0700): its settings, conversations and logins
+    are kept there, not in the person's ~/.gemini, so their own plugins, skills, rules and subagents do not load. It is
+    absolute: agy 1.5.14 takes a relative one for ~/.gemini, saying so only in its log."""
+    d = (scientist_dir() / "agy-gemini").resolve()
+    d.mkdir(parents=True, exist_ok=True)
+    os.chmod(d, 0o700)
+    if not d.is_absolute():
+        raise RuntimeError(f"Antigravity's own folder must be an absolute path: {d}")
+    return d
+
+
+def _agy_cmd(log_file: Path) -> List[str]:
+    """Antigravity's command line: its own data folder, no telemetry, none of its default customizations, its log in
+    the chat's own temporary folder; at the folder reach in its sandbox, at the home reach approving everything. Its
+    workspace is its empty read-only cwd and the work folder, never the home folder (a workspace's `.agents`, GEMINI.md
+    and AGENTS.md are its rules: `context_files`)."""
+    cmd = [
+        _bin("agy"), "acp",
+        "--stdio",
+        f"--gemini-dir={agy_gemini_dir()}",
+        "--disable-telemetry",
+        "--include-default-customizations=false",
+        "--log-file", str(log_file),
+    ]
+    if reach() == "home":
+        cmd += ["--dangerously-skip-permissions", "--add-dir", str(work_dir())]
+    else:
+        cmd += ["--sandbox", "--add-dir", str(work_dir())]
+    return cmd
+
+
+async def _agy_said_its_folder(log_file: Path, gdir: Path, wait: float = 5.0) -> bool:
+    """Whether Antigravity's log says it keeps its files in `gdir` (agy 1.5.14 writes "ACP app data directory: <dir>"
+    as it takes up the first session asked of it)."""
+    want = f"ACP app data directory: {gdir / 'antigravity-cli'}"
+    end = time.time() + wait
+    while True:
+        try:
+            if want in log_file.read_text(encoding="utf-8", errors="replace"):
+                return (gdir / "antigravity-cli").is_dir()
+        except OSError:
+            pass
+        if time.time() >= end:
+            return False
+        await asyncio.sleep(0.1)
+
+
+async def _ensure_agy(c: Dict[str, Any], self_url: str) -> Any:
+    proc = c.get("proc")
+    if proc is not None and proc.returncode is None:
+        return proc
+    if not shutil.which(_bin("agy")):
+        raise RuntimeError("Antigravity CLI (the `agy` command) is not installed where the server runs.")
+    files = _agent_files_stamp()
+    ro_cwd = scientist_dir() / "agy-cwd"
+    _reset_ro_cwd(ro_cwd)
+    gdir = agy_gemini_dir()
+    tmp = chat_tmp(c["session"])
+    log_file = tmp / "agy-acp.log"
+    try:
+        log_file.unlink()
+    except OSError:
+        pass
+    # at the folder reach its XDG folders are its own too (it names $XDG_CONFIG_HOME/antigravity/plugin-secrets.json); at
+    # the home reach they are the person's, as its shell's commands would look for their files there
+    xdg_names = (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"), ("XDG_CACHE_HOME", "cache"), ("XDG_STATE_HOME", "state"))
+    xdg = ({k: os.environ[k] for k, _ in xdg_names if k in os.environ} if reach() == "home"
+           else {k: str(gdir / "xdg" / v) for k, v in xdg_names})
+    env = child_env("agy", TMPDIR=str(tmp), **xdg)
+    proc = c["proc"] = await asyncio.create_subprocess_exec(
+        *_agy_cmd(log_file),
+        cwd=str(ro_cwd),
+        env=env,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        limit=ACP_LINE_LIMIT,
+        start_new_session=True,
+    )
+    _started(c, files)
+    c["rpc"], c["seen_tools"], c["loading"], c["idle_since"] = {"next": 0, "pending": {}}, set(), False, time.time()
+    c["pump"] = asyncio.create_task(_pump_gemini(c, proc))
+    try:
+        init = await _rpc(c, "initialize", {
+            "protocolVersion": 1,
+            "clientCapabilities": {},
+            "clientInfo": {"name": "theodolite", "version": "1"},
+        })
+        version = str((init.get("agentInfo") or {}).get("version") or "unknown")
+        if version != AGY_VERSION:
+            raise RuntimeError(f"Antigravity CLI {version} is installed; the scientist chat was checked on {AGY_VERSION} only "
+                               "(that it keeps its files in a folder of the chat's own, how it asks before it acts), so it is "
+                               "not started on another.")
+        sys_meta = {"antigravity": {"systemPrompt": {"append": system_prompt("agy", self_url)}}}
+        params = {"cwd": str(ro_cwd), "mcpServers": _gemini_mcp_servers(c["session"], self_url), "_meta": sys_meta}
+        sid = await _load_or_new(c, "agy_session", "Antigravity", params)
+        # agy 1.5.14 says where it keeps its files only once a session is asked for (live, 22 November 2026: nothing
+        # after `initialize` alone), so this is checked after it
+        if not await _agy_said_its_folder(log_file, gdir):
+            raise RuntimeError(f"Antigravity did not say it keeps its files in the chat's own folder ({gdir}), so the chat is "
+                               "stopped: its conversations could otherwise land among your own.")
+        model = os.environ.get("THEODOLITE_AGY_MODEL")
+        if model:
+            await _rpc(c, "session/set_model", {"sessionId": sid, "modelId": model})
+        c["gemini_session"] = sid
+    except Exception:
+        await _end_chat(c)
+        raise
+    return proc
 
 
 # ------------------------------------------------------------------------------------- OpenAI-compatible endpoints
@@ -1177,14 +2344,17 @@ class UploadRequest(BaseModel):
 
 @router.get("/backends")
 async def backends() -> Dict[str, Any]:
-    """Which backends this server can run: Claude Code and Codex where their commands are installed, and every
-    OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing")."""
+    """Which backends this server can run: Antigravity CLI, Claude Code, Codex and Gemini CLI where their commands are
+    installed, and every OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing")."""
     ps = profiles()
-    return {"claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
+    return {"agy": {"available": bool(shutil.which(_bin("agy"))), "model": os.environ.get("THEODOLITE_AGY_MODEL")},
+            "claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
             "codex": {"available": bool(shutil.which(_bin("codex")))},
+            "gemini": {"available": bool(shutil.which(_bin("gemini"))), "model": os.environ.get("THEODOLITE_GEMINI_MODEL")},
             "openai": [profile_card(k, v) for k, v in ps.items()], "warning": _profile_warning,
-            "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()]},
-            # where a Claude Code or Codex scientist keeps its files, and the route the page opens one through
+            # what each can do at this reach, and at the folder reach (what the page says it would do without "home")
+            "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()], "folder": REACH_WORDS["folder"]},
+            # where an Antigravity, Claude Code, Codex or Gemini scientist keeps its files, and the route the page opens one through
             "work": {"folder": str(work_dir()), "route": WORK_ROUTE},
             "prompt": {"files": [str(p) for p in PROMPT_FILES], "local": str(scientist_dir() / "prompt.local.md")}}
 
@@ -1291,6 +2461,27 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
             known = _meta().get(cid, {})
             _meta_set(cid, turns=known.get("turns", []) + [tid], turn_at={**(known.get("turn_at") or {}), str(tid): at})
             return {"ok": True}
+        if c["agent"] in ("agy", "gemini"):
+            why = await _context_refusal_async(c["agent"])  # before the process starts: Gemini reads them as a session starts
+            if why:
+                raise HTTPException(status_code=409, detail=why)
+            try:
+                if c["agent"] == "agy":
+                    await _ensure_agy(c, self_url)
+                else:
+                    await _ensure_gemini(c, self_url)
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail=f"{c['agent']}: {exc}") from None
+            _log(cid, {"t": "user", "text": shown})
+            parts = _gemini_prompt_parts(msg, req.attachments)
+            _emit(c, {"t": "sent"})
+            if c["busy"]:
+                c["pending"].append(parts)
+                return {"ok": True, "queued": True}
+            c["busy"], c["last"] = True, time.time()
+            c["cancel"].clear()
+            c["task"] = asyncio.create_task(_gemini_turn(c, parts))
+            return {"ok": True}
         try:
             proc = await _ensure_claude(c, self_url)
         except Exception as exc:
@@ -1305,7 +2496,9 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
 
 @router.post("/interrupt")
 async def interrupt(req: ChatRequest) -> Dict[str, Any]:
-    """Stops the chat's current reply; the chat (and, under Claude Code or Codex, its background commands) goes on."""
+    """Stops the chat's current reply; the chat (and, under Claude Code or Codex, its background commands) goes on. A
+    message sent while it answered is not dropped: under Antigravity or Gemini CLI it goes in once the stopped reply has
+    ended, before any sent later."""
     c = _chats.get(_check_chat(req.chat))
     if c is None or not c["busy"]:
         return {"ok": True, "running": False}
@@ -1319,6 +2512,12 @@ async def interrupt(req: ChatRequest) -> Dict[str, Any]:
         if not c.get("turn_id"):
             return {"ok": True, "running": False}
         await _rpc(c, "turn/interrupt", {"threadId": c["thread"], "turnId": c["turn_id"]})
+        return {"ok": True, "running": True}
+    if c["agent"] in ("agy", "gemini"):
+        # the prompt in flight is stopped; messages sent during it still go in, after it (`_gemini_turn`)
+        c["cancel"].set()
+        if c.get("gemini_session"):
+            await _write(proc, {"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": c["gemini_session"]}})
         return {"ok": True, "running": True}
     await _write(proc, {"type": "control_request", "request_id": str(uuid.uuid4()), "request": {"subtype": "interrupt"}})
     return {"ok": True, "running": True}
@@ -1406,12 +2605,15 @@ async def history(chat: str) -> Dict[str, Any]:
     cid = _check_chat(chat)
     m = _meta().get(cid, {})
     agent = m.get("agent", "claude")
-    if agent in ("codex", "openai"):
+    if agent in ("agy", "codex", "gemini", "openai"):
         path = logs_dir() / f"{cid}.jsonl"
         ev = []
         if path.exists():
             for _, e in _jsonl(path):
-                if e.get("t") in ("user", "text", "tool", "tool_result", "error"):
+                if e.get("t") == "reset":  # a reply Gemini CLI retried: what came of it before goes, as on the live page
+                    while ev and ev[-1].get("t") == "text":
+                        ev.pop()
+                elif e.get("t") in ("user", "text", "tool", "tool_result", "error"):
                     # the log keeps each streamed fragment; a reply is their run joined, as the live page shows it (a
                     # fragment boundary can fall inside a number or a citation)
                     if e["t"] == "text" and ev and ev[-1].get("t") == "text":
@@ -1450,7 +2652,9 @@ async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
     without it), so it can be sent again: the reply goes too. A Claude Code session is backed up beside it first. No
     match (already cut) is not an error. A Codex chat's last turn is reverted whole (thread/revert drops the turn), so
     a message the person sent into it while it ran goes with it: its log is cut back to where that turn began, and
-    `messages` says how many of the person's messages left it (the page takes as many off its thread)."""
+    `messages` says how many of the person's messages left it (the page takes as many off its thread). A Gemini CLI
+    chat's stored conversation is taken back to before that message (`_rewind_gemini_session`), or the rewind refused
+    when that cannot be done safely. An Antigravity chat's is refused (409): Antigravity cannot drop a turn."""
     cid = _check_chat(req.chat)
     text = (req.text or "").strip()
     m = _meta().get(cid, {})
@@ -1478,6 +2682,22 @@ async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
             at = turn_at.get(str(turns[-1]))  # None for a turn taken before the log said where turns begin
             _meta_set(cid, turns=turns[:-1], turn_at={k: v for k, v in turn_at.items() if k != str(turns[-1])})
         return {"ok": True, "cut": bool(turns), "messages": _cut_log(cid, at)}
+    if agent == "agy":  # nothing is cut, so the thread, the log and Antigravity's memory stay in step
+        raise HTTPException(status_code=409, detail=AGY_NO_REWIND)
+    if agent == "gemini":
+        if c is not None:
+            await _end_chat(c)
+        log = logs_dir() / f"{cid}.jsonl"
+        said = [str(e.get("text") or "") for _, e in _jsonl(log) if e.get("t") == "user"] if log.exists() else []
+        if not said or (text and said[-1].strip() != text):
+            # the page's last message is not the log's (a message refused before it was sent, say): nothing of the
+            # conversation is the page's to take back, so nothing is cut
+            return {"ok": True, "cut": False, "messages": 0}
+        why = _rewind_gemini_session(cid, m.get("gemini_session"), said)  # Gemini's memory first; both or neither
+        if why:
+            raise HTTPException(status_code=409, detail=why)
+        cut_n = _cut_log(cid)
+        return {"ok": True, "cut": bool(cut_n), "messages": cut_n}
     if c is not None:  # a live process holds the conversation in memory; the next message resumes from the cut file
         await _end_chat(c)
     path = _session_file(cid)

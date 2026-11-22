@@ -821,13 +821,25 @@ export interface EndpointCard {
   stream: boolean;
 }
 export interface Backends {
+  agy: { available: boolean; model: string | null };
   claude: { available: boolean; model: string | null };
   codex: { available: boolean };
+  gemini: { available: boolean; model: string | null };
   openai: EndpointCard[];
   warning: string | null;
-  /** what each backend can do beyond the atlas's tools: "folder" (the default) or "home" (a shell over the home folder) */
-  reach?: { mode: "folder" | "home"; env: string; claude: string; codex: string; openai: string };
-  /** where a Claude Code or Codex scientist keeps its files, and the route that opens one in a browser tab */
+  /** what each backend can do beyond the atlas's tools at the server's reach: "folder" (the default) or "home" (a shell),
+   * and what each would do at the folder reach (`folder`) */
+  reach?: {
+    mode: "folder" | "home";
+    env: string;
+    agy: string;
+    claude: string;
+    codex: string;
+    gemini: string;
+    openai: string;
+    folder?: { agy: string; claude: string; codex: string; gemini: string; openai: string };
+  };
+  /** where an Antigravity, Claude Code, Codex or Gemini scientist keeps its files, and the route that opens one in a browser tab */
   work?: { folder: string; route: string };
 }
 
@@ -844,12 +856,13 @@ export interface ControlVectorReply {
 /** Where the page downloads an exported control vector from. */
 export const exportUrl = (file: string) => `/api/atlas/exports/${encodeURIComponent(file)}`;
 export interface ChatEvent {
-  t: "state" | "sent" | "text" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "note" | "stale" | "ping" | "user";
+  /** `reset`: Gemini CLI retried a reply cut off mid-stream, and what had come of it goes */
+  t: "state" | "sent" | "text" | "reset" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "note" | "stale" | "ping" | "user";
   [k: string]: unknown;
 }
 export interface PastChat {
   chat: string;
-  agent: "claude" | "codex" | "openai";
+  agent: "agy" | "claude" | "codex" | "gemini" | "openai";
   t: number;
   title: string | null;
   turns: number;

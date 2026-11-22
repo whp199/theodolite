@@ -160,7 +160,8 @@ def why_not_counted(outcome: Mapping[str, Any]) -> Optional[str]:
     It ran to an end when its driver did not fail (`driver_failure` is None), its stop is not one of
     `NOT_TO_AN_END_STOPS` (the kill switch, an error, a driver failure, a call still running), and the door saw at least
     one call succeed (`door.ok` of 1 or more). An outcome that records no `door` does not count; nor does a session
-    refused before it ran."""
+    refused before it ran. An error is said with a claim the door refused, in its words, else with the driver's own
+    stop note (`stop_note`, a CLI driver's), else with the start of the outcome's notes."""
     if outcome.get("refused"):
         return f"refused before it ran: {outcome.get('refusal')}"
     why: List[str] = []
@@ -172,7 +173,7 @@ def why_not_counted(outcome: Mapping[str, Any]) -> Optional[str]:
         say = NOT_TO_AN_END_STOPS[str(stop)]
         refused_claim = str(outcome.get("claim_refused") or "").strip()
         note = (f"a claim the door refused: {refused_claim}" if refused_claim
-                else str(outcome.get("notes") or "").strip())
+                else str(outcome.get("stop_note") or "").strip() or str(outcome.get("notes") or "").strip())
         why.append(f"{say} ({note[:400]})" if stop == "error" and note else say)
     door = outcome.get("door")
     if not isinstance(door, Mapping):
@@ -190,6 +191,47 @@ def _claim_refused(outcome: Mapping[str, Any]) -> Optional[str]:
     return str(cr)[:1200] if cr else None
 
 
+def _usage_not_known(outcome: Mapping[str, Any]) -> Optional[str]:
+    """Why a session's usage is not known, in plain words starting "usage not known", or None when it is: a Gemini CLI
+    run stopped before its result line, the only line that carries its usage (`caps_after_run["usage_known"]` false).
+    Where the study charged it for that, the charge is said instead (`_charge_unknown`)."""
+    charged = outcome.get("dollars_charged")
+    if isinstance(charged, Mapping) and charged.get("why"):
+        return str(charged["why"])
+    caps = outcome.get("caps_after_run")
+    if isinstance(caps, Mapping) and caps.get("usage_known") is False:
+        return f"usage not known: {caps.get('say') or 'the driver read no usage'}"
+    return None
+
+
+def _charge_unknown(outcome: Mapping[str, Any], handed: Optional[float]) -> Optional[Dict[str, Any]]:
+    """What a study charges a session whose dollars are not known (a Gemini CLI run stopped before its result line, at
+    prices that are not 0 for both), or None for one whose dollars are known: the dollar cap it was handed, counted
+    against the study's total as if spent, so a study dollar cap does not take such a session at $0. That cap does not
+    bound what the run spent (the CLI's dollar cap is checked only once its run has ended), and a session handed no cap
+    is charged nothing, its dollars left out of the study's total; either way its row says so."""
+    caps = outcome.get("caps_after_run")
+    if not (isinstance(caps, Mapping) and caps.get("usage_known") is False and caps.get("dollars_known") is False):
+        return None
+    if handed is not None and float(handed) > 0.0:
+        return {"dollars": round(float(handed), 6),
+                "why": (f"usage not known: the run was stopped before the CLI printed its usage, so the study charged it "
+                        f"the dollar cap it was handed (${float(handed):.6f}) against its total; that cap does not bound "
+                        "what it spent, as the CLI's dollar cap cannot stop a run")}
+    return {"dollars": 0.0,
+            "why": ("usage not known: the run was stopped before the CLI printed its usage, and it was handed no dollar "
+                    "cap, so nothing was charged: its dollars are left out of the study's total")}
+
+
+def _counted_dollars(outcome: Mapping[str, Any]) -> float:
+    """The dollars a study counts a session at: what the study charged it where its dollars were not known
+    (`_charge_unknown`), else its own figure."""
+    charged = outcome.get("dollars_charged")
+    if isinstance(charged, Mapping) and isinstance(charged.get("dollars"), (int, float)):
+        return float(charged["dollars"])
+    return float((outcome.get("usage") or {}).get("estimated_dollars") or 0.0)
+
+
 # -------------------------------------------------------------------------------------- study plan & validation
 
 
@@ -198,7 +240,7 @@ class EvalArm:
     """One experimental arm of a Phase 6 driver evaluation study."""
 
     arm_id: str
-    driver_family: str  # "scripted" | "replay" | "openai" | "claude" | "codex"
+    driver_family: str  # "scripted" | "replay" | "openai" | "agy" | "claude" | "gemini" | "codex"
     reach: str = "weights"
     mode: str = "weight_edit"  # "weight_edit" | "knobs_only"
     bare: bool = False
@@ -487,6 +529,10 @@ def validate_study_plan(
             )
         except lses.SessionRefused as exc:
             raise EvalRefused(f"Arm {arm.arm_id!r}: {exc}") from None
+        # The Antigravity CLI driver is refused, as Codex is, until the owner accepts the three tools agy offers every
+        # print run: refused here, before calibration, as each of its sessions would be
+        if arm.driver_family == "agy" and (arm.driver_config or {}).get("agy_fixed_tools_accepted") is not True:
+            raise EvalRefused(f"Arm {arm.arm_id!r}: {ldrv.AGY_FIXED_TOOLS_SAY}")
 
         # Reach prerequisites
         if check_paths:
@@ -505,6 +551,18 @@ def validate_study_plan(
             if plan.driver_budget.max_dollars is None or plan.driver_budget.max_dollars <= 0.0:
                 raise EvalRefused(
                     f"Arm {arm.arm_id!r} ({arm.driver_family}) requires an owner-approved driver_budget.max_dollars > 0."
+                )
+        # The Gemini CLI and Antigravity CLI report no cost: under a dollar cap (the plan's, or the study's, which each
+        # session is handed what is left of) their dollars are counted from the plan's prices alone, so both must be
+        # given, as each of their sessions would be refused (`level_drivers._cli_prices`)
+        if arm.driver_family in ldrv.BUDGET_PRICED_FAMILIES:
+            pdb = plan.driver_budget
+            capped = (pdb.max_dollars is not None and pdb.max_dollars > 0.0) or plan.max_total_dollars is not None
+            if capped and (pdb.input_usd_per_mtok is None or pdb.output_usd_per_mtok is None):
+                raise EvalRefused(
+                    f"Arm {arm.arm_id!r} ({arm.driver_family}): the CLI reports no cost, so its dollar cap is counted "
+                    "from the plan's prices alone. Give driver_budget.input_usd_per_mtok and output_usd_per_mtok "
+                    "(dollars a million tokens; 0 for both where the account has no per-token price)."
                 )
 
     total_sessions = len(plan.arms) * int(plan.sessions_per_arm)
@@ -963,6 +1021,7 @@ def run_eval_study(
     t_study = time.monotonic()
     refused_n = 0
     counted_n = 0
+    charged_n = 0  # sessions whose dollars were not known, charged the cap they were handed (`_charge_unknown`)
     try:
         why_ks = ks.triggered()
         if why_ks:
@@ -1013,7 +1072,11 @@ def run_eval_study(
                         )
                         refused_n += 1 if outcome.get("refused") else 0
                         counted_n += 1 if why_not_counted(outcome) is None else 0
-                        total_dollars += float((outcome.get("usage") or {}).get("estimated_dollars") or 0.0)
+                        charge = _charge_unknown(outcome, db_now.max_dollars if db_now is not None else None)
+                        if charge is not None:  # its dollars are not known: charged the cap it was handed, and said
+                            outcome["dollars_charged"] = charge
+                            charged_n += 1
+                        total_dollars += _counted_dollars(outcome)
                         outcomes.append(outcome)
                         run_dir = sessions_root / f"{arm.arm_id}_r{rep}"
                         write_json_atomic(run_dir / "outcome.json", outcome)
@@ -1061,6 +1124,7 @@ def run_eval_study(
             "planned_sessions": planned,
             "total_seconds": round(time.monotonic() - t_study, 3),
             "total_estimated_dollars": round(total_dollars, 6),
+            "dollars_not_known_sessions": charged_n,
         }, path=study_book)
     book_ver = lb.verify(study_book)
     return {
@@ -1255,6 +1319,7 @@ def summarize_study(
         walls: List[float] = []
         toks: List[int] = []
         usd: List[float] = []
+        unknown_n = 0
         replicates_detail: List[Dict[str, Any]] = []
 
         for r in counted:
@@ -1288,7 +1353,8 @@ def summarize_study(
                 cells_l.append(int(u.get("cells") or 0))
                 walls.append(float(u.get("wall_seconds") or 0.0))
                 toks.append(int(u.get("total_tokens") or 0))
-                usd.append(float(u.get("estimated_dollars") or 0.0))
+                usd.append(_counted_dollars(r))
+                unknown_n += 1 if _usage_not_known(r) else 0
             replicates_detail.append({
                 "arm_id": r.get("arm_id"),
                 "replicate": r.get("replicate"),
@@ -1302,9 +1368,16 @@ def summarize_study(
                 "gpu_seconds": round(float(u.get("gpu_seconds") or 0.0), 3),
                 "forwards": int(u.get("forwards") or 0),
                 "estimated_dollars": round(float(u.get("estimated_dollars") or 0.0), 6),
+                # a session whose usage is not known (a Gemini CLI run stopped before its result line): why, and what
+                # the study charged it (`_charge_unknown`); its estimated_dollars above is then the driver's 0
+                "usage_not_known": _usage_not_known(r),
+                "dollars_charged": (r.get("dollars_charged") or {}).get("dollars") if isinstance(r.get("dollars_charged"), Mapping) else None,
                 "book_verified": bool((r.get("book") or {}).get("verified", False)),
                 "seed_verdict_set_aside": r.get("seed_verdict_set_aside"),
                 "claim_refused": _claim_refused(r),
+                # caps a driver could count only after its run ended (the Gemini CLI's tokens and dollars) that the
+                # run passed; its stop_reason is as the run ended
+                "caps_passed_after_run": list((r.get("caps_after_run") or {}).get("passed") or []) or None,
             })
 
         n_leads = sum(verdict_counts.get(v, 0) for v in LEAD_VERDICTS)
@@ -1371,6 +1444,9 @@ def summarize_study(
                 "mean_wall_seconds": round(float(np.mean(walls)), 3) if walls else 0.0,
                 "total_tokens": int(sum(toks)),
                 "total_estimated_dollars": round(total_usd, 6),
+                # sessions whose usage is not known: their tokens are not in total_tokens, and their dollars are in
+                # total_estimated_dollars only as charged (`_charge_unknown`)
+                "sessions_usage_not_known": unknown_n,
                 "gpu_seconds_per_lead": round(total_gpu / n_leads, 3) if n_leads > 0 else None,
                 "dollars_per_lead": round(total_usd / n_leads, 6) if n_leads > 0 else None,
             },
@@ -1610,10 +1686,40 @@ def summarize_study(
             "With a study dollar cap, each session's dollar cap was what was left of the study's (or the plan's own, "
             "where smaller), rounded down to a millionth of a dollar; its harness card records the cap it ran under. "
             f"When nothing was left the study stopped ({STUDY_DOLLAR_CAP_REACHED}). A session can pass its cap by "
-            "what its last reply cost.",
+            "what its last reply cost. A Gemini CLI session can pass its token and dollar caps by its whole run: the "
+            "CLI reports its usage only in the last line of a run, so those caps were checked from that line once the "
+            "run had ended, and its row names any it passed (caps_passed_after_run). A Gemini CLI run stopped before "
+            "that line (at the wall cap, say, or by STOP) has no usage to read: its caps were not checked, its row "
+            "says usage not known (usage_not_known), its tokens are not in the totals, and, at prices that are not 0, "
+            "the study charged it the dollar cap it was handed (dollars_charged), which does not bound what it spent.",
             "Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters are not built.",
+            *_driver_limitations(plan_doc),
         ],
     }
+
+
+def _driver_limitations(plan_doc: Mapping[str, Any]) -> List[str]:
+    """What the study's limitations must say of the drivers its arms ran: an Antigravity CLI arm is not door tools
+    only and its runs reach a second model, and a CLI that reports no cost was counted at the plan's prices."""
+    fams = {str(a.get("driver_family")) for a in (plan_doc.get("arms") or []) if isinstance(a, Mapping)}
+    out: List[str] = []
+    if "agy" in fams:
+        out.append(
+            f"An Antigravity CLI (agy) arm's sessions were not door tools only: agy {ldrv.AGY_VERSION} offers the "
+            "model, in every print run, list_resources, read_resource and manage_task as well, which the owner "
+            "accepted for that arm (agy_fixed_tools_accepted); a session whose model called one was stopped as a "
+            "driver failure and is listed apart. agy also sends each run to a safety-monitor model of its own, so "
+            "its runs reached two models. Its turn cap stops a run when the model begins a reply past the cap, after "
+            "the tools the last allowed reply asked for have run; that reply's request was sent, and its tokens are "
+            "counted, or at a floor (the last reply's prompt and output) when agy had not yet printed them."
+        )
+    if fams & set(ldrv.BUDGET_PRICED_FAMILIES):
+        out.append(
+            "A Gemini CLI or Antigravity CLI session's dollars were counted from the plan's prices (dollars a million "
+            "tokens), as the CLI reports no cost; at prices of 0, as for a sign-in quota, its dollars read 0 and its "
+            "dollar cap stopped nothing."
+        )
+    return out
 
 
 def _side_book_problems(sdir: Path, side: Mapping[str, Any], cal: Optional[Mapping[str, Any]], what: str) -> List[str]:
@@ -1878,6 +1984,12 @@ def render_study_report(summary: Mapping[str, Any]) -> str:
         lines += ["", "Claims the door refused, in its own words, in sessions that ran to an end (each session counted "
                   "by the verdict it entered, or as entering none):"]
         lines += [f"- `{aid}_r{r}`: {cr}" for aid, r, cr in refused_claims]
+    unknown = [(rep.get("arm_id"), rep.get("replicate"), rep["usage_not_known"])
+               for a in summary.get("arms") or [] for rep in a.get("replicates") or [] if rep.get("usage_not_known")]
+    if unknown:
+        lines += ["", "Sessions whose usage is not known (their tokens are not in the totals; their dollars are as "
+                  "charged):"]
+        lines += [f"- `{aid}_r{r}`: {why}" for aid, r, why in unknown]
 
     comps = summary.get("comparisons") or {}
     wvk = comps.get("weight_vs_knobs") or []
@@ -2245,8 +2357,8 @@ SCRIPTED_BASELINE_SAY = (
 # driver_config keys that put a stand-in where a model would be: a transport that types fixed replies, or a mock CLI
 STAND_IN_KEYS = ("transport_fn", "allow_mock_cli")
 STAND_IN_SAY = (
-    "A measurement is any case whose driver family chooses what to submit (openai, claude, codex); the family is all "
-    "that is checked. A case whose driver_config gives a stand-in (STAND_IN_KEYS: a transport that types fixed "
+    "A measurement is any case whose driver family chooses what to submit (openai, claude, codex, gemini, agy); the "
+    "family is all that is checked. A case whose driver_config gives a stand-in (STAND_IN_KEYS: a transport that types fixed "
     "replies, a mock CLI) is scored the same way and marked driver_stand_in: such a case checks the scoring, not a "
     "model, and the rates' notes count them."
 )
@@ -2259,7 +2371,7 @@ def _how_driver_proposes(case: BlindedCase, served: Sequence[str]) -> Tuple[bool
     - `replay`: a step calling `propose_repair` (a plumbing check, never a measurement; a read step is never a
       proposal, whatever it is marked).
     - `scripted`: the baseline abstains by rule (`SCRIPTED_BASELINE_SAY`: a plumbing check, never a measurement).
-    - `openai`, `claude`, `codex`: the driver chooses what to submit."""
+    - `openai`, `claude`, `codex`, `gemini`, `agy`: the driver chooses what to submit."""
     fam = case.driver_family
     if "propose_repair" not in served:
         return False, "the session serves no propose_repair"
@@ -2337,7 +2449,7 @@ def run_blinded_benchmark(
       calling it); "plumbing check (answer given)" (a replay of steps typed by someone who knew the plant); "plumbing
       check (scripted steps)" (a replay canary); "plumbing check (scripted baseline)" (`SCRIPTED_BASELINE_SAY`); "no
       proposal recorded" (a driver of any other family whose session ran to an end with no proposal the door took);
-      or "measurement" (a driver of any other family, openai, claude or codex, whose proposal or explicit abstention
+      or "measurement" (a driver of any other family: openai, claude, codex, gemini or agy, whose proposal or abstention
       the door took; `STAND_IN_SAY`). The localization and abstention rates are taken over measurements only, and are
       None, unmeasured, when there are none.
     - A canary is an honest abstention only where the door took an explicit abstention; on a plant an abstention is a
