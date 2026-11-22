@@ -2296,8 +2296,9 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   neuron scaled at two projections and its product at one, and a silenced neuron with more written on it and the
   silence alone, one direction, which they are as written, at dose 1 alone. The dose rule takes the scale between
   two edits from each entry at its own site where that keying finds them one, and else from a neuron's scale as one
-  site, whose scale holds at every dose for a single scale moved between a column and an up-projection row, and at
-  dose 1 alone for the other joins. A rescaled or negated copy is one direction, and so is a copy with an
+  site, whose scale holds at every dose where only a neuron's column and up-projection row factors are moved
+  between the two edits (a single scale moved, or a neuron's two factors swapped), and at dose 1 alone for a gate
+  silence, a neuron scaled at two projections against its product at one, and a silenced neuron's other entries. A rescaled or negated copy is one direction, and so is a copy with an
   extra site whose change is too small to move that cosine. A trial is refused when the book holds, under any brief's name, a trial of its
   direction (of record, dry run or re-run, under any rule), a claim of it that read no lead or never ended, a knob
   claim of it that also read a prompt or a decoding setting, a claim of it at another dose of the direction, or a

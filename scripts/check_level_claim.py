@@ -1164,6 +1164,33 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
           f"a note's factor that is no finite number as the kernel keeps it (too large for a float or for float32, or "
           f"the words inf or nan; rebuilt, carried, or a knob's) gives no payload: the trial is refused as not told, "
           f"never a crash nor let through ({ {k: w[:90] for k, (_e, w) in g_huge.items()} })")
+    # so too a saved folder written by hand whose factor is no finite number, its id worked out again to match: it
+    # gives no payload, and the trial is refused as not told, naming the folder, never a crash
+    e_sv = built([we.scale(2, [5, 7], 0.5)])
+    old_ed = os.environ.get(we.EDITS_ENV)
+    os.environ[we.EDITS_ENV] = str(tmp / "edits_inf")
+    try:
+        src = we.save(e_sv, tmp / "edits_inf" / "src")
+        man_inf = json.loads((src / "manifest.json").read_text(encoding="utf-8"))
+        man_inf["terms"][0]["factors"] = [float("inf"), 0.5]
+        t_inf = [we.Term(t.linear, t.kind, t.layer, t.which, idx=t.idx, op=t.op,
+                         factor=np.asarray([np.inf, 0.5], dtype=np.float32), vectors=t.vectors) for t in e_sv.terms]
+        man_inf["id"] = id_inf = we._edit_id(dict(man_inf["base"]), t_inf)
+        (tmp / "edits_inf" / id_inf).mkdir()
+        (tmp / "edits_inf" / id_inf / "manifest.json").write_text(json.dumps(man_inf), encoding="utf-8")
+        for f in src.iterdir():
+            f.unlink()
+        src.rmdir()
+        w_inf = against(SimpleNamespace(id=id_inf), built([we.silence(2, [5, 7])]), "saved_inf",
+                        kind="claim_registration", said="did not replicate", edit_linears=["layers.2.mlp.down_proj"])
+    finally:
+        if old_ed is None:
+            os.environ.pop(we.EDITS_ENV, None)
+        else:
+            os.environ[we.EDITS_ENV] = old_ed
+    check(w_inf.startswith(f"REFUSED Whether edit {id_inf} ") and "holds a factor that is no finite number" in w_inf,
+          f"a saved folder whose factor is no finite number gives no payload: the trial is refused as not told, naming "
+          f"the folder ({w_inf[:240]})")
     # an earlier edit is nothing off the sites it changes, so this edit's own payload bounds the cosine: an add that
     # shares one column of ten with an earlier, unsaved add is another direction; on a note that names its linear
     # alone the bound is the whole of this edit, and its direction is not told

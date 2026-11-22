@@ -3099,8 +3099,9 @@ in order:
   - two edits are one direction when either keying finds them so. With a neuron’s scale one site, its column, its
     up-projection row and its gate row at 0 are one site, a neuron scaled at two projections is their product, and
     a silenced neuron’s other entries are dropped; past a single scale these are one model at dose 1 alone, and
-    where only this keying finds two edits one direction the dose rule takes its scale, which past a single scale
-    holds at dose 1 alone. So after a failed trial of a column silence at dose 0.5 a gate silence at 0.5 is refused, though at that
+    where only this keying finds two edits one direction the dose rule takes its scale, which holds at every dose
+    only where a neuron's column and up-projection factors are moved between the two (a single scale moved, or two
+    factors swapped), and else at dose 1 alone. So after a failed trial of a column silence at dose 0.5 a gate silence at 0.5 is refused, though at that
     dose it is another model, and after a lead of one it is let through as following it: keep that, or apply the
     neuron keying only at dose 1?
   - beside a low-rank term on a layer’s down projection the neuron keying still joins a column’s scale and an
