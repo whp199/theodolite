@@ -2256,7 +2256,9 @@ fresh claim readings on kept-back frames (`verify/arbiter.md` §4 rows 4, 17–2
   (untouched base, your edit, selectable control edit) beside `<Rubric>` explanations, a responsive two-batch-class
   paired metrics table, and a model-free ledger replay table (handling live readings, Phase 3 claim verdicts, and Phase 5
   trials: a `trial_of_record` shows its verdict, a `trial_dry_run` and a `trial_rerun` show “dry run: …” and “re-run: …”
-  and take no verdict’s colour; displaying unavailable batteries explicitly as `not run` rather than `passed`, and shipping
+  and take no verdict’s colour, and one registered under `trial-4`, a rule the owner never adopted, is named
+  `trial under trial-4, never adopted`, is not of record, prints the rule’s sentence and takes no verdict’s colour;
+  each recorded book in its picker is dated by its own last line; displaying unavailable batteries explicitly as `not run` rather than `passed`, and shipping
   the recorded 19 Nov 2026 31B Phase 3 verdict cards offline via `compareRecorded.ts`, made by
   `scripts/level_recorded_cards.py` from `verify_claim_book.jsonl`).
 
@@ -2276,20 +2278,38 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   as the mends built it; `level_claim.same_direction`). An edit's payload is what a dose multiplies, site by site:
   a scaled column's or row's factor less 1, a set or added one's change (an added vector, or a set vector less the
   base's own column,
-  read from the model), a low-rank term's B @ A. Two edits are one direction when their payloads, each taken over
+  read from the model), a low-rank term's B @ A. A neuron's scale is one site, whichever projection writes it: its
+  down-projection column or up-projection row scaled by any factor, or its gate-projection row scaled by 0, since
+  the feed-forward is down(act(gate x) · up x) with no biases and act(0) = 0. Several such entries on one neuron
+  count as the product of their factors less 1, and a neuron whose product is 0 is that site alone: its other
+  entries change nothing as written and are dropped (not beside a low-rank term on that layer's down projection,
+  which is added after a column's scale). A single scale of a neuron is one model at its column and at its
+  up-projection row at every dose; a gate silence, a neuron scaled at two projections and a silenced neuron's other
+  entries are one model as written, at dose 1 alone, so for them "up to a scale" and the dose rule hold at dose 1.
+  Two edits are one direction when their payloads, each taken over
   every site either changes (nothing where an edit leaves a site alone), have an absolute cosine of at least 0.9999
   (`SAME_DIRECTION_COS`): a rescaled or negated copy is one, and so is a copy with an extra site whose change is too
   small to move that cosine. A trial is refused when the book holds, under any brief's name, a trial of its
   direction (of record, dry run or re-run, under any rule), a claim of it that read no lead or never ended, a knob
   claim of it that also read a prompt or a decoding setting, a claim of it at another dose of the direction, or a
-  reading on a site it changes whose direction cannot be told (the refusal names that edit's full id). An earlier
-  edit is compared by the sites its note names, then the numbers its note holds, then its saved folder, and only
-  then the sketch its note records. From 22 November 2026 every claim and trial registration records `direction`
+  reading of another edit whose direction cannot be told: one whose note names a site this edit changes, names only
+  its linears (a linear this edit changes, or one of a layer whose neurons it scales) or names neither, when its
+  numbers are neither in its note nor in its saved folder and neither its sketch nor the trial edit's own payload
+  tells the two apart (the refusal names that edit's full id). An earlier edit is compared by the sites its note
+  names, then the numbers its note holds, then its saved folder, and only then the sketch its note records; before
+  the sketch is read, the trial edit's own payload bounds the cosine (its length on the sites, or the linears and
+  layers' neurons, the earlier note names, as a share of its whole length), and below 0.9999 the two are other
+  directions whatever the earlier edit's numbers are. From 22 November 2026 every claim and trial registration records `direction`
   (the linears, the sites in words, the payload's length and a 128-number sketch of the normalised payload, keyed
-  by site; none for a low-rank term, for a set with no model at hand, or for an edit that changes nothing), and a
+  by site; none for a low-rank term, for a set with no model at hand, or for an edit that changes nothing; of
+  direction version 2 since the mends' second round, which keyed a neuron's scale by its neuron, so a version-1
+  record's sketch is not compared, though its linears and length are), and a
   trial's registration also `same_direction`, the earlier readings of that direction on any brief that the gate
   let through; its sheet, its sentence of record and an exported adapter's `book_before_it` list them, and
-  `RULES.md` says that the edit is its direction. A claim is still read once by its edit id on one brief. A
+  `RULES.md` says that the edit is its direction, that a neuron's scale is one site, and that a reading whose
+  direction cannot be told refuses the trial. A sentence of record and a sheet that follow no claim say that no
+  claim reading of the edit on this brief stands before it, since the same-direction line beside them can list one
+  on another brief. A claim is still read once by its edit id on one brief. A
   trial's bars are asked more than a claim's: the calibration note must name the weights it was taken on, and
   must follow from its book
   (`calibration_follows`: its three readings stand before it, are the harness's own calibration readings of the
@@ -2393,10 +2413,11 @@ shell of its own could run the scripts: what keeps one from them is the door's s
   refused in one sentence (`level_claim.RULES_NOT_ADOPTED`): it is kept as a record and is not read, verified or
   judged by this code, and an export refuses to carry its verdict. The two such folders, of 21 November 2026, are
   committed in `experiments/results/levelling_trials/`. Where such a trial's verdict is shown (a sheet's earlier
-  trials, a same-direction row, a sentence of record, a gate's refusal, the door's `brief_info`) its rule is named
-  with it. A `trial-3`
-  folder registered by code from before 22 November 2026 does not verify, since its `RULES.md` lacks the words that
-  make an edit its direction, and must be
+  trials, a same-direction row, a sentence of record, a gate's refusal, the door's `brief_info`, the door's `book_view` in
+  a session that is not blinded, the Vault's compare tab, where it is not of record) its rule is named with it. A
+  `trial-3` folder registered by code from before 22 November 2026, or by this pull request's code before the mends'
+  second round, does not verify, since its `RULES.md` lacks the words that make an edit its direction (or those of
+  the neuron rule and of a reading that cannot be told; `TRIAL_VERSION` was not raised for them), and must be
   registered again; none is in the repository or the owner's trials folder.
 - **The owner's export.** `export_lora_adapter` writes a llama.cpp LoRA `.gguf` and a `.manifest.json` to
   `$THEODOLITE_EXPORT_DIR`, else `~/.local/share/theodolite/exports`, or to a path given; any path inside a git
