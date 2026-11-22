@@ -67,6 +67,11 @@ FAILED = 0
 SHEETS_COLLECTED: List[str] = []
 
 
+# where the payload sketch puts a site's numbers (bucket, sign), fixed for good: a sketch a note records now is compared
+# with one worked later (level_claim.sketch_buckets)
+PINNED_SKETCH = [[[48, 43, 65], [-1.0, -1.0, -1.0]], [[70, 122, 116, 56], [-1.0, 1.0, 1.0, 1.0]]]
+
+
 def check(cond: bool, msg: str) -> None:
     global PASSED, FAILED
     if cond:
@@ -875,6 +880,93 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
     check(reg1.get("bars_calibration_seq") == cal0["seq"]
           and f"bars {bars.short()} from the calibration at book line {cal0['seq']}" in res1["sheet"],
           "fresh claim #1 registers, and prints on its sheet, the calibration its bars came from")
+    # its registration records the edit's direction: its sites and a fixed sketch of its payload, so that a later
+    # trial of the same direction (under any brief's name, at any scale, negated) is told by it with no payload
+    e1 = we.build(h.lm, [we.silence(2, [0, 1])], model_id=h.model_id, weights_id=h.weights_id)
+    check(reg1.get("edit_id") == e1.id and reg1.get("direction") == lcl.direction_record(e1)
+          and reg1["direction"]["v"] == lcl.DIRECTION_VERSION and len(reg1["direction"]["sketch"]) == lcl.SKETCH_DIMS
+          and reg1["direction"]["sites_say"] == "layers.2.mlp.down_proj: 2 columns (scale)"
+          and reg1["direction"]["linears"] == ["layers.2.mlp.down_proj"]
+          and abs(reg1["direction"]["norm"] - 2 ** 0.5) < 1e-12,
+          "a claim's registration note records its edit's sites and a sketch of its payload (a silence's factor less "
+          "one in each column)")
+    rng_d = np.random.default_rng(3)
+    D_out = int(we.linear_shape(h.lm.layers[2].mlp.down_proj)[0])
+    N_in = int(we.linear_shape(h.lm.layers[2].mlp.down_proj)[1])
+    V = (rng_d.standard_normal((3, D_out)) * 0.05).astype(np.float32)
+    e_v = we.build(h.lm, [we.add_to_columns(2, [4, 6, 8], V)], model_id=h.model_id, weights_id=h.weights_id)
+    e_v3 = we.build(h.lm, [we.add_to_columns(2, [4, 6, 8], V * np.float32(-3.0))], model_id=h.model_id,
+                    weights_id=h.weights_id)
+    e_v_other = we.build(h.lm, [we.add_to_columns(2, [4, 6, 8], V[::-1].copy())], model_id=h.model_id,
+                         weights_id=h.weights_id)
+    e_v4 = we.build(h.lm, [we.add_to_columns(2, [4], V[:1])], model_id=h.model_id, weights_id=h.weights_id)
+    e_v68 = we.build(h.lm, [we.add_to_columns(2, [6, 8], V[1:])], model_id=h.model_id, weights_id=h.weights_id)
+    pv = lcl._edit_payload(e_v.terms)
+    sk, sk3 = lcl.payload_sketch(pv), lcl.payload_sketch(lcl._edit_payload(e_v3.terms))
+    c_sk = float(np.dot(sk3, sk) / (np.linalg.norm(sk3) * np.linalg.norm(sk)))
+    sk_o = lcl.payload_sketch(lcl._edit_payload(e_v_other.terms))
+    c_other = float(np.dot(sk_o, sk) / (np.linalg.norm(sk_o) * np.linalg.norm(sk)))
+    c_true = lcl._cos_scale(lcl._edit_payload(e_v_other.terms), pv)
+    bk_pin, sg_pin = lcl.sketch_buckets("layers.0.mlp.down_proj", "cols", "factor", [0, 1, 2], 1)
+    bk_pin2, sg_pin2 = lcl.sketch_buckets("layers.0.mlp.down_proj", "cols", "change", [7], 4)
+    pins = [[bk_pin[:, 0].tolist(), sg_pin[:, 0].tolist()], [bk_pin2[0].tolist(), sg_pin2[0].tolist()]]
+    check(float(np.abs(sk3 + 3.0 * sk).max()) <= 1e-6 * float(np.abs(sk).max())
+          and abs(c_sk + 1.0) < 1e-9 and abs(lcl._cos_scale(lcl._edit_payload(e_v3.terms), pv)[1] + 3.0) < 1e-6
+          and abs(c_other - c_true[0]) < 0.3 and abs(c_other) < lcl.SAME_DIRECTION_COS
+          and np.allclose(lcl.payload_sketch(lcl._edit_payload(e_v4.terms))
+                          + lcl.payload_sketch(lcl._edit_payload(e_v68.terms)), sk, rtol=0, atol=1e-12)
+          and abs(lcl._inner(lcl._edit_payload(e_v4.terms), lcl._edit_payload(e_v68.terms))) == 0.0
+          and pins == PINNED_SKETCH,
+          f"the payload sketch is fixed, linear and keyed by site: a copy at -3 times sketches to -3 times the sketch "
+          f"(cosine {c_sk:.6f}), another payload on the same sites to about its own cosine ({c_other:.3f} against "
+          f"{c_true[0]:.3f}), and an edit's sites split between two edits sketch to the sum of their sketches "
+          f"(the fixed hash places {pins})")
+    # a payload from the note where the note holds it (a rebuilt edit's factors, a neuron_mul knob's arithmetic) is
+    # the payload the edit itself gives, site by site; a carried vector's site is named with no numbers
+    e_mix = we.build(h.lm, [we.scale(3, [9, 2], 0.25), we.silence(1, [5]), we.scale_rows(2, "up_proj", [1, 4], 1.5)],
+                     model_id=h.model_id, weights_id=h.weights_id)
+    from_note = lcl._prov_payload(we.edit_provenance(e_mix))
+    own = lcl._edit_payload(e_mix.terms)
+    twin = we.build(h.lm, [we.scale(3, [9, 2], 0.25), we.scale(1, [5, 7], -0.5)], model_id=h.model_id,
+                    weights_id=h.weights_id)
+    knob_note = {"steering": [{"kind": "neuron_mul", "layer": 3, "neurons": [2, 9], "factor": 0.25, "spare_bos": False},
+                              {"kind": "neuron_mul", "layer": 1, "neurons": [5, 7], "factor": -0.5, "spare_bos": False}]}
+    from_knob = lcl._knob_payload(knob_note)
+    own_twin = lcl._edit_payload(twin.terms)
+    from_carried = lcl._prov_payload(we.edit_provenance(e_v))
+    e_lr = we.build(h.lm, [we.lowrank(2, (rng_d.standard_normal((1, N_in)) * 0.01).astype(np.float32),
+                                      (rng_d.standard_normal((D_out, 1)) * 0.01).astype(np.float32))],
+                    model_id=h.model_id, weights_id=h.weights_id)
+    check(from_note is not None and from_note.known() and sorted(from_note.sites) == sorted(own.sites)
+          and all(np.array_equal(from_note.sites[k], own.sites[k]) for k in own.sites)
+          and from_carried is not None and not from_carried.known()
+          and sorted(from_carried.sites) == sorted(pv.sites)
+          and from_knob is not None and sorted(from_knob.sites) == sorted(own_twin.sites)
+          and all(np.array_equal(from_knob.sites[k], own_twin.sites[k]) for k in own_twin.sites)
+          and lcl._knob_payload({"steering": [{**knob_note["steering"][0], "spare_bos": True}]}) is None
+          and lcl.direction_record(e_lr)["sketch"] is None and lcl.direction_record(e_lr)["sites_say"].endswith("a low-rank term")
+          and lcl.direction_record(e_lr)["linears"] == ["layers.2.mlp.down_proj"],
+          "an edit's payload read from its note (every term rebuilt) or from a neuron_mul knob's note is the edit's own, "
+          "site by site; a carried vector's site is named with no numbers, and a low-rank edit records its linear alone")
+    # a set column's payload is its change, its vector less the base's own column (read from the model): a set to
+    # the base's column plus V is an add of V; a low-rank term whose change is those columns is that add too
+    base = lcl.base_reader(h.lm)
+    Wc = we.dense_cols(h.lm.layers[2].mlp.down_proj, we._long(np.asarray([4, 6, 8]))).float().cpu().numpy()
+    e_set = we.build(h.lm, [we.set_columns(2, [4, 6, 8], (Wc + V).astype(np.float32))], model_id=h.model_id,
+                     weights_id=h.weights_id)
+    A1 = np.zeros((3, N_in), dtype=np.float32)
+    for r_i, c_i in enumerate((4, 6, 8)):
+        A1[r_i, c_i] = np.float32(1.0)
+    e_lrv = we.build(h.lm, [we.lowrank(2, A1, np.ascontiguousarray(V.T))], model_id=h.model_id, weights_id=h.weights_id)
+    cs_set = lcl._cos_scale(lcl._edit_payload(e_set.terms, base), pv)
+    cs_lr = lcl._cos_scale(lcl._edit_payload(e_lrv.terms), pv)
+    check(cs_set is not None and cs_set[0] > 1.0 - 1e-9 and abs(cs_set[1] - 1.0) < 1e-5
+          and not lcl._edit_payload(e_set.terms).known() and lcl.direction_record(e_set)["sketch"] is None
+          and lcl.direction_record(e_set, base)["sketch"] is not None
+          and cs_lr is not None and cs_lr[0] > 1.0 - 1e-12 and abs(cs_lr[1] - 1.0) < 1e-9,
+          f"a set column's payload is its change from the base's column (cosine {cs_set[0] if cs_set else 0:.10f} with the "
+          f"add of that change), not known with no model at hand; a low-rank term whose change is those columns is "
+          f"that add (cosine {cs_lr[0] if cs_lr else 0:.12f})")
     est1 = lcl.estimate_claim(
         h, brief, edit1, rows={"small": 12, "large": 16}, n_target=4, n_neutral=2, n_near=2, n_panel=2,
         controls_override=4, match_tolerance=20.0,

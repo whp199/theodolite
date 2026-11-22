@@ -671,6 +671,28 @@ def build_lora_tensors(
 # --------------------------------------------------------------------------------------------- what a trial lends
 
 
+def direction_before(edit: we.Edit, book: Path, reg_note: Mapping[str, Any], reg_seq: int) -> str:
+    """What an adapter's manifest says of the earlier readings of the edit's direction on any brief (an edit has one
+    trial whatever brief it is read under and at whatever scale; `level_claim.same_direction`): as the trial's
+    registration note recorded them when the gate let the trial through (a note written since 22 November 2026), or,
+    for a note that records none, as the book shows them before the registration's line now (with no model at hand,
+    so a set entry's change is not known and an edit that sets a column is told apart from none)."""
+    from backend import level_claim as lcl
+
+    sd_rows = reg_note.get("same_direction")
+    if isinstance(sd_rows, list):
+        words = lcl.same_direction_words(sd_rows) + ", as the gate found them when the trial was entered"
+    else:
+        try:
+            got = lcl.fresh_readings_in_book(book, before_seq=int(reg_seq))
+        except lb.BookBroken as exc:
+            raise ExportRefused(f"{Path(book).name} cannot be read for the earlier readings of the edit: {exc}") from None
+        sd = lcl.same_direction(edit, got["fresh_any"], got["ended_any"])
+        words = (lcl.same_direction_words(sd["rows"], sd["unresolved"])
+                 + ", as the book shows them now (the trial's registration note records none)")
+    return f"of this edit's direction on any brief ({lcl.DIRECTION_WORDS}), {words}"
+
+
 _NO_TRIAL = {"verdict": "none given", "fresh_verdict": "none given", "reasons": "no trial given", "kind": "none",
              "brief": "none",
              "trial_sha256": "none", "book_seq": None, "book_hash": None, "book": "no trial given",
@@ -685,7 +707,8 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
     file a hand can change is not where a verdict is taken from.
 
     Refused: a book that is not at hand or does not verify; a book that does not hold the trial's verdict note; a
-    trial of another edit or at another dose; a result file that names another registration than the one given
+    trial registered under a rule the owner never adopted (`level_claim.RULES_NOT_ADOPTED`: trial-4), whatever its
+    verdict says; a trial of another edit or at another dose; a result file that names another registration than the one given
     (`registration`, as `level_trial.verify_registration` returns it) or another verdict line than the book's; and,
     when the registration is given, a verdict note that the book's own readings, judged again
     (`level_trial.rejudge_trial`), do not bear out. With no registration the verdict is the book's note as it
@@ -697,6 +720,7 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
         return dict(_NO_TRIAL)
     if not isinstance(trial_result, Mapping):
         raise ExportRefused("A trial result is the trial's own trial_result.json.")
+    from backend import level_claim as lcl
     from backend import level_trial as lt
 
     sha = trial_result.get("trial_sha256")
@@ -725,6 +749,13 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
     if found is None or found["verdict"] is None:
         raise ExportRefused(
             f"{book.name} holds no ended trial registered as {sha[:12]}: the result and the book do not belong together."
+        )
+    preset = (found.get("registration") or {}).get("rule_preset")
+    if isinstance(preset, str) and preset in lcl.RULES_NOT_ADOPTED:
+        said = lcl.RULES_NOT_ADOPTED[preset]
+        raise ExportRefused(
+            f"{said[0].upper()}{said[1:]} (the trial at line {found['registration_seq']} of {book.name} was registered "
+            f"under {preset!r}): an adapter does not carry its verdict. Export with no trial result."
         )
     note, seq = found["verdict"], int(found["verdict_seq"])
     ent = next(lb.entries(book, start=seq, limit=1))
@@ -786,9 +817,10 @@ def trial_standing(edit: we.Edit, dose: float, target: TargetBase, trial_result:
     else:
         applies = f"no: the adapter is compiled against {target.record}, which is not the base the trial read"
     reg_note = found["registration"] if isinstance(found.get("registration"), Mapping) else {}
-    before = (f"practice readings {reg_note.get('practice_count', 'unknown')}, earlier fresh readings "
-              f"{len(reg_note.get('prior_verdicts') or [])}, earlier trials {len(reg_note.get('prior_trials') or [])}, as "
-              "the trial's book had them")
+    before = (f"practice readings {reg_note.get('practice_count', 'unknown')} (in the whole book); on the trial's brief, "
+              f"earlier fresh readings {len(reg_note.get('prior_verdicts') or [])}, earlier trials "
+              f"{len(reg_note.get('prior_trials') or [])}; as the trial's book had them")
+    before += "; " + direction_before(edit, book, reg_note, int(found["registration_seq"]))
     # why the trial read as it did, in the note's own words: a fresh verdict's name alone can mislead ("no better
     # than control edits" is also what a trial reads when its control edits were set aside as quieter than the edit
     # and none that counted moved the metric as much), so the reasons travel with it

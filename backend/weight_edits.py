@@ -1964,25 +1964,6 @@ def _random_unit_masked(rng: np.random.Generator, count: int, dim: int, keep: np
     return out
 
 
-def _random_orthonormal_masked(rng: np.random.Generator, r: int, dim: int, keep: np.ndarray) -> np.ndarray:
-    """`r` Haar-random orthonormal vectors of length `dim` supported strictly on `keep` (float64 [r, dim]).
-    Requires `1 <= r <= int(keep.sum())`. Uses QR decomposition with sign-normalized diagonal of R so the resulting
-    basis is uniformly distributed on the Stiefel manifold V_r(R^m)."""
-    m = int(keep.sum())
-    if r < 1 or r > m:
-        raise Refused(f"Cannot draw {r} orthonormal masked directions with {m} unmasked dimensions.")
-    z = rng.standard_normal((m, r))
-    q, rr = np.linalg.qr(z, mode="reduced")
-    signs = np.where(np.diag(rr) >= 0.0, 1.0, -1.0)
-    q = q * signs[None, :]  # [m, r], columns orthonormal
-    out = np.zeros((r, dim), dtype=np.float64)
-    out[:, keep] = q.T
-    return out
-
-
-_GRAM_SAME_SITE_MAX_K = 256  # exact Gram-preserving Stiefel rotation for multi-column down_proj same-site controls
-
-
 def same_site_controls(
     edit: Edit,
     lm: nn.Module,
@@ -1995,11 +1976,8 @@ def same_site_controls(
     random directions projected off each layer's quiet mask (for `down_proj` terms) and matched in stream-side delta
     length per column (or per-row delta length on `gate_proj`/`up_proj`). When a multi-column `down_proj` edit is
     rank-1 in stream space (such as `remove_direction`), each control keeps that rank-1 coherence across its columns
-    using one shared masked random direction; for multi-column edits up to `_GRAM_SAME_SITE_MAX_K` columns (within the
-    unmasked subspace dimension), a Haar-random orthonormal basis `R` replaces the edit's right singular vectors so
-    every column norm and every pairwise inner product (`dS_ctrl @ dS_ctrl^T == dS @ dS^T`) match in stream space,
-    preserving delivered disturbance size across coherent multi-neuron edits. Every control's report carries
-    `CONTROL_CAPS` and `"family": "same_site"`."""
+    using one shared masked random direction. Every control's report carries `CONTROL_CAPS` and `"family":
+    "same_site"`."""
     seed, count = int(seed), int(count)
     if seed < 0 or count < 0:
         raise Refused(f"A control edit's seed and count are whole numbers from 0 up; {seed} and {count} were given.")
@@ -2015,8 +1993,7 @@ def same_site_controls(
             extra = extra_masks.get(t.layer) if extra_masks is not None else None
             mask = quiet_mask(lm, t.layer, extra_mask=extra)
             keep = ~mask
-            n_keep = int(keep.sum())
-            if n_keep < 2:
+            if int(keep.sum()) < 2:
                 raise Refused(f"Layer {t.layer} (page layer {t.layer + 1}) leaves too few dimensions outside its "
                               "quiet mask for same-site random-direction controls.")
             dW = _term_delta_f64(mod, t)  # [K, D]
@@ -2024,21 +2001,15 @@ def same_site_controls(
             norms = np.linalg.norm(dS, axis=1)  # [K]
             rank1 = False
             signs = np.ones(len(norms), dtype=np.float64)
-            gram_us: Optional[np.ndarray] = None
             if len(norms) > 1 and float((norms ** 2).sum()) > 0.0:
-                u_s, sv, vt = np.linalg.svd(dS, full_matrices=False)
+                _u, sv, vt = np.linalg.svd(dS, full_matrices=False)
                 energy = float((sv ** 2).sum())
                 if energy > 0.0 and float(sv[0] ** 2) / energy >= 1.0 - 1e-5:
                     rank1 = True
                     proj = dS @ vt[0]
                     signs = np.where(proj >= 0.0, 1.0, -1.0)
-                elif len(norms) <= min(_GRAM_SAME_SITE_MAX_K, n_keep):
-                    # Exact Gram-preserving factor U @ diag(S) ([K, r]) for Haar-random Stiefel rotation on `keep`
-                    r_eff = int(sv.shape[0])
-                    if r_eff <= n_keep:
-                        gram_us = u_s * sv[None, :]
             prep.append({"kind": "cols", "w_post": w_post, "keep": keep, "norms": norms, "rank1": rank1,
-                         "signs": signs, "gram_us": gram_us, "dim": int(w_post.shape[0])})
+                         "signs": signs, "dim": int(w_post.shape[0])})
         elif t.kind == "rows":
             dW = _term_delta_f64(mod, t)
             norms = np.linalg.norm(dW, axis=1)
@@ -2066,9 +2037,6 @@ def same_site_controls(
                 if info["rank1"]:
                     r_dir = _random_unit_masked(rng, 1, info["dim"], keep)[0]
                     dS_ctrl = (info["signs"] * norms)[:, None] * r_dir[None, :]
-                elif info["gram_us"] is not None:
-                    r_basis = _random_orthonormal_masked(rng, int(info["gram_us"].shape[1]), info["dim"], keep)
-                    dS_ctrl = info["gram_us"] @ r_basis  # [K, D], zero on ~keep, exact Gram matrix match
                 else:
                     dirs = _random_unit_masked(rng, K, info["dim"], keep)
                     dS_ctrl = norms[:, None] * dirs

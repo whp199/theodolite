@@ -3,7 +3,9 @@ frames, three control families, gating retention batteries, cheaper-knob baselin
 and bounded claim sheets.
 
 Follows the arbiter's rulings (`experiments/results/weight_space_exploration/verify/arbiter.md` §4 rows 4, 17-25, §8):
-- Fixed fresh-reading budget `m` per brief (`brief.max_fresh_readings`), read once per `(brief_id, edit_id)`.
+- Fixed fresh-reading budget `m` per brief (`brief.max_fresh_readings`), read once per `(brief_id, edit_id)`; a trial
+  once per edit DIRECTION on any brief (`same_direction`: the payload over every site either edit changes, equal
+  up to a scale).
 - Registration entry hashed into the level book BEFORE `os.urandom(32)` draws fresh kept-back items.
 - Kept-back frames split into `half = 0` and `half = 1`; frame-level confidence intervals; both halves must replicate.
 - House bar rule: `bar = sqrt(F * M)` with `F` the item-max null floor and `M` the brief's `least_effect`, dropped
@@ -953,7 +955,10 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     the count of fresh readings (claims and trials) registered under each brief name (so a sheet can list them
     all); `frames_read`, for each kept-back template a registration recorded, the `[name, hash]` of every brief it
     was read under;
-    `practice_readings`, how many readings in the book are not the harness's own (`RESERVED_NAMES`); and, when a
+    `practice_readings`, how many readings in the book are not the harness's own (`RESERVED_NAMES`); `fresh_any`
+    and `ended_any`, every fresh reading of any brief (a claim's, a knob claim's and a trial's registration, as
+    `_keep_fresh` keeps them) and what each came to, by its registration's line (`same_direction` reads them: an edit
+    has one trial whatever brief it is read under); and, when a
     `guard` is given, `kept_back_practised`: the lines of practice readings holding an item the guard finds
     (`level_briefs.KeptBack.hit`), whichever door they came in by (a session, the command line, the page).
 
@@ -976,11 +981,14 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
     trial_verdicts: List[Dict[str, Any]] = []
     tried_edit_ids: List[str] = []
     seen_knob_ids: List[str] = []
+    fresh_any: List[Dict[str, Any]] = []
+    ended_any: Dict[int, Dict[str, Any]] = {}
     empty = {
         "calibrations": [], "registrations": [], "verdicts": [], "seen_edit_ids": [], "other_ids": [],
         "practice_item_ids": [], "practice_frame_ids": [], "practice_templates": [], "book_fresh_readings": {},
         "frames_read": {}, "practice_readings": 0, "kept_back_practised": [], "kept_back_in_knob_claims": [],
         "trials": [], "trial_verdicts": [], "tried_edit_ids": [], "seen_knob_ids": [], "fresh_count": 0,
+        "fresh_any": [], "ended_any": {},
     }
     want_name = _name_key(name) if name is not None else None
     p = book_path if book_path is not None else lb.book_path()
@@ -1008,6 +1016,7 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         nt = body.get("note_type")
         if nt is None and body.get("note") in KNOB_CLAIM_NOTES + KNOB_PRACTICE_NOTES:
             nt = body["note"]  # a knob's note written before 20 November 2026 named its kind under "note"
+        _keep_fresh(entry, body, nt, fresh_any, ended_any)
         if nt == "brief_calibration":
             if body.get("brief_id") == brief_id:
                 calibrations.append({"seq": entry["seq"], "at": entry["at"], **dict(body)})
@@ -1096,6 +1105,8 @@ def brief_history(brief_id: str, book_path: Optional[Path] = None, *, name: Opti
         "tried_edit_ids": tried_edit_ids,
         "seen_knob_ids": seen_knob_ids,
         "fresh_count": len(registrations) + len(trials),  # claims, knob claims and trials together
+        "fresh_any": fresh_any,
+        "ended_any": ended_any,
     }
 
 
@@ -1104,8 +1115,8 @@ TRIAL_VERDICT_NOTES = ("trial_of_record", "trial_dry_run", "trial_rerun")
 
 def prior_trials(hist: Mapping[str, Any]) -> List[Dict[str, Any]]:
     """Every trial registered on the brief in the book, in order, each with what it came to: its line, name, edit,
-    whether it was of record, a dry run or a volunteer's re-run, and its verdict (none when the trial was registered
-    and never ended). What a sheet prints of the trials before it."""
+    whether it was of record, a dry run or a volunteer's re-run, its verdict (none when the trial was registered
+    and never ended) and the rule it was registered under. What a sheet prints of the trials before it."""
     ended = {int(v.get("registration_seq")): v for v in hist.get("trial_verdicts") or ()
              if isinstance(v.get("registration_seq"), int)}
     out: List[Dict[str, Any]] = []
@@ -1114,7 +1125,539 @@ def prior_trials(hist: Mapping[str, Any]) -> List[Dict[str, Any]]:
         kind = "re-run" if t.get("rerun_of") else ("of record" if t.get("of_record") else "dry run")
         out.append({"seq": int(t["seq"]), "trial_name": t.get("trial_name"), "edit_id": t.get("edit_id"),
                     "reading_index": t.get("reading_index"), "kind": kind,
-                    "verdict": v.get("verdict") if v else None, "verdict_seq": int(v["seq"]) if v else None})
+                    "verdict": v.get("verdict") if v else None, "verdict_seq": int(v["seq"]) if v else None,
+                    "rule_preset": t.get("rule_preset")})
+    return out
+
+
+# --------------------------------------------------------------------------------------------- an edit's direction
+
+
+# "An edit has one trial" holds for the edit's direction, on any brief and at any scale (the owner's ruling of 22
+# November 2026). An edit's payload is what a dose multiplies, site by site: a scaled column's or row's factor less
+# one; a set or added one's change (an added vector, or a set vector less the base's own column, which is read from
+# the model); and a low-rank term's B @ A over every column or row of its linear. Two edits are one direction when
+# their payloads, each taken over every site either edit changes (nothing where an edit leaves a site alone), are one
+# up to a nonzero scale, sign included: the absolute cosine of the two is at least SAME_DIRECTION_COS. So the same
+# sites with proportional payloads are one direction; so are a set and an add with one change; and so is an edit
+# that adds a site whose change is too small to move the cosine below that. A scaled entry's payload is a factor and
+# an added one's a vector, and no weights are read to make the two one: a scale written again as the add of its
+# change is another direction.
+DIRECTION_VERSION = 1
+SAME_DIRECTION_COS = 0.9999
+# a sketch's cosine at or past this and short of SAME_DIRECTION_COS does not tell: the two payloads are wanted
+SKETCH_NEAR_COS = 0.999
+SAME_DOSE_REL = 1e-4  # one direction read at two doses reads one change when the two agree to this part of the larger
+SKETCH_DIMS = 128  # the numbers in the sketch of a payload that a registration note records
+_SKETCH_KEY = 0x7468656F646F6C69  # fixed for good: a sketch written now is compared with one worked later
+_SKETCH_ROWS = 256  # the sites hashed at a time
+DIRECTION_WORDS = "the payload over every site either edit changes, equal up to a scale, sign included"
+# Trial rules a trial may have been registered under that this code was never to read, each with the one sentence
+# said of such a trial wherever its verdict would be carried (`level_trial.verify_registration` refuses its folder
+# in it, an adapter's export refuses its verdict, a sheet names it with the rule). Trial-4 was registered on 21
+# November 2026 by code the owner did not adopt; its committed folders are kept as a record.
+RULES_NOT_ADOPTED = {
+    "trial-4": "trial-4 was a rule the owner never adopted, so a trial registered under it is kept as a record and "
+               "is not read, verified or judged by this code",
+}
+_FRESH_NOTES = {"claim_registration": "claim", "knob_claim_registration": "knob claim",
+                "trial_registration": "trial"}
+_ENDED_NOTES = ("claim_verdict", "knob_claim_verdict", "trial_of_record", "trial_dry_run", "trial_rerun")
+
+
+def not_adopted_words(preset: Any) -> str:
+    """", under trial-4, a rule the owner never adopted" for a trial registered under such a rule, else ""."""
+    return f", under {preset}, a rule the owner never adopted" if isinstance(preset, str) and preset in RULES_NOT_ADOPTED else ""
+
+
+def _keep_fresh(entry: Mapping[str, Any], body: Mapping[str, Any], nt: Any, fresh_any: List[Dict[str, Any]],
+                ended_any: Dict[int, Dict[str, Any]]) -> None:
+    """Keep what `same_direction` reads of a note, whatever brief it is of: a fresh reading's registration (its
+    line, kind, brief, edit or knob twin, dose, linears, provenance and direction), or what one came to."""
+    if nt in _FRESH_NOTES:
+        knob = body.get("knob") if isinstance(body.get("knob"), Mapping) else None
+        fresh_any.append({
+            "seq": int(entry["seq"]), "kind": _FRESH_NOTES[nt], "brief_name": body.get("brief_name"),
+            "brief_id": body.get("brief_id"), "edit_id": body.get("edit_id"), "twin_edit_id": body.get("twin_edit_id"),
+            "knob_id": body.get("knob_id"), "knob": knob, "main_dose": body.get("main_dose"),
+            "edit_linears": body.get("edit_linears"), "edit_provenance": body.get("edit_provenance"),
+            "direction": body.get("direction"), "trial_name": body.get("trial_name"), "of_record": body.get("of_record"),
+            "rerun_of": body.get("rerun_of"), "reading_index": body.get("reading_index"),
+            "rule_preset": body.get("rule_preset"),
+        })
+    elif nt in _ENDED_NOTES and isinstance(body.get("registration_seq"), int) \
+            and not isinstance(body.get("registration_seq"), bool):
+        ended_any[int(body["registration_seq"])] = {"seq": int(entry["seq"]), "verdict": body.get("verdict")}
+
+
+def fresh_readings_in_book(book_path: Path, *, before_seq: Optional[int] = None) -> Dict[str, Any]:
+    """Every fresh reading of any brief in a book, up to (not at) `before_seq`, as `brief_history` keeps them:
+    {"fresh_any", "ended_any"}. For what reads a book with no brief to ask by (an export of a trial's adapter)."""
+    fresh_any: List[Dict[str, Any]] = []
+    ended_any: Dict[int, Dict[str, Any]] = {}
+    p = Path(book_path)
+    if p.exists():
+        for entry in lb.entries(p):
+            if before_seq is not None and int(entry["seq"]) >= int(before_seq):
+                break
+            body = entry.get("body")
+            if entry.get("kind") != "note" or not isinstance(body, Mapping):
+                continue
+            nt = body.get("note_type")
+            if nt is None and body.get("note") in KNOB_CLAIM_NOTES:
+                nt = body["note"]
+            _keep_fresh(entry, body, nt, fresh_any, ended_any)
+    return {"fresh_any": fresh_any, "ended_any": ended_any}
+
+
+_Key = Tuple[str, str, str, int]  # a site of a payload: (linear, kind, "factor" or "change", index)
+
+
+@dataclass
+class _Payload:
+    """An edit's payload as `same_direction` compares it: each column's or row's numbers by its site (float64; None
+    where a note names the site and not its numbers), and each low-rank term as (linear, A, B) (None arrays where
+    only its linear is known)."""
+
+    sites: Dict[_Key, Optional[np.ndarray]]
+    lowrank: List[Tuple[str, Optional[np.ndarray], Optional[np.ndarray]]]
+
+    def linears(self) -> set:
+        return {k[0] for k in self.sites} | {lin for lin, _a, _b in self.lowrank}
+
+    def known(self) -> bool:
+        return (all(v is not None for v in self.sites.values())
+                and all(a is not None and b is not None for _lin, a, b in self.lowrank))
+
+
+def _less_one(f: Any) -> np.ndarray:
+    """A scaled entry's payload: its factor, as the kernel keeps it (float32), less one."""
+    return np.asarray([float(np.float32(float(f))) - 1.0], dtype=np.float64)
+
+
+def base_reader(lm: Any) -> Any:
+    """What reads the base's own columns or rows from a loaded model (float64 [K, width], no overlays), for a set
+    entry's change; None with no model at hand."""
+    if lm is None:
+        return None
+
+    def read(linear: str, kind: str, idx: np.ndarray) -> Optional[np.ndarray]:
+        mod = we._linear_of(lm, linear)
+        if mod is None:
+            return None
+        with torch.no_grad():
+            got = (we.dense_rows(mod, we._long(np.asarray(idx))) if kind == "rows"
+                   else we.dense_cols(mod, we._long(np.asarray(idx))))
+        return got.float().cpu().numpy().astype(np.float64)
+
+    return read
+
+
+def _edit_payload(terms: Sequence[we.Term], base: Any = None) -> _Payload:
+    """An edit's payload from its terms. A set entry's change needs the base's column (`base`, `base_reader`):
+    with none at hand, or none read, it is not known."""
+    sites: Dict[_Key, Optional[np.ndarray]] = {}
+    low: List[Tuple[str, Optional[np.ndarray], Optional[np.ndarray]]] = []
+    for t in terms:
+        if t.kind == "lowrank":
+            low.append((t.linear, np.asarray(t.A, dtype=np.float64), np.asarray(t.B, dtype=np.float64)))
+            continue
+        idx = np.asarray(t.idx)
+        ops = np.asarray(t.op)
+        W: Optional[np.ndarray] = None
+        if (ops == 1).any() and base is not None:
+            try:
+                W = base(t.linear, t.kind, idx[ops == 1])
+            except (RuntimeError, ValueError, IndexError, TypeError, AttributeError):
+                W = None
+        k_set = 0
+        for j, n in enumerate(idx.tolist()):
+            o = int(ops[j])
+            if o == 0:
+                sites[(t.linear, t.kind, "factor", int(n))] = _less_one(t.factor[j])
+            elif o == 2:
+                sites[(t.linear, t.kind, "change", int(n))] = np.asarray(t.vectors[j], dtype=np.float64).ravel()
+            else:
+                v = np.asarray(t.vectors[j], dtype=np.float64).ravel()
+                sites[(t.linear, t.kind, "change", int(n))] = (
+                    v - W[k_set] if W is not None and W.shape[0] > k_set and W.shape[1] == v.size else None)
+                k_set += 1
+    return _Payload(sites, low)
+
+
+def _prov_payload(prov: Any) -> Optional[_Payload]:
+    """An edit's payload as a note's `edit_provenance` (`weight_edits.edit_provenance`) holds it: every site, every
+    scaled entry's factor, and no carried vector or low-rank array (those sites' numbers are not known). None when
+    the note does not hold it as provenance writes it."""
+    if not isinstance(prov, Mapping) or not isinstance(prov.get("terms"), list) or not prov["terms"]:
+        return None
+    sites: Dict[_Key, Optional[np.ndarray]] = {}
+    low: List[Tuple[str, Optional[np.ndarray], Optional[np.ndarray]]] = []
+    try:
+        for tp in prov["terms"]:
+            linear, kind = str(tp["linear"]), str(tp["kind"])
+            if kind == "lowrank":
+                low.append((linear, None, None))
+            elif kind not in ("cols", "rows"):
+                return None
+            elif tp.get("provenance") == "carried":
+                idx = [int(n) for n in tp["columns" if kind == "cols" else "rows"]]
+                ops = [str(o) for o in tp["ops"]]
+                fac = [float(f) for f in tp["factors"]]
+                if not len(idx) == len(ops) == len(fac):
+                    return None
+                for n, o, f in zip(idx, ops, fac):
+                    if o == "scale":
+                        sites[(linear, kind, "factor", n)] = _less_one(f)
+                    elif o in ("set", "add"):
+                        sites[(linear, kind, "change", n)] = None
+                    else:
+                        return None
+            elif tp.get("provenance") == "rebuilt":
+                rec = tp["recipe_term"]
+                key = next(k for k in ("silence", "scale", "silence_rows", "scale_rows") if k in rec)
+                idx = [int(n) for n in rec[key]]
+                fac = ([0.0] * len(idx) if key.startswith("silence") else
+                       [float(f) for f in rec["factors"]] if "factors" in rec else [float(rec["factor"])] * len(idx))
+                if len(fac) != len(idx):
+                    return None
+                for n, f in zip(idx, fac):
+                    sites[(linear, kind, "factor", n)] = _less_one(f)
+            else:
+                return None
+    except (KeyError, TypeError, ValueError, StopIteration):
+        return None
+    return _Payload(sites, low)
+
+
+def _knob_payload(knob: Any) -> Optional[_Payload]:
+    """The payload of the weight edit whose arithmetic a neuron_mul knob is (its twin, `backend/level_knobs.py`), as
+    the knob's note records it: one scale of down_proj columns a layer, each column by the knob's factor. None when
+    the knob is not that arithmetic alone."""
+    steer = knob.get("steering") if isinstance(knob, Mapping) else None
+    if not isinstance(steer, list) or not steer:
+        return None
+    sites: Dict[_Key, Optional[np.ndarray]] = {}
+    try:
+        for t in steer:
+            if t.get("kind") != "neuron_mul" or t.get("spare_bos"):
+                return None
+            linear, f = we.linear_name(int(t["layer"]), "down_proj"), float(t["factor"])
+            for n in t["neurons"]:
+                key = (linear, "cols", "factor", int(n))
+                if key in sites:
+                    return None
+                sites[key] = _less_one(f)
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
+    return _Payload(sites, [])
+
+
+def _saved_payload(edit_id: str, base: Any = None) -> Tuple[Optional[_Payload], str]:
+    """An edit saved in the edits folder (`weight_edits.save`), read with no model and kept to its id (which hashes
+    its base and every array): (its payload, "") or (None, why not)."""
+    try:
+        folder = we._find_saved(str(edit_id))
+    except (we.Refused, OSError, ValueError):
+        return None, f"no saved edit of it is in {we.edits_dir()}"
+    try:
+        man = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+        payload: Dict[str, np.ndarray] = {}
+        if (folder / "payload.safetensors").is_file():
+            from safetensors.numpy import load_file
+
+            payload = load_file(str(folder / "payload.safetensors"))
+        terms: List[we.Term] = []
+        for t in man["terms"]:
+            layer, which = we._parse(t["linear"])
+            if t["kind"] in ("cols", "rows"):
+                idx_key = "columns" if t["kind"] == "cols" else "rows"
+                terms.append(we.Term(
+                    t["linear"], t["kind"], layer, which, idx=np.asarray([int(n) for n in t[idx_key]], dtype=np.int64),
+                    op=np.asarray([we.OPS.index(o) for o in t["ops"]], dtype=np.uint8),
+                    factor=np.asarray([float(f) for f in t["factors"]], dtype=np.float32),
+                    vectors=np.asarray(payload[t["vectors"]], dtype=np.float32) if t.get("vectors") else None))
+            else:
+                terms.append(we.Term(t["linear"], "lowrank", layer, which, A=np.asarray(payload[t["A"]], dtype=np.float32),
+                                     B=np.asarray(payload[t["B"]], dtype=np.float32)))
+        terms.sort(key=lambda t: (t.linear, t.kind))
+        if we._edit_id(dict(man.get("base") or {}), terms) != edit_id:
+            return None, f"its saved folder {folder} does not hash to its id"
+    except Exception as exc:  # an unreadable folder is no payload: the caller refuses
+        return None, f"its saved folder {folder} cannot be read ({type(exc).__name__})"
+    got = _edit_payload(terms, base)
+    if not got.known():
+        return got, (f"its saved payload sets a column, and the base's column, which its change is taken from, was not "
+                     "read (no model at hand)")
+    return got, ""
+
+
+def _lowrank_slices(A: np.ndarray, B: np.ndarray, kind: str, idx: Sequence[int]) -> np.ndarray:
+    """A low-rank term's change (B @ A) at these columns ([K, out]) or rows ([K, in])."""
+    if kind == "cols":
+        return (B @ A[:, list(idx)]).T
+    return B[list(idx), :] @ A
+
+
+def _inner(p: _Payload, q: _Payload) -> float:
+    """The inner product of two known payloads over every site either changes."""
+    s = 0.0
+    for k, v in p.sites.items():
+        w = q.sites.get(k)
+        if w is not None and v is not None and v.shape == w.shape:
+            s += float(np.dot(v, w))
+    for one, other in ((p, q), (q, p)):
+        for lin, A, B in one.lowrank:
+            for kind in ("cols", "rows"):
+                ks = [k for k in other.sites if k[0] == lin and k[1] == kind and k[2] == "change"]
+                if ks and A is not None and B is not None:
+                    sl = _lowrank_slices(A, B, kind, [k[3] for k in ks])
+                    s += float(sum(np.dot(sl[i], other.sites[k]) for i, k in enumerate(ks)))
+    for lin1, A1, B1 in p.lowrank:
+        for lin2, A2, B2 in q.lowrank:
+            if lin1 == lin2 and A1 is not None and A2 is not None and B1 is not None and B2 is not None:
+                s += float(np.sum((B1.T @ B2) * (A1 @ A2.T)))
+    return s
+
+
+def _shares(p: _Payload, q: _Payload) -> bool:
+    """Whether two payloads change a site in common (their numbers not wanted): only then can they be one direction."""
+    if any(k in q.sites for k in p.sites):
+        return True
+    lp, lq = {lin for lin, _a, _b in p.lowrank}, {lin for lin, _a, _b in q.lowrank}
+    return bool(lp & lq) or any(k[0] in lq and k[2] == "change" for k in p.sites) \
+        or any(k[0] in lp and k[2] == "change" for k in q.sites)
+
+
+def _cos_scale(a: _Payload, b: _Payload) -> Optional[Tuple[float, float]]:
+    """(cosine, scale) of payload `a` against `b` over every site either changes, where `a` is about `scale` times
+    `b`; None when either changes nothing."""
+    na2, nb2 = _inner(a, a), _inner(b, b)
+    if not (na2 > 0.0 and nb2 > 0.0 and math.isfinite(na2) and math.isfinite(nb2)):
+        return None
+    dot = _inner(a, b)
+    return dot / math.sqrt(na2 * nb2), dot / nb2
+
+
+def _mix64(x: np.ndarray) -> np.ndarray:
+    """splitmix64 of each entry (uint64, wrapping): a fixed hash, the same on every machine and in every numpy."""
+    with np.errstate(over="ignore"):
+        z = x + np.uint64(0x9E3779B97F4A7C15)
+        z = (z ^ (z >> np.uint64(30))) * np.uint64(0xBF58476D1CE4E5B9)
+        z = (z ^ (z >> np.uint64(27))) * np.uint64(0x94D049BB133111EB)
+        return z ^ (z >> np.uint64(31))
+
+
+def _site_hash(linear: str, kind: str, slot: str) -> np.uint64:
+    d = hashlib.sha256(f"{_SKETCH_KEY:x}|{linear}|{kind}|{slot}".encode("utf-8")).digest()
+    return np.uint64(int.from_bytes(d[:8], "little"))
+
+
+def sketch_buckets(linear: str, kind: str, slot: str, idx: Sequence[int], width: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Where `payload_sketch` adds each number of these sites: (bucket [K, width], sign [K, width]), both from a
+    fixed hash of the site (linear, kind, slot, index) and the number's place in it, so one site's numbers go to
+    the same buckets in every edit that changes it."""
+    zc = _mix64(np.asarray([int(n) for n in idx], dtype=np.uint64) ^ _site_hash(linear, kind, slot))
+    z = _mix64(zc[:, None] ^ np.arange(int(width), dtype=np.uint64)[None, :])
+    return (z % np.uint64(SKETCH_DIMS)).astype(np.int64), np.where((z >> np.uint64(63)) == np.uint64(1), -1.0, 1.0)
+
+
+def payload_sketch(p: _Payload) -> Optional[np.ndarray]:
+    """A fixed count sketch of a payload (`SKETCH_DIMS` numbers): each number of each site is added, with a sign,
+    into one bucket (`sketch_buckets`). It is linear, so a payload's multiples sketch to the same multiples of its
+    sketch, and keyed by site, so a site an edit leaves alone adds nothing: two payloads sketch to about their own
+    cosine over every site either changes. None for a payload with a low-rank term or numbers not known."""
+    if p.lowrank or not p.known():
+        return None
+    out = np.zeros(SKETCH_DIMS, dtype=np.float64)
+    groups: Dict[Tuple[str, str, str, int], List[Tuple[int, np.ndarray]]] = {}
+    for (lin, kind, slot, n), v in sorted(p.sites.items(), key=lambda kv: kv[0]):
+        groups.setdefault((lin, kind, slot, int(v.size)), []).append((n, v))
+    for (lin, kind, slot, width), rows in groups.items():
+        for start in range(0, len(rows), _SKETCH_ROWS):
+            part = rows[start:start + _SKETCH_ROWS]
+            bucket, sign = sketch_buckets(lin, kind, slot, [n for n, _v in part], width)
+            vals = np.stack([v for _n, v in part])
+            out += np.bincount(bucket.ravel(), weights=(sign * vals).ravel(), minlength=SKETCH_DIMS)
+    return out
+
+
+def _sites_words(terms: Sequence[we.Term]) -> str:
+    out = []
+    for t in sorted(terms, key=lambda t: (t.linear, t.kind)):
+        if t.kind == "lowrank":
+            out.append(f"{t.linear}: a low-rank term")
+            continue
+        k = int(np.asarray(t.idx).size)
+        ops = ", ".join(sorted({we.OPS[int(o)] for o in np.asarray(t.op)}))
+        out.append(f"{t.linear}: {k} {'column' if t.kind == 'cols' else 'row'}{'s' if k != 1 else ''} ({ops})")
+    return "; ".join(out)
+
+
+def _record_of(p: _Payload, terms: Sequence[we.Term]) -> Dict[str, Any]:
+    norm = math.sqrt(_inner(p, p)) if p.known() else None
+    sketch = None
+    if norm is not None and norm > 0.0 and math.isfinite(norm):
+        sk = payload_sketch(p)
+        if sk is not None:
+            sketch = [float(f"{x:.8g}") for x in sk / norm]
+    return {"v": DIRECTION_VERSION, "linears": sorted(p.linears()), "sites_say": _sites_words(terms)[:400],
+            "norm": norm, "sketch": sketch}
+
+
+def direction_record(edit: we.Edit, base: Any = None) -> Dict[str, Any]:
+    """What a claim's and a trial's registration note records of the edit's direction, so that a later trial can be
+    told apart from it with no payload at hand: the linears it changes, its sites in words, the length of its
+    payload, and a fixed sketch of the payload over its length (`payload_sketch`), to eight figures. No sketch (and
+    no length) for an edit with a low-rank term (no trial reads one), for one that sets a column with no model at
+    hand (`base`), or for one that changes nothing."""
+    return _record_of(_edit_payload(edit.terms, base), edit.terms)
+
+
+def _against(r: Mapping[str, Any], other: str, mine: _Payload, base: Any,
+             ) -> Tuple[str, Optional[Tuple[float, float]], str]:
+    """How an earlier reading's edit stands to this one (`mine`): ("other", None, ""), ("compared", (cosine, scale)
+    or None, how), or ("unresolved", None, why its direction cannot be told). Exact first: the payload its note holds
+    (every number), else its saved folder; its sketch only when neither has its numbers, and then only a cosine
+    clear of SKETCH_NEAR_COS tells."""
+    rec = r.get("direction") if isinstance(r.get("direction"), Mapping) else {}
+    rec_ok = rec.get("v") == DIRECTION_VERSION and isinstance(rec.get("linears"), list)
+    is_knob = r.get("kind") == "knob claim"
+    noted = _knob_payload(r.get("knob")) if is_knob else _prov_payload(r.get("edit_provenance"))
+    their_lin: Optional[set] = None
+    if rec_ok:
+        their_lin = {str(x) for x in rec["linears"]}
+    elif noted is not None:
+        their_lin = noted.linears()
+    elif isinstance(r.get("edit_linears"), list):
+        their_lin = {str(x) for x in r["edit_linears"]}
+    # what changes none of this edit's linears, or none of its sites, is another direction: no numbers are wanted
+    if their_lin is not None and not (their_lin & mine.linears()):
+        return "other", None, ""
+    if noted is not None and not _shares(mine, noted):
+        return "other", None, ""
+    if rec_ok and _clean_float(rec.get("norm")) == 0.0:
+        return "other", None, ""  # an edit that changes nothing is no direction
+    theirs: Optional[_Payload] = None
+    how = ""
+    if noted is not None and noted.known():
+        theirs, how = noted, ("the knob's arithmetic, as its note records it" if is_knob
+                              else "the numbers its note records")
+    saved_why = ""
+    if theirs is None:
+        saved, saved_why = _saved_payload(other, base)
+        if saved is not None and not _shares(mine, saved):
+            return "other", None, ""
+        if saved is not None and saved.known():
+            theirs, how = saved, "its saved payload"
+    if theirs is not None:
+        if not mine.known():
+            return "unresolved", None, ("this edit sets a column, and with no model at hand its change from the base "
+                                        "cannot be worked out")
+        return "compared", _cos_scale(mine, theirs), how
+    sk, nb = rec.get("sketch"), _clean_float(rec.get("norm"))
+    mine_sk = payload_sketch(mine)
+    if rec_ok and isinstance(sk, list) and len(sk) == SKETCH_DIMS and nb and mine_sk is not None:
+        theirs_sk = np.asarray([float(x) for x in sk], dtype=np.float64)
+        na, ns, nt = math.sqrt(_inner(mine, mine)), float(np.linalg.norm(mine_sk)), float(np.linalg.norm(theirs_sk))
+        if not (na > 0.0 and ns > 0.0 and nt > 0.0):
+            return "other", None, ""
+        c = float(np.dot(mine_sk, theirs_sk)) / (ns * nt)
+        if abs(c) >= SAME_DIRECTION_COS:
+            return "compared", (c, math.copysign(na / nb, c)), "the sketch its note records"
+        if abs(c) >= SKETCH_NEAR_COS:
+            return "unresolved", None, (
+                f"the sketch its note records puts it at cosine {c:.6f} to this edit, too near {SAME_DIRECTION_COS:g} "
+                f"for a sketch to tell, and {saved_why}")
+        return "other", None, ""
+    if their_lin is None:
+        return "unresolved", None, f"its note records neither its sites nor a sketch of its payload, and {saved_why}"
+    return "unresolved", None, (
+        f"it changes {'sites' if noted is not None else 'a linear'} this edit changes, its note records no sketch of "
+        f"its payload, and {saved_why}")
+
+
+def same_direction(edit: we.Edit, fresh_any: Sequence[Mapping[str, Any]], ended_any: Mapping[int, Mapping[str, Any]],
+                   *, base: Any = None) -> Dict[str, Any]:
+    """Every fresh reading in a book (`fresh_any`, of any brief) that read this edit's direction (`DIRECTION_WORDS`),
+    with what it came to (`ended_any`). Another edit's payload is taken from its note when the note holds every
+    number (every term rebuilt, or a neuron_mul knob's arithmetic), else from its saved folder in the edits folder,
+    else from the sketch its note records (`direction_record`), which tells only a cosine clear of SKETCH_NEAR_COS.
+    The linears and sites a note names are looked at first, so numbers are wanted only where the two edits change a
+    site in common. `base` (`base_reader`) reads the base's columns for a set entry's change. A reading whose
+    direction cannot be told is in "unresolved", with why: a trial refuses it.
+
+    Returns {"record": this edit's `direction_record`, "rows": [one a reading of this direction: its line, kind,
+    brief, edit (or knob and its twin), dose, `scale` (this edit is `scale` times that one), cosine, how it was
+    compared, its rule (a trial's), and its verdict], "unresolved": [...]}."""
+    mine = _edit_payload(edit.terms, base)
+    rows: List[Dict[str, Any]] = []
+    unresolved: List[Dict[str, Any]] = []
+    for r in fresh_any:
+        other = r.get("twin_edit_id") if r.get("kind") == "knob claim" else r.get("edit_id")
+        if not isinstance(other, str) or not other:
+            continue  # names no weight edit (a knob that is no edit's arithmetic)
+        if other == edit.id:
+            stand, got, how = "compared", (1.0, 1.0), "the same edit"
+        else:
+            stand, got, how = _against(r, other, mine, base)
+        if stand == "unresolved":
+            unresolved.append({"seq": int(r["seq"]), "kind": r.get("kind"), "brief_name": r.get("brief_name"),
+                               "edit_id": other, "why": how})
+            continue
+        if stand != "compared" or got is None or abs(got[0]) < SAME_DIRECTION_COS:
+            continue
+        ended = ended_any.get(int(r["seq"])) or {}
+        kn = r.get("knob") if isinstance(r.get("knob"), Mapping) else {}
+        kind_t = None
+        if r.get("kind") == "trial":
+            kind_t = "re-run" if r.get("rerun_of") else ("of record" if r.get("of_record") else "dry run")
+        rows.append({
+            "seq": int(r["seq"]), "kind": r.get("kind"), "brief_name": r.get("brief_name"), "brief_id": r.get("brief_id"),
+            "edit_id": other, "knob_id": r.get("knob_id"), "trial_name": r.get("trial_name"), "trial_kind": kind_t,
+            "rule_preset": r.get("rule_preset") if r.get("kind") == "trial" else None,
+            "main_dose": 1.0 if r.get("kind") == "knob claim" else _clean_float(r.get("main_dose")),
+            "scale": float(got[1]), "cos": float(got[0]), "how": how, "verdict": ended.get("verdict"),
+            "verdict_seq": ended.get("seq"), "reading_index": r.get("reading_index"),
+            "knob_more": bool(r.get("kind") == "knob claim" and (kn.get("prompt") is not None or kn.get("decoding"))),
+        })
+    return {"record": _record_of(mine, edit.terms), "rows": rows, "unresolved": unresolved}
+
+
+def _scale_words(row: Mapping[str, Any]) -> str:
+    if row.get("how") == "the same edit":
+        return "this edit"
+    if row.get("how") == "the sketch its note records":
+        return (f"edit {str(row.get('edit_id'))[:12]} (this edit is about {float(row['scale']):.4g} times it, by the "
+                "sketch its note records)")
+    return f"edit {str(row.get('edit_id'))[:12]} (this edit is {float(row['scale']):.4g} times it)"
+
+
+def same_direction_row_words(row: Mapping[str, Any]) -> str:
+    """One earlier reading of an edit's direction, in words: its line, what it was, of which edit, at which dose, on
+    which brief, and what it came to (a trial's under a rule the owner never adopted says so)."""
+    if row.get("kind") == "trial":
+        what = f"trial \"{row.get('trial_name')}\" ({row.get('trial_kind')})"
+    elif row.get("kind") == "knob claim":
+        what = f"a knob claim of its arithmetic (knob {str(row.get('knob_id'))[:12]})"
+    else:
+        what = "a claim reading"
+    dose = _clean_float(row.get("main_dose"))
+    said = row.get("verdict") if row.get("verdict") is not None else "registered, never ended"
+    return (f"line {row.get('seq')}, {what} of {_scale_words(row)}" + (f" at dose {dose:g}" if dose is not None else "")
+            + f" on brief \"{row.get('brief_name')}\" -> {said}" + not_adopted_words(row.get("rule_preset")))
+
+
+def same_direction_words(rows: Sequence[Mapping[str, Any]], unresolved: Sequence[Mapping[str, Any]] = ()) -> str:
+    """What a sheet, a sentence of record and an adapter's manifest say of the earlier readings of an edit's
+    direction on any brief: how many claims and trials, each in words, and any whose direction could not be told."""
+    n_t = sum(1 for r in rows if r.get("kind") == "trial")
+    n_c = len(rows) - n_t
+    out = (f"{n_c} claim reading{'s' if n_c != 1 else ''} and {n_t} trial{'s' if n_t != 1 else ''}"
+           + (": " + "; ".join(same_direction_row_words(r) for r in rows) if rows else ""))
+    if unresolved:
+        out += (f"; {len(unresolved)} not told apart from it: "
+                + "; ".join(f"edit {str(u.get('edit_id'))[:12]} at line {u.get('seq')} ({u.get('why')})" for u in unresolved))
     return out
 
 
@@ -1154,6 +1697,16 @@ def fresh_reading_gate(
     and was the edit's arithmetic and nothing else (no prompt, no decoding setting), at dose 1, since a trial promotes
     what the claim read.
 
+    A trial is asked of its edit's direction too, on every brief of the book (`same_direction`: the payload over
+    every site either edit changes, equal up to a scale, sign included): refused when the book holds a trial of that
+    direction (of record, a dry run or a re-run, under any brief's name, of this edit or of a rescaled or negated copy
+    of it, or of one with a site more whose change is too small to count); a claim reading of it that did not read a
+    lead (or never ended); a knob claim of it that read more than the edit's arithmetic; a claim reading of it at
+    another dose of that direction (this trial's dose times the scale between the two edits); or a reading whose
+    direction cannot be told (another edit that changes a site this one changes, whose numbers are neither in its note
+    nor in the edits folder and whose sketch, if its note records one, is too near to tell; it is named). A set
+    entry's change is read from `h`'s model.
+
     A trial is asked two things more of its bars. The calibration note must name the weights it was taken on (a
     note that names none is taken for a claim, as it always was, and not for a trial). And the note must follow from
     the book (`calibration_follows`): its three readings stand before it and give the bars by the note's own
@@ -1167,8 +1720,10 @@ def fresh_reading_gate(
     this one cut back to an earlier line: "read once" and the budget `m` are facts about the book a reading is
     taken in.
 
-    Returns {"hist", "cal_note", "reading_index", "forbid_items", "forbid_frames", "kb_tids", "book"}. Raises
-    `ClaimRefused`, in words that name the reading asked for."""
+    Returns {"hist", "cal_note", "reading_index", "forbid_items", "forbid_frames", "kb_tids", "book", "direction"}
+    ("direction": the edit's `direction_record` as "record", and for a trial the earlier readings of its direction
+    on any brief as "same"; empty for a knob claim). Raises `ClaimRefused`, in words that name the reading asked
+    for."""
     if what not in ("claim", "trial", "knob"):
         raise ValueError(f'what is "claim", "trial" or "knob"; {what!r} was given.')
     if (what == "knob") != (edit is None) or (what == "knob") != isinstance(knob_id, str):
@@ -1338,6 +1893,14 @@ def fresh_reading_gate(
                 f"{claim_dose:g}, and this trial is registered at dose {float(main_dose):g}: a trial promotes what the "
                 "claim read, at the dose it read it."
             )
+    direction: Dict[str, Any] = {}
+    base = base_reader(getattr(h, "lm", None))  # a set entry's change is its vector less the base's column
+    if what == "claim":
+        direction = {"record": direction_record(edit, base)}
+    elif what == "trial":
+        sd = same_direction(edit, hist["fresh_any"], hist["ended_any"], base=base)
+        direction = {"record": sd["record"], "same": sd["rows"]}
+        _direction_gate(sd, main_dose)
     if k_prior >= brief.max_fresh_readings:
         raise ClaimRefused(
             f'Brief "{brief.name}" has already spent all {brief.max_fresh_readings} of its fresh readings'
@@ -1350,7 +1913,62 @@ def fresh_reading_gate(
     # side book (a check's, a dry run's) says so, in its registration, on its sheet and in its sentence
     book_note = {"name": bk_resolved.name, "default": bk_resolved == lb.default_book_path().resolve()}
     return {"hist": hist, "cal_note": cal_note, "reading_index": k_prior + 1, "forbid_items": all_forbid_items,
-            "forbid_frames": all_forbid_frames, "kb_tids": kb_tids, "book": book_note}
+            "forbid_frames": all_forbid_frames, "kb_tids": kb_tids, "book": book_note, "direction": direction}
+
+
+def _direction_gate(sd: Mapping[str, Any], main_dose: Optional[float]) -> None:
+    """A trial's refusals by its edit's direction, on any brief of the book (`same_direction`'s result): a trial of
+    it; a claim of it that read no lead; a knob claim of it that read more than its arithmetic; a reading whose
+    direction cannot be told; a claim of it at another dose of the direction. `ClaimRefused`, naming the line."""
+    rows = list(sd.get("rows") or ())
+    tried = [r for r in rows if r.get("kind") == "trial"]
+    claims = [r for r in rows if r.get("kind") != "trial"]
+    if tried:
+        raise ClaimRefused(
+            f"An edit has one trial, on any brief and at any scale: this book already holds a trial of this edit's "
+            f"direction ({DIRECTION_WORDS}): {same_direction_row_words(tried[0])}. A trial is read once, of record "
+            "or as a dry run, and a second trial of one direction under another brief's name or at another scale is "
+            "that trial read again."
+        )
+    for c in claims:
+        if c.get("verdict") not in LEADS:
+            raise ClaimRefused(
+                f"A claim reading of this edit's direction ({DIRECTION_WORDS}) "
+                + (f'read "{c["verdict"]}"' if c.get("verdict") is not None else "was registered and never ended")
+                + f" ({same_direction_row_words(c)}): a trial of record follows a lead, on any brief and at any scale, "
+                "and one after anything else would be a second draw at one question."
+            )
+    if sd.get("unresolved"):
+        u = sd["unresolved"][0]
+        raise ClaimRefused(
+            f"Whether edit {u.get('edit_id')} (the {u.get('kind')} at line {u.get('seq')} of this book, on brief "
+            f"\"{u.get('brief_name')}\") is this edit's direction cannot be told: {u.get('why')}. An edit has one "
+            "trial, on any brief and at any scale, so this trial is refused. That edit's saved folder, put back in the "
+            "edits folder, would tell it, if it was ever saved; without it, no trial of an edit it cannot be told from "
+            "is read in this book."
+        )
+    for c in claims:
+        if c.get("knob_more"):
+            raise ClaimRefused(
+                f"A knob claim of this edit's direction read a lead with more than the edit's arithmetic (a prompt or a "
+                f"decoding setting) ({same_direction_row_words(c)}): a trial promotes what the claim read, and a trial "
+                "of the edit alone would be a second reading of it after a reading of something else."
+            )
+    if main_dose is None:
+        return
+    for c in claims:
+        cd = _clean_float(c.get("main_dose"))
+        if cd is None:
+            continue
+        eff = float(main_dose) * float(c["scale"])
+        if abs(eff - cd) > SAME_DOSE_REL * max(abs(eff), abs(cd)):
+            same = c.get("how") == "the same edit"
+            raise ClaimRefused(
+                f"The claim reading of this edit's direction at line {c.get('seq')} (on brief \"{c.get('brief_name')}\") "
+                f"read {_scale_words(c)} at dose {cd:g}, and this trial is registered at dose {float(main_dose):g}"
+                + ("" if same else f", which is dose {eff:.4g} of that edit")
+                + ": a trial promotes what the claim read, at the dose it read it."
+            )
 
 
 # ----------------------------------------------------------------------------------- calibration & live execution
@@ -1419,19 +2037,21 @@ def read_at_end(brief: lbr.Brief) -> bool:
     return brief.metric == "odds" and isinstance(odds, Mapping) and odds.get("at", "end") == "end"
 
 
-def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float], *, min_ratio: float = 1.0) -> bool:
-    """Whether a control edit changed the stream LESS than `min_ratio` times what the edit did, by one figure; a
-    figure missing on either side is apart too. At the default `min_ratio=1.0`, a control edit must be at least as
-    loud as the edit (`ctl_d < edit_d`). In `trial-4`, the same-site family and declared-rule sham edits answer for
-    disturbance size at `min_ratio=SAME_SITE_MIN_RATIO` (0.85), allowing the small (~1–3%) norm cross-term difference
-    on matched-norm random directions while rejecting genuinely quiet controls. There is no upper side: a louder
-    control edit that moves the metric more counts against the edit, which errs on the careful side."""
+def delivered_apart(edit_d: Optional[float], ctl_d: Optional[float]) -> bool:
+    """Whether a control edit changed the stream LESS than the edit did, by one figure; a figure missing on either
+    side is apart too. A control edit counts for the edit only when it was at least as loud: one that changed the
+    stream less shows nothing of what a change of the edit's size does. A band about the edit's figure, which this
+    was, let through control edits that sat at about two thirds of the edit's on the 31B, and with such control
+    edits the printed level is too small (in a reviewer's simulation, where a set moves the metric by what it
+    delivered times a random factor and the 39 are drawn again and again from the record's control edits that
+    were in the band, an edit that is nothing special topped all 39 in 8 to 9% of draws with a normal factor and
+    in 5.4 to 5.7% with a Student's t of three degrees of freedom, not 2.5%). There is no upper side: a louder
+    control edit that moves the metric more counts against the edit, which errs on the careful side, and so the
+    registered matching factor has no part in this. As it stands the rule is one no trial is expected to meet
+    (`level_trial.RULE_STANDS_SAY`): what a pass should ask of its control edits is the owner's to settle."""
     if edit_d is None or ctl_d is None:
         return True
-    mr = float(min_ratio)
-    if mr == 1.0:
-        return ctl_d < edit_d
-    return edit_d > 0.0 and ctl_d < mr * edit_d
+    return ctl_d < edit_d
 
 
 def set_apart_aside(dv: Mapping[str, Any], ctl_means: Sequence[Optional[float]]) -> Tuple[List[Optional[float]], int]:
@@ -1456,7 +2076,6 @@ def _delivered_of(
     *,
     compare: bool = False,
     at_end: bool = False,
-    min_ratio: float = 1.0,
 ) -> Optional[Dict[str, Any]]:
     """How much the edit and this reading's control edits each changed the stream, over the items read in `cls_name`:
     the mean over items of what `levelling._delivered_hook` records for an arm (the relative change of the stream at
@@ -1538,10 +2157,8 @@ def _delivered_of(
     }
     if compare:
         places = ["prompt", "answer"] + (["end"] if at_end else [])
-        apart = [any((not recorded[p]) or delivered_apart(edit_at[p], per[p][c], min_ratio=min_ratio) for p in places)
-                 for c in range(C)]
+        apart = [any((not recorded[p]) or delivered_apart(edit_at[p], per[p][c]) for p in places) for c in range(C)]
         out["compared_at"] = places
-        out["min_ratio"] = float(min_ratio)
         out["apart"] = apart
         out["as_loud"] = C - sum(apart)
         out["of_controls"] = C
@@ -2524,6 +3141,9 @@ def run_fresh_claim(
             "edit_id": edit.id,
             "edit_linears": edit.linears(),
             "edit_provenance": we.edit_provenance(edit),
+            # its linears and a sketch of its payload: a later trial of this direction, under any brief's name or at
+            # any scale, is told apart from it by them when no payload is at hand (`same_direction`)
+            "direction": gate["direction"]["record"],
             "main_dose": float(main_dose),
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
@@ -2924,7 +3544,8 @@ def prior_trial_lines(trials: Sequence[Mapping[str, Any]]) -> List[str]:
     for t in trials:
         ended = t.get("verdict") if t.get("verdict") is not None else "registered, never ended"
         out.append(f"  reading {t.get('reading_index')}: trial \"{t.get('trial_name')}\" ({t.get('kind')}) of edit "
-                   f"{str(t.get('edit_id'))[:12]} -> {ended} (book seq {t.get('seq')})")
+                   f"{str(t.get('edit_id'))[:12]} -> {ended}{not_adopted_words(t.get('rule_preset'))} "
+                   f"(book seq {t.get('seq')})")
     return out
 
 
@@ -2952,30 +3573,19 @@ def _stand_in_words(dv: Mapping[str, Any]) -> str:
 
 def _same_site_words(dv: Mapping[str, Any]) -> str:
     """What a sentence says of how loud a reading's same-site control edits were beside the edit, as read: the median
-    of their change to the stream over the edit's, at each place it was recorded. In a trial (`trial-4`), same-site
-    control edits answer for disturbance size at `min_ratio` and quieter ones are set aside; in a claim reading, the
-    same-site family is not gated on loudness and its median ratios are printed."""
+    of their change to the stream over the edit's, at each place it was recorded. The same-site family is not asked
+    for the loudness a matched or sham control edit must have to count: for a column edit it is built to the edit's
+    stream-side length and sits near 1; for a row edit nothing ties it there, so the figure is printed."""
     got = []
     for place, _key, say in _DELIVERED_AT:
         e = _clean_float(dv.get("edit" if place == "answer" else f"edit_{place}"))
         m = _clean_float(dv.get("controls_median" if place == "answer" else f"controls_median_{place}"))
         if e and m is not None:
             got.append(f"{_fmt(m / e, 2)} {say}")
-    med_part = (
-        "as read, their median change to the stream was "
-        + ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + got[-1] + " times the edit's; "
-        if got else ""
-    )
-    if dv.get("not_comparable") is not None and dv.get("as_loud") is not None:
-        mr = _clean_float(dv.get("min_ratio"))
-        bar_w = f"at least {mr:g} times as loud as the edit" if (mr is not None and mr != 1.0) else "at least as loud as the edit"
-        return (
-            f"size-checked ({dv['as_loud']} of {dv.get('of_controls')} {bar_w} {_places_words(dv)}; "
-            f"{dv['not_comparable']} quieter or missing counted as moving as much); {med_part}"
-        )
     if not got:
         return ""
-    return "not asked to be as loud as the edit: " + med_part
+    return ("not asked to be as loud as the edit: as read, their median change to the stream was "
+            + ", ".join(got[:-1]) + (" and " if len(got) > 1 else "") + got[-1] + " times the edit's; ")
 
 
 def _places_words(dv: Mapping[str, Any]) -> str:
@@ -2987,9 +3597,9 @@ def _places_words(dv: Mapping[str, Any]) -> str:
 
 def delivered_words(dv: Mapping[str, Any], cs: Mapping[str, Any]) -> str:
     """One line of a sheet: what the edit and a family's control edits each changed the stream by as read
-    (`_delivered_of`) over the prompt, over the answer and at the last position; how many control edits met the
-    loudness bar where it counts, and how far above it those sat; how many were set aside; and how many separate draws
-    the sets are counted as."""
+    (`_delivered_of`) over the prompt, over the answer and at the last position; how many control edits were at
+    least as loud as the edit where it counts, and how far above it those sat; how many were set aside; and how
+    many separate draws the sets are counted as."""
     at = []
     for place, _key, say in _DELIVERED_AT:
         e = dv.get("edit" if place == "answer" else f"edit_{place}")
@@ -3002,15 +3612,12 @@ def delivered_words(dv: Mapping[str, Any], cs: Mapping[str, Any]) -> str:
                   + (f" ({_fmt(dv.get('controls_min'))} to {_fmt(dv.get('controls_max'))})" if place == "answer" else ""))
     ratios = [f"{_fmt(dv.get(f'as_loud_ratio_{p}'), 2)} {say}" for p, _key, say in _DELIVERED_AT
               if p in (dv.get("compared_at") or ()) and dv.get(f"as_loud_ratio_{p}") is not None]
-    mr = _clean_float(dv.get("min_ratio"))
-    bar_w = f"at least {mr:g} times as loud as the edit" if (mr is not None and mr != 1.0) else "at least as loud as the edit"
-    quiet_w = f"below {mr:g} times the edit's" if (mr is not None and mr != 1.0) else "quieter than the edit"
     return (
         "delivered (stream change at the highest edited layer, a mean over the items read) " + "; ".join(at)
-        + (f"; {dv['as_loud']} of {dv.get('of_controls')} {bar_w} {_places_words(dv)}"
+        + (f"; {dv['as_loud']} of {dv.get('of_controls')} at least as loud as the edit {_places_words(dv)}"
            + (f" (those a median {', '.join(ratios)} times the edit's)" if ratios else "")
            if dv.get("as_loud") is not None else "")
-        + (f"; {dv['not_comparable']} of them {quiet_w} at one of those, or with no figure, and counted "
+        + (f"; {dv['not_comparable']} of them quieter than the edit at one of those, or with no figure, and counted "
            "as moving as much" if dv.get("not_comparable") else "")
         + _stand_in_words(dv)
         + (f", so counted as {cs['effective_count']} draws"
@@ -3069,20 +3676,16 @@ def claim_sentence(brief: lbr.Brief, judged: Mapping[str, Any], meta: Mapping[st
                 + _stand_in_words(dvm)
                 + "; ") if tol_now is not None else ""
     # what the level printed beside the matched control edits takes for granted. A claim's takes every one of them
-    # as a control and as a separate draw, whatever the two counts before it say; a trial counts them as separate
-    # disjoint draws (and in trial-4 as read, with the same-site family answering for disturbance size)
+    # as a control and as a separate draw, whatever the two counts before it say; a trial's does not
     if not osm.get("count"):
         level_part = ""
     elif tail:
         level_part = (f", a level that takes all {osm.get('count')} as control edits and as separate draws, whatever "
                       "they delivered and however many share sites")
-    elif dvm.get("not_comparable") is not None:
+    else:
         level_part = (f", a level at which the {osm.get('non_finite') or 0} that were quieter than the edit, or gave "
                       f"no figure, are counted as moving as much, and the sets as "
                       f"{osm.get('effective_count', osm.get('count'))} separate draws")
-    else:
-        level_part = (f", counted as read over {osm.get('effective_count', osm.get('count'))} separate draws "
-                      "(with the same-site family answering for disturbance size)")
     dvs = (lg.get("delivered") or {}).get("same_site") if isinstance(lg.get("delivered"), Mapping) else None
     ss_part = _same_site_words(dvs if isinstance(dvs, Mapping) else {})
     knobs = judged.get("cheaper_knobs") or {}

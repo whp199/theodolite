@@ -6,7 +6,12 @@ of a claim reading (`verify/arbiter.md` §4 rows 18, 25, 30 to 32, §5.3; `desig
 - It is a FRESH READING, so it is asked what a claim reading is asked before it is registered
   (`level_claim.fresh_reading_gate`: kept-back wording practised in the book, a brief changed under its name, bars that
   no calibration in the book produced or that were calibrated on other weights, the brief's budget `m`), it spends one
-  of the brief's `m`, an edit has one trial, and every later sheet of the brief lists it.
+  of the brief's `m`, an edit has one trial, and every later sheet of the brief lists it. "An edit" is its direction,
+  under any brief's name in the book (`level_claim.same_direction`: the payload over every site either edit changes,
+  equal up to a scale, sign included): a trial of it, or a claim of it that read no lead, refuses a trial of a
+  rescaled or negated copy, or of one with a site more whose change is too small to count.
+- A folder registered under trial-4 (`NOT_ADOPTED`), a rule the owner never adopted, is refused in one sentence, and
+  an adapter's export does not carry its verdict.
 - It reads the edit in BOTH batch classes against matched other-site and same-site control edits (and sham-target
   ones for a site chosen by a declared rule), with the FOLDED form (the change written into the weights) read beside
   the per-row form on every item, and on a REWORDED SET: items written outside the brief's generator, kept in a file,
@@ -55,22 +60,28 @@ from backend import levelling as lv
 from backend import weight_edits as we
 from backend.census import write_json_atomic
 
-# 2: a control edit counts only when at least as loud as the edit; control sets drawn spread and counted by disjoint
-# sets; sizing look at registration. 3: spread draw across all terms together counted by neuron.
-# 4: settled trial control rule (ROADMAP §viii option (b)): same-site controls (and declared-rule sham edits) answer
-# for disturbance size at `SAME_SITE_MIN_RATIO` (0.85) over prompt, answer, and end; matched other-site controls are
-# drawn spread, counted by disjoint sets (`separate_draws`), and judged as read with their delivered loudness printed
-# beside the edit's.
-TRIAL_VERSION = 4
-TRIAL_RULE_PRESET = "trial-4"
-SAME_SITE_MIN_RATIO = 0.85
+# 2: a control edit counts only when at least as loud as the edit (over the prompt, the answer and, for a metric
+# read there, the last position); control sets are drawn to share no site and counted by those that share none; a
+# look is taken at registration. A folder registered under "trial-1" is refused by its version, in those words.
+TRIAL_VERSION = 3  # 3: control sets drawn over all an edit's terms together and counted by neuron; no count, one draw
+TRIAL_RULE_PRESET = "trial-3"
+# Rules a folder may be registered under that this code was never to read, each with the one sentence a refusal of
+# such a folder says (`level_claim.RULES_NOT_ADOPTED`, where a sheet and an adapter's export read it too). Trial-4
+# (registered on 21 November 2026 by code the owner did not adopt) is kept as a record in its committed folders and
+# is not read or judged here.
+NOT_ADOPTED = lcl.RULES_NOT_ADOPTED
+# What a registration says, in its result (`rule_stands`) and its RULES.md, of the rule its control edits are
+# judged by as it stands. It is here, and not left to a document, because a trial is read once. It says what is
+# expected and why, not what must be: an edit whose neurons are among the quietest of their layer would have
+# louder stand-ins, and none such has been read.
 RULE_STANDS_SAY = (
-    "Under trial-4, the same-site control family (and sham-target edits for a declared rule) answers for disturbance "
-    f"size: each control edit counts for the edit only when, as read, it changed the stream by at least "
-    f"{SAME_SITE_MIN_RATIO:g} times what the edit did over the prompt, over the answer and (where the metric is read "
-    "there) at the last position; quieter ones or those with no figure are counted as moving as much. Matched "
-    "other-site control edits are drawn spread to share as few sites as the pools allow, counted by disjoint sets "
-    "(separate draws), and judged as read with their delivered stream change printed beside the edit's"
+    "As the rule stands a trial is not expected to pass it. Each stand-in is drawn from a band on BOTH sides of "
+    "what its neuron is expected to deliver over the answer, and nothing matches the control edits over the prompt "
+    "or at the last position; so by the draw alone some of an edit's matched control edits are quieter than it at "
+    "one of the places compared (most of them, where the edit's neurons are among the loudest of their layer), "
+    "each of those is counted as moving as much, and the level allows almost none. What a pass should ask of its "
+    "control edits is the owner's to settle (ROADMAP section viii); until then a trial read of record is expected "
+    "to spend the edit's one trial on a verdict the rule has settled, not the edit"
 )
 TRIAL_CONTROLS = 99  # synthesis.md §vi and arbiter.md row 18: 99 control edits a family support five fresh readings
 MAX_REWORDED_USES = 5  # synthesis.md §vi: a reworded item is read at most five times in its life, then the set rotates
@@ -669,15 +680,15 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         f"what a base pre-pass expects each to deliver over the answer, within a factor of "
         f"`{trial_cfg['match_tolerance']:g}`; the same "
         "site" + ("; sham targets, registered here" if trial_cfg["selection_mode"] == "declared_rule" else "") + "). "
-        f"The same-site family (and sham-target edits for a declared rule) answers for disturbance size: a control "
-        f"edit there counts for the edit only when, as read, it changed the stream by at least "
-        f"`{SAME_SITE_MIN_RATIO:g}` times what the edit did over the prompt's positions, over the positions that "
-        "predict the answer, and"
-        + (" at the last position, where this brief's metric is read"
+        "A matched or sham control edit counts for the edit only when, as read, it changed the stream at least as "
+        "much as the edit did: over the prompt's positions, over the positions that predict the answer, and"
+        + (" at the last position, where this brief's metric is read and which a base pre-pass does not look at"
            if lcl.read_at_end(brief) else " nowhere else, since this brief's metric is read over the answer")
-        + "; one quieter than that, or with no such figure, is counted as moving as much. The figures are means over "
-        "the items read. The matched other-site family is judged as read (with its delivered stream change printed "
-        "beside the edit's), drawn spread and counted by disjoint sets. At this trial's level at most "
+        + ". One that was quieter at any of them, and a control edit or an edit with no such figure, is counted as "
+        "moving as much. The figures are means over the items read. The matching factor has no part in this: a "
+        "wider one makes more sites eligible and lets no quieter control edit count. The same-site family is not "
+        "asked this: its control edits are built at the edit's own sites, and what they changed the stream by is "
+        "printed beside the edit's. At this trial's level at most "
         f"`{_most_aside(int(trial_cfg['controls_per_family']), brief.max_fresh_readings, bars.alpha)}` of the "
         f"`{trial_cfg['controls_per_family']}` control edits of a family on the fresh items, and "
         f"`{_most_aside(int(trial_cfg['reworded_controls']), 1, bars.alpha)}` of the reworded set's "
@@ -703,9 +714,12 @@ def _render_rules_md(trial_cfg: Mapping[str, Any], brief: lbr.Brief, bars: lcl.B
         "",
         "A trial is a fresh reading of the brief's kept-back frames. It is asked what a claim reading is asked,",
         "when this folder is written and again before it is entered in the book. It",
-        "spends one of the brief's fresh readings, an edit has one trial, and it is read once. Where the book",
-        "holds a claim reading of the edit, the trial follows it only if that claim read",
-        "a lead. It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
+        "spends one of the brief's fresh readings, an edit has one trial, and it is read once. The edit is its",
+        "direction: any edit under any brief's name in the book whose payload, taken over every site either edit",
+        "changes, is this one's up to a scale, sign included. Where the book holds a trial of that direction the",
+        "trial is refused; where it holds a claim reading of it, the trial follows it only if that claim read a",
+        "lead, at the dose of the direction it read.",
+        "It is OF RECORD only when the process had asked nothing of the model before it, the checkout is",
         "clean (nothing changed, nothing untracked, no file git is told to overlook, and no code where the runner",
         "imports from that no commit holds), this folder is committed as it stands, the runner and reader are the",
         "files hashed in `trial.json`, it is read in the level book and not a side book, the seed of its draw was",
@@ -1012,7 +1026,8 @@ def register_trial(
     bars that no calibration reading in `book_path` produced, that were calibrated on other weights, or whose
     calibration note does not follow from the book's own readings (`level_claim.calibration_follows`), whatever
     else a fresh reading is refused for in that book as it stands (`level_claim.fresh_reading_gate`: kept-back
-    wording read in practice, a brief changed under its name, an edit that has had its trial or whose claim read
+    wording read in practice, a brief changed under its name, an edit (or a copy of its direction at any scale,
+    under any brief) that has had its trial or whose claim read
     no lead, a budget that is spent; all of it asked again when the trial is read), a reworded set the tokenizer
     cannot make items of, any reading of the trial that the kernel would refuse as planned (`preflight_trial`),
     and a folder that cannot be written. The folder is made before the look is taken, so that no look leaves its
@@ -1351,6 +1366,11 @@ def verify_registration(prereg_dir: Path, *, kit: bool = False) -> Dict[str, Any
         raise TrialRefused(f"Cannot parse registration JSON in {folder}: {exc}") from None
     if not isinstance(trial_cfg, dict) or not isinstance(edit_man, dict):
         raise TrialRefused(f"trial.json and edit_manifest.json of {folder} are JSON objects.")
+    preset = trial_cfg.get("rule_preset")
+    if isinstance(preset, str) and preset in NOT_ADOPTED:
+        raise TrialRefused(f"{NOT_ADOPTED[preset][0].upper()}{NOT_ADOPTED[preset][1:]} (trial "
+                           f"\"{trial_cfg.get('trial_name')}\" in {folder} is version {trial_cfg.get('v')!r} of rule "
+                           f"{preset!r}).")
     if trial_cfg.get("v") != TRIAL_VERSION or trial_cfg.get("rule_preset") != TRIAL_RULE_PRESET:
         raise TrialRefused(
             f"trial.json is version {trial_cfg.get('v')!r} of rule {trial_cfg.get('rule_preset')!r}; this code reads "
@@ -1387,7 +1407,9 @@ def verify_registration(prereg_dir: Path, *, kit: bool = False) -> Dict[str, Any
     if small["RULES.md"] != rules_now:
         raise TrialRefused(
             "RULES.md is not the rules this code writes for trial.json: the rules a person reads there are not the "
-            "ones the trial is judged by (the file was changed by hand, or the registration was written by other code)."
+            "ones the trial is judged by (the file was changed by hand, or the registration was written by other code, "
+            "such as code from before 22 November 2026, whose RULES.md did not say that an edit is its direction on "
+            "any brief: register the trial again)."
         )
     if small["registered_at"] != f"{trial_cfg.get('registered_at')}\n" or small["repo_commit"] != f"{trial_cfg.get('repo_commit')}\n":
         raise TrialRefused("registered_at or repo_commit is not what trial.json records.")
@@ -1812,13 +1834,14 @@ def judge_trial(
 
 
 def _controls_judged(dv: Dict[str, Any], ctl_means: List[Optional[float]]) -> Tuple[List[Optional[float]], List[bool]]:
-    """A size-checked family's (`same_site`, or `sham_target` for a declared rule) control means as the judgement
-    takes them: each control edit that, as read, did not change the stream by at least `min_ratio` times what the
-    edit did (`dv["apart"]`, from `level_claim._delivered_of`) is taken out of the edit's favour
-    (`level_claim.set_apart_aside`: its mean None, which `control_standing` counts as moving as much), and `dv` is
-    told how many were (`not_comparable`). Returns (the means to judge by, which control edits were set aside); the
-    means as read are not touched. A control edit with no figure, and every control edit when the edit has none, is
-    set aside too."""
+    """A matched or sham family's control means as the judgement takes them: each control edit that, as read, did not
+    change the stream as the edit did (`dv["apart"]`, from `level_claim._delivered_of`) is taken out of the edit's
+    favour (`level_claim.set_apart_aside`: its mean None, which `control_standing` counts as moving as much), and
+    `dv` is told how many were (`not_comparable`). Returns (the means to judge by, which control edits were set
+    aside); the means as read are not touched. "Matched" other sites are matched on a base pre-pass's expectation,
+    and on the 31B most of them then delivered under half of what the edit did: a control edit that hardly touched
+    the stream is no control. A control edit with no figure, and every control edit when the edit has none, is set
+    aside too."""
     apart = [bool(a) for a in (dv.get("apart") or ())]
     judged, dv["not_comparable"] = lcl.set_apart_aside(dv, ctl_means)
     return judged, apart
@@ -1901,31 +1924,27 @@ def judge_readings(
             it_effs, fl_m, rev_m, ctl_m = lcl._extract_item_effects(r_matched, target_drawn, cls_name, brief.metric, main_dose)
             _, fl_s, _, ctl_s = lcl._extract_item_effects(r_same, target_drawn, cls_name, brief.metric, main_dose)
             fl_both = max([x for x in (fl_m, fl_s) if x is not None], default=None)
-            # Under trial-4: same_site (and sham_target for a declared rule) answers for disturbance size at
-            # SAME_SITE_MIN_RATIO; other_sites_matched is drawn spread, counted by disjoint sets (separate_draws),
-            # and judged as read with its delivered loudness recorded and printed beside the edit's.
+            # the control edits' means as read, kept beside the ones the judgement takes: the first are what one
+            # trial's figures are set beside another's by, the second have those set aside taken out
             as_read: Dict[str, Any] = {"other_sites_matched": list(ctl_m), "same_site": list(ctl_s)}
             aside: Dict[str, Any] = {}
             dv_m = lcl._delivered_of(r_matched, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
-            dv_s = lcl._delivered_of(r_same, target_drawn, cls_name, main_dose, compare=True, at_end=at_end,
-                                     min_ratio=SAME_SITE_MIN_RATIO)
-            loud: Dict[str, Any] = {"other_sites_matched": _loud_of(dv_m), "same_site": _loud_of(dv_s)}
-            ctl_s, aside["same_site"] = _controls_judged(dv_s, ctl_s)
+            loud: Dict[str, Any] = {"other_sites_matched": _loud_of(dv_m)}
+            ctl_m, aside["other_sites_matched"] = _controls_judged(dv_m, ctl_m)
             ctls_cls: Dict[str, Any] = {"other_sites_matched": ctl_m, "same_site": ctl_s}
             # a reading that records no count of its separate draws shows none: it is counted as one
             draws_m = lcl.separate_draws(dv_m)
             eff_cls: Dict[str, Any] = {"other_sites_matched": draws_m if draws_m is not None else 1}
             deliv_cls: Dict[str, Any] = {
                 "other_sites_matched": dv_m,
-                "same_site": dv_s,
+                "same_site": lcl._delivered_of(r_same, target_drawn, cls_name, main_dose, at_end=at_end),
             }
             if r_sham is not None:
                 _, _, _, ctl_sh = lcl._extract_item_effects(r_sham, target_drawn, cls_name, brief.metric, main_dose)
                 as_read["sham_target"] = list(ctl_sh)
-                # a sham that moves the stream less than SAME_SITE_MIN_RATIO of the edit is not a control for it:
-                # it is counted against the edit, and the sheet says how many
-                dv_sh = lcl._delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end,
-                                          min_ratio=SAME_SITE_MIN_RATIO)
+                # a sham that moves the stream much more or less than the edit is not a control for it: it is
+                # counted against the edit (as the claim gate does), and the sheet says how many
+                dv_sh = lcl._delivered_of(r_sham, target_drawn, cls_name, main_dose, compare=True, at_end=at_end)
                 loud["sham_target"] = _loud_of(dv_sh)
                 ctl_sh, aside["sham_target"] = _controls_judged(dv_sh, ctl_sh)
                 ctls_cls["sham_target"] = ctl_sh
@@ -1944,11 +1963,12 @@ def judge_readings(
             rw_read = list(ctl_rw)
             dv_rw = lcl._delivered_of(r_rw, rw_drawn, cls_name, main_dose, compare=True, at_end=at_end)
             rw_loud = {"other_sites_matched": _loud_of(dv_rw)}
+            ctl_rw, rw_aside = _controls_judged(dv_rw, ctl_rw)
             draws_rw = lcl.separate_draws(dv_rw)
             slim(dv_rw)
             rw_classes[cls_name] = {"item_effects": it_effs, "floor": fl_rw, "controls": {"other_sites_matched": ctl_rw},
                                     "controls_as_read": {"other_sites_matched": rw_read},
-                                    "controls_aside": {},
+                                    "controls_aside": {"other_sites_matched": rw_aside},
                                     "controls_effective": {"other_sites_matched": draws_rw if draws_rw is not None else 1},
                                     "delivered": dv_rw, "delivered_as_read": rw_loud,
                                     "item_gate": lcl.item_gate_of(r_rw, rw_drawn)}
@@ -2054,6 +2074,32 @@ def _kind_words(meta: Mapping[str, Any]) -> str:
     return "of record" if meta.get("of_record") else "a dry run"
 
 
+def folded_settings_words(trial_cfg: Mapping[str, Any]) -> str:
+    """What a sheet and a sentence of record say when a registration's folded-form tolerance was not set as the
+    code's defaults set it: each setting that differs, with its value and the default; "" when none does."""
+    said = []
+    for key, default, what in (("folded_tol_floor_mult", DEFAULT_FOLDED_FLOOR_MULT, "floor multiplier"),
+                               ("folded_tol_rel", DEFAULT_FOLDED_REL_TOL, "share of the per-row effect"),
+                               ("folded_tol_min", DEFAULT_FOLDED_MIN_TOL, "least tolerance")):
+        v = _clean_float(trial_cfg.get(key))
+        if v is not None and v != float(default):
+            said.append(f"a {what} of {v:g}, where the code's default is {float(default):g}")
+    if not said:
+        return ""
+    return ("registered with " + "; ".join(said) + " (the tolerance is the largest of the floor multiplier times "
+            "the floor, the share of the per-row effect and the least tolerance, and never more than half the house "
+            "bar)")
+
+
+def _same_direction_line(meta: Mapping[str, Any]) -> str:
+    """The sheet's line of the earlier readings of the edit's direction on any brief, as the gate found them."""
+    rows = meta.get("same_direction")
+    if not isinstance(rows, list):
+        return "same direction on any brief: not recorded for this trial"
+    return (f"same direction on any brief ({lcl.DIRECTION_WORDS}), before this trial in this book: "
+            + lcl.same_direction_words(rows))
+
+
 def trial_sentence(
     brief: lbr.Brief,
     trial_cfg: Mapping[str, Any],
@@ -2099,6 +2145,12 @@ def trial_sentence(
     src = meta.get("source_claim")
     src_part = (f" It follows the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')})."
                 if isinstance(src, Mapping) else " No claim reading of this edit stands in this book before it.")
+    sd_rows = meta.get("same_direction")
+    if isinstance(sd_rows, list):
+        src_part += (f" Of this edit's direction ({lcl.DIRECTION_WORDS}) the book had before it, on any brief, "
+                     f"{lcl.same_direction_words(sd_rows)}.")
+    fold_w = folded_settings_words(trial_cfg)
+    fold_part = f" Its folded-form tolerance was {fold_w}." if fold_w else ""
     kf = trial_judged.get("cheaper_knob")
     knob_part = (
         f" The cheaper knob: {kf.get('name')}, one of the brief's own prompts and no change to the weights, moved "
@@ -2123,7 +2175,7 @@ def trial_sentence(
         f"on the same items (largest gap from the per-row form {_fmt(fl.get('max_abs_gap'))}, tolerance "
         f"{_fmt(fl.get('tolerance'))}; the same bits on {fl.get('same_bits_count')} of {fl.get('taken_count')} items), "
         f"and {_fmt((fl_s.get('frames') or {}).get('mean'))} in the small class (largest gap "
-        f"{_fmt(fl_s.get('max_abs_gap'))}). "
+        f"{_fmt(fl_s.get('max_abs_gap'))}).{fold_part} "
         f"On reworded set {str(trial_cfg.get('reworded_id'))[:12]} ({trial_cfg.get('reworded_origin')}; read "
         f"{meta.get('reworded_use_index')} of at most {MAX_REWORDED_USES} times in this book{rw_gate}) it moved {brief.metric} by "
         f"{_fmt(rw_fr.get('mean'))} (half 0 {_fmt((rw_fr.get('half_0') or {}).get('mean'))}, half 1 "
@@ -2203,6 +2255,10 @@ def render_trial_sheet(
     out.append(f"follows: the claim reading of this edit at book line {src.get('seq')} ({src.get('verdict')}"
                + (f", read at dose {src['main_dose']:g}" if isinstance(src.get("main_dose"), (int, float)) else "") + ")"
                if isinstance(src, Mapping) else "follows: no claim reading of this edit stands in this book")
+    out.append(_same_direction_line(meta))
+    fold_w = folded_settings_words(trial_cfg)
+    if fold_w:
+        out.append(f"folded tolerance: {fold_w}")
     k = int(meta.get("earlier_fresh_readings") or 0)
     out.append("fresh items: new fillings of the brief's kept-back frames, which "
                + (f"{k} earlier fresh reading{'s' if k != 1 else ''} of the brief in this book had already read"
@@ -2431,8 +2487,8 @@ def run_trial_of_record(
     Before anything is written: the folder is verified (`verify_registration`); the trial is refused if this
     registration is already in the book or `out_dir` holds a trial's seed or result; the registered edit is built
     again on `h` and kept to its id; the fresh-reading gate is asked (`level_claim.fresh_reading_gate`, as for a
-    claim, with the brief's budget counting claims and trials together, one trial an edit, a trial only after a
-    claim that read a lead, and a calibration that follows from the book); the bars must be the calibration the
+    claim, with the brief's budget counting claims and trials together, one trial an edit's direction on any brief,
+    a trial only after a claim of it that read a lead, and a calibration that follows from the book); the bars must be the calibration the
     folder records, in this book; the reworded set must not be worn out (`MAX_REWORDED_USES`) or read in practice
     here, and must make items on this model; every reading the trial will take is asked of the kernel with no
     forward (`preflight_trial`); the conditions of record are looked at (`record_conditions`); and `out_dir` is made
@@ -2643,6 +2699,10 @@ def run_trial_of_record(
             "edit_id": edit.id,
             "edit_linears": edit.linears(),
             "edit_provenance": we.edit_provenance(edit),
+            # its sites and a sketch of its payload (a later trial of this direction is refused by them, with no
+            # payload at hand), and the earlier readings of its direction on any brief, which the gate let through
+            "direction": gate["direction"]["record"],
+            "same_direction": gate["direction"]["same"],
             "main_dose": main_dose,
             "reading_index": reading_index,
             "max_fresh_readings": int(brief.max_fresh_readings),
@@ -2844,6 +2904,7 @@ def run_trial_of_record(
                 "book_seqs": book_seqs,
                 "prior_verdicts": reg_body["prior_verdicts"],
                 "prior_trials": reg_body["prior_trials"],
+                "same_direction": reg_body["same_direction"],
                 "prompt_named_site": brief.prompt_named_site,
                 "chat_settings": dict(brief.chat_settings),
                 "forecast": dict(trial_cfg.get("forecast") or {}),
