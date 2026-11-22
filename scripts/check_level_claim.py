@@ -1074,13 +1074,13 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
               "saved edit of it is in" in g_v["v2"],
           f"a sketch of this direction version or of version 1 tells an earlier edit's direction; one of version 2 is "
           f"not read, and the trial is refused as not told ({g_v['v2'][:200]})")
-    # the card book's version-1 records were written before the neuron keying: the sketch, length, linears and sites
-    # this version records with each entry at its own site are theirs bit for bit, so such a sketch tells a dose copy
-    # (the same ten columns halved, a trial at half its dose); with a neuron's scale one site that record has no
-    # sketch, so a silence of those neurons at their gate_proj rows (one model with the column silence as written) is
-    # not told by it. The version-2 record round two's code would have written of it is not read
-    card_book = ROOT_DIR / "experiments" / "results" / "levelling" / "verify_claim_book.jsonl"
-    note_v1 = next(e["body"] for e in lb.entries(card_book) if e["body"].get("note_type") == "claim_registration")
+    # a card book's version-1 record (kept in scripts/fixtures, as the card books are recorded again by each card run)
+    # was written before the neuron keying: the sketch, length, linears and sites this version records with each entry
+    # at its own site are theirs bit for bit, so such a sketch tells a dose copy (the same ten columns halved, a trial
+    # at half its dose); with a neuron's scale one site that record has no sketch, so a silence of those neurons at
+    # their gate_proj rows (one model with the column silence as written) is not told by it. The version-2 record
+    # round two's code would have written of it is not read
+    note_v1 = json.loads((ROOT_DIR / "scripts" / "fixtures" / "direction_v1_claim_note.json").read_text())["body"]
     rec_v1 = note_v1["direction"]
     cols_v1 = [int(n) for n in note_v1["edit_provenance"]["rebuilt_recipe"]["terms"][0]["silence"]]
 
@@ -1112,7 +1112,7 @@ def run_section_5(h: lv.Handle, tmp: Path) -> None:
               "payload of direction version 1, which keys each entry at its own site" in g_c1["gate"]
           and g_c1["v2"].startswith(f"REFUSED Whether edit {note_v1['edit_id']} ")
           and "direction version 2, which this code does not read" in g_c1["v2"],
-          f"the card book's version-1 record is this version's sketch with each entry at its own site, bit for bit, "
+          f"a card book's version-1 record is this version's sketch with each entry at its own site, bit for bit, "
           f"and is read again: it tells a dose copy ({g_c1['half'][:60]}...), and with a neuron's scale one site it "
           f"tells nothing ({g_c1['gate'][-160:]}); a version-2 record is not read")
     # a recorded sketch that is not 128 finite numbers tells nothing: the trial is refused as not told, never a crash,
