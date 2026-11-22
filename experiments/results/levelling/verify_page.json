@@ -1,10 +1,10 @@
 {
- "date": "2026-11-19T15:51:02Z",
+ "date": "2026-11-22T05:20:56Z",
  "environment": "measured on the 31B card",
  "gpu": "NVIDIA GeForce RTX 5090",
  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
- "load_seconds": 12.32,
- "total_seconds": 17.43,
+ "load_seconds": 9.16,
+ "total_seconds": 14.61,
  "peak_gib": 18.369,
  "fallback_count": 0,
  "passed": 11,
@@ -18,6 +18,7 @@
     "d_ff": 21504,
     "books": [
      "live",
+     "verify_trial",
      "verify_claim",
      "verify_door",
      "verify_1b"
@@ -37,7 +38,7 @@
    "name": "compare_31b_ok",
    "ok": true,
    "detail": {
-    "seconds": 4.64,
+    "seconds": 4.35,
     "small_odds": -1.8532142639160156,
     "large_odds": -1.8172292709350586,
     "large_at_least": 0
@@ -61,7 +62,7 @@
      "written_seq": 0,
      "paired_seq": 1,
      "entries": 2,
-     "head": "23c97d7f90d52799"
+     "head": "403ec1c4bbd4d53a"
     }
    }
   },
@@ -99,7 +100,7 @@
    "ok": true,
    "detail": {
     "entries": 2,
-    "head": "23c97d7f90d52799"
+    "head": "403ec1c4bbd4d53a"
    }
   },
   {
@@ -107,7 +108,7 @@
    "ok": true,
    "detail": {
     "peak_gib": 18.369,
-    "total_seconds": 17.43
+    "total_seconds": 14.61
    }
   }
  ],
@@ -341,11 +342,19 @@
      "presence_penalty": 0.0,
      "seed": 1
     },
+    "loop_rules": {
+     "looped": "theodolite-loop-1",
+     "looped_published": "arXiv:2606.13705v2 sec. 4, as worded",
+     "note": "rules on the written pieces and lines; neither is checked against a person's reading of this checkpoint's answers"
+    },
     "base": {
      "n": 1,
      "ended": 0,
      "cut_off": 1,
      "looped": 0,
+     "looped_published": 0,
+     "looped_either": 0,
+     "loop_rules_differ": 0,
      "mean_pieces": 24.0,
      "max_pieces": 24,
      "mean_thought_pieces": 0.0,
@@ -360,6 +369,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 1,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -377,6 +389,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 1,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -394,6 +409,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 1,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -411,6 +429,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 0,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -428,6 +449,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 1,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -445,6 +469,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 1,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -462,6 +489,9 @@
       "ended": 0,
       "cut_off": 1,
       "looped": 0,
+      "looped_published": 0,
+      "looped_either": 0,
+      "loop_rules_differ": 0,
       "changed_from_base": 1,
       "rescued_from_loop": 0,
       "rescued_from_cutoff": 0,
@@ -661,7 +691,7 @@
    "  base model google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec)",
    "  a written reading, greedy: every row writes its likeliest piece at each step, up to 24 new pieces, in one batch of 9 rows. It is taken at one row count and is not a two-row-count reading. Its log-probabilities are the writer's own, from the model's dtype, not the fp32 measure of a paired reading. Nothing gates the item: the model writes its own answer.",
    "  Control edits are other sites of the same layer and size, drawn from seed 0 and matched within factor 2 on expected delivered magnitude from the base pre-pass on these items.",
-   "  item audition [cdae8add6c9e] (27 prompt pieces); 0.115 s a step",
+   "  item audition [cdae8add6c9e] (27 prompt pieces); 0.114 s a step",
    "    base row, 24 pieces, did not end [CUT OFF]: 'Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her'",
    "    null row e = 0.125: the base row's pieces, every one; largest log-probability gap 0.0432 (mean 0.0037, 24 pieces) [CUT OFF]",
    "    null row e = -0.125: the base row's pieces, every one; largest log-probability gap 0.0435 (mean 0.0048, 24 pieces) [CUT OFF]",
@@ -671,10 +701,11 @@
    "    control edit 1: the base row's pieces, every one; largest log-probability gap 0.0432 (mean 0.0022, 24 pieces) [CUT OFF]",
    "    control edit 2: the base row's pieces, every one; largest log-probability gap 0.0435 (mean 0.0049, 24 pieces) [CUT OFF]",
    "  written summary over 1 generation: base ended 0/1, cut off 1/1, looped 0/1",
+   "    by the published rule (arXiv:2606.13705v2 sec. 4, as worded) the base looped 0/1; the two rules part on 0. Neither is checked against a person's reading of this checkpoint's answers.",
    "    the edit at dose 1: ended 0/1, cut off 1/1, looped 0/1, changed 1/1 (rescued loop 0, regressed loop 0)",
    "    the edit at dose 0: ended 0/1, cut off 1/1, looped 0/1, changed 0/1 (rescued loop 0, regressed loop 0)",
    "    3 control edits: looped 0..0, cut off 1..1, changed 1..1",
-   "  3.4 s (predicted 2.7 s)"
+   "  3.2 s (predicted 2.7 s)"
   ],
   "paired_lines": [
    "reading \"page_31b_e6_she10_paired\" (paired): ok, 1 of 1 item kept",
@@ -690,7 +721,7 @@
    "  item audition [cdae8add6c9e] (33 pieces, 6 scored): ok; the base gives -9.57 at 12 rows, -9.50 at 32 rows in nats a piece (bar -6.00)",
    "    The base model gives this item's answer -9.57 at 12 rows and -9.50 at 32, in nats a piece on average: under the item gate's bar of -6.00 at both row counts. The bar is a caution, not a refusal: on 16 November 2026 the card read 51 items with it set aside, and the base's log-probability did not separate the 3 on which the edit's two row counts disagreed (-3.09, -4.13 and -9.64 nats a piece) from the 48 on which they agreed (the lowest -12.13). The item is read, and its two row counts carry the weight.",
    "    12 rows, 1 forward:",
-   "      the edit at dose 1: KL mean 0.00381, median 9.69e-05, 0 positions above a nat of 6; the text's own log-probability mean 0.14706, median 0.00398, 0 positions above a nat of 6; log-odds of the named pieces -1.85321 at the one position read; delivered 0.01799",
+   "      the edit at dose 1: KL mean 0.00381, median 9.69e-05, 0 positions above a nat of 6; the text's own log-probability mean 0.14706, median 0.00398, 0 positions above a nat of 6; log-odds of the named pieces -1.85321 at the one position read; delivered 0.01799 (over the prompt 0.01502, at the last position 0.00243)",
    "      the edit at dose 0: this row is the base row by bits",
    "      floor of KL: 3.7e-05 (the null row e = 0.125, the largest of 4; a null row's largest median 3.71e-06, most positions above a nat 0)",
    "      floor of the text's own log-probability: 0.01445 (the null row e = -0.125, the largest of 4; a null row's largest median 0.00845, most positions above a nat 0)",
@@ -698,7 +729,7 @@
    "      on log-odds of the named pieces at dose 1: 0 of 3 matched control edits read as much (rank 1 of 4); 0 of 3 control edits read above the floor at all; the edit reads 9.88 times the floor",
    "      no twin taken: a silencing or a scale by a power of two is exact in arithmetic on the input side; on the card a silencing and a scale by 2 read as their folded forms by bits, 48 comparisons of 48 (16 November 2026)",
    "    32 rows, 1 forward:",
-   "      the edit at dose 1: KL mean 0.00367, median 0.000116, 0 positions above a nat of 6; the text's own log-probability mean 0.11516, median 0.00541, 0 positions above a nat of 6; log-odds of the named pieces -1.81723 at the one position read; delivered 0.01799",
+   "      the edit at dose 1: KL mean 0.00367, median 0.000116, 0 positions above a nat of 6; the text's own log-probability mean 0.11516, median 0.00541, 0 positions above a nat of 6; log-odds of the named pieces -1.81723 at the one position read; delivered 0.01799 (over the prompt 0.01511, at the last position 0.00241)",
    "      the edit at dose 0: this row is the base row by bits",
    "      floor of KL: 2.7e-05 (the null row e = -0.03125, the largest of 4; a null row's largest median 6.68e-06, most positions above a nat 0)",
    "      floor of the text's own log-probability: 0.01117 (the null row e = -0.125, the largest of 4; a null row's largest median 0.00017, most positions above a nat 0)",
@@ -722,20 +753,20 @@
    "    at 32 rows, on log-odds of the named pieces over items: 0 of 3 matched control edits read as much (rank 1 of 4)",
    "  1.1 s (predicted 1.0 s)"
   ],
-  "seconds": 4.562,
+  "seconds": 4.293,
   "base_after": true,
   "book": {
    "written_seq": 0,
    "paired_seq": 1,
    "entries": 2,
-   "head": "23c97d7f90d52799"
+   "head": "403ec1c4bbd4d53a"
   },
   "note": "This side-by-side reading is for exploration and learning; nothing remains on the model after it ends. A rank against control edits says only that this edit moved more than those random edits on this question."
  },
  "ledger": {
   "ok": true,
   "entries": 2,
-  "head": "23c97d7f90d52799ad7ae786bf097e7830129069421e9889a85a17b4105f4b1f",
+  "head": "403ec1c4bbd4d53a404fd255eea33f5a9fcbc94213426ae4138ec53380f6d30f",
   "first_bad": null,
   "why": null
  }
