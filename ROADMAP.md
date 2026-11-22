@@ -3002,7 +3002,7 @@ in order:
   reworded set’s from `6e9f06d28bc9` to `0da8ec1ceb3b`: a bar set calibrated under the old id is refused, and a
   book that read `pronoun_pull` fresh under it refuses new claims of the brief (the review found neither on disk).
   The adapter the builder exported from the second trial, outside the repository, carries that trial’s verdict and
-  says “earlier trials 0”; this code refuses such an export. CPU checks and the card run, at `495bb8b`, are in
+  says “earlier trials 0”; this code refuses such an export. CPU checks, at `43eb970`, and the card run, at `495bb8b`, are in
   ARCHITECTURE §7.
 - **What waits on the owner.** Ruled on 19 November 2026, for Phase 5: a volunteer’s re-run repeats the home
   trial’s own items; a trial has a reworded set; a trial spends one of the brief’s fresh readings. Chosen by the
@@ -3099,8 +3099,9 @@ in order:
   - two edits are one direction when either keying finds them so. With a neuron’s scale one site, its column, its
     up-projection row and its gate row at 0 are one site, a neuron scaled at two projections is their product, and
     a silenced neuron’s other entries are dropped; past a single scale these are one model at dose 1 alone, and
-    where only this keying finds two edits one direction the dose rule takes its scale, which past a single scale
-    holds at dose 1 alone. So after a failed trial of a column silence at dose 0.5 a gate silence at 0.5 is refused, though at that
+    where only this keying finds two edits one direction the dose rule takes its scale, which holds at every dose
+    only where a neuron's column and up-projection factors are moved between the two (a single scale moved, or two
+    factors swapped), and else at dose 1 alone. So after a failed trial of a column silence at dose 0.5 a gate silence at 0.5 is refused, though at that
     dose it is another model, and after a lead of one it is let through as following it: keep that, or apply the
     neuron keying only at dose 1?
   - beside a low-rank term on a layer’s down projection the neuron keying still joins a column’s scale and an

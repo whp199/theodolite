@@ -1556,7 +1556,10 @@ def _saved_payloads(edit_id: str, base: Any = None) -> Tuple[Optional[Dict[str, 
             return None, f"its saved folder {folder} does not hash to its id"
     except Exception as exc:  # an unreadable folder is no payload: the caller refuses
         return None, f"its saved folder {folder} cannot be read ({type(exc).__name__})"
-    return _edit_payloads(terms, base), ""
+    try:
+        return _edit_payloads(terms, base), ""
+    except ValueError:  # a factor that is no finite number as the kernel keeps it (`_factor32`): no payload
+        return None, f"its saved folder {folder} holds a factor that is no finite number"
 
 
 def _lowrank_slices(A: np.ndarray, B: np.ndarray, kind: str, idx: Sequence[int]) -> np.ndarray:
@@ -1983,7 +1986,8 @@ def fresh_reading_gate(
     (or never ended); a knob claim of it that read more than the edit's arithmetic; a claim reading of it at another
     dose of that direction (this trial's dose times the scale between the two edits, which is the ratio of their
     doses where each entry at its own site finds them one direction; where only a neuron's scale as one site does, it
-    holds at every dose for a single scale moved between a column and an up_proj row, and at dose 1 alone otherwise); or a reading whose direction cannot be told (another edit whose note names a site this
+    holds at every dose where only a neuron's column and up_proj row factors are moved between the two, a single
+    scale moved or two factors swapped, and at dose 1 alone otherwise); or a reading whose direction cannot be told (another edit whose note names a site this
     one changes, or names only its linears, one of them a linear this one changes or of a layer whose neurons it
     scales, or names neither; whose numbers are neither in its note nor in the edits folder; whose sketch under a
     keying that could still find it one is not recorded, is not 128 finite numbers, is too near to tell, is of
