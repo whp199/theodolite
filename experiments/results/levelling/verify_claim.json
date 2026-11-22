@@ -1,11 +1,11 @@
 {
- "date": "2026-11-22T05:07:02Z",
+ "date": "2026-11-22T10:19:48Z",
  "environment": "measured on the 31B card",
  "gpu": "NVIDIA GeForce RTX 5090",
  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
  "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
- "load_seconds": 8.02,
- "total_seconds": 119.2,
+ "load_seconds": 9.55,
+ "total_seconds": 120.37,
  "peak_gib": 18.71,
  "fallback_count": 0,
  "passed": 16,
@@ -23,8 +23,8 @@
    "name": "calibrate_bars_hash_matches_book",
    "ok": true,
    "detail": {
-    "seconds": 8.93,
-    "bars_sha256": "d79cc9a7ae4f",
+    "seconds": 9.06,
+    "bars_sha256": "170f51770759",
     "neutral_kl_max": 0.05,
     "near_miss_abs_max": 0.25,
     "panel_own_drop_max": 0.1
@@ -35,10 +35,10 @@
    "ok": true,
    "detail": {
     "verdict": "works but harms",
-    "seconds": 38.97,
-    "large_mean": -1.2575963735580444,
-    "small_mean": -1.2565892338752747,
-    "near_miss_abs": 0.883765697479248
+    "seconds": 38.61,
+    "large_mean": -0.8403582870960236,
+    "small_mean": -0.817727267742157,
+    "near_miss_abs": 1.0118346214294434
    }
   },
   {
@@ -73,9 +73,9 @@
    "ok": true,
    "detail": {
     "verdict": "kept the base",
-    "seconds": 39.09,
-    "large_mean": -0.00032699108123779297,
-    "small_mean": -0.004317820072174072
+    "seconds": 39.07,
+    "large_mean": -0.001885145902633667,
+    "small_mean": -0.012635082006454468
    }
   },
   {
@@ -102,9 +102,9 @@
    "name": "settings_audit_ok",
    "ok": true,
    "detail": {
-    "seconds": 23.93,
+    "seconds": 23.8,
     "note": "no loops observed on audited base sample under either setting",
-    "priced_C39_minutes": 22.47
+    "priced_C39_minutes": 22.34
    }
   },
   {
@@ -126,7 +126,7 @@
    "ok": true,
    "detail": {
     "entries": 20,
-    "head": "4e1b8729a3c15d49"
+    "head": "98992e66303f513f"
    }
   },
   {
@@ -134,12 +134,12 @@
    "ok": true,
    "detail": {
     "peak_gib": 18.71,
-    "total_seconds": 119.2
+    "total_seconds": 120.37
    }
   }
  ],
  "calibration": {
-  "seconds": 8.93,
+  "seconds": 9.06,
   "bars": {
    "rule_preset": "levelling-claim-v1",
    "rule_version": 2,
@@ -164,43 +164,43 @@
     1,
     2
    ],
-   "calibrated_at": "2026-11-22T05:05:19Z"
+   "calibrated_at": "2026-11-22T10:18:06Z"
   },
-  "bars_sha256": "d79cc9a7ae4f10f18b6aee8023eaba4ba352215b4a260599892b8dca0a14df95"
+  "bars_sha256": "170f517707593622d7a84e3a4eb8d1f5b2250524231a43611258d829b0744d12"
  },
  "claim_1_she10": {
-  "seconds": 38.97,
+  "seconds": 38.61,
   "verdict": "works but harms",
   "reasons": [
-   "near_misses abs effect (0.883765697479248, ratio 0.7033051642132468) exceeded bar (abs <= 0.25, ratio <= 0.35)."
+   "near_misses abs effect (1.0118346214294434, ratio 1.2373741971736372) exceeded bar (abs <= 0.25, ratio <= 0.35)."
   ],
   "claim_sentence": null,
-  "sheet": "CLAIM SHEET — brief \"pronoun_pull\" [935d9f723200] — reading 1 of 2\nverdict: works but harms\nedit: be4328fdb60d05f8 (dose 1, linears: layers.50.mlp.down_proj)\nbase: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\nrule: levelling-claim-v1 v2 | bars d79cc9a7ae4f from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\nchat settings: {\"system\": null, \"thinking\": false} | driver prompt named site: False\nselection: free_pick | practice readings in this book: 1 | practice best, as reported with the claim: none\ndesign, registered before the draw: 8 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\nbook: verify_claim_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\nkept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\nretention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\ngate notes:\n  - near_misses abs effect (0.883765697479248, ratio 0.7033051642132468) exceeded bar (abs <= 0.25, ratio <= 0.35).\nreading classes (kept-back frames):\n  item gate: 8 of the 8 fresh items that read are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -17.40 to -10.11 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n  small: n_frames=8 (8 items), mean=-1.2566 [-2.3272, -0.1860], half0=-0.6902 (n=4), half1=-1.8230 (n=4), floor=0.1492, bar=0.3345, reversed=1.1026\n    controls[other_sites_matched]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0100, these controls median 0.0036; over the answer: edit 0.0115, these controls median 0.0058 (0.0038 to 0.0182); at the last position, where the metric is read: edit 0.0338, these controls median 0.0036; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 27 of the sets share no site with one another (each neuron had at least 54 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0100, these controls median 0.0097; over the answer: edit 0.0115, these controls median 0.0114 (0.0114 to 0.0115); at the last position, where the metric is read: edit 0.0338, these controls median 0.0325\n    controls[sham_target]: selection not matched, 1 practice readings in this book\n  large: n_frames=8 (8 items), mean=-1.2576 [-2.3306, -0.1846], half0=-0.6841 (n=4), half1=-1.8311 (n=4), floor=0.1366, bar=0.3201, reversed=1.1170\n    controls[other_sites_matched]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0100, these controls median 0.0037; over the answer: edit 0.0116, these controls median 0.0058 (0.0037 to 0.0182); at the last position, where the metric is read: edit 0.0336, these controls median 0.0034; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 27 of the sets share no site with one another (each neuron had at least 54 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0100, these controls median 0.0097; over the answer: edit 0.0116, these controls median 0.0115 (0.0114 to 0.0116); at the last position, where the metric is read: edit 0.0336, these controls median 0.0322\n    controls[sham_target]: selection not matched, 1 practice readings in this book\nretention batteries:\n  neutral_text (GATING): passed=True {'available': True, 'mean_kl': 6.249064063013066e-05, 'bar': 0.05, 'control_kl_max': 0.00017886740124595235, 'items': {'read': 4, 'given': 4, 'under_item_gate': 2}}\n  near_misses (GATING): passed=False {'available': True, 'mean_effect': 0.883765697479248, 'abs_effect': 0.883765697479248, 'ratio_to_target': 0.7033051642132468, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4, 'under_item_gate': 4}}\n  labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.0, 'mean_kl': 6.047049971869001e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 3, 'given': 4, 'under_item_gate': 1}}\n  habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\ncheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n  matched_by: prompt arm 0 (a prompt arm matches when it moved the metric at least 0.95 times as far as the edit in the brief's direction, and its near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on its effect alone)\n  author prompt arms: run\n  prompt arm 0 [255cdbb968d4]: directed_effect=8.7026, near_miss_abs=1.1968\nearlier fresh readings on this brief (0):\n  none\nearlier trials on this brief (0):\n  none",
+  "sheet": "CLAIM SHEET — brief \"pronoun_pull\" [935d9f723200] — reading 1 of 2\nverdict: works but harms\nedit: be4328fdb60d05f8 (dose 1, linears: layers.50.mlp.down_proj)\nbase: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\nrule: levelling-claim-v1 v2 | bars 170f51770759 from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\nchat settings: {\"system\": null, \"thinking\": false} | driver prompt named site: False\nselection: free_pick | practice readings in this book: 1 | practice best, as reported with the claim: none\ndesign, registered before the draw: 8 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\nbook: verify_claim_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\nkept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\nretention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\ngate notes:\n  - near_misses abs effect (1.0118346214294434, ratio 1.2373741971736372) exceeded bar (abs <= 0.25, ratio <= 0.35).\nreading classes (kept-back frames):\n  item gate: 8 of the 8 fresh items that read are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -17.39 to -10.36 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n  small: n_frames=8 (8 items), mean=-0.8177 [-2.0583, 0.4228], half0=-0.3513 (n=4), half1=-1.2842 (n=4), floor=0.1501, bar=0.3356, reversed=0.6879\n    controls[other_sites_matched]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0103, these controls median 0.0035; over the answer: edit 0.0138, these controls median 0.0069 (0.0042 to 0.0182); at the last position, where the metric is read: edit 0.0265, these controls median 0.0035; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 19 of the sets share no site with one another (each neuron had at least 30 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0103, these controls median 0.0101; over the answer: edit 0.0138, these controls median 0.0137 (0.0137 to 0.0138); at the last position, where the metric is read: edit 0.0265, these controls median 0.0257\n    controls[sham_target]: selection not matched, 1 practice readings in this book\n  large: n_frames=8 (8 items), mean=-0.8404 [-2.0592, 0.3784], half0=-0.3939 (n=4), half1=-1.2868 (n=4), floor=0.1233, bar=0.3041, reversed=0.6904\n    controls[other_sites_matched]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0103, these controls median 0.0035; over the answer: edit 0.0138, these controls median 0.0069 (0.0041 to 0.0182); at the last position, where the metric is read: edit 0.0263, these controls median 0.0037; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 19 of the sets share no site with one another (each neuron had at least 30 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=0/39, p_emp=0.0250, p_fw=0.0500, passes_alpha=True (tops_every=True, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0103, these controls median 0.0101; over the answer: edit 0.0138, these controls median 0.0137 (0.0136 to 0.0137); at the last position, where the metric is read: edit 0.0263, these controls median 0.0255\n    controls[sham_target]: selection not matched, 1 practice readings in this book\nretention batteries:\n  neutral_text (GATING): passed=True {'available': True, 'mean_kl': 3.2802249734231737e-05, 'bar': 0.05, 'control_kl_max': 4.0776191212898993e-05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 3}}\n  near_misses (GATING): passed=False {'available': True, 'mean_effect': 1.0118346214294434, 'abs_effect': 1.0118346214294434, 'ratio_to_target': 1.2373741971736372, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4, 'under_item_gate': 4}}\n  labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.0, 'mean_kl': 6.20622628844103e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 3, 'given': 4, 'under_item_gate': 1}}\n  habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\ncheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n  matched_by: prompt arm 0 (a prompt arm matches when it moved the metric at least 0.95 times as far as the edit in the brief's direction, and its near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on its effect alone)\n  author prompt arms: run\n  prompt arm 0 [255cdbb968d4]: directed_effect=8.1469, near_miss_abs=1.9119\nearlier fresh readings on this brief (0):\n  none\nearlier trials on this brief (0):\n  none",
   "summary": {
    "small": {
     "n_frames": 8,
-    "mean": -1.2565892338752747,
-    "directed_mean": 1.2565892338752747,
+    "mean": -0.817727267742157,
+    "directed_mean": 0.817727267742157,
     "ci95": [
-     -2.327157463015967,
-     -0.18602100473458227
+     -2.0582735291348007,
+     0.4228189936504867
     ],
     "half_0": {
      "n_frames": 4,
-     "mean": -0.6901611089706421,
-     "directed_mean": 0.6901611089706421
+     "mean": -0.3512570858001709,
+     "directed_mean": 0.3512570858001709
     },
     "half_1": {
      "n_frames": 4,
-     "mean": -1.8230173587799072,
-     "directed_mean": 1.8230173587799072
+     "mean": -1.284197449684143,
+     "directed_mean": 1.284197449684143
     },
     "house_bar": {
-     "floor": 0.14922046661376953,
+     "floor": 0.15012741088867188,
      "least_effect": 0.75,
-     "bar": 0.33453751652143165,
+     "bar": 0.335552616092475,
      "floor_too_loud": false,
-     "ratio_m_over_f": 5.026120189941778
+     "ratio_m_over_f": 4.995756574768136
     },
     "controls": {
      "other_sites_matched": {
@@ -235,15 +235,15 @@
     },
     "delivered": {
      "other_sites_matched": {
-      "edit": 0.011481747555080801,
-      "controls_median": 0.0057803302188403904,
-      "controls_min": 0.0037539206678047776,
-      "controls_max": 0.01820593443699181,
+      "edit": 0.013824402471072972,
+      "controls_median": 0.006890708056744188,
+      "controls_min": 0.004160105308983475,
+      "controls_max": 0.018157439306378365,
       "controls_read": 39,
-      "edit_end": 0.0337552402052097,
-      "controls_median_end": 0.0035677241685334593,
-      "edit_prompt": 0.00995479611447081,
-      "controls_median_prompt": 0.0036464431323111057,
+      "edit_end": 0.026464300783118233,
+      "controls_median_end": 0.0034723250864772126,
+      "edit_prompt": 0.01033506472595036,
+      "controls_median_prompt": 0.0035029210266657174,
       "read_at_end": true,
       "compared_at": [
        "prompt",
@@ -255,49 +255,49 @@
       "as_loud_ratio_prompt": null,
       "as_loud_ratio_answer": null,
       "as_loud_ratio_end": null,
-      "fewest_eligible": 54,
-      "fewest_distinct": 30,
-      "disjoint_sets": 27,
+      "fewest_eligible": 30,
+      "fewest_distinct": 19,
+      "disjoint_sets": 19,
       "draw": "independent"
      },
      "same_site": {
-      "edit": 0.011481747555080801,
-      "controls_median": 0.011439552530646324,
-      "controls_min": 0.011387840029783547,
-      "controls_max": 0.011548775248229504,
+      "edit": 0.013824402471072972,
+      "controls_median": 0.013719892187509686,
+      "controls_min": 0.013668540806975216,
+      "controls_max": 0.013776610663626343,
       "controls_read": 39,
-      "edit_end": 0.0337552402052097,
-      "controls_median_end": 0.03249347204109654,
-      "edit_prompt": 0.00995479611447081,
-      "controls_median_prompt": 0.009720656787976623,
+      "edit_end": 0.026464300783118233,
+      "controls_median_end": 0.02568600806989707,
+      "edit_prompt": 0.01033506472595036,
+      "controls_median_prompt": 0.01011133607244119,
       "read_at_end": true
      }
     }
    },
    "large": {
     "n_frames": 8,
-    "mean": -1.2575963735580444,
-    "directed_mean": 1.2575963735580444,
+    "mean": -0.8403582870960236,
+    "directed_mean": 0.8403582870960236,
     "ci95": [
-     -2.3305676276447453,
-     -0.18462511947134375
+     -2.0591650698309243,
+     0.37844849563887717
     ],
     "half_0": {
      "n_frames": 4,
-     "mean": -0.684069037437439,
-     "directed_mean": 0.684069037437439
+     "mean": -0.3939182758331299,
+     "directed_mean": 0.3939182758331299
     },
     "half_1": {
      "n_frames": 4,
-     "mean": -1.83112370967865,
-     "directed_mean": 1.83112370967865
+     "mean": -1.2867982983589172,
+     "directed_mean": 1.2867982983589172
     },
     "house_bar": {
-     "floor": 0.13658809661865234,
+     "floor": 0.12329506874084473,
      "least_effect": 0.75,
-     "bar": 0.3200641692910802,
+     "bar": 0.3040909429029966,
      "floor_too_loud": false,
-     "ratio_m_over_f": 5.490961647221466
+     "ratio_m_over_f": 6.08296834301162
     },
     "controls": {
      "other_sites_matched": {
@@ -332,15 +332,15 @@
     },
     "delivered": {
      "other_sites_matched": {
-      "edit": 0.011591552698519081,
-      "controls_median": 0.005843355640536174,
-      "controls_min": 0.003746605187188834,
-      "controls_max": 0.018232166534289718,
+      "edit": 0.013793226389680058,
+      "controls_median": 0.006868030875921249,
+      "controls_min": 0.004119543562410399,
+      "controls_max": 0.018185526365414262,
       "controls_read": 39,
-      "edit_end": 0.03358625585678965,
-      "controls_median_end": 0.0034432969259796664,
-      "edit_prompt": 0.009977004025131464,
-      "controls_median_prompt": 0.003674583975225687,
+      "edit_end": 0.02630000122007914,
+      "controls_median_end": 0.003659663867438212,
+      "edit_prompt": 0.010326140327379107,
+      "controls_median_prompt": 0.003479682927718386,
       "read_at_end": true,
       "compared_at": [
        "prompt",
@@ -352,21 +352,21 @@
       "as_loud_ratio_prompt": null,
       "as_loud_ratio_answer": null,
       "as_loud_ratio_end": null,
-      "fewest_eligible": 54,
-      "fewest_distinct": 30,
-      "disjoint_sets": 27,
+      "fewest_eligible": 30,
+      "fewest_distinct": 19,
+      "disjoint_sets": 19,
       "draw": "independent"
      },
      "same_site": {
-      "edit": 0.011591552698519081,
-      "controls_median": 0.011469162767753005,
-      "controls_min": 0.011398265894968063,
-      "controls_max": 0.011587329674512148,
+      "edit": 0.013793226389680058,
+      "controls_median": 0.013687497761566192,
+      "controls_min": 0.01363189151743427,
+      "controls_max": 0.013726360921282321,
       "controls_read": 39,
-      "edit_end": 0.03358625585678965,
-      "controls_median_end": 0.03223939353483729,
-      "edit_prompt": 0.009977004025131464,
-      "controls_median_prompt": 0.009729014243930578,
+      "edit_end": 0.02630000122007914,
+      "controls_median_end": 0.02546828699996695,
+      "edit_prompt": 0.010326140327379107,
+      "controls_median_prompt": 0.010120352439116687,
       "read_at_end": true
      }
     }
@@ -376,22 +376,22 @@
    "neutral_text": {
     "available": true,
     "gating": true,
-    "mean_kl": 6.249064063013066e-05,
+    "mean_kl": 3.2802249734231737e-05,
     "bar": 0.05,
     "passed": true,
-    "control_kl_max": 0.00017886740124595235,
+    "control_kl_max": 4.0776191212898993e-05,
     "items": {
      "read": 4,
      "given": 4,
-     "under_item_gate": 2
+     "under_item_gate": 3
     }
    },
    "near_misses": {
     "available": true,
     "gating": true,
-    "mean_effect": 0.883765697479248,
-    "abs_effect": 0.883765697479248,
-    "ratio_to_target": 0.7033051642132468,
+    "mean_effect": 1.0118346214294434,
+    "abs_effect": 1.0118346214294434,
+    "ratio_to_target": 1.2373741971736372,
     "abs_bar": 0.25,
     "ratio_bar": 0.35,
     "passed": false,
@@ -405,7 +405,7 @@
     "available": true,
     "gating": true,
     "own_drop": 0.0,
-    "mean_kl": 6.047049971869001e-08,
+    "mean_kl": 6.20622628844103e-08,
     "own_drop_bar": 0.1,
     "kl_bar": 0.05,
     "passed": true,
@@ -428,9 +428,9 @@
     {
      "index": 0,
      "prompt_sha256": "255cdbb968d4",
-     "mean_effect": -8.702642679214478,
-     "directed_effect": 8.702642679214478,
-     "near_miss_abs": 1.1967780590057373
+     "mean_effect": -8.1468985080719,
+     "directed_effect": 8.1468985080719,
+     "near_miss_abs": 1.9119431972503662
     }
    ],
    "prompt_arms_state": "run",
@@ -446,9 +446,9 @@
    "matched_by": "prompt arm 0",
    "matched_arm": {
     "index": 0,
-    "directed_effect": 8.702642679214478,
-    "near_miss_abs": 1.1967780590057373,
-    "near_miss_share": 0.13751892420725717,
+    "directed_effect": 8.1468985080719,
+    "near_miss_abs": 1.9119431972503662,
+    "near_miss_share": 0.2346835664340269,
     "near_miss": "within the registered bar as a share of its own effect"
    }
   },
@@ -467,53 +467,53 @@
   }
  },
  "claim_2_she_only7": {
-  "seconds": 39.09,
+  "seconds": 39.07,
   "verdict": "kept the base",
   "reasons": [
-   "small class directed mean (0.004317820072174072) is below house bar (0.277607537130444).",
-   "small class failed \"other_sites_matched\" controls (at_least=31/39, p_fw=1.0, alpha=0.05).",
-   "small class failed \"same_site\" controls (at_least=31/39, p_fw=1.0, alpha=0.05).",
-   "large class floor too loud (F=0.188, M=0.75, M < 4F).",
-   "large class failed \"other_sites_matched\" controls (at_least=38/39, p_fw=1.0, alpha=0.05).",
-   "large class failed \"same_site\" controls (at_least=39/39, p_fw=1.0, alpha=0.05)."
+   "small class directed mean (0.012635082006454468) is below house bar (0.3135638249236034).",
+   "small class failed \"other_sites_matched\" controls (at_least=10/39, p_fw=0.55, alpha=0.05).",
+   "small class failed \"same_site\" controls (at_least=23/39, p_fw=1.0, alpha=0.05).",
+   "large class directed mean (0.001885145902633667) is below house bar (0.21093919541419348).",
+   "large class failed \"other_sites_matched\" controls (at_least=36/39, p_fw=1.0, alpha=0.05).",
+   "large class failed \"same_site\" controls (at_least=37/39, p_fw=1.0, alpha=0.05)."
   ],
   "claim_sentence": null,
-  "sheet": "CLAIM SHEET — brief \"pronoun_pull\" [935d9f723200] — reading 2 of 2\nverdict: kept the base\nedit: 5398ea7874060af8 (dose 1, linears: layers.50.mlp.down_proj)\nbase: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\nrule: levelling-claim-v1 v2 | bars d79cc9a7ae4f from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\nchat settings: {\"system\": null, \"thinking\": false} | driver prompt named site: False\nselection: free_pick | practice readings in this book: 1 | practice best, as reported with the claim: none\ndesign, registered before the draw: 8 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\nbook: verify_claim_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\nkept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\nretention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\ngate notes:\n  - small class directed mean (0.004317820072174072) is below house bar (0.277607537130444).\n  - small class failed \"other_sites_matched\" controls (at_least=31/39, p_fw=1.0, alpha=0.05).\n  - small class failed \"same_site\" controls (at_least=31/39, p_fw=1.0, alpha=0.05).\n  - large class floor too loud (F=0.188, M=0.75, M < 4F).\n  - large class failed \"other_sites_matched\" controls (at_least=38/39, p_fw=1.0, alpha=0.05).\n  - large class failed \"same_site\" controls (at_least=39/39, p_fw=1.0, alpha=0.05).\nreading classes (kept-back frames):\n  item gate: 8 of the 8 fresh items that read are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -17.28 to -8.74 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n  small: n_frames=8 (8 items), mean=-0.0043 [-0.0460, 0.0373], half0=-0.0141 (n=4), half1=0.0054 (n=4), floor=0.1028, bar=0.2776, reversed=-0.0029\n    controls[other_sites_matched]: at_least=31/39, p_emp=0.8000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0027, these controls median 0.0019; over the answer: edit 0.0023, these controls median 0.0020 (0.0017 to 0.0024); at the last position, where the metric is read: edit 0.0024, these controls median 0.0020; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 36 of the sets share no site with one another (each neuron had at least 497 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=31/39, p_emp=0.8000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0027, these controls median 0.0025; over the answer: edit 0.0023, these controls median 0.0022 (0.0022 to 0.0023); at the last position, where the metric is read: edit 0.0024, these controls median 0.0023\n    controls[sham_target]: selection not matched, 1 practice readings in this book\n  large: n_frames=8 (8 items), mean=-0.0003 [-0.0579, 0.0572], half0=-0.0054 (n=4), half1=0.0047 (n=4), floor=0.1880, bar=none, reversed=0.0043\n    controls[other_sites_matched]: at_least=38/39, p_emp=0.9750, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0027, these controls median 0.0020; over the answer: edit 0.0023, these controls median 0.0020 (0.0017 to 0.0024); at the last position, where the metric is read: edit 0.0024, these controls median 0.0019; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 36 of the sets share no site with one another (each neuron had at least 497 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=39/39, p_emp=1.0000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0027, these controls median 0.0026; over the answer: edit 0.0023, these controls median 0.0022 (0.0022 to 0.0022); at the last position, where the metric is read: edit 0.0024, these controls median 0.0023\n    controls[sham_target]: selection not matched, 1 practice readings in this book\nretention batteries:\n  neutral_text (GATING): passed=True {'available': True, 'mean_kl': 4.680823872149631e-05, 'bar': 0.05, 'control_kl_max': 5.577195952355396e-05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 3}}\n  near_misses (GATING): passed=True {'available': True, 'mean_effect': 0.0121382474899292, 'abs_effect': 0.08511090278625488, 'ratio_to_target': 260.2850893182647, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4, 'under_item_gate': 4}}\n  labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.007652759551996624, 'mean_kl': 4.4691296885446263e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 2}}\n  habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\ncheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n  matched_by: prompt arm 0 (a prompt arm matches when it moved the metric at least 0.95 times as far as the edit in the brief's direction, and its near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on its effect alone)\n  author prompt arms: run\n  prompt arm 0 [255cdbb968d4]: directed_effect=7.8407, near_miss_abs=1.0193\nearlier fresh readings on this brief (1):\n  reading 1: edit be4328fdb60d -> works but harms (book seq 10)\nearlier trials on this brief (0):\n  none",
+  "sheet": "CLAIM SHEET — brief \"pronoun_pull\" [935d9f723200] — reading 2 of 2\nverdict: kept the base\nedit: 5398ea7874060af8 (dose 1, linears: layers.50.mlp.down_proj)\nbase: google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec, unpacker compiled)\nrule: levelling-claim-v1 v2 | bars 170f51770759 from the calibration at book line 3 (alpha=0.05, least_effect M=0.75)\nchat settings: {\"system\": null, \"thinking\": false} | driver prompt named site: False\nselection: free_pick | practice readings in this book: 1 | practice best, as reported with the claim: none\ndesign, registered before the draw: 8 fresh items, 4 near misses, 4 neutral, 4 panel; rows 12 and 32; 39 control edits a family; other sites matched on what a base pre-pass expects each to deliver, within a factor of 2 (what they delivered as read is printed with each class)\nbook: verify_claim_book.jsonl (a side book, not the default level book: this reading is counted here and nowhere else)\nkept-back frames: no practice reading in this book holds their wording or a near wording (looked for before this reading was registered), and a session's practice gates refuse both; a question put in other words is not found by either. 8 of the brief's 8 templates are published in the instrument's source (a starter brief's), so they are not hidden from a driver that has read it\nretention batteries: their questions are few, fixed and in the instrument's source (the neutral battery's frames, the panel's facts and sums); a session's practice gates refuse their wording\ngate notes:\n  - small class directed mean (0.012635082006454468) is below house bar (0.3135638249236034).\n  - small class failed \"other_sites_matched\" controls (at_least=10/39, p_fw=0.55, alpha=0.05).\n  - small class failed \"same_site\" controls (at_least=23/39, p_fw=1.0, alpha=0.05).\n  - large class directed mean (0.001885145902633667) is below house bar (0.21093919541419348).\n  - large class failed \"other_sites_matched\" controls (at_least=36/39, p_fw=1.0, alpha=0.05).\n  - large class failed \"same_site\" controls (at_least=37/39, p_fw=1.0, alpha=0.05).\nreading classes (kept-back frames):\n  item gate: 8 of the 8 fresh items that read are under the kernel's bar of -6.00 nats a piece (the base gives their forced answers -20.10 to -11.45 a piece on average): text the base would not have written, read with the kernel's caution, and the metric is read after it\n  small: n_frames=8 (8 items), mean=-0.0126 [-0.0597, 0.0344], half0=-0.0037 (n=4), half1=-0.0215 (n=4), floor=0.1311, bar=0.3136, reversed=-0.0016\n    controls[other_sites_matched]: at_least=10/39, p_emp=0.2750, p_fw=0.5500, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0026, these controls median 0.0019; over the answer: edit 0.0023, these controls median 0.0021 (0.0016 to 0.0026); at the last position, where the metric is read: edit 0.0023, these controls median 0.0019; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 35 of the sets share no site with one another (each neuron had at least 748 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=23/39, p_emp=0.6000, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0026, these controls median 0.0025; over the answer: edit 0.0023, these controls median 0.0022 (0.0022 to 0.0023); at the last position, where the metric is read: edit 0.0023, these controls median 0.0023\n    controls[sham_target]: selection not matched, 1 practice readings in this book\n  large: n_frames=8 (8 items), mean=-0.0019 [-0.0315, 0.0277], half0=-0.0212 (n=4), half1=0.0174 (n=4), floor=0.0593, bar=0.2109, reversed=-0.0001\n    controls[other_sites_matched]: at_least=36/39, p_emp=0.9250, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0026, these controls median 0.0020; over the answer: edit 0.0023, these controls median 0.0020 (0.0017 to 0.0026); at the last position, where the metric is read: edit 0.0023, these controls median 0.0019; 0 of 39 at least as loud as the edit over the prompt, over the answer and at the last position; 35 of the sets share no site with one another (each neuron had at least 748 eligible sites), each set drawn on its own\n    controls[same_site]: at_least=37/39, p_emp=0.9500, p_fw=1.0000, passes_alpha=False (tops_every=False, descriptive only)\n      delivered (stream change at the highest edited layer, a mean over the items read) over the prompt: edit 0.0026, these controls median 0.0025; over the answer: edit 0.0023, these controls median 0.0022 (0.0022 to 0.0022); at the last position, where the metric is read: edit 0.0023, these controls median 0.0023\n    controls[sham_target]: selection not matched, 1 practice readings in this book\nretention batteries:\n  neutral_text (GATING): passed=True {'available': True, 'mean_kl': 3.8006565318937646e-05, 'bar': 0.05, 'control_kl_max': 4.705491460299527e-05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 3}}\n  near_misses (GATING): passed=True {'available': True, 'mean_effect': 0.02995896339416504, 'abs_effect': 0.02995896339416504, 'ratio_to_target': 15.892119200063236, 'abs_bar': 0.25, 'ratio_bar': 0.35, 'items': {'read': 4, 'given': 4, 'under_item_gate': 4}}\n  labelled_panel (GATING): passed=True {'available': True, 'own_drop': 0.00765275458496717, 'mean_kl': 2.8246645022989014e-08, 'own_drop_bar': 0.1, 'kl_bar': 0.05, 'items': {'read': 4, 'given': 4, 'under_item_gate': 2}}\n  habitat (info): not run {'available': False, 'mean_kl': None, 'bar': 0.25}\ncheaper knobs (no search over cheaper knobs; not compared with a trained adapter):\n  matched_by: prompt arm 0 (a prompt arm matches when it moved the metric at least 0.95 times as far as the edit in the brief's direction, and its near-miss effect was within the registered bar, in size or as a share of its own effect; an arm whose near-miss effect was not read matches on its effect alone)\n  author prompt arms: run\n  prompt arm 0 [255cdbb968d4]: directed_effect=7.3694, near_miss_abs=0.9159\nearlier fresh readings on this brief (1):\n  reading 1: edit be4328fdb60d -> works but harms (book seq 10)\nearlier trials on this brief (0):\n  none",
   "summary": {
    "small": {
     "n_frames": 8,
-    "mean": -0.004317820072174072,
-    "directed_mean": 0.004317820072174072,
+    "mean": -0.012635082006454468,
+    "directed_mean": 0.012635082006454468,
     "ci95": [
-     -0.04595867139756672,
-     0.03732303125321858
+     -0.059670764552924756,
+     0.03440060054001582
     ],
     "half_0": {
      "n_frames": 4,
-     "mean": -0.014072656631469727,
-     "directed_mean": 0.014072656631469727
+     "mean": -0.0037364959716796875,
+     "directed_mean": 0.0037364959716796875
     },
     "half_1": {
      "n_frames": 4,
-     "mean": 0.005437016487121582,
-     "directed_mean": -0.005437016487121582
+     "mean": -0.021533668041229248,
+     "directed_mean": 0.021533668041229248
     },
     "house_bar": {
-     "floor": 0.10275459289550781,
+     "floor": 0.13109636306762695,
      "least_effect": 0.75,
-     "bar": 0.277607537130444,
+     "bar": 0.3135638249236034,
      "floor_too_loud": false,
-     "ratio_m_over_f": 7.298943812299297
+     "ratio_m_over_f": 5.720982508211211
     },
     "controls": {
      "other_sites_matched": {
       "count": 39,
       "effective_count": 39,
       "non_finite": 0,
-      "at_least": 31,
-      "as_read_at_least": 31,
-      "p_emp": 0.8,
-      "p_fw": 1.0,
+      "at_least": 10,
+      "as_read_at_least": 10,
+      "p_emp": 0.275,
+      "p_fw": 0.55,
       "tops_every_control": false,
       "passes_alpha": false
      },
@@ -521,9 +521,9 @@
       "count": 39,
       "effective_count": 39,
       "non_finite": 0,
-      "at_least": 31,
-      "as_read_at_least": 31,
-      "p_emp": 0.8,
+      "at_least": 23,
+      "as_read_at_least": 23,
+      "p_emp": 0.6,
       "p_fw": 1.0,
       "tops_every_control": false,
       "passes_alpha": false
@@ -538,15 +538,15 @@
     },
     "delivered": {
      "other_sites_matched": {
-      "edit": 0.002283267443999648,
-      "controls_median": 0.001992487726965919,
-      "controls_min": 0.0016849732783157378,
-      "controls_max": 0.0024264236562885344,
+      "edit": 0.0022795830736868083,
+      "controls_median": 0.0020804620726266876,
+      "controls_min": 0.0016491347050759941,
+      "controls_max": 0.002564726455602795,
       "controls_read": 39,
-      "edit_end": 0.0023702983889961615,
-      "controls_median_end": 0.0019584969559218735,
-      "edit_prompt": 0.0026891255693044513,
-      "controls_median_prompt": 0.0019446627993602306,
+      "edit_end": 0.0023312990815611556,
+      "controls_median_end": 0.0018635017549968325,
+      "edit_prompt": 0.0026011753361672163,
+      "controls_median_prompt": 0.0019173656910425052,
       "read_at_end": true,
       "compared_at": [
        "prompt",
@@ -558,58 +558,58 @@
       "as_loud_ratio_prompt": null,
       "as_loud_ratio_answer": null,
       "as_loud_ratio_end": null,
-      "fewest_eligible": 497,
-      "fewest_distinct": 38,
-      "disjoint_sets": 36,
+      "fewest_eligible": 748,
+      "fewest_distinct": 36,
+      "disjoint_sets": 35,
       "draw": "independent"
      },
      "same_site": {
-      "edit": 0.002283267443999648,
-      "controls_median": 0.002202257892349735,
-      "controls_min": 0.002191766005125828,
-      "controls_max": 0.002275909806485288,
+      "edit": 0.0022795830736868083,
+      "controls_median": 0.002203506388468668,
+      "controls_min": 0.0021703827660530806,
+      "controls_max": 0.0022822227037977427,
       "controls_read": 39,
-      "edit_end": 0.0023702983889961615,
-      "controls_median_end": 0.0023436172486981377,
-      "edit_prompt": 0.0026891255693044513,
-      "controls_median_prompt": 0.0025491128908470273,
+      "edit_end": 0.0023312990815611556,
+      "controls_median_end": 0.0022799261641921476,
+      "edit_prompt": 0.0026011753361672163,
+      "controls_median_prompt": 0.002491638093488291,
       "read_at_end": true
      }
     }
    },
    "large": {
     "n_frames": 8,
-    "mean": -0.00032699108123779297,
-    "directed_mean": 0.00032699108123779297,
+    "mean": -0.001885145902633667,
+    "directed_mean": 0.001885145902633667,
     "ci95": [
-     -0.0578766062861867,
-     0.05722262412371112
+     -0.031482581879716476,
+     0.027712290074449145
     ],
     "half_0": {
      "n_frames": 4,
-     "mean": -0.0053827762603759766,
-     "directed_mean": 0.0053827762603759766
+     "mean": -0.021150588989257812,
+     "directed_mean": 0.021150588989257812
     },
     "half_1": {
      "n_frames": 4,
-     "mean": 0.004728794097900391,
-     "directed_mean": -0.004728794097900391
+     "mean": 0.01738029718399048,
+     "directed_mean": -0.01738029718399048
     },
     "house_bar": {
-     "floor": 0.18799781799316406,
+     "floor": 0.059327125549316406,
      "least_effect": 0.75,
-     "bar": null,
-     "floor_too_loud": true,
-     "ratio_m_over_f": 3.989408004869883
+     "bar": 0.21093919541419348,
+     "floor_too_loud": false,
+     "ratio_m_over_f": 12.64177209085502
     },
     "controls": {
      "other_sites_matched": {
       "count": 39,
       "effective_count": 39,
       "non_finite": 0,
-      "at_least": 38,
-      "as_read_at_least": 38,
-      "p_emp": 0.975,
+      "at_least": 36,
+      "as_read_at_least": 36,
+      "p_emp": 0.925,
       "p_fw": 1.0,
       "tops_every_control": false,
       "passes_alpha": false
@@ -618,9 +618,9 @@
       "count": 39,
       "effective_count": 39,
       "non_finite": 0,
-      "at_least": 39,
-      "as_read_at_least": 39,
-      "p_emp": 1.0,
+      "at_least": 37,
+      "as_read_at_least": 37,
+      "p_emp": 0.95,
       "p_fw": 1.0,
       "tops_every_control": false,
       "passes_alpha": false
@@ -635,15 +635,15 @@
     },
     "delivered": {
      "other_sites_matched": {
-      "edit": 0.002256751758977771,
-      "controls_median": 0.0019904652726836503,
-      "controls_min": 0.0017402016674168408,
-      "controls_max": 0.002393139526247978,
+      "edit": 0.0023328641545958817,
+      "controls_median": 0.0020477364014368504,
+      "controls_min": 0.001664399926085025,
+      "controls_max": 0.0026263989857397974,
       "controls_read": 39,
-      "edit_end": 0.002361294551519677,
-      "controls_median_end": 0.001931486011017114,
-      "edit_prompt": 0.0026548300229478627,
-      "controls_median_prompt": 0.001968743294128217,
+      "edit_end": 0.0023019198124529794,
+      "controls_median_end": 0.0018567527658888139,
+      "edit_prompt": 0.002599397615995258,
+      "controls_median_prompt": 0.0019526628020685166,
       "read_at_end": true,
       "compared_at": [
        "prompt",
@@ -655,21 +655,21 @@
       "as_loud_ratio_prompt": null,
       "as_loud_ratio_answer": null,
       "as_loud_ratio_end": null,
-      "fewest_eligible": 497,
-      "fewest_distinct": 38,
-      "disjoint_sets": 36,
+      "fewest_eligible": 748,
+      "fewest_distinct": 36,
+      "disjoint_sets": 35,
       "draw": "independent"
      },
      "same_site": {
-      "edit": 0.002256751758977771,
-      "controls_median": 0.0022002332407282665,
-      "controls_min": 0.002175214496674016,
-      "controls_max": 0.002235609630588442,
+      "edit": 0.0023328641545958817,
+      "controls_median": 0.0021957585704512894,
+      "controls_min": 0.002175567511585541,
+      "controls_max": 0.002226215467089787,
       "controls_read": 39,
-      "edit_end": 0.002361294551519677,
-      "controls_median_end": 0.002336450488655828,
-      "edit_prompt": 0.0026548300229478627,
-      "controls_median_prompt": 0.0025629582814872265,
+      "edit_end": 0.0023019198124529794,
+      "controls_median_end": 0.0022906774538569152,
+      "edit_prompt": 0.002599397615995258,
+      "controls_median_prompt": 0.00249435257865116,
       "read_at_end": true
      }
     }
@@ -679,10 +679,10 @@
    "neutral_text": {
     "available": true,
     "gating": true,
-    "mean_kl": 4.680823872149631e-05,
+    "mean_kl": 3.8006565318937646e-05,
     "bar": 0.05,
     "passed": true,
-    "control_kl_max": 5.577195952355396e-05,
+    "control_kl_max": 4.705491460299527e-05,
     "items": {
      "read": 4,
      "given": 4,
@@ -692,9 +692,9 @@
    "near_misses": {
     "available": true,
     "gating": true,
-    "mean_effect": 0.0121382474899292,
-    "abs_effect": 0.08511090278625488,
-    "ratio_to_target": 260.2850893182647,
+    "mean_effect": 0.02995896339416504,
+    "abs_effect": 0.02995896339416504,
+    "ratio_to_target": 15.892119200063236,
     "abs_bar": 0.25,
     "ratio_bar": 0.35,
     "passed": true,
@@ -707,8 +707,8 @@
    "labelled_panel": {
     "available": true,
     "gating": true,
-    "own_drop": 0.007652759551996624,
-    "mean_kl": 4.4691296885446263e-08,
+    "own_drop": 0.00765275458496717,
+    "mean_kl": 2.8246645022989014e-08,
     "own_drop_bar": 0.1,
     "kl_bar": 0.05,
     "passed": true,
@@ -731,9 +731,9 @@
     {
      "index": 0,
      "prompt_sha256": "255cdbb968d4",
-     "mean_effect": -7.8406935930252075,
-     "directed_effect": 7.8406935930252075,
-     "near_miss_abs": 1.0193231105804443
+     "mean_effect": -7.369401693344116,
+     "directed_effect": 7.369401693344116,
+     "near_miss_abs": 0.9159023761749268
     }
    ],
    "prompt_arms_state": "run",
@@ -749,9 +749,9 @@
    "matched_by": "prompt arm 0",
    "matched_arm": {
     "index": 0,
-    "directed_effect": 7.8406935930252075,
-    "near_miss_abs": 1.0193231105804443,
-    "near_miss_share": 0.13000420160369444,
+    "directed_effect": 7.369401693344116,
+    "near_miss_abs": 0.9159023761749268,
+    "near_miss_share": 0.1242844961215983,
     "near_miss": "within the registered bar as a share of its own effect"
    }
   },
@@ -770,7 +770,7 @@
   }
  },
  "written_settings_audit": {
-  "seconds": 23.93,
+  "seconds": 23.8,
   "audit": {
    "thinking_off": {
     "status": "ok",
@@ -803,17 +803,17 @@
    "controls_per_chunk": 6,
    "chunks_per_family": 7,
    "total_written_batches": 224,
-   "pilot_seconds_per_step": 0.09404700307144565,
+   "pilot_seconds_per_step": 0.09350376813485387,
    "pilot_mean_pieces": 64.0,
    "pilot_peak_gib": null,
-   "estimated_gpu_seconds": 1348.3,
-   "estimated_minutes": 22.47
+   "estimated_gpu_seconds": 1340.5,
+   "estimated_minutes": 22.34
   }
  },
  "ledger": {
   "ok": true,
   "entries": 20,
-  "head": "4e1b8729a3c15d4923902843ec683002ee9f2c902e3ab42941d64e9f35aa646c",
+  "head": "98992e66303f513f5866f9dc7fb5cf2c1184978470ebcbd8b249680870da0ebd",
   "first_bad": null,
   "why": null
  }
