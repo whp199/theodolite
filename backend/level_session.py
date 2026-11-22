@@ -65,6 +65,7 @@ PRACTICE_NOTE = "Practice door only: returns aggregates and ranks against contro
 # (Twice the price: on the card, readings with 39 control edits ran at 1.24 to 1.57 times theirs, 20 November 2026.)
 BLIND_PAD_FACTOR = 2.0
 BLIND_PAD_OVER_S = 0.25
+PROPOSAL_REFUSALS_KEPT = 20  # the refused propose_repair calls a blinded session keeps the door's words of (the first)
 
 
 class SessionRefused(ValueError):
@@ -284,8 +285,14 @@ class LevelSession:
         self._plant: Optional[we.Edit] = plant
         self._canary: bool = bool(canary)
         self._blinded: bool = (plant is not None) or bool(canary)
-        self._proposed_repair: Optional[Dict[str, Any]] = None
-        self._proposal_submitted: bool = False
+        # The one proposal the door took in a blinded session (`propose_repair`), and the repair as it was built when it
+        # was submitted: what the benchmark scores, never a rebuild from files the driver may change after it proposed
+        self._proposal: Optional[Dict[str, Any]] = None
+        self._proposal_edit: Optional[we.Edit] = None
+        # and the propose_repair calls the door refused, in its own words: a session with no proposal recorded says
+        # whether one was tried, and why the door would not take it
+        self._proposal_refusals: List[Dict[str, Any]] = []
+        self._proposal_refused_count: int = 0
 
         # Layout: session_dir holds work/ (the ONLY folder mounted writable into bwrap), cells/, transcript.jsonl, session.json.
         self.session_dir = Path(session_dir).resolve()
@@ -1285,53 +1292,95 @@ class LevelSession:
         return drv
 
     @property
+    def proposal(self) -> Optional[Dict[str, Any]]:
+        """The door's record of the one `propose_repair` it took in this session, or None when it took none:
+        `abstained` (True for an explicit `edit` of null), `edit_id` (the repair's id as built when it was submitted,
+        None for an abstention), `edit` (the recipe as submitted), `diagnosis` (None when none was given),
+        `confidence` and `book_seq` (the seq of its `blinded_proposal` note in the session's book)."""
+        return json.loads(json.dumps(self._proposal)) if self._proposal is not None else None
+
+    @property
     def proposed_repair(self) -> Optional[Dict[str, Any]]:
-        """The edit recipe submitted via `propose_repair` in a blinded session, or None (abstention / none yet)."""
-        return dict(self._proposed_repair) if self._proposed_repair is not None else None
+        """The edit recipe submitted via `propose_repair` in a blinded session, or None (an abstention, or none yet)."""
+        rec = (self._proposal or {}).get("edit")
+        return json.loads(json.dumps(rec)) if rec is not None else None
+
+    @property
+    def proposed_repair_edit(self) -> Optional[we.Edit]:
+        """The repair as it was built when it was submitted, or None (an abstention, or none yet). This is what is
+        scored: a file the driver writes in /work after it proposed does not change it."""
+        return self._proposal_edit
+
+    @property
+    def proposal_refusals(self) -> Dict[str, Any]:
+        """The `propose_repair` calls the door refused in this session: `count`, and `kept`, the first
+        `PROPOSAL_REFUSALS_KEPT` of them, each `{"at", "why"}` in the door's own words."""
+        return {"count": int(self._proposal_refused_count), "kept": [dict(r) for r in self._proposal_refusals]}
+
+    def note_refused_proposal(self, why: str) -> None:
+        """Keep the door's words for a `propose_repair` call it refused (`level_mcp.dispatch_tool` calls this for each
+        one, whatever refused it), and log it in the transcript. It spends nothing and tells the driver nothing new."""
+        rec = {"at": _utc_now(), "why": str(why)[:400]}
+        self._proposal_refused_count += 1
+        if len(self._proposal_refusals) < PROPOSAL_REFUSALS_KEPT:
+            self._proposal_refusals.append(rec)
+        try:
+            self._log("propose_repair_refused", rec)
+        except OSError:
+            pass  # the words are kept in memory all the same
 
     @property
     def proposal_submitted(self) -> bool:
-        """Whether `propose_repair` has been called (with an edit or an explicit abstention) in this session."""
-        return bool(self._proposal_submitted)
+        """Whether the door has taken a `propose_repair` (an edit or an explicit abstention) in this session. A call
+        the door refused (no `edit` argument, a wrong type, a recipe the edit gate refuses) takes none."""
+        return self._proposal is not None
 
     def propose_repair(
         self,
-        edit: Optional[Mapping[str, Any]] = None,
+        edit: Optional[Mapping[str, Any]],
         *,
-        diagnosis: str = "",
+        diagnosis: Optional[str] = None,
         confidence: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Submit one candidate repair recipe (or `edit=None` to abstain explicitly) in a blinded diagnostic session.
+        """Submit one candidate repair recipe, or `edit=None` to abstain explicitly, in a blinded diagnostic session.
 
-        Serves identically whether or not an in-memory edit is active: validates any submitted recipe against the
-        untouched base model (never touching or disclosing session-internal state), records the submission once in the
-        session's book and transcript, and returns no ground-truth feedback during the session."""
+        - `edit` has no default: an abstention is said, never inferred from a call that left the edit out.
+        - A recipe is built against the untouched base model when it is submitted (never touching or disclosing the
+          session's in-memory state), and the built edit is kept: it is what the benchmark scores.
+        - The submission is spent only once its `blinded_proposal` note is in the session's book: a call the edit gate
+          or a type check refuses spends nothing, and the driver may call again.
+        - `diagnosis` is a string or None, and None is kept as None.
+        - Nothing measured is returned during the session."""
         self._check_open_and_wall()
         if not self._blinded:
             raise SessionRefused("propose_repair is only available in blinded diagnostic sessions.")
         if self._handle is None:
             raise SessionRefused("No model handle is bound to this session.")
-        if self._proposal_submitted:
+        if self._proposal is not None:
             raise SessionRefused("A repair or abstention has already been submitted in this session.")
         if confidence is not None:
             if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
                 raise SessionRefused("confidence must be a number between 0 and 1 (or null).")
-            cf = float(confidence)
+            cf: Optional[float] = float(confidence)
             if not (0.0 <= cf <= 1.0):
                 raise SessionRefused(f"confidence must lie between 0 and 1; got {cf:g}.")
         else:
             cf = None
-        if not isinstance(diagnosis, str):
-            raise SessionRefused("diagnosis must be a string.")
-        diag_clean = diagnosis.strip()[:2000]
+        if diagnosis is not None and not isinstance(diagnosis, str):
+            raise SessionRefused("diagnosis must be a string (or null).")
+        diag_clean = diagnosis.strip()[:2000] if diagnosis is not None else None
         rec_out: Optional[Dict[str, Any]] = None
-        edit_id: Optional[str] = None
+        built: Optional[we.Edit] = None
         if edit is not None:
             if not isinstance(edit, Mapping):
-                raise SessionRefused("edit must be an edit recipe object or null (to abstain).")
-            # Validate cleanly against the base model (identical on every blinded session, regardless of internal state)
+                raise SessionRefused("edit must be an edit recipe object, or null to abstain.")
             try:
-                got = we.from_recipe(dict(edit), self.work_dir)
+                rec_out = json.loads(json.dumps(dict(edit)))  # the recipe as submitted, kept apart from the caller's
+            except (TypeError, ValueError) as exc:
+                raise SessionRefused(f"The proposed repair recipe is not plain JSON: {exc}") from None
+            # Built against the base model, as on every blinded session whatever its in-memory state
+            try:
+                got = we.from_recipe(json.loads(json.dumps(rec_out)), self.work_dir)
                 with self._hold_model() as mh:
                     if isinstance(got, (str, Path)):
                         built = we.load(got, mh.lm, model_id=mh.model_id, weights_id=mh.weights_id)
@@ -1341,15 +1390,12 @@ class LevelSession:
                             got,
                             model_id=mh.model_id,
                             weights_id=mh.weights_id,
-                            note=str(edit.get("note") or ""),
+                            note=str(rec_out.get("note") or ""),
                         )
             except (we.Refused, ValueError, TypeError, OSError) as exc:
                 raise SessionRefused(f"Proposed repair recipe refused by the edit gate: {exc}") from None
-            rec_out = dict(edit)
-            edit_id = built.id
+        edit_id = built.id if built is not None else None
 
-        self._proposed_repair = rec_out
-        self._proposal_submitted = True
         ent = lb.append(
             "note",
             {
@@ -1363,20 +1409,25 @@ class LevelSession:
             },
             path=self.book_path,
         )
-        self._book_seqs.append(int(ent["seq"]))
+        seq = int(ent["seq"])
+        # spent only now that its note is in the book
+        self._proposal = {"abstained": rec_out is None, "edit_id": edit_id, "edit": rec_out, "diagnosis": diag_clean,
+                          "confidence": cf, "book_seq": seq}
+        self._proposal_edit = built
+        self._book_seqs.append(seq)
         self._log("propose_repair", {
             "abstained": rec_out is None,
             "edit_id": edit_id,
             "diagnosis": diag_clean,
             "confidence": cf,
-            "book_seq": int(ent["seq"]),
+            "book_seq": seq,
         })
         return {
             "ok": True,
             "recorded": True,
             "abstained": rec_out is None,
             "edit_id": edit_id,
-            "book": {"seq": int(ent["seq"]), "hash": ent["hash"]},
+            "book": {"seq": seq, "hash": ent["hash"]},
             "remaining": self._remaining(),
             "note": "Recorded for post-session scoring.",
         }

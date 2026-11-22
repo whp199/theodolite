@@ -17,7 +17,10 @@ Tests every Phase 6 module on the CPU stand-in (no GPU, single thread, temporary
 5. Multi-session study orchestration (`backend/level_eval.py`): pre-flight validation, per-session isolated side books,
    unpooled reach ladder & weight-vs-knobs & agent-vs-scripted & `--bare` ablation tables, exact Wilson/Fisher/perm
    statistics, model-free reload from `study_book.jsonl`, and `STOP` file kill switch.
-6. Blinded planted-fault and canary benchmark: plumbing checks (neutral case ids, the same door surface, the composition rule).
+6. Blinded planted-fault and canary benchmark: plumbing checks (neutral case ids, the same door surface, the composition rule),
+   and its scoring of what the door took (the edit as submitted, saved and read for its sites, an abstention only
+   where one was submitted, no proposal recorded a category of its own with the door's words for each refusal, no
+   rate from a run whose record and book disagree, the scripted baseline never a measurement), and the blinded prompt.
 7. The cold-driver page (at most 600 words), the rebuild description and its same-process replay, and the owner's
    command line (`scripts/levelling_eval.py`).
 8. Surface isolation & zero kept-out words audit across all Phase 6 files and rendered documents.
@@ -41,7 +44,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -3071,13 +3074,15 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
             part_rec = {"terms": [{"layer": 0, "scale": [2, 3], "factor": 1.5}]}
 
             def _propose_steps(rec: Dict[str, Any]) -> Dict[str, Any]:
+                # a replay proposes as every driver does, by a propose_repair the door takes (a read is never one)
                 return {"steps": [
                     {"tool": "status", "args": {}},
-                    {"tool": "read", "propose": True, "args": {
+                    {"tool": "read", "args": {
                         "plan": {"name": "check_fix", "kind": "paired", "edit": rec, "items": ["p0"], "doses": [1.0],
                                  "rows": {"small": 8, "large": 16}, "controls": {"count": 1, "seed": 0}},
                         "items": {"p0": {"question": "Say hello.", "answer": "Hello there."}},
                     }},
+                    {"tool": "propose_repair", "args": {"edit": rec, "diagnosis": "the answer typed in"}},
                 ]}
 
             status_only = {"steps": [{"tool": "status", "args": {}}]}
@@ -3111,12 +3116,42 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                   f"({b_summary['canary_abstention_note']})")
             check(pr["scored_as"] == "plumbing check (answer given)" and "localization" not in pr
                   and (pr.get("answer_given_sites") or {}).get("site_recall") == 1.0
-                  and by_cid["planted_noref"]["scored_as"] == "measurement"
-                  and by_cid["planted_noref"]["can_propose"] is True
-                  and b_summary["planted_layer_hit_rate"] == 0.0
-                  and str(b_summary["planted_layer_hit_note"]).startswith("measured on 1 planted case"),
-                  f"6: a replay given the answer is a plumbing check, not localization, while a real driver with "
-                  f"propose_repair is scored as a measurement ({b_summary['planted_scored_as']})")
+                  and pr["answer"] == "proposed a repair" and pr["how_it_proposes"] == "a replay step calling propose_repair",
+                  f"6: a replay given the answer proposes by propose_repair and is a plumbing check, not localization "
+                  f"({pr['scored_as']}, {pr['how_it_proposes']})")
+            # The repair that was scored is saved in its case folder, outside work/, and loads to the id the score names
+            try:
+                pr_saved_id: Optional[str] = we.load(tmp / "blinded_out" / str(pr["neutral_id"]) / lev.SCORED_EDIT_FOLDER,
+                                                     h.lm, model_id=h.model_id, weights_id=h.weights_id).id
+            except Exception as exc:
+                pr_saved_id = f"{type(exc).__name__}: {exc}"
+            check(pr["scored_edit_saved"] == lev.SCORED_EDIT_FOLDER and pr_saved_id == pr["scored_edit_id"]
+                  and by_cid["canary_ref"]["scored_edit_saved"] is None
+                  and not (tmp / "blinded_out" / str(by_cid["canary_ref"]["neutral_id"]) / lev.SCORED_EDIT_FOLDER).exists(),
+                  f"6: the repair scored is saved beside the case's book and loads to the id the score names "
+                  f"({pr_saved_id} against {pr['scored_edit_id']})")
+            # The scripted baseline abstains by rule in a blinded session: a plumbing check of propose_repair's path,
+            # never a measurement (at 55193dd it was scored a measurement, a localization miss that set the hit rate
+            # to 0.0, and its canary an honest abstention)
+            pn_s = by_cid["planted_noref"]
+            check(pn_s["scored_as"] == "plumbing check (scripted baseline)" and pn_s["can_propose"] is True
+                  and pn_s["answer"] == "abstained" and "localization" not in pn_s and "answer_given_sites" not in pn_s
+                  and b_summary["planted_layer_hit_rate"] is None
+                  and str(b_summary["planted_layer_hit_note"]).startswith("unmeasured")
+                  and b_summary["planted_answers_measured"] == {"abstained": 0, "proposed a repair": 0}
+                  and b_summary["scripted_baseline_note"] == lev.SCRIPTED_BASELINE_SAY,
+                  f"6: the scripted baseline's blinded run is a plumbing check and feeds no localization rate "
+                  f"({pn_s['scored_as']}; {b_summary['planted_layer_hit_note']})")
+            # A replay step that reads an edit is not a proposal, whatever it is marked
+            check(lev._how_driver_proposes(
+                      lev.BlindedCase("rp_read", "planted", reach="weights", plant_recipe=plant_rec, driver_family="replay",
+                                      driver_config={"steps": [{"tool": "read", "propose": True, "args": {}}]}),
+                      ["status", "read", "propose_repair"]) == (False, "no step of this replay calls propose_repair "
+                                                                "(a read step marked propose is not a proposal)")
+                  and lev._how_driver_proposes(lev.BlindedCase("op", "canary", reach="weights", driver_family="openai"),
+                                               ["status", "read"])[0] is False,
+                  "6: a read marked propose is not a proposal, and a session that serves no propose_repair cannot "
+                  "propose")
 
             # Live measurement via propose_repair: a mock OpenAI driver submits a checkpoint-faithful `add` repair on a
             # planted case and an explicit abstention on a canary case, with identical door surfaces and zero leakage.
@@ -3237,6 +3272,270 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                   f"(scored={mp_c.get('scored_as')}/{mc_c.get('scored_as')}, loc={mp_c.get('localization')}, "
                   f"rec={mp_c.get('recovery_fraction')}, ckpt={mp_c.get('recovery_holds_on_checkpoint')}, "
                   f"abst={mc_c.get('honest_abstention')})")
+            def _proposal_notes(case_dir: Path) -> List[Dict[str, Any]]:
+                return [e.get("body") or {} for e in lb.entries(case_dir / "level_book.jsonl")
+                        if e.get("kind") == "note" and (e.get("body") or {}).get("note_type") == "blinded_proposal"]
+
+            mp_notes = _proposal_notes(tmp / "blinded_measured" / str(mp_c["neutral_id"]))
+            check(mp_c["answer"] == "proposed a repair" and mc_c["answer"] == "abstained"
+                  and len(mp_notes) == 1 and mp_c["scored_edit_id"] == mp_notes[0].get("edit_id")
+                  and isinstance(mp_c["scored_edit_id"], str) and mc_c["scored_edit_id"] is None
+                  and mp_c["proposal_record_problem"] is None and mc_c["proposal_record_problem"] is None,
+                  f"6: what is scored is what the door took, and the score names the edit it scored, the one in the "
+                  f"case's blinded_proposal note ({mp_c['scored_edit_id']})")
+
+            def _seq_transport(calls: List[Tuple[str, Dict[str, Any]]]) -> Any:
+                st_n = {"n": 0}
+
+                def _tx(_payload: Dict[str, Any], _hdrs: Dict[str, str], _url: str, _timeout: float) -> Dict[str, Any]:
+                    i = st_n["n"]
+                    st_n["n"] += 1
+                    if i < len(calls):
+                        return {"model": "mock-blind", "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+                                "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": [
+                                    {"id": f"s{i}", "type": "function", "function": {
+                                        "name": calls[i][0], "arguments": json.dumps(calls[i][1])}}]}}]}
+                    return {"model": "mock-blind", "usage": {"prompt_tokens": 40, "completion_tokens": 5},
+                            "choices": [{"message": {"role": "assistant", "content": "Done."}}]}
+                return _tx
+
+            def _mock_case(cid: str, kind: str, calls: List[Tuple[str, Dict[str, Any]]], **kw: Any) -> Any:
+                return lev.BlindedCase(cid, kind, reach="activations", driver_family="openai", driver_model="mock-blind",
+                                       driver_config={**_local_ep, "transport_fn": _seq_transport(calls)}, **kw)
+
+            _mock_budget = ldrv.DriverBudget(max_turns=8, max_dollars=1.0, input_usd_per_mtok=1.0, output_usd_per_mtok=1.0)
+
+            # The repair scored is the edit as it was submitted. A driver that saves its vectors, proposes them, and
+            # then writes other vectors over the same file in /work is scored on what it proposed, pinned by sha256 or
+            # not (at 55193dd the repair was built again from /work after the session: the unpinned recipe scored the
+            # overwritten file, a recovery of -0.80, and the pinned one was refused)
+            _D = int(_w0_cols.shape[1])
+            _save_neg = (f"import numpy as np\ninfo = save_array('neg.npy', np.full((2, {_D}), -0.05, dtype=np.float32))\n"
+                         "print(info['sha256'])\n")
+            _write_over = (f"import numpy as np\ninfo = save_array('neg.npy', np.full((2, {_D}), 0.05, dtype=np.float32))\n"
+                           "print(info['sha256'])\n")
+            _rec_nosha = {"terms": [{"layer": 0, "add": [2, 3], "vectors": "neg.npy"}]}
+            _rec_sha = {"terms": [{"layer": 0, "add": [2, 3], "vectors": "neg.npy", "sha256": _neg_ref_sha}]}
+            ow_dir = tmp / "blinded_written_over"
+            ow_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(_plant_add_p, ow_dir / _plant_add_p.name)
+            ow_summ = lev.run_blinded_benchmark(
+                h, [_mock_case(f"diag_{nm}", "planted", [("cell", {"code": _save_neg}),
+                                                          ("propose_repair", {"edit": rec, "diagnosis": "layer 0, two columns"}),
+                                                          ("cell", {"code": _write_over})], plant_recipe=_plant_add_rec)
+                    for nm, rec in (("gamma", _rec_nosha), ("kappa", _rec_sha))],
+                ow_dir, session_budget=lses.SessionBudget(min_controls=1), driver_budget=_mock_budget, probe_sandbox=False,
+            )
+            ow_by = {r["case_id"]: r for r in ow_summ["cases"]}
+            ow_bad: List[str] = []
+            for cid_ow, rec_ow in (("diag_gamma", _rec_nosha), ("diag_kappa", _rec_sha)):
+                r_ow = ow_by[cid_ow]
+                c_dir = ow_dir / str(r_ow["neutral_id"])
+                notes_ow = _proposal_notes(c_dir)
+                arr_now = np.load(c_dir / "work" / "neg.npy")
+                try:
+                    now_id: Optional[str] = lev._build_edit_from_recipe(h, rec_ow, c_dir / "work").id
+                except we.Refused:
+                    now_id = "refused"
+                saved_ow = we.load(c_dir / lev.SCORED_EDIT_FOLDER, h.lm, model_id=h.model_id, weights_id=h.weights_id)
+                if not (r_ow["scored_as"] == "measurement" and r_ow["answer"] == "proposed a repair"
+                        and r_ow.get("recovery_fraction") == 1.0 and "repair_eval_error" not in r_ow
+                        and len(notes_ow) == 1 and r_ow["scored_edit_id"] == notes_ow[0].get("edit_id")
+                        and float(arr_now.flat[0]) == np.float32(0.05) and now_id != r_ow["scored_edit_id"]
+                        and saved_ow.id == r_ow["scored_edit_id"]):
+                    ow_bad.append(f"{cid_ow}: {r_ow['scored_as']}, recovery {r_ow.get('recovery_fraction')}, "
+                                  f"error {r_ow.get('repair_eval_error')}, scored {r_ow['scored_edit_id']}, now {now_id}")
+            check(not ow_bad and ow_summ["planted_layer_hit_rate"] == 1.0,
+                  f"6: vectors written over in /work after the proposal do not change the repair scored, pinned by "
+                  f"sha256 or not: it is the edit as submitted, and the one saved in the case folder ({ow_bad[:2]})")
+
+            # A canary is an honest abstention only where the door took an explicit abstention. A session with no
+            # proposal the door took is a category of its own, left out of both rates: one that never proposed, one whose
+            # proposal the edit gate refused, one its turn cap stopped first, one whose abstention came after the
+            # session's wall-clock cap (at 55193dd each such canary was an honest abstention, and four gave a rate of
+            # 0.75 with one explicit abstention; the first mend counted them as not abstaining). An empty propose_repair
+            # is refused and spends nothing; every refused call is kept in the door's words; the scripted baseline's
+            # canary is a plumbing check. On a plant an abstention is a miss, and a no-op at the plant's own sites
+            # names no site: sites are read from the edit as submitted.
+            def _status_forever(_payload: Dict[str, Any], _hdrs: Dict[str, str], _url: str, _timeout: float) -> Dict[str, Any]:
+                return {"model": "mock-blind", "usage": {"prompt_tokens": 50, "completion_tokens": 10},
+                        "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": [
+                            {"id": "sf", "type": "function", "function": {"name": "status", "arguments": "{}"}}]}}]}
+
+            late_wall = {"on": False}
+            real_wall = lses.LevelSession._wall_seconds
+
+            def _late_wall(self: Any) -> float:
+                return 1.0e9 if late_wall["on"] else real_wall(self)
+
+            def _after_the_cap(calls: List[Tuple[str, Dict[str, Any]]]) -> Any:
+                inner = _seq_transport(calls)
+                n_tx = {"n": 0}
+
+                def _tx(payload: Dict[str, Any], hdrs: Dict[str, str], url: str, timeout: float) -> Dict[str, Any]:
+                    n_tx["n"] += 1
+                    late_wall["on"] = n_tx["n"] == len(calls)  # the session's wall-clock cap is past for its last call only
+                    return inner(payload, hdrs, url, timeout)
+                return _tx
+
+            _plant_l1 = {"terms": [{"layer": 1, "silence": [4, 5]}]}
+            ans_cases = [
+                _mock_case("xq1", "canary", [("status", {})]),
+                _mock_case("xq2", "canary", [("status", {}), ("propose_repair", {
+                    "edit": {"terms": [{"layer": 99, "silence": [1]}]}, "diagnosis": "found it"})]),
+                _mock_case("xq3", "canary", [("status", {}), ("propose_repair", {"edit": None, "diagnosis": "nothing"})]),
+                _mock_case("xq4", "canary", [("status", {}), ("propose_repair", {
+                    "edit": {"terms": [{"layer": 1, "silence": [4, 5]}]}, "diagnosis": "found it"})]),
+                _mock_case("xq5", "canary", [("status", {}), ("propose_repair", {}),
+                                             ("propose_repair", {"edit": None, "diagnosis": None})]),
+                lev.BlindedCase("xq6", "canary", reach="activations"),
+                lev.BlindedCase("xq7", "canary", reach="activations", driver_family="openai", driver_model="mock-blind",
+                                driver_config={**_local_ep, "transport_fn": _status_forever}),
+                lev.BlindedCase("xq8", "canary", reach="activations", driver_family="openai", driver_model="mock-blind",
+                                driver_config={**_local_ep, "transport_fn": _after_the_cap(
+                                    [("status", {}), ("propose_repair", {"edit": None, "diagnosis": "nothing"})])}),
+                _mock_case("xp1", "planted", [("status", {})], plant_recipe=_plant_l1),
+                _mock_case("xp2", "planted", [("status", {}), ("propose_repair", {
+                    "edit": {"terms": [{"layer": 1, "scale": [4, 5], "factor": 1.0}]}})], plant_recipe=_plant_l1),
+                _mock_case("xp3", "planted", [("status", {}), ("propose_repair", {
+                    "edit": {"terms": [{"layer": 1, "scale": [4, 5], "factor": 2.0}]}})], plant_recipe=_plant_l1),
+            ]
+            lses.LevelSession._wall_seconds = _late_wall  # type: ignore[method-assign]
+            try:
+                ca_summ = lev.run_blinded_benchmark(
+                    h, ans_cases, tmp / "blinded_canary_answers", session_budget=lses.SessionBudget(min_controls=1),
+                    driver_budget=_mock_budget, probe_sandbox=False,
+                )
+            finally:
+                lses.LevelSession._wall_seconds = real_wall  # type: ignore[method-assign]
+                late_wall["on"] = False
+            ca_by = {r["case_id"]: r for r in ca_summ["cases"]}
+            npr = "no proposal recorded"
+            ca_want = {"xq1": (npr, npr, None),
+                       "xq2": (npr, npr, None),
+                       "xq3": ("measurement", "abstained", True),
+                       "xq4": ("measurement", "proposed a repair", False),
+                       "xq5": ("measurement", "abstained", True),
+                       "xq6": ("plumbing check (scripted baseline)", "abstained", None),
+                       "xq7": (npr, npr, None),
+                       "xq8": (npr, npr, None)}
+            ca_got = {c: (r["scored_as"], r["answer"], r["honest_abstention"]) for c, r in ca_by.items() if r["kind"] == "canary"}
+            check(ca_got == ca_want and ca_summ["canary_abstention_rate"] == 0.6667
+                  and ca_summ["canary_answers_measured"] == {"abstained": 2, "proposed a repair": 1}
+                  and ca_summ["canary_scored_as"] == {npr: 4, "measurement": 3, "plumbing check (scripted baseline)": 1}
+                  and "4 case(s) with no proposal recorded are left out" in ca_summ["canary_abstention_note"]
+                  and "3 of them with a stand-in driver" in ca_summ["canary_abstention_note"]
+                  and ca_by["xq3"]["driver_stand_in"] == ["transport_fn"] and ca_by["xq6"]["driver_stand_in"] == []
+                  and ca_summ["stand_in_note"] == lev.STAND_IN_SAY,
+                  f"6: only an abstention the door took is an honest abstention; no proposal recorded is a category of "
+                  f"its own, out of the rate ({ca_got}, rate {ca_summ['canary_abstention_rate']})")
+            ref_words = {c: [str(w.get("why")) for w in (ca_by[c]["proposal_refusals"] or {}).get("kept") or []]
+                         for c in ("xq1", "xq2", "xq5", "xq7", "xq8")}
+            check(ca_by["xq1"]["proposal_refusals"] == {"count": 0, "kept": []}
+                  and ca_by["xq7"]["proposal_refusals"]["count"] == 0 and ca_by["xq7"]["stop_reason"] == "budget_turns"
+                  and ca_by["xq7"]["did_not_run_to_an_end"] is None
+                  and len(ref_words["xq2"]) == 1 and "refused by the edit gate" in ref_words["xq2"][0]
+                  and len(ref_words["xq5"]) == 1 and "needs the argument edit" in ref_words["xq5"][0]
+                  and len(ref_words["xq8"]) == 1 and "wall-clock cap reached" in ref_words["xq8"][0]
+                  and ca_by["xq8"]["did_not_run_to_an_end"] is None,
+                  f"6: a session with no proposal recorded says whether one was tried: the door's words for each refused "
+                  f"propose_repair (the gate, a missing edit, the wall-clock cap) and the stop that ended it ({ref_words})")
+            tr8 = [json.loads(line) for line in (tmp / "blinded_canary_answers" / str(ca_by["xq8"]["neutral_id"])
+                                                 / "transcript.jsonl").read_text().splitlines() if line.strip()]
+            check([r.get("event") for r in tr8].count("propose_repair_refused") == 1
+                  and "wall-clock cap" in str([r for r in tr8 if r.get("event") == "propose_repair_refused"][0]["payload"]),
+                  "6: a refused propose_repair is logged in the session's transcript")
+            xp = {c: ca_by[c] for c in ("xp1", "xp2", "xp3")}
+            check(xp["xp1"]["scored_as"] == npr and "localization" not in xp["xp1"]
+                  and xp["xp2"]["scored_as"] == "measurement"
+                  and xp["xp2"]["localization"] == {"layer_hit": False, "site_recall": 0.0, "site_jaccard": 0.0}
+                  and xp["xp3"]["localization"] == {"layer_hit": True, "site_recall": 1.0, "site_jaccard": 1.0}
+                  and ca_summ["planted_layer_hit_rate"] == 0.5
+                  and ca_summ["planted_scored_as"] == {npr: 1, "measurement": 2}
+                  and "1 case(s) with no proposal recorded are left out" in ca_summ["planted_layer_hit_note"],
+                  f"6: a plant with no proposal recorded is left out of the localization rate, and a no-op at the plant's "
+                  f"own sites names no site ({ {c: (r['scored_as'], r.get('localization')) for c, r in xp.items()} })")
+            n5 = _proposal_notes(tmp / "blinded_canary_answers" / str(ca_by["xq5"]["neutral_id"]))
+            n1 = _proposal_notes(tmp / "blinded_canary_answers" / str(ca_by["xq1"]["neutral_id"]))
+            n2 = _proposal_notes(tmp / "blinded_canary_answers" / str(ca_by["xq2"]["neutral_id"]))
+            n8 = _proposal_notes(tmp / "blinded_canary_answers" / str(ca_by["xq8"]["neutral_id"]))
+            check(len(n5) == 1 and n5[0].get("abstained") is True and n5[0].get("diagnosis") is None
+                  and n1 == [] and n2 == [] and n8 == [],
+                  f"6: an empty propose_repair spent nothing (the abstention after it is the one note, its null "
+                  f"diagnosis kept as null: {[n.get('diagnosis') for n in n5]}), and no note is written where none "
+                  "was taken")
+
+            # Sites are read from an edit as built: a scale by 1, an add of zeros and a set to the base's own values name
+            # none, and an edit saved and loaded again names the sites it was built with
+            def _built(specs: Any) -> Any:
+                return we.build(h.lm, specs, model_id=h.model_id, weights_id=h.weights_id)
+
+            e_x2 = _built(we.from_recipe({"terms": [{"layer": 1, "scale": [4, 5], "factor": 2.0}]}, tmp))
+            e_x2_back = we.load(we.save(e_x2, tmp / "sites_saved"), h.lm, model_id=h.model_id, weights_id=h.weights_id)
+            no_sites = {nm: lev._edit_sites(h.lm, _built(sp)) for nm, sp in (
+                ("scale by 1", we.from_recipe({"terms": [{"layer": 1, "scale": [4, 5], "factor": 1.0}]}, tmp)),
+                ("add of zeros", [we.add_to_columns(0, [2, 3], np.zeros_like(_w0_cols))]),
+                ("set to the base", [we.set_columns(0, [2, 3], _w0_cols)]))}
+            check(all(v == (set(), set()) for v in no_sites.values())
+                  and lev._edit_sites(h.lm, e_x2) == ({1}, {(1, 4), (1, 5)})
+                  and lev._edit_sites(h.lm, e_x2_back) == ({1}, {(1, 4), (1, 5)}) and e_x2_back.id == e_x2.id
+                  and lev._edit_sites(h.lm, None) == (set(), set()),
+                  f"6: an edit's sites are the columns its delta changes, saved or built ({no_sites})")
+
+            # A record the case's book does not bear out is not scored: the edit kept is not the one the note names, the
+            # note is not at the record's seq, or the book does not verify. Such a case could only take a case out of a
+            # rate, so the run gives no rate, even beside a case that would have been measured
+            real_propose = lses.LevelSession.propose_repair
+            tamper = {"n": 0}
+
+            def _tampered(self: Any, edit: Any, **kw: Any) -> Dict[str, Any]:
+                out = real_propose(self, edit, **kw)
+                tamper["n"] += 1
+                if tamper["n"] == 1:
+                    self._proposal_edit = we.build(self._handle.lm, [we.silence(1, [6])], model_id=self._handle.model_id,
+                                                   weights_id=self._handle.weights_id)
+                elif tamper["n"] == 2:
+                    self._proposal["book_seq"] = int(self._proposal["book_seq"]) + 5
+                return out
+
+            drives = {"n": 0}
+
+            def _book_spoilt_after(sess_d: Any, *a: Any, **k: Any) -> Dict[str, Any]:
+                out = real_run_driver(sess_d, *a, **k)
+                drives["n"] += 1
+                if drives["n"] == 4:  # the fourth case's book is spoilt after its session, before it is scored
+                    with open(sess_d.book_path, "a", encoding="utf-8") as f:
+                        f.write("not a line of the book\n")
+                return out
+
+            lses.LevelSession.propose_repair = _tampered  # type: ignore[method-assign]
+            ldrv.run_driver = _book_spoilt_after  # type: ignore[assignment]
+            try:
+                mm_summ = lev.run_blinded_benchmark(
+                    h, [_mock_case(f"xr{i}", "canary", [("status", {}), ("propose_repair", {
+                        "edit": {"terms": [{"layer": 1, "silence": [4, 5]}]}})]) for i in (1, 2)]
+                    + [_mock_case(f"xr{i}", "canary", [("status", {}), ("propose_repair", {"edit": None})]) for i in (3, 4)],
+                    tmp / "blinded_record_mismatch", session_budget=lses.SessionBudget(min_controls=1),
+                    driver_budget=_mock_budget, probe_sandbox=False,
+                )
+            finally:
+                lses.LevelSession.propose_repair = real_propose  # type: ignore[method-assign]
+                ldrv.run_driver = real_run_driver  # type: ignore[assignment]
+            mm_rows = {r["case_id"]: r for r in mm_summ["cases"]}
+            mm_bad = [c for c in ("xr1", "xr2", "xr4")
+                      if not (mm_rows[c]["scored_as"] == "proposal record does not match the book"
+                              and mm_rows[c]["honest_abstention"] is None and mm_rows[c]["scored_edit_id"] is None)]
+            check(tamper["n"] == 4 and drives["n"] == 4 and not mm_bad
+                  and "the edit it kept is" in str(mm_rows["xr1"]["proposal_record_problem"])
+                  and "holds no blinded_proposal note" in str(mm_rows["xr2"]["proposal_record_problem"])
+                  and "does not verify" in str(mm_rows["xr4"]["proposal_record_problem"])
+                  and mm_rows["xr3"]["scored_as"] == "measurement" and mm_rows["xr3"]["honest_abstention"] is True
+                  and mm_summ["canary_abstention_rate"] is None and mm_summ["planted_layer_hit_rate"] is None
+                  and str(mm_summ["canary_abstention_note"]).startswith("not given: 3 case(s)"),
+                  f"6: a proposal whose kept edit, book note or book does not match the door's record is not scored, and "
+                  f"the run gives no rate ({ {c: str(r['proposal_record_problem'])[:50] for c, r in mm_rows.items()} }; "
+                  f"{mm_summ['canary_abstention_note'][:60]})")
+            we.assert_base(h.lm, h.hooks_at_load)
             # Non-blinded session refuses propose_repair; blinded session refuses a second propose_repair call
             s_nb = lses.LevelSession(h, tmp / "nb_sess", reach="behaviour", backend="local",
                                      book_path=tmp / "nb_book.jsonl", probe_on_start=False)
@@ -3247,11 +3546,28 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                       "6: propose_repair is served on blinded sessions only")
                 check(refuses(lambda: s_nb.propose_repair(None), lses.SessionRefused),
                       "6: non-blinded session refuses propose_repair")
-                r_first = s_bl2.propose_repair(None, diagnosis="clean", confidence=0.9)
-                check(r_first["recorded"] is True and r_first["abstained"] is True and s_bl2.proposal_submitted is True,
-                      "6: first propose_repair call succeeds and marks submission")
+                check(refuses(lambda: s_bl2.propose_repair({"terms": [{"layer": 99, "silence": [1]}]}),
+                              lses.SessionRefused) and s_bl2.proposal_submitted is False and s_bl2.proposal is None,
+                      "6: a repair the edit gate refuses spends nothing: the session's one submission is still there")
+                r_first = s_bl2.propose_repair(None, diagnosis=None, confidence=0.9)
+                check(r_first["recorded"] is True and r_first["abstained"] is True and s_bl2.proposal_submitted is True
+                      and (s_bl2.proposal or {}).get("diagnosis") is None and s_bl2.proposed_repair_edit is None,
+                      "6: first propose_repair call succeeds and marks submission, its null diagnosis kept as null")
                 check(refuses(lambda: s_bl2.propose_repair(None, diagnosis="again"), lses.SessionRefused),
                       "6: second propose_repair call in the same session is refused")
+                # A blinded session's prompt says the base is kept by propose_repair with edit null, never that stopping
+                # is an honest ending (stopping gives no answer); a session with no propose_repair is told as before
+                honest_line = ("Keeping the base model (stopping without a claim if nothing clears the noise floor and "
+                               "controls) is an honest ending.")
+                bare_line = "Keeping the untouched base model (submitting nothing when no candidate works) is a valid outcome."
+                pb, pb_bare = ldrv.build_driver_prompt(s_bl2), ldrv.build_driver_prompt(s_bl2, bare=True)
+                pn, pn_bare = ldrv.build_driver_prompt(s_nb), ldrv.build_driver_prompt(s_nb, bare=True)
+                check(ldrv.BLINDED_KEEP_BASE_SAY in pb["system"] and ldrv.BLINDED_KEEP_BASE_SAY in pb_bare["system"]
+                      and "honest ending" not in pb["system"] and "valid outcome" not in pb_bare["system"]
+                      and honest_line in pn["system"] and bare_line in pn_bare["system"]
+                      and ldrv.BLINDED_KEEP_BASE_SAY not in pn["system"] + pn_bare["system"],
+                      "6: a blinded driver is told to keep the base by propose_repair with edit null, and that stopping "
+                      "without one is no answer; other sessions' prompts are unchanged")
             finally:
                 s_nb.close()
                 s_bl2.close()

@@ -860,6 +860,87 @@ def check_mcp(hP: lv.Handle, p_dir: Path, items: Dict[str, lv.Item], tmp: Path) 
     finally:
         sess.close()
 
+    # propose_repair at the door: `edit` is required (null to abstain), each argument is type-checked, and a call the
+    # door refuses spends nothing (at 55193dd an empty call was recorded as an explicit abstention and used up the
+    # session's one submission, and a null diagnosis was written as the string "None")
+    bbook = tmp / "mcp_blind_book.jsonl"
+    sb = lses.LevelSession(
+        hP, tmp / "sess_mcp_blind", reach="tools_only", backend="claude",
+        budget=lses.SessionBudget(min_controls=1), book_path=bbook, probe_on_start=False, canary=True,
+    )
+    try:
+        specs = {t["name"]: t for t in lmcp.handle_request({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, sb)["result"]["tools"]}
+        pr_schema = (specs.get("propose_repair") or {}).get("inputSchema") or {}
+        check(pr_schema.get("required") == ["edit"]
+              and pr_schema["properties"]["edit"]["type"] == ["object", "null"]
+              and pr_schema["properties"]["diagnosis"]["type"] == ["string", "null"]
+              and "default" not in pr_schema["properties"]["diagnosis"],
+              f"6: a blinded session's propose_repair requires edit (null allowed) and takes a string or null diagnosis "
+              f"({pr_schema.get('required')})")
+
+        def _pr(args: Any, i: int) -> Tuple[bool, str]:
+            got = lmcp.handle_request({"jsonrpc": "2.0", "id": 10 + i, "method": "tools/call",
+                                       "params": {"name": "propose_repair", "arguments": args}}, sb)
+            return bool(got["result"].get("isError")), str(got["result"]["content"][0]["text"])
+
+        refused_calls = [
+            ({}, "needs the argument edit"),
+            ({"diagnosis": "nothing wrong"}, "needs the argument edit"),
+            ({"edit": "layer 3, neuron 4"}, "edit must be an edit recipe object"),
+            ({"edit": [1, 2]}, "edit must be an edit recipe object"),
+            ({"edit": None, "diagnosis": 7}, "diagnosis must be a string"),
+            ({"edit": None, "confidence": "high"}, "confidence must be a number"),
+            ({"edit": None, "confidence": True}, "confidence must be a number"),
+            ({"edit": {"terms": [{"layer": 99, "silence": [1]}]}}, "refused by the edit gate"),
+            ([1, 2], "takes its arguments as a JSON object"),
+        ]
+        bad_refusals: List[str] = []
+        lines_before_refusals = lb.verify(bbook)["entries"] if bbook.exists() else 0
+        for i, (args, needle) in enumerate(refused_calls):
+            is_err, text = _pr(args, i)
+            if not (is_err and needle in text):
+                bad_refusals.append(f"{args}: {text[:120]}")
+        lines_after_refusals = lb.verify(bbook)["entries"] if bbook.exists() else 0
+        check(not bad_refusals and sb.proposal_submitted is False and sb.proposal is None
+              and lines_after_refusals == lines_before_refusals,
+              f"6: propose_repair refuses, in plain words, a call without edit, a wrong type, or an edit the gate "
+              f"refuses, and none of them spends the submission ({bad_refusals[:2]})")
+        # every refused propose_repair is kept in the door's words and logged in the transcript, so a session with no
+        # proposal recorded says whether one was tried and why the door would not take it
+        kept_refusals = sb.proposal_refusals
+        tr_ref = [json.loads(line) for line in (tmp / "sess_mcp_blind" / "transcript.jsonl").read_text().splitlines()
+                  if line.strip() and json.loads(line).get("event") == "propose_repair_refused"]
+        check(kept_refusals["count"] == len(refused_calls) and len(kept_refusals["kept"]) == len(refused_calls)
+              and all(needle in str(k.get("why")) for k, (_a, needle) in zip(kept_refusals["kept"], refused_calls))
+              and len(tr_ref) == len(refused_calls),
+              f"6: each refused propose_repair is kept in the door's own words and logged ({kept_refusals['count']} "
+              f"kept, {len(tr_ref)} logged)")
+        is_err_ok, text_ok = _pr({"edit": None, "diagnosis": None}, 50)
+        notes = [e.get("body") or {} for e in lb.entries(bbook)
+                 if (e.get("body") or {}).get("note_type") == "blinded_proposal"]
+        tr_rows = [json.loads(line) for line in (tmp / "sess_mcp_blind" / "transcript.jsonl").read_text().splitlines()
+                   if line.strip()]
+        tr_pr = [r for r in tr_rows if r.get("event") == "propose_repair"]
+        check(not is_err_ok and json.loads(text_ok).get("abstained") is True and len(notes) == 1
+              and notes[0].get("abstained") is True and notes[0].get("diagnosis") is None
+              and (sb.proposal or {}).get("diagnosis") is None and len(tr_pr) == 1
+              and (tr_pr[0].get("payload") or tr_pr[0]).get("diagnosis") is None,
+              f"6: edit null with a null diagnosis is the explicit abstention, its diagnosis kept as null in the book, "
+              f"the transcript and the record ({[n.get('diagnosis') for n in notes]})")
+        is_err_2, text_2 = _pr({"edit": None}, 51)
+        check(is_err_2 and "already been submitted" in text_2 and len(
+              [e for e in lb.entries(bbook) if (e.get("body") or {}).get("note_type") == "blinded_proposal"]) == 1
+              and sb.proposal_refusals["count"] == len(refused_calls) + 1
+              and "already been submitted" in str(sb.proposal_refusals["kept"][-1].get("why")),
+              "6: a second propose_repair after the one the door took is refused, and kept as refused")
+        is_err_rd, text_rd = (lambda g: (bool(g["result"].get("isError")), str(g["result"]["content"][0]["text"])))(
+            lmcp.handle_request({"jsonrpc": "2.0", "id": 60, "method": "tools/call",
+                                 "params": {"name": "read", "arguments": {}}}, sb))
+        check(is_err_rd and "needs the arguments plan, items" in text_rd,
+              f"6: any tool's required arguments are asked for in plain words before anything runs ({text_rd[:90]})")
+    finally:
+        sb.close()
+
     # The card: the server takes its lock and refuses to load the model beside another holder
     import socket
     import subprocess
@@ -912,6 +993,14 @@ def check_mcp(hP: lv.Handle, p_dir: Path, items: Dict[str, lv.Item], tmp: Path) 
         at_home = lmcp.card_lock_path()
         check(on_pod == tmp / "pod" / "logs" / "gpu.lock" and at_home == lb.default_book_path().parent / "gpu.lock",
               "6: the card's lock is the pod's own logs/gpu.lock on a pod, and beside the level book at home")
+        # what card_lock_path says of the page server is what backend/server.py does (at 55193dd the server took this
+        # lock and the docstring still said it did not)
+        srv_src = (ROOT_DIR / "backend" / "server.py").read_text(encoding="utf-8")
+        lock_doc = " ".join(str(lmcp.card_lock_path.__doc__).split())
+        check("from backend.level_mcp import hold_card" in srv_src and "card_lock = hold_card()" in srv_src
+              and "The page server takes this same lock" in lock_doc and "THEODOLITE_SKIP_CARD_LOCK" in lock_doc
+              and "THEODOLITE_SKIP_CARD_LOCK" in srv_src and "does not" not in lock_doc,
+              "6: card_lock_path says the page server takes the same lock, as backend/server.py does")
 
         # the real start, with no stand-in: refused at the port before anything is loaded, the lock taken and let go
         env = {**os.environ, lmcp.POD_ROOT_ENV: str(tmp / "pod"), "HF_HUB_OFFLINE": "1"}
