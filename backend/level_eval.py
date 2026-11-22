@@ -2291,8 +2291,8 @@ SCRIPTED_BASELINE_SAY = (
 # driver_config keys that put a stand-in where a model would be: a transport that types fixed replies, or a mock CLI
 STAND_IN_KEYS = ("transport_fn", "allow_mock_cli")
 STAND_IN_SAY = (
-    "A measurement is any case whose driver family chooses what to submit (openai, claude, codex); the family is all "
-    "that is checked. A case whose driver_config gives a stand-in (STAND_IN_KEYS: a transport that types fixed "
+    "A measurement is any case whose driver family chooses what to submit (openai, claude, codex, gemini, agy); the "
+    "family is all that is checked. A case whose driver_config gives a stand-in (STAND_IN_KEYS: a transport that types fixed "
     "replies, a mock CLI) is scored the same way and marked driver_stand_in: such a case checks the scoring, not a "
     "model, and the rates' notes count them."
 )
@@ -2305,7 +2305,7 @@ def _how_driver_proposes(case: BlindedCase, served: Sequence[str]) -> Tuple[bool
     - `replay`: a step calling `propose_repair` (a plumbing check, never a measurement; a read step is never a
       proposal, whatever it is marked).
     - `scripted`: the baseline abstains by rule (`SCRIPTED_BASELINE_SAY`: a plumbing check, never a measurement).
-    - `openai`, `claude`, `codex`: the driver chooses what to submit."""
+    - `openai`, `claude`, `codex`, `gemini`, `agy`: the driver chooses what to submit."""
     fam = case.driver_family
     if "propose_repair" not in served:
         return False, "the session serves no propose_repair"
@@ -2383,7 +2383,7 @@ def run_blinded_benchmark(
       calling it); "plumbing check (answer given)" (a replay of steps typed by someone who knew the plant); "plumbing
       check (scripted steps)" (a replay canary); "plumbing check (scripted baseline)" (`SCRIPTED_BASELINE_SAY`); "no
       proposal recorded" (a driver of any other family whose session ran to an end with no proposal the door took);
-      or "measurement" (a driver of any other family, openai, claude or codex, whose proposal or explicit abstention
+      or "measurement" (a driver of any other family: openai, claude, codex, gemini or agy, whose proposal or abstention
       the door took; `STAND_IN_SAY`). The localization and abstention rates are taken over measurements only, and are
       None, unmeasured, when there are none.
     - A canary is an honest abstention only where the door took an explicit abstention; on a plant an abstention is a
