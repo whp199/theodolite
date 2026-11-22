@@ -1,10 +1,10 @@
 {
- "date": "2026-11-22T05:20:56Z",
+ "date": "2026-11-22T10:32:59Z",
  "environment": "measured on the 31B card",
  "gpu": "NVIDIA GeForce RTX 5090",
  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
- "load_seconds": 9.16,
- "total_seconds": 14.61,
+ "load_seconds": 9.14,
+ "total_seconds": 13.9,
  "peak_gib": 18.369,
  "fallback_count": 0,
  "passed": 11,
@@ -38,7 +38,7 @@
    "name": "compare_31b_ok",
    "ok": true,
    "detail": {
-    "seconds": 4.35,
+    "seconds": 3.71,
     "small_odds": -1.8532142639160156,
     "large_odds": -1.8172292709350586,
     "large_at_least": 0
@@ -62,7 +62,7 @@
      "written_seq": 0,
      "paired_seq": 1,
      "entries": 2,
-     "head": "403ec1c4bbd4d53a"
+     "head": "e97dddd92320c3ff"
     }
    }
   },
@@ -100,7 +100,7 @@
    "ok": true,
    "detail": {
     "entries": 2,
-    "head": "403ec1c4bbd4d53a"
+    "head": "e97dddd92320c3ff"
    }
   },
   {
@@ -108,7 +108,7 @@
    "ok": true,
    "detail": {
     "peak_gib": 18.369,
-    "total_seconds": 14.61
+    "total_seconds": 13.9
    }
   }
  ],
@@ -691,7 +691,7 @@
    "  base model google/gemma-4-31B-it-qat-w4a16-ct (weights e0a93173c31ed2ec)",
    "  a written reading, greedy: every row writes its likeliest piece at each step, up to 24 new pieces, in one batch of 9 rows. It is taken at one row count and is not a two-row-count reading. Its log-probabilities are the writer's own, from the model's dtype, not the fp32 measure of a paired reading. Nothing gates the item: the model writes its own answer.",
    "  Control edits are other sites of the same layer and size, drawn from seed 0 and matched within factor 2 on expected delivered magnitude from the base pre-pass on these items.",
-   "  item audition [cdae8add6c9e] (27 prompt pieces); 0.114 s a step",
+   "  item audition [cdae8add6c9e] (27 prompt pieces); 0.096 s a step",
    "    base row, 24 pieces, did not end [CUT OFF]: 'Claire was an experienced architect. Before leaving the gallery, she paused in front of a series of brutalist sketches, her'",
    "    null row e = 0.125: the base row's pieces, every one; largest log-probability gap 0.0432 (mean 0.0037, 24 pieces) [CUT OFF]",
    "    null row e = -0.125: the base row's pieces, every one; largest log-probability gap 0.0435 (mean 0.0048, 24 pieces) [CUT OFF]",
@@ -705,7 +705,7 @@
    "    the edit at dose 1: ended 0/1, cut off 1/1, looped 0/1, changed 1/1 (rescued loop 0, regressed loop 0)",
    "    the edit at dose 0: ended 0/1, cut off 1/1, looped 0/1, changed 0/1 (rescued loop 0, regressed loop 0)",
    "    3 control edits: looped 0..0, cut off 1..1, changed 1..1",
-   "  3.2 s (predicted 2.7 s)"
+   "  2.7 s (predicted 2.7 s)"
   ],
   "paired_lines": [
    "reading \"page_31b_e6_she10_paired\" (paired): ok, 1 of 1 item kept",
@@ -751,22 +751,22 @@
    "    at 32 rows, the edit at dose 0: KL mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat; the text's own log-probability mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat; log-odds of the named pieces mean over items 0.00000, median over items 0.00000, median of medians 0.00000, 0 positions above a nat",
    "    at 32 rows, the largest floor: KL 2.7e-05, the text's own log-probability 0.01117, log-odds of the named pieces 0.09871",
    "    at 32 rows, on log-odds of the named pieces over items: 0 of 3 matched control edits read as much (rank 1 of 4)",
-   "  1.1 s (predicted 1.0 s)"
+   "  0.9 s (predicted 1.0 s)"
   ],
-  "seconds": 4.293,
+  "seconds": 3.658,
   "base_after": true,
   "book": {
    "written_seq": 0,
    "paired_seq": 1,
    "entries": 2,
-   "head": "403ec1c4bbd4d53a"
+   "head": "e97dddd92320c3ff"
   },
   "note": "This side-by-side reading is for exploration and learning; nothing remains on the model after it ends. A rank against control edits says only that this edit moved more than those random edits on this question."
  },
  "ledger": {
   "ok": true,
   "entries": 2,
-  "head": "403ec1c4bbd4d53a404fd255eea33f5a9fcbc94213426ae4138ec53380f6d30f",
+  "head": "e97dddd92320c3ff7a59a7a527e42b536b3ab94d8c35f424e54b84563fa7a798",
   "first_bad": null,
   "why": null
  }

@@ -14,8 +14,8 @@ import type { ReplayCard } from "./compare";
 export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
   {
     "seq": 10,
-    "at": "2026-11-22T05:05:58Z",
-    "hash": "c6e6bbf519c73c04",
+    "at": "2026-11-22T10:18:44Z",
+    "hash": "ea80c24ece006b91",
     "kind": "note",
     "status": "works but harms",
     "why": null,
@@ -24,21 +24,21 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
     "edit_linears": [
       "layers.50.mlp.down_proj"
     ],
-    "seconds": 38.97,
+    "seconds": 38.61,
     "base_after": null,
     "note_type": "claim_verdict",
     "brief_name": "pronoun_pull",
     "brief_id": "935d9f723200a38d42a715d1a8b405b3106fb90f1639a7a7bdc3ff7b2f4b676b",
     "verdict": "works but harms",
     "reasons": [
-      "near_misses abs effect (0.883765697479248, ratio 0.7033051642132468) exceeded bar (abs <= 0.25, ratio <= 0.35)."
+      "near_misses abs effect (1.0118346214294434, ratio 1.2373741971736372) exceeded bar (abs <= 0.25, ratio <= 0.35)."
     ],
     "claim_sentence": null,
     "summary": {
       "large": {
         "ci95": [
-          -2.3305676276447453,
-          -0.18462511947134375
+          -2.0591650698309243,
+          0.37844849563887717
         ],
         "controls": {
           "other_sites_matched": {
@@ -82,60 +82,60 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
               "answer",
               "end"
             ],
-            "controls_max": 0.018232166534289718,
-            "controls_median": 0.005843355640536174,
-            "controls_median_end": 0.0034432969259796664,
-            "controls_median_prompt": 0.003674583975225687,
-            "controls_min": 0.003746605187188834,
+            "controls_max": 0.018185526365414262,
+            "controls_median": 0.006868030875921249,
+            "controls_median_end": 0.003659663867438212,
+            "controls_median_prompt": 0.003479682927718386,
+            "controls_min": 0.004119543562410399,
             "controls_read": 39,
-            "disjoint_sets": 27,
+            "disjoint_sets": 19,
             "draw": "independent",
-            "edit": 0.011591552698519081,
-            "edit_end": 0.03358625585678965,
-            "edit_prompt": 0.009977004025131464,
-            "fewest_distinct": 30,
-            "fewest_eligible": 54,
+            "edit": 0.013793226389680058,
+            "edit_end": 0.02630000122007914,
+            "edit_prompt": 0.010326140327379107,
+            "fewest_distinct": 19,
+            "fewest_eligible": 30,
             "of_controls": 39,
             "read_at_end": true
           },
           "same_site": {
-            "controls_max": 0.011587329674512148,
-            "controls_median": 0.011469162767753005,
-            "controls_median_end": 0.03223939353483729,
-            "controls_median_prompt": 0.009729014243930578,
-            "controls_min": 0.011398265894968063,
+            "controls_max": 0.013726360921282321,
+            "controls_median": 0.013687497761566192,
+            "controls_median_end": 0.02546828699996695,
+            "controls_median_prompt": 0.010120352439116687,
+            "controls_min": 0.01363189151743427,
             "controls_read": 39,
-            "edit": 0.011591552698519081,
-            "edit_end": 0.03358625585678965,
-            "edit_prompt": 0.009977004025131464,
+            "edit": 0.013793226389680058,
+            "edit_end": 0.02630000122007914,
+            "edit_prompt": 0.010326140327379107,
             "read_at_end": true
           }
         },
-        "directed_mean": 1.2575963735580444,
+        "directed_mean": 0.8403582870960236,
         "half_0": {
-          "directed_mean": 0.684069037437439,
-          "mean": -0.684069037437439,
+          "directed_mean": 0.3939182758331299,
+          "mean": -0.3939182758331299,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": 1.83112370967865,
-          "mean": -1.83112370967865,
+          "directed_mean": 1.2867982983589172,
+          "mean": -1.2867982983589172,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.3200641692910802,
-          "floor": 0.13658809661865234,
+          "bar": 0.3040909429029966,
+          "floor": 0.12329506874084473,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 5.490961647221466
+          "ratio_m_over_f": 6.08296834301162
         },
-        "mean": -1.2575963735580444,
+        "mean": -0.8403582870960236,
         "n_frames": 8
       },
       "small": {
         "ci95": [
-          -2.327157463015967,
-          -0.18602100473458227
+          -2.0582735291348007,
+          0.4228189936504867
         ],
         "controls": {
           "other_sites_matched": {
@@ -179,54 +179,54 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
               "answer",
               "end"
             ],
-            "controls_max": 0.01820593443699181,
-            "controls_median": 0.0057803302188403904,
-            "controls_median_end": 0.0035677241685334593,
-            "controls_median_prompt": 0.0036464431323111057,
-            "controls_min": 0.0037539206678047776,
+            "controls_max": 0.018157439306378365,
+            "controls_median": 0.006890708056744188,
+            "controls_median_end": 0.0034723250864772126,
+            "controls_median_prompt": 0.0035029210266657174,
+            "controls_min": 0.004160105308983475,
             "controls_read": 39,
-            "disjoint_sets": 27,
+            "disjoint_sets": 19,
             "draw": "independent",
-            "edit": 0.011481747555080801,
-            "edit_end": 0.0337552402052097,
-            "edit_prompt": 0.00995479611447081,
-            "fewest_distinct": 30,
-            "fewest_eligible": 54,
+            "edit": 0.013824402471072972,
+            "edit_end": 0.026464300783118233,
+            "edit_prompt": 0.01033506472595036,
+            "fewest_distinct": 19,
+            "fewest_eligible": 30,
             "of_controls": 39,
             "read_at_end": true
           },
           "same_site": {
-            "controls_max": 0.011548775248229504,
-            "controls_median": 0.011439552530646324,
-            "controls_median_end": 0.03249347204109654,
-            "controls_median_prompt": 0.009720656787976623,
-            "controls_min": 0.011387840029783547,
+            "controls_max": 0.013776610663626343,
+            "controls_median": 0.013719892187509686,
+            "controls_median_end": 0.02568600806989707,
+            "controls_median_prompt": 0.01011133607244119,
+            "controls_min": 0.013668540806975216,
             "controls_read": 39,
-            "edit": 0.011481747555080801,
-            "edit_end": 0.0337552402052097,
-            "edit_prompt": 0.00995479611447081,
+            "edit": 0.013824402471072972,
+            "edit_end": 0.026464300783118233,
+            "edit_prompt": 0.01033506472595036,
             "read_at_end": true
           }
         },
-        "directed_mean": 1.2565892338752747,
+        "directed_mean": 0.817727267742157,
         "half_0": {
-          "directed_mean": 0.6901611089706421,
-          "mean": -0.6901611089706421,
+          "directed_mean": 0.3512570858001709,
+          "mean": -0.3512570858001709,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": 1.8230173587799072,
-          "mean": -1.8230173587799072,
+          "directed_mean": 1.284197449684143,
+          "mean": -1.284197449684143,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.33453751652143165,
-          "floor": 0.14922046661376953,
+          "bar": 0.335552616092475,
+          "floor": 0.15012741088867188,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 5.026120189941778
+          "ratio_m_over_f": 4.995756574768136
         },
-        "mean": -1.2565892338752747,
+        "mean": -0.817727267742157,
         "n_frames": 8
       }
     },
@@ -247,14 +247,14 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
           "under_item_gate": 1
         },
         "kl_bar": 0.05,
-        "mean_kl": 6.047049971869001e-08,
+        "mean_kl": 6.20622628844103e-08,
         "own_drop": 0.0,
         "own_drop_bar": 0.1,
         "passed": true
       },
       "near_misses": {
         "abs_bar": 0.25,
-        "abs_effect": 0.883765697479248,
+        "abs_effect": 1.0118346214294434,
         "available": true,
         "gating": true,
         "items": {
@@ -262,22 +262,22 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
           "read": 4,
           "under_item_gate": 4
         },
-        "mean_effect": 0.883765697479248,
+        "mean_effect": 1.0118346214294434,
         "passed": false,
         "ratio_bar": 0.35,
-        "ratio_to_target": 0.7033051642132468
+        "ratio_to_target": 1.2373741971736372
       },
       "neutral_text": {
         "available": true,
         "bar": 0.05,
-        "control_kl_max": 0.00017886740124595235,
+        "control_kl_max": 4.0776191212898993e-05,
         "gating": true,
         "items": {
           "given": 4,
           "read": 4,
-          "under_item_gate": 2
+          "under_item_gate": 3
         },
-        "mean_kl": 6.249064063013066e-05,
+        "mean_kl": 3.2802249734231737e-05,
         "passed": true
       }
     },
@@ -292,25 +292,25 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
         "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"
       },
       "matched_arm": {
-        "directed_effect": 8.702642679214478,
+        "directed_effect": 8.1468985080719,
         "index": 0,
         "near_miss": "within the registered bar as a share of its own effect",
-        "near_miss_abs": 1.1967780590057373,
-        "near_miss_share": 0.13751892420725717
+        "near_miss_abs": 1.9119431972503662,
+        "near_miss_share": 0.2346835664340269
       },
       "matched_by": "prompt arm 0",
       "prompt_arms": [
         {
-          "directed_effect": 8.702642679214478,
+          "directed_effect": 8.1468985080719,
           "index": 0,
-          "mean_effect": -8.702642679214478,
-          "near_miss_abs": 1.1967780590057373,
+          "mean_effect": -8.1468985080719,
+          "near_miss_abs": 1.9119431972503662,
           "prompt_sha256": "255cdbb968d4"
         }
       ],
       "prompt_arms_state": "run"
     },
-    "bars_sha256": "d79cc9a7ae4f10f18b6aee8023eaba4ba352215b4a260599892b8dca0a14df95",
+    "bars_sha256": "170f517707593622d7a84e3a4eb8d1f5b2250524231a43611258d829b0744d12",
     "book_seqs": [
       4,
       5,
@@ -323,8 +323,8 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
   },
   {
     "seq": 17,
-    "at": "2026-11-22T05:06:38Z",
-    "hash": "1bc5e734cf114f6d",
+    "at": "2026-11-22T10:19:23Z",
+    "hash": "e72d551b9833b5e2",
     "kind": "note",
     "status": "kept the base",
     "why": null,
@@ -333,46 +333,46 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
     "edit_linears": [
       "layers.50.mlp.down_proj"
     ],
-    "seconds": 39.09,
+    "seconds": 39.07,
     "base_after": null,
     "note_type": "claim_verdict",
     "brief_name": "pronoun_pull",
     "brief_id": "935d9f723200a38d42a715d1a8b405b3106fb90f1639a7a7bdc3ff7b2f4b676b",
     "verdict": "kept the base",
     "reasons": [
-      "small class directed mean (0.004317820072174072) is below house bar (0.277607537130444).",
-      "small class failed \"other_sites_matched\" controls (at_least=31/39, p_fw=1.0, alpha=0.05).",
-      "small class failed \"same_site\" controls (at_least=31/39, p_fw=1.0, alpha=0.05).",
-      "large class floor too loud (F=0.188, M=0.75, M < 4F).",
-      "large class failed \"other_sites_matched\" controls (at_least=38/39, p_fw=1.0, alpha=0.05).",
-      "large class failed \"same_site\" controls (at_least=39/39, p_fw=1.0, alpha=0.05)."
+      "small class directed mean (0.012635082006454468) is below house bar (0.3135638249236034).",
+      "small class failed \"other_sites_matched\" controls (at_least=10/39, p_fw=0.55, alpha=0.05).",
+      "small class failed \"same_site\" controls (at_least=23/39, p_fw=1.0, alpha=0.05).",
+      "large class directed mean (0.001885145902633667) is below house bar (0.21093919541419348).",
+      "large class failed \"other_sites_matched\" controls (at_least=36/39, p_fw=1.0, alpha=0.05).",
+      "large class failed \"same_site\" controls (at_least=37/39, p_fw=1.0, alpha=0.05)."
     ],
     "claim_sentence": null,
     "summary": {
       "large": {
         "ci95": [
-          -0.0578766062861867,
-          0.05722262412371112
+          -0.031482581879716476,
+          0.027712290074449145
         ],
         "controls": {
           "other_sites_matched": {
-            "as_read_at_least": 38,
-            "at_least": 38,
+            "as_read_at_least": 36,
+            "at_least": 36,
             "count": 39,
             "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.975,
+            "p_emp": 0.925,
             "p_fw": 1.0,
             "passes_alpha": false,
             "tops_every_control": false
           },
           "same_site": {
-            "as_read_at_least": 39,
-            "at_least": 39,
+            "as_read_at_least": 37,
+            "at_least": 37,
             "count": 39,
             "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 1.0,
+            "p_emp": 0.95,
             "p_fw": 1.0,
             "passes_alpha": false,
             "tops_every_control": false
@@ -396,80 +396,80 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
               "answer",
               "end"
             ],
-            "controls_max": 0.002393139526247978,
-            "controls_median": 0.0019904652726836503,
-            "controls_median_end": 0.001931486011017114,
-            "controls_median_prompt": 0.001968743294128217,
-            "controls_min": 0.0017402016674168408,
+            "controls_max": 0.0026263989857397974,
+            "controls_median": 0.0020477364014368504,
+            "controls_median_end": 0.0018567527658888139,
+            "controls_median_prompt": 0.0019526628020685166,
+            "controls_min": 0.001664399926085025,
             "controls_read": 39,
-            "disjoint_sets": 36,
+            "disjoint_sets": 35,
             "draw": "independent",
-            "edit": 0.002256751758977771,
-            "edit_end": 0.002361294551519677,
-            "edit_prompt": 0.0026548300229478627,
-            "fewest_distinct": 38,
-            "fewest_eligible": 497,
+            "edit": 0.0023328641545958817,
+            "edit_end": 0.0023019198124529794,
+            "edit_prompt": 0.002599397615995258,
+            "fewest_distinct": 36,
+            "fewest_eligible": 748,
             "of_controls": 39,
             "read_at_end": true
           },
           "same_site": {
-            "controls_max": 0.002235609630588442,
-            "controls_median": 0.0022002332407282665,
-            "controls_median_end": 0.002336450488655828,
-            "controls_median_prompt": 0.0025629582814872265,
-            "controls_min": 0.002175214496674016,
+            "controls_max": 0.002226215467089787,
+            "controls_median": 0.0021957585704512894,
+            "controls_median_end": 0.0022906774538569152,
+            "controls_median_prompt": 0.00249435257865116,
+            "controls_min": 0.002175567511585541,
             "controls_read": 39,
-            "edit": 0.002256751758977771,
-            "edit_end": 0.002361294551519677,
-            "edit_prompt": 0.0026548300229478627,
+            "edit": 0.0023328641545958817,
+            "edit_end": 0.0023019198124529794,
+            "edit_prompt": 0.002599397615995258,
             "read_at_end": true
           }
         },
-        "directed_mean": 0.00032699108123779297,
+        "directed_mean": 0.001885145902633667,
         "half_0": {
-          "directed_mean": 0.0053827762603759766,
-          "mean": -0.0053827762603759766,
+          "directed_mean": 0.021150588989257812,
+          "mean": -0.021150588989257812,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": -0.004728794097900391,
-          "mean": 0.004728794097900391,
+          "directed_mean": -0.01738029718399048,
+          "mean": 0.01738029718399048,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": null,
-          "floor": 0.18799781799316406,
-          "floor_too_loud": true,
+          "bar": 0.21093919541419348,
+          "floor": 0.059327125549316406,
+          "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 3.989408004869883
+          "ratio_m_over_f": 12.64177209085502
         },
-        "mean": -0.00032699108123779297,
+        "mean": -0.001885145902633667,
         "n_frames": 8
       },
       "small": {
         "ci95": [
-          -0.04595867139756672,
-          0.03732303125321858
+          -0.059670764552924756,
+          0.03440060054001582
         ],
         "controls": {
           "other_sites_matched": {
-            "as_read_at_least": 31,
-            "at_least": 31,
+            "as_read_at_least": 10,
+            "at_least": 10,
             "count": 39,
             "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.8,
-            "p_fw": 1.0,
+            "p_emp": 0.275,
+            "p_fw": 0.55,
             "passes_alpha": false,
             "tops_every_control": false
           },
           "same_site": {
-            "as_read_at_least": 31,
-            "at_least": 31,
+            "as_read_at_least": 23,
+            "at_least": 23,
             "count": 39,
             "effective_count": 39,
             "non_finite": 0,
-            "p_emp": 0.8,
+            "p_emp": 0.6,
             "p_fw": 1.0,
             "passes_alpha": false,
             "tops_every_control": false
@@ -493,54 +493,54 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
               "answer",
               "end"
             ],
-            "controls_max": 0.0024264236562885344,
-            "controls_median": 0.001992487726965919,
-            "controls_median_end": 0.0019584969559218735,
-            "controls_median_prompt": 0.0019446627993602306,
-            "controls_min": 0.0016849732783157378,
+            "controls_max": 0.002564726455602795,
+            "controls_median": 0.0020804620726266876,
+            "controls_median_end": 0.0018635017549968325,
+            "controls_median_prompt": 0.0019173656910425052,
+            "controls_min": 0.0016491347050759941,
             "controls_read": 39,
-            "disjoint_sets": 36,
+            "disjoint_sets": 35,
             "draw": "independent",
-            "edit": 0.002283267443999648,
-            "edit_end": 0.0023702983889961615,
-            "edit_prompt": 0.0026891255693044513,
-            "fewest_distinct": 38,
-            "fewest_eligible": 497,
+            "edit": 0.0022795830736868083,
+            "edit_end": 0.0023312990815611556,
+            "edit_prompt": 0.0026011753361672163,
+            "fewest_distinct": 36,
+            "fewest_eligible": 748,
             "of_controls": 39,
             "read_at_end": true
           },
           "same_site": {
-            "controls_max": 0.002275909806485288,
-            "controls_median": 0.002202257892349735,
-            "controls_median_end": 0.0023436172486981377,
-            "controls_median_prompt": 0.0025491128908470273,
-            "controls_min": 0.002191766005125828,
+            "controls_max": 0.0022822227037977427,
+            "controls_median": 0.002203506388468668,
+            "controls_median_end": 0.0022799261641921476,
+            "controls_median_prompt": 0.002491638093488291,
+            "controls_min": 0.0021703827660530806,
             "controls_read": 39,
-            "edit": 0.002283267443999648,
-            "edit_end": 0.0023702983889961615,
-            "edit_prompt": 0.0026891255693044513,
+            "edit": 0.0022795830736868083,
+            "edit_end": 0.0023312990815611556,
+            "edit_prompt": 0.0026011753361672163,
             "read_at_end": true
           }
         },
-        "directed_mean": 0.004317820072174072,
+        "directed_mean": 0.012635082006454468,
         "half_0": {
-          "directed_mean": 0.014072656631469727,
-          "mean": -0.014072656631469727,
+          "directed_mean": 0.0037364959716796875,
+          "mean": -0.0037364959716796875,
           "n_frames": 4
         },
         "half_1": {
-          "directed_mean": -0.005437016487121582,
-          "mean": 0.005437016487121582,
+          "directed_mean": 0.021533668041229248,
+          "mean": -0.021533668041229248,
           "n_frames": 4
         },
         "house_bar": {
-          "bar": 0.277607537130444,
-          "floor": 0.10275459289550781,
+          "bar": 0.3135638249236034,
+          "floor": 0.13109636306762695,
           "floor_too_loud": false,
           "least_effect": 0.75,
-          "ratio_m_over_f": 7.298943812299297
+          "ratio_m_over_f": 5.720982508211211
         },
-        "mean": -0.004317820072174072,
+        "mean": -0.012635082006454468,
         "n_frames": 8
       }
     },
@@ -561,14 +561,14 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
           "under_item_gate": 2
         },
         "kl_bar": 0.05,
-        "mean_kl": 4.4691296885446263e-08,
-        "own_drop": 0.007652759551996624,
+        "mean_kl": 2.8246645022989014e-08,
+        "own_drop": 0.00765275458496717,
         "own_drop_bar": 0.1,
         "passed": true
       },
       "near_misses": {
         "abs_bar": 0.25,
-        "abs_effect": 0.08511090278625488,
+        "abs_effect": 0.02995896339416504,
         "available": true,
         "gating": true,
         "items": {
@@ -576,22 +576,22 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
           "read": 4,
           "under_item_gate": 4
         },
-        "mean_effect": 0.0121382474899292,
+        "mean_effect": 0.02995896339416504,
         "passed": true,
         "ratio_bar": 0.35,
-        "ratio_to_target": 260.2850893182647
+        "ratio_to_target": 15.892119200063236
       },
       "neutral_text": {
         "available": true,
         "bar": 0.05,
-        "control_kl_max": 5.577195952355396e-05,
+        "control_kl_max": 4.705491460299527e-05,
         "gating": true,
         "items": {
           "given": 4,
           "read": 4,
           "under_item_gate": 3
         },
-        "mean_kl": 4.680823872149631e-05,
+        "mean_kl": 3.8006565318937646e-05,
         "passed": true
       }
     },
@@ -606,25 +606,25 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
         "note": "logit offset on named pieces shifts end-position odds at zero extra forwards"
       },
       "matched_arm": {
-        "directed_effect": 7.8406935930252075,
+        "directed_effect": 7.369401693344116,
         "index": 0,
         "near_miss": "within the registered bar as a share of its own effect",
-        "near_miss_abs": 1.0193231105804443,
-        "near_miss_share": 0.13000420160369444
+        "near_miss_abs": 0.9159023761749268,
+        "near_miss_share": 0.1242844961215983
       },
       "matched_by": "prompt arm 0",
       "prompt_arms": [
         {
-          "directed_effect": 7.8406935930252075,
+          "directed_effect": 7.369401693344116,
           "index": 0,
-          "mean_effect": -7.8406935930252075,
-          "near_miss_abs": 1.0193231105804443,
+          "mean_effect": -7.369401693344116,
+          "near_miss_abs": 0.9159023761749268,
           "prompt_sha256": "255cdbb968d4"
         }
       ],
       "prompt_arms_state": "run"
     },
-    "bars_sha256": "d79cc9a7ae4f10f18b6aee8023eaba4ba352215b4a260599892b8dca0a14df95",
+    "bars_sha256": "170f517707593622d7a84e3a4eb8d1f5b2250524231a43611258d829b0744d12",
     "book_seqs": [
       11,
       12,
@@ -639,4 +639,4 @@ export const RECORDED_REPLAY_CARDS: ReplayCard[] = [
 
 /** The book the cards are from: its last run, as the server dates a recorded book, and its head. */
 export const RECORDED_BOOK_LAST_RUN = "last run 22 Nov 2026, UTC";
-export const RECORDED_BOOK_HEAD = "4e1b8729a3c15d49";
+export const RECORDED_BOOK_HEAD = "98992e66303f513f";
