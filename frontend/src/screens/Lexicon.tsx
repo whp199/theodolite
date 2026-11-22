@@ -1407,14 +1407,19 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <Note>
             It runs on Claude Code (the default), Codex or Gemini where they are installed beside the server (Gemini
             through Antigravity, or through the Gemini CLI if you pick it), or on any service that speaks OpenAI’s chat
-            completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. Under Claude Code, the Gemini
-            CLI and Antigravity it reads and writes files only in its own work folder (the Gemini CLI also in its own
-            store of the chat) and has no shell, though Antigravity may search the web; under Codex it runs commands in a
-            sandbox with no network that writes there and in the temporary folders and can read your other files. Each
+            completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. Under Claude Code and the
+            Gemini CLI it reads and writes files only in its own work folder (the Gemini CLI also in its own files for
+            the chat: its stored conversation and memory, and the GEMINI.md of its Gemini home) and has no shell. Under
+            Antigravity it reads and writes files in its work folder and is refused whatever else it asks for beyond the
+            atlas’s tools: in a live chat it asked before reading or writing elsewhere and before running a workflow;
+            its shell and its other tools were not tried live, and it may search the web and start subagents of its own
+            without asking. Under Codex it runs commands in a sandbox with no network that writes there and in the
+            temporary folders and can read your other files. Each
             has a shell when the server is started to give it one, which it then uses without asking; the page says what
             each can then reach, and asks first, for each. A Gemini chat is not sent while a GEMINI.md is in its work
             folder, where any chat could have left one as standing instructions (for Antigravity, nor while an AGENTS.md
-            or a .agents folder is there or in a folder above it in the repository); an Antigravity chat cannot be edited
+            or a .agents folder is there or in a folder above it in the repository), and Codex is set to read no
+            AGENTS.md from there and list no skill; an Antigravity chat cannot be edited
             or asked again, and one that sets itself a timer is stopped (at the folder reach, so is one that starts work with no
             message from you).
             What it says is a lead to check: it cites the neurons it read, so open them, and a name it gives is marked as

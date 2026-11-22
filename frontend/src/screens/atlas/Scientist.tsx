@@ -21,6 +21,7 @@ import {
   togglePast,
   useScientist,
   GEMINI_FAMILY,
+  geminiPick,
   installed,
   type Agent,
   type Item,
@@ -411,7 +412,7 @@ const BackendPick: React.FC = () => {
             setPick({ agent: "openai", profile: name, model: b?.openai.find((x) => x.name === name)?.model ?? null });
           } else if (v === "gemini-family") {
             // Gemini runs on Antigravity unless only the Gemini CLI is installed
-            setPick({ agent: GEMINI_FAMILY.find((a) => installed(b, a)) ?? GEMINI_FAMILY[0], profile: null, model: null });
+            setPick({ agent: geminiPick(b), profile: null, model: null });
           } else setPick({ agent: v as Pick["agent"], profile: null, model: null });
         }}
       >

@@ -33,6 +33,9 @@ export const GEMINI_FAMILY: Agent[] = ["agy", "gemini"];
 export const CLI_ORDER: Agent[] = ["claude", "codex", "agy", "gemini"];
 /** Whether the server can run a command-line backend. */
 export const installed = (b: Backends | null, a: Agent): boolean => (a === "openai" ? false : !!b?.[a]?.available);
+/** What picking Gemini picks: Antigravity, unless only the Gemini CLI is installed (Antigravity when neither is, or
+ * before the server has said). */
+export const geminiPick = (b: Backends | null): Agent => GEMINI_FAMILY.find((a) => installed(b, a)) ?? GEMINI_FAMILY[0];
 export interface Pick {
   agent: Agent;
   profile: string | null;

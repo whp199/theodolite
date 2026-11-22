@@ -23,7 +23,8 @@ Supported driver families:
   `--allowed-mcp-server-names levelling`, `--extensions none`, empty read-only `0o555` cwd, isolated `$GEMINI_CLI_HOME`,
   no workspace settings, hooks, skills or ancestor GEMINI.md; an allowlisted environment, `gemini_child_env`), connected
   to the live `LevelSession` via `level_mcp.session_socket_bridge`. No usage statistics. Its token and dollar caps
-  are checked only after the run (the CLI reports usage only in its last line: `caps_after_run`).
+  are checked only after the run (the CLI reports usage only in its last line: `caps_after_run`); a run stopped
+  before that line has no usage to read, and says so (`usage_known` false), its caps not checked.
 - `agy`: refused until the owner accepts the three tools agy offers every print run (`AGY_FIXED_TOOLS_SAY`,
   `agy_fixed_tools_accepted=True`); then Antigravity CLI 1.5.14 only (`agy -p --agent door`, `run_agy_cli_driver`):
   a home, XDG folders and TMPDIR of the run's own, removed after it, so none of the owner's agy setup loads and
@@ -361,7 +362,8 @@ def _extract_outcome_from_book(
     `claim_refused` is the door's own words for the last claim it refused, or None; `extra_usage` adds to `usage`
     (an endpoint's own token figures beside the counted ones). `caps_after_run`, from a driver whose caps could be
     counted only once the run had ended (the Gemini CLI's tokens and dollars), says which caps were checked that way
-    and which the run passed (`passed`); its `stop_reason` is left as the run ended."""
+    and which the run passed (`passed`), or, for a run that ended with no usage to read, that none was (`checked`
+    empty, `usage_known` false); its `stop_reason` is left as the run ended."""
     door_d = dict(door) if isinstance(door, Mapping) else {}
     for k in ("calls", "ok", "errors"):
         door_d[k] = int(door_d.get(k) or 0)
@@ -530,8 +532,24 @@ def _extract_outcome_from_book(
         "claim_refused": claim_refused,
         "door": door_d,
         **({"caps_after_run": dict(caps_after_run)} if isinstance(caps_after_run, Mapping) else {}),
-        "notes": notes[:2000],
+        "notes": notes[:NOTES_CUT],
     }
+
+
+# the most of a run's notes an outcome keeps (`_extract_outcome_from_book`)
+NOTES_CUT = 2000
+
+
+def _notes_with_room(said: Sequence[str], own: Sequence[str], cut: int = NOTES_CUT) -> str:
+    """An outcome's notes: what the run said (the model's text, the CLI's errors) and then the driver's own notes, the
+    run's words cut so that the driver's fit whole within `cut` characters (cut themselves only where they alone
+    would pass it)."""
+    tail = "\n".join(t for t in own if t)
+    head = "\n".join(t for t in said if t)
+    room = cut - len(tail) - (1 if tail and head else 0)
+    if room <= 0:
+        return tail[:cut]
+    return "\n".join(t for t in (head[:room], tail) if t)
 
 
 def _call(session: lses.LevelSession, tool: str, args: Mapping[str, Any]) -> Tuple[bool, Any]:
@@ -2261,9 +2279,31 @@ def run_codex_cli_driver(
 
 GEMINI_CAPS_SAY = (
     "Gemini CLI 0.70 reports token use only in its final result line, so the token and dollar caps were checked "
-    "after the run ended and could not stop it; its turns were capped by the CLI (model.maxSessionTurns) and its "
-    "wall clock by the driver."
+    "from that line after the run ended, and could not stop it; its turns were capped by the CLI "
+    "(model.maxSessionTurns) and its wall clock by the driver."
 )
+# a run stopped before its result line (the wall cap, STOP, a tool that is not the door's) has no usage to read
+GEMINI_USAGE_UNKNOWN_SAY = (
+    "Stopped before Gemini CLI printed its result line, the only line that carries its usage (0.70): its tokens and "
+    "dollars are not known, and its token and dollar caps were not checked. Its turns were capped by the CLI "
+    "(model.maxSessionTurns) and its wall clock by the driver."
+)
+# the same at prices of 0 for both (a sign-in quota), where its dollars are known: 0
+GEMINI_USAGE_UNKNOWN_FREE_SAY = (
+    "Stopped before Gemini CLI printed its result line, the only line that carries its usage (0.70): its tokens are "
+    "not known, and its token cap was not checked; at prices of 0 for both, its dollars are 0. Its turns were capped "
+    "by the CLI (model.maxSessionTurns) and its wall clock by the driver."
+)
+# the longest per-call timeout Gemini CLI 0.70 keeps: Node takes a timer past 2**31 - 1 ms (about 24.8 days) as 1 ms
+GEMINI_MCP_TIMEOUT_MAX_MS = 2**31 - 1
+
+
+def gemini_mcp_timeout_ms(max_wall_seconds: float) -> int:
+    """The per-call timeout given to the door's MCP server under Gemini CLI: the driver's wall cap in milliseconds, at
+    least 1 and at most GEMINI_MCP_TIMEOUT_MAX_MS (a longer wall cap leaves a call bounded by that, not by the cap)."""
+    return max(1, min(int(math.ceil(float(max_wall_seconds) * 1000.0)), GEMINI_MCP_TIMEOUT_MAX_MS))
+
+
 GEMINI_AUTH_FILES = ("oauth_creds.json", "google_accounts.json", "google_account_id", "installation_id", "state.json")
 GEMINI_ENV_PASS = frozenset({
     "PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TZ", "TERM", "TMPDIR",
@@ -2488,7 +2528,16 @@ def run_gemini_cli_driver(
       run: they are checked after it ended (`caps_after_run`, `GEMINI_CAPS_SAY`), and a run that passed one is not
       relabelled (a claimed run stays claimed); `caps_after_run["passed"]` names the caps it passed. The dollars are
       counted from the driver budget's prices alone (the CLI reports no cost), so a dollar cap needs both
-      (`_cli_prices`; 0 for both where the account has no per-token price).
+      (`_cli_prices`; 0 for both where the account has no per-token price). A run stopped before its result line (the
+      wall cap, STOP, a tool that is not the door's) has no usage to read: its tokens and dollars are recorded as 0 with
+      `usage["usage_known"]` false, `caps_after_run` says no cap was checked (`checked` empty, `usage_known` false,
+      `dollars_known` true only at prices of 0 for both; its `say`, `GEMINI_USAGE_UNKNOWN_SAY`, or at those prices
+      `GEMINI_USAGE_UNKNOWN_FREE_SAY`), and its notes say so, the driver's own notes kept whole within the outcome's
+      `NOTES_CUT` by cutting the model's text first (`_notes_with_room`); a study charges such a session, at prices
+      that are not 0 for both, the dollar cap it was handed (`level_eval`).
+    - The door's MCP server is given the driver's wall cap as its per-call timeout (`gemini_mcp_timeout_ms`), so a
+      long door call is bounded by that cap and not by Gemini CLI's own 10 minutes a call; a wall cap past
+      `GEMINI_MCP_TIMEOUT_MAX_MS` (about 24.8 days, the longest timer Node keeps) leaves a call bounded by that.
     - Refused at `$THEODOLITE_SCIENTIST_REACH=home`, without an owner-approved `max_dollars > 0` (unless
       `allow_mock_cli=True` in CPU checks), and under a dollar cap without prices."""
     if os.environ.get(lses.REACH_ENV, "").strip().lower() == "home":
@@ -2520,6 +2569,10 @@ def run_gemini_cli_driver(
                 "command": sys.executable,
                 "args": ["-I", str(ROOT_DIR / "backend" / "level_mcp.py"), "--socket", str(bridge.path)],
                 "trust": True,
+                # a door call may run as long as the session does: the driver's wall cap bounds it, not Gemini CLI's
+                # own default of 10 minutes a call (0.70: MCP_DEFAULT_TIMEOUT_MSEC), which would tell the model a
+                # call failed that the door goes on to finish (`gemini_mcp_timeout_ms`)
+                "timeout": gemini_mcp_timeout_ms(db.max_wall_seconds),
             }
         }
         ghome, ro_cwd, policy_path = _prepare_gemini_session_home(
@@ -2657,17 +2710,28 @@ def run_gemini_cli_driver(
 
     pt, ct = stream.tokens()
     est_usd = (pt * float(db.input_usd_per_mtok or 0.0) + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6 if priced else 0.0
-    passed = (["tokens"] if pt + ct >= db.max_tokens else []) + (
-        ["dollars"] if priced and budget_usd is not None and est_usd >= budget_usd else [])
-    caps_after_run = {"checked": ["tokens", "dollars"] if priced else ["tokens"], "passed": passed,
-                      "say": GEMINI_CAPS_SAY}
-    notes = ["".join(stream.assistant_chunks).strip()] if stream.assistant_chunks else []
+    usage_known = res is not None
+    if usage_known:
+        passed = (["tokens"] if pt + ct >= db.max_tokens else []) + (
+            ["dollars"] if priced and budget_usd is not None and est_usd >= budget_usd else [])
+        caps_after_run: Dict[str, Any] = {"checked": ["tokens", "dollars"] if priced else ["tokens"], "passed": passed,
+                                          "say": GEMINI_CAPS_SAY}
+    else:
+        # no result line, no usage: the 0 tokens counted are not what it spent, and no cap was checked. Its dollars are
+        # known only at prices of 0 for both (a sign-in quota), where any use costs 0
+        passed = []
+        free = priced and float(db.input_usd_per_mtok or 0.0) == 0.0 and float(db.output_usd_per_mtok or 0.0) == 0.0
+        caps_after_run = {"checked": [], "passed": [], "usage_known": False, "dollars_known": bool(free),
+                          "say": GEMINI_USAGE_UNKNOWN_FREE_SAY if free else GEMINI_USAGE_UNKNOWN_SAY}
     cap_note = (f"The run passed its {' and '.join(c[:-1] for c in passed)} cap, as counted after it ended "
                 f"({pt + ct} tokens" + (f", ${est_usd:.4f}" if priced else "") + "): Gemini CLI reports usage only at "
                 "the end, so the cap could not stop it.") if passed else None
     linger_note = (f"The CLI printed its result line but had not exited {CLI_EXIT_GRACE_SECONDS:g} s later: it was "
                    "killed, and the session is judged by that line.") if lingered else None
-    notes += [t for t in dict.fromkeys((*stream.errors, stop_note, failure, wait_note, cap_note, linger_note)) if t]
+    unknown_note = None if usage_known else caps_after_run["say"]
+    # the driver's own notes are kept whole, the model's text and the CLI's errors cut to leave them room
+    own = [t for t in dict.fromkeys((stop_note, failure, wait_note, cap_note, linger_note, unknown_note)) if t]
+    said = [t for t in dict.fromkeys(("".join(stream.assistant_chunks).strip(), *stream.errors)) if t and t not in own]
     return _extract_outcome_from_book(
         session,
         driver_family="gemini",
@@ -2683,13 +2747,14 @@ def run_gemini_cli_driver(
         reasoning_tokens=0,
         estimated_dollars=est_usd,
         tool_errors=max(stream.tool_errors, int(door["errors"])),
-        notes="\n".join(notes),
+        notes=_notes_with_room(said, own),
         proposed_edit=proposed_edit,
         proposed_knob=proposed_knob,
         driver_failure=failure,
         claim_refused=claim_refused,
         door={**door, "other_tools_asked": stream.other_uses[:20], "door_uses_seen": stream.door_uses,
               "cli_ended_at_seconds": round(t_cli_end - t0, 3), "outcome_after_cli_seconds": waited_after_cli},
+        extra_usage=None if usage_known else {"usage_known": False},
         caps_after_run=caps_after_run,
     )
 

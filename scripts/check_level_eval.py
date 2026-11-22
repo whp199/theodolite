@@ -690,6 +690,11 @@ say({"type": "init", "session_id": "g1", "model": "gemini-mock"})
 say({"type": "tool_use", "tool_name": "mcp_levelling_" + CALL["name"], "tool_id": "t1", "parameters": CALL["arguments"]})
 r = rpc(2, "tools/call", CALL)
 say({"type": "tool_result", "tool_id": "t1", "status": "error" if r["result"].get("isError") else "success", "output": "..."})
+if MODE in ("wall", "wall_long"):  # it goes on past the driver's wall cap and never prints its result line, the only one with usage
+    say({"type": "message", "role": "assistant", "content": "Thinking it over. timeout=%s" % srv.get("timeout")
+         + (" I read the rows one by one." * 120 if MODE == "wall_long" else "")})
+    time.sleep(30)
+    sys.exit(0)
 stats = {"input_tokens": 500000, "output_tokens": 50000, "total_tokens": 560000, "cached": 400000, "input": 100000, "tool_calls": 1}
 if MODE == "turn_limit":
     say({"type": "result", "status": "error", "error": {"type": "FatalTurnLimitedError",
@@ -699,7 +704,7 @@ if MODE == "turn_limit":
 sleeper = ""
 if MODE == "spend":  # a child left in the CLI's process group when it exits
     sleeper = " sleeper=%d" % subprocess.Popen([sys.executable, "-I", "-c", "import time; time.sleep(60)"]).pid
-say({"type": "message", "role": "assistant", "content": "Done." + sleeper})
+say({"type": "message", "role": "assistant", "content": "Done." + sleeper + " timeout=%s" % srv.get("timeout")})
 say({"type": "result", "status": "success", "stats": stats})
 if MODE == "linger":  # the run has ended (its result line read by then); STOP comes while the CLI is closing down
     time.sleep(0.5)
@@ -757,9 +762,78 @@ def _gemini_cap_checks(h: Any, tmp: Path, brief: Any, bars: Any, cal_book: Path)
                                                         "reasoning_effort": None, "driver_config": {}}]})
     sp_rep = (sp_sum["arms"][0].get("replicates") or [{}])[0]
     check(sp_rep.get("caps_passed_after_run") == ["tokens", "dollars"] and sp_rep.get("counted") is True
-          and "caps_passed_after_run" in " ".join(sp_sum.get("limitations") or []),
+          and "caps_passed_after_run" in " ".join(sp_sum.get("limitations") or []) and sp_rep.get("usage_not_known") is None,
           f"4b: the study's session row names the caps a Gemini run passed after it ended, and the session still counts "
           f"({sp_rep.get('caps_passed_after_run')}, counted {sp_rep.get('counted')})")
+    # the door's MCP server is given the driver's wall cap (60 s here) as its per-call timeout, in milliseconds: Gemini
+    # CLI 0.70 would otherwise cut a door call at its own 10 minutes while the door goes on to finish it
+    check("timeout=60000" in str(sp_out.get("notes") or ""),
+          f"4b: the Gemini driver gives the door's MCP server the wall cap as its per-call timeout "
+          f"({str(sp_out.get('notes') or '')[:120]!r})")
+
+    # A run stopped before its result line (here at the wall cap, after a door call) has no usage to read: it records
+    # 0 tokens with usage not known, and says no cap was checked; a study row names it
+    s_wl = lses.LevelSession(h, tmp / "s_gm_wall", reach="behaviour", backend="gemini",
+                             book_path=tmp / "b_gm_wall.jsonl", probe_on_start=False)
+    wl_out = ldrv.run_gemini_cli_driver(s_wl, gemini_bin=str(_mock_g("wall", {"name": "status", "arguments": {}})),
+                                        allow_mock_cli=True,
+                                        driver_budget=ldrv.DriverBudget(**{**priced, "max_wall_seconds": 4.0}))
+    wl_caps = wl_out.get("caps_after_run") or {}
+    check(wl_out["stop_reason"] == "budget_wall" and wl_caps.get("checked") == [] and wl_caps.get("passed") == []
+          and wl_caps.get("usage_known") is False and wl_caps.get("dollars_known") is False
+          and wl_caps.get("say") == ldrv.GEMINI_USAGE_UNKNOWN_SAY and "not known" in wl_out["notes"]
+          and (wl_out.get("usage") or {}).get("usage_known") is False and "were checked" not in str(wl_caps.get("say")),
+          f"4b: a Gemini run stopped at the wall cap before its result line says its usage is not known and that no cap "
+          f"was checked ({wl_out['stop_reason']}, {wl_caps}, usage {wl_out.get('usage', {}).get('usage_known')})")
+    wl_sum = lev.summarize_study(
+        [{**wl_out, "arm_id": "gm", "replicate": 0, "run_id": "gm_r0"}],
+        {"name": "gm", "sessions_per_arm": 1, "arms": [{"arm_id": "gm", "driver_family": "gemini", "driver_model": None,
+                                                        "reach": "behaviour", "mode": "weight_edit", "bare": False,
+                                                        "reasoning_effort": None, "driver_config": {}}]})
+    wl_rep = (wl_sum["arms"][0].get("replicates") or [{}])[0]
+    check(str(wl_rep.get("usage_not_known") or "").startswith("usage not known")
+          and wl_sum["arms"][0]["cost"].get("sessions_usage_not_known") == 1
+          and "usage not known" in " ".join(wl_sum.get("limitations") or [])
+          and "usage not known" in lev.render_study_report(wl_sum),
+          f"4b: the study's row, the arm's cost, the limitations and the report say that session's usage is not known "
+          f"({wl_rep.get('usage_not_known')})")
+    handed = lev._charge_unknown(wl_out, 0.7)
+    free = lev._charge_unknown({**wl_out, "caps_after_run": {**wl_caps, "dollars_known": True}}, 0.7)
+    check(handed is not None and handed["dollars"] == 0.7 and "usage not known" in handed["why"] and free is None
+          and lev._charge_unknown(sp_out, 0.7) is None and lev._charge_unknown(wl_out, None)["dollars"] == 0.0,
+          f"4b: a study charges a session whose dollars are not known the dollar cap it was handed, one at prices of 0 "
+          f"nothing, and one whose usage is known its own figure ({handed}, {free})")
+    # The same at prices of 0 for both (a sign-in quota), after the model has said more than an outcome's notes keep:
+    # its say has its dollars known (0) and only its tokens not, and the driver's own note is kept whole, the model's
+    # text cut to leave it room
+    s_wf = lses.LevelSession(h, tmp / "s_gm_wall_free", reach="behaviour", backend="gemini",
+                             book_path=tmp / "b_gm_wall_free.jsonl", probe_on_start=False)
+    wf_out = ldrv.run_gemini_cli_driver(s_wf, gemini_bin=str(_mock_g("wall_long", {"name": "status", "arguments": {}})),
+                                        allow_mock_cli=True,
+                                        driver_budget=ldrv.DriverBudget(**{**priced, "max_wall_seconds": 4.0,
+                                                                           "input_usd_per_mtok": 0.0, "output_usd_per_mtok": 0.0}))
+    wf_caps = wf_out.get("caps_after_run") or {}
+    wf_notes = str(wf_out.get("notes") or "")
+    wf_row = lev.summarize_study(
+        [{**wf_out, "arm_id": "gm", "replicate": 0, "run_id": "gm_r0"}],
+        {"name": "gm", "sessions_per_arm": 1, "arms": [{"arm_id": "gm", "driver_family": "gemini", "driver_model": None,
+                                                        "reach": "behaviour", "mode": "weight_edit", "bare": False,
+                                                        "reasoning_effort": None, "driver_config": {}}]})["arms"][0]["replicates"][0]
+    check(wf_out["stop_reason"] == "budget_wall" and wf_caps.get("dollars_known") is True and wf_caps.get("checked") == []
+          and wf_caps.get("say") == ldrv.GEMINI_USAGE_UNKNOWN_FREE_SAY and "its dollars are 0" in wf_caps["say"]
+          and "tokens and dollars are not known" not in wf_caps["say"]
+          and wf_notes.endswith(ldrv.GEMINI_USAGE_UNKNOWN_FREE_SAY) and len(wf_notes) == ldrv.NOTES_CUT
+          and wf_notes.startswith("Thinking it over.") and "I read the rows one by one." in wf_notes
+          and lev._charge_unknown(wf_out, 0.7) is None
+          and str(wf_row.get("usage_not_known") or "").startswith("usage not known")
+          and "its dollars are 0" in str(wf_row.get("usage_not_known")) and wf_row.get("dollars_charged") is None,
+          f"4b: a Gemini run stopped before its result line at prices of 0 says its tokens are not known and its dollars "
+          f"are 0, and after a long reply its notes still end with that, the reply cut to leave it room (say "
+          f"{wf_caps.get('say')!r}; notes {len(wf_notes)} chars ending {wf_notes[-90:]!r}; row {wf_row.get('usage_not_known')!r})")
+    check(ldrv.gemini_mcp_timeout_ms(60.0) == 60000 and ldrv.gemini_mcp_timeout_ms(3e6) == 2**31 - 1
+          and ldrv.gemini_mcp_timeout_ms(1e-6) == 1 and ldrv.GEMINI_MCP_TIMEOUT_MAX_MS == 2**31 - 1,
+          f"4b: the door's per-call timeout is the wall cap in milliseconds, but never past the longest timer Node keeps "
+          f"(2**31 - 1 ms; a longer one it would take as 1 ms): {ldrv.gemini_mcp_timeout_ms(3e6)} for a wall cap of 3e6 s")
 
     bk_gc = tmp / "b_gm_claim.jsonl"
     shutil.copy2(cal_book, bk_gc)
@@ -3907,6 +3981,39 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                   f"5: a {pay_cap} study cap is kept across sessions that spend: each session's cap is what is left (or the "
                   f"plan's {pay_per}), never 0, and the study stops when nothing is left (caps {p_caps}, spent {p_spent}, "
                   f"halted: {pres['halted_reason']})")
+
+            # A Gemini CLI session stopped before its result line (its only usage line) spent dollars no one can read:
+            # the study charges it the cap it was handed, so the next is handed what is left after that, not the whole
+            # study's cap again, and the study stops when nothing is left; its row says why
+            gw_mock = tmp / "mock_gemini_study_wall.py"
+            gw_mock.write_text(f"#!{sys.executable} -I\n" + GEMINI_CAP_MOCK.replace("__MODE__", repr("wall"))
+                               .replace("__CALL__", repr({"name": "status", "arguments": {}})).replace("__STOP__", repr("")),
+                               encoding="utf-8")
+            os.chmod(gw_mock, 0o755)
+            gw_plan = lev.EvalStudyPlan(
+                name="p6_gm_unknown", brief_name=brief.name, brief_path=str(brief_json_p), sessions_per_arm=3,
+                session_budget=study_sb, claim_design=study_cd, max_total_dollars=1.0,
+                driver_budget=ldrv.DriverBudget(max_turns=8, max_dollars=0.7, max_wall_seconds=4.0,
+                                                input_usd_per_mtok=1.25, output_usd_per_mtok=10.0),
+                arms=(lev.EvalArm("gm_wall", "gemini", reach="behaviour", driver_model="gemini-mock",
+                                  driver_config={"allow_mock_cli": True, "gemini_bin": str(gw_mock)}),),
+            )
+            gres = lev.run_eval_study(h, gw_plan, tmp / "p6_gm_unknown", bars=bars, calibration_book=cal_book, probe_sandbox=False)
+            g_caps = [((o.get("harness_card") or {}).get("driver_budget") or {}).get("max_dollars") for o in gres["outcomes"]]
+            g_charged = [(o.get("dollars_charged") or {}).get("dollars") for o in gres["outcomes"]]
+            g_end = next((e["body"] for e in lb.entries(Path(gres["book"]["path"]))
+                          if (e.get("body") or {}).get("note") == "eval_study_end"), {})
+            g_rows = (gres["summary"]["arms"][0].get("replicates") or []) if gres["summary"].get("arms") else []
+            check(g_caps == [0.7, 0.3] and g_charged == [0.7, 0.3]
+                  and all((o.get("usage") or {}).get("estimated_dollars") == 0.0 for o in gres["outcomes"])
+                  and gres["halted_reason"] == lev.STUDY_DOLLAR_CAP_REACHED
+                  and g_end.get("total_estimated_dollars") == 1.0 and g_end.get("dollars_not_known_sessions") == 2
+                  and gres["summary"]["arms"][0]["cost"]["total_estimated_dollars"] == 1.0
+                  and all(str(r.get("usage_not_known") or "").startswith("usage not known: the run was stopped") for r in g_rows)
+                  and [r.get("dollars_charged") for r in g_rows] == [0.7, 0.3],
+                  f"5: a study charges each Gemini CLI session whose usage is not known the dollar cap it was handed: the "
+                  f"next is handed what is left after it, and the study stops when nothing is (caps {g_caps}, charged "
+                  f"{g_charged}, total {g_end.get('total_estimated_dollars')}, halted: {gres['halted_reason']})")
 
             # Study-level STOP file kill switch halts cleanly before calibration
             halt_dir = tmp / "p6_halt"
