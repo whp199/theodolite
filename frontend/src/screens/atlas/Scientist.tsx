@@ -20,6 +20,9 @@ import {
   takeName,
   togglePast,
   useScientist,
+  GEMINI_FAMILY,
+  installed,
+  type Agent,
   type Item,
   type Part,
   type Pick,
@@ -267,6 +270,8 @@ const Thread: React.FC = () => {
   const items = useScientist((s) => s.items);
   const busy = useScientist((s) => s.busy);
   const box = useScientist((s) => s.box);
+  // an Antigravity chat cannot be taken back (the server refuses its /rewind): no edit, no ask again
+  const canRewind = useScientist((s) => (s.chat && s.chatPick ? s.chatPick : s.pick).agent) !== "agy";
   const ref = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   useEffect(() => {
@@ -299,7 +304,7 @@ const Thread: React.FC = () => {
           <div key={i} className="atlas-msg user">
             {it.shown}
             {it.atts.length ? <span className="atlas-att"> · attached {it.atts.map((a) => a.name).join(", ")}</span> : null}
-            {i === lastUser && !busy ? (
+            {i === lastUser && !busy && canRewind ? (
               <span className="atlas-ctl">
                 <button type="button" className="btn-link" title="take this message and its reply back, into the box" onClick={() => void rewindLast("edit")}>
                   edit
@@ -311,7 +316,7 @@ const Thread: React.FC = () => {
           <div key={i} className="atlas-msg assistant">
             {((files) => it.parts.map((p, j) => <PartView key={j} p={p} box={i} file={files.get(j)} />))(fileParts(it.parts))}
             {busy && i === box ? <p className="atlas-busy">working…</p> : null}
-            {i === lastReply && !busy ? (
+            {i === lastReply && !busy && canRewind ? (
               <span className="atlas-ctl">
                 <button type="button" className="btn-link" title="throw this reply away and ask again" onClick={() => void rewindLast("reroll")}>
                   ask again
@@ -363,9 +368,21 @@ const Past: React.FC = () => {
   );
 };
 
-/** Which backend a new chat runs on: Claude Code or Codex where installed, or an OpenAI-compatible endpoint and model. */
+/** The name the page gives each backend. */
+const BACKEND_NAME: Record<Agent, string> = { agy: "Antigravity", claude: "Claude Code", codex: "Codex", gemini: "Gemini CLI", openai: "an endpoint" };
+/** Where this browser keeps that the person was told what a backend does at the home reach, one backend each. */
 const ACK_KEY = "theodolite.atlas.scientist.home-shell";
+const ACKED_AGENTS: Agent[] = ["agy", "claude", "codex", "gemini"];
+const readAck = (a: Agent): boolean => {
+  try {
+    return localStorage.getItem(`${ACK_KEY}.${a}`) === "1";
+  } catch {
+    return false;
+  }
+};
 
+/** Which backend a new chat runs on: Claude Code, Codex or Gemini where installed (Gemini through Antigravity by
+ * default, or the Gemini CLI, picked beside it), or an OpenAI-compatible endpoint and model. */
 const BackendPick: React.FC = () => {
   const b = useScientist((s) => s.backends);
   const pick = useScientist((s) => s.pick);
@@ -374,7 +391,9 @@ const BackendPick: React.FC = () => {
   const models = useScientist((s) => s.models);
   const fixed = !!chat && !!chatPick;
   const p: Pick = fixed ? chatPick! : pick;
-  const value = p.agent === "openai" ? `openai:${p.profile}` : p.agent;
+  const gemini = GEMINI_FAMILY.includes(p.agent);
+  const value = p.agent === "openai" ? `openai:${p.profile}` : gemini ? "gemini-family" : p.agent;
+  const missing = (a: Agent) => (b && !installed(b, a) ? " (not installed)" : "");
   const card = b?.openai.find((x) => x.name === p.profile);
   const ms = p.agent === "openai" && p.profile ? models[p.profile] : undefined;
   return (
@@ -390,20 +409,20 @@ const BackendPick: React.FC = () => {
           if (v.startsWith("openai:")) {
             const name = v.slice(7);
             setPick({ agent: "openai", profile: name, model: b?.openai.find((x) => x.name === name)?.model ?? null });
+          } else if (v === "gemini-family") {
+            // Gemini runs on Antigravity unless only the Gemini CLI is installed
+            setPick({ agent: GEMINI_FAMILY.find((a) => installed(b, a)) ?? GEMINI_FAMILY[0], profile: null, model: null });
           } else setPick({ agent: v as Pick["agent"], profile: null, model: null });
         }}
       >
-        <option value="agy" disabled={!!b && !b.agy?.available}>
-          Antigravity{b && !b.agy?.available ? " (not installed)" : ""}
+        <option value="claude" disabled={!!b && !installed(b, "claude")}>
+          Claude Code{missing("claude")}
         </option>
-        <option value="claude" disabled={!!b && !b.claude.available}>
-          Claude Code{b && !b.claude.available ? " (not installed)" : ""}
+        <option value="codex" disabled={!!b && !installed(b, "codex")}>
+          Codex{missing("codex")}
         </option>
-        <option value="codex" disabled={!!b && !b.codex.available}>
-          Codex{b && !b.codex.available ? " (not installed)" : ""}
-        </option>
-        <option value="gemini" disabled={!!b && !b.gemini?.available}>
-          Gemini CLI{b && !b.gemini?.available ? " (not installed)" : ""}
+        <option value="gemini-family" disabled={!!b && !GEMINI_FAMILY.some((a) => installed(b, a))}>
+          Gemini{b && !GEMINI_FAMILY.some((a) => installed(b, a)) ? " (not installed)" : ""}
         </option>
         {(b?.openai ?? []).map((x) => (
           <option key={x.name} value={`openai:${x.name}`}>
@@ -411,6 +430,23 @@ const BackendPick: React.FC = () => {
           </option>
         ))}
       </select>
+      {gemini ? (
+        <select
+          className="atlas-select"
+          aria-label="how a Gemini chat runs"
+          value={p.agent}
+          disabled={fixed}
+          title={fixed ? "this chat runs on the backend it began with; start a new chat to change it" : "Antigravity unless you pick the Gemini CLI"}
+          onChange={(e) => setPick({ agent: e.target.value as Agent, profile: null, model: null })}
+        >
+          <option value="agy" disabled={!!b && !installed(b, "agy")}>
+            Antigravity{missing("agy")}
+          </option>
+          <option value="gemini" disabled={!!b && !installed(b, "gemini")}>
+            Gemini CLI{missing("gemini")}
+          </option>
+        </select>
+      ) : null}
       {p.agent === "openai" ? (
         Array.isArray(ms) && ms.length ? (
           <select
@@ -501,16 +537,10 @@ export const Scientist: React.FC = () => {
   const backendsError = useScientist((s) => s.backendsError);
   const reach = useScientist((s) => s.backends?.reach);
   const agent = useScientist((s) => (s.chat && s.chatPick ? s.chatPick : s.pick).agent);
-  const [acked, setAcked] = useState(() => {
-    try {
-      return localStorage.getItem(ACK_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  // a shell over the home folder is asked about once, in this browser, before the first chat runs on it
-  const homeShell = reach?.mode === "home" && (agent === "agy" || agent === "claude" || agent === "codex" || agent === "gemini");
-  const needsAck = homeShell && !acked;
+  const [acks, setAcks] = useState<Partial<Record<Agent, boolean>>>(() => Object.fromEntries(ACKED_AGENTS.map((a) => [a, readAck(a)])));
+  // a shell at the home reach is asked about once for each backend, in this browser, before its first chat runs there
+  const homeShell = reach?.mode === "home" && ACKED_AGENTS.includes(agent);
+  const needsAck = homeShell && !acks[agent];
   const [drop, setDrop] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
@@ -560,25 +590,28 @@ export const Scientist: React.FC = () => {
       {needsAck && reach ? (
         <div className="atlas-ack" role="alert">
           <p className="atlas-small red" style={{ margin: 0 }}>
-            On this server {agent === "agy" ? "Antigravity" : agent === "codex" ? "Codex" : agent === "gemini" ? "Gemini CLI" : "Claude Code"}{" "}
-            {reach[agent as "claude" | "codex" | "gemini"]}. What it reads (the model’s answers,
-            census answers, names and notes, attachments) can carry instructions, and nothing stands between them and that shell.
+            On this server {BACKEND_NAME[agent]} {reach[agent]}. What it reads (the model’s answers, census answers, names and notes,
+            attachments) can carry instructions, and nothing stands between them and that shell.
           </p>
           <p className="muted atlas-small" style={{ margin: "4px 0" }}>
-            Without {reach.env}=home on the server Antigravity, Claude Code and Gemini CLI have no shell and only write in their own work folder, and Codex would run
-            its commands in a sandbox with no network that writes there and in the temporary folders and can read your other files; an
-            endpoint has no shell at all.
+            {reach.folder ? (
+              <>
+                Without {reach.env}=home on the server it {reach.folder[agent]}; an endpoint has no shell at all.
+              </>
+            ) : (
+              <>Without {reach.env}=home on the server it has no shell over your home folder; an endpoint has no shell at all.</>
+            )}
           </p>
           <button
             type="button"
             className="btn-ghost"
             onClick={() => {
               try {
-                localStorage.setItem(ACK_KEY, "1");
+                localStorage.setItem(`${ACK_KEY}.${agent}`, "1");
               } catch {
                 // asked again next time
               }
-              setAcked(true);
+              setAcks({ ...acks, [agent]: true });
             }}
           >
             I understand: let it run here
