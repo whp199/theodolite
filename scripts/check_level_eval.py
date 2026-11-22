@@ -13,7 +13,15 @@ Tests every Phase 6 module on the CPU stand-in (no GPU, single thread, temporary
    `OpenAIChatDriver` (mock transport; endpoint host, key pairing, prices, redirects, caps kept during the run, STOP
    while a request is out), `ClaudeCLIDriver` (mock CLIs over the socket bridge: allowlisted environment, door-only
    command line, denials and tool errors, token cap, a cell or a claim still running at STOP; and the real `claude`
-   CLI against a local stand-in of the Messages API, skipped when it is not installed), `CodexCLIDriver` refusal.
+   CLI against a local stand-in of the Messages API, skipped when it is not installed), `GeminiCLIDriver` (mock and
+   real CLI; no usage statistics; token and dollar caps checked after the run, never relabelling it, nor STOP once
+   its result line is read; the CLI's own turn cap), `AgyCLIDriver` (mock agy CLIs with event shapes from agy
+   1.5.14's own output and a conversation store in its own layout: a home of the run's own, the door agent, the
+   offered tools read from that store, the guard on a tool's first sight (a fixed tool too), denied actions, the
+   turn cap after the last allowed reply's tools, token/dollar/wall caps with cache reads and agy's own output count,
+   STOP killing the process group, the stop reasons level_eval counts by, the study's limitations for an agy arm;
+   the real binary is `scripts/verify_level_agy.py`), `CodexCLIDriver` refusal. A dollar cap on the Gemini or
+   Antigravity CLI driver needs both prices; a child a CLI leaves in its process group is killed with the run.
 5. Multi-session study orchestration (`backend/level_eval.py`): pre-flight validation, per-session isolated side books,
    unpooled reach ladder & weight-vs-knobs & agent-vs-scripted & `--bare` ablation tables, exact Wilson/Fisher/perm
    statistics, model-free reload from `study_book.jsonl`, and `STOP` file kill switch.
@@ -41,7 +49,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -111,6 +119,694 @@ def refuses(fn: Callable[[], Any], exc_type: Any, needle: str = "") -> bool:
 
 def section(title: str) -> None:
     print(f"\n=== {title} ===", flush=True)
+
+
+# ------------------------------------------------------------------ 4c. Antigravity CLI driver (mock agy, CPU only)
+# The mock's event shapes are copied from agy 1.5.14's own stream-json in the 22 Nov live probe (runs b1, b2, b4) and
+# the builder's capture (a reply with cache reads), not from the driver's code: the init line lists the build's 60
+# tools whatever the agent; an eager door tool's ACTIVE step carries only its name; a DONE tool output starts with
+# Created At / Completed At lines; each DONE reply carries input, output, thinking and cache-read tokens; a refused
+# call ends in a result with denied_actions; a reply's total is input plus output (its output holds the thinking).
+# Its conversation store is a sqlite gen_metadata table of protobuf blobs in the layout of run b4's store (field
+# numbers as agy wrote them): row 0 holds the first reply's metadata and no declaration; row 1 holds, in its field 1,
+# the system text (1), the steps with a tool call (2/6: call id, name, arguments), the tool declarations (8: name,
+# description, JSON schema) and the prompt's token account with its "Tools" section (9/10/3/1), and in its field 3 the
+# door's MCP server and its tool names (57/3/2).
+
+AGY_INIT_TOOLS = [
+    "ask_custom_permission", "ask_permission", "ask_question", "browser_click_element", "browser_drag_pixel_to_pixel",
+    "browser_get_dom", "browser_get_network_request", "browser_input", "browser_list_network_requests",
+    "browser_mouse_down", "browser_mouse_up", "browser_move_mouse", "browser_press_key", "browser_refresh_page",
+    "browser_resize_window", "browser_scroll", "browser_scroll_dom", "browser_select_option", "browser_subagent",
+    "call_mcp_tool", "capture_browser_console_logs", "capture_browser_screenshot", "click_browser_pixel",
+    "command_status", "define_subagent", "delete_knowledge", "execute_browser_javascript", "find_by_name", "finish",
+    "generate_image", "grep_search", "invoke_subagent", "list_browser_pages", "list_dir", "list_permissions",
+    "list_plugin_accounts", "list_resources", "manage_inbox", "manage_subagents", "manage_task",
+    "multi_replace_file_content", "notebook_edit", "notebook_execution", "open_browser_url", "read_browser_page",
+    "read_resource", "read_url_content", "replace_file_content", "run_command", "run_workflow", "schedule",
+    "search_marketplace", "search_web", "sed_file", "send_command_input", "send_message", "view_file", "wait",
+    "wait_5_seconds", "write_to_file",
+]
+
+AGY_MOCK = r'''
+import json, os, sqlite3, subprocess, sys, time
+from pathlib import Path
+MODE, REPORT, STOP_FILE, INIT_TOOLS = __MODE__, __REPORT__, __STOP__, __INIT_TOOLS__
+CID = "d9be3010-3c1e-4fd7-8eb3-f3692f93bea9"
+if sys.argv[1:] == ["--version"]:
+    print("1.5.13" if MODE == "old_version" else "1.5.14")
+    sys.exit(0)
+argv = sys.argv[1:]
+home, cwd = Path(os.environ["HOME"]), Path.cwd()
+def flag(n):
+    return argv[argv.index(n) + 1] if n in argv[:-1] else None
+door_md = cwd / ".agents" / "agents" / "door.md"
+md = door_md.read_text(encoding="utf-8")
+command = json.loads([ln for ln in md.splitlines() if ln.strip().startswith("command:")][0].split(":", 1)[1])
+args = json.loads([ln for ln in md.splitlines() if ln.strip().startswith("args:")][0].split(":", 1)[1])
+lines = md.splitlines()
+tools = [json.loads(ln.strip()[:-1]) for i, ln in enumerate(lines)
+         if ln.startswith('      "') and ln.rstrip().endswith(":") and i + 1 < len(lines) and lines[i + 1].strip() == "eager: true"]
+seen = {"argv": argv, "env": sorted(os.environ), "home": str(home), "cwd": str(cwd), "tools": tools, "door_md": md,
+        "modes": [oct(os.stat(p).st_mode & 0o777) for p in (cwd, cwd / ".agents", cwd / ".agents" / "agents", door_md)],
+        "mcp_config": (cwd / ".agents" / "mcp_config.json").exists(),
+        "stamp": (home / ".gemini" / "antigravity-cli" / "last_check.timestamp").exists(),
+        "settings": json.loads(Path(flag("--settings")).read_text(encoding="utf-8")), "pids": [os.getpid()]}
+expected = ["mcp_levelling_" + t for t in tools] + ["list_resources", "manage_task", "read_resource"]
+door = None
+def rpc(i, m, prm):
+    door.stdin.write(json.dumps({"jsonrpc": "2.0", "id": i, "method": m, "params": prm}) + "\n")
+    door.stdin.flush()
+    return json.loads(door.stdout.readline())
+def start_door():
+    global door
+    door = subprocess.Popen([command, *args], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    seen["pids"].append(door.pid)
+    rpc(1, "initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "agy", "version": "1.5.14"}})
+    door.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}) + "\n")
+    door.stdin.flush()
+def report():
+    Path(REPORT).write_text(json.dumps(seen), encoding="utf-8")
+def pb(f, payload):
+    key, out = (f << 3) | 2, b""
+    for n in (key, len(payload)):
+        while True:
+            b, n = n & 0x7F, n >> 7
+            out += bytes([b | (0x80 if n else 0)])
+            if not n:
+                break
+    return out + payload
+def write_store(offered):
+    conv = home / ".gemini" / "antigravity-cli" / "conversations"
+    conv.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(conv / (CID + ".db")))
+    con.execute("CREATE TABLE `gen_metadata` (`idx` integer,`data` blob,`size` integer NOT NULL DEFAULT 0,PRIMARY KEY (`idx`))")
+    kv = lambda k, v: pb(20, pb(1, k.encode()) + pb(2, v.encode()))
+    row0 = pb(2, b"") + pb(4, b"754d068f-6d11-463e-959a-cca300cd5f70") + pb(1, pb(19, b"gemini-4-neon") + kv("model_enum", "MODEL_PLACEHOLDER_M532") + kv("cascade_id", CID) + pb(21, b"Gemini 4 Neon (High)"))
+    schema = lambda t: (json.dumps({"additionalProperties": False, "properties": {"toolSummary": {"description": "Brief 2-5 word note.", "type": "string"}}, "required": ["toolSummary"], "type": "object"}) if t.startswith("mcp_")
+                        else json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "properties": {"ServerName": {"type": "string"}}, "type": "object"}))
+    decls = b"".join(pb(8, pb(1, t.encode()) + pb(2, ("Tool " + t + ".").encode()) + pb(3, schema(t).encode())) for t in offered)
+    account = pb(9, pb(10, pb(3, pb(1, pb(1, b"Door") + pb(5, pb(1, b"Door"))) + pb(1, pb(1, b"Tools") + b"".join(pb(5, pb(1, t.encode())) for t in offered)))))
+    call = pb(2, pb(1, b"zVUCa_qdJIOr5NoPmZahaA") + pb(6, pb(1, b"call_9805221034151757928") + pb(2, b"mcp_levelling_status") + pb(3, b'{"toolSummary":"Door status check"}')))
+    server = pb(3, pb(57, pb(3, pb(2, pb(1, b"levelling") + pb(2, command.encode()) + b"".join(pb(14, pb(1, t.encode())) for t in tools)))))
+    row1 = pb(2, b"") + server + pb(1, pb(1, b"<Door>\nYou may call only the tools of the levelling MCP server.\n</Door>") + call + decls + account)
+    con.execute("INSERT INTO gen_metadata VALUES (0, ?, 0)", (row0,))
+    con.execute("INSERT INTO gen_metadata VALUES (1, ?, 0)", (row1,))
+    con.commit()
+    con.close()
+def say(ev):
+    print(json.dumps(ev), flush=True)
+def init(agent="door", mode="request-review"):
+    say({"event": "init", "conversation_id": CID, "init": {"cwd": str(cwd), "agent": agent, "tools": INIT_TOOLS, "permission_mode": mode}})
+def step(i, **kw):
+    say({"event": "step_update", "step_update": {"conversation_id": CID, "step_index": i, **kw}})
+def reply(i, inp, out, think, cache, text=None):
+    if text:
+        step(i, state="ACTIVE", step_type="agent_response", text_delta=text)
+    step(i, state="DONE", step_type="agent_response", duration_seconds=1.74,
+         usage={"input_tokens": inp, "output_tokens": out, "thinking_tokens": think, "cache_read_tokens": cache, "total_tokens": inp + out})
+def tool(i, name, call=None, state="DONE", pause=0.0):
+    step(i, state="ACTIVE", step_type="tool", tool_name=name, tool_info={"name": name})
+    time.sleep(pause)
+    text = ""
+    if call:
+        r = rpc(10 + i, "tools/call", {"name": call, "arguments": {}})
+        text = r["result"]["content"][0]["text"][:120]
+    step(i, state=state, step_type="tool", tool_name=name, duration_seconds=1.14,
+         tool_info={"name": name, "output": "Created At: 2026-11-21T20:39:10-06:00\nCompleted At: 2026-11-21T20:39:12-06:00\n" + text})
+def result(usage, status="SUCCESS", **kw):
+    say({"event": "result", "result": {"conversation_id": CID, "status": status, "response": "Keeping the base.\n",
+                                       "duration_seconds": 5.25, "num_turns": 1, "usage": usage, **kw}})
+start_door()
+report()
+if MODE in ("ok", "extra_offered", "no_store", "denied"):
+    if MODE != "no_store":
+        write_store(expected + (["search_web", "invoke_subagent"] if MODE == "extra_offered" else []))
+    init()
+    step(0, state="DONE", step_type="user_input")
+    reply(1, 17782, 55, 28, 0)
+    tool(2, "mcp_levelling_status", call="status")
+    if MODE == "denied":
+        step(3, state="ACTIVE", step_type="tool", tool_name="mcp_levelling_status", tool_info={"name": "mcp_levelling_status"})
+        step(3, state="ERROR", step_type="tool", tool_name="mcp_levelling_status", tool_info={"name": "mcp_levelling_status",
+             "error": {"type": "TOOL_ERROR", "message": "permission check failed for mcp \"levelling/status\": user denied permission"}})
+    reply(4, 2149, 26, 20, 15730, text="Keeping the base.")
+    if MODE == "ok":  # a child left in the CLI's process group when it exits
+        sleeper = subprocess.Popen([sys.executable, "-I", "-c", "import time; time.sleep(60)"])
+        seen["pids"].append(sleeper.pid)
+        report()
+    u = {"input_tokens": 19931, "output_tokens": 81, "thinking_tokens": 48, "cache_read_tokens": 15730, "total_tokens": 20012}
+    result(u, **({"denied_actions": [{"action": "mcp", "display_name": "McpTool"}]} if MODE == "denied" else {}))
+elif MODE in ("active_only", "call_mcp", "strict_init", "no_init", "fixed_tool"):
+    write_store(expected)
+    if MODE == "no_init":
+        step(0, state="DONE", step_type="user_input")
+    else:
+        init(mode="strict" if MODE == "strict_init" else "request-review")
+        reply(1, 718, 410, 375, 0)
+    if MODE == "fixed_tool":  # a door call that succeeds, then one of agy's three fixed tools
+        tool(2, "mcp_levelling_status", call="status")
+        reply(3, 833, 26, 20, 0)
+        step(4, state="ACTIVE", step_type="tool", tool_name="list_resources", tool_info={"name": "list_resources"})
+    elif MODE == "active_only":
+        step(2, state="ACTIVE", step_type="tool", tool_name="invoke_subagent", tool_info={"name": "invoke_subagent"})
+    elif MODE == "call_mcp":
+        step(2, state="ACTIVE", step_type="tool", tool_name="call_mcp_tool", tool_info={"name": "call_mcp_tool",
+             "parameters": {"Arguments": {}, "ServerName": "levelling", "ToolName": "status"}})
+    time.sleep(30)
+elif MODE == "turns":
+    write_store(expected)
+    init()
+    step(0, state="DONE", step_type="user_input")
+    reply(1, 100, 5, 0, 0)
+    tool(2, "mcp_levelling_status", call="status")
+    reply(3, 100, 5, 0, 0)
+    tool(4, "mcp_levelling_status")
+    reply(5, 100, 5, 0, 0)
+    tool(6, "mcp_levelling_status", call="status", pause=0.5)  # the third reply's tool: its door call comes late
+    for k in range(3, 30):  # then in one burst: the driver stops at the right line however many one read brings
+        reply(3 + 2 * k, 100, 5, 0, 0, text="Next." if k == 3 else None)  # the fourth streams its text first, as live
+        tool(4 + 2 * k, "mcp_levelling_status")
+    result({"input_tokens": 1, "output_tokens": 1, "thinking_tokens": 0, "cache_read_tokens": 0, "total_tokens": 2})
+elif MODE in ("tokens", "dollars"):
+    write_store(expected)
+    init()
+    step(0, state="DONE", step_type="user_input")
+    reply(1, 17782, 40, 20, 0)
+    tool(2, "mcp_levelling_status", call="status")
+    for k in range(30):  # in one burst: the driver stops at the right line however many one read brings
+        reply(3 + 2 * k, 2149, 30, 20, 15730)
+        tool(4 + 2 * k, "mcp_levelling_status")
+    result({"input_tokens": 1, "output_tokens": 1, "thinking_tokens": 0, "cache_read_tokens": 0, "total_tokens": 2})
+elif MODE == "hang":
+    write_store(expected)
+    sleeper = subprocess.Popen([sys.executable, "-I", "-c", "import time; time.sleep(60)"])
+    seen["pids"].append(sleeper.pid)
+    report()
+    init()
+    step(0, state="DONE", step_type="user_input")
+    reply(1, 688, 55, 28, 0)
+    tool(2, "mcp_levelling_status", call="status")
+    Path(STOP_FILE).write_text("stop\n", encoding="utf-8")
+    time.sleep(60)
+elif MODE == "wall":
+    init()
+    time.sleep(30)
+elif MODE == "linger":
+    write_store(expected)
+    init()
+    step(0, state="DONE", step_type="user_input")
+    reply(1, 688, 55, 28, 0)
+    tool(2, "mcp_levelling_status", call="status")
+    reply(3, 833, 26, 20, 0, text="Keeping the base.")
+    result({"input_tokens": 900000, "output_tokens": 81, "thinking_tokens": 48, "cache_read_tokens": 0, "total_tokens": 900081})
+    time.sleep(30)
+'''
+
+
+def _agy_mock(tmp: Path, mode: str, stop_file: Optional[Path] = None) -> Tuple[Path, Path]:
+    """A mock agy for `mode`, and the file it reports what reached it to (it reads no variable of ours: the driver
+    builds its environment from nothing)."""
+    report = tmp / f"agy_seen_{mode}.json"
+    body = (AGY_MOCK.replace("__MODE__", repr(mode)).replace("__REPORT__", repr(str(report)))
+            .replace("__STOP__", repr(str(stop_file) if stop_file else "")).replace("__INIT_TOOLS__", repr(AGY_INIT_TOOLS)))
+    p = tmp / f"mock_agy_{mode}.py"
+    p.write_text(f"#!{sys.executable} -I\n{body}", encoding="utf-8")
+    os.chmod(p, 0o755)
+    return p, report
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        st = Path(f"/proc/{int(pid)}/stat").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return st.rsplit(")", 1)[-1].split()[0] not in ("Z", "X")
+
+
+def _agy_driver_checks(h: Any, tmp: Path, claude_wall_out: Optional[Dict[str, Any]] = None) -> None:
+    """4c: the Antigravity CLI driver against mock agy CLIs (no model call, no network)."""
+    def _sess(name: str) -> lses.LevelSession:
+        return lses.LevelSession(h, tmp / f"s_agy_{name}", reach="behaviour", backend="agy",
+                                 book_path=tmp / f"b_agy_{name}.jsonl", probe_on_start=False)
+
+    def _run(mode: str, *, ks: Optional[ldrv.KillSwitch] = None, stop_file: Optional[Path] = None,
+             **budget: Any) -> Tuple[Dict[str, Any], Dict[str, Any], float]:
+        mock, report = _agy_mock(tmp, mode, stop_file)
+        s = _sess(mode)
+        bud = {"max_turns": 8, "max_tokens": 200_000, "max_dollars": 0.5, "max_wall_seconds": 30.0,
+               "input_usd_per_mtok": 1.25, "output_usd_per_mtok": 10.0, **budget}
+        t_0 = time.monotonic()
+        out = ldrv.run_driver(s, "agy", driver_budget=ldrv.DriverBudget(**bud), kill_switch=ks,
+                              config={"agy_bin": str(mock), "allow_mock_cli": True, "agy_fixed_tools_accepted": True})
+        dt = time.monotonic() - t_0
+        try:
+            seen = json.loads(report.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            seen = {}
+        return out, seen, dt
+
+    # Refusals: agy's three fixed tools not accepted (as Codex is refused until probed), in the driver and in a
+    # study plan before calibration; no dollar ceiling; a dollar cap without prices; the home reach; an effort agy
+    # does not take; another build
+    priced = {"input_usd_per_mtok": 1.25, "output_usd_per_mtok": 10.0}
+    s_ref = _sess("refusals")
+    ok_mock, ok_report_path = _agy_mock(tmp, "ok")
+    check(refuses(lambda: ldrv.run_agy_cli_driver(s_ref, agy_bin=str(ok_mock), allow_mock_cli=True,
+                                                  driver_budget=ldrv.DriverBudget(max_dollars=1.0, **priced)),
+                  ldrv.DriverRefused, "not door tools only")
+          and refuses(lambda: ldrv.run_driver(s_ref, "agy", driver_budget=ldrv.DriverBudget(max_dollars=1.0, **priced),
+                                              config={"agy_bin": str(ok_mock), "allow_mock_cli": True,
+                                                      "agy_fixed_tools_accepted": "yes"}),
+                      ldrv.DriverRefused, "list_resources, read_resource and manage_task")
+          and "stopped at once as a driver failure and is not counted" in ldrv.AGY_FIXED_TOOLS_SAY
+          and not ok_report_path.exists(),
+          "4c: the Antigravity CLI driver is refused, as the Codex driver is, until the owner accepts the three tools "
+          "agy offers every print run (agy_fixed_tools_accepted=True, nothing else), and agy is never started; the "
+          "refusal says a session whose model calls one of them is stopped and not counted")
+    agy_plan = lambda cfg, **db: lev.EvalStudyPlan(  # noqa: E731
+        name="agy_plan", brief_name="pronoun_pull", sessions_per_arm=1,
+        driver_budget=ldrv.DriverBudget(**{"max_dollars": 1.0, **priced, **db}),
+        arms=(lev.EvalArm("g0", "agy", reach="behaviour", driver_config=cfg),))
+    check(refuses(lambda: lev.validate_study_plan(agy_plan({"allow_mock_cli": True}), check_paths=False),
+                  lev.EvalRefused, "not door tools only")
+          and isinstance(lev.validate_study_plan(agy_plan({"allow_mock_cli": True, "agy_fixed_tools_accepted": True}),
+                                                 check_paths=False), dict),
+          "4c: a study plan with an agy arm is refused before calibration unless its settings accept agy's three "
+          "fixed tools")
+    # The CLI reports no cost, so a dollar cap is counted from the given prices alone: none given is refused, in the
+    # driver and in a plan (the plan's cap or the study's); 0 for both, as for a sign-in quota, is taken
+    acc = {"allow_mock_cli": True, "agy_fixed_tools_accepted": True}
+    gm_plan = lambda total=None, **db: lev.EvalStudyPlan(  # noqa: E731
+        name="gm_plan", brief_name="pronoun_pull", sessions_per_arm=1, driver_budget=ldrv.DriverBudget(**db),
+        max_total_dollars=total,
+        arms=(lev.EvalArm("m0", "gemini", reach="behaviour", driver_config={"allow_mock_cli": True}),))
+    check(refuses(lambda: ldrv.run_agy_cli_driver(s_ref, agy_bin=str(ok_mock), allow_mock_cli=True,
+                                                  fixed_tools_accepted=True,
+                                                  driver_budget=ldrv.DriverBudget(max_dollars=1.0)),
+                  ldrv.DriverRefused, "input_usd_per_mtok and output_usd_per_mtok")
+          and refuses(lambda: ldrv.run_agy_cli_driver(s_ref, agy_bin=str(ok_mock), allow_mock_cli=True,
+                                                      fixed_tools_accepted=True,
+                                                      driver_budget=ldrv.DriverBudget(max_dollars=1.0,
+                                                                                      input_usd_per_mtok=-1.0,
+                                                                                      output_usd_per_mtok=0.0)),
+                      ldrv.DriverRefused, "0 or more")
+          and refuses(lambda: ldrv.run_gemini_cli_driver(s_ref, allow_mock_cli=True,
+                                                         driver_budget=ldrv.DriverBudget(max_dollars=1.0)),
+                      ldrv.DriverRefused, "input_usd_per_mtok and output_usd_per_mtok")
+          and not ok_report_path.exists()
+          and refuses(lambda: lev.validate_study_plan(agy_plan(acc, input_usd_per_mtok=None, output_usd_per_mtok=None),
+                                                      check_paths=False), lev.EvalRefused, "reports no cost")
+          and refuses(lambda: lev.validate_study_plan(gm_plan(max_dollars=1.0), check_paths=False),
+                      lev.EvalRefused, "reports no cost")
+          and refuses(lambda: lev.validate_study_plan(gm_plan(2.0), check_paths=False), lev.EvalRefused,
+                      "reports no cost")
+          and isinstance(lev.validate_study_plan(agy_plan(acc, input_usd_per_mtok=0.0, output_usd_per_mtok=0.0),
+                                                 check_paths=False), dict)
+          and isinstance(lev.validate_study_plan(gm_plan(), check_paths=False), dict),
+          "4c/4b: the Antigravity CLI and Gemini CLI drivers report no cost, so a dollar cap without both prices is "
+          "refused, in the driver and in a study plan (its own cap or the study's), never kept at a silent 0; prices "
+          "of 0 (a sign-in quota) are taken, and a mocked arm with no cap needs none")
+    check(refuses(lambda: ldrv.run_agy_cli_driver(s_ref, driver_budget=ldrv.DriverBudget(max_dollars=None),
+                                                  fixed_tools_accepted=True),
+                  ldrv.DriverRefused, "max_dollars"),
+          "4c: the Antigravity CLI driver is refused without an owner-approved max_dollars")
+    os.environ[lses.REACH_ENV] = "home"
+    try:
+        check(refuses(lambda: ldrv.run_agy_cli_driver(s_ref, driver_budget=ldrv.DriverBudget(max_dollars=1.0),
+                                                      allow_mock_cli=True, fixed_tools_accepted=True),
+                      ldrv.DriverRefused, "home reach"),
+              "4c: the Antigravity CLI driver is refused at the home reach")
+    finally:
+        os.environ.pop(lses.REACH_ENV, None)
+    old_mock, old_report = _agy_mock(tmp, "old_version")
+    check(refuses(lambda: ldrv.run_agy_cli_driver(s_ref, agy_bin=str(old_mock), allow_mock_cli=True,
+                                                  fixed_tools_accepted=True,
+                                                  driver_budget=ldrv.DriverBudget(max_dollars=1.0, **priced)),
+                  ldrv.DriverRefused, "says '1.5.13'") and not old_report.exists(),
+          "4c: an agy that is not 1.5.14 is refused before a session starts (the recipe is tied to that build), and "
+          "is never run with a prompt")
+    check(refuses(lambda: ldrv.run_agy_cli_driver(s_ref, agy_bin=str(old_mock), allow_mock_cli=True,
+                                                  fixed_tools_accepted=True, reasoning_effort="extreme",
+                                                  driver_budget=ldrv.DriverBudget(max_dollars=1.0, **priced)),
+                  ldrv.DriverRefused, "effort is one of"),
+          "4c: an effort agy does not take is refused")
+    s_ref.close()
+
+    # The door run: what reached the CLI, the outcome, the offered tools and the run's folder removed after it
+    planted = {"GEMINI_API_KEY": "gk_check", "AGY_ADC_AUTH": "1", "ANTHROPIC_API_KEY": "ak_check",
+               "HF_TOKEN": "hf_check", "OPENROUTER_API_KEY": "or_check", "GITHUB_TOKEN": "gh_check",
+               "XDG_CONFIG_HOME": str(tmp / "owner_config"), "SSL_CERT_FILE": "/nowhere"}
+    before = {k: os.environ.get(k) for k in planted}
+    os.environ.update(planted)
+    try:
+        ok_out, ok_seen, _ = _run("ok")
+    finally:
+        for k, v in before.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    door_names = [str(t["name"]) for t in lmcp.tools_for_session(_sess("names"))]
+    expected = sorted({f"mcp_levelling_{t}" for t in door_names} | {"list_resources", "manage_task", "read_resource"})
+    run_home = Path(str(ok_seen.get("home") or "/nonexistent/home"))
+    want_env = {k for k in ("PATH", "USER", "LOGNAME", "LANG", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR")
+                if os.environ.get(k)} | {"HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME",
+                                         "XDG_STATE_HOME", "TMPDIR", "NO_COLOR"}
+    argv = [str(a) for a in ok_seen.get("argv") or []]
+
+    def _flag(name: str) -> Optional[str]:
+        return argv[argv.index(name) + 1] if name in argv[:-1] else None
+
+    check(set(ok_seen.get("env") or []) - {"LC_CTYPE"} == want_env and run_home != Path.home()
+          and run_home.name == "home" and run_home.parent.name.startswith("theodolite_agy_")
+          and ok_seen.get("stamp") is True,
+          f"4c: agy starts with an environment built from nothing: a home of the run's own (with its update stamp), "
+          f"its own XDG folders and TMPDIR, and only {', '.join(sorted(want_env & set(ldrv.AGY_ENV_PASS)))} passed "
+          f"(no API key, ADC switch, token, cert path or the owner's XDG folders; others that reached it: "
+          f"{sorted(set(ok_seen.get('env') or []) - want_env - {'LC_CTYPE'})})")
+    check(argv[:2] == ["-p", argv[1] if len(argv) > 1 else ""] and len(argv) > 1 and argv[1].startswith("You are")
+          and _flag("--agent") == "door" and _flag("--output-format") == "stream-json"
+          and "--disable-slash-commands" in argv and _flag("--print-timeout") == "30s"
+          and str(_flag("--log-file") or "").startswith(str(run_home.parent))
+          and not ({"--dangerously-skip-permissions", "--mode", "--add-dir", "--sandbox"} & set(argv)),
+          f"4c: agy's command line is print mode with the door agent, stream-json, no slash commands, a log and a "
+          f"print timeout of the run's own, and no permission skip, mode or extra folder ({argv[2:12]})")
+    check(ok_seen.get("settings") == {
+        "agentMode": "", "toolPermission": "request-review", "allowNonWorkspaceAccess": False,
+        "enableTerminalSandbox": True,
+        "permissions": {"allow": ["mcp(levelling/*)"],
+                        "deny": ["command(*)", "read_file(*)", "write_file(*)", "read_url(*)", "execute_url(*)",
+                                 "download_url(*)"]}},
+          "4c: agy's settings allow mcp(levelling/*) alone, deny every other permission kind, and pin request-review, "
+          "not Auto (agentMode empty), as probed live")
+    md = str(ok_seen.get("door_md") or "")
+    check(ok_seen.get("modes") == ["0o555", "0o555", "0o555", "0o444"] and ok_seen.get("mcp_config") is False
+          and all(f"\n{k}\n" in md for k in ("mainAgent: true", "subagent: false", "excludeDefaultComponents: true",
+                                             "inheritCustomizations: false", "tools: []"))
+          and ok_seen.get("tools") == door_names and md.count("eager: true") == len(door_names),
+          f"4c: the run's working folder is read-only and holds only the door agent: no default components or "
+          f"customizations, the door's {len(door_names)} tools each eager, no .agents/mcp_config.json")
+    check(ok_out["stop_reason"] == "kept_base_abstention" and ok_out["driver_failure"] is None
+          and ok_out["door"]["ok"] == 1 and ok_out["door"]["offered_tools"] == expected
+          and ok_out["door"]["agy_version"] == "1.5.14" and ok_out["book"]["verified"]
+          and lev.why_not_counted(ok_out) is None,
+          f"4c: a door run over the socket bridge ends as an abstention that counts, the tools offered read from "
+          f"its own conversation store are exactly the door's and agy's three fixed ones "
+          f"({ok_out['stop_reason']}, {ok_out['door'].get('offered_tools')})")
+    u = ok_out["usage"]
+    want_usd = ((17782 + 2149 + 15730) * 1.25 + 81 * 10.0) / 1e6
+    check(u["prompt_tokens"] == 17782 + 2149 + 15730 and u["completion_tokens"] == 55 + 26 == 81
+          and u["reasoning_tokens"] == 28 + 20 and u["turns"] == 2
+          and (u.get("agy_usage") or {}).get("cache_read_tokens") == 15730
+          and abs(float(u["estimated_dollars"]) - want_usd) < 1e-6,
+          f"4c: agy's usage counts cache-read tokens in the prompt, and its output as the completion, which already "
+          f"holds the thinking tokens (a reply's total is input plus output), so the completion is agy's own 81, not "
+          f"81 + 48; dollars at the given prices ({u['prompt_tokens']} + {u['completion_tokens']} tokens over "
+          f"{u['turns']} replies, ${float(u['estimated_dollars']):.6f})")
+    ok_pids = [int(p) for p in ok_seen.get("pids") or []]
+    t_w = time.monotonic()
+    while any(_pid_alive(p) for p in ok_pids) and time.monotonic() - t_w < 3.0:
+        time.sleep(0.05)
+    check(ok_out["door"]["run_files_removed"] is True and not run_home.parent.exists()
+          and len(ok_pids) == 3 and not any(_pid_alive(p) for p in ok_pids),
+          f"4c: the run's folder (its home with agy's conversation store, its working folder, log and settings) is "
+          f"removed after the run, and a child the CLI left in its process group when it exited is killed "
+          f"({len(ok_pids)} processes, {sum(_pid_alive(p) for p in ok_pids)} left)")
+
+    # Offered tools that are not exactly the door's, or that cannot be read, fail the session before it counts
+    ex_out, _, _ = _run("extra_offered")
+    ns_out, _, _ = _run("no_store")
+    check(ex_out["stop_reason"] == "driver_failure" and "search_web" in str(ex_out["driver_failure"])
+          and "invoke_subagent" in str(ex_out["driver_failure"]) and lev.why_not_counted(ex_out) is not None
+          and ns_out["stop_reason"] == "driver_failure" and "could not be read" in str(ns_out["driver_failure"])
+          and lev.why_not_counted(ns_out) is not None,
+          f"4c: a run whose offered tools are more than the door's, or whose conversation store cannot be read, is a "
+          f"driver failure naming them, not counted ({ex_out['driver_failure']!r}; {ns_out['driver_failure']!r})")
+
+    # The guard acts on the first sight of a tool that is not the door's (ACTIVE, never DONE), call_mcp_tool too,
+    # and on a first line that is not the door agent's init line in request-review mode
+    guard = {m: _run(m) for m in ("active_only", "call_mcp", "strict_init", "no_init", "fixed_tool")}
+    check(all(o["stop_reason"] == "driver_failure" and dt < 4.0 and lev.why_not_counted(o) is not None
+              for o, _, dt in guard.values())
+          and "invoke_subagent" in str(guard["active_only"][0]["driver_failure"])
+          and "call_mcp_tool" in str(guard["call_mcp"][0]["driver_failure"])
+          and "init line" in str(guard["strict_init"][0]["driver_failure"])
+          and "init line" in str(guard["no_init"][0]["driver_failure"])
+          and "'list_resources' (one of the three agy offers every print run)" in str(guard["fixed_tool"][0]["driver_failure"])
+          and guard["fixed_tool"][0]["door"]["ok"] == 1,
+          f"4c: a non-door tool seen only as ACTIVE (never DONE), a call_mcp_tool, one of agy's three fixed tools "
+          f"after a door call that succeeded, a strict-mode or missing init line each stop the run at once as a "
+          f"driver failure that is not counted ({', '.join(f'{m} {dt:.1f} s' for m, (_, _, dt) in guard.items())})")
+    dn_out, _, _ = _run("denied")
+    check(dn_out["stop_reason"] == "driver_failure" and "denied" in str(dn_out["driver_failure"])
+          and dn_out["door"]["denied"] == 1 and lev.why_not_counted(dn_out) is not None,
+          f"4c: a result reporting denied_actions is a driver failure, though a door call succeeded "
+          f"({dn_out['driver_failure']!r})")
+
+    # Caps: turns from the stream, tokens and dollars with cache reads and thinking, the wall clock
+    tu_out, _, _ = _run("turns", max_turns=3)
+    tk_out, _, _ = _run("tokens", max_tokens=40_000)
+    dl_out, _, _ = _run("dollars", max_tokens=10_000_000, max_dollars=0.05, input_usd_per_mtok=1.25,
+                        output_usd_per_mtok=10.0)
+    wl_out, _, wl_dt = _run("wall", max_wall_seconds=1.0)
+    check(tu_out["stop_reason"] == "budget_turns" and tu_out["usage"]["turns"] == 3 and tu_out["door"]["ok"] == 2
+          and tu_out["usage"]["prompt_tokens"] == 300 + 105 and tu_out["usage"]["completion_tokens"] == 15
+          and tu_out["usage"].get("cut_reply_prompt_floor") == 105 and "floor of 105 tokens" in tu_out["notes"],
+          f"4c: max_turns is kept from the stream, line by line (27 replies printed in one burst after the third): "
+          f"the tool the third reply asked for runs (its door call comes 0.5 s late), and the run is stopped at the "
+          f"first line of the fourth reply (a streamed text line, as live), which is no turn but whose request is "
+          f"counted at a floor, the last reply's prompt and output ({tu_out['usage']['turns']} turns, "
+          f"{tu_out['door']['ok']} door calls, {tu_out['usage']['prompt_tokens']} prompt tokens; "
+          f"{tu_out['stop_reason']})")
+    # The same rule read line by line from agy's own event shapes: a tool step after the last allowed reply does not
+    # stop the run; a reply past the cap whose DONE line (with its usage) comes first is counted exactly
+    cap = ldrv._AgyStream(["mcp_levelling_status"], 1)
+    for ev in ({"event": "init", "init": {"agent": "door", "permission_mode": "request-review", "tools": []}},
+               {"event": "step_update", "step_update": {"step_index": 0, "step_type": "user_input", "state": "DONE"}},
+               {"event": "step_update", "step_update": {"step_index": 1, "step_type": "agent_response", "state": "DONE",
+                                                        "usage": {"input_tokens": 688, "output_tokens": 55,
+                                                                  "thinking_tokens": 28, "cache_read_tokens": 0}}},
+               {"event": "step_update", "step_update": {"step_index": 2, "step_type": "tool", "state": "ACTIVE",
+                                                        "tool_name": "mcp_levelling_status"}}):
+        cap.feed_line(json.dumps(ev).encode())
+    after_tool = cap.past_turn_cap
+    cap.feed_line(json.dumps({"event": "step_update", "step_update": {
+        "step_index": 3, "step_type": "agent_response", "state": "DONE",
+        "usage": {"input_tokens": 833, "output_tokens": 26, "thinking_tokens": 20, "cache_read_tokens": 400}}}).encode())
+    check(after_tool is False and cap.past_turn_cap is True and cap.turns() == 1 and cap.failure is None
+          and cap.tokens() == (688 + 833 + 400, 55 + 26) and cap.cut_prompt_floor() == 0,
+          f"4c: at max_turns=1 the one reply's tool step does not stop the run, and a reply past the cap whose usage "
+          f"agy printed counts exactly, as no turn (tokens {cap.tokens()}, turns {cap.turns()})")
+    check(tk_out["stop_reason"] == "budget_tokens" and tk_out["usage"]["turns"] == 3
+          and dl_out["stop_reason"] == "budget_dollars" and dl_out["usage"]["turns"] == 3,
+          f"4c: the token and dollar caps count cache reads and thinking: stopped after {tk_out['usage']['turns']} and "
+          f"{dl_out['usage']['turns']} replies of 2,149 input and 15,730 cached tokens ({tk_out['stop_reason']}, "
+          f"{dl_out['stop_reason']}; counting input and output alone, they would stop only after 12 and 11)")
+    check(wl_out["stop_reason"] == "budget_wall" and wl_dt < 4.0 and wl_out["driver_failure"] is None
+          and wl_out["door"]["calls"] == 0,
+          f"4c: the wall cap kills a run that hangs ({wl_dt:.1f} s), and one stopped before any model reply or door "
+          f"call is no driver failure ({wl_out['driver_failure']!r})")
+
+    # A run that printed its result line has ended: a cap its result's own figures pass does not relabel it, and one
+    # that does not exit is killed after a grace (0.5 s here) and judged by its result
+    grace = ldrv.CLI_EXIT_GRACE_SECONDS
+    ldrv.CLI_EXIT_GRACE_SECONDS = 0.5
+    try:
+        lg_out, _, lg_dt = _run("linger", max_tokens=100_000)
+    finally:
+        ldrv.CLI_EXIT_GRACE_SECONDS = grace
+    check(lg_out["stop_reason"] == "kept_base_abstention" and lg_out["driver_failure"] is None and lg_dt < 5.0
+          and lev.why_not_counted(lg_out) is None and lg_out["usage"]["prompt_tokens"] == 900000
+          and "had not exited" in lg_out["notes"],
+          f"4c: a run that printed its result is judged by it: its result's 900,000 tokens past the cap do not "
+          f"relabel it, and a CLI that does not exit after it is killed after a grace ({lg_out['stop_reason']}, "
+          f"{lg_dt:.1f} s)")
+
+    # STOP: the kill switch's own words, the process group killed (the CLI, the door's MCP child and a child of its
+    # own), nothing left running
+    stop_f = tmp / "STOP_agy"
+    st_out, st_seen, st_dt = _run("hang", ks=ldrv.KillSwitch(stop_file=stop_f), stop_file=stop_f, max_wall_seconds=60.0,
+                                  input_usd_per_mtok=0.0, output_usd_per_mtok=0.0)
+    pids = [int(p) for p in st_seen.get("pids") or []]
+    t_w = time.monotonic()
+    while any(_pid_alive(p) for p in pids) and time.monotonic() - t_w < 3.0:
+        time.sleep(0.05)
+    left = [p for p in pids if _pid_alive(p)]
+    check(st_out["stop_reason"] == "killed" and len(pids) == 3 and not left and st_dt < 10.0
+          and "stop file present" in st_out["notes"] and st_out["driver_failure"] is None
+          and st_out["door"]["ok"] == 1 and not Path(str(st_seen.get("home") or "/x/home")).parent.exists()
+          and st_out["usage"]["estimated_dollars"] == 0.0,
+          f"4c: STOP kills the agy process group: the CLI, the door's MCP child and its own child are gone "
+          f"({len(pids)} processes, {len(left)} left after {st_dt:.1f} s), and the outcome says the kill switch "
+          f"stopped it (run at prices of 0, as on a sign-in quota: ${st_out['usage']['estimated_dollars']})")
+
+    # Its stop reasons are the names level_eval counts by, so its sessions are counted like every other driver's
+    names = {o["stop_reason"] for o in (ok_out, ex_out, ns_out, dn_out, tu_out, tk_out, dl_out, wl_out, st_out, lg_out,
+                                        *(g[0] for g in guard.values()))}
+    check(names <= {"kept_base_abstention", "driver_failure", "killed", *ldrv.BUDGET_STOPS}
+          and "kill switch" in str(lev.why_not_counted(st_out))
+          and all(lev.why_not_counted(o) is None for o in (tu_out, tk_out, dl_out))
+          and (claude_wall_out is None or lev.why_not_counted(wl_out) == lev.why_not_counted(claude_wall_out)),
+          f"4c: agy's stop reasons are level_eval's own ({sorted(names)}): STOP is not counted, a cap after a door call "
+          f"counts, and a wall stop before any door call reads as the Claude driver's does "
+          f"({lev.why_not_counted(wl_out)!r})")
+
+    # A study with an agy arm says in its limitations that the arm was not door tools only, that its runs reached a
+    # second model, and that its dollars came from the plan's prices; one without says none of it
+    arm = lambda fam: {"arm_id": fam, "driver_family": fam, "driver_model": None, "reach": "behaviour",  # noqa: E731
+                       "mode": "weight_edit", "bare": False, "reasoning_effort": None, "driver_config": {}}
+    lim_agy = " ".join(lev.summarize_study([{**ok_out, "arm_id": "agy", "replicate": 0, "run_id": "agy_r0"}],
+                                           {"name": "ag", "sessions_per_arm": 1, "arms": [arm("agy")]})["limitations"])
+    lim_cl = " ".join(lev.summarize_study([{**ok_out, "arm_id": "claude", "replicate": 0, "run_id": "cl_r0"}],
+                                          {"name": "cl", "sessions_per_arm": 1, "arms": [arm("claude")]})["limitations"])
+    check(all(w in lim_agy for w in ("not door tools only", "list_resources, read_resource and manage_task",
+                                     "safety-monitor model", "counted from the plan's prices"))
+          and not any(w in lim_cl for w in ("not door tools only", "safety-monitor", "counted from the plan's prices")),
+          "4c: a study with an agy arm says in its limitations that the arm's sessions were offered agy's three fixed "
+          "tools as well, that a call to one stopped the session, that its runs reached agy's own safety-monitor "
+          "model, and that its dollars came from the plan's prices; a study without one says none of it")
+
+
+GEMINI_CAP_MOCK = r'''
+import json, os, subprocess, sys, time
+from pathlib import Path
+MODE, CALL, STOP_FILE = __MODE__, __CALL__, __STOP__
+ghome = Path(os.environ["GEMINI_CLI_HOME"])
+cfg = json.loads((ghome / ".gemini" / "settings.json").read_text())
+srv = cfg["mcpServers"]["levelling"]
+mcp = subprocess.Popen([srv["command"], *srv["args"]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+def rpc(i, m, p=None):
+    mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "id": i, "method": m, "params": p or {}}) + "\n")
+    mcp.stdin.flush()
+    return json.loads(mcp.stdout.readline())
+def say(ev):
+    print(json.dumps(ev), flush=True)
+rpc(1, "initialize", {"protocolVersion": "2025-06-18"})
+say({"type": "init", "session_id": "g1", "model": "gemini-mock"})
+say({"type": "tool_use", "tool_name": "mcp_levelling_" + CALL["name"], "tool_id": "t1", "parameters": CALL["arguments"]})
+r = rpc(2, "tools/call", CALL)
+say({"type": "tool_result", "tool_id": "t1", "status": "error" if r["result"].get("isError") else "success", "output": "..."})
+stats = {"input_tokens": 500000, "output_tokens": 50000, "total_tokens": 560000, "cached": 400000, "input": 100000, "tool_calls": 1}
+if MODE == "turn_limit":
+    say({"type": "result", "status": "error", "error": {"type": "FatalTurnLimitedError",
+         "message": "Reached max session turns for this session. Increase the number of turns by specifying maxSessionTurns in settings.json."},
+         "stats": stats})
+    mcp.stdin.close(); mcp.wait(); sys.exit(53)
+sleeper = ""
+if MODE == "spend":  # a child left in the CLI's process group when it exits
+    sleeper = " sleeper=%d" % subprocess.Popen([sys.executable, "-I", "-c", "import time; time.sleep(60)"]).pid
+say({"type": "message", "role": "assistant", "content": "Done." + sleeper})
+say({"type": "result", "status": "success", "stats": stats})
+if MODE == "linger":  # the run has ended (its result line read by then); STOP comes while the CLI is closing down
+    time.sleep(0.5)
+    Path(STOP_FILE).write_text("stop\n", encoding="utf-8")
+    time.sleep(30)
+mcp.stdin.close(); mcp.wait()
+'''
+
+
+def _gemini_cap_checks(h: Any, tmp: Path, brief: Any, bars: Any, cal_book: Path) -> None:
+    """4b: the Gemini CLI driver's settings and its caps (usage comes only in the result line of Gemini CLI 0.70)."""
+    _ghome, _cwd, _pol = ldrv._prepare_gemini_session_home(tmp / "gm_settings", {"levelling": {"command": "x"}},
+                                                           max_turns=7)
+    g_set = json.loads((_ghome / ".gemini" / "settings.json").read_text(encoding="utf-8"))
+    check((g_set.get("privacy") or {}).get("usageStatisticsEnabled") is False
+          and (g_set.get("model") or {}).get("maxSessionTurns") == 7,
+          "4b: the Gemini driver's settings turn usage statistics off and give the CLI the budget's turns "
+          "(model.maxSessionTurns)")
+    os.chmod(_cwd, 0o700)
+
+    def _mock_g(mode: str, call: Dict[str, Any], stop_file: str = "") -> Path:
+        p = tmp / f"mock_gemini_{mode}.py"
+        p.write_text(f"#!{sys.executable} -I\n"
+                     + GEMINI_CAP_MOCK.replace("__MODE__", repr(mode)).replace("__CALL__", repr(call))
+                     .replace("__STOP__", repr(stop_file)), encoding="utf-8")
+        os.chmod(p, 0o755)
+        return p
+
+    priced = {"max_turns": 6, "max_tokens": 1000, "max_dollars": 1.0, "max_wall_seconds": 60.0,
+              "input_usd_per_mtok": 1.25, "output_usd_per_mtok": 10.0}
+    s_sp = lses.LevelSession(h, tmp / "s_gm_spend", reach="behaviour", backend="gemini",
+                             book_path=tmp / "b_gm_spend.jsonl", probe_on_start=False)
+    sp_out = ldrv.run_gemini_cli_driver(s_sp, gemini_bin=str(_mock_g("spend", {"name": "status", "arguments": {}})),
+                                        allow_mock_cli=True, driver_budget=ldrv.DriverBudget(**priced))
+    caps = sp_out.get("caps_after_run") or {}
+    check(sp_out["stop_reason"] == "kept_base_abstention" and sp_out["driver_failure"] is None
+          and caps.get("passed") == ["tokens", "dollars"] and caps.get("checked") == ["tokens", "dollars"]
+          and sp_out["usage"]["completion_tokens"] == 60000 and "after it ended" in sp_out["notes"]
+          and lev.why_not_counted(sp_out) is None,
+          f"4b: a Gemini run that passed its token and dollar caps is not relabelled: its caps were checked after it "
+          f"ended and it says which it passed ({sp_out['stop_reason']}, passed {caps.get('passed')}; completion "
+          f"{sp_out['usage']['completion_tokens']} counts thinking)")
+    m_sl = re.search(r"sleeper=(\d+)", str(sp_out.get("notes") or ""))
+    sl_pid = int(m_sl.group(1)) if m_sl else -1
+    t_w = time.monotonic()
+    while sl_pid > 0 and _pid_alive(sl_pid) and time.monotonic() - t_w < 3.0:
+        time.sleep(0.05)
+    check(sl_pid > 0 and not _pid_alive(sl_pid),
+          f"4b: a child the Gemini CLI left in its process group when it exited is killed with the run "
+          f"(pid {sl_pid}, alive {sl_pid > 0 and _pid_alive(sl_pid)})")
+    sp_sum = lev.summarize_study(
+        [{**sp_out, "arm_id": "gm", "replicate": 0, "run_id": "gm_r0"}],
+        {"name": "gm", "sessions_per_arm": 1, "arms": [{"arm_id": "gm", "driver_family": "gemini", "driver_model": None,
+                                                        "reach": "behaviour", "mode": "weight_edit", "bare": False,
+                                                        "reasoning_effort": None, "driver_config": {}}]})
+    sp_rep = (sp_sum["arms"][0].get("replicates") or [{}])[0]
+    check(sp_rep.get("caps_passed_after_run") == ["tokens", "dollars"] and sp_rep.get("counted") is True
+          and "caps_passed_after_run" in " ".join(sp_sum.get("limitations") or []),
+          f"4b: the study's session row names the caps a Gemini run passed after it ended, and the session still counts "
+          f"({sp_rep.get('caps_passed_after_run')}, counted {sp_rep.get('counted')})")
+
+    bk_gc = tmp / "b_gm_claim.jsonl"
+    shutil.copy2(cal_book, bk_gc)
+    s_gc = lses.LevelSession(
+        h, tmp / "s_gm_claim", reach="behaviour", backend="gemini", book_path=bk_gc, brief=brief, bars=bars,
+        probe_on_start=False, budget=lses.SessionBudget(min_controls=1),
+        claim_design={"n_target": 4, "n_neutral": 2, "n_near": 2, "n_panel": 2, "rows": {"small": 12, "large": 16},
+                      "controls_override": 2, "match_tolerance": 20.0},
+    )
+    gc_edit = {"terms": [{"layer": h.n_layers - 1, "silence": [0, 1, 2]}]}
+    gc_out = ldrv.run_gemini_cli_driver(
+        s_gc, gemini_bin=str(_mock_g("claim", {"name": "claim", "arguments": {"edit": gc_edit}})),
+        allow_mock_cli=True, driver_budget=ldrv.DriverBudget(**{**priced, "max_dollars": 100.0}))
+    check(gc_out["stop_reason"] == "claimed" and gc_out["submitted"] is True
+          and (gc_out.get("caps_after_run") or {}).get("passed") == ["tokens"],
+          f"4b: a claimed Gemini run that passed its token cap stays claimed, with the cap it passed named apart "
+          f"({gc_out['stop_reason']}, {gc_out['verdict']}, passed {(gc_out.get('caps_after_run') or {}).get('passed')})")
+
+    s_tl = lses.LevelSession(h, tmp / "s_gm_turns", reach="behaviour", backend="gemini",
+                             book_path=tmp / "b_gm_turns.jsonl", probe_on_start=False)
+    tl_out = ldrv.run_gemini_cli_driver(s_tl, gemini_bin=str(_mock_g("turn_limit", {"name": "status", "arguments": {}})),
+                                        allow_mock_cli=True,
+                                        driver_budget=ldrv.DriverBudget(max_turns=1, max_dollars=1.0, max_wall_seconds=60.0,
+                                                                        input_usd_per_mtok=0.0, output_usd_per_mtok=0.0))
+    check(tl_out["stop_reason"] == "budget_turns" and tl_out["driver_failure"] is None
+          and lev.why_not_counted(tl_out) is None,
+          f"4b: the CLI ending a run at its own turn cap (FatalTurnLimitedError) is budget_turns, counted like any "
+          f"driver's turn cap ({tl_out['stop_reason']})")
+
+    # A run that printed its result line has ended: STOP while the CLI closes down does not relabel it, and a CLI
+    # that does not exit is killed after a grace (0.5 s here) and judged by that line
+    stop_g = tmp / "STOP_gemini"
+    s_lg = lses.LevelSession(h, tmp / "s_gm_linger", reach="behaviour", backend="gemini",
+                             book_path=tmp / "b_gm_linger.jsonl", probe_on_start=False)
+    grace = ldrv.CLI_EXIT_GRACE_SECONDS
+    ldrv.CLI_EXIT_GRACE_SECONDS = 0.5
+    t_lg = time.monotonic()
+    try:
+        lg_out = ldrv.run_gemini_cli_driver(
+            s_lg, gemini_bin=str(_mock_g("linger", {"name": "status", "arguments": {}}, str(stop_g))),
+            allow_mock_cli=True, kill_switch=ldrv.KillSwitch(stop_file=stop_g),
+            driver_budget=ldrv.DriverBudget(**{**priced, "max_tokens": 10_000_000, "max_dollars": 100.0}))
+    finally:
+        ldrv.CLI_EXIT_GRACE_SECONDS = grace
+    lg_dt = time.monotonic() - t_lg
+    check(lg_out["stop_reason"] == "kept_base_abstention" and lg_out["driver_failure"] is None
+          and lev.why_not_counted(lg_out) is None and lg_dt < 10.0 and "had not exited" in lg_out["notes"]
+          and stop_g.exists(),
+          f"4b: a Gemini run that printed its result line is judged by it: STOP while the CLI closes down does not "
+          f"relabel it, and a CLI that does not exit is killed after a grace ({lg_out['stop_reason']}, {lg_dt:.1f} s)")
 
 
 def main() -> int:
@@ -1927,8 +2623,9 @@ req = "\\n".join([
 ]) + "\\n"
 p = subprocess.run([cfg["command"], *cfg["args"]], input=req, text=True, capture_output=True, timeout=10)
 ok_mcp = (p.returncode == 0 and "harness_card" in p.stdout)
+sleeper = subprocess.Popen([sys.executable, "-I", "-c", "import time; time.sleep(60)"]).pid  # left in its process group
 print(json.dumps({{"type":"assistant","message":{{"id":"m1","model":"claude-mock-4","usage":{{"input_tokens":120,"output_tokens":45}}}}}}), flush=True)
-seen = {{"ok_mcp": ok_mcp, "leaked": leaked, "cwd": os.getcwd(), "argv": sys.argv[1:], "switches": switches}}
+seen = {{"ok_mcp": ok_mcp, "leaked": leaked, "cwd": os.getcwd(), "argv": sys.argv[1:], "switches": switches, "sleeper": sleeper}}
 print(json.dumps({{"type":"result","total_cost_usd":0.0123,"num_turns":1,"is_error":False,"result":json.dumps(seen)}}), flush=True)
 """)
             with _env(**planted):
@@ -1952,7 +2649,16 @@ print(json.dumps({{"type":"result","total_cost_usd":0.0123,"num_turns":1,"is_err
                   and cl_out["harness_card"]["driver_model"] == "claude-mock-4"
                   and abs(cl_out["usage"]["estimated_dollars"] - 0.0123) < 1e-6
                   and cl_out["stop_reason"] == "kept_base_abstention" and (cl_out.get("door") or {}).get("ok") == 1,
-                  "4: ClaudeCLIDriver bridges the door to the CLI's MCP child, pins cwd=work_dir, and logs the CLI's cost")
+                  "4: ClaudeCLIDriver bridges the door to the CLI's MCP child, pins cwd=work_dir, and logs the CLI's cost"
+                  + ("" if cl_seen else " (the mock CLI reported nothing; its stderr ends: "
+                     + repr(((s_cl.session_dir / "cli_stderr.log").read_text(encoding="utf-8", errors="replace")
+                             if (s_cl.session_dir / "cli_stderr.log").exists() else "")[-400:]) + ")"))
+            cl_sl = int(cl_seen.get("sleeper") or -1)
+            t_w = time.monotonic()
+            while cl_sl > 0 and _pid_alive(cl_sl) and time.monotonic() - t_w < 3.0:
+                time.sleep(0.05)
+            check(cl_sl > 0 and not _pid_alive(cl_sl),
+                  f"4: a child Claude Code left in its process group when it exited is killed with the run (pid {cl_sl})")
             check(cl_seen.get("leaked") == [] and (cl_seen.get("switches") or {}).get("CLAUDE_CODE_DISABLE_AUTO_MEMORY") == "1",
                   f"4: ClaudeCLIDriver starts claude with an allowlisted environment: none of {len(watched)} planted and "
                   f"study variables reaches it (GITHUB_TOKEN, OPENAI_API_KEY and the book's path among them), and "
@@ -2568,7 +3274,8 @@ time.sleep(5)
                                         book_path=tmp / "b_gm_ex.jsonl", probe_on_start=False)
             gm_ex = ldrv.run_gemini_cli_driver(
                 s_gm_ex, gemini_bin=str(mock_gem_extra), allow_mock_cli=True,
-                driver_budget=ldrv.DriverBudget(max_turns=6, max_dollars=1.0, max_wall_seconds=30.0),
+                driver_budget=ldrv.DriverBudget(max_turns=6, max_dollars=1.0, max_wall_seconds=30.0,
+                                                input_usd_per_mtok=1.25, output_usd_per_mtok=5.0),
             )
             check(gm_ex["stop_reason"] == "driver_failure" and "read_file" in (gm_ex.get("driver_failure") or ""),
                   f"4b: Gemini CLI driver kills session if a non-door tool succeeds: {gm_ex['stop_reason']} {gm_ex.get('driver_failure')}")
@@ -2628,7 +3335,8 @@ try:
                              book_path=work / "b_gm_real.jsonl", probe_on_start=False)
     out = ldrv.run_gemini_cli_driver(
         sess, model="gemini-2.5-pro", gemini_bin=gem_bin,
-        driver_budget=ldrv.DriverBudget(max_turns=6, max_tokens=1_000_000, max_dollars=0.5, max_wall_seconds=120.0),
+        driver_budget=ldrv.DriverBudget(max_turns=6, max_tokens=1_000_000, max_dollars=0.5, max_wall_seconds=120.0,
+                                        input_usd_per_mtok=1.25, output_usd_per_mtok=10.0),
     )
     door_tools = sorted("mcp_levelling_" + t for t in sess.allowed_tools())
     tool_sets = [sorted(fn["name"] for t in (r.get("tools") or []) for fn in (t.get("functionDeclarations") or []))
@@ -2674,102 +3382,12 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                       and g_out.get("driver_failure") is None and g_out.get("book_ok") is True,
                       f"4b: real gemini CLI door call succeeded, built-in read_file refused, no GEMINI.md leaked: {g_out}")
 
-            # 4c. Antigravity CLI driver: allowlist, refusals, mock CLI happy path, and extra-tool kill guard
-            os.environ["HF_TOKEN"] = "hf_secret_check"
-            os.environ["OPENROUTER_API_KEY"] = "or_secret_check"
-            os.environ["ANTHROPIC_API_KEY"] = "ant_secret_check"
-            try:
-                a_env = ldrv.agy_child_env()
-                check("HF_TOKEN" not in a_env and "OPENROUTER_API_KEY" not in a_env
-                      and "ANTHROPIC_API_KEY" not in a_env and "THEODOLITE_SCIENTIST_REACH" not in a_env,
-                      "4c: agy_child_env strips unrelated API keys and THEODOLITE_SCIENTIST_REACH")
-            finally:
-                for k in ("HF_TOKEN", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"):
-                    os.environ.pop(k, None)
+            # 4b (caps). The Gemini driver's settings, its caps checked after the run, and the CLI's own turn cap
+            _gemini_cap_checks(h, tmp, brief, bars, cal_book)
 
-            sess_a0 = lses.LevelSession(h, tmp / "s_agy_ref", reach="behaviour", backend="agy",
-                                        book_path=tmp / "b_agy_ref.jsonl", probe_on_start=False)
-            check(refuses(lambda: ldrv.run_agy_cli_driver(sess_a0, driver_budget=ldrv.DriverBudget(max_dollars=None)),
-                          ldrv.DriverRefused),
-                  "4c: AgyCLIDriver refused without owner-approved max_dollars")
-
-            os.environ["THEODOLITE_SCIENTIST_REACH"] = "home"
-            try:
-                check(refuses(lambda: ldrv.run_agy_cli_driver(sess_a0, driver_budget=ldrv.DriverBudget(max_dollars=1.0),
-                                                              allow_mock_cli=True), ldrv.DriverRefused),
-                      "4c: AgyCLIDriver refused when THEODOLITE_SCIENTIST_REACH=home")
-            finally:
-                os.environ.pop("THEODOLITE_SCIENTIST_REACH", None)
-            sess_a0.close()
-
-            mock_agy = tmp / "mock_agy.py"
-            mock_agy.write_text(
-                f"#!{sys.executable} -I\n"
-                "import json, os, subprocess, sys\n"
-                "from pathlib import Path\n"
-                "cwd = Path.cwd()\n"
-                "mode = oct(os.stat(cwd).st_mode & 0o777)\n"
-                "mcp_p = cwd / '.agents' / 'mcp_config.json'\n"
-                "assert mode == '0o555' and mcp_p.exists(), (mode, mcp_p.exists())\n"
-                "cfg = json.loads(mcp_p.read_text(encoding='utf-8'))\n"
-                "srv = cfg['mcpServers']['levelling']\n"
-                "settings_p = Path(sys.argv[sys.argv.index('--settings') + 1])\n"
-                "st = json.loads(settings_p.read_text(encoding='utf-8'))\n"
-                "assert 'mcp(levelling/*)' in st['permissions']['allow'] and 'read_file(*)' in st['permissions']['deny'], st\n"
-                "p = subprocess.Popen([srv['command'], *srv['args']], stdin=subprocess.PIPE, stdout=subprocess.PIPE,\n"
-                "                     text=True, env={**os.environ, **(srv.get('env') or {})})\n"
-                "def mrpc(i, m, prm):\n"
-                "    p.stdin.write(json.dumps({'jsonrpc':'2.0','id':i,'method':m,'params':prm})+'\\n')\n"
-                "    p.stdin.flush()\n"
-                "    return json.loads(p.stdout.readline())\n"
-                "mrpc(1, 'initialize', {'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'m','version':'1'}})\n"
-                "p.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized','params':{}})+'\\n'); p.stdin.flush()\n"
-                "mrpc(2, 'tools/call', {'name':'status','arguments':{}})\n"
-                "p.stdin.close(); p.wait(timeout=5)\n"
-                "print(json.dumps({'event':'init','init':{'cwd':str(cwd),'tools':['call_mcp_tool']}}), flush=True)\n"
-                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'ACTIVE','tool_name':'call_mcp_tool','tool_info':{'parameters':{'ServerName':'levelling','ToolName':'status'}}}}), flush=True)\n"
-                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'DONE','tool_name':'call_mcp_tool','tool_info':{'parameters':{'ServerName':'levelling','ToolName':'status'}}}}), flush=True)\n"
-                "print(json.dumps({'event':'step_update','step_update':{'step_type':'agent_response','state':'DONE','text_delta':'mock agy abstained','usage':{'input_tokens':110,'output_tokens':22,'thinking_tokens':7}}}), flush=True)\n"
-                "print(json.dumps({'event':'result','result':{'status':'SUCCESS','response':'mock agy abstained','num_turns':1,'usage':{'input_tokens':110,'output_tokens':22,'thinking_tokens':7}}}), flush=True)\n",
-                encoding="utf-8",
-            )
-            os.chmod(mock_agy, 0o755)
-            sess_a1 = lses.LevelSession(h, tmp / "s_agy_mock", reach="behaviour", backend="agy",
-                                        book_path=tmp / "b_agy_mock.jsonl", probe_on_start=False)
-            out_a1 = ldrv.run_driver(
-                sess_a1, "agy", driver_model="mock-agy",
-                driver_budget=ldrv.DriverBudget(max_wall_seconds=30.0, max_tokens=10000, max_dollars=0.5),
-                config={"agy_bin": str(mock_agy), "allow_mock_cli": True},
-            )
-            sess_a1.close()
-            check(out_a1["harness_card"]["driver_family"] == "agy" and out_a1["harness_card"]["face"] == "mcp_stdio"
-                  and out_a1["stop_reason"] == "kept_base_abstention"
-                  and out_a1["driver_failure"] is None and (out_a1["door"].get("ok") or 0) >= 1
-                  and out_a1["usage"]["prompt_tokens"] == 110 and out_a1["usage"]["completion_tokens"] == 22
-                  and out_a1["usage"]["reasoning_tokens"] == 7 and out_a1["book"]["verified"],
-                  f"4c: AgyCLIDriver mock happy path verified: {out_a1['stop_reason']} {out_a1['door']}")
-
-            mock_agy_extra = tmp / "mock_agy_extra.py"
-            mock_agy_extra.write_text(
-                f"#!{sys.executable} -I\n"
-                "import json, time\n"
-                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'ACTIVE','tool_name':'read_file','tool_info':{'parameters':{'Path':'/etc/hostname'}}}}), flush=True)\n"
-                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'DONE','tool_name':'read_file','tool_info':{'parameters':{'Path':'/etc/hostname'}}}}), flush=True)\n"
-                "time.sleep(5)\n",
-                encoding="utf-8",
-            )
-            os.chmod(mock_agy_extra, 0o755)
-            sess_a2 = lses.LevelSession(h, tmp / "s_agy_extra", reach="behaviour", backend="agy",
-                                        book_path=tmp / "b_agy_extra.jsonl", probe_on_start=False)
-            out_a2 = ldrv.run_driver(
-                sess_a2, "agy", driver_model="mock-agy",
-                driver_budget=ldrv.DriverBudget(max_wall_seconds=30.0, max_tokens=10000, max_dollars=0.5),
-                config={"agy_bin": str(mock_agy_extra), "allow_mock_cli": True},
-            )
-            sess_a2.close()
-            check(out_a2["stop_reason"] == "driver_failure" and out_a2["driver_failure"] is not None
-                  and "read_file" in (out_a2["door"].get("other_tools_asked") or []),
-                  f"4c: AgyCLIDriver kills & marks driver_failure on non-door tool execution: {out_a2}")
+            # 4c. Antigravity CLI driver against mock agy CLIs (`_agy_driver_checks`); the real agy binary is checked
+            # apart, by the owner (scripts/verify_level_agy.py: a stand-in door, a live sign-in)
+            _agy_driver_checks(h, tmp, claude_wall_out=hang_out)
 
             # ========================================================================= 5. Multi-session study & exact stats
             section("5. Multi-session Phase 6 study, isolation, unpooled aggregation, and exact statistics")
@@ -3955,7 +4573,7 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
             audit_files = [
                 "backend/level_atlas.py", "backend/level_knobs.py", "backend/level_drivers.py",
                 "backend/level_eval.py", "backend/level_sandbox.py", "backend/level_session.py",
-                "backend/level_mcp.py", "scripts/levelling_eval.py", "docs/SCAFFOLD.md",
+                "backend/level_mcp.py", "scripts/levelling_eval.py", "docs/SCAFFOLD.md", "scripts/verify_level_agy.py",
             ]
             for rel in audit_files:
                 txt = (ROOT_DIR / rel).read_text(encoding="utf-8")

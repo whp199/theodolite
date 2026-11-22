@@ -198,7 +198,7 @@ class EvalArm:
     """One experimental arm of a Phase 6 driver evaluation study."""
 
     arm_id: str
-    driver_family: str  # "scripted" | "replay" | "openai" | "claude" | "gemini" | "codex"
+    driver_family: str  # "scripted" | "replay" | "openai" | "agy" | "claude" | "gemini" | "codex"
     reach: str = "weights"
     mode: str = "weight_edit"  # "weight_edit" | "knobs_only"
     bare: bool = False
@@ -487,6 +487,10 @@ def validate_study_plan(
             )
         except lses.SessionRefused as exc:
             raise EvalRefused(f"Arm {arm.arm_id!r}: {exc}") from None
+        # The Antigravity CLI driver is refused, as Codex is, until the owner accepts the three tools agy offers every
+        # print run: refused here, before calibration, as each of its sessions would be
+        if arm.driver_family == "agy" and (arm.driver_config or {}).get("agy_fixed_tools_accepted") is not True:
+            raise EvalRefused(f"Arm {arm.arm_id!r}: {ldrv.AGY_FIXED_TOOLS_SAY}")
 
         # Reach prerequisites
         if check_paths:
@@ -505,6 +509,18 @@ def validate_study_plan(
             if plan.driver_budget.max_dollars is None or plan.driver_budget.max_dollars <= 0.0:
                 raise EvalRefused(
                     f"Arm {arm.arm_id!r} ({arm.driver_family}) requires an owner-approved driver_budget.max_dollars > 0."
+                )
+        # The Gemini CLI and Antigravity CLI report no cost: under a dollar cap (the plan's, or the study's, which each
+        # session is handed what is left of) their dollars are counted from the plan's prices alone, so both must be
+        # given, as each of their sessions would be refused (`level_drivers._cli_prices`)
+        if arm.driver_family in ldrv.BUDGET_PRICED_FAMILIES:
+            pdb = plan.driver_budget
+            capped = (pdb.max_dollars is not None and pdb.max_dollars > 0.0) or plan.max_total_dollars is not None
+            if capped and (pdb.input_usd_per_mtok is None or pdb.output_usd_per_mtok is None):
+                raise EvalRefused(
+                    f"Arm {arm.arm_id!r} ({arm.driver_family}): the CLI reports no cost, so its dollar cap is counted "
+                    "from the plan's prices alone. Give driver_budget.input_usd_per_mtok and output_usd_per_mtok "
+                    "(dollars a million tokens; 0 for both where the account has no per-token price)."
                 )
 
     total_sessions = len(plan.arms) * int(plan.sessions_per_arm)
@@ -1305,6 +1321,9 @@ def summarize_study(
                 "book_verified": bool((r.get("book") or {}).get("verified", False)),
                 "seed_verdict_set_aside": r.get("seed_verdict_set_aside"),
                 "claim_refused": _claim_refused(r),
+                # caps a driver could count only after its run ended (the Gemini CLI's tokens and dollars) that the
+                # run passed; its stop_reason is as the run ended
+                "caps_passed_after_run": list((r.get("caps_after_run") or {}).get("passed") or []) or None,
             })
 
         n_leads = sum(verdict_counts.get(v, 0) for v in LEAD_VERDICTS)
@@ -1610,10 +1629,37 @@ def summarize_study(
             "With a study dollar cap, each session's dollar cap was what was left of the study's (or the plan's own, "
             "where smaller), rounded down to a millionth of a dollar; its harness card records the cap it ran under. "
             f"When nothing was left the study stopped ({STUDY_DOLLAR_CAP_REACHED}). A session can pass its cap by "
-            "what its last reply cost.",
+            "what its last reply cost. A Gemini CLI session can pass its token and dollar caps by its whole run: the "
+            "CLI reports its usage only once the run has ended, so those caps were checked then, and its row names "
+            "any it passed (caps_passed_after_run).",
             "Cheaper knobs here cover prompts, decoding, and transient steering; fine-tuned LoRA adapters are not built.",
+            *_driver_limitations(plan_doc),
         ],
     }
+
+
+def _driver_limitations(plan_doc: Mapping[str, Any]) -> List[str]:
+    """What the study's limitations must say of the drivers its arms ran: an Antigravity CLI arm is not door tools
+    only and its runs reach a second model, and a CLI that reports no cost was counted at the plan's prices."""
+    fams = {str(a.get("driver_family")) for a in (plan_doc.get("arms") or []) if isinstance(a, Mapping)}
+    out: List[str] = []
+    if "agy" in fams:
+        out.append(
+            f"An Antigravity CLI (agy) arm's sessions were not door tools only: agy {ldrv.AGY_VERSION} offers the "
+            "model, in every print run, list_resources, read_resource and manage_task as well, which the owner "
+            "accepted for that arm (agy_fixed_tools_accepted); a session whose model called one was stopped as a "
+            "driver failure and is listed apart. agy also sends each run to a safety-monitor model of its own, so "
+            "its runs reached two models. Its turn cap stops a run when the model begins a reply past the cap, after "
+            "the tools the last allowed reply asked for have run; that reply's request was sent, and its tokens are "
+            "counted, or at a floor (the last reply's prompt and output) when agy had not yet printed them."
+        )
+    if fams & set(ldrv.BUDGET_PRICED_FAMILIES):
+        out.append(
+            "A Gemini CLI or Antigravity CLI session's dollars were counted from the plan's prices (dollars a million "
+            "tokens), as the CLI reports no cost; at prices of 0, as for a sign-in quota, its dollars read 0 and its "
+            "dollar cap stopped nothing."
+        )
+    return out
 
 
 def _side_book_problems(sdir: Path, side: Mapping[str, Any], cal: Optional[Mapping[str, Any]], what: str) -> List[str]:
