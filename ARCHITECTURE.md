@@ -1149,7 +1149,14 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   nothing the instrument passes says otherwise, in the temporary folders too, `/tmp` and `/dev/shm`; it can read
   elsewhere: measured in Codex's sandbox helper, not through the app-server, codex-cli 0.166.0, 14 November 2026),
   `"danger-full-access"` under "home" (the same caution).
-- `gemini`: Gemini CLI (`gemini --acp`, JSON-RPC over stdio) with the same MCP tools (passed per chat in `session/new`
+- `agy`: Antigravity CLI (`agy acp --stdio`, JSON-RPC over stdio; default when installed) with the same MCP tools
+  (passed per chat in `session/new` and `session/load`, with `_meta.antigravity.systemPrompt.append` carrying the
+  instructions and `--include-default-customizations=false`) in an empty read-only `0o555` working folder. At the
+  default "folder" reach it runs with `--sandbox --add-dir <work>` and gates `session/request_permission` in Python
+  (approving `mcp_atlas_*` tools and writes/edits inside `work/`, rejecting shell commands and writes outside `work/`);
+  under "home" it runs with `--dangerously-skip-permissions --add-dir <work> --add-dir ~`. `$THEODOLITE_AGY_MODEL`
+  picks the model via `session/set_model`.
+- `gemini`: Gemini CLI (`gemini --acp`, JSON-RPC over stdio; for `$GEMINI_API_KEY`, Vertex AI, or Code Assist logins) with the same MCP tools (passed per chat in `session/new`
   and `session/load`, `--allowed-mcp-server-names atlas`, Policy Engine TOML allowing MCP tools at priority 500 above
   `tools.core`'s deny-all), in an isolated `$GEMINI_CLI_HOME` (only the person's login files and model preference;
   `--extensions none`, `hooksConfig.enabled: false`, `skills.enabled: false`, `memoryBoundaryMarkers: []`) and an empty
@@ -1211,7 +1218,7 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 
 | route | |
 |---|---|
-| `GET /backends` | whether `claude`, `codex` and `gemini` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach`; `work` `{folder, route}`: the work folder and the route the page opens its files through |
+| `GET /backends` | whether `agy`, `claude`, `codex` and `gemini` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach`; `work` `{folder, route}`: the work folder and the route the page opens its files through |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
 | `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
 | `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, docs/SETUP.md), or a stop would wait on every page left open |
@@ -2067,7 +2074,7 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/level_rerun.py` | Phase 5 re-run: a kit of a registration with the home draw's seed (rebuilt edits only), the volunteer's run of the home items into a book of its own, and an intake that unpacks a plain tar without trusting it and judges the returned book against the home book |
 | `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`); binds the index's own files only and refuses a symlink; marks each lens or eye label with the label gate's check in the gate's own words (`gate_check`, checked equal to `label_gate.label_check`), and sets steer words aside by the steer lens's own check |
 | `backend/level_knobs.py` | Phase 6 cheaper knobs (`KnobSpec`: a system prompt; decoding `thinking`, `sampler`, `logit_bias`; transient `direction`, `neuron_add`, `neuron_mul` steering), `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (asked `fresh_reading_gate`, spends one of the brief's m, needs a steering part; a `neuron_mul` knob faces its weight-edit twin's control edits and is read once with it; judged by `judge_claim`, with the knob gate's stricter frame interval and panel figure), `render_knob_sheet` |
-| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `ClaudeCLIDriver` and `GeminiCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, caps and extra-tool guard; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
+| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `AgyCLIDriver`, `ClaudeCLIDriver` and `GeminiCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, caps and extra-tool guard; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
 | `backend/level_eval.py` | Phase 6 studies (`EvalStudyPlan`; `run_eval_study`: one calibration, each session in a side book of its own scored on its own lines, arms in turn, a session counted only when it ran to an end; `summarize_study`: Wilson intervals, exact Fisher and permutation tests, never pooled, no arm named ahead without p < 0.05; `load_study_from_book`, which works each outcome out again from its side book; `render_study_report`; `run_blinded_benchmark`, plumbing checks with neutral case ids and `repair_composition`; `render_cold_driver_page`; `make_rebuild_description` and `run_rebuild_replay`) |
 | `docs/SCAFFOLD.md` | Phase 6 register of the trust boundaries a driver never loses and the conveniences a study can take away (`--bare` takes away the page's two convenience paragraphs) |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |

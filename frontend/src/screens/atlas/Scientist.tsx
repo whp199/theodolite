@@ -338,11 +338,13 @@ const Past: React.FC = () => {
   const by = (c: PastChat) =>
     c.agent === "openai"
       ? `${c.profile ?? "endpoint"} · ${c.model ?? ""}`
-      : c.agent === "codex"
-        ? "Codex"
-        : c.agent === "gemini"
-          ? "Gemini"
-          : "Claude Code";
+      : c.agent === "agy"
+        ? "Antigravity"
+        : c.agent === "codex"
+          ? "Codex"
+          : c.agent === "gemini"
+            ? "Gemini CLI"
+            : "Claude Code";
   return (
     <div className="atlas-sthread">
       {past.length ? (
@@ -391,6 +393,9 @@ const BackendPick: React.FC = () => {
           } else setPick({ agent: v as Pick["agent"], profile: null, model: null });
         }}
       >
+        <option value="agy" disabled={!!b && !b.agy?.available}>
+          Antigravity{b && !b.agy?.available ? " (not installed)" : ""}
+        </option>
         <option value="claude" disabled={!!b && !b.claude.available}>
           Claude Code{b && !b.claude.available ? " (not installed)" : ""}
         </option>
@@ -398,7 +403,7 @@ const BackendPick: React.FC = () => {
           Codex{b && !b.codex.available ? " (not installed)" : ""}
         </option>
         <option value="gemini" disabled={!!b && !b.gemini?.available}>
-          Gemini{b && !b.gemini?.available ? " (not installed)" : ""}
+          Gemini CLI{b && !b.gemini?.available ? " (not installed)" : ""}
         </option>
         {(b?.openai ?? []).map((x) => (
           <option key={x.name} value={`openai:${x.name}`}>
@@ -504,7 +509,7 @@ export const Scientist: React.FC = () => {
     }
   });
   // a shell over the home folder is asked about once, in this browser, before the first chat runs on it
-  const homeShell = reach?.mode === "home" && (agent === "claude" || agent === "codex" || agent === "gemini");
+  const homeShell = reach?.mode === "home" && (agent === "agy" || agent === "claude" || agent === "codex" || agent === "gemini");
   const needsAck = homeShell && !acked;
   const [drop, setDrop] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -555,12 +560,12 @@ export const Scientist: React.FC = () => {
       {needsAck && reach ? (
         <div className="atlas-ack" role="alert">
           <p className="atlas-small red" style={{ margin: 0 }}>
-            On this server {agent === "codex" ? "Codex" : agent === "gemini" ? "Gemini" : "Claude Code"}{" "}
+            On this server {agent === "agy" ? "Antigravity" : agent === "codex" ? "Codex" : agent === "gemini" ? "Gemini CLI" : "Claude Code"}{" "}
             {reach[agent as "claude" | "codex" | "gemini"]}. What it reads (the model’s answers,
             census answers, names and notes, attachments) can carry instructions, and nothing stands between them and that shell.
           </p>
           <p className="muted atlas-small" style={{ margin: "4px 0" }}>
-            Without {reach.env}=home on the server Claude Code and Gemini would only read and write files in their own work folder, and Codex would run
+            Without {reach.env}=home on the server Antigravity, Claude Code and Gemini CLI have no shell and only write in their own work folder, and Codex would run
             its commands in a sandbox with no network that writes there and in the temporary folders and can read your other files; an
             endpoint has no shell at all.
           </p>

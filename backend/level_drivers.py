@@ -73,8 +73,8 @@ from backend import weight_edits as we
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DRIVER_VERSION = 1
-DRIVER_FAMILIES = ("scripted", "replay", "openai", "claude", "gemini", "codex")
-PAID_DRIVER_FAMILIES = ("claude", "gemini", "codex")
+DRIVER_FAMILIES = ("scripted", "replay", "openai", "agy", "claude", "gemini", "codex")
+PAID_DRIVER_FAMILIES = ("agy", "claude", "gemini", "codex")
 
 
 class DriverRefused(ValueError):
@@ -2588,6 +2588,381 @@ def run_gemini_cli_driver(
     )
 
 
+# ---------------------------------------------------------------------------------------- Antigravity CLI driver
+
+AGY_ENV_PASS = (
+    "PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE",
+    "TMPDIR", "TERM", "SSL_CERT_FILE", "SSL_CERT_DIR",
+    "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_RUNTIME_DIR",
+    "DBUS_SESSION_BUS_ADDRESS",
+)
+
+
+def agy_child_env(
+    extra: Optional[Mapping[str, str]] = None,
+    *,
+    source: Optional[Mapping[str, str]] = None,
+) -> Dict[str, str]:
+    """Environment allowlist for the Antigravity CLI subprocess: strips unrelated API keys and
+    THEODOLITE_SCIENTIST_REACH while keeping PATH, HOME and standard XDG/session variables."""
+    src = os.environ if source is None else source
+    out = {k: str(src[k]) for k in AGY_ENV_PASS if k in src and src[k] != ""}
+    out["NO_COLOR"] = "1"
+    if extra:
+        for k, v in extra.items():
+            if k == "THEODOLITE_SCIENTIST_REACH":
+                continue
+            out[k] = str(v)
+    return out
+
+
+def agy_cli_args(
+    *,
+    agy_bin: str,
+    prompt_text: str,
+    settings_path: Path,
+    model: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
+) -> List[str]:
+    """Exact command line for `AgyCLIDriver` (Door tools only: `permissions.deny` blocks read_file, write_file,
+    and command; `permissions.allow` permits `mcp(levelling/*)` over the session socket bridge)."""
+    cmd = [
+        agy_bin,
+        f"-p={prompt_text}",
+        "--output-format", "stream-json",
+        "--disable-slash-commands",
+        "--settings", str(settings_path),
+    ]
+    if model:
+        cmd += ["--model", str(model)]
+    if reasoning_effort:
+        cmd += ["--effort", str(reasoning_effort)]
+    return cmd
+
+
+def _prepare_agy_session_cwd(
+    run_dir: Path,
+    *,
+    socket_path: Path,
+) -> Tuple[Path, Path]:
+    """Create a read-only `cwd` with `.agents/mcp_config.json` pointing solely at `levelling`, and a session
+    `settings.json` denying `read_file(*)`, `write_file(*)`, and `command(*)` while allowing `mcp(levelling/*)`."""
+    cwd = run_dir / "cwd"
+    agents_dir = cwd / ".agents"
+    agents_dir.mkdir(parents=True, exist_ok=True)
+    mcp_cfg = {
+        "mcpServers": {
+            DOOR_SERVER: {
+                "command": sys.executable,
+                "args": ["-I", str(ROOT_DIR / "backend" / "level_mcp.py"), "--socket", str(socket_path)],
+            }
+        }
+    }
+    mcp_path = agents_dir / "mcp_config.json"
+    mcp_path.write_text(json.dumps(mcp_cfg, indent=2) + "\n", encoding="utf-8")
+    os.chmod(mcp_path, 0o444)
+    os.chmod(agents_dir, 0o555)
+    os.chmod(cwd, 0o555)
+
+    settings = {
+        "permissions": {
+            "allow": ["mcp(levelling/*)"],
+            "deny": ["read_file(*)", "write_file(*)", "command(*)"],
+        }
+    }
+    settings_path = run_dir / "agy_settings.json"
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    os.chmod(settings_path, 0o444)
+    return cwd, settings_path
+
+
+class _AgyStream:
+    """Thread-safe parser for `agy -p --output-format stream-json` NDJSON lines."""
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.model: Optional[str] = None
+        self.input_tokens: int = 0
+        self.output_tokens: int = 0
+        self.thinking_tokens: int = 0
+        self.turns_count: int = 0
+        self.tool_errors: int = 0
+        self.assistant_chunks: List[str] = []
+        self.errors: List[str] = []
+        self.door_uses: int = 0
+        self.other_uses: List[str] = []
+        self.other_succeeded: List[str] = []
+        self.result_event: Optional[Dict[str, Any]] = None
+
+    @staticmethod
+    def _is_door_tool(name: str, params: Any) -> bool:
+        if name.startswith("mcp_levelling_"):
+            return True
+        if name == "call_mcp_tool" and isinstance(params, dict) and params.get("ServerName") == "levelling":
+            return True
+        return False
+
+    def feed(self, line: str) -> None:
+        raw = line.strip()
+        if not raw:
+            return
+        try:
+            ev = json.loads(raw)
+        except Exception:
+            return
+        if not isinstance(ev, dict):
+            return
+        kind = ev.get("event")
+        with self.lock:
+            if kind == "step_update":
+                su = ev.get("step_update") or {}
+                if not isinstance(su, dict):
+                    return
+                stype = su.get("step_type")
+                state = su.get("state")
+                if stype == "agent_response":
+                    delta = su.get("text_delta")
+                    if isinstance(delta, str) and delta:
+                        self.assistant_chunks.append(delta)
+                    if state == "DONE":
+                        self.turns_count += 1
+                        usage = su.get("usage")
+                        if isinstance(usage, dict):
+                            self.input_tokens += int(usage.get("input_tokens") or 0)
+                            self.output_tokens += int(usage.get("output_tokens") or 0)
+                            self.thinking_tokens += int(usage.get("thinking_tokens") or 0)
+                elif stype == "tool":
+                    tname = str(su.get("tool_name") or "")
+                    tinfo = su.get("tool_info") if isinstance(su.get("tool_info"), dict) else {}
+                    params = tinfo.get("parameters") if isinstance(tinfo, dict) else None
+                    is_door = self._is_door_tool(tname, params)
+                    if state == "ACTIVE":
+                        if is_door:
+                            self.door_uses += 1
+                        elif tname:
+                            self.other_uses.append(tname)
+                    elif state == "DONE":
+                        if not is_door and tname:
+                            if tname not in self.other_uses:
+                                self.other_uses.append(tname)
+                            self.other_succeeded.append(tname)
+                    elif state == "ERROR":
+                        self.tool_errors += 1
+            elif kind == "result":
+                res = ev.get("result") or {}
+                if isinstance(res, dict):
+                    self.result_event = res
+                    if res.get("status") not in (None, "SUCCESS"):
+                        self.errors.append(str(res.get("error") or res.get("status"))[:400])
+                    usage = res.get("usage")
+                    if isinstance(usage, dict) and (self.input_tokens == 0 and self.output_tokens == 0):
+                        self.input_tokens = int(usage.get("input_tokens") or 0)
+                        self.output_tokens = int(usage.get("output_tokens") or 0)
+                        self.thinking_tokens = int(usage.get("thinking_tokens") or 0)
+                    if isinstance(res.get("response"), str) and not self.assistant_chunks:
+                        self.assistant_chunks.append(res["response"])
+                    if isinstance(res.get("num_turns"), int) and res["num_turns"] > self.turns_count:
+                        self.turns_count = int(res["num_turns"])
+
+    def tokens(self) -> Tuple[int, int, int]:
+        with self.lock:
+            return self.input_tokens, self.output_tokens, self.thinking_tokens
+
+    def turns(self) -> int:
+        with self.lock:
+            return self.turns_count
+
+
+def run_agy_cli_driver(
+    session: lses.LevelSession,
+    *,
+    model: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
+    driver_budget: Optional[DriverBudget] = None,
+    kill_switch: Optional[KillSwitch] = None,
+    agy_bin: Optional[str] = None,
+    allow_mock_cli: bool = False,
+    extra_instructions: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run Antigravity CLI (`agy -p --output-format stream-json`) against a live `LevelSession` over a private Unix
+    socket MCP bridge (`session_socket_bridge`) with Door tools only."""
+    if os.environ.get("THEODOLITE_SCIENTIST_REACH", "").strip().lower() == "home":
+        raise DriverRefused("THEODOLITE_SCIENTIST_REACH=home is refused for levelling drivers.")
+    db = driver_budget or DriverBudget()
+    ks = kill_switch or KillSwitch()
+    if not allow_mock_cli and (db.max_dollars is None or db.max_dollars <= 0.0):
+        raise DriverRefused("AgyCLIDriver requires an owner-approved driver_budget.max_dollars > 0.")
+    resolved = agy_bin or shutil.which("agy")
+    if not resolved or not Path(resolved).exists():
+        raise DriverRefused(f"Antigravity CLI binary not found ({resolved or 'agy'}).")
+
+    prompt_info = build_driver_prompt(session, extra_instructions=extra_instructions)
+    full_prompt = prompt_info["system"] + "\n\n---\n\n" + prompt_info["user"]
+    t0 = time.monotonic()
+    stream = _AgyStream()
+    stop_reason = "kept_base_abstention"
+    stop_note: Optional[str] = None
+    priced = db.input_usd_per_mtok is not None and db.output_usd_per_mtok is not None
+    import tempfile
+
+    run_root = Path(tempfile.mkdtemp(prefix="theodolite_agy_"))
+    cwd: Optional[Path] = None
+    try:
+        with lmcp.session_socket_bridge(session) as bridge:
+            cwd, settings_path = _prepare_agy_session_cwd(run_root, socket_path=bridge.path)
+            cmd = agy_cli_args(
+                agy_bin=str(resolved),
+                prompt_text=full_prompt,
+                settings_path=settings_path,
+                model=model,
+                reasoning_effort=reasoning_effort,
+            )
+            env = agy_child_env()
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                cwd=str(cwd),
+                env=env,
+                start_new_session=True,
+            )
+
+            stderr_chunks: List[str] = []
+
+            def _read_stdout() -> None:
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    stream.feed(line)
+
+            def _read_stderr() -> None:
+                assert proc.stderr is not None
+                for line in proc.stderr:
+                    if len(stderr_chunks) < 50:
+                        stderr_chunks.append(line.rstrip())
+
+            t_out = threading.Thread(target=_read_stdout, name="agy-stdout", daemon=True)
+            t_err = threading.Thread(target=_read_stderr, name="agy-stderr", daemon=True)
+            t_out.start()
+            t_err.start()
+
+            killed_reason: Optional[str] = None
+            while proc.poll() is None:
+                elapsed = time.monotonic() - t0
+                if ks.triggered():
+                    killed_reason = f"kill_switch:{ks.reason or 'stopped'}"
+                    _kill_pgrp(proc)
+                    break
+                if elapsed > db.max_wall_seconds:
+                    killed_reason = "budget_exhausted:wall"
+                    _kill_pgrp(proc)
+                    break
+                pt, ct, _ = stream.tokens()
+                if pt + ct > db.max_tokens:
+                    killed_reason = "budget_exhausted:tokens"
+                    _kill_pgrp(proc)
+                    break
+                if priced and db.max_dollars is not None:
+                    est = (pt * float(db.input_usd_per_mtok or 0.0) + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6
+                    if est > db.max_dollars:
+                        killed_reason = "budget_exhausted:dollars"
+                        _kill_pgrp(proc)
+                        break
+                with stream.lock:
+                    bad_tools = list(stream.other_succeeded)
+                if bad_tools:
+                    killed_reason = f"driver_failure:non_door_tool:{bad_tools[0]}"
+                    _kill_pgrp(proc)
+                    break
+                time.sleep(0.05)
+
+            t_out.join(timeout=2.0)
+            t_err.join(timeout=2.0)
+            rc = proc.wait(timeout=2.0)
+            t_cli_end = time.monotonic()
+            if killed_reason:
+                if killed_reason.startswith("kill_switch:"):
+                    stop_reason = "kill_switch"
+                    stop_note = killed_reason
+                elif killed_reason.startswith("budget_exhausted:"):
+                    stop_reason = "budget_exhausted"
+                    stop_note = killed_reason
+                else:
+                    stop_reason = "driver_failure"
+                    stop_note = killed_reason
+            elif rc != 0:
+                stop_reason = "error"
+                tail = " | ".join(stderr_chunks[-5:])
+                stop_note = f"agy CLI exited with code {rc}" + (f": {tail}" if tail else "")
+            elif stream.errors:
+                stop_reason = "error"
+                stop_note = "; ".join(stream.errors[:3])
+        door = bridge.close()
+        waited_after_cli = round(time.monotonic() - t_cli_end, 3)
+    finally:
+        if cwd is not None and cwd.exists():
+            try:
+                os.chmod(cwd, 0o700)
+                if (cwd / ".agents").exists():
+                    os.chmod(cwd / ".agents", 0o700)
+            except OSError:
+                pass
+        shutil.rmtree(run_root, ignore_errors=True)
+
+    other = stop_note if stop_reason == "driver_failure" else None
+    failure = _door_failure(int(door["ok"]), int(door["errors"]), stop_reason=stop_reason, other=other)
+    if failure and stop_reason in ("kept_base_abstention", "error"):
+        stop_reason = "driver_failure"
+
+    wait_note = None
+    if door.get("wait_note"):
+        wait_note = (f"The CLI ended {t_cli_end - t0:.1f} s into the session ({stop_reason}), and the outcome was read "
+                     f"{waited_after_cli:g} s after that. {door['wait_note']}")
+
+    proposed_edit = None
+    proposed_knob = None
+    claim_refused: Optional[str] = None
+    for c in bridge.calls:
+        if c.get("ok") and c.get("tool") == "claim":
+            proposed_edit = c.get("proposed")
+        elif c.get("ok") and c.get("tool") == "claim_knob":
+            proposed_knob = c.get("proposed")
+        elif c.get("ok") and c.get("tool") == "propose_repair":
+            proposed_edit = c.get("proposed")
+        elif c.get("ok") is False and c.get("tool") in CLAIM_TOOLS:
+            claim_refused = _refusal_words(c.get("error") or "")
+
+    pt, ct, rt = stream.tokens()
+    est_usd = (pt * float(db.input_usd_per_mtok or 0.0) + ct * float(db.output_usd_per_mtok or 0.0)) / 1e6 if priced else 0.0
+    notes = ["".join(stream.assistant_chunks).strip()] if stream.assistant_chunks else []
+    notes += [t for t in dict.fromkeys((*stream.errors, stop_note, failure, wait_note)) if t]
+    return _extract_outcome_from_book(
+        session,
+        driver_family="agy",
+        driver_model=stream.model or model or "agy-cli",
+        face="mcp_stdio",
+        reasoning_effort=reasoning_effort,
+        prompt_info=prompt_info,
+        driver_budget=db,
+        stop_reason=stop_reason,
+        turns=stream.turns(),
+        prompt_tokens=pt,
+        completion_tokens=ct,
+        reasoning_tokens=rt,
+        estimated_dollars=est_usd,
+        tool_errors=max(stream.tool_errors, int(door["errors"])),
+        notes="\n".join(notes),
+        proposed_edit=proposed_edit,
+        proposed_knob=proposed_knob,
+        driver_failure=failure,
+        claim_refused=claim_refused,
+        door={**door, "other_tools_asked": stream.other_uses[:20], "door_uses_seen": stream.door_uses,
+              "cli_ended_at_seconds": round(t_cli_end - t0, 3), "outcome_after_cli_seconds": waited_after_cli},
+    )
+
+
 def _kill_pgrp(proc: subprocess.Popen[Any]) -> None:
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
@@ -2653,6 +3028,17 @@ def run_driver(
             output_usd_per_mtok=cfg.get("output_usd_per_mtok"),
             completion_limit_field=cfg.get("completion_limit_field"),
             max_completion_per_reply=cfg.get("max_completion_per_reply"),
+        )
+    if driver_family == "agy":
+        return run_agy_cli_driver(
+            session,
+            model=driver_model,
+            reasoning_effort=cfg.get("reasoning_effort"),
+            driver_budget=driver_budget,
+            kill_switch=kill_switch,
+            agy_bin=cfg.get("agy_bin"),
+            allow_mock_cli=bool(cfg.get("allow_mock_cli", False)),
+            extra_instructions=cfg.get("extra_instructions"),
         )
     if driver_family == "claude":
         return run_claude_cli_driver(

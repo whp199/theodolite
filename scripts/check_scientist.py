@@ -524,6 +524,129 @@ if mcp is not None:
     mcp.wait()
 '''
 
+FAKE_AGY = r'''#!{PY} -I
+import json, os, queue, subprocess, sys, threading, time
+from pathlib import Path
+def log(kind, **kw):
+    with open(os.environ["FAKE_LOG"], "a") as f:
+        f.write(json.dumps({"kind": kind, **kw}) + "\n")
+log("start", argv=sys.argv[1:], cwd=os.getcwd(), cwd_mode=oct(os.stat(os.getcwd()).st_mode & 0o777))
+inbox = queue.Queue()
+def _reader():
+    for raw in sys.stdin:
+        raw = raw.strip()
+        if raw:
+            inbox.put(json.loads(raw))
+    inbox.put(None)
+threading.Thread(target=_reader, daemon=True).start()
+def send(msg):
+    sys.stdout.write(json.dumps(msg) + "\n")
+    sys.stdout.flush()
+mcp = None
+mcp_id = 0
+def mrpc(meth, params):
+    global mcp_id
+    mcp_id += 1
+    mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "id": mcp_id, "method": meth, "params": params}) + "\n")
+    mcp.stdin.flush()
+    while True:
+        r = json.loads(mcp.stdout.readline())
+        if r.get("id") == mcp_id:
+            return r
+def start_mcp(servers):
+    global mcp
+    if mcp is not None or not servers:
+        return
+    s = servers[0]
+    env = {**os.environ, **{e["name"]: e["value"] for e in s.get("env") or []}}
+    mcp = subprocess.Popen([s["command"], *s["args"]], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=env)
+    mrpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "fake-agy", "version": "1"}})
+    mcp.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}) + "\n")
+    mcp.stdin.flush()
+sid = "agy-sess-1"
+work_dir = next((sys.argv[i + 1] for i in range(len(sys.argv) - 1) if sys.argv[i] == "--add-dir"), "")
+def ask_perm(rid, name, args):
+    send({"jsonrpc": "2.0", "id": rid, "method": "session/request_permission", "params": {
+        "sessionId": sid,
+        "toolCall": {"sessionUpdate": "tool_call", "toolCallId": f"call_{rid}", "name": name, "args": args, "status": "pending"},
+        "options": [
+            {"optionId": "allow_once", "kind": "allow_once", "name": "Allow once"},
+            {"optionId": "reject_once", "kind": "reject_once", "name": "Reject once"},
+        ],
+    }})
+    while True:
+        rm = inbox.get()
+        if rm is None:
+            return None
+        if not rm.get("method") and rm.get("id") == rid:
+            return (rm.get("result") or {}).get("outcome")
+        inbox.put(rm)
+while True:
+    m = inbox.get()
+    if m is None:
+        break
+    mid, meth, p = m.get("id"), m.get("method"), m.get("params") or {}
+    if meth == "initialize":
+        log("init", params=p)
+        send({"jsonrpc": "2.0", "id": mid, "result": {"protocolVersion": 1, "agentCapabilities": {"loadSession": True, "_meta": {"antigravity": {"systemPrompt": {"append": True}}}}}})
+    elif meth == "session/new":
+        log("new", params=p)
+        start_mcp(p.get("mcpServers") or [])
+        send({"jsonrpc": "2.0", "id": mid, "result": {"sessionId": sid}})
+    elif meth == "session/load":
+        log("load", params=p)
+        sid = p.get("sessionId") or sid
+        start_mcp(p.get("mcpServers") or [])
+        send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": sid, "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "REPLAY_SUPPRESSED"}}}})
+        send({"jsonrpc": "2.0", "id": mid, "result": {}})
+    elif meth == "session/set_model":
+        log("set_model", params=p)
+        send({"jsonrpc": "2.0", "id": mid, "result": {}})
+    elif meth == "session/prompt":
+        log("prompt", params=p)
+        note = lambda u: send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": sid, "update": u}})
+        txt = "".join(b.get("text", "") for b in p.get("prompt") or [] if b.get("type") == "text")
+        if "slow" in txt:
+            note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "working..."}})
+            deadline = time.time() + 10
+            cancelled = False
+            while time.time() < deadline:
+                try:
+                    nm = inbox.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+                if nm is None:
+                    break
+                if nm.get("method") == "session/cancel":
+                    log("cancel", params=nm.get("params"))
+                    cancelled = True
+                    break
+                inbox.put(nm)
+            send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "cancelled" if cancelled else "end_turn"}})
+            continue
+        # Test permission gating: mcp_atlas_neuron (allow), write inside work (allow), write outside work (reject), run_command (reject)
+        p_mcp = ask_perm(910, "mcp_atlas_neuron", {"layer": 3, "n": 5})
+        p_win = ask_perm(911, "write_to_file", {"TargetFile": os.path.join(work_dir, "report.md")})
+        p_wout = ask_perm(912, "write_to_file", {"TargetFile": "/etc/passwd"})
+        p_cmd = ask_perm(913, "run_command", {"CommandLine": "id"})
+        log("perms", mcp=p_mcp, win=p_win, wout=p_wout, cmd=p_cmd)
+        note({"sessionUpdate": "agent_thought_chunk", "content": {"type": "text", "text": "agy thinking"}})
+        note({"sessionUpdate": "tool_call", "toolCallId": "call_mcp_1", "name": "mcp_atlas_neuron", "args": {"layer": 3, "n": 5}, "status": "in_progress"})
+        res = mrpc("tools/call", {"name": "neuron", "arguments": {"layer": 3, "n": 5}})["result"]
+        note({"sessionUpdate": "tool_call_update", "toolCallId": "call_mcp_1", "name": "mcp_atlas_neuron", "status": "completed", "content": [{"type": "content", "content": {"type": "text", "text": res["content"][0]["text"]}}]})
+        note({"sessionUpdate": "tool_call", "toolCallId": "call_write_1", "name": "write_to_file", "args": {"TargetFile": os.path.join(work_dir, "report.md")}, "status": "in_progress"})
+        note({"sessionUpdate": "tool_call_update", "toolCallId": "call_write_1", "name": "write_to_file", "status": "completed", "content": [{"type": "diff", "path": os.path.join(work_dir, "report.md")}]})
+        note({"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Antigravity checked L3 N5."}})
+        send({"jsonrpc": "2.0", "id": mid, "result": {"stopReason": "end_turn"}})
+    elif meth == "session/cancel":
+        log("cancel", params=p)
+    else:
+        send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": meth}})
+if mcp is not None:
+    mcp.stdin.close()
+    mcp.wait()
+'''
+
 
 def fake_openai_app(seen: List[Dict[str, Any]]) -> Any:
     """An OpenAI-compatible endpoint whose answers follow the person's last message."""
@@ -1225,6 +1348,70 @@ def run_checks() -> int:
         else:
             os.environ[sc.REACH_ENV] = old_reach
     section("Gemini CLI: isolated home, ACP turn, MCP tools, attachments, interrupt, history, rewind, folder auto-restart & home stale", before)
+
+    # --------------------------------------------------------------------------------------------- 5c. Antigravity CLI
+    before = len(failures)
+    agy_log = TMP / "fake_agy.log"
+    os.environ["FAKE_LOG"] = str(agy_log)
+    os.environ["THEODOLITE_AGY_BIN"] = str(write_exec(TMP / "fake-agy", FAKE_AGY.replace("{PY}", PY)))
+    os.environ["THEODOLITE_AGY_MODEL"] = "gemini-4-neon-high"
+    alog = lambda: [json.loads(l) for l in agy_log.read_text().splitlines() if l.strip()] if agy_log.exists() else []  # noqa: E731
+    bk_agy = hc.get("/api/atlas/scientist/backends").json()
+    check(bk_agy["agy"]["available"] is True and bk_agy["agy"]["model"] == "gemini-4-neon-high",
+          f"/backends sees agy + model: {bk_agy.get('agy')}")
+    chat_a = str(uuid.uuid4())
+    eva = Events(srv.url, chat_a)
+    r = hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "agent": "agy", "message": "Inspect L3 N5."})
+    check(r.status_code == 200, f"agy /send accepted: {r.status_code} {r.text}")
+    eva.wait(lambda e: e["t"] == "done")
+    al = alog()
+    astart = next(x for x in al if x["kind"] == "start")
+    check(astart["cwd_mode"] == "0o555" and "--sandbox" in astart["argv"]
+          and "--include-default-customizations=false" in astart["argv"]
+          and "--add-dir" in astart["argv"] and "--dangerously-skip-permissions" not in astart["argv"],
+          f"agy folder reach starts in 0o555 cwd with --sandbox and --add-dir: {astart}")
+    anew = next(x for x in al if x["kind"] == "new")
+    sys_append = (((anew["params"].get("_meta") or {}).get("antigravity") or {}).get("systemPrompt") or {}).get("append") or ""
+    check("Antigravity CLI" in sys_append and len(anew["params"].get("mcpServers") or []) == 1,
+          "agy session/new sends _meta.antigravity.systemPrompt.append and per-chat atlas mcpServers")
+    check(any(x["kind"] == "set_model" and x["params"].get("modelId") == "gemini-4-neon-high" for x in al),
+          "THEODOLITE_AGY_MODEL calls session/set_model")
+    aperms = next(x for x in al if x["kind"] == "perms")
+    check(aperms["mcp"] == {"outcome": "selected", "optionId": "allow_once"}
+          and aperms["win"] == {"outcome": "selected", "optionId": "allow_once"}
+          and aperms["wout"] == {"outcome": "selected", "optionId": "reject_once"}
+          and aperms["cmd"] == {"outcome": "selected", "optionId": "reject_once"},
+          f"agy folder reach gates permissions (allows atlas MCP & work write; rejects external write & shell): {aperms}")
+    check(any(e["t"] == "thinking" and "agy thinking" in e["text"] for e in eva.events)
+          and any(e["t"] == "tool" and e["name"] == "neuron" for e in eva.events)
+          and any(e["t"] == "tool" and e["name"] == "Write" and e["input"].get("file_path", "").endswith("report.md") for e in eva.events)
+          and any(e["t"] == "text" and "Antigravity checked L3 N5." in e["text"] for e in eva.events),
+          f"agy streams thinking, MCP tool, normalized Write file_path, and text: {eva.events}")
+    # Interrupt via session/cancel
+    m0 = len(eva.events)
+    hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "agent": "agy", "message": "slow task"})
+    eva.wait(lambda e: e["t"] == "text" and "working" in e.get("text", ""), after=m0)
+    ir = hc.post("/api/atlas/scientist/interrupt", json={"chat": chat_a}).json()
+    eva.wait(lambda e: e["t"] == "done", after=m0)
+    check(ir == {"ok": True, "running": True} and any(x["kind"] == "cancel" for x in alog()),
+          f"agy /interrupt sends session/cancel: {ir}")
+    # Folder auto-restart + session/load replay suppression
+    (sc.scientist_dir() / "prompt.local.md").write_text("agy extra local note\n")
+    m1 = len(eva.events)
+    hc.post("/api/atlas/scientist/send", json={"chat": chat_a, "agent": "agy", "message": "after prompt edit"})
+    eva.wait(lambda e: e["t"] == "done", after=m1)
+    seq_a = eva.since(m1)
+    check(any(e["t"] == "note" for e in seq_a)
+          and not any("REPLAY_SUPPRESSED" in str(e.get("text", "")) for e in seq_a)
+          and any(x["kind"] == "load" for x in alog()),
+          "agy folder reach auto-restarts on prompt change and suppresses session/load replay")
+    (sc.scientist_dir() / "prompt.local.md").unlink()
+    # Rewind
+    rw = hc.post("/api/atlas/scientist/rewind", json={"chat": chat_a}).json()
+    check(rw["ok"] is True and rw["cut"] is True, f"agy /rewind cuts replay log: {rw}")
+    eva.stop = True
+    os.environ.pop("THEODOLITE_AGY_MODEL", None)
+    section("Antigravity CLI: ACP turn, systemPrompt append, permission gating, MCP tools, cancel, folder auto-restart & rewind", before)
 
     # --------------------------------------------------------------------------- 6. an OpenAI-compatible endpoint
     before = len(failures)

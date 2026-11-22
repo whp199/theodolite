@@ -23,7 +23,7 @@ export type Part =
   | { t: "stopped" }
   | { t: "usename"; name: string; layer: number; n: number };
 export type Item = { kind: "user"; msg: string; shown: string; atts: Att[] } | { kind: "assistant"; parts: Part[] };
-export type Agent = "claude" | "codex" | "gemini" | "openai";
+export type Agent = "agy" | "claude" | "codex" | "gemini" | "openai";
 export interface Pick {
   agent: Agent;
   profile: string | null;
@@ -72,7 +72,7 @@ const keptPick = loadJson<Pick>(PICK_KEY);
 export const useScientist = create<SciState>(() => ({
   backends: null,
   backendsError: null,
-  pick: keptPick && ["claude", "codex", "gemini", "openai"].includes(keptPick.agent) ? keptPick : { agent: "claude", profile: null, model: null },
+  pick: keptPick && ["agy", "claude", "codex", "gemini", "openai"].includes(keptPick.agent) ? keptPick : { agent: "agy", profile: null, model: null },
   chat: kept?.chat ?? null,
   chatPick: kept?.chatPick ?? null,
   // a reply that was being written when the page closed is replayed by the server into a fresh box
@@ -122,13 +122,24 @@ export async function loadBackends() {
     const b = await get<Backends>("/api/atlas/scientist/backends");
     set({ backends: b, backendsError: null });
     const p = st().pick;
+    const firstCli = (): Agent =>
+      b.agy?.available ? "agy" : b.claude.available ? "claude" : b.codex.available ? "codex" : b.gemini?.available ? "gemini" : "agy";
     if (p.agent === "openai" && p.profile && b.openai.some((x) => x.name === p.profile)) void loadModels(p.profile);
     else if (p.agent === "openai")
       setPick({
-        agent: b.claude.available ? "claude" : b.codex.available ? "codex" : b.gemini?.available ? "gemini" : "claude",
+        agent: firstCli(),
         profile: null,
         model: null,
       });
+    else if (
+      (p.agent === "agy" && !b.agy?.available) ||
+      (p.agent === "claude" && !b.claude.available) ||
+      (p.agent === "codex" && !b.codex.available) ||
+      (p.agent === "gemini" && !b.gemini?.available)
+    ) {
+      const next = firstCli();
+      if (next !== p.agent) setPick({ agent: next, profile: null, model: null });
+    }
   } catch (e) {
     set({ backendsError: errText(e) });
   }

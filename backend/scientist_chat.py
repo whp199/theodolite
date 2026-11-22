@@ -2,17 +2,22 @@
 model and points at things on the person's screen.
 
 After the explorer's chat (lyramakesmusic/neuron-explorer, explorer/server.py, "Claude: autointerp and chat"), with
-four backends; a chat keeps the one it starts with:
+five backends; a chat keeps the one it starts with:
+- "agy": Antigravity CLI (`agy acp --stdio`, JSON-RPC over stdio), the default Google/Gemini backend: the same MCP
+  tools (passed per chat in `session/new` / `session/load`, with `_meta.antigravity.systemPrompt.append` for the
+  instructions) and Antigravity's own tools, within its reach, in an empty read-only working folder (`0o555`) with
+  `--include-default-customizations=false` and `--sandbox` at the default reach (gating permissions via
+  `session/request_permission`).
 - "claude": Claude Code (`claude -p`, stream-json in and out), one process per chat kept open, so a message sent while
   it works reaches it between tool calls and an interrupt stops the reply without ending the process. Its tools are
   the atlas's (backend/scientist_mcp.py, over MCP) and its own file tools, within its reach (`reach`). The conversation
   is Claude Code's own session (`~/.claude/projects/.../<chat>.jsonl`), resumed turn by turn.
 - "codex": Codex (`codex app-server`, JSON-RPC), the same MCP tools and Codex's own shell, within its reach, in a
   Codex home of its own (the person's login, model and effort, nothing else).
-- "gemini": Gemini CLI (`gemini --acp`, JSON-RPC over stdio), the same MCP tools (passed per chat in `session/new` /
-  `session/load`) and Gemini's own tools, within its reach, in a Gemini home of its own (`$GEMINI_CLI_HOME`: the
-  person's login and model preference, nothing else) and an empty read-only working folder (`0o555`) so no planted
-  `work/.gemini/settings.json`, hook, skill or rogue MCP server loads.
+- "gemini": Gemini CLI (`gemini --acp`, JSON-RPC over stdio; for `$GEMINI_API_KEY` / Vertex AI / Enterprise users),
+  the same MCP tools (passed per chat in `session/new` / `session/load`) and Gemini's own tools, within its reach, in
+  a Gemini home of its own (`$GEMINI_CLI_HOME`: the person's login and model preference, nothing else) and an empty
+  read-only working folder (`0o555`) so no planted `work/.gemini/settings.json`, hook, skill or rogue MCP server loads.
 
 Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code and Gemini to reading, writing and
 editing files in their work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (no network;
@@ -103,22 +108,28 @@ MCP_SCRIPT = ROOT_DIR / "backend" / "scientist_mcp.py"
 # what a Claude Code or Codex chat's process reads when it starts, besides prompt.local.md (`agent_files`)
 AGENT_FILES = (*PROMPT_FILES, MCP_SCRIPT, ROOT_DIR / "backend" / "scientist_tools.py")
 SCIENTIST_DIR_ENV = "THEODOLITE_SCIENTIST_DIR"
-AGENTS = ("claude", "codex", "gemini", "openai")
+AGENTS = ("agy", "claude", "codex", "gemini", "openai")
 FILE_TOOLS = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
 GEMINI_FOLDER_TOOLS = ["read_file", "write_file", "replace", "list_directory"]
 GEMINI_HOME_TOOLS = ["read_file", "write_file", "replace", "list_directory", "glob", "grep_search", "run_shell_command"]
-GEMINI_TOOL_NAMES = {"read_file": "Read", "write_file": "Write", "replace": "Edit", "list_directory": "List",
-                     "glob": "Glob", "grep_search": "Grep", "run_shell_command": "Bash"}
+GEMINI_TOOL_NAMES = {"read_file": "Read", "view_file": "Read", "write_file": "Write", "write_to_file": "Write",
+                     "replace": "Edit", "replace_file_content": "Edit", "multi_replace_file_content": "Edit",
+                     "list_directory": "List", "list_dir": "List", "glob": "Glob", "find_by_name": "Glob",
+                     "grep_search": "Grep", "run_shell_command": "Bash", "run_command": "Bash"}
+AGY_WRITE_TOOLS = frozenset({"write_to_file", "write_file", "replace_file_content", "multi_replace_file_content"})
+AGY_READ_TOOLS = frozenset({"read_file", "view_file", "list_dir", "find_by_name", "grep_search"})
 GEMINI_AUTH_FILES = ("oauth_creds.json", "google_accounts.json", "google_account_id", "installation_id", "state.json")
 REACH_ENV = "THEODOLITE_SCIENTIST_REACH"
 # what each backend can do beyond the atlas's tools, said on the page
 REACH_WORDS = {
-    "folder": {"claude": "reads, writes and edits files only in its own work folder, and has no shell",
+    "folder": {"agy": "writes and edits files only in its own work folder, and has no shell (can still read files Antigravity's built-in read policy allows)",
+               "claude": "reads, writes and edits files only in its own work folder, and has no shell",
                "codex": "runs commands in a sandbox that has no network and writes in its own work folder and the temporary folders "
                         "(/tmp, /dev/shm); it can read files elsewhere, credentials kept in files among them",
                "gemini": "reads, writes and edits files only in its own work folder, and has no shell",
                "openai": "has the atlas's tools and nothing else: no shell, no files"},
-    "home": {"claude": "has a shell, and reads, changes and runs anything in your home folder without asking",
+    "home": {"agy": "has a shell, and reads, changes and runs anything in your home folder without asking",
+             "claude": "has a shell, and reads, changes and runs anything in your home folder without asking",
              "codex": "has a shell with full access to this machine, and never asks before it acts",
              "gemini": "has a shell, and reads, changes and runs anything in your home folder without asking",
              "openai": "has the atlas's tools and nothing else: no shell, no files"},
@@ -207,11 +218,11 @@ GEMINI_CLOUD_LOGINS = {"GOOGLE_GENAI_USE_VERTEXAI": ("GOOGLE_APPLICATION_CREDENT
 
 
 def child_env(agent: str = "claude", **extra: str) -> Dict[str, str]:
-    """The environment a Claude Code (`agent` "claude"), Codex ("codex") or Gemini CLI ("gemini") process starts with:
-    this one's, less every endpoint's key and the credentials above, but with that process's own login."""
+    """The environment an Antigravity (`agent` "agy"), Claude Code ("claude"), Codex ("codex") or Gemini CLI ("gemini")
+    process starts with: this one's, less every endpoint's key and the credentials above, but with that process's own login."""
     keys = {p.get("key_env") for p in profiles().values()} | {"THEODOLITE_OPENAI_API_KEY", "OPENROUTER_API_KEY"}
     on = lambda v: (v or "").strip().lower() in ("1", "true", "yes", "on")  # noqa: E731
-    cloud = CLAUDE_CLOUD_LOGINS if agent == "claude" else (GEMINI_CLOUD_LOGINS if agent == "gemini" else {})
+    cloud = CLAUDE_CLOUD_LOGINS if agent == "claude" else (GEMINI_CLOUD_LOGINS if agent in ("agy", "gemini") else {})
     own = tuple(p for flag, ps in cloud.items() if on(os.environ.get(flag)) for p in ps)
     secret = lambda k: (k in SECRET_ENV or k.startswith(SECRET_PREFIXES)) and not k.startswith(own)  # noqa: E731
     return {**{k: v for k, v in os.environ.items() if k not in keys and not secret(k)}, **extra}
@@ -257,6 +268,22 @@ You are running as Codex, your shell in a sandbox: it writes in `{WORK}` and in 
 `/dev/shm`), can read files elsewhere, and has no network, so a script cannot reach the instrument's API; use the
 atlas's tools for every reading. A script that only writes a file in `{WORK}` from numbers you already have (a page,
 a table) you can run yourself: run it, and link what it wrote."""
+AGY_NOTE = """
+
+## This session
+
+You are running as Antigravity CLI (`agy`). Where these instructions name Read, Glob, Grep, Write, Edit or Bash, use
+`read_file`, `find_by_name`, `grep_search`, `write_to_file`, `replace_file_content` and `run_command`. Your work folder
+is `{WORK}` (use paths inside `{WORK}` when writing deliverables, and link them as `{WORK_URL}<name>`). Start anything
+that runs longer than about a minute detached (`nohup {PYTHON} script.py > script.log 2>&1 &`), say where the log is,
+and end your reply; read the log in a later turn."""
+AGY_FOLDER_NOTE = """
+
+## This session
+
+You are running as Antigravity CLI (`agy`) with no shell. Where these instructions name Read, Write or Edit, use
+`read_file`, `write_to_file`, `replace_file_content` and `list_dir`. Your work folder is `{WORK}`: always write inside
+`{WORK}` (your starting working directory is read-only), and link anything you write there as `{WORK_URL}<name>`."""
 GEMINI_NOTE = """
 
 ## This session
@@ -295,13 +322,17 @@ def system_prompt(agent: str, self_url: str) -> str:
         text = cut(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END) + OPENAI_NOTE
     elif reach() == "home":
         text = keep(cut(text, FOLDER_START, FOLDER_END), SHELL_START, SHELL_END)
-        if agent == "codex":
+        if agent == "agy":
+            text += AGY_NOTE
+        elif agent == "codex":
             text += CODEX_NOTE
         elif agent == "gemini":
             text += GEMINI_NOTE
     else:
         text = keep(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END)
-        if agent == "codex":
+        if agent == "agy":
+            text += AGY_FOLDER_NOTE
+        elif agent == "codex":
             text += CODEX_FOLDER_NOTE
         elif agent == "gemini":
             text += GEMINI_FOLDER_NOTE
@@ -493,7 +524,7 @@ def _emit(c: Dict[str, Any], ev: Dict[str, Any]) -> None:
     c["last"] = time.time()
     if ev.get("t") != "ui":
         c["turn"].append(ev)
-        if c["agent"] in ("codex", "gemini", "openai") and ev.get("t") in ("text", "tool", "tool_result", "error", "done"):
+        if c["agent"] in ("agy", "codex", "gemini", "openai") and ev.get("t") in ("text", "tool", "tool_result", "error", "done"):
             _log(c["session"], ev)
     for q in list(c["listeners"]):
         q.put_nowait(ev)
@@ -562,7 +593,7 @@ async def _take_up_changes(c: Dict[str, Any]) -> None:
         return
     if c["files"] == _agent_files_stamp():
         return
-    if c["agent"] in ("claude", "gemini") and c.get("reach") == "folder" and not c.get("waiting"):
+    if c["agent"] in ("agy", "claude", "gemini") and c.get("reach") == "folder" and not c.get("waiting"):
         await _end_chat(c)
         _emit(c, {"t": "note", "text": RESTARTED_WORDS})
     else:
@@ -1048,24 +1079,68 @@ def _gemini_mcp_servers(cid: str, self_url: str) -> List[Dict[str, Any]]:
 def _gemini_tool_info(upd: Dict[str, Any]) -> Tuple[str, str, Dict[str, Any]]:
     """Extract `(tool_call_id, shown_name, input_dict)` from an ACP `tool_call` or `tool_call_update` payload."""
     tcid = str(upd.get("toolCallId") or "")
-    raw = tcid.split("__", 1)[0] if "__" in tcid else str(upd.get("title") or "tool")
+    raw = str(upd.get("name") or (tcid.split("__", 1)[0] if "__" in tcid else upd.get("title") or "tool"))
     if raw.startswith(GEMINI_MCP_PREFIX):
         name = raw[len(GEMINI_MCP_PREFIX):]
     else:
         name = GEMINI_TOOL_NAMES.get(raw, raw)
     if isinstance(upd.get("rawInput"), dict):
         inp: Dict[str, Any] = dict(upd["rawInput"])
+    elif isinstance(upd.get("args"), dict):
+        inp = dict(upd["args"])
     else:
         inp = {}
-        locs = upd.get("locations") or []
-        first_path = next((x.get("path") for x in locs if isinstance(x, dict) and x.get("path")), None)
-        if first_path and name in ("Read", "Write", "Edit", "List"):
-            inp["file_path"] = str(first_path)
-        elif name == "Bash" and upd.get("title"):
-            inp["command"] = str(upd["title"])
-        elif upd.get("title") and not str(upd["title"]).endswith("(atlas MCP Server)"):
-            inp["title"] = str(upd["title"])
+    locs = upd.get("locations") or []
+    first_path = next((x.get("path") for x in locs if isinstance(x, dict) and x.get("path")), None)
+    if name in ("Read", "Write", "Edit", "List") and "file_path" not in inp:
+        cand = inp.get("TargetFile") or inp.get("Path") or inp.get("filePath") or first_path
+        if isinstance(cand, str) and cand:
+            inp["file_path"] = cand
+    elif not inp and name == "Bash" and upd.get("title"):
+        inp["command"] = str(upd["title"])
+    elif not inp and upd.get("title") and not str(upd["title"]).endswith("(atlas MCP Server)"):
+        inp["title"] = str(upd["title"])
     return tcid, name, inp
+
+
+def _path_in_work(path: Any) -> bool:
+    if not isinstance(path, str) or not path.strip():
+        return False
+    try:
+        target = Path(os.path.realpath(path))
+        root = Path(os.path.realpath(str(work_dir())))
+        return target == root or root in target.parents
+    except OSError:
+        return False
+
+
+def _agy_permission_outcome(prm: Dict[str, Any]) -> Dict[str, Any]:
+    """Decide an ACP `session/request_permission` prompt from Antigravity CLI (`agy acp`).
+    At `home` reach all tools are approved; at `folder` reach only `mcp_atlas_*` tools and file reads/writes whose
+    resolved target lies inside `work_dir()` are approved, and everything else (shell, browser, external paths) is
+    rejected."""
+    opts = prm.get("options") or []
+    allow_id = next((o.get("optionId") for o in opts if isinstance(o, dict) and o.get("kind") == "allow_once"), None)
+    reject_id = next((o.get("optionId") for o in opts if isinstance(o, dict) and o.get("kind") == "reject_once"), None)
+    if reach() == "home":
+        return {"outcome": "selected", "optionId": allow_id} if allow_id else {"outcome": "cancelled"}
+    tc = prm.get("toolCall") or {}
+    raw = str(tc.get("name") or "")
+    args = tc.get("args") if isinstance(tc.get("args"), dict) else (tc.get("rawInput") if isinstance(tc.get("rawInput"), dict) else {})
+    locs = tc.get("locations") or []
+    first_loc = next((x.get("path") for x in locs if isinstance(x, dict) and x.get("path")), None)
+    allowed = False
+    if raw.startswith(GEMINI_MCP_PREFIX):
+        allowed = True
+    elif raw in AGY_WRITE_TOOLS:
+        target = args.get("TargetFile") or args.get("Path") or args.get("file_path") or first_loc
+        allowed = _path_in_work(target)
+    elif raw in AGY_READ_TOOLS:
+        target = args.get("Path") or args.get("DirectoryPath") or args.get("SearchPath") or args.get("SearchDirectory") or first_loc
+        allowed = _path_in_work(target)
+    if allowed and allow_id:
+        return {"outcome": "selected", "optionId": allow_id}
+    return {"outcome": "selected", "optionId": reject_id} if reject_id else {"outcome": "cancelled"}
 
 
 def _gemini_tool_output(upd: Dict[str, Any]) -> str:
@@ -1102,8 +1177,12 @@ async def _pump_gemini(c: Dict[str, Any], proc: Any) -> None:
             continue
         meth, prm = m.get("method"), m.get("params") or {}
         if "id" in m and meth:
-            # Unexpected agent->client RPC (e.g. a permission prompt outside YOLO): decline cleanly
-            await _write(proc, {"jsonrpc": "2.0", "id": m["id"], "result": {"outcome": {"outcome": "cancelled"}}})
+            if c["agent"] == "agy" and meth == "session/request_permission":
+                outcome = _agy_permission_outcome(prm)
+            else:
+                # Unexpected agent->client RPC (e.g. a permission prompt outside YOLO): decline cleanly
+                outcome = {"outcome": "cancelled"}
+            await _write(proc, {"jsonrpc": "2.0", "id": m["id"], "result": {"outcome": outcome}})
             continue
         if meth != "session/update" or c.get("loading"):
             continue
@@ -1289,6 +1368,81 @@ def _rewind_gemini_session(cid: str, sid: Optional[str]) -> None:
     else:
         with open(path, "rb+") as f:
             f.truncate(user_positions[-1])
+
+
+# --------------------------------------------------------------------------------------------- Antigravity CLI (ACP)
+
+
+def _agy_cmd() -> List[str]:
+    cmd = [
+        _bin("agy"), "acp",
+        "--stdio",
+        "--disable-telemetry",
+        "--include-default-customizations=false",
+    ]
+    if reach() == "home":
+        cmd += ["--dangerously-skip-permissions", "--add-dir", str(work_dir()), "--add-dir", os.path.expanduser("~")]
+    else:
+        cmd += ["--sandbox", "--add-dir", str(work_dir())]
+    return cmd
+
+
+async def _ensure_agy(c: Dict[str, Any], self_url: str) -> Any:
+    proc = c.get("proc")
+    if proc is not None and proc.returncode is None:
+        return proc
+    if not shutil.which(_bin("agy")):
+        raise RuntimeError("Antigravity CLI (the `agy` command) is not installed where the server runs.")
+    files = _agent_files_stamp()
+    ro_cwd = scientist_dir() / "agy-cwd"
+    _reset_ro_cwd(ro_cwd)
+    env = child_env("agy")
+    proc = c["proc"] = await asyncio.create_subprocess_exec(
+        *_agy_cmd(),
+        cwd=str(ro_cwd),
+        env=env,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        limit=1 << 24,
+        start_new_session=True,
+    )
+    _started(c, files)
+    c["rpc"], c["seen_tools"], c["loading"] = {"next": 0, "pending": {}}, set(), False
+    c["pump"] = asyncio.create_task(_pump_gemini(c, proc))
+    try:
+        await _rpc(c, "initialize", {
+            "protocolVersion": 1,
+            "clientCapabilities": {},
+            "clientInfo": {"name": "theodolite", "version": "1"},
+        })
+        mcp_servers = _gemini_mcp_servers(c["session"], self_url)
+        sys_meta = {"antigravity": {"systemPrompt": {"append": system_prompt("agy", self_url)}}}
+        saved_sid = _meta().get(c["session"], {}).get("agy_session")
+        sid: Optional[str] = None
+        if saved_sid:
+            c["loading"] = True
+            try:
+                await _rpc(c, "session/load", {"sessionId": saved_sid, "cwd": str(ro_cwd), "mcpServers": mcp_servers, "_meta": sys_meta})
+                sid = saved_sid
+            except Exception:
+                sid = None
+            finally:
+                c["loading"] = False
+        if not sid:
+            r = await _rpc(c, "session/new", {"cwd": str(ro_cwd), "mcpServers": mcp_servers, "_meta": sys_meta})
+            sid = str(r.get("sessionId") or "")
+            if not sid:
+                raise RuntimeError("agy session/new returned no sessionId")
+            _meta_set(c["session"], agy_session=sid)
+        model = os.environ.get("THEODOLITE_AGY_MODEL")
+        if model:
+            await _rpc(c, "session/set_model", {"sessionId": sid, "modelId": model})
+        c["gemini_session"] = sid
+    except Exception:
+        await _end_chat(c)
+        raise
+    return proc
 
 
 # ------------------------------------------------------------------------------------- OpenAI-compatible endpoints
@@ -1597,15 +1751,16 @@ class UploadRequest(BaseModel):
 
 @router.get("/backends")
 async def backends() -> Dict[str, Any]:
-    """Which backends this server can run: Claude Code, Codex and Gemini CLI where their commands are installed, and
-    every OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing")."""
+    """Which backends this server can run: Antigravity CLI, Claude Code, Codex and Gemini CLI where their commands are
+    installed, and every OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing")."""
     ps = profiles()
-    return {"claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
+    return {"agy": {"available": bool(shutil.which(_bin("agy"))), "model": os.environ.get("THEODOLITE_AGY_MODEL")},
+            "claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
             "codex": {"available": bool(shutil.which(_bin("codex")))},
             "gemini": {"available": bool(shutil.which(_bin("gemini"))), "model": os.environ.get("THEODOLITE_GEMINI_MODEL")},
             "openai": [profile_card(k, v) for k, v in ps.items()], "warning": _profile_warning,
             "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()]},
-            # where a Claude Code, Codex or Gemini scientist keeps its files, and the route the page opens one through
+            # where an Antigravity, Claude Code, Codex or Gemini scientist keeps its files, and the route the page opens one through
             "work": {"folder": str(work_dir()), "route": WORK_ROUTE},
             "prompt": {"files": [str(p) for p in PROMPT_FILES], "local": str(scientist_dir() / "prompt.local.md")}}
 
@@ -1712,11 +1867,14 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
             known = _meta().get(cid, {})
             _meta_set(cid, turns=known.get("turns", []) + [tid], turn_at={**(known.get("turn_at") or {}), str(tid): at})
             return {"ok": True}
-        if c["agent"] == "gemini":
+        if c["agent"] in ("agy", "gemini"):
             try:
-                await _ensure_gemini(c, self_url)
+                if c["agent"] == "agy":
+                    await _ensure_agy(c, self_url)
+                else:
+                    await _ensure_gemini(c, self_url)
             except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"gemini: {exc}") from None
+                raise HTTPException(status_code=502, detail=f"{c['agent']}: {exc}") from None
             _log(cid, {"t": "user", "text": shown})
             parts = _gemini_prompt_parts(msg, req.attachments)
             _emit(c, {"t": "sent"})
@@ -1756,7 +1914,7 @@ async def interrupt(req: ChatRequest) -> Dict[str, Any]:
             return {"ok": True, "running": False}
         await _rpc(c, "turn/interrupt", {"threadId": c["thread"], "turnId": c["turn_id"]})
         return {"ok": True, "running": True}
-    if c["agent"] == "gemini":
+    if c["agent"] in ("agy", "gemini"):
         c["pending"].clear()
         c["cancel"].set()
         if c.get("gemini_session"):
@@ -1848,7 +2006,7 @@ async def history(chat: str) -> Dict[str, Any]:
     cid = _check_chat(chat)
     m = _meta().get(cid, {})
     agent = m.get("agent", "claude")
-    if agent in ("codex", "gemini", "openai"):
+    if agent in ("agy", "codex", "gemini", "openai"):
         path = logs_dir() / f"{cid}.jsonl"
         ev = []
         if path.exists():
@@ -1920,6 +2078,12 @@ async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
             at = turn_at.get(str(turns[-1]))  # None for a turn taken before the log said where turns begin
             _meta_set(cid, turns=turns[:-1], turn_at={k: v for k, v in turn_at.items() if k != str(turns[-1])})
         return {"ok": True, "cut": bool(turns), "messages": _cut_log(cid, at)}
+    if agent == "agy":
+        if c is not None:
+            await _end_chat(c)
+        cut_n = _cut_log(cid)
+        _meta_set(cid, agy_session=None)
+        return {"ok": True, "cut": bool(cut_n), "messages": cut_n}
     if agent == "gemini":
         if c is not None:
             await _end_chat(c)

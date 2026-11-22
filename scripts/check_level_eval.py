@@ -2674,6 +2674,103 @@ out_path.write_text(json.dumps(seen), encoding="utf-8")
                       and g_out.get("driver_failure") is None and g_out.get("book_ok") is True,
                       f"4b: real gemini CLI door call succeeded, built-in read_file refused, no GEMINI.md leaked: {g_out}")
 
+            # 4c. Antigravity CLI driver: allowlist, refusals, mock CLI happy path, and extra-tool kill guard
+            os.environ["HF_TOKEN"] = "hf_secret_check"
+            os.environ["OPENROUTER_API_KEY"] = "or_secret_check"
+            os.environ["ANTHROPIC_API_KEY"] = "ant_secret_check"
+            try:
+                a_env = ldrv.agy_child_env()
+                check("HF_TOKEN" not in a_env and "OPENROUTER_API_KEY" not in a_env
+                      and "ANTHROPIC_API_KEY" not in a_env and "THEODOLITE_SCIENTIST_REACH" not in a_env,
+                      "4c: agy_child_env strips unrelated API keys and THEODOLITE_SCIENTIST_REACH")
+            finally:
+                for k in ("HF_TOKEN", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"):
+                    os.environ.pop(k, None)
+
+            sess_a0 = lses.LevelSession(h, tmp / "s_agy_ref", reach="behaviour", backend="agy",
+                                        book_path=tmp / "b_agy_ref.jsonl", probe_on_start=False)
+            check(refuses(lambda: ldrv.run_agy_cli_driver(sess_a0, driver_budget=ldrv.DriverBudget(max_dollars=None)),
+                          ldrv.DriverRefused),
+                  "4c: AgyCLIDriver refused without owner-approved max_dollars")
+
+            os.environ["THEODOLITE_SCIENTIST_REACH"] = "home"
+            try:
+                check(refuses(lambda: ldrv.run_agy_cli_driver(sess_a0, driver_budget=ldrv.DriverBudget(max_dollars=1.0),
+                                                              allow_mock_cli=True), ldrv.DriverRefused),
+                      "4c: AgyCLIDriver refused when THEODOLITE_SCIENTIST_REACH=home")
+            finally:
+                os.environ.pop("THEODOLITE_SCIENTIST_REACH", None)
+            sess_a0.close()
+
+            mock_agy = tmp / "mock_agy.py"
+            mock_agy.write_text(
+                f"#!{sys.executable} -I\n"
+                "import json, os, subprocess, sys\n"
+                "from pathlib import Path\n"
+                "cwd = Path.cwd()\n"
+                "mode = oct(os.stat(cwd).st_mode & 0o777)\n"
+                "mcp_p = cwd / '.agents' / 'mcp_config.json'\n"
+                "assert mode == '0o555' and mcp_p.exists(), (mode, mcp_p.exists())\n"
+                "cfg = json.loads(mcp_p.read_text(encoding='utf-8'))\n"
+                "srv = cfg['mcpServers']['levelling']\n"
+                "settings_p = Path(sys.argv[sys.argv.index('--settings') + 1])\n"
+                "st = json.loads(settings_p.read_text(encoding='utf-8'))\n"
+                "assert 'mcp(levelling/*)' in st['permissions']['allow'] and 'read_file(*)' in st['permissions']['deny'], st\n"
+                "p = subprocess.Popen([srv['command'], *srv['args']], stdin=subprocess.PIPE, stdout=subprocess.PIPE,\n"
+                "                     text=True, env={**os.environ, **(srv.get('env') or {})})\n"
+                "def mrpc(i, m, prm):\n"
+                "    p.stdin.write(json.dumps({'jsonrpc':'2.0','id':i,'method':m,'params':prm})+'\\n')\n"
+                "    p.stdin.flush()\n"
+                "    return json.loads(p.stdout.readline())\n"
+                "mrpc(1, 'initialize', {'protocolVersion':'2024-11-05','capabilities':{},'clientInfo':{'name':'m','version':'1'}})\n"
+                "p.stdin.write(json.dumps({'jsonrpc':'2.0','method':'notifications/initialized','params':{}})+'\\n'); p.stdin.flush()\n"
+                "mrpc(2, 'tools/call', {'name':'status','arguments':{}})\n"
+                "p.stdin.close(); p.wait(timeout=5)\n"
+                "print(json.dumps({'event':'init','init':{'cwd':str(cwd),'tools':['call_mcp_tool']}}), flush=True)\n"
+                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'ACTIVE','tool_name':'call_mcp_tool','tool_info':{'parameters':{'ServerName':'levelling','ToolName':'status'}}}}), flush=True)\n"
+                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'DONE','tool_name':'call_mcp_tool','tool_info':{'parameters':{'ServerName':'levelling','ToolName':'status'}}}}), flush=True)\n"
+                "print(json.dumps({'event':'step_update','step_update':{'step_type':'agent_response','state':'DONE','text_delta':'mock agy abstained','usage':{'input_tokens':110,'output_tokens':22,'thinking_tokens':7}}}), flush=True)\n"
+                "print(json.dumps({'event':'result','result':{'status':'SUCCESS','response':'mock agy abstained','num_turns':1,'usage':{'input_tokens':110,'output_tokens':22,'thinking_tokens':7}}}), flush=True)\n",
+                encoding="utf-8",
+            )
+            os.chmod(mock_agy, 0o755)
+            sess_a1 = lses.LevelSession(h, tmp / "s_agy_mock", reach="behaviour", backend="agy",
+                                        book_path=tmp / "b_agy_mock.jsonl", probe_on_start=False)
+            out_a1 = ldrv.run_driver(
+                sess_a1, "agy", driver_model="mock-agy",
+                driver_budget=ldrv.DriverBudget(max_wall_seconds=30.0, max_tokens=10000, max_dollars=0.5),
+                config={"agy_bin": str(mock_agy), "allow_mock_cli": True},
+            )
+            sess_a1.close()
+            check(out_a1["harness_card"]["driver_family"] == "agy" and out_a1["harness_card"]["face"] == "mcp_stdio"
+                  and out_a1["stop_reason"] == "kept_base_abstention"
+                  and out_a1["driver_failure"] is None and (out_a1["door"].get("ok") or 0) >= 1
+                  and out_a1["usage"]["prompt_tokens"] == 110 and out_a1["usage"]["completion_tokens"] == 22
+                  and out_a1["usage"]["reasoning_tokens"] == 7 and out_a1["book"]["verified"],
+                  f"4c: AgyCLIDriver mock happy path verified: {out_a1['stop_reason']} {out_a1['door']}")
+
+            mock_agy_extra = tmp / "mock_agy_extra.py"
+            mock_agy_extra.write_text(
+                f"#!{sys.executable} -I\n"
+                "import json, time\n"
+                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'ACTIVE','tool_name':'read_file','tool_info':{'parameters':{'Path':'/etc/hostname'}}}}), flush=True)\n"
+                "print(json.dumps({'event':'step_update','step_update':{'step_type':'tool','state':'DONE','tool_name':'read_file','tool_info':{'parameters':{'Path':'/etc/hostname'}}}}), flush=True)\n"
+                "time.sleep(5)\n",
+                encoding="utf-8",
+            )
+            os.chmod(mock_agy_extra, 0o755)
+            sess_a2 = lses.LevelSession(h, tmp / "s_agy_extra", reach="behaviour", backend="agy",
+                                        book_path=tmp / "b_agy_extra.jsonl", probe_on_start=False)
+            out_a2 = ldrv.run_driver(
+                sess_a2, "agy", driver_model="mock-agy",
+                driver_budget=ldrv.DriverBudget(max_wall_seconds=30.0, max_tokens=10000, max_dollars=0.5),
+                config={"agy_bin": str(mock_agy_extra), "allow_mock_cli": True},
+            )
+            sess_a2.close()
+            check(out_a2["stop_reason"] == "driver_failure" and out_a2["driver_failure"] is not None
+                  and "read_file" in (out_a2["door"].get("other_tools_asked") or []),
+                  f"4c: AgyCLIDriver kills & marks driver_failure on non-door tool execution: {out_a2}")
+
             # ========================================================================= 5. Multi-session study & exact stats
             section("5. Multi-session Phase 6 study, isolation, unpooled aggregation, and exact statistics")
             import math as _m567  # noqa: E402  (sections 5 to 7 use it under this name; the header is shared)

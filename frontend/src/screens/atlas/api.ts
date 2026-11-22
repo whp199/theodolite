@@ -821,14 +821,15 @@ export interface EndpointCard {
   stream: boolean;
 }
 export interface Backends {
+  agy: { available: boolean; model: string | null };
   claude: { available: boolean; model: string | null };
   codex: { available: boolean };
   gemini: { available: boolean; model: string | null };
   openai: EndpointCard[];
   warning: string | null;
   /** what each backend can do beyond the atlas's tools: "folder" (the default) or "home" (a shell over the home folder) */
-  reach?: { mode: "folder" | "home"; env: string; claude: string; codex: string; gemini: string; openai: string };
-  /** where a Claude Code, Codex or Gemini scientist keeps its files, and the route that opens one in a browser tab */
+  reach?: { mode: "folder" | "home"; env: string; agy: string; claude: string; codex: string; gemini: string; openai: string };
+  /** where an Antigravity, Claude Code, Codex or Gemini scientist keeps its files, and the route that opens one in a browser tab */
   work?: { folder: string; route: string };
 }
 
@@ -850,7 +851,7 @@ export interface ChatEvent {
 }
 export interface PastChat {
   chat: string;
-  agent: "claude" | "codex" | "gemini" | "openai";
+  agent: "agy" | "claude" | "codex" | "gemini" | "openai";
   t: number;
   title: string | null;
   turns: number;

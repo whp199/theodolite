@@ -209,7 +209,8 @@ extreme (`--sample`). It is one forward a window, as `stats` is: on one RTX 5090
 word-pieces with `--unpacker compiled` (28 October 2026), where stats took 58 with `reference`. The windows it keeps are
 the corpus’s own text: they stay in the atlas folder and are never committed.
 
-The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model),
+The scientist runs on Antigravity CLI (`agy`, the default when installed; `$THEODOLITE_AGY_MODEL` picks the model),
+Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model),
 Codex (`codex`), or Gemini CLI (`gemini`, with `$GEMINI_API_KEY`, Vertex AI, or a Code Assist login; `$THEODOLITE_GEMINI_MODEL` picks the model) where
 the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
 or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODOLITE_OLLAMA_URL`), OpenRouter (its key in
@@ -231,7 +232,9 @@ still differs, and the three recipes taken through llama.cpp on 11 November 2026
 
 > [!WARNING]
 > By default, under Claude Code and Gemini CLI the scientist reads, writes and edits files only in its own work folder
-> and has no shell; under Codex its shell runs in a sandbox that has no network and writes there and in the temporary folders
+> and has no shell; under Antigravity CLI (`agy acp --stdio --sandbox`) it writes and edits only in its work folder and
+> has no shell (shell commands and writes outside its work folder are rejected via `session/request_permission`, while
+> read-only file access follows Antigravity's built-in read policy); under Codex its shell runs in a sandbox that has no network and writes there and in the temporary folders
 > (`/tmp` and `/dev/shm`), and it can read your other files, a credential kept in a file among them (the Hugging Face
 > token under `~/.cache/huggingface` was readable in it; SSH keys and Codex’s own login by the same rule). That was
 > measured in Codex’s own sandbox helper, not through a chat (codex-cli 0.166.0, 14 November 2026).
