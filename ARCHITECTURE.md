@@ -38,10 +38,10 @@ theodolite2/
 │   ├── atlas_build.py               # building those indexes on the GPU (lens, stats, wiring, steer lens, layout, passages)
 │   ├── census.py                    # the census: every neuron of a layer pushed on fixed questions, ranked vs controls
 │   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat; the folio's field book
-│   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex, Gemini CLI or an OpenAI-compatible endpoint (§4.8)
+│   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex, Gemini (Antigravity CLI or the Gemini CLI) or an OpenAI-compatible endpoint (§4.8)
 │   ├── control_vector.py            # a push or a recipe as a llama.cpp control vector, from the running server (§6)
 │   ├── scientist_tools.py           # the scientist's 35 tools, in the pages' count of layers (stdlib only)
-│   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code, Codex and Gemini CLI
+│   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code, Codex, Antigravity CLI and the Gemini CLI
 │   ├── scientist_prompt.md          # the scientist's instructions (with scientist_methodology.md)
 │   └── scientist_methodology.md
 ├── scripts/
@@ -1130,7 +1130,14 @@ and check_census.py check all of this on the CPU stand-in (`scripts/atlas_stand_
 
 ### 4.8 The scientist (`backend/scientist_chat.py`, `/api/atlas/scientist/*`)
 
-A language model beside the atlas, with the atlas's tools. A chat keeps the backend it began with:
+A language model beside the atlas, with the atlas's tools. A chat keeps the backend it began with. By the owner's
+ruling of 22 November 2026 the scientist runs on Claude Code by default ("as before"), and agy is the default "when
+selecting Gemini, not default for everything". As built, Gemini is one choice in the picker: it runs on Antigravity CLI
+(agy) unless the person picks the Gemini CLI beside it (or only the Gemini CLI is installed). A Claude Code, Codex or
+Gemini pick kept in the browser stays; while the server cannot run it, a new chat starts on the first installed of
+Claude Code, Codex, Antigravity and the Gemini CLI (`CLI_ORDER` in `frontend/src/screens/atlas/scientist.ts`). An
+endpoint pick whose profile the server does not list gives way to that same first one, in the browser too. The
+backends:
 
 - `claude`: Claude Code (`claude -p`, stream-json both ways), one process per chat, kept open so a message sent while
   it works reaches it between tool calls; its session file is resumed turn by turn. Its tools are the atlas's (the
@@ -1149,36 +1156,111 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   nothing the instrument passes says otherwise, in the temporary folders too, `/tmp` and `/dev/shm`; it can read
   elsewhere: measured in Codex's sandbox helper, not through the app-server, codex-cli 0.166.0, 14 November 2026),
   `"danger-full-access"` under "home" (the same caution).
-- `agy`: Antigravity CLI (`agy acp --stdio`, JSON-RPC over stdio; default when installed) with the same MCP tools
-  (passed per chat in `session/new` and `session/load`, with `_meta.antigravity.systemPrompt.append` carrying the
-  instructions and `--include-default-customizations=false`) in an empty read-only `0o555` working folder. At the
-  default "folder" reach it runs with `--sandbox --add-dir <work>` and gates `session/request_permission` in Python
-  (approving `mcp_atlas_*` tools and writes/edits inside `work/`, rejecting shell commands and writes outside `work/`);
-  under "home" it runs with `--dangerously-skip-permissions --add-dir <work> --add-dir ~`. `$THEODOLITE_AGY_MODEL`
-  picks the model via `session/set_model`.
-- `gemini`: Gemini CLI (`gemini --acp`, JSON-RPC over stdio; for `$GEMINI_API_KEY`, Vertex AI, or Code Assist logins) with the same MCP tools (passed per chat in `session/new`
-  and `session/load`, `--allowed-mcp-server-names atlas`, Policy Engine TOML allowing MCP tools at priority 500 above
-  `tools.core`'s deny-all), in an isolated `$GEMINI_CLI_HOME` (only the person's login files and model preference;
-  `--extensions none`, `hooksConfig.enabled: false`, `skills.enabled: false`, `memoryBoundaryMarkers: []`) and an empty
-  read-only `0o555` working folder so no planted `work/.gemini/settings.json`, hook, skill or rogue MCP server loads.
-  At the default "folder" reach, `tools.core` allows only `read_file`, `write_file`, `replace` and `list_directory` over
-  `--include-directories <work>` (no shell); under "home", it adds `glob`, `grep_search` and `run_shell_command` over
-  `work` and `~`. `$THEODOLITE_GEMINI_MODEL` picks the model. Verified on Gemini CLI 0.70.0 against a stand-in API
-  (`scripts/verify_scientist_gemini_cli.py`).
+- `agy`: Antigravity CLI (`agy acp --stdio`, JSON-RPC over stdio) with the same MCP tools (passed per chat in
+  `session/new` and `session/load`, with `_meta.antigravity.systemPrompt.append` carrying the instructions) in an empty
+  read-only `0o555` working folder (`<scientist folder>/agy-cwd`). Antigravity chats keep a data folder of the
+  scientist's own, one for all of them (`<scientist folder>/agy-gemini`, passed as an absolute `--gemini-dir`), so the
+  person's own Antigravity settings, plugins, skills, rules, subagents and plugin MCP servers do not load and its
+  conversations are not kept among theirs. It runs with `--disable-telemetry` and
+  `--include-default-customizations=false` (what agy sends under the first, and whether the account's own "Enable
+  Telemetry" setting still applies to a chat, was not checked), with an environment of `PATH`, `HOME`, `USER`,
+  `LOGNAME`, `LANG`, `DBUS_SESSION_BUS_ADDRESS` and `XDG_RUNTIME_DIR` only (it signs in through the system keyring).
+  Its `TMPDIR` is its own, and so are its XDG folders at the folder reach (at the home reach they are
+  the person's, as the commands its shell runs look for their files there). It starts only on agy 1.5.14
+  (`AGY_VERSION`), and only once its log says it keeps its files in that folder (agy says so only once a session is
+  asked for).
+  - At the folder reach it runs with `--sandbox --add-dir <work>`, and the server answers its
+    `session/request_permission` (`_agy_permission_outcome`): approved only for the atlas's own tools, by name, and for
+    reads, writes and edits inside the work folder; every other request is refused, a shell command among them. So, as
+    far as it asks, it reads, writes and edits files only in its work folder and has no shell. It asks before reading or
+    writing anywhere else, or running a workflow script (`run_workflow`). In a live chat on agy 1.5.14 (22 November
+    2026), a read in `/tmp`, a read under the home folder and a `run_workflow` call each asked and were refused; no
+    shell command was tried in those turns. Reads outside the work folder ask because agy 1.5.14 starts its ACP
+    sessions in its Default mode: the version pin keeps that, but the mode is not checked when a session starts. It may
+    search the web and start subagents of its own without asking, and what those subagents may read or run was not
+    checked.
+  - Its `schedule` tool asks no one: in that live chat the timer it set fired a minute later, and it answered with no
+    message from the person. So a chat that calls `schedule` is stopped at once (at either reach), and at the folder
+    reach so is one that starts work with no message of the person's in flight (after a 5-second grace,
+    `_agy_own_work`); the thread says why. This stop was checked against a mock only: the live `schedule` turn ran
+    before it was built. Whether agy keeps a timer when the chat is loaded again (`session/load`) was not checked: one
+    that fired while the chat was idle at the folder reach would be stopped, but one that fired during a turn of the
+    person's, or at the home reach, would not be told apart.
+  - At the home reach it runs with `--dangerously-skip-permissions` and no sandbox, and the server approves every
+    request: a shell with full access to this machine that never asks before it acts. A turn it begins itself there is
+    let be, as Claude Code's is. It adds only the work folder as a workspace, never the home folder.
+  - An Antigravity chat cannot be edited or asked again: `/rewind` is refused (409), because Antigravity's ACP cannot
+    drop a turn. `$THEODOLITE_AGY_MODEL` picks the model (`session/set_model`).
+- `gemini`: Gemini CLI (`gemini --acp`, JSON-RPC over stdio; for `$GEMINI_API_KEY`, Vertex AI, or Code Assist logins)
+  with the same MCP tools (passed per chat in `session/new` and `session/load`, `--allowed-mcp-server-names atlas`,
+  Policy Engine TOML allowing MCP tools at priority 500 above `tools.core`'s deny-all), in an isolated
+  `$GEMINI_CLI_HOME` (`<scientist folder>/gemini-home`: only the person's login files and model preference;
+  `--extensions none`, `hooksConfig.enabled: false`, `skills.enabled: false`, `memoryBoundaryMarkers: []`), so no
+  planted `work/.gemini/settings.json`, hook, skill or rogue MCP server loads.
+  - Each Gemini CLI chat has its own empty read-only working folder (`<scientist folder>/gemini-home/cwds/<chat>`), so
+    its stored conversation and memory (`gemini-home/.gemini/tmp/<chat>/`) are its own. Gemini's file tools may write
+    in that store and in the GEMINI.md of the scientist's Gemini home, which then stops the next message, but no
+    longer in another chat's. Checked on 0.70.0: with one folder shared by all chats, another chat's `write_file`
+    overwrote a chat's stored conversation; with one each, it is refused. Gemini CLI chats begun in the shared folder,
+    before each chat had one of its own, do not load and must be started again.
+  - At the default "folder" reach, `tools.core` allows only `read_file`, `write_file`, `replace` and `list_directory`
+    over `--include-directories <work>` (no shell). Under "home" it adds `glob`, `grep_search` and `run_shell_command`,
+    and its file tools still reach only the work folder and that store. The home folder is not one of its workspace
+    folders, as Gemini would read every GEMINI.md under it. Its shell, which never asks, has full access to this
+    machine.
+  - Gemini CLI's usage statistics (Clearcut, sent to play.googleapis.com) and telemetry are off in the chat's own
+    settings, and its temporary files (it writes a whole conversation there when a request fails) go to
+    `<scientist folder>/tmp/<chat>` (0700). Checked on 0.70.0 behind a recording proxy: none sent; sent with them on.
+  - `$THEODOLITE_GEMINI_MODEL` picks the model.
+- What a Gemini or Antigravity chat would take as standing instructions (`context_files`). Gemini CLI 0.70.0 reads any
+  GEMINI.md in its workspace as instructions: the work folder's when a session starts, and any between a file it reads
+  and the work folder. No setting turns that off (`context.fileName` only adds names;
+  `context.loadMemoryFromIncludeDirectories` is read only by the interactive `/directory add`). Antigravity reads
+  GEMINI.md, AGENTS.md and a customization folder (`.agents`, `.agent`, `_agents`, `_agent`: rules, skills, hooks,
+  plugins, MCP servers), and its own documentation says it does so from its working folder up to the repository root.
+  In a live chat on 22 November 2026, Antigravity 1.5.14 took `work/AGENTS.md` and `work/GEMINI.md` as its rules, and
+  not a `work/.agents/rules` file; whether such a folder loads hooks, plugins or MCP servers was not checked, and the
+  folders above were not run live. Every command-line backend can write in the work folder. So a Gemini or Antigravity
+  message is not sent while a GEMINI.md (any case) is in the work folder or below it, or, for a Gemini CLI chat, in
+  Gemini's own home or project memory. For Antigravity the same holds for an AGENTS.md or one of those folders there,
+  or directly in any folder above the work folder up to the root of the repository it is in. The page says which file
+  and why. The check is made before each message is sent: a file written during a turn can still load for the rest of
+  that turn, and the next message is refused. The scientist folder is inside Theodolite's checkout by default
+  (`atlas_data/scientist`), so an AGENTS.md or GEMINI.md at the checkout's root, or in `atlas_data`, stops every
+  Antigravity chat; set `THEODOLITE_SCIENTIST_DIR` outside the checkout to avoid that.
+- A saved Gemini or Antigravity conversation that does not load refuses the chat ("start a new chat") instead of
+  starting afresh with no memory of the turns shown. Antigravity chats begun before the scientist had that data folder,
+  and Gemini CLI chats begun before each had a working folder of its own, must be started again.
 - None of the CLI processes gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
-  (`reach`); under "home" the page asks once, per browser, before the first Claude Code, Codex or Gemini chat.
+  (`reach`). Under the home reach the page asks once for each backend, in that browser and in that backend's own words;
+  an acknowledgement kept from before, one for every backend at once, is asked again.
 - Nor do they get the Hugging Face or cloud credentials in the server's environment (`SECRET_ENV`: `HF_TOKEN`,
   `HUGGING_FACE_HUB_TOKEN`, `HF_API_TOKEN`, `RUNPOD_API_KEY`, `VAST_API_KEY`, `LAMBDA_API_KEY`, `MODAL_TOKEN_ID`,
-  `MODAL_TOKEN_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS`, `NEURONARY_TOKEN`, and every `AWS_*` and `AZURE_*`). Each
-  keeps its own login: Claude Code's `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` or
-  `~/.claude`, and the cloud's variables when `CLAUDE_CODE_USE_BEDROCK`, `_VERTEX` or `_FOUNDRY` is on (1, true, yes or
-  on, as Claude Code reads it; to Claude Code only); Codex's `OPENAI_API_KEY`, `CODEX_*` or its `auth.json`; Gemini
-  CLI's `GEMINI_API_KEY`, `GOOGLE_API_KEY`, `~/.gemini/` OAuth login files, or `GOOGLE_APPLICATION_CREDENTIALS` when
-  `GOOGLE_GENAI_USE_VERTEXAI` is on (to Gemini only). A credential in a file (`~/.cache/huggingface/token`, say) is
-  bounded only by the reach, and under Codex not by that: Claude Code and Gemini CLI at the folder reach are refused a
-  file outside their work folder (tried on Claude Code 2.1.312 in `scripts/verify_scientist_cli.py` and Gemini CLI
-  0.70.0 in `scripts/verify_scientist_gemini_cli.py`), and Codex's shell can read it at either reach (the token file was
-  readable in Codex's sandbox helper, 14 November 2026).
+  `MODAL_TOKEN_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS`, `NEURONARY_TOKEN`, and every `AWS_*` and `AZURE_*`). Each CLI
+  is given its own variables and no other CLI's:
+  - Claude Code gets everything named `ANTHROPIC_*` or `CLAUDE_*`: `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
+    `CLAUDE_CODE_OAUTH_TOKEN`, and `ANTHROPIC_FOUNDRY_API_KEY` and `ANTHROPIC_FOUNDRY_AUTH_TOKEN` among them (or its
+    login under `~/.claude`). Under its Bedrock, Vertex or Foundry flag (`CLAUDE_CODE_USE_BEDROCK`, `_VERTEX` or
+    `_FOUNDRY` on: 1, true, yes or on, as Claude Code reads it) it also gets the `AWS_*`,
+    `GOOGLE_APPLICATION_CREDENTIALS` or `AZURE_*` it logs in with.
+  - Codex gets `OPENAI_API_KEY` and `CODEX_*` (`CODEX_API_KEY`, `CODEX_ACCESS_TOKEN`), or its `auth.json`.
+  - The Gemini CLI gets `GEMINI_*`, `GOOGLE_GENAI_*`, `GOOGLE_API_KEY` and `GOOGLE_CLOUD_ACCESS_TOKEN`
+    (`GOOGLE_APPLICATION_CREDENTIALS` under Vertex AI, `GOOGLE_GENAI_USE_VERTEXAI`), or its login files under
+    `~/.gemini`, linked into its own home.
+  - Antigravity gets none (keyring).
+
+  No process gets any other variable named like a credential (`CREDENTIAL_NAME`: ending in `_TOKEN`, `_AUTHTOKEN`,
+  `_KEY`, `_APIKEY`, `_SECRET`, `_PASSWORD`, `_PASSWD`, `_PASS`, `_PAT`, `_AUTH` or `_CREDENTIALS`, or one of those
+  words alone). `GH_TOKEN`, `GITHUB_TOKEN`, `GITHUB_PAT`, `NPM_TOKEN`, `NPM_CONFIG__AUTH` and `AGY_ADC_AUTH` are among
+  them. A credential in a file (`~/.cache/huggingface/token`, say) is bounded only by the reach, and under Codex not by
+  that: Claude Code and Gemini CLI at the folder reach are refused a file outside their work folder (tried on Claude
+  Code 2.1.312 in `scripts/verify_scientist_cli.py` and Gemini CLI 0.70.0 in `scripts/verify_scientist_gemini_cli.py`),
+  Antigravity at the folder reach asked and was refused for one read under the home folder in a live chat (22 November
+  2026; a credential file itself was not tried, and the limit rests on agy starting its sessions in Default mode,
+  above), and Codex's shell can read it at either reach (the token file was readable in Codex's sandbox helper, 14
+  November 2026).
+- Under Antigravity or the Gemini CLI, the person's messages, attachments and what the tools read are sent to Google,
+  under the login the CLI signs in with.
 - `openai`: any OpenAI-compatible Chat Completions endpoint that takes tool calls (LM Studio, Ollama, OpenRouter, vLLM,
   llama.cpp's server). The server runs the loop: it streams the reply, runs each tool call through the atlas's routes in
   this process (`InProcessApi`, an ASGI client), sends the results back (each cut to 16,000 characters) and goes on until
@@ -1193,19 +1275,23 @@ stream, headers, params}}`). A profile names the environment variable its key is
 one is refused); a page picks a profile by name and never sees a key.
 
 The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scientist`: `work/` (the chat's working folder),
-`uploads/`, `logs/` (the codex and openai chats' events and messages; a line cut off mid-write, by a server stopped while
-writing it, is left out wherever a log or a Claude Code session is read, and cut off before the next event is written),
-`chats.json`, and the system prompt, built from
+`uploads/`, `logs/` (the Antigravity, Codex, Gemini CLI and openai chats' events and messages; a line cut off
+mid-write, by a server stopped while writing it, is left out wherever a log or a Claude Code session is read, and cut
+off before the next event is written), `chats.json`, Antigravity's own folders (`agy-gemini/`, `agy-cwd/`), the Gemini
+CLI's home (`gemini-home/`), each Gemini CLI or Antigravity chat's own temporary folder (`tmp/<chat>/`: its `TMPDIR`,
+and Antigravity's log), and the system prompt, built from
 `backend/scientist_prompt.md`, `backend/scientist_methodology.md` and the person's own `prompt.local.md` there (for
 `openai`, without the shell's section).
 
-A Claude Code, Codex or Gemini chat reads those files, `scientist_mcp.py` and `scientist_tools.py` when its process
-starts, and the server watches them by modification time. At the person's next message to a live, idle chat that started
-before they last changed, a Claude Code or Gemini chat at the folder reach is ended and started again, resuming its
-session, with a `note` event: neither has a shell, so only its MCP server lives in its process group. Any other chat
-(Codex at either reach, Claude Code or Gemini at "home") is not started again unasked, since ending its process group
-would also end any commands it left running in the background in that group: it is marked stale (a `stale` event, which
-the first `state` event of a stream also carries, until its process ends), and the page offers `POST /restart`. A chat
+A Claude Code, Codex, Antigravity or Gemini CLI chat reads those files, `scientist_mcp.py` and `scientist_tools.py`
+when its process starts, and the server watches them by modification time. At the person's next message to a live, idle
+chat that started before they last changed, a Claude Code, Antigravity or Gemini CLI chat at the folder reach is ended
+and started again, resuming its session, with a `note` event: Claude Code and the Gemini CLI have no shell there, so
+only their MCP server lives in their process group (what `agy acp` keeps in its group, its own subagents or background
+tasks say, was not checked). Any other chat (Codex at either reach, Claude Code, Antigravity or the Gemini CLI at
+"home") is not started again unasked, since ending its process group would also end any commands it left running in
+the background in that group: it is marked stale (a `stale` event, which the first `state` event of a stream also
+carries, until its process ends), and the page offers `POST /restart`. A chat
 mid-turn is never ended, as far as its events tell: Claude Code answers from its first streamed event, thinking
 included, and one whose last turn took a message mid-turn may yet run that message as a turn of its own, so until its
 next turn begins it is marked stale instead. An `openai` chat's prompt is built afresh every round; its tools change
@@ -1218,14 +1304,14 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 
 | route | |
 |---|---|
-| `GET /backends` | whether `agy`, `claude`, `codex` and `gemini` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach`; `work` `{folder, route}`: the work folder and the route the page opens its files through |
+| `GET /backends` | whether `agy`, `claude`, `codex` and `gemini` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach` (what each backend can do at the server's reach, and `folder`: each backend's folder-reach words); `work` `{folder, route}`: the work folder and the route the page opens its files through |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
-| `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
-| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, docs/SETUP.md), or a stop would wait on every page left open |
-| `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on |
+| `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count; for Antigravity or the Gemini CLI, 409 with the reason while a file it would take as instructions is in the way (`context_files`) |
+| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `reset` (the Gemini CLI retried a reply cut off mid-stream; what came of it goes), `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; an Antigravity chat stopped for acting on its own sends an `error`, and a `done` when no turn was running; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, docs/SETUP.md), or a stop would wait on every page left open |
+| `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on. Stopping an Antigravity or Gemini CLI reply stops that reply only; messages sent while it worked then go in, in the order sent, before any sent later. A prompt the process answers with an error (a rate limit, say) is shown as failed, and the next message goes in. Both were checked against mocks only, not on the live CLIs. After a stopped reply the Gemini CLI no longer holds that message or the part of the reply it gave, though the page and the log still show them, and nothing tells the person. A message that cannot go in is marked "Not sent" in the thread and the history: a context file in the way, the process gone or stopped, or a reply given up after an hour (which is then stopped with `session/cancel`) |
 | `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
 | `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |
-| `POST /rewind` | `{chat, text}`: cut the chat back to before its last message (a Claude Code session is backed up first), for "edit" and "ask again" → `{ok, cut}`; a Codex turn is reverted whole (`thread/revert`), so a message sent into it while it ran goes with it: its log is cut back to where that turn began (`turn_at` in `chats.json`), and `messages` says how many of the person's messages went, which the page takes off its thread |
+| `POST /rewind` | `{chat, text}`: cut the chat back to before its last message (a Claude Code session is backed up first), for "edit" and "ask again" → `{ok, cut}`; a Codex turn is reverted whole (`thread/revert`), so a message sent into it while it ran goes with it: its log is cut back to where that turn began (`turn_at` in `chats.json`), and `messages` says how many of the person's messages went, which the page takes off its thread. A Gemini CLI chat's stored conversation is taken back to before the person's last message by appending `{"$rewindTo": <its id>}`, which Gemini's loader honours (tool responses are "user" records too); after a stopped reply, which Gemini drops itself, only the log is cut; when the same words were sent more than once and Gemini holds fewer of them than the log, the rewind is refused (409); a rewind whose message is not the log's last (one refused before it was sent, say) cuts nothing. An Antigravity chat cannot be edited or asked again: `/rewind` is refused (409), because Antigravity's ACP cannot drop a turn |
 | `POST /restart` | `{chat}`: end its process group, with any commands it left running in that group (409 while it answers), so the next message resumes it on its files as they now stand → `{ended, note}` |
 | `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
 | `GET /prompt?agent` | the system prompt as built |
@@ -1247,11 +1333,18 @@ person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highligh
 the same for 3 rows as for 24, so the prompt tells the scientist to fill a call (a screen of candidates, a held-out
 set) rather than send several. What the scientist makes for the person is a file in its work folder, linked in its
 reply as `[name](/api/atlas/scientist/work/name)`; the page turns only such a link, or one to `/api/atlas/exports/`,
-into a link, and puts one under the last call that wrote each file. scripts/check_scientist.py checks the tools, the MCP server and all three backends against
-fakes, over real connections. scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on
-PATH) against a stand-in Messages API, with no model, no network and no login: what each allows and refuses, the
-atlas's tools through the real MCP server, and that no planted CLAUDE.md or rules file reaches a request and no planted
-hook runs (it records the CLI's version; 2.1.312 here).
+into a link, and puts one under the last call that wrote each file. scripts/check_scientist.py checks the tools, the
+MCP server and all five backends against fakes, over real connections (322 checks).
+scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on PATH) against a stand-in
+Messages API, with no model, no network and no login: what each allows and refuses, the atlas's tools through the real
+MCP server, and that no planted CLAUDE.md or rules file reaches a request and no planted hook runs (it records the CLI's
+version; 2.1.312 here). scripts/verify_scientist_gemini_cli.py does the same for the Gemini CLI: 38 checks on Gemini CLI
+0.70.0 against a stand-in API, run inside `bwrap --dev-bind / / --unshare-net` (22 November 2026), among them that
+another chat's `write_file` into a chat's stored conversation is refused (no record of that run is committed). The
+Antigravity chat has mocks in
+check_scientist.py and seven live folder-reach turns on agy 1.5.14 (22 November 2026): writes inside and outside the
+work folder, rules files, reads outside the work folder, `run_workflow` and `schedule`. None was at the home reach, and
+no record of those turns is committed.
 
 ---
 
@@ -2074,7 +2167,7 @@ edit is an argument of a reading, and the base is asserted after each one. Built
 | `backend/level_rerun.py` | Phase 5 re-run: a kit of a registration with the home draw's seed (rebuilt edits only), the volunteer's run of the home items into a book of its own, and an intake that unpacks a plain tar without trusting it and judges the returned book against the home book |
 | `backend/level_atlas.py` | Phase 6 read-only CPU atlas index reader (`AtlasReader`: `info`, `search_words`, `neuron_card`, `top_wiring`, `layer_stats`, `query`); binds the index's own files only and refuses a symlink; marks each lens or eye label with the label gate's check in the gate's own words (`gate_check`, checked equal to `label_gate.label_check`), and sets steer words aside by the steer lens's own check |
 | `backend/level_knobs.py` | Phase 6 cheaper knobs (`KnobSpec`: a system prompt; decoding `thinking`, `sampler`, `logit_bias`; transient `direction`, `neuron_add`, `neuron_mul` steering), `estimate_knob_reading`, `read_knob_practice`, `write_knob_practice`, `run_fresh_knob_claim` (asked `fresh_reading_gate`, spends one of the brief's m, needs a steering part; a `neuron_mul` knob faces its weight-edit twin's control edits and is read once with it; judged by `judge_claim`, with the knob gate's stricter frame interval and panel figure), `render_knob_sheet` |
-| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `ReplayDriver`; `OpenAIChatDriver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `AgyCLIDriver`, `ClaudeCLIDriver` and `GeminiCLIDriver`: the door's tools only, over the socket bridge, an environment allowlist, caps and extra-tool guard; `CodexCLIDriver`, refused); every outcome says whether the driver worked the door |
+| `backend/level_drivers.py` | Phase 6 drivers (`DriverBudget`, `KillSwitch`, `build_driver_prompt` standard or `--bare`; the scripted weight and knob baselines; `run_replay_driver`; `run_openai_driver`: endpoints by parsed host and profile, prices, completion limits, no redirects; `run_claude_cli_driver` and `run_gemini_cli_driver`: the door's tools only, over the socket bridge, an environment allowlist; `run_agy_cli_driver`: the door's tools plus the three agy 1.5.14 cannot remove, refused unless an arm accepts them, a run folder of its own, killed on a tool that is not the door's; `run_codex_cli_driver`, refused); every outcome says whether the driver worked the door |
 | `backend/level_eval.py` | Phase 6 studies (`EvalStudyPlan`; `run_eval_study`: one calibration, each session in a side book of its own scored on its own lines, arms in turn, a session counted only when it ran to an end; `summarize_study`: Wilson intervals, exact Fisher and permutation tests, never pooled, no arm named ahead without p < 0.05; `load_study_from_book`, which works each outcome out again from its side book; `render_study_report`; `run_blinded_benchmark`, which scores what the door took, with neutral case ids and `repair_composition`; `render_cold_driver_page`; `make_rebuild_description` and `run_rebuild_replay`) |
 | `docs/SCAFFOLD.md` | Phase 6 register of the trust boundaries a driver never loses and the conveniences a study can take away (`--bare` takes away the page's two convenience paragraphs) |
 | `scripts/levelling.py` | `estimate`, `run`, `book`, `weights`, `sandbox-probe`, `brief`, `calibrate`, `claim` |
@@ -2515,15 +2608,84 @@ yet measured.
   Every knob sheet says what its control edits are and are not matched on, and what a knob claim does not read.
 - **Drivers** (`backend/level_drivers.py`). Two scripted baselines (a weight one and a knob one; each a fixed program,
   not the same program, so they are lower bounds, and each puts forward only what the gate can take), a replay driver,
-  an OpenAI-compatible driver, Claude Code, and Gemini CLI; Codex stays refused. Every outcome says whether the driver
-  worked the door (`door`, `driver_failure`), why it stopped, and a refusal's own words.
-  - Claude Code and Gemini CLI get the door's tools and nothing else (the owner's ruling, 20 November 2026): no
-    built-in tool, no settings, memory or workspace hooks/skills, no saved session, and an environment of named
-    variables (plus `--max-budget-usd` for Claude Code; `tools.core = []`, empty read-only `0o555` cwd, isolated
-    `$GEMINI_CLI_HOME`, and Policy Engine allowlisting only MCP tools for Gemini CLI). Each reaches the door over a
-    Unix socket in a private folder, one call at a time; when stopped, a running cell is killed and a running reading
-    is waited for and recorded. CPU checks run both real CLIs with no network (`bwrap --unshare-net`) against local
-    stubs of their model APIs.
+  an OpenAI-compatible driver, Claude Code, the Gemini CLI, and the Antigravity CLI (agy), which is refused until the
+  owner accepts the three tools it offers every run; Codex stays refused. Every outcome says whether the driver worked
+  the door (`door`, `driver_failure`), why it stopped, and a refusal's own words.
+  - Claude Code gets the door's tools and nothing else (the owner's ruling, 20 November 2026): no built-in tool, no
+    settings, memory or CLAUDE.md, no saved session, an environment of named variables, and the CLI's own spending
+    cap (`--max-budget-usd`). The Gemini CLI driver is built to the same shape: no built-in tool (`tools.core = []`),
+    an empty read-only `0o555` working folder, a Gemini home of its own (`$GEMINI_CLI_HOME`), a Policy Engine rule that
+    allows only MCP tools, `--allowed-mcp-server-names levelling`, an environment of named variables, and no usage
+    statistics (`privacy.usageStatisticsEnabled: false`). Each CLI driver reaches the door over a Unix socket in a
+    private folder, one call at a time; when it is stopped, a running cell is killed and a running reading is waited
+    for and recorded; when its CLI ends, whatever is left of the CLI's process group is killed too. CPU checks run the
+    real Claude Code and Gemini CLI with no network (`bwrap --unshare-net`) against local stubs of their model APIs.
+  - Gemini CLI 0.70 reports token use only in its final result line, so the driver's token and dollar caps cannot
+    stop a Gemini run. They are checked after the run (`caps_after_run`), and the run's `stop_reason` stays as it
+    ended: a claimed run stays claimed. The study's session row names any cap passed (`caps_passed_after_run`). The
+    Gemini CLI caps its own turns (`model.maxSessionTurns`, set from `max_turns`), and that ending is recorded as
+    `budget_turns`. Once a Gemini or agy run has printed its result line, STOP and the wall clock no longer relabel
+    it; a CLI that does not exit within 10 s after that is killed and judged by that line.
+  - The Antigravity CLI driver is kept on the owner's word ("Mend it and keep it", 22 November 2026), and it is not
+    door tools only. agy 1.5.14 offers every print run three tools that no setting removes (`list_resources`,
+    `read_resource`, `manage_task`); here the first two reach only the door, which answers them "method not found",
+    and `manage_task` only agy's background tasks, none of which a session can start. So the driver is refused, as
+    the Codex driver is, unless an arm's `driver_config` sets `agy_fixed_tools_accepted: true` (a plan without it is
+    refused before calibration). That is the owner's call, not yet made. Accepting them lets agy offer them, not the
+    model use them: a session whose model calls one is stopped as a driver failure and not counted.
+  - It runs only on agy 1.5.14; any other version is refused before a session starts, because its recipe was probed
+    on that build. Each run gets its own folder (home, XDG folders, `TMPDIR`), removed after the run. Its environment
+    is built from nothing: only `PATH`, `USER`, `LOGNAME`, `LANG`, `DBUS_SESSION_BUS_ADDRESS` and `XDG_RUNTIME_DIR`
+    pass. The owner's agy config, plugins, skills, rules, subagents and plugin MCP servers therefore do not load. One
+    piece of the owner's state is shared: every run signs in from the owner's desktop keyring item over D-Bus (so a
+    run needs a desktop session), and a token refresh rewrites that item. The run's custom agent, `door.md`, has no
+    default components or customizations and marks each door tool eager. Its settings allow only
+    `mcp(levelling/*)`, deny `command`, `read_file`, `write_file`, `read_url`, `execute_url` and `download_url`, and
+    use request-review, not Auto. Remote Control stays off and disconnected, which the live check reads from agy's
+    log. It is refused at the home reach, and a study plan gives it no reasoning effort
+    (`level_eval.EFFORT_FAMILIES`).
+  - An agy run is stopped (its process group killed): on the first sight of a tool that is not the door's, when the
+    step starts and not when it finishes (`call_mcp_tool` and agy's three fixed tools included), or on a first line
+    that is not the door agent's init line (`driver_failure`); at STOP (`killed`); at `max_tokens`, `max_dollars` or
+    `max_wall_seconds` (`budget_*`); and at `max_turns`, when the model begins a reply past the cap, after the tools
+    the last allowed reply asked for have run, as under the Gemini CLI's and Claude Code's own caps (`budget_turns`).
+    After the run ends, the driver reads the tools offered to the model from the run's own conversation store (the
+    declarations in `gen_metadata`). Any set other than the door's tools plus the three fixed ones is a driver
+    failure, and so is `denied_actions` in the result line.
+  - agy's token counts: the prompt is input plus cache-read tokens; the completion is agy's own output count, which
+    already holds the thinking tokens (a reply's total is input plus output), and thinking is recorded apart as
+    `reasoning_tokens`, not added again. A reply cut at the turn cap is no turn, but its request was sent: its tokens
+    count exactly when agy printed them, else its prompt counts at a floor of the last reply's prompt and output
+    (`usage.cut_reply_prompt_floor`). That floor is a lower bound: in a live run it was 1,434 where the actual request
+    was about 1,900.
+  - What an agy run sends: the driver page, the prompts and the door's replies go to Google under the owner's
+    sign-in, and agy also sends each run to a second, smaller model of its own, a safety monitor. Its telemetry in
+    print mode follows the account's own "Enable Telemetry" setting, which the driver can neither set nor read; on a
+    consumer login it may cover the run's prompts, content and replies (agy's changelog names Business accounts as
+    those where these are never collected). A study with an agy arm says in its limitations that the arm was not door
+    tools only, that a call to a fixed tool stopped the session, that its runs reached agy's safety monitor, and how
+    the turn cap and the cut reply were counted.
+  - The Gemini CLI and the Antigravity CLI report no cost, so their dollars come from the driver budget's prices
+    alone. Under any dollar cap (the plan's own, or the study's) both `input_usd_per_mtok` and `output_usd_per_mtok`
+    must be given; otherwise the plan is refused before calibration and the driver is refused. Where the account has
+    no per-token price, a sign-in quota say, the refusal's own advice is 0 for both; the dollars then read 0 and the
+    dollar cap stops nothing, which the study's limitations say. `scripts/levelling_eval.py plan` has no price flags,
+    so a Gemini CLI or Antigravity CLI plan made there with a dollar cap is refused (and both drivers need one): such
+    a plan's prices go in the plan file's `driver_budget`, and an agy arm's acceptance in its `driver_config`.
+  - In the CPU checks (`scripts/check_level_eval.py`, 274 checks in all) the agy driver meets mock agy
+    CLIs only, with agy's own event shapes and a store in agy's own layout. The real binary is checked by
+    `scripts/verify_level_agy.py`. It is the owner's to run, as it runs under the owner's own sign-in and spends a
+    little of that account's quota. It loads no model: the driver works a stand-in door, a `LevelSession` with no model
+    behind it. It first shows the driver's refusal, then passes the acceptance of the three fixed tools itself
+    (`fixed_tools_accepted=True`) to see what a run would do; that is not the owner's acceptance. It makes three runs
+    (door, turn cap, STOP) at prices of 0, and lists `~/.gemini` (the desktop app's own folders apart) and
+    `~/.config/antigravity` before and after, which must be the same. It reads the tools agy offered a second,
+    independent way (the prompt's token account), and the two agreed on every real store tried. It was run four times
+    while PR 7 was mended, on 22 November 2026, by the sessions mending it and before those mends were committed
+    (7fbe902); the first two ran an earlier version of the script. The last passed 11 of 11 and found nothing changed
+    in either folder. It has not been run since, and the merges after 7fbe902 changed the driver's prompt for blinded
+    sessions (`build_driver_prompt`) and the door's own code (`level_mcp.py`, `level_session.py`). Its report goes to
+    the folder given as `--out`, and none is committed.
   - An OpenAI-compatible endpoint is on this machine only by its parsed host, and is then reached directly, never
     through a proxy; a remote one only through its profile in `backend/scientist_chat.py`, over https, with that
     profile's key variable and its prices. Redirects are refused. Spend is counted as the run goes, each request at no
@@ -2560,7 +2722,7 @@ yet measured.
     and a saved-edit proposal names the sites it changes. The scripted baseline abstains by rule in every blinded
     session and is scored `plumbing check (scripted baseline)`, in neither rate; a replay proposes only by a
     `propose_repair` step, and is a plumbing check. A measurement is any case whose driver family chooses what to
-    submit (openai, claude, codex); the family is all that is checked, so a case with a stand-in in its
+    submit (openai, claude, codex, gemini, agy); the family is all that is checked, so a case with a stand-in in its
     `driver_config` (a transport that types fixed replies, a mock CLI) is scored the same way and marked
     `driver_stand_in`, and the rates' notes count such cases. No driver that is an agent has been run through it.
     Where a plant-and-repair figure is read, the record says whether the repair would hold on a checkpoint with the

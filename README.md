@@ -177,7 +177,8 @@ from a GGUF you already have, see `scripts/export_control_vector.py` and [ARCHIT
 - **The vault.** A catalogue of the 1,290,240 neurons: look one up by the words it writes, edit one, and hear an
   answer before and after.
 - **The scientist.** An agent in the atlas’s side panel, with the same tools: it runs pushes and texts, names what it
-  finds and points at it on the map. It runs on Claude Code, Codex or any OpenAI-compatible endpoint.
+  finds and points at it on the map. It runs on Claude Code by default, on Codex, on Gemini (through Antigravity, or
+  through the Gemini CLI if you pick it), or on any OpenAI-compatible endpoint.
 - **Lexicon and Lineage.** Every word of the instrument in plain terms with its formula, and the research it is made
   from.
 
@@ -312,6 +313,10 @@ request 6; ARCHITECTURE §7 gives them as mended):
   server answers or the card lacks the memory to load the model (since pull request 6 the page server takes the
   same lock on a CUDA card unless `THEODOLITE_SKIP_CARD_LOCK` is set, so neither starts while the other runs;
   `scripts/levelling.py` takes none).
+  PR 7 adds drivers for the Gemini CLI and the Antigravity CLI (agy), not card-checked: they were
+  checked on the CPU (the Gemini CLI against a stub of its model API, agy against mock CLIs) and agy also live against
+  a stand-in door with no model, and neither has worked the door on the 31B. agy is refused until the owner accepts
+  the three tools it offers every run, and both need prices in the plan under a dollar cap (ARCHITECTURE §7).
 - **Claim Gate (`level_briefs.py`, `level_claim.py`).** Versioned briefs separate `practice` and `kept_back` frames
   (two independent halves), register every fresh claim in the ledger **before** post-freeze `os.urandom(32)` draws,
   enforce read-once per edit and a fixed budget `m` under the brief’s name (`20m - 1` controls per family across both

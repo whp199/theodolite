@@ -209,17 +209,26 @@ extreme (`--sample`). It is one forward a window, as `stats` is: on one RTX 5090
 word-pieces with `--unpacker compiled` (28 October 2026), where stats took 58 with `reference`. The windows it keeps are
 the corpus’s own text: they stay in the atlas folder and are never committed.
 
-The scientist runs on Antigravity CLI (`agy`, the default when installed; `$THEODOLITE_AGY_MODEL` picks the model),
-Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model),
-Codex (`codex`), or Gemini CLI (`gemini`, with `$GEMINI_API_KEY`, Vertex AI, or a Code Assist login; `$THEODOLITE_GEMINI_MODEL` picks the model) where
-the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
+The scientist runs on Claude Code by default (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the
+model). It also runs on Codex (`codex`) and on Gemini where the server finds them. Gemini is one choice in the picker:
+it runs on Antigravity CLI (`agy`, version 1.5.14 only; `$THEODOLITE_AGY_MODEL` picks the model) unless you pick the
+Gemini CLI beside it (`gemini`, with `$GEMINI_API_KEY`, Vertex AI, or a Code Assist login; `$THEODOLITE_GEMINI_MODEL`
+picks the model), or only the Gemini CLI is installed. A Claude Code, Codex or Gemini pick kept in the browser stays;
+while the server cannot run it, a new chat starts on the first installed of Claude Code, Codex, Antigravity and the
+Gemini CLI (an endpoint pick whose profile the server does not list gives way to that one in the browser too). Or it
+runs on an
+OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
 or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODOLITE_OLLAMA_URL`), OpenRouter (its key in
 `$OPENROUTER_API_KEY`), or any other (`$THEODOLITE_OPENAI_BASE_URL`, `$THEODOLITE_OPENAI_API_KEY`,
 `$THEODOLITE_OPENAI_MODEL`, or `endpoints.json` in the scientist’s folder, ARCHITECTURE §4.8). Pick the backend, and for an
 endpoint its model, in the scientist’s tab; a key is read from the environment and never reaches a page. Choose a model
-that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code or
-Gemini chat at the default reach with your next message to it while idle; any other chat says it runs the old ones and
-offers a restart, since that also ends its process group, with any commands it left running in it.
+that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code,
+Antigravity or Gemini CLI chat at the default reach with your next message to it while idle; any other chat says it
+runs the old ones and offers a restart, since that also ends its process group, with any commands it left running in
+it. A saved Gemini or Antigravity conversation that does not load refuses the chat (“start a new chat”) instead of
+starting afresh with no memory of the turns shown. Antigravity chats begun before the scientist had a data folder of
+its own for them, and Gemini CLI chats begun in the one working folder all Gemini CLI chats once shared, must be
+started again. An Antigravity chat cannot be edited or asked again.
 
 What the scientist makes for you, a page or a table say, it writes into its work folder and links in its reply; the
 link opens the file in a browser tab, shown with no scripts and no network. Its `steer` puts several prompts, or
@@ -231,25 +240,81 @@ already there is never written over: the export is refused, and says so); load i
 still differs, and the three recipes taken through llama.cpp on 11 November 2026).
 
 > [!WARNING]
-> By default, under Claude Code and Gemini CLI the scientist reads, writes and edits files only in its own work folder
-> and has no shell; under Antigravity CLI (`agy acp --stdio --sandbox`) it writes and edits only in its work folder and
-> has no shell (shell commands and writes outside its work folder are rejected via `session/request_permission`, while
-> read-only file access follows Antigravity's built-in read policy); under Codex its shell runs in a sandbox that has no network and writes there and in the temporary folders
-> (`/tmp` and `/dev/shm`), and it can read your other files, a credential kept in a file among them (the Hugging Face
-> token under `~/.cache/huggingface` was readable in it; SSH keys and Codex’s own login by the same rule). That was
-> measured in Codex’s own sandbox helper, not through a chat (codex-cli 0.166.0, 14 November 2026).
-> `THEODOLITE_SCIENTIST_REACH=home` gives it neuron-explorer’s own reach: a shell and file tools over your
-> home folder, pre-approved, so it runs commands and edits files there without asking, and what it reads (the model’s
-> answers, names and notes, attachments) can steer it; the page asks once before the first such chat. At either reach
+> By default, under Claude Code the scientist reads, writes and edits files only in its own work folder and has no
+> shell. Under the Gemini CLI it does the same, and also writes in Gemini CLI’s own files for that chat (its stored
+> conversation and memory, and the GEMINI.md of its Gemini home). At the folder reach the server refuses every
+> permission request of Antigravity’s but those for the atlas’s own tools, by name, and for reads, writes and edits
+> inside the work folder, so, as far as it asks, it reads, writes and edits files only in its work folder and has no
+> shell. It asks before reading or writing anywhere else, or running a workflow script (`run_workflow`). In a live chat
+> on agy 1.5.14 (22 November 2026), a read in `/tmp`, a read under the home folder and a `run_workflow` call each
+> asked and were refused; no shell command was tried in those turns. Reads outside the work folder ask because agy
+> 1.5.14 starts its sessions in its Default mode: the version pin keeps that, but the mode is not checked when a
+> session starts. It may search the web and start subagents of its own without asking, and what those subagents may
+> read or run was not checked. Its schedule tool asks no one: in that live chat the timer it set fired a minute later,
+> and it answered with no message from you. So a chat that calls schedule is stopped at once (at either reach), and at
+> the folder reach so is one that starts work with no message of yours in flight (after a 5-second grace); the thread
+> says why. That stop was checked against a mock only. Whether agy keeps a timer when the chat is loaded again was not
+> checked, and a timer that fired during one of your turns, or at the home reach, would not be told apart.
+> Under Codex its shell runs in a sandbox that has no network and writes in its work folder and in the temporary
+> folders (`/tmp` and `/dev/shm`), and it can read your other files, a credential kept in a file among them (the
+> Hugging Face token under `~/.cache/huggingface` was readable in it; SSH keys and Codex’s own login by the same
+> rule). That was measured in Codex’s own sandbox helper, not through a chat (codex-cli 0.166.0, 14 November 2026).
+> `THEODOLITE_SCIENTIST_REACH=home` gives it neuron-explorer’s own reach: under Claude Code, file tools over your home
+> folder and a shell, pre-approved, so it runs commands and edits files without asking; nothing sandboxes that shell,
+> so it too can reach the whole machine (the page’s words for it still say your home folder). Under Codex and the
+> Gemini CLI the shell has full access to this machine and never asks before it acts (the Gemini CLI’s file tools
+> still reach only the work folder and its own files for the chat). Antigravity at the home reach runs with
+> `--dangerously-skip-permissions` and no sandbox: a shell with full access to this machine that never asks before it
+> acts. It adds only the work folder as a workspace, never the home folder. What it reads (the model’s answers, names
+> and notes, attachments) can steer it. The page asks once for each backend, in that browser and in that backend’s own
+> words, before its first such chat; an acknowledgement kept from before, one for every backend at once, is asked
+> again. At either reach
 > Claude Code loads no settings file, hook or CLAUDE.md (`--setting-sources ""`), so a CLAUDE.md it writes in its
 > folder, or one in any folder above it, is not taken up by a later chat, and a `.claude/settings.json` written there
 > runs no hook (under the old `project` setting it ran as a shell command, at either reach). These rules were tried on
-> Claude Code 2.1.312 against a stand-in API, not a live model (`scripts/verify_scientist_cli.py`). Gemini CLI runs in
-> an isolated `$GEMINI_CLI_HOME` and an empty read-only `0o555` working directory with `--extensions none`,
-> `hooksConfig.enabled = false`, `memoryBoundaryMarkers = []`, `tools.core` and a Policy Engine rule allowing only the
-> `atlas` MCP server, so planted workspace settings, hooks, skills, rogue MCP servers and ancestor `GEMINI.md` files do
-> not load (verified on Gemini CLI 0.70.0 against a stand-in API in `scripts/verify_scientist_gemini_cli.py`). Over an
-> endpoint it has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint
+> Claude Code 2.1.312 against a stand-in API, not a live model (`scripts/verify_scientist_cli.py`).
+>
+> The Gemini CLI runs in a Gemini home of its own (`$GEMINI_CLI_HOME`) and, for each chat, an empty read-only working
+> folder, with `--extensions none`, `hooksConfig.enabled = false`, `memoryBoundaryMarkers = []`, `tools.core` and a
+> Policy Engine rule allowing only the `atlas` MCP server, so planted workspace settings, hooks, skills and rogue MCP
+> servers do not load. Gemini CLI 0.70.0 reads any GEMINI.md in its workspace as instructions: the work folder’s when
+> a session starts, and any between a file it reads and the work folder. No setting turns that off (`context.fileName`
+> only adds names; `context.loadMemoryFromIncludeDirectories` is read only by the interactive `/directory add`).
+> Antigravity’s own documentation says it reads GEMINI.md, AGENTS.md and a customization folder (`.agents`, `.agent`,
+> `_agents`, `_agent`: rules, skills, hooks, plugins, MCP servers) from its working folder up to the repository root.
+> In a live chat on 22 November 2026, Antigravity 1.5.14 took `work/AGENTS.md` and `work/GEMINI.md` as its rules, and
+> not a `work/.agents/rules` file; whether such a folder loads hooks, plugins or MCP servers was not checked, and the
+> folders above were not run live. Every command-line backend can write in the work folder. So a Gemini or
+> Antigravity message is not sent while a GEMINI.md (any case) is in the work folder or below it, or, for a Gemini CLI
+> chat, in Gemini’s own home or project memory. For Antigravity the same holds for an AGENTS.md or one of those
+> folders there, or directly in any folder above the work folder up to the root of the repository it is in. The page
+> says which file and why. The check is made before each message is sent: a file written during a turn can still load
+> for the rest of that turn, and the next message is refused. The scientist folder is inside Theodolite’s checkout by
+> default (`atlas_data/scientist`), so an AGENTS.md or GEMINI.md at the checkout’s root, or in `atlas_data`, stops
+> every Antigravity chat; set `THEODOLITE_SCIENTIST_DIR` outside the checkout to avoid that. These Gemini CLI rules
+> were checked on 0.70.0 against a stand-in API (`scripts/verify_scientist_gemini_cli.py`: 38 checks, run inside
+> `bwrap --dev-bind / / --unshare-net`, 22 November 2026; no record of that run is committed). The Antigravity chat has
+> mocks in `scripts/check_scientist.py` and seven live folder-reach turns on agy 1.5.14 (22 November 2026): writes
+> inside and outside the work folder, rules files, reads outside the work folder, `run_workflow` and schedule. None was
+> at the home reach, and no record of those turns is committed.
+>
+> Antigravity chats keep a data folder of the scientist’s own, one for all of them (`<scientist folder>/agy-gemini`,
+> passed as an absolute `--gemini-dir`), so your own Antigravity settings, plugins, skills, rules, subagents and plugin
+> MCP servers do not load and its conversations are not kept among yours. It runs with `--disable-telemetry` and
+> `--include-default-customizations=false` (what agy sends under the first, and whether your account’s own “Enable
+> Telemetry” setting still applies to a chat, was not checked), with an environment of `PATH`, `HOME`, `USER`,
+> `LOGNAME`, `LANG`, `DBUS_SESSION_BUS_ADDRESS` and `XDG_RUNTIME_DIR` only (it signs in through the system keyring).
+> Its `TMPDIR` is its own, and so are its XDG folders at the folder reach (at the home reach they are yours, as the
+> commands its shell runs look for their files there). It starts only on agy 1.5.14, and only once its log says it
+> keeps its files in that folder (agy says so only once a session is asked for). Gemini CLI’s usage statistics
+> (Clearcut, sent to play.googleapis.com) and telemetry are off in the chat’s own settings, and its temporary files (it
+> writes a whole conversation there when a request fails) go to `<scientist folder>/tmp/<chat>` (0700). Checked on
+> 0.70.0 behind a recording proxy: none sent; sent with them on.
+>
+> Each CLI is given its own login variables and no other CLI’s, and no process gets any other variable named like a
+> credential (`GH_TOKEN`, `GITHUB_TOKEN` and `NPM_TOKEN` among them; ARCHITECTURE §4.8). Under Antigravity or the Gemini
+> CLI, your messages, attachments and what the tools read are sent to Google, under the login the CLI signs in with.
+> Over an endpoint it has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint
 > (OpenRouter is a third-party service).
 
 ## On a rented card
