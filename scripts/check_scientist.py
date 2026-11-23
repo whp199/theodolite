@@ -396,6 +396,16 @@ for line in sys.stdin:
     note = lambda method, params: send({"jsonrpc": "2.0", "method": method, "params": params})
     if meth == "initialize":
         res({"serverInfo": {"name": "fake-codex"}})
+    elif meth == "model/list":
+        res({"data": [
+            {"id": "gpt-6.2-sol", "displayName": "GPT-6.2-Sol", "hidden": False, "isDefault": True,
+             "defaultReasoningEffort": "low",
+             "supportedReasoningEfforts": [{"reasoningEffort": e} for e in ("low", "medium", "high", "xhigh", "max", "ultra")]},
+            {"id": "gpt-6.2-astra", "displayName": "GPT-6.2-Astra", "hidden": False, "isDefault": False,
+             "defaultReasoningEffort": "medium",
+             "supportedReasoningEfforts": [{"reasoningEffort": e} for e in ("low", "medium", "high", "xhigh")]},
+            {"id": "gpt-hidden", "displayName": "Hidden", "hidden": True},
+        ]})
     elif meth in ("thread/start", "thread/resume"):
         thread = p.get("threadId") or f"thr_{len(state['threads']) + 1}"
         state["threads"].setdefault(thread, [])
@@ -659,6 +669,10 @@ def log(kind, **kw):
     with open(LOG, "a") as f:
         f.write(json.dumps({"kind": kind, **kw}) + "\n")
 args = sys.argv[1:]
+if args[:1] == ["models"]:
+    sys.stdout.write("\r⠋ Fetching available models...\rgemini-4-neon-high              Gemini 4 Neon (High)\ngemini-4-neon-xhigh             Gemini 4 Neon (XHigh)\ngemini-3.8-flash-low            Gemini 3.8 Flash (Low)\n")
+    sys.stdout.flush()
+    sys.exit(0)
 gdir = next((a.split("=", 1)[1] for a in args if a.startswith("--gemini-dir=")), "")
 log_file = args[args.index("--log-file") + 1] if "--log-file" in args else ""
 log("start", argv=args, cwd=os.getcwd(), cwd_mode=oct(os.stat(os.getcwd()).st_mode & 0o777), env=dict(os.environ))
@@ -2609,6 +2623,99 @@ def run_checks() -> int:
               f"the page: a retried reply's reset takes off what came of it since its last tool call, and nothing before: {parts}")
     section("the page: Claude Code by default, Gemini one family (Antigravity first), a kept pick, the home reach asked for each backend, "
             "no rewind offered on Antigravity, a retried reply", before)
+
+    # --------------------------------------------------------------------------- 5e. CLI model & thinking effort picker
+    before = len(failures)
+    sc._cli_models_cache.clear()
+    parsed = sc._parse_agy_models("\r\x1b[36m⠋ Fetching...\x1b[0m\rgemini-4-neon-xhigh   Gemini 4 Neon (XHigh)\n\nnot a row\ngemini-4-neon-high\tGemini 4 Neon (High)\n")
+    check([r["id"] for r in parsed] == ["gemini-4-neon-xhigh", "gemini-4-neon-high"]
+          and parsed[0]["name"] == "Gemini 4 Neon (XHigh)",
+          f"_parse_agy_models strips spinner/ANSI and parses model table: {parsed}")
+    cm_agy = hc.get("/api/atlas/scientist/cli_models", params={"agent": "agy"}).json()
+    check([r["id"] for r in cm_agy["models"]] == ["gemini-4-neon-high", "gemini-4-neon-xhigh", "gemini-3.8-flash-low"]
+          and cm_agy["efforts"] == [],
+          f"/cli_models?agent=agy lists live models from `agy models`: {cm_agy}")
+    cm_claude = hc.get("/api/atlas/scientist/cli_models", params={"agent": "claude"}).json()
+    check([r["id"] for r in cm_claude["models"]] == ["opus", "sonnet", "haiku"]
+          and cm_claude["efforts"] == list(sc.CLAUDE_EFFORTS) and cm_claude["custom_model"] is True,
+          f"/cli_models?agent=claude lists aliases + efforts: {cm_claude}")
+    cm_codex = hc.get("/api/atlas/scientist/cli_models", params={"agent": "codex"}).json()
+    cm_by_id = {r["id"]: r for r in cm_codex["models"]}
+    check("gpt-6.2-sol" in cm_by_id and "gpt-6.2-astra" in cm_by_id and "gpt-hidden" not in cm_by_id
+          and "ultra" in (cm_by_id["gpt-6.2-sol"]["efforts"] or [])
+          and "ultra" not in (cm_by_id["gpt-6.2-astra"]["efforts"] or [])
+          and cm_by_id["gpt-6.2-sol"]["default_effort"] == "low"
+          and cm_codex["default"] == "gpt-test",
+          f"/cli_models?agent=codex lists live non-hidden models with per-model efforts: {cm_codex}")
+    cm_gem = hc.get("/api/atlas/scientist/cli_models", params={"agent": "gemini"}).json()
+    check(any(r["id"] == "pro" for r in cm_gem["models"]) and cm_gem["efforts"] == [] and cm_gem["custom_model"] is True,
+          f"/cli_models?agent=gemini lists aliases + custom: {cm_gem}")
+    check(hc.get("/api/atlas/scientist/cli_models", params={"agent": "bogus"}).status_code == 400,
+          "/cli_models rejects unknown agent")
+    # Validation: reject flag-injection models and invalid efforts
+    check(hc.post("/api/atlas/scientist/send", json={"chat": str(uuid.uuid4()), "agent": "claude", "model": "--bad", "message": "hi"}).status_code == 400
+          and hc.post("/api/atlas/scientist/send", json={"chat": str(uuid.uuid4()), "agent": "claude", "model": "bad model", "message": "hi"}).status_code == 400
+          and hc.post("/api/atlas/scientist/send", json={"chat": str(uuid.uuid4()), "agent": "claude", "effort": "ultra", "message": "hi"}).status_code == 400
+          and hc.post("/api/atlas/scientist/send", json={"chat": str(uuid.uuid4()), "agent": "agy", "effort": "high", "message": "hi"}).status_code == 400,
+          "/send validates model strings and per-backend thinking efforts")
+    # Per-chat propagation: Claude Code (--model + --effort)
+    os.environ["FAKE_LOG"] = str(TMP / "fake_claude_me.log")
+    chat_cm = str(uuid.uuid4())
+    ev_cm = Events(srv.url, chat_cm)
+    r_cm = hc.post("/api/atlas/scientist/send", json={"chat": chat_cm, "agent": "claude", "model": "opus", "effort": "xhigh", "message": "hello"})
+    ev_cm.wait(lambda e: e["t"] == "done", 20)
+    cl_argv = next(json.loads(l)["argv"] for l in (TMP / "fake_claude_me.log").read_text().splitlines() if json.loads(l)["kind"] == "start")
+    h_cm = hc.get("/api/atlas/scientist/history", params={"chat": chat_cm}).json()
+    check(r_cm.status_code == 200 and "--model" in cl_argv and cl_argv[cl_argv.index("--model") + 1] == "opus"
+          and "--effort" in cl_argv and cl_argv[cl_argv.index("--effort") + 1] == "xhigh"
+          and h_cm.get("model") == "opus" and h_cm.get("effort") == "xhigh",
+          f"claude chat passes --model and --effort and records them in /history: {cl_argv} {h_cm}")
+    ev_cm.stop = True
+    # Per-chat propagation: Codex (thread/start model + config.model_reasoning_effort)
+    os.environ["FAKE_LOG"] = str(TMP / "fake_codex_me.log")
+    chat_cx = str(uuid.uuid4())
+    ev_cx = Events(srv.url, chat_cx)
+    r_cx = hc.post("/api/atlas/scientist/send", json={"chat": chat_cx, "agent": "codex", "model": "gpt-6.2-astra", "effort": "xhigh", "message": "hello"})
+    ev_cx.wait(lambda e: e["t"] == "done", 20)
+    cx_ts = next(json.loads(l)["params"] for l in (TMP / "fake_codex_me.log").read_text().splitlines()
+                 if json.loads(l).get("method") == "thread/start")
+    h_cx = hc.get("/api/atlas/scientist/history", params={"chat": chat_cx}).json()
+    check(r_cx.status_code == 200 and cx_ts.get("model") == "gpt-6.2-astra"
+          and (cx_ts.get("config") or {}).get("model_reasoning_effort") == "xhigh"
+          and h_cx.get("model") == "gpt-6.2-astra" and h_cx.get("effort") == "xhigh",
+          f"codex chat passes model + model_reasoning_effort in thread/start and records them: {cx_ts} {h_cx}")
+    ev_cx.stop = True
+    # Per-chat propagation: Gemini CLI (--model)
+    os.environ["FAKE_LOG"] = str(TMP / "fake_gemini_me.log")
+    chat_gm = str(uuid.uuid4())
+    ev_gm = Events(srv.url, chat_gm)
+    r_gm = hc.post("/api/atlas/scientist/send", json={"chat": chat_gm, "agent": "gemini", "model": "gemini-2.5-pro", "message": "hello"})
+    ev_gm.wait(lambda e: e["t"] == "done", 20)
+    gm_argv = next(json.loads(l)["argv"] for l in (TMP / "fake_gemini_me.log").read_text().splitlines() if json.loads(l)["kind"] == "start")
+    h_gm = hc.get("/api/atlas/scientist/history", params={"chat": chat_gm}).json()
+    check(r_gm.status_code == 200 and "--model" in gm_argv and gm_argv[gm_argv.index("--model") + 1] == "gemini-2.5-pro"
+          and h_gm.get("model") == "gemini-2.5-pro",
+          f"gemini chat passes --model and records it in /history: {gm_argv} {h_gm}")
+    ev_gm.stop = True
+    # Per-chat propagation: Antigravity (session/set_model)
+    n_agy_sm = len([x for x in alog() if x["kind"] == "set_model"])
+    chat_am = str(uuid.uuid4())
+    ev_am = Events(srv.url, chat_am)
+    r_am = hc.post("/api/atlas/scientist/send", json={"chat": chat_am, "agent": "agy", "model": "gemini-4-neon-xhigh", "message": "hello"})
+    ev_am.wait(lambda e: e["t"] == "done", 20)
+    new_sm = [x for x in alog() if x["kind"] == "set_model"][n_agy_sm:]
+    h_am = hc.get("/api/atlas/scientist/history", params={"chat": chat_am}).json()
+    check(r_am.status_code == 200 and any(x["params"].get("modelId") == "gemini-4-neon-xhigh" for x in new_sm)
+          and h_am.get("model") == "gemini-4-neon-xhigh",
+          f"agy chat calls session/set_model with per-chat model and records it: {new_sm} {h_am}")
+    ev_am.stop = True
+    # /chats includes model & effort for CLI chats
+    past_rows = {row["chat"]: row for row in hc.get("/api/atlas/scientist/chats").json()}
+    check((past_rows.get(chat_cx) or {}).get("model") == "gpt-6.2-astra"
+          and (past_rows.get(chat_cx) or {}).get("effort") == "xhigh"
+          and (past_rows.get(chat_am) or {}).get("model") == "gemini-4-neon-xhigh",
+          f"/chats exposes recorded model & effort for CLI chats: {past_rows.get(chat_cx)} {past_rows.get(chat_am)}")
+    section("CLI model & thinking effort: /cli_models discovery, validation, per-chat propagation across all 4 CLIs & /history", before)
 
     # --------------------------------------------------------------------------- 6. an OpenAI-compatible endpoint
     before = len(failures)

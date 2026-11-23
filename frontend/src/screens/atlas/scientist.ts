@@ -9,7 +9,7 @@
  * restartChat).
  */
 import { create } from "zustand";
-import { AtlasError, get, post, streamLines, type Backends, type ChatEvent, type PastChat } from "./api";
+import { AtlasError, get, post, streamLines, type Backends, type ChatEvent, type CliModelList, type PastChat } from "./api";
 import { clearScientistMarks, saveNote, scientistUi, useAtlas } from "./state";
 
 export interface Att {
@@ -40,6 +40,7 @@ export interface Pick {
   agent: Agent;
   profile: string | null;
   model: string | null;
+  effort?: string | null;
 }
 export interface ModelRow {
   id: string;
@@ -64,6 +65,7 @@ interface SciState {
   /** a reply ended while the scientist's tab was not showing */
   unseen: boolean;
   models: Record<string, ModelRow[] | string>;
+  cliModels: Record<string, CliModelList | "loading" | string>;
   input: string;
 }
 
@@ -97,6 +99,7 @@ export const useScientist = create<SciState>(() => ({
   pastError: null,
   unseen: false,
   models: {},
+  cliModels: {},
   input: "",
 }));
 
@@ -127,6 +130,18 @@ export function setPick(p: Pick) {
     // not kept
   }
   if (p.agent === "openai" && p.profile && !st().models[p.profile]) void loadModels(p.profile);
+  else if (p.agent !== "openai" && installed(st().backends, p.agent) && !st().cliModels[p.agent]) void loadCliModels(p.agent);
+}
+
+export async function loadCliModels(agent: Exclude<Agent, "openai">) {
+  if (st().cliModels[agent] === "loading") return;
+  set({ cliModels: { ...st().cliModels, [agent]: "loading" } });
+  try {
+    const r = await get<CliModelList>("/api/atlas/scientist/cli_models", { agent });
+    set({ cliModels: { ...st().cliModels, [agent]: r } });
+  } catch (e) {
+    set({ cliModels: { ...st().cliModels, [agent]: errText(e) } });
+  }
 }
 
 export async function loadBackends() {
@@ -137,12 +152,17 @@ export async function loadBackends() {
     // the first installed in main's order, the Gemini family after; Claude Code when none is
     const firstCli = (): Agent => CLI_ORDER.find((a) => installed(b, a)) ?? "claude";
     if (p.agent === "openai" && p.profile && b.openai.some((x) => x.name === p.profile)) void loadModels(p.profile);
-    else if (p.agent === "openai") setPick({ agent: firstCli(), profile: null, model: null });
+    else if (p.agent === "openai") setPick({ agent: firstCli(), profile: null, model: null, effort: null });
     else if (!installed(b, p.agent)) {
       // a pick the server cannot run gives way, for now, to the first that it can; the pick kept in this browser stays
       // as it is, and is the pick again once the server can run it
       const next = firstCli();
-      if (next !== p.agent && installed(b, next)) set({ pick: { agent: next, profile: null, model: null } });
+      if (next !== p.agent && installed(b, next)) {
+        set({ pick: { agent: next, profile: null, model: null, effort: null } });
+        if (next !== "openai") void loadCliModels(next);
+      }
+    } else {
+      void loadCliModels(p.agent);
     }
   } catch (e) {
     set({ backendsError: errText(e) });
@@ -313,7 +333,9 @@ export async function agentTurn(message: string, shown: string, atts: Att[] = []
     await post("/api/atlas/scientist/send", {
       chat: st().chat,
       agent: p.agent,
-      ...(p.agent === "openai" ? { profile: p.profile, model: p.model } : {}),
+      ...(p.agent === "openai" ? { profile: p.profile } : {}),
+      ...(p.model ? { model: p.model } : {}),
+      ...(p.effort ? { effort: p.effort } : {}),
       message,
       attachments: atts.map((a) => a.id).filter(Boolean),
       ...(f?.kind === "neuron" ? { layer: f.layer, n: f.n } : f?.kind === "head" ? { layer: f.layer, head: f.n } : {}),
@@ -389,7 +411,7 @@ export async function togglePast() {
 }
 
 export async function openPast(c: PastChat) {
-  let r: { events: ChatEvent[]; agent: Agent; profile?: string; model?: string };
+  let r: { events: ChatEvent[]; agent: Agent; profile?: string; model?: string; effort?: string };
   try {
     r = await get("/api/atlas/scientist/history", { chat: c.chat });
   } catch (e) {
@@ -416,7 +438,7 @@ export async function openPast(c: PastChat) {
       if (p && p.t === "tool") Object.assign(p, { output: String(e.output ?? ""), error: !!e.error });
     } else if (e.t === "error") box.parts.push({ t: "error", text: String(e.error ?? "") });
   }
-  const chatPick: Pick = { agent: r.agent ?? c.agent, profile: r.profile ?? null, model: r.model ?? null };
+  const chatPick: Pick = { agent: r.agent ?? c.agent, profile: r.profile ?? null, model: r.model ?? null, effort: r.effort ?? null };
   set({ chat: c.chat, chatPick, items, box: null, past: null, stale: false }); // its stream's state says whether it is stale
   clearScientistMarks();
   save();

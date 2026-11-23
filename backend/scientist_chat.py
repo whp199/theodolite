@@ -135,6 +135,14 @@ MCP_SCRIPT = ROOT_DIR / "backend" / "scientist_mcp.py"
 AGENT_FILES = (*PROMPT_FILES, MCP_SCRIPT, ROOT_DIR / "backend" / "scientist_tools.py")
 SCIENTIST_DIR_ENV = "THEODOLITE_SCIENTIST_DIR"
 AGENTS = ("agy", "claude", "codex", "gemini", "openai")
+CLAUDE_MODELS = ({"id": "opus", "name": "Opus"}, {"id": "sonnet", "name": "Sonnet"}, {"id": "haiku", "name": "Haiku"})
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+CODEX_EFFORTS = ("minimal", "low", "medium", "high", "xhigh", "max", "ultra")
+GEMINI_MODELS = ({"id": "auto", "name": "Auto"}, {"id": "pro", "name": "Pro"}, {"id": "flash", "name": "Flash"})
+CLI_MODEL_TTL = 300.0
+_cli_models_cache: Dict[Tuple[str, str], Tuple[float, Dict[str, Any]]] = {}
+_ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+_MODEL_BAD_RE = re.compile(r"[\x00-\x1f\x7f\s]")
 FILE_TOOLS = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
 GEMINI_FOLDER_TOOLS = ["read_file", "write_file", "replace", "list_directory"]
 GEMINI_HOME_TOOLS = ["read_file", "write_file", "replace", "list_directory", "glob", "grep_search", "run_shell_command"]
@@ -724,7 +732,7 @@ def _session_file(sid: str) -> Optional[str]:
     return hits[0] if hits else None
 
 
-def _claude_cmd(cid: str, self_url: str) -> List[str]:
+def _claude_cmd(cid: str, self_url: str, model: Optional[str] = None, effort: Optional[str] = None) -> List[str]:
     mcp = {"mcpServers": {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)],
                                     "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": cid}}}}
     if reach() == "home":
@@ -741,8 +749,12 @@ def _claude_cmd(cid: str, self_url: str) -> List[str]:
     cmd = [_bin("claude"), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
            "--include-partial-messages", "--system-prompt-file", str(prompt_file("claude", self_url)),
            "--mcp-config", json.dumps(mcp), "--strict-mcp-config", *tools, "--setting-sources", ""]
-    if os.environ.get("THEODOLITE_CLAUDE_MODEL"):
-        cmd += ["--model", os.environ["THEODOLITE_CLAUDE_MODEL"]]
+    use_model = model or os.environ.get("THEODOLITE_CLAUDE_MODEL")
+    if use_model:
+        cmd += ["--model", use_model]
+    use_effort = effort or os.environ.get("THEODOLITE_CLAUDE_EFFORT")
+    if use_effort:
+        cmd += ["--effort", use_effort]
     return cmd + (["--resume", cid] if _session_file(cid) else ["--session-id", cid])
 
 
@@ -841,10 +853,13 @@ async def _ensure_claude(c: Dict[str, Any], self_url: str) -> Any:
     if not shutil.which(_bin("claude")):
         raise RuntimeError("Claude Code (the `claude` command) is not installed where the server runs.")
     files = _agent_files_stamp()  # before the prompt file is built from them
+    meta = _meta().get(c["session"], {})
     # its own process group, so ending a chat also ends what it started (the MCP server, its scripts)
-    proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()), env=child_env("claude"),
-                                                            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                                                            stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
+    proc = c["proc"] = await asyncio.create_subprocess_exec(
+        *_claude_cmd(c["session"], self_url, model=meta.get("model"), effort=meta.get("effort")),
+        cwd=str(work_dir()), env=child_env("claude"),
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
     _started(c, files)
     c["pump"] = asyncio.create_task(_pump_claude(c, proc))
     return proc
@@ -1022,9 +1037,15 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
     mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]},
                      "default_tools_approval_mode": "approve"}}
     sandbox = "danger-full-access" if reach() == "home" else "workspace-write"  # module docstring: reach
-    opts = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": sandbox, "config": {"mcp_servers": mcp},
-            "developerInstructions": system_prompt("codex", self_url)}
-    thread = _meta().get(c["session"], {}).get("thread")
+    meta = _meta().get(c["session"], {})
+    cfg: Dict[str, Any] = {"mcp_servers": mcp}
+    if meta.get("effort"):
+        cfg["model_reasoning_effort"] = meta["effort"]
+    opts: Dict[str, Any] = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": sandbox, "config": cfg,
+                            "developerInstructions": system_prompt("codex", self_url)}
+    if meta.get("model"):
+        opts["model"] = meta["model"]
+    thread = meta.get("thread")
     r = await _rpc(c, "thread/resume", {"threadId": thread, **opts}) if thread else await _rpc(c, "thread/start", opts)
     c["thread"] = (r.get("thread") or {}).get("id")
     if not thread:
@@ -1163,7 +1184,7 @@ def _gemini_home(cid: str) -> Tuple[Path, Path, Path]:
     return home, cwd, policy_path
 
 
-def _gemini_cmd(policy_path: Path) -> List[str]:
+def _gemini_cmd(policy_path: Path, model: Optional[str] = None) -> List[str]:
     """Gemini CLI's command line. Its workspace is its empty read-only cwd and the work folder, at either reach: a
     workspace folder is where Gemini reads GEMINI.md files from (`context_files`), so the home folder is never one; at
     the home reach its shell reaches the rest."""
@@ -1175,8 +1196,9 @@ def _gemini_cmd(policy_path: Path) -> List[str]:
         "--policy", str(policy_path),
         "--include-directories", str(work_dir()),
     ]
-    if os.environ.get("THEODOLITE_GEMINI_MODEL"):
-        cmd += ["--model", os.environ["THEODOLITE_GEMINI_MODEL"]]
+    use_model = model or os.environ.get("THEODOLITE_GEMINI_MODEL")
+    if use_model:
+        cmd += ["--model", use_model]
     return cmd
 
 
@@ -1706,8 +1728,9 @@ async def _ensure_gemini(c: Dict[str, Any], self_url: str) -> Any:
         GEMINI_TELEMETRY_ENABLED="false",
         TMPDIR=str(chat_tmp(c["session"])),
     )
+    meta = _meta().get(c["session"], {})
     proc = c["proc"] = await asyncio.create_subprocess_exec(
-        *_gemini_cmd(policy_path),
+        *_gemini_cmd(policy_path, model=meta.get("model")),
         cwd=str(ro_cwd),
         env=env,
         stdin=asyncio.subprocess.PIPE,
@@ -2028,7 +2051,7 @@ async def _ensure_agy(c: Dict[str, Any], self_url: str) -> Any:
         if not await _agy_said_its_folder(log_file, gdir):
             raise RuntimeError(f"Antigravity did not say it keeps its files in the chat's own folder ({gdir}), so the chat is "
                                "stopped: its conversations could otherwise land among your own.")
-        model = os.environ.get("THEODOLITE_AGY_MODEL")
+        model = _meta().get(c["session"], {}).get("model") or os.environ.get("THEODOLITE_AGY_MODEL")
         if model:
             await _rpc(c, "session/set_model", {"sessionId": sid, "modelId": model})
         c["gemini_session"] = sid
@@ -2325,6 +2348,7 @@ class SendRequest(BaseModel):
     agent: Optional[str] = Field(None, max_length=16)
     profile: Optional[str] = Field(None, max_length=64)
     model: Optional[str] = Field(None, max_length=200)
+    effort: Optional[str] = Field(None, max_length=40)
     layer: Optional[int] = None
     n: Optional[int] = None
     head: Optional[int] = None
@@ -2342,21 +2366,231 @@ class UploadRequest(BaseModel):
     data: str
 
 
+def _clean_model(model: Optional[str]) -> Optional[str]:
+    if model is None:
+        return None
+    s = model.strip()
+    if not s:
+        return None
+    if len(s) > 200 or s.startswith("-") or _MODEL_BAD_RE.search(s):
+        raise HTTPException(status_code=400, detail=f"Invalid model name {model!r}.")
+    return s
+
+
+def _clean_effort(agent: str, effort: Optional[str]) -> Optional[str]:
+    if effort is None:
+        return None
+    s = effort.strip().lower()
+    if not s:
+        return None
+    allowed = CLAUDE_EFFORTS if agent == "claude" else (CODEX_EFFORTS if agent == "codex" else ())
+    if not allowed:
+        raise HTTPException(status_code=400, detail=f"{agent} does not take a separate thinking effort setting.")
+    if s not in allowed:
+        raise HTTPException(status_code=400, detail=f"Thinking effort for {agent} must be one of {', '.join(allowed)}.")
+    return s
+
+
+def _codex_user_prefs() -> Tuple[Optional[str], Optional[str]]:
+    import tomllib
+
+    try:
+        user = tomllib.loads(Path(os.path.expanduser("~/.codex/config.toml")).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None, None
+    m = user.get("model")
+    ef = user.get("model_reasoning_effort")
+    return (m if isinstance(m, str) and m.strip() else None), (ef if isinstance(ef, str) and ef.strip() else None)
+
+
+def _gemini_user_model() -> Optional[str]:
+    try:
+        user = json.loads(Path(os.path.expanduser("~/.gemini/settings.json")).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    m = (user.get("model") or {}).get("name") if isinstance(user, dict) else None
+    return m if isinstance(m, str) and m.strip() else None
+
+
+def _parse_agy_models(text: str) -> List[Dict[str, Any]]:
+    """Parse `agy models` table output (`<id>  <display name>`), stripping terminal spinner frames and ANSI codes."""
+    out: List[Dict[str, Any]] = []
+    seen = set()
+    for raw in text.splitlines():
+        line = _ANSI_RE.sub("", raw.split("\r")[-1]).strip()
+        if not line:
+            continue
+        m = re.match(r"^([A-Za-z0-9][A-Za-z0-9._:/-]*)(?:\t+|\s{2,})(.+?)\s*$", line)
+        if not m:
+            continue
+        mid, name = m.group(1), m.group(2)
+        if mid in seen:
+            continue
+        seen.add(mid)
+        out.append({"id": mid, "name": name, "efforts": None, "default_effort": None})
+    return out
+
+
+async def _list_agy_models() -> List[Dict[str, Any]]:
+    exe = shutil.which(_bin("agy"))
+    if not exe:
+        raise HTTPException(status_code=404, detail="Antigravity CLI (the `agy` command) is not installed where the server runs.")
+    proc = await asyncio.create_subprocess_exec(
+        exe, "models",
+        env=child_env("agy", NO_COLOR="1"),
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        start_new_session=True,
+    )
+    try:
+        raw_out, raw_err = await asyncio.wait_for(proc.communicate(), 15)
+    except asyncio.TimeoutError:
+        await _stop_proc(proc)
+        raise HTTPException(status_code=504, detail="Antigravity did not finish listing models in 15 s.") from None
+    out = raw_out.decode("utf-8", errors="replace")
+    err = raw_err.decode("utf-8", errors="replace")
+    if proc.returncode != 0:
+        msg = (err.strip() or out.strip())[-300:] or f"exited {proc.returncode}"
+        raise HTTPException(status_code=502, detail=f"agy models failed: {msg}")
+    return _parse_agy_models(out)
+
+
+async def _list_codex_models() -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Ask `codex app-server` for its live `model/list` (non-hidden models and each model's supported reasoning
+    efforts); returns `(models, default_model_id)`."""
+    exe = shutil.which(_bin("codex"))
+    if not exe:
+        return [], None
+    env = child_env("codex", CODEX_HOME=_codex_home())
+    proc = await asyncio.create_subprocess_exec(
+        exe, "app-server",
+        cwd=str(work_dir()),
+        env=env,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+        limit=1 << 22,
+        start_new_session=True,
+    )
+
+    async def _rpc_once(rid: int, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        assert proc.stdin is not None and proc.stdout is not None
+        proc.stdin.write((json.dumps({"jsonrpc": "2.0", "id": rid, "method": method, "params": params}) + "\n").encode("utf-8"))
+        await proc.stdin.drain()
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                raise RuntimeError("codex app-server exited before answering")
+            try:
+                m = json.loads(line)
+            except ValueError:
+                continue
+            if m.get("id") == rid:
+                if "error" in m:
+                    raise RuntimeError(str(m["error"]))
+                return m.get("result") or {}
+
+    try:
+        await asyncio.wait_for(_rpc_once(1, "initialize", {"clientInfo": {"name": "theodolite", "version": "1"}}), 10)
+        res = await asyncio.wait_for(_rpc_once(2, "model/list", {}), 12)
+    finally:
+        await _stop_proc(proc)
+    rows: List[Dict[str, Any]] = []
+    default_id: Optional[str] = None
+    for item in res.get("data") or []:
+        if not isinstance(item, dict) or item.get("hidden"):
+            continue
+        mid = str(item.get("id") or item.get("model") or "").strip()
+        if not mid:
+            continue
+        effs = [str(e["reasoningEffort"]) for e in (item.get("supportedReasoningEfforts") or [])
+                if isinstance(e, dict) and e.get("reasoningEffort")]
+        def_eff = item.get("defaultReasoningEffort") if isinstance(item.get("defaultReasoningEffort"), str) else None
+        if item.get("isDefault") and not default_id:
+            default_id = mid
+        rows.append({
+            "id": mid,
+            "name": str(item.get("displayName") or mid),
+            "efforts": effs or None,
+            "default_effort": def_eff,
+        })
+    return rows, default_id
+
+
 @router.get("/backends")
 async def backends() -> Dict[str, Any]:
     """Which backends this server can run: Antigravity CLI, Claude Code, Codex and Gemini CLI where their commands are
     installed, and every OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing")."""
     ps = profiles()
+    codex_model, codex_effort = _codex_user_prefs()
     return {"agy": {"available": bool(shutil.which(_bin("agy"))), "model": os.environ.get("THEODOLITE_AGY_MODEL")},
-            "claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
-            "codex": {"available": bool(shutil.which(_bin("codex")))},
-            "gemini": {"available": bool(shutil.which(_bin("gemini"))), "model": os.environ.get("THEODOLITE_GEMINI_MODEL")},
+            "claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL"),
+                       "effort": os.environ.get("THEODOLITE_CLAUDE_EFFORT"), "efforts": list(CLAUDE_EFFORTS)},
+            "codex": {"available": bool(shutil.which(_bin("codex"))), "model": codex_model,
+                      "effort": codex_effort, "efforts": list(CODEX_EFFORTS)},
+            "gemini": {"available": bool(shutil.which(_bin("gemini"))),
+                       "model": os.environ.get("THEODOLITE_GEMINI_MODEL") or _gemini_user_model()},
             "openai": [profile_card(k, v) for k, v in ps.items()], "warning": _profile_warning,
             # what each can do at this reach, and at the folder reach (what the page says it would do without "home")
             "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()], "folder": REACH_WORDS["folder"]},
             # where an Antigravity, Claude Code, Codex or Gemini scientist keeps its files, and the route the page opens one through
             "work": {"folder": str(work_dir()), "route": WORK_ROUTE},
             "prompt": {"files": [str(p) for p in PROMPT_FILES], "local": str(scientist_dir() / "prompt.local.md")}}
+
+
+@router.get("/cli_models")
+async def cli_models(agent: str, refresh: bool = False) -> Dict[str, Any]:
+    """Available models and thinking/reasoning effort levels for a CLI backend (`agy`, `claude`, `codex`, `gemini`).
+    For Antigravity and Codex this queries the CLI live (cached briefly); for Claude Code and Gemini CLI it returns the
+    CLI's aliases plus any server default."""
+    if agent not in ("agy", "claude", "codex", "gemini"):
+        raise HTTPException(status_code=400, detail="agent must be one of agy, claude, codex, gemini.")
+    if agent == "claude":
+        env_m = os.environ.get("THEODOLITE_CLAUDE_MODEL")
+        rows = [{"id": r["id"], "name": r["name"], "efforts": list(CLAUDE_EFFORTS), "default_effort": None} for r in CLAUDE_MODELS]
+        if env_m and not any(r["id"] == env_m for r in rows):
+            rows.insert(0, {"id": env_m, "name": env_m, "efforts": list(CLAUDE_EFFORTS), "default_effort": None})
+        return {"agent": "claude", "models": rows, "default": env_m,
+                "efforts": list(CLAUDE_EFFORTS), "default_effort": os.environ.get("THEODOLITE_CLAUDE_EFFORT"),
+                "custom_model": True}
+    if agent == "gemini":
+        default_m = os.environ.get("THEODOLITE_GEMINI_MODEL") or _gemini_user_model()
+        rows = [{"id": r["id"], "name": r["name"], "efforts": None, "default_effort": None} for r in GEMINI_MODELS]
+        if default_m and not any(r["id"] == default_m for r in rows):
+            rows.insert(0, {"id": default_m, "name": default_m, "efforts": None, "default_effort": None})
+        return {"agent": "gemini", "models": rows, "default": default_m,
+                "efforts": [], "default_effort": None, "custom_model": True}
+    exe = shutil.which(_bin(agent))
+    if not exe:
+        raise HTTPException(status_code=404, detail=f"{agent} is not installed where the server runs.")
+    cache_key = (agent, exe)
+    now = time.time()
+    hit = _cli_models_cache.get(cache_key)
+    if not refresh and hit and now - hit[0] < CLI_MODEL_TTL:
+        return hit[1]
+    if agent == "agy":
+        rows = await _list_agy_models()
+        default_m = os.environ.get("THEODOLITE_AGY_MODEL")
+        res = {"agent": "agy", "models": rows, "default": default_m,
+               "efforts": [], "default_effort": None, "custom_model": not rows}
+        _cli_models_cache[cache_key] = (now, res)
+        return res
+    # codex: live model/list with graceful fallback to ~/.codex/config.toml
+    codex_m, codex_ef = _codex_user_prefs()
+    live_rows: List[Dict[str, Any]] = []
+    live_default: Optional[str] = None
+    try:
+        live_rows, live_default = await _list_codex_models()
+    except Exception:
+        live_rows, live_default = [], None
+    default_m = codex_m or live_default
+    if codex_m and not any(r["id"] == codex_m for r in live_rows):
+        live_rows.insert(0, {"id": codex_m, "name": codex_m, "efforts": list(CODEX_EFFORTS), "default_effort": codex_ef})
+    res = {"agent": "codex", "models": live_rows, "default": default_m,
+           "efforts": list(CODEX_EFFORTS), "default_effort": codex_ef, "custom_model": True}
+    _cli_models_cache[cache_key] = (now, res)
+    return res
 
 
 @router.get("/models")
@@ -2415,7 +2649,10 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
             raise HTTPException(status_code=400, detail="Pick a model for this endpoint.")
         _meta_set(cid, agent="openai", profile=req.profile, model=model, created=int(time.time()))
     elif not known.get("agent"):
-        _meta_set(cid, agent=c["agent"], created=int(time.time()))
+        model = _clean_model(req.model)
+        effort = _clean_effort(c["agent"], req.effort)
+        extra = {**({"model": model} if model else {}), **({"effort": effort} if effort else {})}
+        _meta_set(cid, agent=c["agent"], created=int(time.time()), **extra)
     msg = shown = req.message
     if req.layer is not None and req.head is not None:
         msg = f"[The person has attention head {st.cite_head(req.layer, req.head)} open in the atlas.]\n\n{msg}"
@@ -2587,7 +2824,9 @@ def _summary(cid: str, m: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             turns += 1
             title = title or _shown_text(t).strip()[:120]
     out = {"chat": cid, "agent": agent, "t": int(mt), "title": title, "turns": turns,
-           **({"profile": m.get("profile"), "model": m.get("model")} if agent == "openai" else {})}
+           **({"profile": m.get("profile")} if agent == "openai" else {}),
+           **({"model": m.get("model")} if agent == "openai" or m.get("model") else {}),
+           **({"effort": m.get("effort")} if m.get("effort") else {})}
     _chat_list[path] = (mt, out)
     return out
 
@@ -2620,10 +2859,15 @@ async def history(chat: str) -> Dict[str, Any]:
                         ev[-1] = {**ev[-1], "text": ev[-1].get("text", "") + e.get("text", "")}
                     else:
                         ev.append(dict(e))
-        return {"chat": cid, "agent": agent, "events": ev, **({"profile": m.get("profile"), "model": m.get("model")} if agent == "openai" else {})}
+        return {"chat": cid, "agent": agent, "events": ev,
+                **({"profile": m.get("profile")} if agent == "openai" else {}),
+                **({"model": m.get("model")} if agent == "openai" or m.get("model") else {}),
+                **({"effort": m.get("effort")} if m.get("effort") else {})}
     path = _session_file(cid)
     if not path:
-        return {"chat": cid, "agent": agent, "events": []}
+        return {"chat": cid, "agent": agent, "events": [],
+                **({"model": m.get("model")} if m.get("model") else {}),
+                **({"effort": m.get("effort")} if m.get("effort") else {})}
     ev, seen = [], set()
     for _, msg in _jsonl(path):
         if msg.get("isSidechain") or msg.get("isMeta"):
@@ -2643,7 +2887,9 @@ async def history(chat: str) -> Dict[str, Any]:
                     ev.append({"t": "tool", "id": blk.get("id"), "input": blk.get("input"), "name": str(blk.get("name", "")).removeprefix(MCP_PREFIX)})
         elif msg.get("type") == "user":
             ev += _tool_results(msg)
-    return {"chat": cid, "agent": agent, "events": ev}
+    return {"chat": cid, "agent": agent, "events": ev,
+            **({"model": m.get("model")} if m.get("model") else {}),
+            **({"effort": m.get("effort")} if m.get("effort") else {})}
 
 
 @router.post("/rewind")

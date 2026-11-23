@@ -820,10 +820,24 @@ export interface EndpointCard {
   model: string | null;
   stream: boolean;
 }
+export interface CliModelRow {
+  id: string;
+  name?: string | null;
+  efforts?: string[] | null;
+  default_effort?: string | null;
+}
+export interface CliModelList {
+  agent: "agy" | "claude" | "codex" | "gemini";
+  models: CliModelRow[];
+  default: string | null;
+  efforts: string[];
+  default_effort: string | null;
+  custom_model: boolean;
+}
 export interface Backends {
   agy: { available: boolean; model: string | null };
-  claude: { available: boolean; model: string | null };
-  codex: { available: boolean };
+  claude: { available: boolean; model: string | null; effort?: string | null; efforts?: string[] };
+  codex: { available: boolean; model?: string | null; effort?: string | null; efforts?: string[] };
   gemini: { available: boolean; model: string | null };
   openai: EndpointCard[];
   warning: string | null;
@@ -868,6 +882,7 @@ export interface PastChat {
   turns: number;
   profile?: string;
   model?: string;
+  effort?: string;
 }
 
 export const noteKey = (layer: number, n: number) => `${layer}:${n}`;
