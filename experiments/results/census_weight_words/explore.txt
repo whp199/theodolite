@@ -1,0 +1,42 @@
+L29-match_things-trial.jsonl: layer 29, 1022 neurons, 1024 controls, doses [2.1, 2.32], 7578 words in the neurons' naked-eye sets
+  whole      lead 0.533 (shuffled 0.506)  q<=0.05     0  above every control     5  own score > 0 in 0.84 of neurons, controls' 0.82
+  half A     lead 0.532 (shuffled 0.498)  q<=0.05     0  above every control     6  own score > 0 in 0.76 of neurons, controls' 0.73
+  half B     lead 0.526 (shuffled 0.511)  q<=0.05     0  above every control     6  own score > 0 in 0.77 of neurons, controls' 0.75
+  lower dose lead 0.525 (shuffled 0.508)  q<=0.05     0  above every control     7  own score > 0 in 0.79 of neurons, controls' 0.76
+  upper dose lead 0.533 (shuffled 0.505)  q<=0.05     0  above every control     3  own score > 0 in 0.79 of neurons, controls' 0.76
+  across halves: neurons' shares rank together rho 0.419; a control's score on the same words, half A against half B, rho 0.364 (mean over 64 neurons' words)
+L30-match_things-trial.jsonl: layer 30, 1022 neurons, 1024 controls, doses [2.42, 2.67], 8939 words in the neurons' naked-eye sets
+  whole      lead 0.549 (shuffled 0.506)  q<=0.05     0  above every control     7  own score > 0 in 0.81 of neurons, controls' 0.78
+  half A     lead 0.538 (shuffled 0.503)  q<=0.05     0  above every control     4  own score > 0 in 0.73 of neurons, controls' 0.69
+  half B     lead 0.543 (shuffled 0.506)  q<=0.05     0  above every control     9  own score > 0 in 0.74 of neurons, controls' 0.71
+  lower dose lead 0.546 (shuffled 0.515)  q<=0.05     0  above every control     7  own score > 0 in 0.76 of neurons, controls' 0.72
+  upper dose lead 0.545 (shuffled 0.500)  q<=0.05     0  above every control     8  own score > 0 in 0.76 of neurons, controls' 0.72
+  across halves: neurons' shares rank together rho 0.413; a control's score on the same words, half A against half B, rho 0.411 (mean over 64 neurons' words)
+L53-match_things-trial.jsonl: layer 53, 1022 neurons, 1024 controls, doses [2.24, 2.42], 15587 words in the neurons' naked-eye sets
+  whole      lead 0.746 (shuffled 0.510)  q<=0.05   464  above every control   387  own score > 0 in 0.54 of neurons, controls' 0.10
+  half A     lead 0.722 (shuffled 0.508)  q<=0.05   429  above every control   359  own score > 0 in 0.48 of neurons, controls' 0.07
+  half B     lead 0.711 (shuffled 0.508)  q<=0.05   405  above every control   344  own score > 0 in 0.46 of neurons, controls' 0.07
+  lower dose lead 0.721 (shuffled 0.506)  q<=0.05   421  above every control   352  own score > 0 in 0.49 of neurons, controls' 0.09
+  upper dose lead 0.728 (shuffled 0.512)  q<=0.05   435  above every control   358  own score > 0 in 0.49 of neurons, controls' 0.07
+  across halves: neurons' shares rank together rho 0.681; a control's score on the same words, half A against half B, rho 0.475 (mean over 64 neurons' words)
+L54-match_things-trial.jsonl: layer 54, 1022 neurons, 1024 controls, doses [2.18, 2.34], 14807 words in the neurons' naked-eye sets
+  whole      lead 0.782 (shuffled 0.501)  q<=0.05   545  above every control   470  own score > 0 in 0.61 of neurons, controls' 0.11
+  half A     lead 0.756 (shuffled 0.500)  q<=0.05   499  above every control   444  own score > 0 in 0.54 of neurons, controls' 0.07
+  half B     lead 0.743 (shuffled 0.502)  q<=0.05   479  above every control   422  own score > 0 in 0.52 of neurons, controls' 0.07
+  lower dose lead 0.756 (shuffled 0.499)  q<=0.05   497  above every control   442  own score > 0 in 0.55 of neurons, controls' 0.10
+  upper dose lead 0.766 (shuffled 0.502)  q<=0.05   513  above every control   447  own score > 0 in 0.57 of neurons, controls' 0.08
+  across halves: neurons' shares rank together rho 0.733; a control's score on the same words, half A against half B, rho 0.447 (mean over 64 neurons' words)
+L55-match_things-trial.jsonl: layer 55, 1022 neurons, 1024 controls, doses [1.95, 2.14], 15259 words in the neurons' naked-eye sets
+  whole      lead 0.700 (shuffled 0.512)  q<=0.05   381  above every control   327  own score > 0 in 0.46 of neurons, controls' 0.13
+  half A     lead 0.677 (shuffled 0.513)  q<=0.05   342  above every control   292  own score > 0 in 0.40 of neurons, controls' 0.09
+  half B     lead 0.676 (shuffled 0.507)  q<=0.05   335  above every control   296  own score > 0 in 0.40 of neurons, controls' 0.09
+  lower dose lead 0.675 (shuffled 0.502)  q<=0.05   326  above every control   291  own score > 0 in 0.41 of neurons, controls' 0.12
+  upper dose lead 0.687 (shuffled 0.518)  q<=0.05   351  above every control   298  own score > 0 in 0.42 of neurons, controls' 0.09
+  across halves: neurons' shares rank together rho 0.694; a control's score on the same words, half A against half B, rho 0.463 (mean over 64 neurons' words)
+L29-edge_things-trial.jsonl: layer 29, 1022 neurons, 1024 controls, doses [2.64, 3.73], 7540 words in the neurons' naked-eye sets
+  whole      lead 0.568 (shuffled 0.495)  q<=0.05     0  above every control     7  own score > 0 in 0.86 of neurons, controls' 0.83
+  half A     lead 0.558 (shuffled 0.496)  q<=0.05     0  above every control     6  own score > 0 in 0.80 of neurons, controls' 0.77
+  half B     lead 0.562 (shuffled 0.498)  q<=0.05     0  above every control     7  own score > 0 in 0.81 of neurons, controls' 0.77
+  lower dose lead 0.532 (shuffled 0.497)  q<=0.05     0  above every control     5  own score > 0 in 0.79 of neurons, controls' 0.76
+  upper dose lead 0.575 (shuffled 0.503)  q<=0.05     0  above every control     6  own score > 0 in 0.79 of neurons, controls' 0.72
+  across halves: neurons' shares rank together rho 0.627; a control's score on the same words, half A against half B, rho 0.635 (mean over 64 neurons' words)

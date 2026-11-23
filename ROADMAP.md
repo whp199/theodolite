@@ -1741,6 +1741,28 @@ layers, the determinism run and the sampled push on 29 October). In this section
       0.798 of the 7,110 neurons above 95 in 100 controls (0.009 shuffled).
     - **The board**: twenty-five layers done, 30–54, nineteen of them by volunteers; none running, none open: every
       layer a kit offered is done. `DOSES_CALIBRATED` is not widened for `match_things` (the owner’s word).
+  - **A volunteer’s two suggestions, tried** (22–23 November 2026; the owner’s words “Let’s try both of those
+    recommendations”, then “Push, then start”). On Gemma 4 12B, eigentactics found (board issue #1, comment 7084903662)
+    that the lead at their layer 24 came back once the upper dose sat at the layer’s text edge, the largest push keeping
+    90% of the distinct 4-grams, and the lower half a doubling under it; and that a neuron’s write direction read
+    through the final norm and the unembedding names its census words at their late layers.
+    - **The upper dose at the text edge, at 29** ([`census_edge_trial/`](experiments/results/census_edge_trial/)). A
+      fine ladder on `match_things`’s questions (`calib_edge`, 2.32 to 6.40 ceilings, 7% a rung; its rule hashed before
+      it ran) broke the text first at 3.99 ceilings, so `edge_things` asked ±2.64 and ±3.73 (0.57 and 0.81 of the
+      stream; `match_things` had ±2.10 and ±2.32). Registered and pushed before its first answer, its trial **fails
+      every gate**: lead 0.473, words carrying 0.488 and 0.488, new questions 0.502. Across the two trials at 29 the
+      lead on each dose alone falls with every step up, 0.569, 0.532, 0.502, 0.428 from ±2.10 to ±3.73: neurons and
+      random directions alike switch to Indonesian, Portuguese, German and Spanish, and the neurons’ words are mostly
+      those any push of that size brings out. The text barely moves even at ±3.73 (0.05 of its 4-grams). The 12B’s
+      lesson does not carry here: nothing was past the edge, and the gentlest push tried read best. Nothing opens at 29.
+    - **Each neuron’s weight-lens words, fixed before its answers are read**
+      ([`census_weight_words/`](experiments/results/census_weight_words/), exploratory and unregistered, read on
+      trials already seen). A neuron’s answers are scored on its naked-eye words (the atlas’s own labels) against all
+      the controls’ on the same words, so nothing is picked and each question half is its own test. At 53 to 55 it
+      leads on each half alone (0.68 to 0.76; about 0.51 shuffled), at 55 by 0.677 and 0.676 where the census’s picked
+      words did not carry; at 29 and 30 it reads almost nothing (0.53 to 0.57, no neuron at q ≤ 0.05). At the top
+      layers this is close to built in, a narrower claim than the census’s. Judging a layer by it would need a fresh
+      trial and bars of its own, and whether a layer read only so counts as taken is the owner’s word.
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census
