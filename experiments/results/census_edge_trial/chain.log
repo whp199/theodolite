@@ -1,0 +1,16 @@
+== 2026-11-23T03:20:09Z the trial
+Some parameters are on the meta device because they were offloaded to the cpu.
+the J++ lens (jpp-base) freed from the card: the census reads none of it
+unpacker: compiled on 410 linears (8 shapes) in 1.93 s; the same bits as the reference on every one and on the piece-by-scale table
+layer 29: 1022 neurons + 1024 controls, 98220 answers to write (0 already written), push unit each neuron's write ceiling, p50 239.36 (the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces))
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/edge/L29-edge_things-trial.jsonl (98220 answers written, 0 were there)
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/edge/L29-edge_things-trial.units.jsonl (ranked as edge_things is read: every push counted, each word against the controls' mean, each answer's own question's unpushed words left out)
+written in /home/eric/bin/ai/theodolite2/atlas_data/census/trials/edge: layer 29; not read here (read.sh)
+== 2026-11-23T06:01:08Z the reading
+=== L29-edge_things-trial.jsonl (layer 29, counted from 0): FAIL
+FAIL  N1 whole
+FAIL  N3 the neurons the controls cover (974 of 1022 covered, 95.3%; at least 50%)
+reported, the lower dose alone (-2.64,2.64): mass_c 0.5022, mass_c_res 0.5586, rep_AB 0.4938, rep_BA 0.4786, mass_B 0.5225
+reported, the upper dose alone (-3.73,3.73): mass_c 0.4278, mass_c_res 0.5413, rep_AB 0.4584, rep_BA 0.4541, mass_B 0.4367
+reported, three questions a half (first: bicycle+walk+chair | clock+rice+vase): mass_c 0.5095, mass_c_res 0.5766, rep_AB 0.4761, rep_BA 0.4811, mass_B 0.5528
+reported, three questions a half (last: kettle+sleep+lamp | lock+money+blanket): mass_c 0.4911, mass_c_res 0.5835, rep_AB 0.488, rep_BA 0.4708, mass_B 0.5309

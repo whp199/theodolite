@@ -1,0 +1,316 @@
+{
+ "run": "L29-edge_things-trial.jsonl",
+ "layer": 29,
+ "design": "edge_things",
+ "max_new": 48,
+ "batch": 64,
+ "seed": 13,
+ "cut": 48,
+ "half_a": [
+  "bicycle",
+  "walk",
+  "chair",
+  "kettle",
+  "sleep",
+  "lamp"
+ ],
+ "half_b": [
+  "clock",
+  "rice",
+  "vase",
+  "lock",
+  "money",
+  "blanket"
+ ],
+ "dose_unit": "ceiling",
+ "doses": [
+  -3.73,
+  -2.64,
+  2.64,
+  3.73
+ ],
+ "N1 whole": {
+  "pass": false,
+  "gates": {
+   "G1 lead (mass, every answer)": {
+    "values": [
+     [
+      "mass_c",
+      0.4728,
+      0.6
+     ]
+    ],
+    "pass": false
+   },
+   "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+    "values": [
+     [
+      "mass_c_res",
+      0.5705,
+      0.58
+     ]
+    ],
+    "pass": false
+   },
+   "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+    "values": [
+     [
+      "rep_AB",
+      0.4882,
+      0.57
+     ],
+     [
+      "rep_BA",
+      0.4884,
+      0.57
+     ]
+    ],
+    "pass": false
+   },
+   "G4 the new questions alone carry a lead (mass on half B)": {
+    "values": [
+     [
+      "mass_B",
+      0.5017,
+      0.56
+     ]
+    ],
+    "pass": false
+   },
+   "G5 sanity (null split, read gain, every answer present)": {
+    "values": [
+     [
+      "null_split_mean",
+      0.501,
+      [
+       0.47,
+       0.53
+      ]
+     ],
+     [
+      "read_gain_ratio",
+      1.027,
+      [
+       0.8,
+       1.25
+      ]
+     ],
+     [
+      "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+      true,
+      true
+     ]
+    ],
+    "pass": true
+   },
+   "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+    "values": [
+     [
+      "max_abs_diff",
+      0.0005,
+      0.002
+     ]
+    ],
+    "pass": true
+   }
+  }
+ },
+ "N3 the neurons the controls cover": {
+  "pass": false,
+  "gates": {
+   "G1 lead (mass, every answer)": {
+    "values": [
+     [
+      "mass_c",
+      0.4749,
+      0.6
+     ]
+    ],
+    "pass": false
+   },
+   "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+    "values": [
+     [
+      "mass_c_res",
+      0.5578,
+      0.58
+     ]
+    ],
+    "pass": false
+   },
+   "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+    "values": [
+     [
+      "rep_AB",
+      0.4889,
+      0.57
+     ],
+     [
+      "rep_BA",
+      0.4882,
+      0.57
+     ]
+    ],
+    "pass": false
+   },
+   "G4 the new questions alone carry a lead (mass on half B)": {
+    "values": [
+     [
+      "mass_B",
+      0.5062,
+      0.56
+     ]
+    ],
+    "pass": false
+   }
+  },
+  "covered": 974,
+  "neurons": 1022,
+  "share_covered": 0.953,
+  "min_share": 0.5,
+  "outside_by_covariate": {
+   "lnw": 43,
+   "d4": 37,
+   "cut": 3,
+   "lp": 9,
+   "dep": 0,
+   "lost": 4
+  }
+ },
+ "pass": false,
+ "reported": {
+  "above_every_control": 5,
+  "by_chance": 1.0,
+  "text": {
+   "-3.73 neuron": {
+    "d4_minus_unpushed": -0.05,
+    "cut_off": 0.981
+   },
+   "-3.73 random": {
+    "d4_minus_unpushed": -0.047,
+    "cut_off": 0.982
+   },
+   "-2.64 neuron": {
+    "d4_minus_unpushed": -0.009,
+    "cut_off": 0.988
+   },
+   "-2.64 random": {
+    "d4_minus_unpushed": -0.003,
+    "cut_off": 0.995
+   },
+   "+2.64 neuron": {
+    "d4_minus_unpushed": -0.006,
+    "cut_off": 0.991
+   },
+   "+2.64 random": {
+    "d4_minus_unpushed": -0.003,
+    "cut_off": 0.993
+   },
+   "+3.73 neuron": {
+    "d4_minus_unpushed": -0.046,
+    "cut_off": 0.983
+   },
+   "+3.73 random": {
+    "d4_minus_unpushed": -0.05,
+    "cut_off": 0.984
+   }
+  },
+  "figures": {
+   "neurons": 1022,
+   "controls": 1024,
+   "above_every_control": 5,
+   "by_chance": 1.0,
+   "q05": 0,
+   "named": 0,
+   "named_by_halves": 0,
+   "above_ctl_p95": 0.0744,
+   "pA05_and_pB05": 51,
+   "pA05_and_pB05_by_chance": 2.6
+  },
+  "named": 0,
+  "max_new_rule": {
+   "shorter_passes": false,
+   "mass_c_drop": -0.0049,
+   "rep_min_drop": 0.0014,
+   "take_shorter": false
+  },
+  "each_dose": {
+   "lower": {
+    "doses": [
+     -2.64,
+     2.64
+    ],
+    "pass_G1_G4": false,
+    "figures": {
+     "mass_c": 0.5022,
+     "mass_c_res": 0.5586,
+     "rep_AB": 0.4938,
+     "rep_BA": 0.4786,
+     "mass_B": 0.5225
+    }
+   },
+   "upper": {
+    "doses": [
+     -3.73,
+     3.73
+    ],
+    "pass_G1_G4": false,
+    "figures": {
+     "mass_c": 0.4278,
+     "mass_c_res": 0.5413,
+     "rep_AB": 0.4584,
+     "rep_BA": 0.4541,
+     "mass_B": 0.4367
+    }
+   }
+  },
+  "three_a_half": {
+   "first": {
+    "half_a": [
+     "bicycle",
+     "walk",
+     "chair"
+    ],
+    "half_b": [
+     "clock",
+     "rice",
+     "vase"
+    ],
+    "pass_G1_G4": false,
+    "figures": {
+     "mass_c": 0.5095,
+     "mass_c_res": 0.5766,
+     "rep_AB": 0.4761,
+     "rep_BA": 0.4811,
+     "mass_B": 0.5528
+    }
+   },
+   "last": {
+    "half_a": [
+     "kettle",
+     "sleep",
+     "lamp"
+    ],
+    "half_b": [
+     "lock",
+     "money",
+     "blanket"
+    ],
+    "pass_G1_G4": false,
+    "figures": {
+     "mass_c": 0.4911,
+     "mass_c_res": 0.5835,
+     "rep_AB": 0.488,
+     "rep_BA": 0.4708,
+     "mass_B": 0.5309
+    }
+   }
+  },
+  "throughput": {
+   "answers_written": 98220,
+   "seconds": 9582.4,
+   "answers_per_s": 10.25,
+   "sessions": 1
+  }
+ }
+}
