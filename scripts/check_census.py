@@ -1690,7 +1690,7 @@ def run_checks(tmp: Path) -> int:
 
     # ---------------------------------------------- 14d. match_ceil: two counts of ceilings that differ by layer, from a table
     before = len(failures)
-    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-4:] == ["match_ceil", "match_wide", "match_both", "match_things"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
+    check("match_ceil" not in cz.DESIGNS and cz.design_names()[-5:] == ["match_ceil", "match_wide", "match_both", "match_things", "edge_things"] and cz.LAYER_DOSES["match_ceil"] is cz.MATCH_CEIL
           and cz.DESIGN_QUESTIONS["match_ceil"] == q6 and cz.DESIGN_HALVES["match_ceil"] == cz.DESIGN_HALVES["break_rel"]
           and cz.DESIGN_UNITS["match_ceil"] == "ceiling" and cz.reading_of("match_ceil") == cz.reading_of("break_ceil")
           and cz.run_defaults("match_ceil") == cz.run_defaults("break_rel") and cz.DESIGN_PLAN["match_ceil"] == "12 x batch"
@@ -1875,7 +1875,7 @@ def run_checks(tmp: Path) -> int:
     check("match_things" not in cz.DESIGNS and cz.LAYER_DOSES["match_things"] is cz.MATCH_CEIL and cz.MATCH_THINGS is cz.MATCH_CEIL
           and cz.DESIGN_QUESTIONS["match_things"] == qt and cz.DESIGN_HALVES["match_things"] == (qt[:6], qt[6:])
           and cz.DESIGN_HALVES["match_things"][0] == cz.DESIGN_HALVES["match_wide"][1]
-          and not set(qt[6:]) & {q_ for d_, qs_ in cz.DESIGN_QUESTIONS.items() if d_ != "match_things" for q_ in qs_}
+          and not set(qt[6:]) & {q_ for d_, qs_ in cz.DESIGN_QUESTIONS.items() if d_ not in ("match_things", "calib_edge", "edge_things") for q_ in qs_}
           and all(q_ in cz.MORE_PROMPTS for q_ in qt)
           and cz.DESIGN_UNITS["match_things"] == "ceiling" and cz.reading_of("match_things") == cz.reading_of("match_ceil")
           and cz.run_defaults("match_things") == cz.run_defaults("match_ceil") and cz.DESIGN_PLAN["match_things"] == "12 x batch"
@@ -1921,6 +1921,29 @@ def run_checks(tmp: Path) -> int:
         if mt_had3 is not None:
             cz.MATCH_CEIL[3] = mt_had3
     section("match_things: its questions and table, a stand-in run at its two doses, its ranking and card", before)
+
+    # ----------------------------- 14h. calib_edge and edge_things: match_things's questions, the upper dose at the text edge
+    before = len(failures)
+    check("calib_edge" in cz.DESIGNS and "calib_edge" in cz.CALIBRATION_DESIGNS and cz.DESIGN_UNITS["calib_edge"] == "ceiling"
+          and cz.EDGE_LADDER[0] == 2.32 and cz.EDGE_LADDER[-1] == 6.4 and len(cz.EDGE_LADDER) == 16
+          and all(abs(b_ / a_ - 1.07) < 0.006 for a_, b_ in zip(cz.EDGE_LADDER, cz.EDGE_LADDER[1:]))
+          and cz.design_at("calib_edge") == [(p_, s_ * d_) for p_ in qt for d_ in cz.EDGE_LADDER for s_ in (-1.0, 1.0)]
+          and list(cz.design_questions("calib_edge")) == list(qt),
+          "calib_edge: match_things's twelve questions on sixteen rungs 7% apart, 2.32 to 6.40 ceilings, both ways, a "
+          "calibration design in the ceiling")
+    check("edge_things" not in cz.DESIGNS and cz.LAYER_DOSES["edge_things"] is cz.EDGE_THINGS and sorted(cz.EDGE_THINGS) == [29]
+          and cz.EDGE_THINGS[29] == (2.64, 3.73) and abs(cz.EDGE_THINGS[29][1] / 2 ** 0.5 - cz.EDGE_THINGS[29][0]) <= 0.005
+          and cz.EDGE_THINGS[29][1] in cz.EDGE_LADDER
+          and cz.DESIGN_QUESTIONS["edge_things"] == qt and cz.DESIGN_HALVES["edge_things"] == cz.DESIGN_HALVES["match_things"]
+          and cz.DESIGN_UNITS["edge_things"] == "ceiling" and cz.reading_of("edge_things") == cz.reading_of("match_things")
+          and cz.run_defaults("edge_things") == cz.run_defaults("match_things") and cz.DESIGN_PLAN["edge_things"] == "12 x batch"
+          and cz.COLLAPSE_RULE["edge_things"] == cz.COLLAPSE_RULE["match_things"] and "edge_things" not in cz.DOSES_CALIBRATED
+          and not any(cz.doses_calibrated("edge_things", l_) for l_ in range(60)) and "text edge" in cz.DOSES_FROM["edge_things"]
+          and "Not calibrated at any layer" in cz.DOSES_FROM["edge_things"]
+          and cz.design_at("edge_things", 29) == [(p_, s_ * d_) for p_ in qt for d_ in (2.64, 3.73) for s_ in (-1.0, 1.0)],
+          "edge_things: match_things's twelve questions and halves at 29's text edge (+-3.73) and that over the square "
+          "root of two (+-2.64), read, taken and marked as match_things is, calibrated nowhere")
+    section("calib_edge and edge_things: the ladder, and the design its rule set at 29", before)
 
     # ------------------------------------------------------------------------ a run read without reading it whole
     before = len(failures)

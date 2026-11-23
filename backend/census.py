@@ -231,10 +231,24 @@ DESIGN_QUESTIONS["match_things"] = ("bicycle", "walk", "chair", "kettle", "sleep
                                     "clock", "rice", "vase", "lock", "money", "blanket")
 DESIGN_HALVES["match_things"] = (DESIGN_QUESTIONS["match_things"][:6], DESIGN_QUESTIONS["match_things"][6:])
 MATCH_THINGS: Dict[int, Tuple[float, ...]] = MATCH_CEIL
+# calib_edge's rungs, in ceilings: 2.32 x 1.07^i for i = 0..15 (2.32 to 6.40)
+EDGE_LADDER: Tuple[float, ...] = tuple(round(2.32 * 1.07 ** i, 2) for i in range(16))
+DESIGN_QUESTIONS["calib_edge"] = DESIGN_QUESTIONS["match_things"]
+# edge_things is match_things with its upper dose at the layer's text edge (22 November 2026, once match_things's walk
+# had failed at 29 with its text whole: it lost under 0.01 of its distinct 4-grams there, and its lead did not rise with
+# questions, which at 37 had meant the dose). Its doses come from the calib_edge ladder at the layer
+# (experiments/results/census_edge_trial/pilot, rule fixed before the ladder was written): the upper is the rung just
+# under the first at which the text of neurons or controls breaks either way (dose_window, BREAKS_BY), the lower that
+# over the square root of two, as soft_ceil places its pair and as a volunteer's Gemma 4 12B design (tach_soft_06) did.
+# The same twelve questions and halves as match_things, 48 answers a unit. Calibrated nowhere
+DESIGN_QUESTIONS["edge_things"] = DESIGN_QUESTIONS["match_things"]
+DESIGN_HALVES["edge_things"] = DESIGN_HALVES["match_things"]
+EDGE_THINGS: Dict[int, Tuple[float, ...]] = {29: (2.64, 3.73)}
 # the designs whose doses are set a layer at a time: a name to its table. They are not in DESIGNS, which holds one
 # list a design; `design_at` gives the list a run takes at its layer, for these and for the others
 LAYER_DOSES: Dict[str, Dict[int, Tuple[float, ...]]] = {"match_ceil": MATCH_CEIL, "match_wide": MATCH_WIDE,
-                                                        "match_both": MATCH_BOTH, "match_things": MATCH_THINGS}
+                                                        "match_both": MATCH_BOTH, "match_things": MATCH_THINGS,
+                                                        "edge_things": EDGE_THINGS}
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -245,6 +259,12 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # the same ladder's purpose in each neuron's own unit (dose_unit "ceiling"): half of the most it can write by itself
     # up to eight times it
     "calib_ceil": [(p, s * d) for p in ("who", "orange", "free") for d in (0.5, 1.0, 2.0, 4.0, 8.0) for s in (-1.0, 1.0)],
+    # where text breaks, finely, on match_things's own twelve questions (22 November 2026, for a trial at layer 29 with
+    # its upper dose at that edge: experiments/results/census_edge_trial). Its rungs start at match_things's upper dose
+    # at 29 (2.32 ceilings, where the text lost under 0.01 of its distinct 4-grams in that design's trial) and climb 7%
+    # a rung, the fine dose pilot's step, to 6.40, past where the calib_ceil ladder of 28 October broke the text at 30
+    # (between 4 and 8 ceilings). Read by dose_window's existing rule (BREAKS_BY)
+    "calib_edge": [(p, s * d) for p in DESIGN_QUESTIONS["match_things"] for d in EDGE_LADDER for s in (-1.0, 1.0)],
     # chosen for layers 40-57 on the two ladders (28 October 2026, 64 + 64 units at each of layers 20, 30, 40, 45, 50
     # and 57): +-1 and +-2 of the stream, on both signs, around where text first breaks there (at +-2 at layers 40 and
     # 45; at +-1 for the neurons at 50, at +2 and -1 for them at 57, the controls at +-2 at both; sooner at the earlier
@@ -271,7 +291,7 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
 # the design a census takes when none is named, and the one a layer's run is read from first (layer_runs): break_rel,
 # whose doses come from this model's own ladders, since 29 October 2026 (the owner's choice; main_rel before it)
 DEFAULT_DESIGN = "break_rel"
-CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil")
+CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil", "calib_edge")
 
 
 def design_names() -> List[str]:
@@ -306,6 +326,8 @@ DOSES_FROM = {
     "calib_rel": "a calibration ladder, for finding where effects begin and text breaks on this model",
     "calib_ceil": "a calibration ladder in each neuron's own write ceiling, for finding where effects begin and text breaks "
                   "on this model",
+    "calib_edge": "a fine calibration ladder in each neuron's own write ceiling (2.32 to 6.40, 7% a rung) on match_things's "
+                  "twelve questions, for finding where text breaks below layer 30",
     # (its layers counted from 1, as the pages and the scientist count them, unlike DOSES_CALIBRATED's)
     "break_rel": "+-1 and +-2 of the stream, chosen for layers 41-58 (counted from 1, as the pages count them) on this "
                  "model's two calibration ladders of 28 October 2026 (64 neurons and 64 controls at each of layers 21, 31, "
@@ -368,6 +390,13 @@ DOSES_FROM = {
                     "none of the questions the census asks at other layers but bicycle, walk and chair. Its trial gates "
                     "the answers of both doses together and of neither dose alone. Not calibrated at any layer until a "
                     "trial of it passes there",
+    "edge_things": "match_things's twelve questions with its upper dose at the layer's text edge: the largest push in each "
+                   "neuron's own write ceiling at which the text of neither its neurons nor random directions loses more "
+                   "than 0.1 of its distinct 4-grams, measured on a fine ladder at the layer (2.32 to 6.40 ceilings, 7% a "
+                   "rung, 32 neurons and 32 controls), and its lower dose that over the square root of two: at layer 30 "
+                   "(as the pages count them) +-2.64 and +-3.73. match_things's doses there, which move the next "
+                   "word-piece by 1.0 and 1.4 nats, left the text whole and failed their trial. Not calibrated at any "
+                   "layer until a trial of it passes there",
 }
 # where a design's doses are calibrated on this model: its spans of layers, each a first and a last (counted from 0, as
 # the commands count them). There the card says `doses_calibrated` and the page leaves out its red "not yet calibrated"
@@ -410,6 +439,7 @@ DESIGN_RUN_DEFAULTS["match_ceil"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # an
 DESIGN_RUN_DEFAULTS["match_wide"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 DESIGN_RUN_DEFAULTS["match_both"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 DESIGN_RUN_DEFAULTS["match_things"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
+DESIGN_RUN_DEFAULTS["edge_things"] = dict(DESIGN_RUN_DEFAULTS["break_rel"])  # and this
 RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
@@ -500,6 +530,7 @@ DESIGN_READING: Dict[str, Dict[str, Any]] = {
     "match_wide": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
     "match_both": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
     "match_things": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
+    "edge_things": {"max_rel": 100.0, "reference": "controls", "exclude": "own"},  # and here
 }
 
 
@@ -525,6 +556,7 @@ COLLAPSE_RULE["match_ceil"] = {"doses": "upper", "answers": 2, "per_1024": 10}
 COLLAPSE_RULE["match_wide"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # its one dose, the run's largest
 COLLAPSE_RULE["match_both"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # as match_ceil's, at its upper dose
 COLLAPSE_RULE["match_things"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # and so here
+COLLAPSE_RULE["edge_things"] = {"doses": "upper", "answers": 2, "per_1024": 10}  # and here
 
 # What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
 # pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
@@ -676,8 +708,9 @@ def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
 # the neurons' and one dose is the same share of each neuron's most at every layer. A design whose doses only mean
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
-DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling",
-                "match_ceil": "ceiling", "match_wide": "ceiling", "match_both": "ceiling", "match_things": "ceiling"}
+DESIGN_UNITS = {"calib_ceil": "ceiling", "calib_edge": "ceiling", "break_rel": "stream", "break_ceil": "ceiling", "soft_ceil": "ceiling",
+                "match_ceil": "ceiling", "match_wide": "ceiling", "match_both": "ceiling", "match_things": "ceiling",
+                "edge_things": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -1831,7 +1864,8 @@ PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
 DESIGN_PLAN = {"break_rel": "12 x batch", "break_ceil": "12 x batch", "soft_ceil": "12 x batch", "match_ceil": "12 x batch",
-               "match_wide": "12 x batch", "match_both": "12 x batch", "match_things": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
+               "match_wide": "12 x batch", "match_both": "12 x batch", "match_things": "12 x batch",
+               "edge_things": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:
