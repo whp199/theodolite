@@ -133,15 +133,53 @@ export function setPick(p: Pick) {
   else if (p.agent !== "openai" && installed(st().backends, p.agent) && !st().cliModels[p.agent]) void loadCliModels(p.agent);
 }
 
+/** The models and efforts the pickers offer for a command-line backend (POST /cli_models: Claude Code's and the Gemini
+ * CLI's aliases, Codex's own list, the models an Antigravity chat last reported). */
 export async function loadCliModels(agent: Exclude<Agent, "openai">) {
   if (st().cliModels[agent] === "loading") return;
   set({ cliModels: { ...st().cliModels, [agent]: "loading" } });
   try {
-    const r = await get<CliModelList>("/api/atlas/scientist/cli_models", { agent });
+    const r = await post<CliModelList>("/api/atlas/scientist/cli_models", { agent });
     set({ cliModels: { ...st().cliModels, [agent]: r } });
   } catch (e) {
     set({ cliModels: { ...st().cliModels, [agent]: errText(e) } });
   }
+}
+
+/** The pick for a choice in the backend pickers ("claude", "codex", "gemini-family", "openai:<profile>", or one of the
+ * Gemini family): a backend newly picked starts with no model or effort picked. */
+export function backendPick(v: string, b: Backends | null): Pick {
+  if (v.startsWith("openai:")) {
+    const name = v.slice(7);
+    return { agent: "openai", profile: name, model: b?.openai.find((x) => x.name === name)?.model ?? null, effort: null };
+  }
+  // Gemini runs on Antigravity unless only the Gemini CLI is installed
+  if (v === "gemini-family") return { agent: geminiPick(b), profile: null, model: null, effort: null };
+  return { agent: v as Agent, profile: null, model: null, effort: null };
+}
+
+/** What the model and thinking pickers offer for a command-line pick, as the server lists them (`cm`): the model a chat
+ * starts on when none is picked, the row of the model it would run (the one picked, else that default), the efforts
+ * that model lists (else those of the list as a whole), and the effort a chat on it starts with when none is picked
+ * (the server's, else none named). */
+export function cliChoices(p: Pick, b: Backends | null, cm: CliModelList | "loading" | string | undefined) {
+  const list = cm && typeof cm === "object" ? cm : null;
+  const own = p.agent === "openai" ? null : b?.[p.agent];
+  const defaultModel = list?.default ?? own?.model ?? null;
+  const row = list?.models.find((m) => m.id === (p.model ?? defaultModel)) ?? null;
+  const efforts: string[] =
+    p.agent === "openai"
+      ? []
+      : row?.efforts?.length
+        ? row.efforts
+        : list?.efforts?.length
+          ? list.efforts
+          : p.agent === "claude"
+            ? (b?.claude?.efforts ?? [])
+            : [];
+  const configured = p.agent === "claude" ? (b?.claude?.effort ?? null) : p.agent === "codex" ? (b?.codex?.effort ?? null) : null;
+  const defaultEffort = row ? (row.default_effort ?? configured) : p.model ? configured : (list?.default_effort ?? configured);
+  return { list, defaultModel, row, efforts, defaultEffort };
 }
 
 export async function loadBackends() {
@@ -221,6 +259,9 @@ const pushPart = (b: number, p: Part) => editParts(b, (parts) => [...parts, p]);
 let evCtl: AbortController | null = null;
 let evChat: string | null = null;
 let sending = 0;
+/** The chat whose first message the server may not have taken yet, and how many of its messages are on their way: its
+ * pick opens again only when the last of them comes back refused (agentTurn). */
+let unfixed: { chat: string; out: number } | null = null;
 let reply = "";
 const waiters: ((r: { reply: string; box: number | null }) => void)[] = [];
 
@@ -319,7 +360,16 @@ function newId(): string {
 export async function agentTurn(message: string, shown: string, atts: Att[] = []): Promise<{ reply: string; box: number | null }> {
   if (st().past !== null) set({ past: null });
   clearScientistMarks();
-  if (!st().chat) set({ chat: newId(), chatPick: st().pick });
+  // a chat not yet fixed: a new one, or one whose first message the server did not take (the catch below)
+  const fresh = !st().chat || !st().chatPick;
+  if (!st().chat) set({ chat: newId() });
+  if (fresh) set({ chatPick: st().pick });
+  const chat = st().chat as string;
+  if (fresh) unfixed = { chat, out: 0 };
+  // a message sent while the first is on its way counts too: on the server it waits for the first, and may start the
+  // chat on the same pick when the first did not
+  const mine = unfixed?.chat === chat ? unfixed : null;
+  if (mine) mine.out++;
   const f = useAtlas.getState().focus;
   // the reply, or the rest of the one under way, goes under this message
   setItems([...st().items, { kind: "user", msg: message, shown, atts }]);
@@ -340,11 +390,21 @@ export async function agentTurn(message: string, shown: string, atts: Att[] = []
       attachments: atts.map((a) => a.id).filter(Boolean),
       ...(f?.kind === "neuron" ? { layer: f.layer, n: f.n } : f?.kind === "head" ? { layer: f.layer, head: f.n } : {}),
     });
+    if (mine && unfixed === mine) unfixed = null; // taken: the chat is fixed on its pick
   } catch (e) {
+    // the server keeps nothing of a chat whose first message it refused (4xx) or whose backend did not start (502).
+    // When that was the last of the chat's messages on their way, and none was taken, the pick is open again, and the
+    // next message goes with the pick as it then is. Any other failure may have left the chat recorded: it stays fixed.
+    const refused = e instanceof AtlasError && ((e.status >= 400 && e.status < 500) || e.status === 502);
+    if (mine && unfixed === mine && (!refused || mine.out === 1)) {
+      unfixed = null;
+      if (refused && st().chat === chat) set({ chatPick: null });
+    }
     pushPart(ensureBox(), { t: "error", text: errText(e) });
     finishTurn();
   } finally {
     sending--;
+    if (mine) mine.out--;
   }
   return out;
 }
@@ -379,6 +439,12 @@ export function newChat() {
   set({ chat: null, chatPick: null, items: [], box: null, past: null, stale: false });
   clearScientistMarks();
   save();
+  // asked again where the list may have changed: Antigravity's (the models a chat reported as it started; asking
+  // starts nothing) and one that did not come (Codex's own list failed, which the server keeps 30 s, or the request did)
+  const a = st().pick.agent;
+  const cm = a === "openai" ? undefined : st().cliModels[a];
+  if (a !== "openai" && installed(st().backends, a) && (a === "agy" || typeof cm === "string" || (!!cm && cm.listed === false)))
+    void loadCliModels(a);
 }
 
 /** Ends the chat's process, and any commands it left running, so that the next message starts it again on its

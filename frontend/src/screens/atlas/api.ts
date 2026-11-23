@@ -820,6 +820,8 @@ export interface EndpointCard {
   model: string | null;
   stream: boolean;
 }
+/** A model the pickers offer (POST /cli_models): the efforts it lists, and the effort a chat on it starts with when
+ * none is picked. */
 export interface CliModelRow {
   id: string;
   name?: string | null;
@@ -833,11 +835,16 @@ export interface CliModelList {
   efforts: string[];
   default_effort: string | null;
   custom_model: boolean;
+  /** Codex: whether its own model list answered, and why not */
+  listed?: boolean;
+  error?: string | null;
+  /** Antigravity: when a chat's own process last reported its models (none before one has) */
+  listed_at?: number | null;
 }
 export interface Backends {
   agy: { available: boolean; model: string | null };
   claude: { available: boolean; model: string | null; effort?: string | null; efforts?: string[] };
-  codex: { available: boolean; model?: string | null; effort?: string | null; efforts?: string[] };
+  codex: { available: boolean; model?: string | null; effort?: string | null };
   gemini: { available: boolean; model: string | null };
   openai: EndpointCard[];
   warning: string | null;

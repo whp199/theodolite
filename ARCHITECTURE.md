@@ -1151,7 +1151,8 @@ same first one, in the browser too. The backends:
   instructions, and so did a `.claude/rules/` file in the work folder, and its `.claude/settings.json` ran its hooks as
   shell commands, a shell at the folder reach too (Claude Code 2.1.312; that CLI asks before writing in `.claude/`
   itself, so refused the scientist's own write there, but a Codex chat's sandbox may write in the same folder).
-  `$THEODOLITE_CLAUDE_MODEL` picks the model.
+  `$THEODOLITE_CLAUDE_MODEL` and `$THEODOLITE_CLAUDE_EFFORT` are the model and effort its process is started with when
+  the chat began with none picked on the page (the model and the thinking effort, below).
 - `codex`: Codex (`codex app-server`, JSON-RPC) with the same MCP tools and its own shell, in a Codex home of its own,
   `approvalPolicy: "never"`; `sandbox: "workspace-write"` by default (no network; it writes in its work folder and, as
   nothing the instrument passes says otherwise, in the temporary folders too, `/tmp` and `/dev/shm`; it can read
@@ -1201,7 +1202,8 @@ same first one, in the browser too. The backends:
     request: a shell with full access to this machine that never asks before it acts. A turn it begins itself there is
     let be, as Claude Code's is. It adds only the work folder as a workspace, never the home folder.
   - An Antigravity chat cannot be edited or asked again: `/rewind` is refused (409), because Antigravity's ACP cannot
-    drop a turn. `$THEODOLITE_AGY_MODEL` picks the model (`session/set_model`).
+    drop a turn. The model picked on the page, else `$THEODOLITE_AGY_MODEL`, is sent with `session/set_model` (the
+    model and the thinking effort, below).
 - `gemini`: Gemini CLI (`gemini --acp`, JSON-RPC over stdio; for `$GEMINI_API_KEY`, Vertex AI, or Code Assist logins)
   with the same MCP tools (passed per chat in `session/new` and `session/load`, `--allowed-mcp-server-names atlas`,
   Policy Engine TOML allowing MCP tools at priority 500 above `tools.core`'s deny-all), in an isolated
@@ -1222,7 +1224,8 @@ same first one, in the browser too. The backends:
   - Gemini CLI's usage statistics (Clearcut, sent to play.googleapis.com) and telemetry are off in the chat's own
     settings, and its temporary files (it writes a whole conversation there when a request fails) go to
     `<scientist folder>/tmp/<chat>` (0700). Checked on 0.70.0 behind a recording proxy: none sent; sent with them on.
-  - `$THEODOLITE_GEMINI_MODEL` picks the model.
+  - The model picked on the page, else `$THEODOLITE_GEMINI_MODEL`, is passed as `--model` (the model and the thinking
+    effort, below).
 - What a Gemini or Antigravity chat would take as standing instructions (`context_files`). Gemini CLI 0.70.0 reads any
   GEMINI.md in its workspace as instructions: the work folder's when a session starts, and any between a file it reads
   and the work folder. No setting turns that off (`context.fileName` only adds names;
@@ -1311,6 +1314,59 @@ Endpoints are profiles: `lmstudio` (http://127.0.0.1:1234/v1, `$THEODOLITE_LMSTU
 stream, headers, params}}`). A profile names the environment variable its key is in, never the key (a file entry holding
 one is refused); a page picks a profile by name and never sees a key.
 
+The model and the thinking effort. A command-line chat's model, and for Claude Code and Codex its thinking effort, are
+picked on the page beside its backend (`POST /cli_models` lists them). One picked is fixed by the chat's first message,
+as the backend is: later messages' are not read, and a new chat is the way to change it. One not picked is not
+recorded: each time the chat's process starts, it is given the default as it then stands (`$THEODOLITE_CLAUDE_MODEL`
+and `$THEODOLITE_CLAUDE_EFFORT`, `$THEODOLITE_AGY_MODEL`, `$THEODOLITE_GEMINI_MODEL`, else `$GEMINI_MODEL`, else the
+model of `~/.gemini/settings.json`, or the model and effort of `~/.codex/config.toml`; else the CLI's own), so a
+changed default reaches the chat when its process next starts. Codex's are written into the chat's own Codex home as it
+starts; whether a resumed Codex thread then runs on them or on the model it began with was not checked. Each list is
+got this way:
+
+- Claude Code: its aliases `opus`, `sonnet` and `haiku`, fixed in the code, not asked of the CLI, or a typed id
+  (`--model`). The efforts are `low`, `medium`, `high`, `xhigh` and `max`, as Claude Code 2.1.330's `--help` lists them
+  for `--effort`. `$THEODOLITE_CLAUDE_EFFORT` is passed only when it is one of those five; any other value is not
+  passed, and the server's log says so. Claude Code's own text says it may lower an effort the model does not take,
+  without saying so, and drops the effort when the model refuses it. So a chat records, and the past chats show, the
+  effort asked for, not the one that ran; that was not measured.
+- Codex: its own `model/list`, asked of a `codex app-server` started as a chat's is: in the chat's own Codex home (never
+  `~/.codex`), with a chat's environment (`child_env`), in the work folder, in a process group of its own, ended once it
+  answers (or after 10 s for `initialize` and 12 s for the list). One listing runs at a time; its answer is kept 5
+  minutes, a failed one 30 seconds, so pages loaded together start one. Offline, codex-cli 0.169.0 answered from its own
+  catalog (nine models); whether a listing contacts OpenAI under the person's login was not measured. The page offers
+  the efforts of the model a chat would run (the one picked, else the default), and `/send` refuses any other once Codex
+  has listed that model; for a model it does not list, it takes those some listed model lists, as the page offers, and
+  before any list `low`, `medium`, `high`, `xhigh` and `max`. The effort named as the default is the
+  `model_reasoning_effort` of `~/.codex/config.toml`, which the chat's home copies, else the model's own default
+  (offline, with one configured, `thread/start` answered with that one). Codex's `ultra` is neither offered nor taken:
+  in codex-cli 0.169.0 it is not more thinking but `xhigh` with Codex handing work to sub-agents of its own without
+  asking (seen offline against a stand-in model, 22 November 2026), and the reach words above do not cover sub-agents.
+  Whether to offer it, with words that do, is the owner's question. A `model_reasoning_effort = "ultra"` in
+  `~/.codex/config.toml` is still copied into the chat's home, as before.
+- Antigravity: nothing is started to list its models. `agy models` takes none of the chat's flags, so it would run in
+  the person's own Antigravity folder: offline, with a scratch home, it started agy's updater, tried to send telemetry
+  and started the stdio MCP servers of that folder's config (22 November 2026). The page offers instead the models an
+  Antigravity chat's own process reported as its session began (ACP's `models.availableModels` in the `session/new` or
+  `session/load` answer), kept in memory and in `<scientist folder>/agy-models.json`, and before any chat has reported
+  them `$THEODOLITE_AGY_MODEL` (else agy's own default) and a typed id. agy 1.5.14's binary names those fields and
+  handles `session/set_model`, but whether it sends a list live was not seen: offline and signed out it fetches no
+  models. Whether the ids it would list are the ones `session/set_model` takes was not checked either. It is given no
+  thinking effort: none is wired for its ACP mode (`agy --help` lists `--effort`; `agy acp --help` does not).
+- The Gemini CLI: its aliases `auto`, `pro` and `flash`, fixed in the code, not asked of the CLI, or a typed id
+  (`--model`); no effort. The default named is the one the CLI starts on, in its own order: `$THEODOLITE_GEMINI_MODEL`
+  (passed as `--model`), else `$GEMINI_MODEL` (passed on to it), else `~/.gemini/settings.json`'s `model.name`
+  (copied into its own home; a `model` that is not an object is no model, as Gemini CLI 0.70.0 reads it).
+
+A first message whose backend does not start (502), or that a file in the way refuses (409), leaves nothing of the chat
+in `chats.json`. A second message sent while the first starts the backend waits for it in the chat's lock; when the
+first left nothing, the second is the chat's first: it records the chat on its own pick. The page opens the pick again
+only when the last of a new chat's messages on their way comes back refused (4xx or 502) and none was taken; until then
+its next message goes with the same pick, and a chat opened meanwhile keeps its own. A model or effort that a CLI takes
+as it starts and refuses only in the turn still fixes the chat. Which CLIs refuse an unknown model as they start, and
+which only in the turn, was not tried live; offline, Codex's `thread/start` took an effort no model lists without
+complaint.
+
 The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scientist`: `work/` (the chat's working folder),
 `uploads/`, `logs/` (the Antigravity, Codex, Gemini CLI and openai chats' events and messages; a line cut off
 mid-write, by a server stopped while writing it, is left out wherever a log or a Claude Code session is read, and cut
@@ -1341,14 +1397,14 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 
 | route | |
 |---|---|
-| `GET /backends` | whether `agy`, `claude`, `codex` and `gemini` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach` (what each backend can do at the server's reach, and `folder`: each backend's folder-reach words); `work` `{folder, route}`: the work folder and the route the page opens its files through |
+| `GET /backends` | whether `agy`, `claude`, `codex` and `gemini` are installed, each with the `model` a chat starts on when the page picks none where the server knows it (for Claude Code and Codex also the `effort`, and Claude Code's five `efforts`), starting nothing to find out; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}`; `reach` (what each backend can do at the server's reach, and `folder`: each backend's folder-reach words); `work` `{folder, route}`: the work folder and the route the page opens its files through |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
-| `GET /cli_models?agent` | available models and thinking/reasoning efforts for a CLI backend (`agy` via live `agy models`, `codex` via live `codex app-server` `model/list`, `claude` aliases + `low..max` efforts, `gemini` aliases + custom); cached 5 min for live CLIs |
-| `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count; for Antigravity or the Gemini CLI, 409 with the reason while a file it would take as instructions is in the way (`context_files`) |
+| `POST /cli_models` | `{agent}` (`agy`, `claude`, `codex` or `gemini`) → `{agent, models: [{id, name, efforts, default_effort}], default, efforts, default_effort, custom_model}`, for Codex also `listed` and `error`, for Antigravity `listed_at`: what the model and thinking pickers offer, and what a chat starts with when none is picked, got as the model and the thinking effort above say. A POST, as a Codex listing starts a process: a page or a form of another site is refused (§4). It never starts agy |
+| `POST /send` | `{chat (a UUID), message, agent, profile, model, effort, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, any model and effort picked with it, and for `openai` the profile and model; later messages' are not read; a command-line chat's model or effort not picked is not recorded, and its process is given the default as it then stands each time it starts; 400 for an effort the backend does not take); a first message to a command-line backend that does not start it (502), or that a file refuses (409), leaves nothing recorded; `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count; for Antigravity or the Gemini CLI, 409 with the reason while a file it would take as instructions is in the way (`context_files`) |
 | `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `reset` (the Gemini CLI retried a reply cut off mid-stream; what came of it goes), `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; an Antigravity chat stopped for acting on its own sends an `error`, and a `done` when no turn was running; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, docs/SETUP.md), or a stop would wait on every page left open |
 | `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on. Stopping an Antigravity or Gemini CLI reply stops that reply only; messages sent while it worked then go in, in the order sent, before any sent later. A prompt the process answers with an error (a rate limit, say) is shown as failed, and the next message goes in. Both were checked against mocks only, not on the live CLIs. After a stopped reply the Gemini CLI no longer holds that message or the part of the reply it gave, though the page and the log still show them, and nothing tells the person. A message that cannot go in is marked "Not sent" in the thread and the history: a context file in the way, the process gone or stopped, or a reply given up after an hour (which is then stopped with `session/cancel`) |
 | `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
-| `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |
+| `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events; each with the `model` and `effort` its first message recorded, when it recorded one (the effort asked for) |
 | `POST /rewind` | `{chat, text}`: cut the chat back to before its last message (a Claude Code session is backed up first), for "edit" and "ask again" → `{ok, cut}`; a Codex turn is reverted whole (`thread/revert`), so a message sent into it while it ran goes with it: its log is cut back to where that turn began (`turn_at` in `chats.json`), and `messages` says how many of the person's messages went, which the page takes off its thread. A Gemini CLI chat's stored conversation is taken back to before the person's last message by appending `{"$rewindTo": <its id>}`, which Gemini's loader honours (tool responses are "user" records too); after a stopped reply, which Gemini drops itself, only the log is cut; when the same words were sent more than once and Gemini holds fewer of them than the log, the rewind is refused (409); a rewind whose message is not the log's last (one refused before it was sent, say) cuts nothing. An Antigravity chat cannot be edited or asked again: `/rewind` is refused (409), because Antigravity's ACP cannot drop a turn |
 | `POST /restart` | `{chat}`: end its process group, with any commands it left running in that group (409 while it answers), so the next message resumes it on its files as they now stand → `{ended, note}` |
 | `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
