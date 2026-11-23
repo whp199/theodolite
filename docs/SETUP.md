@@ -209,26 +209,37 @@ extreme (`--sample`). It is one forward a window, as `stats` is: on one RTX 5090
 word-pieces with `--unpacker compiled` (28 October 2026), where stats took 58 with `reference`. The windows it keeps are
 the corpus’s own text: they stay in the atlas folder and are never committed.
 
-The scientist runs on Claude Code by default (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the
-model). It also runs on Codex (`codex`) and on Gemini where the server finds them. Gemini is one choice in the picker:
-it runs on Antigravity CLI (`agy`, version 1.5.14 only; `$THEODOLITE_AGY_MODEL` picks the model) unless you pick the
-Gemini CLI beside it (`gemini`, with `$GEMINI_API_KEY`, Vertex AI, or a Code Assist login; `$THEODOLITE_GEMINI_MODEL`
-picks the model), or only the Gemini CLI is installed. A Claude Code, Codex or Gemini pick kept in the browser stays;
+The scientist runs on Claude Code by default (`claude`, installed and logged in). It also runs on Codex (`codex`) and
+on Gemini where the server finds them. Gemini is one choice in the picker: it runs on Antigravity CLI (`agy`, version
+1.5.14 only) unless you pick the Gemini CLI beside it (`gemini`, with `$GEMINI_API_KEY`, Vertex AI, or a Code Assist
+login), or only the Gemini CLI is installed. A Claude Code, Codex or Gemini pick kept in the browser stays;
 while the server cannot run it, a new chat starts on the first installed of Claude Code, Codex, Antigravity and the
 Gemini CLI (an endpoint pick whose profile the server does not list gives way to that one in the browser too). Or it
 runs on an
 OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
 or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODOLITE_OLLAMA_URL`), OpenRouter (its key in
 `$OPENROUTER_API_KEY`), or any other (`$THEODOLITE_OPENAI_BASE_URL`, `$THEODOLITE_OPENAI_API_KEY`,
-`$THEODOLITE_OPENAI_MODEL`, or `endpoints.json` in the scientist’s folder, ARCHITECTURE §4.8). Pick the backend, and for an
-endpoint its model, in the scientist’s tab; a key is read from the environment and never reaches a page. Choose a model
-that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code,
-Antigravity or Gemini CLI chat at the default reach with your next message to it while idle; any other chat says it
-runs the old ones and offers a restart, since that also ends its process group, with any commands it left running in
-it. A saved Gemini or Antigravity conversation that does not load refuses the chat (“start a new chat”) instead of
-starting afresh with no memory of the turns shown. Antigravity chats begun before the scientist had a data folder of
-its own for them, and Gemini CLI chats begun in the one working folder all Gemini CLI chats once shared, must be
-started again. An Antigravity chat cannot be edited or asked again.
+`$THEODOLITE_OPENAI_MODEL`, or `endpoints.json` in the scientist’s folder, ARCHITECTURE §4.8). Pick the backend, its
+model, and for Claude Code and Codex its thinking effort, in the scientist’s tab; a chat’s first message fixes its
+backend and any model or effort picked, so a new chat is the way to change them. Claude Code and the Gemini CLI offer
+their own aliases and a typed id. Codex offers its own model list, asked of it in the scientist’s own Codex home, and
+only the efforts the chosen model lists (never “ultra”, which in codex-cli 0.169.0 also hands work to sub-agents without
+asking). Antigravity offers the models an Antigravity chat reported as it started, if it reported any (whether agy
+1.5.14 does was not seen live), and until then its default and a typed id: nothing starts `agy models`, which would run
+in your own Antigravity folder. A model or effort not picked is not recorded: each time the chat’s process starts it is
+given the default as it then stands, `$THEODOLITE_CLAUDE_MODEL` and `$THEODOLITE_CLAUDE_EFFORT` (one of low, medium,
+high, xhigh, max; any other is not passed), `$THEODOLITE_AGY_MODEL`, `$THEODOLITE_GEMINI_MODEL` (else `$GEMINI_MODEL`,
+else the model in `~/.gemini/settings.json`) or the model and effort in `~/.codex/config.toml`, else the CLI’s own, so a
+changed default reaches the chat when its process next starts (whether a resumed Codex thread follows one was not
+checked). Claude Code may lower an effort the model does not take, without saying so: the effort shown is the one asked
+for. A key is read from the environment and never reaches a page. Choose a model that takes tool calls. An edit to its
+instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code, Antigravity or Gemini CLI chat at the
+default reach with your next message to it while idle; any other chat says it runs the old ones and offers a restart,
+since that also ends its process group, with any commands it left running in it. A saved Gemini or Antigravity
+conversation that does not load refuses the chat (“start a new chat”) instead of starting afresh with no memory of the
+turns shown. Antigravity chats begun before the scientist had a data folder of its own for them, and Gemini CLI chats
+begun in the one working folder all Gemini CLI chats once shared, must be started again. An Antigravity chat cannot be
+edited or asked again.
 
 What the scientist makes for you, a page or a table say, it writes into its work folder and links in its reply; the
 link opens the file in a browser tab, shown with no scripts and no network. Its `steer` puts several prompts, or

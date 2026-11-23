@@ -16,12 +16,13 @@ import {
   rewindLast,
   send,
   setPick,
+  backendPick,
+  cliChoices,
   stop,
   takeName,
   togglePast,
   useScientist,
   GEMINI_FAMILY,
-  geminiPick,
   installed,
   type Agent,
   type Item,
@@ -341,23 +342,29 @@ const Past: React.FC = () => {
     const s = Date.now() / 1000 - t;
     return s < 3600 ? `${Math.max(1, Math.round(s / 60))} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : new Date(t * 1000).toLocaleDateString();
   };
-  const by = (c: PastChat) =>
-    c.agent === "openai"
-      ? `${c.profile ?? "endpoint"} · ${c.model ?? ""}`
-      : c.agent === "agy"
-        ? "Antigravity"
-        : c.agent === "codex"
-          ? "Codex"
-          : c.agent === "gemini"
-            ? "Gemini CLI"
-            : "Claude Code";
+  const by = (c: PastChat) => {
+    const base =
+      c.agent === "openai"
+        ? (c.profile ?? "endpoint")
+        : c.agent === "agy"
+          ? "Antigravity"
+          : c.agent === "codex"
+            ? "Codex"
+            : c.agent === "gemini"
+              ? "Gemini CLI"
+              : "Claude Code";
+    return [base, c.model, c.effort ? `thinking ${c.effort}` : null].filter(Boolean).join(" · ");
+  };
+  // what a past chat records is the effort asked for; Claude Code may have run it lower
+  const asked = (c: PastChat) =>
+    c.effort && c.agent === "claude" ? "the thinking effort asked for; Claude Code may lower it for the model without saying so, or drop it" : undefined;
   return (
     <div className="atlas-sthread">
       {past.length ? (
         past.map((c) => (
           <button key={c.chat} type="button" className={`atlas-pastrow${c.chat === chat ? " on" : ""}`} onClick={() => void openPast(c)}>
             <span>{c.title || "—"}</span>
-            <span className="muted atlas-small">
+            <span className="muted atlas-small" title={asked(c)}>
               {by(c)} · {ago(c.t)} · {c.turns} message{c.turns === 1 ? "" : "s"}
             </span>
           </button>
@@ -390,6 +397,8 @@ const BackendPick: React.FC = () => {
   const chatPick = useScientist((s) => s.chatPick);
   const chat = useScientist((s) => s.chat);
   const models = useScientist((s) => s.models);
+  const cliModels = useScientist((s) => s.cliModels);
+  const [customOpen, setCustomOpen] = useState(false);
   const fixed = !!chat && !!chatPick;
   const p: Pick = fixed ? chatPick! : pick;
   const gemini = GEMINI_FAMILY.includes(p.agent);
@@ -397,6 +406,37 @@ const BackendPick: React.FC = () => {
   const missing = (a: Agent) => (b && !installed(b, a) ? " (not installed)" : "");
   const card = b?.openai.find((x) => x.name === p.profile);
   const ms = p.agent === "openai" && p.profile ? models[p.profile] : undefined;
+  const cm = p.agent !== "openai" ? cliModels[p.agent] : undefined;
+  const { list: cmList, defaultModel, efforts: cliEfforts, defaultEffort } = cliChoices(p, b, cm);
+  const modelTitle =
+    p.agent === "agy"
+      ? cmList?.models.length
+        ? "the models Antigravity's own chat process reported when a chat last started"
+        : "Antigravity's models are listed here once an Antigravity chat has started and reported them; until then, type a model id or keep the default"
+      : p.agent === "codex"
+        ? "the models Codex lists"
+        : "the CLI's own aliases; custom… takes any model id";
+  const effortTitle =
+    p.agent === "claude"
+      ? "thinking effort for a new chat; Claude Code may lower it for the model without saying so, or drop it if the model refuses it"
+      : 'thinking effort for a new chat; Codex\'s "ultra" is not offered: it also hands work to sub-agents without asking';
+  // a model or effort picked is fixed by a chat's first message; a chat begun with none records none, and its process
+  // is given the default as it then stands each time it starts
+  const fixedModelTitle = p.model
+    ? "this chat runs on the model it began with; start a new chat to change it"
+    : "this chat began with no model picked: each time its process starts it is given the default as it then stands; start a new chat to pick one";
+  const fixedEffortTitle = p.effort
+    ? p.agent === "claude"
+      ? "this chat began with this thinking effort asked for; Claude Code may lower it for the model, or drop it; start a new chat to change it"
+      : "this chat runs on the thinking effort it began with; start a new chat to change it"
+    : "this chat began with no thinking effort picked: each time its process starts it is given the default as it then stands; start a new chat to pick one";
+  const showCliControls = p.agent !== "openai" && (!b || installed(b, p.agent));
+  const showCustomInput =
+    showCliControls &&
+    !fixed &&
+    (customOpen ||
+      (cmList !== null && cmList.models.length === 0 && cmList.custom_model) ||
+      (typeof cm === "string" && cm !== "loading"));
   return (
     <div className="atlas-spick">
       <select
@@ -406,14 +446,8 @@ const BackendPick: React.FC = () => {
         disabled={fixed}
         title={fixed ? "this chat runs on the backend it began with; start a new chat to change it" : "the backend a new chat runs on"}
         onChange={(e) => {
-          const v = e.target.value;
-          if (v.startsWith("openai:")) {
-            const name = v.slice(7);
-            setPick({ agent: "openai", profile: name, model: b?.openai.find((x) => x.name === name)?.model ?? null });
-          } else if (v === "gemini-family") {
-            // Gemini runs on Antigravity unless only the Gemini CLI is installed
-            setPick({ agent: geminiPick(b), profile: null, model: null });
-          } else setPick({ agent: v as Pick["agent"], profile: null, model: null });
+          setCustomOpen(false);
+          setPick(backendPick(e.target.value, b));
         }}
       >
         <option value="claude" disabled={!!b && !installed(b, "claude")}>
@@ -438,7 +472,10 @@ const BackendPick: React.FC = () => {
           value={p.agent}
           disabled={fixed}
           title={fixed ? "this chat runs on the backend it began with; start a new chat to change it" : "Antigravity unless you pick the Gemini CLI"}
-          onChange={(e) => setPick({ agent: e.target.value as Agent, profile: null, model: null })}
+          onChange={(e) => {
+            setCustomOpen(false);
+            setPick(backendPick(e.target.value, b));
+          }}
         >
           <option value="agy" disabled={!!b && !installed(b, "agy")}>
             Antigravity{missing("agy")}
@@ -447,6 +484,81 @@ const BackendPick: React.FC = () => {
             Gemini CLI{missing("gemini")}
           </option>
         </select>
+      ) : null}
+      {showCliControls ? (
+        cm === "loading" && !fixed ? (
+          <select className="atlas-select" aria-label="the backend's model" disabled value="">
+            <option value="">loading models…</option>
+          </select>
+        ) : showCustomInput ? (
+          <input
+            className="input-line atlas-model"
+            aria-label="the backend's model"
+            placeholder={defaultModel ? `default (${defaultModel})` : "model id (default)"}
+            title={modelTitle}
+            value={p.model ?? ""}
+            disabled={fixed}
+            onChange={(e) => setPick({ ...pick, model: e.target.value || null })}
+          />
+        ) : cmList && cmList.models.length ? (
+          <select
+            className="atlas-select"
+            aria-label="the backend's model"
+            value={p.model ?? ""}
+            disabled={fixed}
+            title={fixed ? fixedModelTitle : modelTitle}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "__custom__") {
+                setCustomOpen(true);
+                return;
+              }
+              // an effort the next model does not list is not kept
+              const next = { ...pick, model: v || null };
+              const keepEffort = p.effort && cliChoices(next, b, cm).efforts.includes(p.effort) ? p.effort : null;
+              setPick({ ...next, effort: keepEffort });
+            }}
+          >
+            <option value="">{defaultModel ? `default (${defaultModel})` : "default model"}</option>
+            {p.model && !cmList.models.some((m) => m.id === p.model) ? <option value={p.model}>{p.model}</option> : null}
+            {cmList.models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name || m.id}
+              </option>
+            ))}
+            {cmList.custom_model && !fixed ? <option value="__custom__">custom…</option> : null}
+          </select>
+        ) : p.model ? (
+          <select className="atlas-select" aria-label="the backend's model" value={p.model} disabled>
+            <option value={p.model}>{p.model}</option>
+          </select>
+        ) : null
+      ) : null}
+      {/* shown too while the pick holds an effort no list offers (the list loading, or Codex's not come), so that the
+          effort a first message posts is in sight and can be cleared */}
+      {showCliControls && (cliEfforts.length > 0 || !!p.effort) ? (
+        <select
+          className="atlas-select"
+          aria-label="thinking effort"
+          value={p.effort ?? ""}
+          disabled={fixed}
+          title={fixed ? fixedEffortTitle : effortTitle}
+          onChange={(e) => setPick({ ...pick, effort: e.target.value || null })}
+        >
+          <option value="">{defaultEffort ? `thinking: default (${defaultEffort})` : "thinking: default"}</option>
+          {p.effort && !cliEfforts.includes(p.effort) ? <option value={p.effort}>thinking: {p.effort}</option> : null}
+          {cliEfforts.map((ef) => (
+            <option key={ef} value={ef}>
+              thinking: {ef}
+            </option>
+          ))}
+        </select>
+      ) : null}
+      {showCliControls && typeof cm === "string" && cm !== "loading" ? <span className="error-line atlas-small">{cm}</span> : null}
+      {showCliControls && !fixed && cmList?.error ? (
+        <span className="muted atlas-small" title={cmList.error}>
+          Codex did not list its models; its default and a typed id are offered
+        </span>
       ) : null}
       {p.agent === "openai" ? (
         Array.isArray(ms) && ms.length ? (

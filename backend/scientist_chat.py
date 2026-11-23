@@ -61,6 +61,12 @@ login and no other: not the endpoints' keys, not another CLI's, not the Hugging 
 in the server's environment (`child_env`), and the page says what the chosen backend can do (`REACH_WORDS`), asking
 once for each backend before its first chat when it is "home". What a scientist reads (model output, census answers,
 names and notes, attachments) can carry instructions; with a shell nothing stands between them and it.
+A command-line chat's model, and Claude Code's or Codex's thinking effort, are picked on the page (`cli_models` lists
+them); one picked is fixed by the chat's first message. One not picked is not recorded: each time the chat's process
+starts it is given the default as it then stands ($THEODOLITE_CLAUDE_MODEL, $THEODOLITE_CLAUDE_EFFORT,
+$THEODOLITE_AGY_MODEL, $THEODOLITE_GEMINI_MODEL or $GEMINI_MODEL, ~/.gemini/settings.json, ~/.codex/config.toml; else
+the CLI's own). Nothing is started to list Antigravity's models: the page offers those an Antigravity chat's own process
+reported (`_note_agy_models`).
 - "openai": any OpenAI-compatible Chat Completions endpoint (LM Studio, Ollama, OpenRouter, vLLM, llama.cpp's server)
   that supports tool calling. The endpoint runs no tools, so the server runs the loop: it streams the model's reply,
   runs each tool call through the atlas's own routes in this process, sends the results back, and goes on until the
@@ -135,6 +141,34 @@ MCP_SCRIPT = ROOT_DIR / "backend" / "scientist_mcp.py"
 AGENT_FILES = (*PROMPT_FILES, MCP_SCRIPT, ROOT_DIR / "backend" / "scientist_tools.py")
 SCIENTIST_DIR_ENV = "THEODOLITE_SCIENTIST_DIR"
 AGENTS = ("agy", "claude", "codex", "gemini", "openai")
+# The model and thinking-effort pickers (`cli_models`). Claude Code's and the Gemini CLI's models are their fixed
+# aliases, not asked of the CLI. Claude Code 2.1.330's efforts are those its --help lists for --effort; its own text
+# says it may lower an effort the model does not take, without saying so, and drops the effort when the model refuses
+# it, so a chat records the effort asked for, not the one that ran.
+CLAUDE_MODELS = ({"id": "opus", "name": "Opus"}, {"id": "sonnet", "name": "Sonnet"}, {"id": "haiku", "name": "Haiku"})
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+# A Codex chat's effort (thread/start's model_reasoning_effort): once Codex has listed its models, one the chosen model
+# lists; before that, one of these. Never "ultra": in codex-cli 0.169.0 it is not more thinking but xhigh with Codex
+# handing work to sub-agents of its own, unasked (seen offline against a stand-in model, 22 November 2026), and the
+# reach words do not cover sub-agents.
+CODEX_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+CODEX_NOT_OFFERED = frozenset({"ultra"})
+CODEX_ULTRA_WORDS = ("Codex's \"ultra\" is not offered: in codex-cli 0.169.0 it is not more thinking but xhigh, with Codex "
+                     "handing work to sub-agents of its own without asking, which the scientist's reach does not cover.")
+GEMINI_MODELS = ({"id": "auto", "name": "Auto"}, {"id": "pro", "name": "Pro"}, {"id": "flash", "name": "Flash"})
+CLI_MODEL_TTL = 300.0  # seconds a Codex model list is kept
+CLI_MODEL_FAIL_TTL = 30.0  # seconds a Codex listing that failed is kept, so pages loaded meanwhile start no new one
+# the Codex listing's answer, by Codex's path: (when, the answer, how long it is kept)
+_cli_models_cache: Dict[Tuple[str, str], Tuple[float, Dict[str, Any], float]] = {}
+# the last Codex listing that worked: each model's efforts and the default model, for /send to check an effort against
+_codex_seen: Dict[str, Any] = {}
+_codex_list_lock: Optional[Tuple[Any, asyncio.Lock]] = None
+# the models an Antigravity chat's own process last reported as its session started (`_note_agy_models`), kept also in
+# the scientist folder (AGY_MODELS_FILE)
+_agy_seen: Dict[str, Any] = {}
+AGY_MODELS_FILE = "agy-models.json"
+_MODEL_BAD_RE = re.compile(r"[\x00-\x1f\x7f\s]")
+_EFFORT_RE = re.compile(r"[a-z]{1,20}")
 FILE_TOOLS = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
 GEMINI_FOLDER_TOOLS = ["read_file", "write_file", "replace", "list_directory"]
 GEMINI_HOME_TOOLS = ["read_file", "write_file", "replace", "list_directory", "glob", "grep_search", "run_shell_command"]
@@ -547,6 +581,22 @@ def _meta() -> Dict[str, Any]:
 def _meta_set(cid: str, **kw: Any) -> None:
     m = _meta()
     m.setdefault(cid, {}).update(kw)
+    _meta_write(m)
+
+
+def _forget_unstarted(cid: str, c: Dict[str, Any], first: bool) -> None:
+    """A chat whose first message did not go in, its backend not started or a file in the way, is not kept: nothing of
+    it stays in chats.json (the backend, model and effort that message recorded, a session id its start saved), so its
+    next message picks them again. A model or effort that a CLI takes as it starts and refuses only in the turn still
+    fixes the chat: a new chat is the way to change it."""
+    if not first or c.get("proc") is not None or c["busy"]:
+        return
+    m = _meta()
+    if m.pop(cid, None) is not None:
+        _meta_write(m)
+
+
+def _meta_write(m: Dict[str, Any]) -> None:
     path = scientist_dir() / "chats.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
@@ -724,7 +774,7 @@ def _session_file(sid: str) -> Optional[str]:
     return hits[0] if hits else None
 
 
-def _claude_cmd(cid: str, self_url: str) -> List[str]:
+def _claude_cmd(cid: str, self_url: str, model: Optional[str] = None, effort: Optional[str] = None) -> List[str]:
     mcp = {"mcpServers": {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)],
                                     "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": cid}}}}
     if reach() == "home":
@@ -741,8 +791,12 @@ def _claude_cmd(cid: str, self_url: str) -> List[str]:
     cmd = [_bin("claude"), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
            "--include-partial-messages", "--system-prompt-file", str(prompt_file("claude", self_url)),
            "--mcp-config", json.dumps(mcp), "--strict-mcp-config", *tools, "--setting-sources", ""]
-    if os.environ.get("THEODOLITE_CLAUDE_MODEL"):
-        cmd += ["--model", os.environ["THEODOLITE_CLAUDE_MODEL"]]
+    use_model = model or os.environ.get("THEODOLITE_CLAUDE_MODEL")
+    if use_model:
+        cmd += ["--model", use_model]
+    use_effort = effort or _claude_env_effort()
+    if use_effort:
+        cmd += ["--effort", use_effort]
     return cmd + (["--resume", cid] if _session_file(cid) else ["--session-id", cid])
 
 
@@ -841,10 +895,13 @@ async def _ensure_claude(c: Dict[str, Any], self_url: str) -> Any:
     if not shutil.which(_bin("claude")):
         raise RuntimeError("Claude Code (the `claude` command) is not installed where the server runs.")
     files = _agent_files_stamp()  # before the prompt file is built from them
+    meta = _meta().get(c["session"], {})
     # its own process group, so ending a chat also ends what it started (the MCP server, its scripts)
-    proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()), env=child_env("claude"),
-                                                            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-                                                            stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
+    proc = c["proc"] = await asyncio.create_subprocess_exec(
+        *_claude_cmd(c["session"], self_url, model=meta.get("model"), effort=meta.get("effort")),
+        cwd=str(work_dir()), env=child_env("claude"),
+        stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
     _started(c, files)
     c["pump"] = asyncio.create_task(_pump_claude(c, proc))
     return proc
@@ -908,7 +965,11 @@ def _codex_home() -> str:
     lines = [f"{k} = {json.dumps(user[k])}" for k in ("model", "model_reasoning_effort") if isinstance(user.get(k), str)]
     lines += ["project_doc_max_bytes = 0", "", "[features]", "apps = false", "memories = false", "", "[skills]",
               "include_instructions = false"]
-    (home / "config.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # written whole and then moved into place: the model listing (`_list_codex_models`) writes it too, and a Codex
+    # starting meanwhile must not read it half written
+    tmp = home / f"config.toml.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp"
+    tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    os.replace(tmp, home / "config.toml")
     return str(home)
 
 
@@ -1016,16 +1077,26 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
     _started(c, files)
     c["rpc"], c["turn_id"], c["msg_item"] = {"next": 0, "pending": {}}, None, None  # a new process: no turn of the last runs on
     c["pump"] = asyncio.create_task(_pump_codex(c, proc))
-    await _rpc(c, "initialize", {"clientInfo": {"name": "theodolite", "version": "1"}})
-    # in its sandbox Codex asks before every MCP tool call, and this chat never asks (approvalPolicy "never"): the
-    # atlas's own tools are approved, as full access approved them
-    mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]},
-                     "default_tools_approval_mode": "approve"}}
-    sandbox = "danger-full-access" if reach() == "home" else "workspace-write"  # module docstring: reach
-    opts = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": sandbox, "config": {"mcp_servers": mcp},
-            "developerInstructions": system_prompt("codex", self_url)}
-    thread = _meta().get(c["session"], {}).get("thread")
-    r = await _rpc(c, "thread/resume", {"threadId": thread, **opts}) if thread else await _rpc(c, "thread/start", opts)
+    try:  # a process that did not start its thread is ended, so the next message starts it afresh
+        await _rpc(c, "initialize", {"clientInfo": {"name": "theodolite", "version": "1"}})
+        # in its sandbox Codex asks before every MCP tool call, and this chat never asks (approvalPolicy "never"): the
+        # atlas's own tools are approved, as full access approved them
+        mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]},
+                         "default_tools_approval_mode": "approve"}}
+        sandbox = "danger-full-access" if reach() == "home" else "workspace-write"  # module docstring: reach
+        meta = _meta().get(c["session"], {})
+        cfg: Dict[str, Any] = {"mcp_servers": mcp}
+        if meta.get("effort"):
+            cfg["model_reasoning_effort"] = meta["effort"]
+        opts: Dict[str, Any] = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": sandbox, "config": cfg,
+                                "developerInstructions": system_prompt("codex", self_url)}
+        if meta.get("model"):
+            opts["model"] = meta["model"]
+        thread = meta.get("thread")
+        r = await _rpc(c, "thread/resume", {"threadId": thread, **opts}) if thread else await _rpc(c, "thread/start", opts)
+    except Exception:
+        await _end_chat(c)
+        raise
     c["thread"] = (r.get("thread") or {}).get("id")
     if not thread:
         _meta_set(c["session"], thread=c["thread"])
@@ -1115,7 +1186,7 @@ def _gemini_home(cid: str) -> Tuple[Path, Path, Path]:
     else:
         selected_auth = None
 
-    user_model = (user_cfg.get("model") or {}).get("name")
+    user_model = _settings_model(user_cfg)
     preview = (user_cfg.get("general") or {}).get("previewFeatures")
     settings: Dict[str, Any] = {
         "security": {
@@ -1149,7 +1220,7 @@ def _gemini_home(cid: str) -> Tuple[Path, Path, Path]:
         "mcp": {"allowed": ["atlas"]},
         "mcpServers": {},
     }
-    if isinstance(user_model, str) and user_model:
+    if user_model:
         settings["model"] = {"name": user_model}
     (gdir / "settings.json").write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 
@@ -1163,7 +1234,7 @@ def _gemini_home(cid: str) -> Tuple[Path, Path, Path]:
     return home, cwd, policy_path
 
 
-def _gemini_cmd(policy_path: Path) -> List[str]:
+def _gemini_cmd(policy_path: Path, model: Optional[str] = None) -> List[str]:
     """Gemini CLI's command line. Its workspace is its empty read-only cwd and the work folder, at either reach: a
     workspace folder is where Gemini reads GEMINI.md files from (`context_files`), so the home folder is never one; at
     the home reach its shell reaches the rest."""
@@ -1175,8 +1246,9 @@ def _gemini_cmd(policy_path: Path) -> List[str]:
         "--policy", str(policy_path),
         "--include-directories", str(work_dir()),
     ]
-    if os.environ.get("THEODOLITE_GEMINI_MODEL"):
-        cmd += ["--model", os.environ["THEODOLITE_GEMINI_MODEL"]]
+    use_model = model or os.environ.get("THEODOLITE_GEMINI_MODEL")
+    if use_model:
+        cmd += ["--model", use_model]
     return cmd
 
 
@@ -1667,21 +1739,26 @@ LOAD_FAILED_WORDS = ("This chat's conversation could not be loaded into {name} (
                      "turns shown here. Start a new chat.")
 
 
-async def _load_or_new(c: Dict[str, Any], key: str, name: str, params: Dict[str, Any]) -> str:
+async def _load_or_new(c: Dict[str, Any], key: str, name: str, params: Dict[str, Any],
+                       answer: Optional[Dict[str, Any]] = None) -> str:
     """The chat's ACP session: the one saved for it (`key` in chats.json), loaded, its replay not shown; else a new one,
     saved. A saved one that does not load is not replaced by a new one, which would know none of the turns the page
-    shows: the chat is refused (LOAD_FAILED_WORDS)."""
+    shows: the chat is refused (LOAD_FAILED_WORDS). `answer`, when given, takes the session/load or session/new answer."""
     saved = _meta().get(c["session"], {}).get(key)
     if saved:
         c["loading"] = True
         try:
-            await _rpc(c, "session/load", {"sessionId": saved, **params})
+            r = await _rpc(c, "session/load", {"sessionId": saved, **params})
         except Exception as exc:
             raise RuntimeError(LOAD_FAILED_WORDS.format(name=name, why=str(exc)[:200])) from None
         finally:
             c["loading"] = False
+        if answer is not None and isinstance(r, dict):
+            answer.update(r)
         return str(saved)
     r = await _rpc(c, "session/new", params)
+    if answer is not None and isinstance(r, dict):
+        answer.update(r)
     sid = str(r.get("sessionId") or "")
     if not sid:
         raise RuntimeError(f"{name} session/new returned no sessionId")
@@ -1706,8 +1783,9 @@ async def _ensure_gemini(c: Dict[str, Any], self_url: str) -> Any:
         GEMINI_TELEMETRY_ENABLED="false",
         TMPDIR=str(chat_tmp(c["session"])),
     )
+    meta = _meta().get(c["session"], {})
     proc = c["proc"] = await asyncio.create_subprocess_exec(
-        *_gemini_cmd(policy_path),
+        *_gemini_cmd(policy_path, model=meta.get("model")),
         cwd=str(ro_cwd),
         env=env,
         stdin=asyncio.subprocess.PIPE,
@@ -2022,13 +2100,15 @@ async def _ensure_agy(c: Dict[str, Any], self_url: str) -> Any:
                                "not started on another.")
         sys_meta = {"antigravity": {"systemPrompt": {"append": system_prompt("agy", self_url)}}}
         params = {"cwd": str(ro_cwd), "mcpServers": _gemini_mcp_servers(c["session"], self_url), "_meta": sys_meta}
-        sid = await _load_or_new(c, "agy_session", "Antigravity", params)
+        answer: Dict[str, Any] = {}
+        sid = await _load_or_new(c, "agy_session", "Antigravity", params, answer)
         # agy 1.5.14 says where it keeps its files only once a session is asked for (live, 22 November 2026: nothing
         # after `initialize` alone), so this is checked after it
         if not await _agy_said_its_folder(log_file, gdir):
             raise RuntimeError(f"Antigravity did not say it keeps its files in the chat's own folder ({gdir}), so the chat is "
                                "stopped: its conversations could otherwise land among your own.")
-        model = os.environ.get("THEODOLITE_AGY_MODEL")
+        _note_agy_models(answer)  # before set_model: the list as this process reported it
+        model = _meta().get(c["session"], {}).get("model") or os.environ.get("THEODOLITE_AGY_MODEL")
         if model:
             await _rpc(c, "session/set_model", {"sessionId": sid, "modelId": model})
         c["gemini_session"] = sid
@@ -2325,6 +2405,7 @@ class SendRequest(BaseModel):
     agent: Optional[str] = Field(None, max_length=16)
     profile: Optional[str] = Field(None, max_length=64)
     model: Optional[str] = Field(None, max_length=200)
+    effort: Optional[str] = Field(None, max_length=40)
     layer: Optional[int] = None
     n: Optional[int] = None
     head: Optional[int] = None
@@ -2342,21 +2423,334 @@ class UploadRequest(BaseModel):
     data: str
 
 
+def _plain_model(s: Any) -> bool:
+    """A model id that goes on a command line or into an ACP request as one thing: at most 200 characters, not starting
+    with "-", with no space or control character."""
+    return isinstance(s, str) and 0 < len(s) <= 200 and not s.startswith("-") and not _MODEL_BAD_RE.search(s)
+
+
+def _clean_model(model: Optional[str]) -> Optional[str]:
+    if model is None:
+        return None
+    s = model.strip()
+    if not s:
+        return None
+    if not _plain_model(s):
+        raise HTTPException(status_code=400, detail=f"Invalid model name {model!r}.")
+    return s
+
+
+_effort_warned: set = set()
+
+
+def _claude_env_effort() -> Optional[str]:
+    """$THEODOLITE_CLAUDE_EFFORT, the effort a Claude Code chat starts with when the page picks none, if it is one of
+    CLAUDE_EFFORTS. Any other value is not passed to Claude Code, and the server's log says so once."""
+    v = (os.environ.get("THEODOLITE_CLAUDE_EFFORT") or "").strip().lower()
+    if not v or v in CLAUDE_EFFORTS:
+        return v or None
+    if v not in _effort_warned:
+        _effort_warned.add(v)
+        logger.warning("THEODOLITE_CLAUDE_EFFORT=%r is not one of %s, so no effort is passed to Claude Code", v, ", ".join(CLAUDE_EFFORTS))
+    return None
+
+
+def _codex_model_efforts(model: Optional[str]) -> Optional[Tuple[Optional[str], List[str]]]:
+    """What a new Codex chat may be given, as Codex's last model list has it: the model it would run (`model`, else the
+    list's default) and the efforts the list gives that model; for a model it does not list, None and the efforts the
+    page offers then (those some listed model lists). None before any list."""
+    if not _codex_seen:
+        return None
+    want = model or _codex_seen.get("default")
+    effs = (_codex_seen.get("rows") or {}).get(want) if want else None
+    return (want, list(effs)) if effs else (None, list(_codex_seen.get("any") or ()))
+
+
+def _clean_effort(agent: str, effort: Optional[str], model: Optional[str] = None) -> Optional[str]:
+    """A new chat's thinking effort, checked. Claude Code: one of CLAUDE_EFFORTS. Codex: never "ultra"
+    (CODEX_ULTRA_WORDS); once Codex has listed its models, one the list gives the chosen model (`model`, else the
+    default), or for a model it does not list one that some listed model lists; before any list, one of CODEX_EFFORTS.
+    No other backend is given one."""
+    if effort is None:
+        return None
+    s = effort.strip().lower()
+    if not s:
+        return None
+    if agent == "claude":
+        if s not in CLAUDE_EFFORTS:
+            raise HTTPException(status_code=400, detail=f"Thinking effort for Claude Code must be one of {', '.join(CLAUDE_EFFORTS)}.")
+        return s
+    if agent == "codex":
+        if s in CODEX_NOT_OFFERED:
+            raise HTTPException(status_code=400, detail=CODEX_ULTRA_WORDS)
+        listed = _codex_model_efforts(model)
+        allowed = listed[1] if listed else list(CODEX_EFFORTS)
+        if s not in allowed:
+            on = f" on {listed[0]}, as Codex lists it," if listed and listed[0] else (", as Codex lists its models," if listed else "")
+            raise HTTPException(status_code=400, detail=f"Thinking effort for Codex{on} must be one of {', '.join(allowed)}." if allowed
+                                else "Codex lists no thinking effort for that model.")
+        return s
+    if agent == "agy":
+        raise HTTPException(status_code=400, detail="Antigravity is given no thinking effort here: none is wired for its chat mode (agy acp).")
+    raise HTTPException(status_code=400, detail="The Gemini CLI is given no thinking effort here.")
+
+
+def _codex_user_prefs() -> Tuple[Optional[str], Optional[str]]:
+    """The model and the effort of the person's ~/.codex/config.toml: the two lines `_codex_home` copies into the
+    chat's own Codex home, and nothing else of that file."""
+    import tomllib
+
+    try:
+        user = tomllib.loads(Path(os.path.expanduser("~/.codex/config.toml")).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None, None
+    m = user.get("model")
+    ef = user.get("model_reasoning_effort")
+    return (m if isinstance(m, str) and m.strip() else None), (ef if isinstance(ef, str) and ef.strip() else None)
+
+
+def _settings_model(cfg: Any) -> Optional[str]:
+    """A Gemini settings.json's model as Gemini CLI 0.70.0 reads it (`settings.model?.name`): None when `model` is not
+    an object with a name."""
+    m = cfg.get("model") if isinstance(cfg, dict) else None
+    name = m.get("name") if isinstance(m, dict) else None
+    return name.strip() if isinstance(name, str) and name.strip() else None
+
+
+def _gemini_default_model() -> Optional[str]:
+    """The model a Gemini CLI chat starts on when the page picks none, in the CLI's own order (`argv.model ||
+    GEMINI_MODEL || settings.model?.name` in 0.70.0): $THEODOLITE_GEMINI_MODEL, which the chat passes as --model, else
+    $GEMINI_MODEL, which `child_env` passes on to it, else the model of ~/.gemini/settings.json, which `_gemini_home`
+    copies into its own home. None when none is set: the CLI's own default then."""
+    for k in ("THEODOLITE_GEMINI_MODEL", "GEMINI_MODEL"):
+        v = (os.environ.get(k) or "").strip()
+        if v:
+            return v
+    try:
+        cfg = json.loads(Path(os.path.expanduser("~/.gemini/settings.json")).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return _settings_model(cfg)
+
+
+def _agy_model_rows(models: Any) -> List[Dict[str, Any]]:
+    """ACP's model list (`{availableModels: [{modelId, name}], ...}`) as the picker's rows. An id that is not a plain one
+    (`_plain_model`) is left out, and so is any row after the 200th."""
+    avail = models.get("availableModels") if isinstance(models, dict) else None
+    rows: List[Dict[str, Any]] = []
+    seen = set()
+    for m in avail if isinstance(avail, list) else []:
+        mid = m.get("modelId") if isinstance(m, dict) else None
+        if not _plain_model(mid) or mid in seen:
+            continue
+        seen.add(mid)
+        name = m.get("name")
+        rows.append({"id": mid, "name": name.strip()[:120] if isinstance(name, str) and name.strip() else mid,
+                     "efforts": None, "default_effort": None})
+        if len(rows) == 200:
+            break
+    return rows
+
+
+def _note_agy_models(answer: Dict[str, Any]) -> None:
+    """Keeps the models an Antigravity chat's own process reported as its session began, for the picker of later chats
+    (in memory and in the scientist folder, AGY_MODELS_FILE): ACP's model selection, `models.availableModels` in the
+    session/new or session/load answer. agy 1.5.14's binary names these fields and handles session/set_model, but
+    whether it sends a list live was not seen: offline and signed out it fetches no models. Nothing else starts agy to
+    ask: `agy models` takes none of the chat's flags, so it would run in the person's own Antigravity folder, with its
+    updater and its telemetry (seen offline in the review of this picker, 22 November 2026)."""
+    rows = _agy_model_rows(answer.get("models"))
+    if not rows:
+        return
+    keep = {"availableModels": [{"modelId": r["id"], "name": r["name"]} for r in rows], "at": int(time.time())}
+    _agy_seen.clear()
+    _agy_seen.update(keep)
+    path = scientist_dir() / AGY_MODELS_FILE
+    try:
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(keep, ensure_ascii=False), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        pass
+
+
+def _agy_known_models() -> Tuple[List[Dict[str, Any]], Optional[int]]:
+    """The models an Antigravity chat last reported (`_note_agy_models`) and when; none before one has."""
+    if not _agy_seen:
+        try:
+            d = json.loads((scientist_dir() / AGY_MODELS_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            d = None
+        if isinstance(d, dict) and _agy_model_rows(d):
+            _agy_seen.update(availableModels=d.get("availableModels"), at=d.get("at"))
+    at = _agy_seen.get("at")
+    return _agy_model_rows(_agy_seen), (at if isinstance(at, int) else None)
+
+
+async def _list_codex_models() -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Codex's own `model/list`: its models that are not hidden, each with the efforts it lists ("ultra" and any that is
+    not a plain word left out) and its catalog's default effort; and the default model's id. It asks a `codex
+    app-server` started as a chat's is (`_ensure_codex`): in the chat's own Codex home (`_codex_home`, never
+    ~/.codex), with a chat's environment (`child_env`), in the work folder, in a process group of its own, ended once
+    it has answered, or after 10 s for `initialize` and 12 s for the list. Whether it then contacts OpenAI was not
+    measured; offline, codex-cli 0.169.0 still answered (its own catalog, nine models)."""
+    exe = shutil.which(_bin("codex"))
+    if not exe:
+        return [], None
+    env = child_env("codex", CODEX_HOME=_codex_home())
+    proc = await asyncio.create_subprocess_exec(
+        exe, "app-server",
+        cwd=str(work_dir()),
+        env=env,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+        limit=1 << 22,
+        start_new_session=True,
+    )
+
+    async def _rpc_once(rid: int, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        assert proc.stdin is not None and proc.stdout is not None
+        proc.stdin.write((json.dumps({"jsonrpc": "2.0", "id": rid, "method": method, "params": params}) + "\n").encode("utf-8"))
+        await proc.stdin.drain()
+        while True:
+            line = await proc.stdout.readline()
+            if not line:
+                raise RuntimeError("codex app-server exited before answering")
+            try:
+                m = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(m, dict) and m.get("id") == rid:
+                if "error" in m:
+                    raise RuntimeError(str(m["error"]))
+                return m.get("result") or {}
+
+    try:
+        await asyncio.wait_for(_rpc_once(1, "initialize", {"clientInfo": {"name": "theodolite", "version": "1"}}), 10)
+        res = await asyncio.wait_for(_rpc_once(2, "model/list", {}), 12)
+    finally:
+        await _stop_proc(proc)
+    rows: List[Dict[str, Any]] = []
+    default_id: Optional[str] = None
+    for item in res.get("data") or []:
+        if not isinstance(item, dict) or item.get("hidden"):
+            continue
+        mid = str(item.get("id") or item.get("model") or "").strip()
+        if not _plain_model(mid):
+            continue
+        effs: List[str] = []
+        for e in item.get("supportedReasoningEfforts") or []:
+            v = e.get("reasoningEffort") if isinstance(e, dict) else None
+            if isinstance(v, str) and _EFFORT_RE.fullmatch(v) and v not in CODEX_NOT_OFFERED and v not in effs:
+                effs.append(v)
+        def_eff = item.get("defaultReasoningEffort") if isinstance(item.get("defaultReasoningEffort"), str) else None
+        if item.get("isDefault") and not default_id:
+            default_id = mid
+        rows.append({"id": mid, "name": str(item.get("displayName") or mid)[:120], "efforts": effs or None, "default_effort": def_eff})
+    return rows, default_id
+
+
+async def _codex_listing() -> Dict[str, Any]:
+    """The Codex picker's answer (`cli_models`). One listing runs at a time, and its answer is kept (CLI_MODEL_TTL; one
+    that failed, CLI_MODEL_FAIL_TTL), so pages loaded together, or reloaded, start one `codex app-server` at most. Each
+    model's `default_effort` is the effort a chat on it starts with when none is picked: the person's configured
+    model_reasoning_effort, which `_codex_home` copies into the chat's home, else the model's own default (with the
+    configured one set, offline thread/start answered that one, codex-cli 0.169.0). The efforts offered are those some
+    listed model lists."""
+    global _codex_list_lock
+    loop = asyncio.get_running_loop()
+    if _codex_list_lock is None or _codex_list_lock[0] is not loop:
+        _codex_list_lock = (loop, asyncio.Lock())
+    async with _codex_list_lock[1]:
+        key = ("codex", shutil.which(_bin("codex")) or "")
+        hit = _cli_models_cache.get(key)
+        if hit and time.time() - hit[0] < hit[2]:
+            return hit[1]
+        codex_m, codex_ef = _codex_user_prefs()
+        err: Optional[str] = None
+        try:
+            rows, live_default = await _list_codex_models()
+        except Exception as exc:
+            rows, live_default, err = [], None, (str(exc) or type(exc).__name__)[:200]
+        default_m = codex_m or live_default
+        for r in rows:
+            r["default_effort"] = codex_ef or r["default_effort"]
+        if codex_m and not any(r["id"] == codex_m for r in rows):
+            rows.insert(0, {"id": codex_m, "name": codex_m, "efforts": None, "default_effort": codex_ef})
+        offered: List[str] = []
+        for e in [*CODEX_EFFORTS, *(e for r in rows for e in (r["efforts"] or ()))]:
+            if e not in offered and any(e in (r["efforts"] or ()) for r in rows):
+                offered.append(e)
+        if err is None:
+            _codex_seen.clear()
+            _codex_seen.update(rows={r["id"]: r["efforts"] for r in rows if r["efforts"]}, default=default_m, any=offered)
+        def_row = next((r for r in rows if r["id"] == default_m), None)
+        res = {"agent": "codex", "models": rows, "default": default_m, "efforts": offered,
+               "default_effort": def_row["default_effort"] if def_row else codex_ef, "custom_model": True,
+               "listed": err is None, "error": err}
+        _cli_models_cache[key] = (time.time(), res, CLI_MODEL_TTL if err is None else CLI_MODEL_FAIL_TTL)
+        return res
+
+
 @router.get("/backends")
 async def backends() -> Dict[str, Any]:
     """Which backends this server can run: Antigravity CLI, Claude Code, Codex and Gemini CLI where their commands are
-    installed, and every OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing")."""
+    installed, and every OpenAI-compatible endpoint configured (`profiles()`; each one's key only as "set" or "missing").
+    For each command-line backend, the model (and for Claude Code and Codex the effort) a chat starts with when the page
+    picks none, where the server knows it; it starts nothing to find out."""
     ps = profiles()
+    codex_model, codex_effort = _codex_user_prefs()
     return {"agy": {"available": bool(shutil.which(_bin("agy"))), "model": os.environ.get("THEODOLITE_AGY_MODEL")},
-            "claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
-            "codex": {"available": bool(shutil.which(_bin("codex")))},
-            "gemini": {"available": bool(shutil.which(_bin("gemini"))), "model": os.environ.get("THEODOLITE_GEMINI_MODEL")},
+            "claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL"),
+                       "effort": _claude_env_effort(), "efforts": list(CLAUDE_EFFORTS)},
+            "codex": {"available": bool(shutil.which(_bin("codex"))), "model": codex_model, "effort": codex_effort},
+            "gemini": {"available": bool(shutil.which(_bin("gemini"))), "model": _gemini_default_model()},
             "openai": [profile_card(k, v) for k, v in ps.items()], "warning": _profile_warning,
             # what each can do at this reach, and at the folder reach (what the page says it would do without "home")
             "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()], "folder": REACH_WORDS["folder"]},
             # where an Antigravity, Claude Code, Codex or Gemini scientist keeps its files, and the route the page opens one through
             "work": {"folder": str(work_dir()), "route": WORK_ROUTE},
             "prompt": {"files": [str(p) for p in PROMPT_FILES], "local": str(scientist_dir() / "prompt.local.md")}}
+
+
+class CliModelsRequest(BaseModel):
+    agent: str = Field(..., max_length=16)
+
+
+@router.post("/cli_models")
+async def cli_models(req: CliModelsRequest) -> Dict[str, Any]:
+    """The models and thinking efforts the page offers for a new chat on a command-line backend (`agy`, `claude`,
+    `codex`, `gemini`), and those a chat starts with when none is picked (`default`, `default_effort`, and each model's
+    own `default_effort`). Claude Code's and the Gemini CLI's models are their fixed aliases, not asked of the CLI.
+    Codex's are its own `model/list` (`_codex_listing`). Antigravity's are those its own chat process last reported
+    (`_note_agy_models`): none before an Antigravity chat has started, and nothing is started to ask. Each takes a
+    typed model id as well (`custom_model`). A POST, since a Codex listing starts a process: the router refuses a POST
+    sent from another site, a form's included (`atlas.local_pages_only`)."""
+    agent = req.agent
+    if agent not in ("agy", "claude", "codex", "gemini"):
+        raise HTTPException(status_code=400, detail="agent must be one of agy, claude, codex, gemini.")
+    if agent == "claude":
+        env_m = (os.environ.get("THEODOLITE_CLAUDE_MODEL") or "").strip() or None
+        env_ef = _claude_env_effort()
+        rows = [{"id": r["id"], "name": r["name"], "efforts": list(CLAUDE_EFFORTS), "default_effort": env_ef} for r in CLAUDE_MODELS]
+        if env_m and not any(r["id"] == env_m for r in rows):
+            rows.insert(0, {"id": env_m, "name": env_m, "efforts": list(CLAUDE_EFFORTS), "default_effort": env_ef})
+        return {"agent": "claude", "models": rows, "default": env_m, "efforts": list(CLAUDE_EFFORTS), "default_effort": env_ef,
+                "custom_model": True}
+    if agent == "gemini":
+        default_m = _gemini_default_model()
+        rows = [{"id": r["id"], "name": r["name"], "efforts": None, "default_effort": None} for r in GEMINI_MODELS]
+        if default_m and not any(r["id"] == default_m for r in rows):
+            rows.insert(0, {"id": default_m, "name": default_m, "efforts": None, "default_effort": None})
+        return {"agent": "gemini", "models": rows, "default": default_m, "efforts": [], "default_effort": None, "custom_model": True}
+    if not shutil.which(_bin(agent)):
+        raise HTTPException(status_code=404, detail=f"{agent} is not installed where the server runs.")
+    if agent == "agy":
+        rows, at = _agy_known_models()
+        return {"agent": "agy", "models": rows, "default": (os.environ.get("THEODOLITE_AGY_MODEL") or "").strip() or None,
+                "efforts": [], "default_effort": None, "custom_model": True, "listed_at": at}
+    return await _codex_listing()
 
 
 @router.get("/models")
@@ -2400,22 +2794,14 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
     reaches it between tool calls. `layer` and `n` (or `head`), counted from 0, say what the person has open: the
     scientist is told, in the pages' count. A Claude Code or Codex chat idle on instructions or tools that have changed
     since its process started is first started again on them, or marked stale (`_take_up_changes`). Events arrive on
-    GET /events."""
+    GET /events. A chat's first message fixes its backend, and any model and effort picked with it (for `openai` its
+    profile and model); later messages' are not read. A command-line chat's model or effort not picked is not recorded,
+    and its process is given the default as it then stands each time it starts. A first message to a command-line backend that
+    does not go in (409, 502) leaves nothing recorded (`_forget_unstarted`)."""
     cid = _check_chat(req.chat)
     if req.agent is not None and req.agent not in AGENTS:
         raise HTTPException(status_code=400, detail=f"The scientist's backends are {', '.join(AGENTS)}.")
     c = _chat(cid, req.agent)
-    known = _meta().get(cid, {})
-    if c["agent"] == "openai" and not known.get("profile"):
-        ps = profiles()
-        if not req.profile or req.profile not in ps:
-            raise HTTPException(status_code=400, detail=f"Pick an endpoint for this chat: {', '.join(ps)}.")
-        model = req.model or ps[req.profile].get("model")
-        if not model:
-            raise HTTPException(status_code=400, detail="Pick a model for this endpoint.")
-        _meta_set(cid, agent="openai", profile=req.profile, model=model, created=int(time.time()))
-    elif not known.get("agent"):
-        _meta_set(cid, agent=c["agent"], created=int(time.time()))
     msg = shown = req.message
     if req.layer is not None and req.head is not None:
         msg = f"[The person has attention head {st.cite_head(req.layer, req.head)} open in the atlas.]\n\n{msg}"
@@ -2423,6 +2809,24 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
         msg = f"[The person has {st.cite(req.layer, req.n)} open in the atlas.]\n\n{msg}"
     self_url = _self_url(request)
     async with c["lock"]:
+        # what the first message fixes is read and recorded in the lock: a message sent while the first one starts the
+        # backend then reads what that one recorded, or that it was forgotten
+        known = _meta().get(cid, {})
+        first = False
+        if c["agent"] == "openai" and not known.get("profile"):
+            ps = profiles()
+            if not req.profile or req.profile not in ps:
+                raise HTTPException(status_code=400, detail=f"Pick an endpoint for this chat: {', '.join(ps)}.")
+            model = req.model or ps[req.profile].get("model")
+            if not model:
+                raise HTTPException(status_code=400, detail="Pick a model for this endpoint.")
+            _meta_set(cid, agent="openai", profile=req.profile, model=model, created=int(time.time()))
+        elif not known.get("agent"):
+            model = _clean_model(req.model)
+            effort = _clean_effort(c["agent"], req.effort, model)
+            extra = {**({"model": model} if model else {}), **({"effort": effort} if effort else {})}
+            _meta_set(cid, agent=c["agent"], created=int(time.time()), **extra)
+            first = True
         if c["agent"] == "openai":
             if _app is None:
                 raise HTTPException(status_code=503, detail="The scientist chat is not bound to a server.")
@@ -2442,6 +2846,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
             try:
                 await _ensure_codex(c, self_url)
             except Exception as exc:
+                _forget_unstarted(cid, c, first)
                 raise HTTPException(status_code=502, detail=f"codex: {exc}") from None
             at = _log(cid, {"t": "user", "text": shown})
             items = [{"type": "text", "text": msg, "text_elements": []}] + [x for a in req.attachments if (x := _codex_input(a))]
@@ -2464,6 +2869,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
         if c["agent"] in ("agy", "gemini"):
             why = await _context_refusal_async(c["agent"])  # before the process starts: Gemini reads them as a session starts
             if why:
+                _forget_unstarted(cid, c, first)
                 raise HTTPException(status_code=409, detail=why)
             try:
                 if c["agent"] == "agy":
@@ -2471,6 +2877,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
                 else:
                     await _ensure_gemini(c, self_url)
             except Exception as exc:
+                _forget_unstarted(cid, c, first)
                 raise HTTPException(status_code=502, detail=f"{c['agent']}: {exc}") from None
             _log(cid, {"t": "user", "text": shown})
             parts = _gemini_prompt_parts(msg, req.attachments)
@@ -2485,6 +2892,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
         try:
             proc = await _ensure_claude(c, self_url)
         except Exception as exc:
+            _forget_unstarted(cid, c, first)
             raise HTTPException(status_code=502, detail=str(exc)) from None
         content = [{"type": "text", "text": msg}] + [blk for a in req.attachments if (blk := attachment_block(a))]
         c["queued"] = bool(c.get("queued") or c["busy"])  # mid-turn: it joins this turn, or runs as one of its own after it
@@ -2587,7 +2995,9 @@ def _summary(cid: str, m: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             turns += 1
             title = title or _shown_text(t).strip()[:120]
     out = {"chat": cid, "agent": agent, "t": int(mt), "title": title, "turns": turns,
-           **({"profile": m.get("profile"), "model": m.get("model")} if agent == "openai" else {})}
+           **({"profile": m.get("profile")} if agent == "openai" else {}),
+           **({"model": m.get("model")} if agent == "openai" or m.get("model") else {}),
+           **({"effort": m.get("effort")} if m.get("effort") else {})}
     _chat_list[path] = (mt, out)
     return out
 
@@ -2620,10 +3030,15 @@ async def history(chat: str) -> Dict[str, Any]:
                         ev[-1] = {**ev[-1], "text": ev[-1].get("text", "") + e.get("text", "")}
                     else:
                         ev.append(dict(e))
-        return {"chat": cid, "agent": agent, "events": ev, **({"profile": m.get("profile"), "model": m.get("model")} if agent == "openai" else {})}
+        return {"chat": cid, "agent": agent, "events": ev,
+                **({"profile": m.get("profile")} if agent == "openai" else {}),
+                **({"model": m.get("model")} if agent == "openai" or m.get("model") else {}),
+                **({"effort": m.get("effort")} if m.get("effort") else {})}
     path = _session_file(cid)
     if not path:
-        return {"chat": cid, "agent": agent, "events": []}
+        return {"chat": cid, "agent": agent, "events": [],
+                **({"model": m.get("model")} if m.get("model") else {}),
+                **({"effort": m.get("effort")} if m.get("effort") else {})}
     ev, seen = [], set()
     for _, msg in _jsonl(path):
         if msg.get("isSidechain") or msg.get("isMeta"):
@@ -2643,7 +3058,9 @@ async def history(chat: str) -> Dict[str, Any]:
                     ev.append({"t": "tool", "id": blk.get("id"), "input": blk.get("input"), "name": str(blk.get("name", "")).removeprefix(MCP_PREFIX)})
         elif msg.get("type") == "user":
             ev += _tool_results(msg)
-    return {"chat": cid, "agent": agent, "events": ev}
+    return {"chat": cid, "agent": agent, "events": ev,
+            **({"model": m.get("model")} if m.get("model") else {}),
+            **({"effort": m.get("effort")} if m.get("effort") else {})}
 
 
 @router.post("/rewind")
