@@ -1,0 +1,13 @@
+Exploratory Design-A Fresh-Text forced_odd Kill-Pilot (N=256, C_cols=512, C_iso=512, 18 unseen prompts A'/B'/C')
+--------------------------------------------------------------------------------------------------------------------------------------
+  L Mode   DoseC     KL50/90   Tcol   Tiso  Dual05  Iso->Col  Col->Iso  HC_col  CarFrac  CarTcol  CarDual
+ 45 cent   1.225 0.190/0.362  0.769  0.749 131/256     0.000     0.000   0.766    0.576    0.663   90/256
+ 45 proj   1.225 0.190/0.362  0.773  0.746 130/256     0.000     0.000   0.766      nan      nan        -
+ 54 cent   1.421 0.085/0.523  0.833  0.846 136/256     0.000     0.000   0.831    0.489    0.607   26/256
+ 54 proj   1.421 0.085/0.523  0.834  0.844 140/256     0.000     0.000   0.831      nan      nan        -
+ 58 cent   0.582 0.021/0.552  0.831  0.849 173/256     0.000     0.000   0.855    0.342    0.658   32/256
+ 58 proj   0.582 0.021/0.552  0.830  0.850 174/256     0.000     0.000   0.855      nan      nan        -
+ 59 cent   0.248 0.013/0.268  0.904  0.724  84/256     0.301     0.000   0.903      nan      nan        -
+ 59 proj   0.248 0.013/0.268  0.908  0.714  83/256     0.315     0.000   0.907      nan      nan        -
+
+Kill Criteria: {"kc1_cross_pool_gt_0_05": {"58": {"iso_false_vs_cols_frac": 0.0, "cols_false_vs_iso_frac": 0.0, "triggered": false}, "59": {"iso_false_vs_cols_frac": 0.3145, "cols_false_vs_iso_frac": 0.0, "triggered": true}}, "kc2_incremental_over_lens": {"45": {"incremental_over_lens_q05": 0.0649, "incremental_over_eye_q05": 0.0649, "triggered_lt_0_03": false}, "54": {"incremental_over_lens_q05": 0.0145, "incremental_over_eye_q05": 0.0145, "triggered_lt_0_03": true}}, "kc2_l58_carried_lt_0_05": {"carried_dual05_frac": 0.125, "carried_l2_frac_p50": 0.3423, "triggered_lt_0_05": false}}

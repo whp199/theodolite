@@ -114,3 +114,48 @@ While an untested **Direction 3 downstream activation readout** (`L20–L29` -> 
 2. **`L55–L59` (`forced_odd`)**: Accept the exploratory lens-agreement finding (`79.7–91.7%` `Pos>=1` and `96.0–99.5%` `Both>=1` overlap with `eye_pos`/`eye_neg` at `L55–L59`, `0` below `L30`) as a **weight-lens check record only** (never calling `55–59` "taken"), OR authorize the **`~15 GPU-min` Design A fresh-text kill-pilot** before any pushed registration?
 3. **`L0–L29` (`input_census_L0_L29/NOTE.md`)**: Keep the document-disjoint causal tables as an exploratory record only, authorize the **`~15 GPU-min` fair full-context ablation + Design B precision kill-pilot**, and/or authorize the **`~10 GPU-min` Direction-3 pilot at `L25/L29`**?
 4. **Already-published files in `<atlas_data>/census/{forced_odd,input_census,fdr_rescue}/` (`67` files from prior commit)**: Delete those unreviewed files from live `<atlas_data>/census/` until page integration is authorized in Package 4, or retain them in place? (Left completely untouched by this branch revision per review rules.)
+
+---
+
+## 7. Exploratory Kill-Pilot Outcomes
+
+All decisions from §6 have now been executed under owner authorization (`L30–L54` `.units.jsonl` kept; exploratory Pilots 2, 3a, and 3b run on GPU):
+
+- **Open Decision 1 (Kept)**: Kept the existing `.units.jsonl` page rule (`29,265` page-described neurons across `L30–L54`). `fdr_rescue` / `T_dec` stays strictly in `experiments/results/census_fdr_sweep/` and is **never** served in `/api/atlas/hover`, `/api/atlas/arch`, `/api/atlas/census/regime/*`, or `frontend/`.
+
+### Pilot 2: Design-A Fresh-Text `forced_odd` & Direct-vs-Carried Split (`scripts/forced_odd_kill_pilot.py`)
+
+Evaluated `N = 256` neurons, `C_cols = 512`, `C_iso = 512` across `18` brand-new prompts (`A'/B'/C'`), incorporating Gemma-4 cumulative post-layer `layer_scalar` weights (`direct_scale`), bit-exact `forward_from_layer` preflight (`max_diffs = 0.0`, `h59_norm_diff = 0.0`), probability-weighted `Delta p` + top-20 entry rate on `C'`, and equal-budget `5 + 5` comparison against `lens.npz` (`eye` & `lens`):
+
+| `L` | `DoseC` | `KL50 / KL90` | `proj T_col` | `proj T_iso` | `Dual05` | `iso->col` | `col->iso` | `HC'_col` (`relabel`) | `direct_scale` | `CarFrac` | `CarDual05` |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **45** | `1.225` | `0.190 / 0.362` | `0.773` | `0.746` | `130/256 (50.8%)` | `0.000` | `0.000` | `0.766` (`0.527`) | `0.003739` | `0.576` | `90/256 (35.2%)` |
+| **54** | `1.421` | `0.085 / 0.523` | `0.834` | `0.844` | `140/256 (54.7%)` | `0.000` | `0.000` | `0.831` (`0.492`) | `0.013217` | `0.489` | `26/256 (10.2%)` |
+| **58** | `0.582` | `0.021 / 0.552` | `0.830` | `0.850` | `174/256 (68.0%)` | `0.000` | `0.000` | `0.855` (`0.468`) | `0.031738` | `0.342` | `32/256 (12.5%)` |
+| **59** | `0.248` | `0.013 / 0.268` | `0.908` | `0.714` | `83/256 (32.4%)` | **`0.315`** (`161/512`) | `0.000` | `0.907` (`0.464`) | `1.000000` | `n/a` | `n/a` |
+
+- **Equal-budget `5 + 5` decoding overlap vs `lens.npz` (`proj/LEX_L2_cent`)**:
+  - `L45` (`q05`, `n=77`): `lens = 87.0%`, `eye = 87.0%`, `forced_odd = 92.2%`, union = `93.5%` (`+0.0649`, `+5` neurons -> Kill Criterion 2a not triggered; all `256`: `40.2%` `eye`, `39.8%` `lens`, `41.4%` `forced_odd`, `+0.0312`).
+  - `L54` (`q05`, `n=69`): `lens = 85.5%`, `eye = 84.1%`, `forced_odd = 75.4%` (**below `lens` alone**), union = `87.0%` (**`+0.0145`**, `+1` neuron -> **Kill Criterion 2a TRIGGERED** at `< +0.03`; all `250`: `+0.0080`).
+- **Probability-weighted `Delta p` on `C'`**: Across all four layers, `neu_p_base_p50 = 0.0` and `neu_p_base_p90 = 0.0`; `neu_signed_dp_p90` is `0.000409` (`L45`), `0.000191` (`L54`), `0.000057` (`L58`), `0.000041` (`L59`), and mean top-20 entry rate is `0.078%` (`L59`) to `1.094%` (`L54`) (`dp_auc_vs_cols = 0.674–0.765`).
+- **Verdict — KILL fixed-text `forced_odd` as a candidate registered push census for `L55–L59`**:
+  - **Kill Criterion 1 triggered at `L59`**: isotropic controls falsely pass columns FDR at **`31.45%`** (`161 / 512`), confirming structural invalidity near unembedding (note at `L58`, `iso->col = 0.000`, `col->iso = 0.000`, `carried Dual05 = 32/256 = 12.5%`, `cos(tot, dir) = 0.875`).
+  - **Kill Criterion 2a triggered at `L54`**: fixed-text `forced_odd` adds only **`+0.0145`** (`+1.45% < +3.0%`) incremental decoding accuracy over equal-budget `lens.npz`, and top-5 log-odds tail shifts stay deep in `p_base ~ 0` (`<= 1.09%` top-20 entry).
+  - Layers `L55–L59` remain **not taken / shut** as census layers and are surfaced only as clearly marked exploratory set-text / weight-lens-agreement checks (`forced_odd`).
+
+### Pilot 3a: Fair Full-Context Ablation & Held-Out Document Precision (`L2, L14, L20, L29`)
+
+Full tables in [`input_census_L0_L29/NOTE.md`](../input_census_L0_L29/NOTE.md) §4:
+
+- **Fair full-context natural-firing ablation (`scripts/input_ablation_check.py`, `N = 64` neurons × `4` passages = `256` passages/layer vs random same-layer non-dead neurons, `w_ratio 0.993–1.007`, measured no-op `bf16` floor `0.00000`)**: Median peak KL `0.00057` (`L2`), `0.00061` (`L14`), `0.00077` (`L20`), `0.00112` (`L29`) vs random control `0.00024`, `0.00019`, `0.00038`, `0.00044` (`Pk_AUC = 0.6824–0.8354`, clustered Wilcoxon `p <= 2.69e-9`; Span KL `0.00096–0.00108` vs `0.00057–0.00073`, `Sp_AUC = 0.6853–0.8154`, `p <= 1.20e-7`; `Mean4 Sp > 0.00045` = `92.2–95.3%`; `Max4 Pk > 0.005` = `20.3–46.9%`). Confirms real natural-firing participation above random same-layer neurons, though single-passage median KL remains small (`~0.001` nats).
+- **Held-out `<eos>` document-halves precision (`scripts/input_precision_pilot.py`, `1,553` pure half-1 windows)**: Overall `>= 0.20` precision & `3x` lift rate is **`11.25%`** (`L2`), **`5.28%`** (`L14`), **`6.37%`** (`L20`), and **`0.39%`** (`L29`) (`AUC = 0.8031–0.8688`, `p <= 4.09e-27`), sharply driven by **non-top-100 lexical triggers** (`MeanTgt = 0.1184` at `L2`, `0.0744` at `L14`, `0.0853` at `L20`, `0.0467` at `L29`) vs near-zero precision for top-100 ubiquitous pieces (`0.0060`, `0.0138`, `0.0029`, `0.0011`; `0.0%` clearing `>=0.20 & 3x` at `L2, L20, L29`).
+- **Verdict**: Keep `L0–L29` strictly as exploratory corpus-firing descriptions (`not taken`, not a push census).
+
+### Pilot 3b: Direction-3 Downstream Activation Kill-Pilot (`scripts/downstream_pilot.py`, `L25, L29` -> `29,265` `L30–L54` Targets)
+
+Evaluated `N = 256` source neurons vs `512` column controls using true baseline-subtracted second-order `even_l2` and exact LOO Half-C' normalization:
+
+- **`L25` (`1.550` ceil, `305.5s`)**: `rABr = 0.5531`, `rBAr = 0.5455`, **`T_auc = 0.5405`**, **`FDP05 = 0 / 256`** (`above_max_ctl = 2`), `HalfC_matched = 0.6167` (`p05 = 0.0625`) -> **`KILL` triggered** (`T_auc <= 0.55` and `FDP05 <= 5/256`).
+- **`L29` (`1.047` ceil, `254.1s`)**: `rABr = 0.5867`, `rBAr = 0.6149`, **`T_auc = 0.5948`**, **`FDP05 = 25 / 256` (`9.8%`)** (`above_max_ctl = 15`, `fdp = 0.0399`), `HalfC_matched = 0.9541` (`p05 = 0.7200`) -> numerically **`SURVIVE`**.
+- **Top-5 inspection caveat**: Across the top `L29` surviving neurons (`N19147`, `N14289`, `N9893`, `N15379`, `N19689`), the consistently driven downstream targets are almost exclusively immediate **`L30–L32` multilingual/opener hubs** (`L30 N20453` Indonesian `'berikut/adalah/yang/untuk'`, `L30 N4124/N12625/N12627/N4901/N10634` Spanish `'para/que/una/aquí/tienes'`, `L30 N15375/N10941` French `'pour/une/voici'`, `L32 N2130` `'other/languages/equivalent'`) rather than specific deeper content circuits.
+- **Verdict**: Abandon Direction-3 as a candidate census mechanism for `L0–L29`; layers `0–29` remain **not taken / shut**.
