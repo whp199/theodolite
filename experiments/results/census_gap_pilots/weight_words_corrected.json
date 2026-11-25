@@ -1,0 +1,310 @@
+{
+ "sanity_L55_20_neurons": {
+  "exact_pos": 20,
+  "exact_neg": 20,
+  "overlap_pos": 200,
+  "overlap_neg": 200
+ },
+ "layers": [
+  {
+   "layer": 29,
+   "neurons": 1022,
+   "controls": 1024,
+   "control_kind": "isotropic",
+   "subsets": {
+    "whole": {
+     "old_orth_lead": 0.5329,
+     "old_orth_q05": 0,
+     "old_orth_above_max": 5,
+     "corr_lead_auc": 0.499,
+     "corr_q05": 0,
+     "corr_above_max": 3,
+     "mean_own_n": 0.00832,
+     "mean_own_c": 0.00848,
+     "frac_gt0_n": 0.8376,
+     "frac_gt0_c_own": 0.833,
+     "frac_gt0_c_orth": 0.8195
+    },
+    "half A": {
+     "old_orth_lead": 0.5318,
+     "old_orth_q05": 0,
+     "old_orth_above_max": 5,
+     "corr_lead_auc": 0.5021,
+     "corr_q05": 0,
+     "corr_above_max": 2,
+     "mean_own_n": 0.00839,
+     "mean_own_c": 0.00846,
+     "frac_gt0_n": 0.7554,
+     "frac_gt0_c_own": 0.7383,
+     "frac_gt0_c_orth": 0.731
+    },
+    "half B": {
+     "old_orth_lead": 0.525,
+     "old_orth_q05": 0,
+     "old_orth_above_max": 5,
+     "corr_lead_auc": 0.4965,
+     "corr_q05": 0,
+     "corr_above_max": 4,
+     "mean_own_n": 0.00825,
+     "mean_own_c": 0.0085,
+     "frac_gt0_n": 0.7701,
+     "frac_gt0_c_own": 0.7773,
+     "frac_gt0_c_orth": 0.7489
+    },
+    "lower": {
+     "old_orth_lead": 0.5253,
+     "old_orth_q05": 0,
+     "old_orth_above_max": 7,
+     "corr_lead_auc": 0.5011,
+     "corr_q05": 0,
+     "corr_above_max": 4,
+     "mean_own_n": 0.00818,
+     "mean_own_c": 0.00824,
+     "frac_gt0_n": 0.7857,
+     "frac_gt0_c_own": 0.7773,
+     "frac_gt0_c_orth": 0.7593
+    },
+    "upper": {
+     "old_orth_lead": 0.5331,
+     "old_orth_q05": 0,
+     "old_orth_above_max": 2,
+     "corr_lead_auc": 0.4986,
+     "corr_q05": 0,
+     "corr_above_max": 2,
+     "mean_own_n": 0.00846,
+     "mean_own_c": 0.00872,
+     "frac_gt0_n": 0.7867,
+     "frac_gt0_c_own": 0.7734,
+     "frac_gt0_c_orth": 0.7631
+    }
+   },
+   "rho_AB_neurons": 0.8889,
+   "rho_AB_controls_own": 0.8872
+  },
+  {
+   "layer": 53,
+   "neurons": 1022,
+   "controls": 1024,
+   "control_kind": "isotropic",
+   "subsets": {
+    "whole": {
+     "old_orth_lead": 0.7458,
+     "old_orth_q05": 464,
+     "old_orth_above_max": 384,
+     "corr_lead_auc": 0.7081,
+     "corr_q05": 260,
+     "corr_above_max": 136,
+     "mean_own_n": 0.02234,
+     "mean_own_c": 0.00045,
+     "frac_gt0_n": 0.5372,
+     "frac_gt0_c_own": 0.167,
+     "frac_gt0_c_orth": 0.1009
+    },
+    "half A": {
+     "old_orth_lead": 0.7221,
+     "old_orth_q05": 428,
+     "old_orth_above_max": 359,
+     "corr_lead_auc": 0.6986,
+     "corr_q05": 227,
+     "corr_above_max": 132,
+     "mean_own_n": 0.0226,
+     "mean_own_c": 0.0004,
+     "frac_gt0_n": 0.4795,
+     "frac_gt0_c_own": 0.1094,
+     "frac_gt0_c_orth": 0.0706
+    },
+    "half B": {
+     "old_orth_lead": 0.7109,
+     "old_orth_q05": 404,
+     "old_orth_above_max": 343,
+     "corr_lead_auc": 0.6826,
+     "corr_q05": 229,
+     "corr_above_max": 120,
+     "mean_own_n": 0.02209,
+     "mean_own_c": 0.00049,
+     "frac_gt0_n": 0.4609,
+     "frac_gt0_c_own": 0.1221,
+     "frac_gt0_c_orth": 0.0698
+    },
+    "lower": {
+     "old_orth_lead": 0.7207,
+     "old_orth_q05": 420,
+     "old_orth_above_max": 351,
+     "corr_lead_auc": 0.6885,
+     "corr_q05": 226,
+     "corr_above_max": 121,
+     "mean_own_n": 0.02054,
+     "mean_own_c": 0.00044,
+     "frac_gt0_n": 0.4883,
+     "frac_gt0_c_own": 0.1484,
+     "frac_gt0_c_orth": 0.0929
+    },
+    "upper": {
+     "old_orth_lead": 0.7279,
+     "old_orth_q05": 434,
+     "old_orth_above_max": 357,
+     "corr_lead_auc": 0.7004,
+     "corr_q05": 240,
+     "corr_above_max": 99,
+     "mean_own_n": 0.02414,
+     "mean_own_c": 0.00046,
+     "frac_gt0_n": 0.4902,
+     "frac_gt0_c_own": 0.1191,
+     "frac_gt0_c_orth": 0.0696
+    }
+   },
+   "rho_AB_neurons": 0.7099,
+   "rho_AB_controls_own": 0.7964
+  },
+  {
+   "layer": 54,
+   "neurons": 1022,
+   "controls": 1024,
+   "control_kind": "isotropic",
+   "subsets": {
+    "whole": {
+     "old_orth_lead": 0.782,
+     "old_orth_q05": 545,
+     "old_orth_above_max": 470,
+     "corr_lead_auc": 0.7514,
+     "corr_q05": 347,
+     "corr_above_max": 214,
+     "mean_own_n": 0.04333,
+     "mean_own_c": 0.00039,
+     "frac_gt0_n": 0.6057,
+     "frac_gt0_c_own": 0.165,
+     "frac_gt0_c_orth": 0.1069
+    },
+    "half A": {
+     "old_orth_lead": 0.7563,
+     "old_orth_q05": 499,
+     "old_orth_above_max": 444,
+     "corr_lead_auc": 0.7364,
+     "corr_q05": 360,
+     "corr_above_max": 219,
+     "mean_own_n": 0.04341,
+     "mean_own_c": 0.00037,
+     "frac_gt0_n": 0.5411,
+     "frac_gt0_c_own": 0.1035,
+     "frac_gt0_c_orth": 0.072
+    },
+    "half B": {
+     "old_orth_lead": 0.7434,
+     "old_orth_q05": 479,
+     "old_orth_above_max": 421,
+     "corr_lead_auc": 0.7203,
+     "corr_q05": 329,
+     "corr_above_max": 209,
+     "mean_own_n": 0.04325,
+     "mean_own_c": 0.00041,
+     "frac_gt0_n": 0.5176,
+     "frac_gt0_c_own": 0.1123,
+     "frac_gt0_c_orth": 0.0667
+    },
+    "lower": {
+     "old_orth_lead": 0.7555,
+     "old_orth_q05": 497,
+     "old_orth_above_max": 441,
+     "corr_lead_auc": 0.7297,
+     "corr_q05": 327,
+     "corr_above_max": 191,
+     "mean_own_n": 0.03979,
+     "mean_own_c": 0.00043,
+     "frac_gt0_n": 0.5538,
+     "frac_gt0_c_own": 0.1387,
+     "frac_gt0_c_orth": 0.0973
+    },
+    "upper": {
+     "old_orth_lead": 0.7656,
+     "old_orth_q05": 513,
+     "old_orth_above_max": 447,
+     "corr_lead_auc": 0.7457,
+     "corr_q05": 361,
+     "corr_above_max": 229,
+     "mean_own_n": 0.04686,
+     "mean_own_c": 0.00035,
+     "frac_gt0_n": 0.5656,
+     "frac_gt0_c_own": 0.1162,
+     "frac_gt0_c_orth": 0.0789
+    }
+   },
+   "rho_AB_neurons": 0.762,
+   "rho_AB_controls_own": 0.7876
+  },
+  {
+   "layer": 55,
+   "neurons": 1022,
+   "controls": 1024,
+   "control_kind": "isotropic",
+   "subsets": {
+    "whole": {
+     "old_orth_lead": 0.7004,
+     "old_orth_q05": 381,
+     "old_orth_above_max": 326,
+     "corr_lead_auc": 0.6725,
+     "corr_q05": 228,
+     "corr_above_max": 144,
+     "mean_own_n": 0.02761,
+     "mean_own_c": 0.00032,
+     "frac_gt0_n": 0.4579,
+     "frac_gt0_c_own": 0.1514,
+     "frac_gt0_c_orth": 0.1315
+    },
+    "half A": {
+     "old_orth_lead": 0.6772,
+     "old_orth_q05": 342,
+     "old_orth_above_max": 291,
+     "corr_lead_auc": 0.6611,
+     "corr_q05": 221,
+     "corr_above_max": 142,
+     "mean_own_n": 0.02816,
+     "mean_own_c": 0.00028,
+     "frac_gt0_n": 0.3973,
+     "frac_gt0_c_own": 0.0967,
+     "frac_gt0_c_orth": 0.0915
+    },
+    "half B": {
+     "old_orth_lead": 0.676,
+     "old_orth_q05": 335,
+     "old_orth_above_max": 295,
+     "corr_lead_auc": 0.6569,
+     "corr_q05": 221,
+     "corr_above_max": 142,
+     "mean_own_n": 0.02706,
+     "mean_own_c": 0.00036,
+     "frac_gt0_n": 0.3953,
+     "frac_gt0_c_own": 0.1006,
+     "frac_gt0_c_orth": 0.0903
+    },
+    "lower": {
+     "old_orth_lead": 0.6747,
+     "old_orth_q05": 326,
+     "old_orth_above_max": 291,
+     "corr_lead_auc": 0.6546,
+     "corr_q05": 186,
+     "corr_above_max": 127,
+     "mean_own_n": 0.0247,
+     "mean_own_c": 0.00037,
+     "frac_gt0_n": 0.4139,
+     "frac_gt0_c_own": 0.1328,
+     "frac_gt0_c_orth": 0.1237
+    },
+    "upper": {
+     "old_orth_lead": 0.6868,
+     "old_orth_q05": 350,
+     "old_orth_above_max": 298,
+     "corr_lead_auc": 0.6687,
+     "corr_q05": 238,
+     "corr_above_max": 158,
+     "mean_own_n": 0.03052,
+     "mean_own_c": 0.00027,
+     "frac_gt0_n": 0.4178,
+     "frac_gt0_c_own": 0.1055,
+     "frac_gt0_c_orth": 0.0933
+    }
+   },
+   "rho_AB_neurons": 0.8206,
+   "rho_AB_controls_own": 0.7697
+  }
+ ]
+}

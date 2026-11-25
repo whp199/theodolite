@@ -1,0 +1,55 @@
+Natural-Firing Ablation KL Verification (`mul 0` at [pk..pk+4] vs strict quiet controls < 0.05 extreme)
+----------------------------------------------------------------------------------------------------------------------------------------
+  L QuiNormMax     Pk_Act50/90     Pk_Qui50/90  Pk_AUC Pk_Ratio50     Sp_Act50/90     Sp_Qui50/90  Sp_AUC      Sp_p  >0.005
+  2    0.03977 0.00076/0.00413 0.00030/0.00162  0.6891       2.6x 0.00095/0.00360 0.00068/0.00156  0.6519  2.24e-18  23.44%
+ 14    0.04677 0.00082/0.00526 0.00030/0.00127  0.7319       2.7x 0.00114/0.00820 0.00067/0.00144  0.7187  1.91e-25  29.69%
+ 20    0.04718 0.00064/0.00515 0.00042/0.00130  0.6301       1.5x 0.00109/0.00596 0.00066/0.00138  0.6924  4.40e-23  29.69%
+ 29    0.04793 0.00059/0.00407 0.00040/0.00120  0.6155       1.5x 0.00068/0.00235 0.00056/0.00102  0.6173  2.43e-12   9.38%
+
+Top 10 L2 natural-firing span ablations:
+  n=16102(neg) act=-13.56 on 'ooks' -> kl_pk=0.00098 (q=0.00165), kl_span=0.67721 (q=0.00445, qnorm=0.0027) promoted=[(' RTR', 0.49), (' Rif', 0.46), ('ibranch', 0.45)]
+  n= 3611(pos) act=33.00 on '-' -> kl_pk=0.00060 (q=0.00106), kl_span=0.06583 (q=0.00134, qnorm=0.0053) promoted=[(' lashed', 0.31), ('smiling', 0.28), (' এমনকি', 0.27)]
+  n=16909(neg) act=-19.38 on ' it' -> kl_pk=0.16441 (q=0.00152), kl_span=0.05055 (q=0.00216, qnorm=0.0003) promoted=[(' नम', 3.33), ('Samples', 3.25), ('studies', 3.15)]
+  n= 2473(neg) act=-22.00 on '-' -> kl_pk=0.00000 (q=0.00000), kl_span=0.03396 (q=0.03484, qnorm=0.0064) promoted=[(' ۳', 0.22), ('बरे', 0.21), ('˧', 0.21)]
+  n=10459(pos) act=12.31 on ' State' -> kl_pk=0.00077 (q=0.00038), kl_span=0.02741 (q=0.00190, qnorm=0.0029) promoted=[('imeters', 0.57), ('drawing', 0.53), (' ایم', 0.53)]
+  n=18587(neg) act=-13.44 on 'mon' -> kl_pk=0.01945 (q=0.00203), kl_span=0.02719 (q=0.00095, qnorm=0.0030) promoted=[('Dive', 1.37), ('ſon', 1.34), ('Aggregate', 1.3)]
+  n=15575(neg) act=-12.75 on 'verson' -> kl_pk=0.09900 (q=0.00189), kl_span=0.02303 (q=0.00086, qnorm=0.0022) promoted=[('rières', 2.75), ('UTIONS', 2.64), ('antik', 2.52)]
+  n= 1413(pos) act=40.00 on ' supply' -> kl_pk=0.01824 (q=0.00000), kl_span=0.02290 (q=0.00044, qnorm=0.0006) promoted=[(' Feed', 1.53), (' bleed', 1.51), (' Stop', 1.5)]
+  n=18882(neg) act=-16.38 on ' juice' -> kl_pk=0.00064 (q=0.00010), kl_span=0.02174 (q=0.00089, qnorm=0.0001) promoted=[(' 있으며', 0.58), (' mamma', 0.55), ('esa', 0.53)]
+  n=10745(neg) act=-36.50 on ' answers' -> kl_pk=0.01619 (q=0.00000), kl_span=0.01548 (q=0.00047, qnorm=0.0028) promoted=[('--“', 2.17), (' $-$', 1.86), ('ina', 1.86)]
+
+Top 10 L14 natural-firing span ablations:
+  n=21334(neg) act=-24.00 on 'se' -> kl_pk=0.10164 (q=0.00166), kl_span=0.18125 (q=0.00145, qnorm=0.0016) promoted=[('ELIST', 4.61), (' करवाई', 4.39), (' развивается', 4.36)]
+  n=20557(pos) act=24.25 on ' Dan' -> kl_pk=0.49551 (q=0.05500), kl_span=0.15752 (q=0.01356, qnorm=0.0016) promoted=[('ECC', 9.59), ('GFP', 8.36), ('Norton', 8.34)]
+  n= 6912(neg) act=-53.25 on ' set' -> kl_pk=0.00046 (q=0.00016), kl_span=0.05670 (q=0.00040, qnorm=0.0020) promoted=[('их', 0.32), ('ID', 0.31), ('illas', 0.29)]
+  n=11583(neg) act=-82.00 on ' cruise' -> kl_pk=0.05994 (q=0.00000), kl_span=0.05448 (q=0.00014, qnorm=0.0007) promoted=[('Meine', 3.46), (' Meine', 3.12), ('putes', 3.09)]
+  n=20013(neg) act=-42.75 on ' shoulders' -> kl_pk=0.00597 (q=0.00000), kl_span=0.03572 (q=0.00107, qnorm=0.0003) promoted=[(' ش', 0.88), (' Ш', 0.82), (' DD', 0.82)]
+  n=21288(pos) act=82.50 on 'raim' -> kl_pk=0.02551 (q=0.00000), kl_span=0.03066 (q=0.00063, qnorm=0.0004) promoted=[(' текст', 1.5), ('开关', 1.46), (' радио', 1.46)]
+  n= 5753(neg) act=-50.50 on ' Foundation' -> kl_pk=0.03702 (q=0.00183), kl_span=0.02036 (q=0.00106, qnorm=0.0000) promoted=[('раль', 1.8), ('සර', 1.78), ('agara', 1.75)]
+  n=11108(neg) act=-122.00 on 'mill' -> kl_pk=0.00855 (q=0.00028), kl_span=0.01996 (q=0.00093, qnorm=0.0005) promoted=[('䂝', 1.21), ('䉽', 1.16), ('䒨', 1.15)]
+  n= 6123(pos) act=112.50 on ',' -> kl_pk=0.06271 (q=0.00125), kl_span=0.01793 (q=0.00100, qnorm=0.0140) promoted=[(' Brows', 1.82), (' Protok', 1.73), ('फिकेशन', 1.62)]
+  n=11187(neg) act=-64.00 on ' of' -> kl_pk=0.07566 (q=0.00304), kl_span=0.01691 (q=0.00106, qnorm=0.0045) promoted=[(' Cate', 1.56), (' нар', 1.53), ('TextView', 1.51)]
+
+Top 10 L20 natural-firing span ablations:
+  n=15162(neg) act=-35.25 on 'IRS' -> kl_pk=0.03782 (q=0.00275), kl_span=0.26907 (q=0.00185, qnorm=0.0115) promoted=[('c', 1.72), ('l', 1.69), ('brechen', 1.66)]
+  n= 8542(neg) act=-20.12 on ',' -> kl_pk=0.00026 (q=0.00027), kl_span=0.08393 (q=0.00103, qnorm=0.0019) promoted=[(' অভিনে', 0.24), (' Algo', 0.23), ('/', 0.22)]
+  n=16573(neg) act=-9.81 on ' +' -> kl_pk=0.00001 (q=0.00001), kl_span=0.06254 (q=0.00035, qnorm=0.0364) promoted=[(' Kareena', 0.34), (' Bine', 0.33), ('рё', 0.32)]
+  n= 5230(pos) act=11.44 on ',' -> kl_pk=0.00175 (q=0.00080), kl_span=0.05982 (q=0.00957, qnorm=0.0039) promoted=[(' Hosts', 0.38), ('манов', 0.35), (' Hindus', 0.34)]
+  n=20759(neg) act=-33.75 on ' atmosphere' -> kl_pk=0.00652 (q=0.00055), kl_span=0.04875 (q=0.00042, qnorm=0.0142) promoted=[('หรือ', 0.72), ('或', 0.68), ('或者', 0.62)]
+  n= 7884(pos) act=26.50 on ' think' -> kl_pk=0.00095 (q=0.00043), kl_span=0.02468 (q=0.00041, qnorm=0.0002) promoted=[('‘‘', 0.32), ('،', 0.31), ('但他', 0.31)]
+  n=13605(neg) act=-41.75 on ' in' -> kl_pk=0.01748 (q=0.00062), kl_span=0.02061 (q=0.00096, qnorm=0.0031) promoted=[('ང', 1.04), (' daar', 1.02), (' அழ', 1.0)]
+  n= 4181(neg) act=-41.75 on ' education' -> kl_pk=0.00703 (q=0.00073), kl_span=0.01631 (q=0.00042, qnorm=0.0001) promoted=[('يّ', 1.12), ('SNAPSHOT', 1.03), ('Sarah', 1.03)]
+  n=12345(neg) act=-20.62 on ' mixture' -> kl_pk=0.00342 (q=0.00107), kl_span=0.01572 (q=0.00050, qnorm=0.0045) promoted=[('ppet', 0.52), (' Mixture', 0.49), (' MI', 0.49)]
+  n= 6516(neg) act=-20.62 on ',' -> kl_pk=0.02213 (q=0.00031), kl_span=0.00993 (q=0.00036, qnorm=0.0076) promoted=[('Numbers', 2.25), ('Scores', 2.05), ('的数量', 1.93)]
+
+Top 10 L29 natural-firing span ablations:
+  n=15945(neg) act=-1.47 on '\n\n' -> kl_pk=0.00666 (q=0.00077), kl_span=0.15578 (q=0.14326, qnorm=0.0473) promoted=[('+|', 0.71), ('↓', 0.69), ('\\:', 0.69)]
+  n= 6083(pos) act= 2.08 on 'Explain' -> kl_pk=0.01172 (q=0.00303), kl_span=0.06234 (q=0.00228, qnorm=0.0182) promoted=[(' expanse', 0.69), (' spiked', 0.66), (' Küchen', 0.65)]
+  n= 2348(neg) act=-3.52 on ' Work' -> kl_pk=0.04994 (q=0.00207), kl_span=0.03005 (q=0.00191, qnorm=0.0286) promoted=[('),', 3.22), ('»,', 2.8), ("',", 2.76)]
+  n= 1549(pos) act= 4.19 on '.' -> kl_pk=0.02298 (q=0.00030), kl_span=0.00886 (q=0.00040, qnorm=0.0068) promoted=[('/</', 1.48), (' TURN', 1.32), (' aria', 1.32)]
+  n= 6291(pos) act= 6.50 on ' sun' -> kl_pk=0.01002 (q=0.00026), kl_span=0.00698 (q=0.00035, qnorm=0.0171) promoted=[('d', 1.14), (' through', 1.12), ('through', 1.04)]
+  n=10065(pos) act= 2.39 on '\n' -> kl_pk=0.01792 (q=0.00105), kl_span=0.00541 (q=0.00065, qnorm=0.0338) promoted=[('JavaScript', 1.79), ('lol', 1.78), ('📞', 1.77)]
+  n=16239(pos) act= 6.97 on '\n\n' -> kl_pk=0.00116 (q=0.00010), kl_span=0.00480 (q=0.00040, qnorm=0.0298) promoted=[(' ---', 1.06), (' ----', 0.92), (' Les', 0.85)]
+  n=12721(neg) act=-1.95 on '.' -> kl_pk=0.00144 (q=0.00063), kl_span=0.00400 (q=0.00540, qnorm=0.0246) promoted=[('แต่', 0.36), (' وأ', 0.36), ('anch', 0.33)]
+  n=14924(pos) act= 1.09 on ' Zimmerman' -> kl_pk=0.00230 (q=0.00236), kl_span=0.00307 (q=0.00376, qnorm=0.0230) promoted=[('CTION', 0.94), ('uvre', 0.89), ('一级', 0.87)]
+  n= 1421(pos) act= 3.30 on ' of' -> kl_pk=0.00244 (q=0.00129), kl_span=0.00299 (q=0.00116, qnorm=0.0174) promoted=[('ቻ', 0.54), ('ness', 0.54), ('గా', 0.5)]

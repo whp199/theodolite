@@ -1,0 +1,717 @@
+{
+ "elapsed_total_s": 468.5,
+ "runs": [
+  {
+   "tag": "L30_whole",
+   "file": "L30-match_things.jsonl",
+   "layer": 30,
+   "design": "match_things",
+   "prompts": 12,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 88.1,
+   "mass_c_auc": 0.6014,
+   "mass_c_res_auc": 0.6128,
+   "rep_AB_auc": 0.5569,
+   "rep_BA_auc": 0.5522,
+   "rep_AB_res_auc": 0.565,
+   "rep_BA_res_auc": 0.5611,
+   "rep_res_auc": 0.5674,
+   "T_dec_auc": 0.5627,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 0,
+    "threshold": null,
+    "fdp": null,
+    "above_max_ctl": 130
+   },
+   "fdp10": {
+    "count": 291,
+    "threshold": 4.2079,
+    "fdp": 0.0721,
+    "above_max_ctl": 130
+   },
+   "n3_covered": {
+    "covered": 20556,
+    "neurons": 21504,
+    "share_covered": 0.9559,
+    "n1_named_inside_covered": 0,
+    "mass_c_auc": 0.6038,
+    "mass_c_res_auc": 0.6091,
+    "rep_AB_auc": 0.5587,
+    "rep_BA_auc": 0.5545,
+    "rep_AB_res_auc": 0.5615,
+    "rep_BA_res_auc": 0.5592,
+    "rep_res_auc": 0.5648,
+    "T_dec_auc": 0.5606,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 0,
+     "threshold": null,
+     "fdp": null,
+     "above_max_ctl": 100
+    },
+    "fdp10": {
+     "count": 242,
+     "threshold": 4.2083,
+     "fdp": 0.0829,
+     "above_max_ctl": 100
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.5002,
+    "T_dec_auc_max": 0.5274,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "oos_3way": {
+    "fit_named": 0,
+    "fit_above_max_ctl": 70,
+    "c4_auc": null,
+    "frac_p05_on_C4": null
+   }
+  },
+  {
+   "tag": "L31_whole",
+   "file": "L31-match_wide.jsonl",
+   "layer": 31,
+   "design": "match_wide",
+   "prompts": 12,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 47.1,
+   "mass_c_auc": 0.6402,
+   "mass_c_res_auc": 0.6452,
+   "rep_AB_auc": 0.584,
+   "rep_BA_auc": 0.5859,
+   "rep_AB_res_auc": 0.5828,
+   "rep_BA_res_auc": 0.5861,
+   "rep_res_auc": 0.5933,
+   "T_dec_auc": 0.5918,
+   "readlib_q05": 1892,
+   "readlib_named": 1440,
+   "fdp05": {
+    "count": 494,
+    "threshold": 5.293,
+    "fdp": 0.0425,
+    "above_max_ctl": 270
+   },
+   "fdp10": {
+    "count": 647,
+    "threshold": 4.7544,
+    "fdp": 0.0973,
+    "above_max_ctl": 270
+   },
+   "n3_covered": {
+    "covered": 20746,
+    "neurons": 21504,
+    "share_covered": 0.9648,
+    "n1_named_inside_covered": 426,
+    "mass_c_auc": 0.6423,
+    "mass_c_res_auc": 0.6419,
+    "rep_AB_auc": 0.5843,
+    "rep_BA_auc": 0.5857,
+    "rep_AB_res_auc": 0.5806,
+    "rep_BA_res_auc": 0.5821,
+    "rep_res_auc": 0.5898,
+    "T_dec_auc": 0.5881,
+    "readlib_q05": 1687,
+    "readlib_named": 1292,
+    "fdp05": {
+     "count": 426,
+     "threshold": 5.2948,
+     "fdp": 0.0475,
+     "above_max_ctl": 216
+    },
+    "fdp10": {
+     "count": 548,
+     "threshold": 4.8203,
+     "fdp": 0.0924,
+     "above_max_ctl": 216
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4958,
+    "T_dec_auc_max": 0.5164,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "oos_3way": {
+    "fit_named": 0,
+    "fit_above_max_ctl": 168,
+    "c4_auc": null,
+    "frac_p05_on_C4": null
+   }
+  },
+  {
+   "tag": "L34_whole",
+   "file": "L34-match_ceil.jsonl",
+   "layer": 34,
+   "design": "match_ceil",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 42.3,
+   "mass_c_auc": 0.7604,
+   "mass_c_res_auc": 0.7521,
+   "rep_AB_auc": 0.6932,
+   "rep_BA_auc": 0.6985,
+   "rep_AB_res_auc": 0.6799,
+   "rep_BA_res_auc": 0.6889,
+   "rep_res_auc": 0.7035,
+   "T_dec_auc": 0.6793,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 4061,
+    "threshold": 3.9068,
+    "fdp": 0.0491,
+    "above_max_ctl": 321
+   },
+   "fdp10": {
+    "count": 5167,
+    "threshold": 2.9465,
+    "fdp": 0.0995,
+    "above_max_ctl": 321
+   },
+   "n3_covered": {
+    "covered": 21077,
+    "neurons": 21504,
+    "share_covered": 0.9801,
+    "n1_named_inside_covered": 3945,
+    "mass_c_auc": 0.7621,
+    "mass_c_res_auc": 0.7496,
+    "rep_AB_auc": 0.6933,
+    "rep_BA_auc": 0.6987,
+    "rep_AB_res_auc": 0.678,
+    "rep_BA_res_auc": 0.6867,
+    "rep_res_auc": 0.7014,
+    "T_dec_auc": 0.6767,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 3945,
+     "threshold": 3.9068,
+     "fdp": 0.0495,
+     "above_max_ctl": 300
+    },
+    "fdp10": {
+     "count": 5012,
+     "threshold": 2.9651,
+     "fdp": 0.0985,
+     "above_max_ctl": 300
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4977,
+    "T_dec_auc_max": 0.5255,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   }
+  },
+  {
+   "tag": "L35_whole",
+   "file": "L35-match_ceil.jsonl",
+   "layer": 35,
+   "design": "match_ceil",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 41.7,
+   "mass_c_auc": 0.6748,
+   "mass_c_res_auc": 0.6493,
+   "rep_AB_auc": 0.6326,
+   "rep_BA_auc": 0.6306,
+   "rep_AB_res_auc": 0.6053,
+   "rep_BA_res_auc": 0.6038,
+   "rep_res_auc": 0.6148,
+   "T_dec_auc": 0.5937,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 647,
+    "threshold": 7.9736,
+    "fdp": 0.0487,
+    "above_max_ctl": 433
+   },
+   "fdp10": {
+    "count": 1562,
+    "threshold": 5.0169,
+    "fdp": 0.0941,
+    "above_max_ctl": 433
+   },
+   "n3_covered": {
+    "covered": 20619,
+    "neurons": 21504,
+    "share_covered": 0.9588,
+    "n1_named_inside_covered": 592,
+    "mass_c_auc": 0.6719,
+    "mass_c_res_auc": 0.6475,
+    "rep_AB_auc": 0.6267,
+    "rep_BA_auc": 0.6251,
+    "rep_AB_res_auc": 0.6042,
+    "rep_BA_res_auc": 0.6029,
+    "rep_res_auc": 0.6139,
+    "T_dec_auc": 0.5932,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 536,
+     "threshold": 8.2824,
+     "fdp": 0.0375,
+     "above_max_ctl": 395
+    },
+    "fdp10": {
+     "count": 1433,
+     "threshold": 5.0169,
+     "fdp": 0.0983,
+     "above_max_ctl": 395
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4969,
+    "T_dec_auc_max": 0.5234,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   }
+  },
+  {
+   "tag": "L36_whole",
+   "file": "L36-match_ceil.jsonl",
+   "layer": 36,
+   "design": "match_ceil",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 41.0,
+   "mass_c_auc": 0.6312,
+   "mass_c_res_auc": 0.65,
+   "rep_AB_auc": 0.5884,
+   "rep_BA_auc": 0.5964,
+   "rep_AB_res_auc": 0.5902,
+   "rep_BA_res_auc": 0.6076,
+   "rep_res_auc": 0.6103,
+   "T_dec_auc": 0.5979,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 0,
+    "threshold": null,
+    "fdp": null,
+    "above_max_ctl": 16
+   },
+   "fdp10": {
+    "count": 1580,
+    "threshold": 4.9123,
+    "fdp": 0.0996,
+    "above_max_ctl": 16
+   },
+   "n3_covered": {
+    "covered": 20870,
+    "neurons": 21504,
+    "share_covered": 0.9705,
+    "n1_named_inside_covered": 0,
+    "mass_c_auc": 0.6286,
+    "mass_c_res_auc": 0.6504,
+    "rep_AB_auc": 0.5837,
+    "rep_BA_auc": 0.592,
+    "rep_AB_res_auc": 0.591,
+    "rep_BA_res_auc": 0.607,
+    "rep_res_auc": 0.611,
+    "T_dec_auc": 0.5989,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 0,
+     "threshold": null,
+     "fdp": null,
+     "above_max_ctl": 13
+    },
+    "fdp10": {
+     "count": 1348,
+     "threshold": 5.2263,
+     "fdp": 0.0982,
+     "above_max_ctl": 13
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4949,
+    "T_dec_auc_max": 0.5337,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   }
+  },
+  {
+   "tag": "L37_whole",
+   "file": "L37-match_ceil.jsonl",
+   "layer": 37,
+   "design": "match_ceil",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 41.8,
+   "mass_c_auc": 0.6609,
+   "mass_c_res_auc": 0.6989,
+   "rep_AB_auc": 0.6259,
+   "rep_BA_auc": 0.6293,
+   "rep_AB_res_auc": 0.6347,
+   "rep_BA_res_auc": 0.6407,
+   "rep_res_auc": 0.6476,
+   "T_dec_auc": 0.6387,
+   "readlib_q05": 2330,
+   "readlib_named": 2277,
+   "fdp05": {
+    "count": 3360,
+    "threshold": 5.4505,
+    "fdp": 0.05,
+    "above_max_ctl": 1295
+   },
+   "fdp10": {
+    "count": 4333,
+    "threshold": 3.782,
+    "fdp": 0.0969,
+    "above_max_ctl": 1295
+   },
+   "n3_covered": {
+    "covered": 19225,
+    "neurons": 21504,
+    "share_covered": 0.894,
+    "n1_named_inside_covered": 2511,
+    "mass_c_auc": 0.6463,
+    "mass_c_res_auc": 0.687,
+    "rep_AB_auc": 0.6073,
+    "rep_BA_auc": 0.6093,
+    "rep_AB_res_auc": 0.6251,
+    "rep_BA_res_auc": 0.6302,
+    "rep_res_auc": 0.6382,
+    "T_dec_auc": 0.6315,
+    "readlib_q05": 323,
+    "readlib_named": 323,
+    "fdp05": {
+     "count": 2347,
+     "threshold": 5.8984,
+     "fdp": 0.048,
+     "above_max_ctl": 906
+    },
+    "fdp10": {
+     "count": 3101,
+     "threshold": 4.1702,
+     "fdp": 0.0998,
+     "above_max_ctl": 906
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4961,
+    "T_dec_auc_max": 0.5294,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   }
+  },
+  {
+   "tag": "L53_whole",
+   "file": "L53-match_things.jsonl",
+   "layer": 53,
+   "design": "match_things",
+   "prompts": 12,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 73.0,
+   "mass_c_auc": 0.7835,
+   "mass_c_res_auc": 0.6906,
+   "rep_AB_auc": 0.6189,
+   "rep_BA_auc": 0.6259,
+   "rep_AB_res_auc": 0.6611,
+   "rep_BA_res_auc": 0.6432,
+   "rep_res_auc": 0.6657,
+   "T_dec_auc": 0.671,
+   "readlib_q05": 4304,
+   "readlib_named": 3693,
+   "fdp05": {
+    "count": 3438,
+    "threshold": 4.7938,
+    "fdp": 0.0488,
+    "above_max_ctl": 2521
+   },
+   "fdp10": {
+    "count": 4049,
+    "threshold": 3.6589,
+    "fdp": 0.0985,
+    "above_max_ctl": 2521
+   },
+   "n3_covered": {
+    "covered": 21285,
+    "neurons": 21504,
+    "share_covered": 0.9898,
+    "n1_named_inside_covered": 3339,
+    "mass_c_auc": 0.7845,
+    "mass_c_res_auc": 0.6894,
+    "rep_AB_auc": 0.617,
+    "rep_BA_auc": 0.6243,
+    "rep_AB_res_auc": 0.6594,
+    "rep_BA_res_auc": 0.6415,
+    "rep_res_auc": 0.6641,
+    "T_dec_auc": 0.6694,
+    "readlib_q05": 4202,
+    "readlib_named": 3592,
+    "fdp05": {
+     "count": 3339,
+     "threshold": 4.7938,
+     "fdp": 0.0498,
+     "above_max_ctl": 2434
+    },
+    "fdp10": {
+     "count": 3934,
+     "threshold": 3.6658,
+     "fdp": 0.0977,
+     "above_max_ctl": 2434
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4983,
+    "T_dec_auc_max": 0.5251,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "oos_3way": {
+    "fit_named": 3173,
+    "fit_above_max_ctl": 1750,
+    "c4_auc_vs_paired_ctl": 0.9839,
+    "frac_z_gt_0": 0.9805,
+    "frac_p05_on_C4": 0.9581,
+    "median_z_C4": 10.752
+   }
+  },
+  {
+   "tag": "L54_whole",
+   "file": "L54-match_things.jsonl",
+   "layer": 54,
+   "design": "match_things",
+   "prompts": 12,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 73.8,
+   "mass_c_auc": 0.756,
+   "mass_c_res_auc": 0.7165,
+   "rep_AB_auc": 0.6458,
+   "rep_BA_auc": 0.6462,
+   "rep_AB_res_auc": 0.6841,
+   "rep_BA_res_auc": 0.6789,
+   "rep_res_auc": 0.6907,
+   "T_dec_auc": 0.6997,
+   "readlib_q05": 6031,
+   "readlib_named": 5339,
+   "fdp05": {
+    "count": 5293,
+    "threshold": 4.7261,
+    "fdp": 0.0496,
+    "above_max_ctl": 3259
+   },
+   "fdp10": {
+    "count": 6062,
+    "threshold": 3.4691,
+    "fdp": 0.0987,
+    "above_max_ctl": 3259
+   },
+   "n3_covered": {
+    "covered": 20932,
+    "neurons": 21504,
+    "share_covered": 0.9734,
+    "n1_named_inside_covered": 4964,
+    "mass_c_auc": 0.7562,
+    "mass_c_res_auc": 0.7132,
+    "rep_AB_auc": 0.6409,
+    "rep_BA_auc": 0.6415,
+    "rep_AB_res_auc": 0.6816,
+    "rep_BA_res_auc": 0.6767,
+    "rep_res_auc": 0.6887,
+    "T_dec_auc": 0.6983,
+    "readlib_q05": 5682,
+    "readlib_named": 5008,
+    "fdp05": {
+     "count": 4949,
+     "threshold": 4.7808,
+     "fdp": 0.0495,
+     "above_max_ctl": 2989
+    },
+    "fdp10": {
+     "count": 5692,
+     "threshold": 3.4938,
+     "fdp": 0.0987,
+     "above_max_ctl": 2989
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4985,
+    "T_dec_auc_max": 0.5232,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "oos_3way": {
+    "fit_named": 4668,
+    "fit_above_max_ctl": 2534,
+    "c4_auc_vs_paired_ctl": 0.9788,
+    "frac_z_gt_0": 0.9704,
+    "frac_p05_on_C4": 0.9599,
+    "median_z_C4": 11.198
+   }
+  },
+  {
+   "tag": "L29_trial",
+   "file": "L29-match_things-trial.jsonl",
+   "layer": 29,
+   "design": "match_things",
+   "prompts": 12,
+   "neurons": 1022,
+   "controls": 1024,
+   "elapsed_s": 10.6,
+   "mass_c_auc": 0.5722,
+   "mass_c_res_auc": 0.5979,
+   "rep_AB_auc": 0.5269,
+   "rep_BA_auc": 0.5188,
+   "rep_AB_res_auc": 0.5494,
+   "rep_BA_res_auc": 0.539,
+   "rep_res_auc": 0.5462,
+   "T_dec_auc": 0.5455,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 0,
+    "threshold": null,
+    "fdp": null,
+    "above_max_ctl": 6
+   },
+   "fdp10": {
+    "count": 0,
+    "threshold": null,
+    "fdp": null,
+    "above_max_ctl": 6
+   },
+   "n3_covered": {
+    "covered": 990,
+    "neurons": 1022,
+    "share_covered": 0.9687,
+    "n1_named_inside_covered": 0,
+    "mass_c_auc": 0.5703,
+    "mass_c_res_auc": 0.6019,
+    "rep_AB_auc": 0.5231,
+    "rep_BA_auc": 0.5156,
+    "rep_AB_res_auc": 0.5546,
+    "rep_BA_res_auc": 0.5453,
+    "rep_res_auc": 0.5519,
+    "T_dec_auc": 0.5516,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 0,
+     "threshold": null,
+     "fdp": null,
+     "above_max_ctl": 6
+    },
+    "fdp10": {
+     "count": 0,
+     "threshold": null,
+     "fdp": null,
+     "above_max_ctl": 6
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.499,
+    "T_dec_auc_max": 0.538,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "oos_3way": {
+    "fit_named": 0,
+    "fit_above_max_ctl": 7,
+    "c4_auc": null,
+    "frac_p05_on_C4": null
+   }
+  },
+  {
+   "tag": "L55_trial",
+   "file": "L55-match_things-trial.jsonl",
+   "layer": 55,
+   "design": "match_things",
+   "prompts": 12,
+   "neurons": 1022,
+   "controls": 1024,
+   "elapsed_s": 7.6,
+   "mass_c_auc": 0.7339,
+   "mass_c_res_auc": 0.6435,
+   "rep_AB_auc": 0.5579,
+   "rep_BA_auc": 0.5766,
+   "rep_AB_res_auc": 0.6039,
+   "rep_BA_res_auc": 0.6217,
+   "rep_res_auc": 0.6265,
+   "T_dec_auc": 0.6428,
+   "readlib_q05": 114,
+   "readlib_named": 109,
+   "fdp05": {
+    "count": 108,
+    "threshold": 5.2809,
+    "fdp": 0.0462,
+    "above_max_ctl": 97
+   },
+   "fdp10": {
+    "count": 110,
+    "threshold": 4.7635,
+    "fdp": 0.0997,
+    "above_max_ctl": 97
+   },
+   "n3_covered": {
+    "covered": 982,
+    "neurons": 1022,
+    "share_covered": 0.9609,
+    "n1_named_inside_covered": 102,
+    "mass_c_auc": 0.7397,
+    "mass_c_res_auc": 0.6413,
+    "rep_AB_auc": 0.5545,
+    "rep_BA_auc": 0.5752,
+    "rep_AB_res_auc": 0.6002,
+    "rep_BA_res_auc": 0.6185,
+    "rep_res_auc": 0.6227,
+    "T_dec_auc": 0.6394,
+    "readlib_q05": 108,
+    "readlib_named": 104,
+    "fdp05": {
+     "count": 102,
+     "threshold": 5.2809,
+     "fdp": 0.047,
+     "above_max_ctl": 93
+    },
+    "fdp10": {
+     "count": 103,
+     "threshold": 5.2198,
+     "fdp": 0.0558,
+     "above_max_ctl": 93
+    }
+   },
+   "null_splits": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4919,
+    "T_dec_auc_max": 0.5248,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "oos_3way": {
+    "fit_named": 84,
+    "fit_above_max_ctl": 83,
+    "c4_auc_vs_paired_ctl": 0.9998,
+    "frac_z_gt_0": 1.0,
+    "frac_p05_on_C4": 1.0,
+    "median_z_C4": 11.314
+   }
+  }
+ ]
+}

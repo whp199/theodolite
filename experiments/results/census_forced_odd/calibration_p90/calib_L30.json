@@ -1,0 +1,178 @@
+{
+ "tag": "L30",
+ "layer": 30,
+ "neurons": 1022,
+ "columns_controls": 1024,
+ "isotropic_controls": 256,
+ "dose_ceil": 0.8858,
+ "elapsed_s": 782.0,
+ "kl_neurons": {
+  "p10": 0.1175,
+  "p50": 0.166,
+  "p90": 0.24
+ },
+ "kl_columns": {
+  "p10": 0.1252,
+  "p50": 0.1571,
+  "p90": 0.2
+ },
+ "eo_cent_p50": 1.083,
+ "alpha_abs_p50": 0.0126,
+ "alpha_abs_p90": 0.0146,
+ "combos": {
+  "cent/LEX_L2_cent": {
+   "vs_columns": {
+    "auc_r_AB": 0.5238,
+    "auc_r_BA": 0.5254,
+    "auc_r_AB_res": 0.5466,
+    "auc_r_BA_res": 0.5383,
+    "auc_T": 0.5446,
+    "fdp05": {
+     "count": 0,
+     "above_max_ctl": 6,
+     "threshold": null,
+     "fdp": null
+    },
+    "fdp10": {
+     "count": 0,
+     "above_max_ctl": 6,
+     "threshold": null,
+     "fdp": null
+    }
+   },
+   "vs_isotropic": {
+    "auc_r_AB": 0.543,
+    "auc_r_BA": 0.5587,
+    "auc_r_AB_res": 0.5925,
+    "auc_r_BA_res": 0.601,
+    "auc_T": 0.5867,
+    "fdp05": {
+     "count": 0,
+     "above_max_ctl": 13,
+     "threshold": null,
+     "fdp": null
+    },
+    "fdp10": {
+     "count": 0,
+     "above_max_ctl": 13,
+     "threshold": null,
+     "fdp": null
+    }
+   },
+   "dual_named_count": 0,
+   "iso_false_vs_cols": 0,
+   "iso_vs_cols_auc_T": 0.4819,
+   "null_splits": {
+    "n": 50,
+    "auc_mean": 0.4968,
+    "auc_min": 0.4532,
+    "auc_max": 0.5405,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "decoding_overlap": {
+    "checked": 100,
+    "used_fdp05": false,
+    "all": {
+     "ref_neurons": 16148,
+     "checked_in_ref": 76,
+     "matched": 3,
+     "frac_of_checked": 0.0395,
+     "frac_of_cand": 0.03,
+     "shuf_matched": 1,
+     "shuf_frac": 0.01
+    },
+    "q05": {
+     "ref_neurons": 0,
+     "matched": 0,
+     "frac": null,
+     "shuf_frac": null
+    }
+   },
+   "weight_word_diag": {
+    "auc_own_word_vs_own_ctl": 0.5372,
+    "ctl_frac_gt0": 0.7314,
+    "neu_frac_gt0": 0.7593,
+    "direct_q05_count": 0,
+    "direct_among_named": 0
+   }
+  },
+  "proj/LEX_L2_cent": {
+   "vs_columns": {
+    "auc_r_AB": 0.532,
+    "auc_r_BA": 0.5369,
+    "auc_r_AB_res": 0.5501,
+    "auc_r_BA_res": 0.5471,
+    "auc_T": 0.5521,
+    "fdp05": {
+     "count": 0,
+     "above_max_ctl": 14,
+     "threshold": null,
+     "fdp": null
+    },
+    "fdp10": {
+     "count": 14,
+     "above_max_ctl": 14,
+     "threshold": 2.4576,
+     "fdp": 0.0712
+    }
+   },
+   "vs_isotropic": {
+    "auc_r_AB": 0.5457,
+    "auc_r_BA": 0.57,
+    "auc_r_AB_res": 0.5786,
+    "auc_r_BA_res": 0.6139,
+    "auc_T": 0.5972,
+    "fdp05": {
+     "count": 0,
+     "above_max_ctl": 6,
+     "threshold": null,
+     "fdp": null
+    },
+    "fdp10": {
+     "count": 0,
+     "above_max_ctl": 6,
+     "threshold": null,
+     "fdp": null
+    }
+   },
+   "dual_named_count": 0,
+   "iso_false_vs_cols": 0,
+   "iso_vs_cols_auc_T": 0.5003,
+   "null_splits": {
+    "n": 50,
+    "auc_mean": 0.4958,
+    "auc_min": 0.4628,
+    "auc_max": 0.5326,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "decoding_overlap": {
+    "checked": 100,
+    "used_fdp05": false,
+    "all": {
+     "ref_neurons": 16148,
+     "checked_in_ref": 73,
+     "matched": 4,
+     "frac_of_checked": 0.0548,
+     "frac_of_cand": 0.04,
+     "shuf_matched": 0,
+     "shuf_frac": 0.0
+    },
+    "q05": {
+     "ref_neurons": 0,
+     "matched": 0,
+     "frac": null,
+     "shuf_frac": null
+    }
+   },
+   "weight_word_diag": {
+    "auc_own_word_vs_own_ctl": 0.5353,
+    "ctl_frac_gt0": 0.7363,
+    "neu_frac_gt0": 0.7583,
+    "direct_q05_count": 0,
+    "direct_among_named": 0
+   }
+  }
+ }
+}

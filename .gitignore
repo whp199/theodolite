@@ -17,6 +17,12 @@ experiments/results/*.npz
 experiments/results/*.npy
 experiments/results/labd.log
 
+# Stage 1 & 2 gap-census regenerable binary/per-neuron dumps (published under atlas_data/census/)
+experiments/results/census_forced_odd/whole/work_*/
+experiments/results/census_forced_odd/whole/*.npz
+experiments/results/input_census_L0_L29/*.npz
+experiments/results/census_fdr_sweep/*_named.json
+
 # third-party text corpus assembled from local docs (/usr/share/doc, site-packages) - not ours to redistribute
 experiments/results/N1B_corpus.jsonl
 
