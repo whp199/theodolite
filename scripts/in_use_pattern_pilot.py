@@ -15,8 +15,10 @@ Never writes raw corpus text or kept_tail to disk; stores only synthetic model p
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import math
+import os
 import random
 import re
 import sys
@@ -24,9 +26,13 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
-import numpy as np
-import torch
-import torch.nn.functional as F
+_ALLOC_CONF_NAMES = ("PYTORCH_ALLOC_CONF", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_HIP_ALLOC_CONF")
+if not any(os.environ.get(k) for k in _ALLOC_CONF_NAMES):
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
+import torch.nn.functional as F  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -162,18 +168,22 @@ def _generate_batch(
     lm: Any,
     prompts_ids: Sequence[Sequence[int]],
     *,
-    batch_size: int = 12,
+    batch_size: int = 4,
     max_new: int = 96,
 ) -> List[str]:
+    if not prompts_ids:
+        return []
     stop_ids = rt.end_of_turn_ids()
     bos_id = rt.tokenizer.bos_token_id
     softcap = ao.softcap_of(rt.hf_model)
     out_texts: List[str] = [""] * len(prompts_ids)
-    for s in range(0, len(prompts_ids), int(batch_size)):
-        e = min(len(prompts_ids), s + int(batch_size))
-        chunk = list(prompts_ids[s:e])
+    order = sorted(range(len(prompts_ids)), key=lambda i: len(prompts_ids[i]))
+    for s in range(0, len(order), int(batch_size)):
+        e = min(len(order), s + int(batch_size))
+        batch_idx = order[s:e]
+        chunk = [prompts_ids[i] for i in batch_idx]
         td = ao.TextDeltas(rt.tokenizer, len(chunk))
-        for st in ao.write_rows(
+        gen = ao.write_rows(
             lm,
             rt.lm_head_weight,
             chunk,
@@ -184,10 +194,17 @@ def _generate_batch(
             spare_bos=True,
             softcap=softcap,
             top_k=0,
-        ):
-            out_texts[s + st.row] += td.add(st.row, st.token_id, st.end)
+        )
+        try:
+            for st in gen:
+                out_texts[batch_idx[st.row]] += td.add(st.row, st.token_id, st.end)
+        finally:
+            gen.close()
+        del gen, chunk, td
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.synchronize()
+            torch.cuda.empty_cache()
     return [t.strip() for t in out_texts]
 
 
@@ -412,7 +429,7 @@ def _collect_group_a_fit_snippets(
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Probe 3 GPU: Local Gemma-4-31B-it pattern authoring, prefill judging & behind verification")
-    ap.add_argument("--batch-size", type=int, default=12)
+    ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--out-dir", default="experiments/results/in_use_kill_pilots")
     ap.add_argument("--data-dir", default=None)
     args = ap.parse_args()
@@ -450,6 +467,13 @@ def main() -> None:
 
     rt = make_runtime(load_jlens=False).load()
     w4a16_fast.install(rt, "compiled", log=print)
+    if getattr(rt, "jpp_lenses", None):
+        rt.jpp_lenses.clear()
+    if getattr(rt, "eager_model", None) is not None and hasattr(rt.eager_model, "_lens_jacobians"):
+        rt.eager_model._lens_jacobians.clear()
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     lm = language_model(rt.hf_model)
     tok = rt.tokenizer
     marks = at_mod.passage_marks(tok)
@@ -718,6 +742,9 @@ def main() -> None:
         pids = rt.tokenize_prompt(rt.compose_prompt(pmt, system=AUTHOR_SYSTEM, chat=True, thinking=False))
         author_jobs.append(("B", fb["key"], fb["layer"], pids))
 
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     t_auth = time.time()
     gemma_texts = _generate_batch(rt, lm, [j[3] for j in author_jobs], batch_size=int(args.batch_size), max_new=96)
     gemma_patterns: Dict[str, str] = {j[1]: txt for j, txt in zip(author_jobs, gemma_texts)}
@@ -805,6 +832,9 @@ def main() -> None:
             }
         )
 
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     beh_raw_outs = _generate_batch(rt, lm, [bp["pids"] for bp in behind_prep], batch_size=int(args.batch_size), max_new=160)
 
     # Batched forward up to layer l on [kept + own_dropped, kept + fire_endings, kept + quiet_endings]
