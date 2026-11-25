@@ -684,8 +684,9 @@ def links_card(a: Atlas) -> Dict[str, Any]:
 
 @router.get("/arch")
 async def arch() -> Dict[str, Any]:
-    """The model's shape, which indexes are built, which layers have a census, how links are read and what their
-    measured check found (`links`), and the cards every reply follows."""
+    """The model's shape, which indexes are built, which layers have a census, exploratory supplementary regimes
+    (`supplementary_census`, `supplementary_refused`), how links are read and what their measured check found (`links`),
+    and the cards every reply follows."""
     a = atlas()
     sc = await asyncio.to_thread(a._scales_if_ready)
     status = await asyncio.to_thread(a.index.status)
@@ -2190,16 +2191,41 @@ async def neuron_tests(layer: int, n: int) -> Dict[str, Any]:
 @router.get("/hover")
 async def hover(layer: int, n: int) -> Dict[str, Any]:
     """What the map's tooltip shows, from the indexes alone (no GPU): both faces' words with their checks, the steer
-    lens, its sixteen strongest links each way and its name."""
+    lens, its sixteen strongest links each way, its name, and optional exploratory `regime` summary (`forced_odd` or
+    `input_census`, model-checked, with `stale` under vault edits; never returns `fdr_rescue` or `circuit_mediated`)."""
     a = atlas()
     _check_neuron(a, layer, n)
     edited = a.edited()
     notes = (await fn.all_notes())["neurons"]
 
     def work() -> Dict[str, Any]:
+        reg_info: Dict[str, Any] = {}
+        try:
+            reg = agv.hover_summary(
+                agv.supplementary_dir(),
+                layer,
+                n,
+                a.vocab(),
+                model=getattr(a.rt, "model_id", None),
+                weights=a.index.weights,
+                n_layers=a.L,
+            )
+            if reg:
+                stale = agv.regime_stale(
+                    edited,
+                    layer=layer,
+                    has_forced_odd="forced_odd" in reg,
+                    has_input_census="input_census" in reg,
+                )
+                if stale:
+                    reg["stale"] = stale["stale"]
+                reg_info["regime"] = reg
+        except Exception:
+            reg_info = {}
         return {"layer": layer, "n": n, "faces": {s: a.face(layer, n, s, 6, edited) for s in ("+", "-")},
                 "links": a.index.links(layer, n, 16), "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", ""),
                 **({"links_stale": STALE_WEB} if (layer, n) in edited else {}),
+                **reg_info,
                 "ready": a.index.get("lens") is not None}
 
     return await asyncio.to_thread(work)

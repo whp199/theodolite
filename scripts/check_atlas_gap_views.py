@@ -8,7 +8,8 @@ Exercises exact production folder layout using ONLY ``THEODOLITE_ATLAS_DIR`` (no
 
 Verifies: empty state, destination guards, dry-run verify-only refusal, publish + MANIFEST.json,
 overwrite refusal vs ``--force`` republish cache invalidation, ``validate_input_census_npz``,
-removal of ``fdr_rescue`` / ``/hover`` regime injection / ``/census/regime/search`` / ``circuit_mediated``,
+removal of ``fdr_rescue`` / ``/census/regime/search`` / ``circuit_mediated``,
+clean optional ``/hover`` ``regime`` summary (exploratory, no ``fdr_rescue``, model-checked, layer-aware stale),
 ``L-1`` last-layer ``own_lens_match is None``, causal offsets ``(-1, 0)`` vs separate ``next_pieces``,
 ``ablation_sampled`` naming, malformed JSON & corrupt NPZ resilience (HTTP 200 + refused map),
 model & weights gating, and layer-aware vault-edit staleness.
@@ -333,7 +334,7 @@ def main() -> int:
         check(arch0.get("supplementary_census") == {"forced_odd": [], "input_census": []},
               f"empty supplementary_census has only forced_odd & input_census: {arch0.get('supplementary_census')}")
         hv0 = c.get("/api/atlas/hover", params={"layer": 0, "n": 0}).json()
-        check("regime" not in hv0, "/hover never injects regime summary")
+        check("regime" not in hv0, "empty atlas /hover omits regime key")
         check(c.get("/api/atlas/census/regime/search", params={"regime": "forced_odd", "q": "a"}).status_code == 404,
               "/census/regime/search removed (404)")
 
@@ -443,8 +444,33 @@ def main() -> int:
               and "ablation_verified" not in ic["meta"]
               and "PASSED" not in json.dumps(ic),
               f"input_census separates +1 next_pieces and uses ablation_sampled: {ic}")
-        check("regime" not in c.get("/api/atlas/hover", params={"layer": fx["fo_last"], "n": 2}).json(),
-              "/hover remains clean without regime key even when published data exists")
+        hv_fo = c.get("/api/atlas/hover", params={"layer": fx["fo_last"], "n": 2}).json()
+        hv_reg_fo = hv_fo.get("regime", {}).get("forced_odd") or {}
+        check(
+            hv_reg_fo.get("exploratory") is True
+            and hv_reg_fo.get("is_last_layer") is True
+            and hv_reg_fo.get("own_lens_match") is None
+            and fx["t_pos1_str"] in (hv_reg_fo.get("pos") or [])
+            and "fdr_rescue" not in hv_fo.get("regime", {})
+            and "circuit_mediated" not in json.dumps(hv_fo),
+            f"/hover exposes exploratory forced_odd without fdr_rescue/circuit: {hv_fo.get('regime')}",
+        )
+        if fx["fo_mid"] != fx["fo_last"]:
+            hv_mid = c.get("/api/atlas/hover", params={"layer": fx["fo_mid"], "n": 2}).json().get("regime", {}).get("forced_odd", {})
+            check(hv_mid.get("own_lens_match") is True and hv_mid.get("is_last_layer") is False, f"/hover mid own_lens_match: {hv_mid}")
+        check("regime" not in c.get("/api/atlas/hover", params={"layer": fx["fo_last"], "n": 7}).json(),
+              "/hover omits regime for un-named neurons")
+        hv_ic = c.get("/api/atlas/hover", params={"layer": 0, "n": fx["ic_n"]}).json()
+        hv_ic_reg = hv_ic.get("regime", {}).get("input_census") or {}
+        hv_ic_plus = (hv_ic_reg.get("faces") or {}).get("+") or []
+        check(
+            hv_ic_reg.get("exploratory") is True
+            and len(hv_ic_plus) >= 1
+            and hv_ic_plus[0].get("offset") in (-1, 0)
+            and all(x.get("offset") in (-1, 0) for x in hv_ic_plus)
+            and "next_pieces" not in json.dumps(hv_ic_reg),
+            f"/hover exposes exploratory causal-only input_census: {hv_ic_reg}",
+        )
 
         # 4. Overwrite refusal vs --force republish + bounded cache invalidation
         _write_fo_source(staging / "census_forced_odd" / "whole", fx["fo_last"], N, model_id=model_id, weights=w_card,
@@ -474,6 +500,10 @@ def main() -> int:
             check(u_fo_st.get("stale") == agv.FORCED_ODD_STALE, "forced_odd gets FORCED_ODD_STALE on patch")
             check("stale" not in u_ic0_st, f"input_census at L0 is NOT stale for patch at L0 (own=False): {u_ic0_st.get('stale')}")
             check(u_ic1_st.get("stale") == agv.INPUT_CENSUS_STALE, "input_census at L1 gets INPUT_CENSUS_STALE for earlier patch at L0")
+            hv_fo_st = c.get("/api/atlas/hover", params={"layer": fx["fo_last"], "n": 2}).json().get("regime", {})
+            hv_ic0_st = c.get("/api/atlas/hover", params={"layer": 0, "n": fx["ic_n"]}).json().get("regime", {})
+            check(hv_fo_st.get("stale") == agv.FORCED_ODD_STALE, "/hover forced_odd gets FORCED_ODD_STALE on patch")
+            check("stale" not in hv_ic0_st, f"/hover L0 input_census NOT stale on L0 patch: {hv_ic0_st}")
         finally:
             vault.active_patches.clear()
         check("stale" not in c.get("/api/atlas/census/regime/layers").json(), "stale clears after vault edit removed")
@@ -509,6 +539,8 @@ def main() -> int:
         rl_w = c.get("/api/atlas/census/regime/layers").json()
         check(f"forced_odd:L{fx['fo_last']}" in (rl_w.get("refused") or {}),
               f"weights mismatch refused cleanly: {rl_w.get('refused')}")
+        check("regime" not in c.get("/api/atlas/hover", params={"layer": fx["fo_last"], "n": 2}).json(),
+              "/hover omits regime cleanly on weights mismatch")
 
         # Restore clean published state and test 400 validation
         pgc.publish_regimes(staging, None, publish=True, force=True, strict_full=False)

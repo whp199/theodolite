@@ -11,7 +11,23 @@ import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
 import type { BookFace, BookReply } from "../NeuronFolio/saved";
-import { cite, get, noteKey, patternTestSaid, post, steerCheckSaid, type HeadInfo, type Link, type PatternTest, type SteerLens, type TestsReply } from "./api";
+import {
+  causalOffsetLabel,
+  cite,
+  forcedOddMetaText,
+  get,
+  inputCensusMetaText,
+  noteKey,
+  patternTestSaid,
+  post,
+  regimeCaveat,
+  steerCheckSaid,
+  type HeadInfo,
+  type Link,
+  type PatternTest,
+  type SteerLens,
+  type TestsReply,
+} from "./api";
 import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, ProposalLine, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, setQuery, theMap, useAtlas } from "./state";
 
@@ -93,6 +109,188 @@ const CensusStats: React.FC = () => {
         </p>
       </IfApparatus>
     </section>
+  );
+};
+
+const SupplementaryCensusCard: React.FC = () => {
+  const f = useAtlas((s) => s.focus);
+  const rn = useAtlas((s) => s.regimeNeuron);
+  if (!f || f.kind !== "neuron" || !rn || rn.layer !== f.layer || rn.n !== f.n) return null;
+  const fo = rn.forced_odd;
+  const ic = rn.input_census;
+
+  return (
+    <>
+      {fo ? (
+        <section className="atlas-sec">
+          <div className="kicker">pushed on set text (exploratory) · word-pieces whose odds shift most</div>
+          <p className="red atlas-small" style={{ margin: "2px 0 6px" }}>
+            {regimeCaveat("forced_odd", f.layer, true)}
+          </p>
+          {rn.stale ? (
+            <p className="atlas-small red" style={{ margin: "0 0 6px" }}>
+              {rn.stale}
+            </p>
+          ) : null}
+          {fo.named_dual05 ? (
+            <>
+              <div className="row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                {fo.own_lens_match === true ? <span className="atlas-regime-badge lens-match">matches own lens</span> : null}
+                <span className="atlas-small muted">
+                  #{fo.rank?.toLocaleString() ?? "—"} of {fo.n_named.toLocaleString()} named at this layer
+                </span>
+              </div>
+              <div className="atlas-two">
+                {([
+                  ["+", "up", fo.pos],
+                  ["−", "down", fo.neg],
+                ] as const).map(([sg, cls, pieces]) => (
+                  <div key={sg} className={`atlas-face-box ${cls}`}>
+                    <div className="atlas-lab">{sg} push · replicated pieces</div>
+                    <div className="atlas-crumbs">
+                      {pieces.length ? (
+                        pieces.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="atlas-tok atlas-tok-btn"
+                            onClick={() => setQuery(p.tok.trim() || p.tok, "lens")}
+                          >
+                            {wp(p.tok)}
+                          </button>
+                        ))
+                      ) : (
+                        <span className="muted atlas-small">none replicated</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="atlas-small muted" style={{ margin: 0 }}>
+              {fo.why_no_words ?? "Did not stand above both random direction pools at 5% false discovery; no shift pieces shown."}
+            </p>
+          )}
+          <Rubric style={{ fontSize: 15, marginTop: 6 }}>
+            Pushed both ways on fixed text continuations and scored across balanced question halves (at three-letter words without base-probability weighting). A match against its own weight lens means its forced pieces align with what the atlas lens already lists.
+          </Rubric>
+          <IfApparatus>
+            <table className="atlas-dtable" style={{ marginTop: 6 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left" }}>exploratory statistic</th>
+                  <th className="num">value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>minimum / columns / isotropic rank score</td>
+                  <td className="num">
+                    {fo.T_min.toFixed(2)} / {fo.T_col.toFixed(2)} / {fo.T_iso.toFixed(2)}
+                  </td>
+                </tr>
+                <tr>
+                  <td>split-half residuals (A→B / B→A vs columns)</td>
+                  <td className="num">
+                    {fo.r_ab_res_col?.toFixed(2) ?? "—"} / {fo.r_ba_res_col?.toFixed(2) ?? "—"}
+                  </td>
+                </tr>
+                <tr>
+                  <td>mean push KL / RMSNorm shift magnitude</td>
+                  <td className="num">
+                    {fo.kl_mean?.toFixed(4) ?? "—"} / {fo.alpha_abs?.toFixed(4) ?? "—"}
+                  </td>
+                </tr>
+                <tr>
+                  <td>own weight-lens comparison</td>
+                  <td className="num">
+                    {fo.own_lens_match == null
+                      ? "n/a"
+                      : `${fo.own_lens_match ? "match" : "no match"}${fo.q_own_lens != null ? ` (q=${fo.q_own_lens})` : ""}`}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <details className="atlas-details-disc">
+              <summary>layer summary, cross-pool check &amp; provenance</summary>
+              <p>{forcedOddMetaText(fo.meta, true)}</p>
+            </details>
+          </IfApparatus>
+        </section>
+      ) : null}
+
+      {ic ? (
+        <section className="atlas-sec">
+          <div className="kicker">what makes it fire on corpus text (exploratory) · not a push</div>
+          <p className="red atlas-small" style={{ margin: "2px 0 6px" }}>
+            {regimeCaveat("input_census", f.layer, true)}
+          </p>
+          {rn.stale ? (
+            <p className="atlas-small red" style={{ margin: "0 0 6px" }}>
+              {rn.stale}
+            </p>
+          ) : null}
+          <div className="atlas-two">
+            {(["+", "-"] as const).map((sg) => {
+              const fc = ic.faces[sg];
+              return (
+                <div className={`atlas-face-box ${sg === "+" ? "up" : "down"}`} key={sg}>
+                  <div className="atlas-lab">{sg === "+" ? "+ face" : "− face"} · triggers on corpus text</div>
+                  {fc.named && fc.triggers.length ? (
+                    <>
+                      <div className="atlas-crumbs">
+                        {fc.triggers.map((t) => (
+                          <button
+                            key={`${t.id}/${t.offset}`}
+                            type="button"
+                            className="atlas-tok atlas-tok-btn"
+                            onClick={() => setQuery(t.tok.trim() || t.tok, "lens")}
+                          >
+                            {wp(t.tok)} <span className="muted">({causalOffsetLabel(t.offset)})</span>
+                          </button>
+                        ))}
+                      </div>
+                      <IfApparatus>
+                        <div className="muted atlas-small" style={{ marginTop: 4 }}>
+                          {fc.triggers.map((t) => `${wp(t.tok)} (${causalOffsetLabel(t.offset)}): ${t.cnt_e}/${t.cnt_o} ×${t.lift}`).join(" · ")}
+                        </div>
+                        {fc.next_pieces?.length ? (
+                          <div className="muted atlas-small" style={{ marginTop: 2 }}>
+                            what follows (the neuron cannot see this):{" "}
+                            {fc.next_pieces.map((t) => `${wp(t.tok)} (${t.cnt_e}/${t.cnt_o})`).join(", ")}
+                          </div>
+                        ) : null}
+                        <div className="muted atlas-small" style={{ marginTop: 2 }}>
+                          rank #{fc.rank?.toLocaleString() ?? "—"} · score {fc.score.toFixed(2)}
+                          {fc.bigram_rep ? " · bigram replicated" : ""}
+                          {fc.smp_total ? ` · unseen-doc recall ${fc.smp_hits}/${fc.smp_total}` : ""}
+                        </div>
+                      </IfApparatus>
+                    </>
+                  ) : (
+                    <p className="muted atlas-small" style={{ margin: 0 }}>
+                      {fc.eligible
+                        ? "Did not repeat consistently across disjoint document halves; no triggers shown."
+                        : "Fewer than 4 strong firings in one half or the other."}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <Rubric style={{ fontSize: 15, marginTop: 6 }}>
+            Shows word-pieces that appear immediately before or at the neuron’s strongest corpus firings across separate documents. Does not test whether pushing this neuron makes the model write those words.
+          </Rubric>
+          <IfApparatus>
+            <details className="atlas-details-disc">
+              <summary>split-half counts, held-out precision &amp; natural-firing ablation</summary>
+              <p>{inputCensusMetaText(ic.meta, true)}</p>
+            </details>
+          </IfApparatus>
+        </section>
+      ) : null}
+    </>
   );
 };
 
@@ -701,6 +899,7 @@ export const DetailsTab: React.FC = () => {
   return (
     <div className="atlas-details">
       <CensusStats />
+      <SupplementaryCensusCard />
       <Faces />
       <Steer />
       <Range />

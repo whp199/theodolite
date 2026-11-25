@@ -89,7 +89,11 @@ by the home card and by volunteers on their own. The first eleven layers taken (
 On 22 November 2026 twenty-five layers were done (31–55, counting 1–60 as the pages do; the board counts 0–59). One of
 them, layer 31 (the board's 30), read whole falls short of its trial on one figure, and the board says so. None was
 being taken and none was open: every layer a kit offered is done, and the rest wait for a push that passes a trial
-there.
+there. Following the census layer-gap study and its kill-pilots
+([`ANSWER.md`](experiments/results/census_layer_gap/ANSWER.md)), those twenty-five layers (31–55, keeping `.units.jsonl`'s
+29,265 page-described neurons) remain the taken census, and layers 1–30 and 56–60 stay shut / not taken; when
+exploratory gap files are present, the atlas displays exploratory set-text push (56–60) and corpus-firing (1–30)
+readings beside always-visible red caveats.
 [How to take a layer](VOLUNTEERS.md) · [the board](https://github.com/whp199/theodolite/issues/1) · [the atlas and the
 census at length](docs/ATLAS.md) · [every figure](ROADMAP.md#vi--the-atlas).
 

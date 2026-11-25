@@ -363,6 +363,9 @@ def _forced_odd_meta_card(fo: Dict[str, Any]) -> Dict[str, Any]:
             "dual05_count": int(meta.get("dual05_count", dual05_count)),
             "dual05_pct": meta.get("dual05_pct", round(100.0 * dual05_count / max(d_ff, 1), 2)),
             "dual10_count": meta.get("dual10_count", dual10_count),
+            "iso_false_vs_cols": meta.get("iso_false_vs_cols"),
+            "kl_p50": (meta.get("kl_neurons") or {}).get("p50"),
+            "kl_p90": (meta.get("kl_neurons") or {}).get("p90"),
             "vs_columns": {
                 "auc_T": vs_col.get("auc_T"),
                 "fdp05": vs_col.get("fdp05"),
@@ -592,17 +595,54 @@ def _ablation_by_layer(
             "neurons": row.get("neurons"),
             "passages": row.get("passages"),
             "control_kind": data.get("control_kind") or row.get("control_kind"),
+            "noop_bf16_floor_pk_p50": row.get("noop_bf16_floor_pk_p50"),
             "kl_pk": {
-                "auc_active_vs_control": pk.get("auc_active_vs_control", pk.get("auc_active_vs_quiet")),
-                "wilcoxon_p": pk.get("wilcoxon_p"),
+                "auc_active_vs_control": pk.get("auc_neuron_mean4_vs_random_ctl", pk.get("auc_active_vs_control", pk.get("auc_active_vs_quiet"))),
+                "wilcoxon_p": pk.get("wilcoxon_neuron_mean4_p", pk.get("wilcoxon_p")),
                 "frac_neurons_max4_gt_0.005": pk.get("frac_neurons_max4_gt_0.005"),
+                "target_p50": (pk.get("target_p10_p50_p90_max") or [None, None])[1],
+                "control_p50": (pk.get("control_p10_p50_p90_max") or [None, None])[1],
             },
             "kl_span": {
-                "auc_active_vs_control": sp.get("auc_active_vs_control", sp.get("auc_active_vs_quiet")),
-                "wilcoxon_p": sp.get("wilcoxon_p"),
+                "auc_active_vs_control": sp.get("auc_neuron_mean4_vs_random_ctl", sp.get("auc_active_vs_control", sp.get("auc_active_vs_quiet"))),
+                "wilcoxon_p": sp.get("wilcoxon_neuron_mean4_p", sp.get("wilcoxon_p")),
                 "frac_neurons_max4_gt_0.005": sp.get("frac_neurons_max4_gt_0.005"),
+                "target_p50": (sp.get("target_p10_p50_p90_max") or [None, None])[1],
+                "control_p50": (sp.get("control_p10_p50_p90_max") or [None, None])[1],
             },
         }
+    return out, sorted(out)
+
+
+def _precision_by_layer(
+    root: Path,
+    model: Optional[str] = None,
+    weights: Optional[Dict[str, Any]] = None,
+    refused: Optional[Dict[str, str]] = None,
+) -> Tuple[Optional[Dict[int, Dict[str, Any]]], List[int]]:
+    p = root / "input_census" / "precision_pilot.json"
+    if not p.is_file():
+        return None, []
+    data = _cached_json(p, refused=refused, refuse_key="input_census:precision")
+    if not isinstance(data, dict):
+        return None, []
+    err = _model_weights_error(data, model, weights)
+    if err is not None:
+        _record_refused(refused, "input_census:precision", err)
+        return None, []
+    out: Dict[int, Dict[str, Any]] = {}
+    for row in data.get("layers") or []:
+        if isinstance(row, dict) and "layer" in row:
+            layer = int(row["layer"])
+            out[layer] = {
+                "layer": layer,
+                "evaluated": row.get("evaluated_with_occ_in_half1"),
+                "sampled": row.get("sampled_faces"),
+                "face_prec50_trig_p50": row.get("face_prec50_trig_p50"),
+                "face_prec50_trig_mean": row.get("face_prec50_trig_mean"),
+                "frac_prec20_and_lift3x": row.get("frac_prec20_and_lift3x"),
+                "auc_vs_freq_ctl": row.get("auc_vs_freq_ctl"),
+            }
     return out, sorted(out)
 
 
@@ -617,12 +657,19 @@ def _ic_summary_by_layer(root: Path) -> Tuple[Optional[Dict[str, Any]], Dict[int
     return None, out
 
 
-def _ic_layer_meta(root: Path, ic: Dict[str, Any], ab_map: Optional[Dict[int, Dict[str, Any]]], ab_layers: List[int]) -> Dict[str, Any]:
+def _ic_layer_meta(
+    root: Path,
+    ic: Dict[str, Any],
+    ab_map: Optional[Dict[int, Dict[str, Any]]],
+    ab_layers: List[int],
+    prec_map: Optional[Dict[int, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     layer = ic["layer"]
     arrays = ic["arrays"]
     sm_top, sm_map = _ic_summary_by_layer(root)
     row = sm_map.get(layer)
     ab_row = ab_map.get(layer) if ab_map else None
+    prec_row = prec_map.get(layer) if prec_map else None
     n_ff = int(arrays["named_fdp05"].shape[1])
     total_faces = 2 * n_ff
     elig = int(np.asarray(arrays["eligible"], dtype=bool).sum())
@@ -659,6 +706,7 @@ def _ic_layer_meta(root: Path, ic: Dict[str, Any], ab_map: Optional[Dict[int, Di
         "ablation_control_kind": ab_row.get("control_kind") if ab_row else None,
         "ablation_check": ab_row,
         "ablation_sampled_layers": ab_layers,
+        "precision_pilot": prec_row,
     }
     return base
 
@@ -829,11 +877,12 @@ def layer_summaries(
             fo_rows.append(_forced_odd_meta_card(fo))
 
     ab_map, ab_layers = _ablation_by_layer(root, model=model, weights=weights, refused=ref_map)
+    prec_map, prec_layers = _precision_by_layer(root, model=model, weights=weights, refused=ref_map)
     ic_rows = []
     for layer in avail["input_census"]:
         ic = _load_input_census(root, layer, model=model, weights=weights, refused=ref_map)
         if ic is not None:
-            ic_rows.append(_ic_layer_meta(root, ic, ab_map, ab_layers))
+            ic_rows.append(_ic_layer_meta(root, ic, ab_map, ab_layers, prec_map=prec_map))
 
     ab_summary: Optional[Dict[str, Any]] = None
     if ab_map:
@@ -844,6 +893,13 @@ def layer_summaries(
             "layers": [ab_map[l] for l in ab_layers],
         }
 
+    prec_summary: Optional[Dict[str, Any]] = None
+    if prec_map:
+        prec_summary = {
+            "note": "Exploratory half-0 trigger selection scored on pure half-1 unseen documents.",
+            "layers": [prec_map[l] for l in prec_layers],
+        }
+
     return {
         "exploratory": True,
         "not_taken": True,
@@ -851,6 +907,7 @@ def layer_summaries(
         "forced_odd": fo_rows,
         "input_census": ic_rows,
         "input_ablation_check": ab_summary,
+        "input_precision_pilot": prec_summary,
         "refused": ref_map,
     }
 
@@ -878,6 +935,56 @@ def neuron_view(
         "input_census": _input_census_neuron(root, layer, n, vocab, model=model, weights=weights, refused=ref_map),
         "refused": ref_map,
     }
+
+
+def hover_summary(
+    root: Path,
+    layer: int,
+    n: int,
+    vocab: Sequence[str],
+    *,
+    model: Optional[str] = None,
+    weights: Optional[Dict[str, Any]] = None,
+    n_layers: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Optional concise exploratory tooltip summary for ``(layer, n)``; never serves fdr_rescue or circuit tags."""
+    out: Dict[str, Any] = {}
+    fo = _load_forced_odd(root, layer, model=model, weights=weights)
+    if fo is not None:
+        arrays = fo["arrays"]
+        if 0 <= n < int(arrays["named_dual05"].shape[0]) and bool(arrays["named_dual05"][n]):
+            pieces = _extract_forced_odd_pieces(arrays, n, vocab, k=3)
+            own_match, _, _ = _own_lens_info(layer, n, arrays, fo["meta"], n_layers)
+            is_last = bool(int(layer) == 59 or (n_layers is not None and int(layer) == int(n_layers) - 1))
+            out["forced_odd"] = {
+                "exploratory": True,
+                "not_taken": True,
+                "own_lens_match": own_match,
+                "is_last_layer": is_last,
+                "pos": [p["tok"] for p in pieces["pos"][:3]],
+                "neg": [p["tok"] for p in pieces["neg"][:3]],
+            }
+
+    ic = _load_input_census(root, layer, model=model, weights=weights)
+    if ic is not None:
+        arrays = ic["arrays"]
+        if 0 <= n < int(arrays["named_fdp05"].shape[1]):
+            faces: Dict[str, Any] = {}
+            for s_idx, sg in ((0, "+"), (1, "-")):
+                if bool(arrays["named_fdp05"][s_idx, n]):
+                    trigs, _ = _extract_input_pieces(arrays, s_idx, n, vocab, k=2)
+                    if trigs:
+                        faces[sg] = [
+                            {"tok": t["tok"], "offset": t["offset"], "offset_label": t["offset_label"], "lift": t["lift"]}
+                            for t in trigs[:2]
+                        ]
+            if faces:
+                out["input_census"] = {
+                    "exploratory": True,
+                    "not_taken": True,
+                    "faces": faces,
+                }
+    return out
 
 
 def _matches_query(ql: str, nid: int, name: str, tokens: Sequence[str]) -> bool:

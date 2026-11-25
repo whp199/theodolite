@@ -94,6 +94,8 @@ and 4,254 beat all 2,048, and its strongest random directions stand 6 deviations
 The steer lens agrees with it, now the highest layer it has been checked at. None is being taken and none is open.
 Every figure is in ROADMAP §vi.
 
+After the census layer-gap study and its three GPU kill-pilots ([`ANSWER.md`](../experiments/results/census_layer_gap/ANSWER.md)), layers 31–55 (0–based 30–54, keeping `.units.jsonl`'s 29,265 page-described neurons) remain the twenty-five taken census layers, and layers 1–30 and 56–60 (0–based 0–29 and 55–59) remain shut / not taken. Where supplementary files are present, the atlas surfaces exploratory readings on those un-taken layers strictly beside always-visible red caveats: pushed on set text (`forced_odd`, 0.25-nat uncalibrated doses) at layers 56–60 and document-disjoint causal `(-1, 0)` corpus firing (`input_census`, read on the existing `passages.d` index without storing passages) at layers 1–30; neither is served as a taken census, and `fdr_rescue` / `circuit_mediated` are not shown in the interface.
+
 <table>
   <tr>
     <td width="50%" valign="top">

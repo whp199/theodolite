@@ -23,6 +23,9 @@ import {
   type NeuronLens,
   type Notes,
   type Proposals,
+  type RegimeLayersReply,
+  type RegimeNeuron,
+  type RegimeUnitsReply,
   type RunReply,
   type RunView,
   type ScaleSource,
@@ -89,6 +92,10 @@ export interface AtlasState {
   censusSearch: CensusSearchReply | null;
   /** every layer with a census, from its ranking alone */
   censusLayers: CensusLayerRow[] | null;
+  regimeLayers: RegimeLayersReply | null;
+  regimeUnits: Record<string, RegimeUnitsReply>;
+  regimeUnitsError: Record<string, string>;
+  regimeNeuron: RegimeNeuron | null;
   /** the neurons and heads opened lately in this browser, the latest first */
   trail: Focus[];
   searchError: string | null;
@@ -132,6 +139,10 @@ export const useAtlas = create<AtlasState>(() => ({
   search: null,
   censusSearch: null,
   censusLayers: null,
+  regimeLayers: null,
+  regimeUnits: {},
+  regimeUnitsError: {},
+  regimeNeuron: null,
   trail: [],
   searchError: null,
   run: RUN0,
@@ -171,6 +182,22 @@ export const censusLayersOf = (arch: Arch | null) =>
     .map(Number)
     .sort((a, b) => a - b);
 
+/** The exploratory supplementary reading for a layer without a registered census, or null. */
+export const layerRegimeOf = (arch: Arch | null, l: number): "forced_odd" | "input_census" | null => {
+  const s = arch?.supplementary_census;
+  if (!s) return null;
+  if (s.forced_odd.includes(l)) return "forced_odd";
+  if (s.input_census.includes(l)) return "input_census";
+  return null;
+};
+
+/** Whether any exploratory supplementary reading exists for layer `l`. */
+export const hasAnyRegime = (arch: Arch | null, l: number): boolean => {
+  const s = arch?.supplementary_census;
+  if (!s) return false;
+  return s.forced_odd.includes(l) || s.input_census.includes(l);
+};
+
 export async function loadArch(): Promise<Arch | null> {
   try {
     const arch = await get<Arch>("/api/atlas/arch");
@@ -195,6 +222,7 @@ export async function loadArch(): Promise<Arch | null> {
     void loadNotes();
     void loadProposals();
     void loadCensusLayers();
+    void loadRegimeLayers();
     return arch;
   } catch (e) {
     set({ archError: message(e) });
@@ -241,6 +269,46 @@ export async function loadCensusLayers() {
     set({ censusLayers: await get<CensusLayerRow[]>("/api/atlas/census/layers") });
   } catch {
     // the strip stays empty
+  }
+}
+
+export async function loadRegimeLayers() {
+  try {
+    set({ regimeLayers: await get<RegimeLayersReply>("/api/atlas/census/regime/layers") });
+  } catch {
+    // exploratory metadata stays empty
+  }
+}
+
+const regimeUnitsCtls = new Map<string, AbortController>();
+
+export async function loadRegimeUnits(
+  layer: number,
+  regime: "forced_odd" | "input_census",
+  face: "both" | "+" | "-" = "both",
+  q = "",
+) {
+  const qNorm = q.trim();
+  const key = `${regime}/${layer}/${face}/${qNorm}`;
+  const slot = `${regime}/${layer}`;
+  regimeUnitsCtls.get(slot)?.abort();
+  const ctl = new AbortController();
+  regimeUnitsCtls.set(slot, ctl);
+  const nextErr = { ...st().regimeUnitsError };
+  delete nextErr[key];
+  set({ regimeUnitsError: nextErr });
+  try {
+    const res = await get<RegimeUnitsReply>(
+      "/api/atlas/census/regime/units",
+      { layer, regime, face, q: qNorm || undefined, limit: 600 },
+      ctl.signal,
+    );
+    if (regimeUnitsCtls.get(slot) !== ctl) return;
+    set({ regimeUnits: { ...st().regimeUnits, [key]: res } });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") return;
+    if (regimeUnitsCtls.get(slot) !== ctl) return;
+    set({ regimeUnitsError: { ...st().regimeUnitsError, [key]: message(e) } });
   }
 }
 
@@ -296,6 +364,11 @@ export async function setLayer(l: number) {
       if (st().censusLayers?.some((c) => c.layer === l && !c.ranked)) void loadCensusLayers();
     } catch {
       set({ units: { ...st().units, [l]: [] } });
+    }
+  } else if (!arch?.census[String(l)]) {
+    const reg = layerRegimeOf(arch, l);
+    if (reg && !st().regimeUnits[`${reg}/${l}/both/`]) {
+      void loadRegimeUnits(l, reg, "both", "");
     }
   }
   const us = st().units[l];
@@ -375,6 +448,7 @@ export async function openNeuron(layer: number, n: number, o: { fly?: boolean; f
   set({
     focus: { kind: "neuron", layer, n },
     unit: null,
+    regimeNeuron: null,
     lens: null,
     wiring: null,
     wiringError: null,
@@ -423,6 +497,16 @@ export async function openNeuron(layer: number, n: number, o: { fly?: boolean; f
       // shown as unread
     }
   })();
+  if (hasAnyRegime(st().arch, layer)) {
+    void (async () => {
+      try {
+        const rn = await get<RegimeNeuron>("/api/atlas/census/regime/neuron", { layer, n }, ctl.signal);
+        if (isFocus(layer, n, "neuron")) set({ regimeNeuron: rn });
+      } catch {
+        // left unread
+      }
+    })();
+  }
   let u: CensusUnit = { layer, n, kind: "neuron", name: "" };
   try {
     u = await get<CensusUnit>("/api/atlas/census/unit", { layer, n }, ctl.signal);
@@ -446,6 +530,7 @@ export async function openHead(layer: number, head: number, o: { fromScientist?:
   set({
     focus: { kind: "head", layer, n: head },
     unit: null,
+    regimeNeuron: null,
     lens: null,
     wiring: null,
     nheads: null,
@@ -479,7 +564,7 @@ export async function openHead(layer: number, head: number, o: { fromScientist?:
 
 export function closeFocus() {
   liveCtl?.abort();
-  set({ focus: null, unit: null, lens: null, wiring: null, nheads: null, headInfo: null, headProfile: null, webSum: null });
+  set({ focus: null, unit: null, regimeNeuron: null, lens: null, wiring: null, nheads: null, headInfo: null, headProfile: null, webSum: null });
   if (st().rightTab !== "scientist") set({ rightOpen: false });
   map?.select(null);
   map?.selectHead(null);

@@ -109,13 +109,24 @@ const Controls: React.FC = () => {
           if (useAtlas.getState().view === "map") theMap()?.enterLayer(l);
         }}
       >
-        {Array.from({ length: arch.n_layers }, (_, l) => (
-          <option key={l} value={l}>
-            layer {l + 1}
-            {arch.layers[l]?.kind === "full" ? " · full" : ""}
-            {arch.census[String(l)] ? " · census" : ""}
-          </option>
-        ))}
+        {Array.from({ length: arch.n_layers }, (_, l) => {
+          const hasDec = !!arch.census[String(l)];
+          const sc = arch.supplementary_census;
+          const tag = hasDec
+            ? " · census"
+            : sc?.forced_odd?.includes(l)
+              ? " · push on set text (exploratory)"
+              : sc?.input_census?.includes(l)
+                ? " · corpus firing (exploratory)"
+                : "";
+          return (
+            <option key={l} value={l}>
+              layer {l + 1}
+              {arch.layers[l]?.kind === "full" ? " · full" : ""}
+              {tag}
+            </option>
+          );
+        })}
       </select>
       <Seg
         label="how the neurons lie on each sheet"

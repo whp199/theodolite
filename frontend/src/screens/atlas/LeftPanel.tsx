@@ -2,12 +2,31 @@ import React, { useEffect, useRef, useState } from "react";
 import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
-import { cite, citeHead, get, layersSaid, noteKey, type CensusCard, type CensusHit, type CensusSearchReply, type RunRow, type SearchRow } from "./api";
+import {
+  causalOffsetLabel,
+  cite,
+  citeHead,
+  forcedOddMetaText,
+  get,
+  inputCensusMetaText,
+  layersSaid,
+  noteKey,
+  regimeCaveat,
+  type CensusCard,
+  type CensusHit,
+  type CensusSearchReply,
+  type ForcedOddMeta,
+  type InputCensusMeta,
+  type RunRow,
+  type SearchRow,
+} from "./api";
 import { censusChance, Chips, ErrorLine, FaceLine, NameMark, ProposalLine } from "./parts";
 import {
   clearTrail,
   closeFocus,
   goToNeuron,
+  layerRegimeOf,
+  loadRegimeUnits,
   openHead,
   runView,
   saveNote,
@@ -97,8 +116,12 @@ const CopyLink: React.FC<{ f: { kind: "neuron" | "head"; layer: number; n: numbe
 const FocusHead: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const unit = useAtlas((s) => s.unit);
+  const rn = useAtlas((s) => s.regimeNeuron);
   if (!f) return null;
   const s = unit?.stats;
+  const myRn = rn && rn.layer === f.layer && rn.n === f.n ? rn : null;
+  const fo = myRn?.forced_odd;
+  const ic = myRn?.input_census;
   return (
     <div className="atlas-focus-head">
       <div className="row-between">
@@ -117,6 +140,28 @@ const FocusHead: React.FC = () => {
           {s.null_pct === 1 && unit?.card?.null.above_all_by_chance != null
             ? ` · a lead: about ${unit.card.null.above_all_by_chance.toFixed(0)} of the layer would beat them all by chance`
             : ""}
+        </div>
+      ) : f.kind === "neuron" && fo ? (
+        <div className="muted atlas-small">
+          {fo.named_dual05
+            ? `push on set text (exploratory · layer not taken) · #${fo.rank ?? "—"} of ${fo.n_named.toLocaleString()}${fo.own_lens_match === true ? " · matches own lens" : ""}`
+            : "push on set text (exploratory · layer not taken) · did not stand above both random push sets"}
+          <IfApparatus>
+            <span>
+              {" "}
+              (rank score {fo.T_min.toFixed(2)}, vs columns {fo.T_col.toFixed(2)}, vs isotropic {fo.T_iso.toFixed(2)})
+            </span>
+          </IfApparatus>
+        </div>
+      ) : f.kind === "neuron" && ic ? (
+        <div className="muted atlas-small">
+          corpus firing (exploratory · not a push reading) ·{" "}
+          {ic.faces["+"].named || ic.faces["-"].named
+            ? (["+", "-"] as const)
+                .filter((sg) => ic.faces[sg].named)
+                .map((sg) => `${sg === "+" ? "+" : "−"} #${ic.faces[sg].rank ?? "—"}`)
+                .join(" · ")
+            : "neither face named in split halves"}
         </div>
       ) : null}
       {f.kind === "neuron" ? <NameField layer={f.layer} n={f.n} /> : null}
@@ -537,6 +582,166 @@ const CensusSearchRows: React.FC<{ r: CensusSearchReply }> = ({ r }) => {
   );
 };
 
+const SupplementaryRows: React.FC<{ layer: number; regime: "forced_odd" | "input_census" }> = ({ layer, regime }) => {
+  const f = useAtlas((s) => s.focus);
+  const [face, setFace] = useState<"both" | "+" | "-">("both");
+  const [qInput, setQInput] = useState("");
+  const [qDebounced, setQDebounced] = useState("");
+  const reqFace = regime === "input_census" ? face : "both";
+  const key = `${regime}/${layer}/${reqFace}/${qDebounced.trim()}`;
+  const reply = useAtlas((s) => s.regimeUnits[key]);
+  const err = useAtlas((s) => s.regimeUnitsError[key]);
+  const filterId = `regime-filter-${regime}-${layer}`;
+
+  useEffect(() => {
+    setQInput("");
+    setQDebounced("");
+    setFace("both");
+  }, [layer, regime]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQDebounced(qInput), 200);
+    return () => window.clearTimeout(t);
+  }, [qInput]);
+
+  useEffect(() => {
+    if (!reply && !err) void loadRegimeUnits(layer, regime, reqFace, qDebounced);
+  }, [layer, regime, reqFace, qDebounced, reply, err]);
+
+  const regimeName = regime === "forced_odd" ? "push on set text" : "corpus firing";
+  const foMeta = regime === "forced_odd" ? (reply?.meta as ForcedOddMeta | null) : null;
+  const icMeta = regime === "input_census" ? (reply?.meta as InputCensusMeta | null) : null;
+
+  return (
+    <>
+      <p className="red atlas-small" style={{ margin: "2px 0 4px" }}>
+        {regimeCaveat(regime, layer)}
+      </p>
+      {reply?.stale ? (
+        <p className="red atlas-small" style={{ margin: "0 0 4px" }}>
+          {reply.stale}
+        </p>
+      ) : null}
+      <div className="row" style={{ gap: 10, padding: "4px 0" }}>
+        <search style={{ flex: 1, display: "flex" }}>
+          <label htmlFor={filterId} className="visually-hidden">
+            Filter exploratory neurons by word-piece, neuron number, or name
+          </label>
+          <input
+            id={filterId}
+            className="input-line"
+            placeholder={regime === "forced_odd" ? "filter by word-piece, neuron, or name" : "filter by trigger piece, neuron, or name"}
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            style={{ width: "100%" }}
+          />
+        </search>
+        {regime === "input_census" ? (
+          <span className="atlas-seg" role="group" aria-label="which face to show">
+            {(["both", "+", "-"] as const).map((sg) => (
+              <button key={sg} type="button" aria-pressed={face === sg} onClick={() => setFace(sg)}>
+                {sg === "both" ? "±" : sg === "+" ? "+" : "−"}
+              </button>
+            ))}
+          </span>
+        ) : null}
+      </div>
+      {err ? (
+        <div className="row" style={{ gap: 8, padding: "4px 0" }}>
+          <ErrorLine error={err} />
+          <button type="button" className="btn-link" onClick={() => void loadRegimeUnits(layer, regime, reqFace, qDebounced)}>
+            try again
+          </button>
+        </div>
+      ) : !reply ? (
+        <p className="muted atlas-small">reading {regimeName}…</p>
+      ) : !reply.available ? (
+        <p className="muted atlas-small" style={{ padding: "6px 0" }}>
+          Layer {layer + 1} has no exploratory {regimeName} reading yet.
+        </p>
+      ) : (
+        <>
+          <ol className="atlas-rows">
+            <li className="atlas-rows-head">
+              {qDebounced.trim()
+                ? `showing ${reply.rows.length.toLocaleString()} of ${reply.matched.toLocaleString()} matching (${reply.total.toLocaleString()} named)`
+                : `${reply.total.toLocaleString()} named${reply.rows.length < reply.total ? ` · first ${reply.rows.length.toLocaleString()} shown` : ""}`}
+              {" · exploratory · not a registered census"}
+            </li>
+            {reply.rows.map((r) => {
+              const rowFace = r.face ?? "+";
+              return (
+                <li
+                  key={`${regime}/${layer}/${r.n}/${rowFace}`}
+                  className={f?.kind === "neuron" && f.layer === layer && f.n === r.n ? "on" : ""}
+                >
+                  <button
+                    type="button"
+                    className="atlas-row-btn"
+                    onClick={() => goToNeuron(layer, r.n)}
+                    onMouseEnter={() => theMap()?.hover(layer, r.n)}
+                    onMouseLeave={() => theMap()?.hover(null)}
+                  >
+                    {regime === "forced_odd" ? (
+                      <>
+                        <span className="atlas-z">{r.rank}</span>
+                        <span className="atlas-id-small">N{r.n}</span>
+                        <span className="atlas-w">
+                          {r.name ? <NameMark layer={layer} n={r.n} name={r.name} /> : null}
+                          {r.own_lens_match === true ? <span className="atlas-regime-badge lens-match">matches lens</span> : null}{" "}
+                          {(r.pos?.length ?? 0) > 0 ? (
+                            <>
+                              <span className="atlas-sgn up">+</span> {r.pos!.slice(0, 3).map(([t]) => wp(t)).join(" ")}
+                            </>
+                          ) : null}
+                          {(r.neg?.length ?? 0) > 0 ? (
+                            <>
+                              {" "}
+                              <span className="atlas-sgn down">−</span> {r.neg!.slice(0, 3).map(([t]) => wp(t)).join(" ")}
+                            </>
+                          ) : null}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`atlas-sg ${rowFace === "+" ? "up" : "down"}`}>{rowFace === "+" ? "+" : "−"}</span>
+                        <span className="atlas-id-small">N{r.n}</span>
+                        <span className="atlas-w">
+                          {r.name ? <NameMark layer={layer} n={r.n} name={r.name} /> : null}
+                          {(r.triggers ?? []).slice(0, 3).map((t, i) => (
+                            <React.Fragment key={`${t.id}/${t.offset}`}>
+                              {i ? " · " : ""}
+                              <span className="atlas-tk">{wp(t.tok)}</span>{" "}
+                              <span className="muted atlas-small">{causalOffsetLabel(t.offset)}</span>
+                            </React.Fragment>
+                          ))}
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <Rubric style={{ fontSize: 14, margin: "6px 0 0" }}>
+            {regime === "forced_odd"
+              ? "Pushed both ways on fixed text continuations: lists replicated three-letter word-pieces whose next-token log-odds rose most on one polarity and fell on the other across both text halves, above random directions. Read Details for numbers and lens overlap."
+              : "Triggers recorded in the stored corpus before or on the strongest firings of each face (disjoint document halves); never includes later pieces."}
+          </Rubric>
+          <IfApparatus>
+            {foMeta || icMeta ? (
+              <details className="atlas-details-disc">
+                <summary>{foMeta ? "study metrics & thresholds" : "study metrics & pilot checks"}</summary>
+                <p>{foMeta ? forcedOddMetaText(foMeta) : inputCensusMetaText(icMeta!)}</p>
+              </details>
+            ) : null}
+          </IfApparatus>
+        </>
+      )}
+    </>
+  );
+};
+
 const CensusRows: React.FC = () => {
   const layer = useAtlas((s) => s.layer);
   const units = useAtlas((s) => s.units[s.layer]);
@@ -567,6 +772,15 @@ const CensusRows: React.FC = () => {
       ? `doses not calibrated at this layer (only at layer${span.length > 1 ? "s" : ""} ${layersSaid(span)})`
       : "doses not yet calibrated on this model";
   if (!arch?.census[String(layer)]) {
+    const primaryRegime = layerRegimeOf(arch ?? null, layer);
+    if (primaryRegime) {
+      return (
+        <>
+          <CensusDepth />
+          <SupplementaryRows layer={layer} regime={primaryRegime} />
+        </>
+      );
+    }
     const refused = arch?.census_refused?.[String(layer)];
     const have = censusLayersOf(arch ?? null);
     return (
