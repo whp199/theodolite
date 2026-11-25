@@ -22,16 +22,17 @@ from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 import numpy as np
 import torch
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-if str(WORKTREE) not in sys.path:
-    sys.path.insert(0, str(WORKTREE))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from backend import atlas_ops as ao  # noqa: E402
 from backend import census as cz  # noqa: E402
 from backend import forced_odd as fo  # noqa: E402
+from backend import gap_provenance as gp  # noqa: E402
 from backend import w4a16_fast  # noqa: E402
 from backend.causal_check import language_model, model_device  # noqa: E402
-from backend.runtime_factory import make_runtime  # noqa: E402
+from backend.runtime_factory import make_runtime, weights_card  # noqa: E402
 
 
 DECODING_UNIT_FILES = {
@@ -70,7 +71,7 @@ def cmd_ladder(args: argparse.Namespace) -> None:
     layers = parse_layers_arg(args.layers)
     rungs = [float(x) for x in args.rungs.split(",")]
     targets = [float(x) for x in args.targets.split(",")]
-    out_path = WORKTREE / args.out if not Path(args.out).is_absolute() else Path(args.out)
+    out_path = REPO_ROOT / args.out if not Path(args.out).is_absolute() else Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     data_dir = fo.resolve_data_dir(Path(args.data_dir) if args.data_dir else None)
 
@@ -519,8 +520,8 @@ def calibrate_one_layer(
 
 def cmd_calibrate(args: argparse.Namespace) -> None:
     t0 = time.time()
-    ladder_path = WORKTREE / args.ladder if not Path(args.ladder).is_absolute() else Path(args.ladder)
-    out_dir = WORKTREE / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
+    ladder_path = REPO_ROOT / args.ladder if not Path(args.ladder).is_absolute() else Path(args.ladder)
+    out_dir = REPO_ROOT / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     data_dir = fo.resolve_data_dir(Path(args.data_dir) if args.data_dir else None)
 
@@ -665,7 +666,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
 
 def _resolve_worktree_path(p: str | Path) -> Path:
     path = Path(p)
-    return path if path.is_absolute() else (WORKTREE / path)
+    return path if path.is_absolute() else (REPO_ROOT / path)
 
 
 def _check_preflight_strict(pf: Dict[str, Any]) -> bool:
@@ -691,10 +692,7 @@ def _kl_summary_dict(resA: Dict[str, Any], resB: Dict[str, Any], mask: Optional[
 
 
 def _git_head_sha() -> Optional[str]:
-    try:
-        return subprocess.check_output(["git", "-C", str(WORKTREE), "rev-parse", "HEAD"], text=True).strip()
-    except Exception:
-        return None
+    return gp.repo_commit(REPO_ROOT)[0]
 
 
 def _build_dual_examples_and_named(
@@ -802,6 +800,9 @@ def _select_half_c_indices(
 
 def cmd_trial(args: argparse.Namespace) -> None:
     t0 = time.time()
+    t0_iso = gp.utc_iso(t0)
+    prereg_dir = _resolve_worktree_path(args.prereg_dir)
+    gp.verify_sha256sums(prereg_dir / "SHA256SUMS")
     layers = parse_layers_arg(args.layers)
     ladder_path = _resolve_worktree_path(args.ladder)
     neurons_dir = _resolve_worktree_path(args.neurons_dir)
@@ -811,6 +812,8 @@ def cmd_trial(args: argparse.Namespace) -> None:
 
     by_layer = {int(e["layer"]): e for e in json.loads(ladder_path.read_text(encoding="utf-8"))["layers"]}
     rt, lm, w = load_model()
+    model_id = getattr(rt, "model_id", None)
+    w_card = weights_card(rt)
     dev = model_device(lm)
     W_U = rt.lm_head_weight
     N_ff = w.d_ff
@@ -825,6 +828,7 @@ def cmd_trial(args: argparse.Namespace) -> None:
     verdicts: List[Dict[str, Any]] = []
     for layer in layers:
         tl0 = time.time()
+        tl0_iso = gp.utc_iso(tl0)
         nfile = neurons_dir / f"neurons_L{layer}.txt"
         raw_tokens = [tok.strip() for tok in nfile.read_text(encoding="utf-8").replace("\n", ",").split(",") if tok.strip()]
         neurons = [int(tok) for tok in raw_tokens]
@@ -937,12 +941,13 @@ def cmd_trial(args: argparse.Namespace) -> None:
                 "direct_among_dual05": dual_dir,
             }
 
+        tl_end_iso = gp.utc_iso()
         verdict = {
             "layer": int(layer),
             "pass": passed,
             "gates": {"F1": f1, "F2": f2, "F3": f3},
             "neurons": len(neurons),
-            "neurons_file": str(nfile.relative_to(WORKTREE)),
+            "neurons_file": str(nfile.relative_to(REPO_ROOT)),
             "readout_mode": f"{args.readout_mode}/LEX_L2_cent",
             "dose_stat": args.dose_stat,
             "target_kl": float(args.target_kl),
@@ -967,7 +972,15 @@ def cmd_trial(args: argparse.Namespace) -> None:
             "null_splits_isotropic": ns_iso,
             "half_c": hc,
             "weight_word_diag": ww_summary,
-            "git_commit": _git_head_sha(),
+            **gp.build_provenance(
+                REPO_ROOT,
+                [REPO_ROOT / "backend" / "forced_odd.py", Path(__file__)],
+                started_at=tl0_iso,
+                finished_at=tl_end_iso,
+                model_id=model_id,
+                weights=w_card,
+                neuron_ids=neurons,
+            ),
             "elapsed_s": round(time.time() - tl0, 1),
         }
         verdicts.append(verdict)
@@ -995,7 +1008,22 @@ def cmd_trial(args: argparse.Namespace) -> None:
         (out_dir / f"L{layer}_named.json").write_text(json.dumps(named_records, indent=1) + "\n", encoding="utf-8")
 
         (out_dir / "trials_summary.json").write_text(
-            json.dumps({"elapsed_total_s": round(time.time() - t0, 1), "layers": verdicts}, indent=1) + "\n",
+            json.dumps(
+                {
+                    **gp.build_provenance(
+                        REPO_ROOT,
+                        [REPO_ROOT / "backend" / "forced_odd.py", Path(__file__)],
+                        started_at=t0_iso,
+                        finished_at=gp.utc_iso(),
+                        model_id=model_id,
+                        weights=w_card,
+                    ),
+                    "elapsed_total_s": round(time.time() - t0, 1),
+                    "layers": verdicts,
+                },
+                indent=1,
+            )
+            + "\n",
             encoding="utf-8",
         )
         print(
@@ -1038,6 +1066,9 @@ def cmd_trial(args: argparse.Namespace) -> None:
 
 def cmd_whole(args: argparse.Namespace) -> None:
     t0 = time.time()
+    t0_iso = gp.utc_iso(t0)
+    prereg_dir = _resolve_worktree_path(args.prereg_dir)
+    gp.verify_sha256sums(prereg_dir / "SHA256SUMS")
     layer = int(args.layer)
     ladder_path = _resolve_worktree_path(args.ladder)
     out_dir = _resolve_worktree_path(args.out_dir)
@@ -1054,6 +1085,8 @@ def cmd_whole(args: argparse.Namespace) -> None:
         raise RuntimeError(f"L{layer} failed to bracket {args.dose_stat}={args.target_kl}: {dose_note}")
 
     rt, lm, w = load_model()
+    model_id = getattr(rt, "model_id", None)
+    w_card = weights_card(rt)
     dev = model_device(lm)
     W_U = rt.lm_head_weight
     N_ff = w.d_ff
@@ -1389,7 +1422,15 @@ def cmd_whole(args: argparse.Namespace) -> None:
         "null_splits_isotropic": ctl_state["ns_iso"],
         "half_c": hc,
         "weight_word_diag": ww_summary,
-        "git_commit": _git_head_sha(),
+        **gp.build_provenance(
+            REPO_ROOT,
+            [REPO_ROOT / "backend" / "forced_odd.py", Path(__file__)],
+            started_at=t0_iso,
+            finished_at=gp.utc_iso(),
+            model_id=model_id,
+            weights=w_card,
+            neuron_ids=list(range(N_ff)),
+        ),
         "elapsed_s": round(time.time() - t0, 1),
     }
     (out_dir / f"L{layer}_forced_odd.meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
@@ -1481,6 +1522,7 @@ def main() -> None:
     ap_tr.add_argument("--n-iso", type=int, default=1024)
     ap_tr.add_argument("--null-splits", type=int, default=50)
     ap_tr.add_argument("--half-c-max", type=int, default=300)
+    ap_tr.add_argument("--prereg-dir", default="experiments/results/census_forced_odd/prereg")
     ap_tr.add_argument("--data-dir", default=None)
 
     ap_wh = sub.add_parser("whole", help="Run crash-safe streaming whole-layer forced_odd census (21,504 neurons)")
@@ -1495,6 +1537,7 @@ def main() -> None:
     ap_wh.add_argument("--chunk-size", type=int, default=512)
     ap_wh.add_argument("--null-splits", type=int, default=50)
     ap_wh.add_argument("--half-c-max", type=int, default=300)
+    ap_wh.add_argument("--prereg-dir", default="experiments/results/census_forced_odd/prereg")
     ap_wh.add_argument("--data-dir", default=None)
 
     args = ap.parse_args()

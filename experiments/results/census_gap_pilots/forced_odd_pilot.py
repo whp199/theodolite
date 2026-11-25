@@ -20,16 +20,16 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from scipy import sparse, stats
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-MAIN_DATA = Path("/home/eric/bin/ai/theodolite2/atlas_data")
-OUT_DIR = WORKTREE / "experiments/results/census_gap_pilots"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+OUT_DIR = REPO_ROOT / "experiments/results/census_gap_pilots"
 
-sys.path.insert(0, str(WORKTREE))
+sys.path.insert(0, str(REPO_ROOT))
+from backend import atlas_index as ai  # noqa: E402
 from backend import atlas_ops as ao  # noqa: E402
 from backend import census as cz  # noqa: E402
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right  # noqa: E402
+from backend.gap_stats import mannwhitney_greater  # noqa: E402
 from backend.label_gate import label_top_ids  # noqa: E402
 from backend.runtime_factory import make_runtime  # noqa: E402
 from backend.theodolite_math import unembed_gemma4  # noqa: E402
@@ -47,11 +47,7 @@ L29_EXPLORE_NEURONS = [
 
 
 def auc(a: Sequence[float], b: Sequence[float]) -> float:
-    a_arr, b_arr = np.asarray(a, float), np.asarray(b, float)
-    if len(a_arr) == 0 or len(b_arr) == 0:
-        return float("nan")
-    u = stats.mannwhitneyu(a_arr, b_arr, alternative="greater")
-    return float(u.statistic / (len(a_arr) * len(b_arr)))
+    return float(mannwhitney_greater(a, b)[0])
 
 
 def bh(p: Sequence[float]) -> np.ndarray:
@@ -84,9 +80,10 @@ def rank_corr(x: Sequence[float], y: Sequence[float]) -> float:
 
 def run_part2a(rt: Any, lm: nn.Module, w: ao.Weights) -> None:
     print("\n=== Part 2A: Corrected Weight-Word Null ===", flush=True)
-    vocab_list = json.loads((MAIN_DATA / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
+    data_dir = ai.atlas_dir()
+    vocab_list = json.loads((data_dir / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
     VN = [norm_word(t) for t in vocab_list]
-    lens_npz = np.load(MAIN_DATA / "index/lens.npz")
+    lens_npz = np.load(data_dir / "index/lens.npz")
     eye_pos_all = lens_npz["eye_pos"]
     eye_neg_all = lens_npz["eye_neg"]
     fnw, W_U = rt.final_norm_weight, rt.lm_head_weight
@@ -124,7 +121,7 @@ def run_part2a(rt: Any, lm: nn.Module, w: ao.Weights) -> None:
     ]
 
     for layer in (29, 53, 54, 55):
-        trial_path = MAIN_DATA / f"census/trials/things_walk/L{layer}-match_things-trial.jsonl"
+        trial_path = data_dir / f"census/trials/things_walk/L{layer}-match_things-trial.jsonl"
         meta = json.loads(cz.meta_path_of(trial_path).read_text(encoding="utf-8"))
         rows = []
         with open(trial_path, encoding="utf-8") as f:
@@ -169,13 +166,11 @@ def run_part2a(rt: Any, lm: nn.Module, w: ao.Weights) -> None:
         def build_mat(wdict):
             mats = {}
             for s in (+1, -1):
-                rows_i, cols_i = [], []
+                mat = np.zeros((Vn, len(wdict[s])), dtype=np.float32)
                 for j, wset in enumerate(wdict[s]):
                     for wd in wset:
-                        rows_i.append(vi[wd])
-                        cols_i.append(j)
-                mats[s] = sparse.csr_matrix((np.ones(len(rows_i), np.float32), (rows_i, cols_i)),
-                                            shape=(Vn, len(wdict[s])))
+                        mat[vi[wd], j] = 1.0
+                mats[s] = mat
             return mats
 
         M_neu = build_mat(W_neu)
@@ -210,10 +205,9 @@ def run_part2a(rt: Any, lm: nn.Module, w: ao.Weights) -> None:
         neu_shares, ctl_own_shares = {}, {}
 
         for nm in subsets:
-            F_mat = {s: sparse.csr_matrix(acc[(nm, s)] / np.maximum(cnt[(nm, s)], 1.0)[:, None]) for s in (+1, -1)}
+            F_mat = {s: (acc[(nm, s)] / np.maximum(cnt[(nm, s)], 1.0)[:, None]).astype(np.float32) for s in (+1, -1)}
             # Score every unit on every neuron's words (exact explore.py)
             S_neu = 0.5 * (F_mat[1] @ M_neu[1] + F_mat[-1] @ M_neu[-1])
-            S_neu = np.asarray(S_neu.todense())
             own_n = S_neu[np.arange(nn), np.arange(nn)]
             ctl_orth = S_neu[nn:, :]  # [C, nn] controls scored on neurons' words
             below_orth = ((ctl_orth < own_n).sum(0) + 0.5 * (ctl_orth == own_n).sum(0)) / C
@@ -222,7 +216,6 @@ def run_part2a(rt: Any, lm: nn.Module, w: ao.Weights) -> None:
 
             # Corrected null: score controls on their OWN naked-eye words
             S_ctl_own = 0.5 * (F_mat[1][nn:] @ M_ctl[1] + F_mat[-1][nn:] @ M_ctl[-1])
-            S_ctl_own = np.asarray(S_ctl_own.todense())
             own_c = S_ctl_own[np.arange(C), np.arange(C)]
 
             corr_lead = auc(own_n, own_c)
@@ -305,10 +298,11 @@ def build_vocab_masks(rt: Any) -> Tuple[torch.Tensor, torch.Tensor, List[str], L
 
 
 def build_fixed_texts(rt: Any, lm: nn.Module) -> Dict[str, Any]:
-    meta29 = json.loads((MAIN_DATA / "census/trials/things_walk/L29-match_things-trial.meta.json").read_text(encoding="utf-8"))
+    data_dir = ai.atlas_dir()
+    meta29 = json.loads((data_dir / "census/trials/things_walk/L29-match_things-trial.meta.json").read_text(encoding="utf-8"))
     prompt_ids_map: Dict[str, List[int]] = dict(meta29["prompt_ids"])
     bases29: Dict[str, List[int]] = {}
-    with open(MAIN_DATA / "census/trials/things_walk/L29-match_things-trial.jsonl", encoding="utf-8") as f:
+    with open(data_dir / "census/trials/things_walk/L29-match_things-trial.jsonl", encoding="utf-8") as f:
         for line in f:
             r = json.loads(line)
             if r["kind"] == "baseline":
@@ -629,7 +623,7 @@ def eval_split_metrics(scores_dict: Dict[str, Any], neu_mask: np.ndarray, ctl_ma
 
 
 def extract_trial_neurons(layer: int) -> List[int]:
-    p = MAIN_DATA / f"census/trials/things_walk/L{layer}-match_things-trial.jsonl"
+    p = ai.atlas_dir() / f"census/trials/things_walk/L{layer}-match_things-trial.jsonl"
     ns: Set[int] = set()
     with open(p, encoding="utf-8") as f:
         for line in f:
@@ -1153,15 +1147,16 @@ def main() -> None:
         del full, h_ref, r29, r59, cap
 
     # Load cross-check references (L45 words, L55 named, L55/L29 trial neurons)
+    data_dir = ai.atlas_dir()
     l45_words: Dict[int, Set[str]] = {}
-    with open(MAIN_DATA / "census/runs/L45-break_rel.units.jsonl", encoding="utf-8") as f:
+    with open(data_dir / "census/runs/L45-break_rel.units.jsonl", encoding="utf-8") as f:
         for line in f:
             r = json.loads(line)
             if r["kind"] == "neuron":
                 ws = set(cz.shown_words(r, k=5))
                 if ws:
                     l45_words[int(r["neuron"])] = ws
-    l55_verdict = json.loads((WORKTREE / "experiments/results/census_things_walk/L55_verdict.whole.json").read_text())
+    l55_verdict = json.loads((REPO_ROOT / "experiments/results/census_things_walk/L55_verdict.whole.json").read_text())
     l55_named_set = set(int(x) for x in l55_verdict["readings"]["48"]["named"])
     l55_trial_ns = extract_trial_neurons(55)
     l29_trial_ns = extract_trial_neurons(29)

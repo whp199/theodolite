@@ -11,12 +11,11 @@ from typing import Any, Dict, List
 
 import numpy as np
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-if str(WORKTREE) not in sys.path:
-    sys.path.insert(0, str(WORKTREE))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from backend import atlas_index as ai  # noqa: E402
-from backend import forced_odd as fo  # noqa: E402
 from backend import input_census as ic  # noqa: E402
 
 
@@ -49,9 +48,9 @@ def main() -> None:
 
     t0 = time.time()
     layers = parse_layers_arg(args.layers)
-    out_dir = WORKTREE / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
+    out_dir = REPO_ROOT / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    data_dir = fo.resolve_data_dir(Path(args.data_dir) if args.data_dir else None)
+    data_dir = Path(args.data_dir).expanduser() if args.data_dir else ai.atlas_dir()
 
     P = ai.load_folder(data_dir / "index/passages.d/meta.json")
     vocab = json.loads((data_dir / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]

@@ -18,11 +18,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-MAIN_DATA = Path("/home/eric/bin/ai/theodolite2/atlas_data")
-OUT_DIR = WORKTREE / "experiments/results/census_gap_pilots"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+OUT_DIR = REPO_ROOT / "experiments/results/census_gap_pilots"
 
-sys.path.insert(0, str(WORKTREE))
+sys.path.insert(0, str(REPO_ROOT))
 from backend import atlas_index as ai  # noqa: E402
 from backend import atlas_ops as ao  # noqa: E402
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right  # noqa: E402
@@ -33,8 +32,9 @@ from backend import w4a16_fast  # noqa: E402
 def run_part3a(layers: Sequence[int] = (2, 14, 20, 29), sample_neurons: int = 1024, seed: int = 42) -> Dict[str, Any]:
     print("\n=== Part 3A: CPU Split-Half Input-Side Token/Context Replication ===", flush=True)
     t0 = time.time()
-    P = ai.load_folder(MAIN_DATA / "index/passages.d/meta.json")
-    vocab = json.loads((MAIN_DATA / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
+    data_dir = ai.atlas_dir()
+    P = ai.load_folder(data_dir / "index/passages.d/meta.json")
+    vocab = json.loads((data_dir / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
     windows = np.asarray(P["windows"])  # [W, seq]
     unigram = np.asarray(P["unigram"], dtype=np.float64)
     tot_tok = float(unigram.sum())
@@ -207,8 +207,9 @@ def run_part3a(layers: Sequence[int] = (2, 14, 20, 29), sample_neurons: int = 10
 def run_part3b(layers: Sequence[int] = (14, 20), n_neurons: int = 64, seed: int = 77) -> Dict[str, Any]:
     print("\n=== Part 3B: GPU Natural-Firing Ablation KL (L14, L20) ===", flush=True)
     t0 = time.time()
-    P = ai.load_folder(MAIN_DATA / "index/passages.d/meta.json")
-    vocab = json.loads((MAIN_DATA / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
+    data_dir = ai.atlas_dir()
+    P = ai.load_folder(data_dir / "index/passages.d/meta.json")
+    vocab = json.loads((data_dir / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
     windows = np.asarray(P["windows"])  # [W, seq]
     N = int(P["pos_win"].shape[1])
 

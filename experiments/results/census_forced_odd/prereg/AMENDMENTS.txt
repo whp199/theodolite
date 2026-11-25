@@ -1,0 +1,49 @@
+Post-Registration Amendments Log (`census_forced_odd`)
+=====================================================
+
+Original local registration timestamp (`prereg/prereg_at`): 2026-11-24T23:52:42Z
+Original commit preserving hashed files (`RULES.md`, `draw_neurons.py`, `backend/forced_odd.py`,
+`scripts/forced_odd_census.py`, `neurons_L55..L59.txt`, `dose_ladder.json`): `5452734` (committed 2026-11-25T03:44:58Z).
+
+Disclosure on Registration Status
+---------------------------------
+The files listed in `SHA256SUMS` were hashed locally in the working tree at `2026-11-24T23:52:42Z`,
+shortly before the fresh L55-L59 trial and whole-layer runs executed, but were NOT committed or
+pushed before those runs completed. Original run metas also recorded the base commit `16570312`
+(which lacked the new code) and an `L59_pilot` + `L55` pilot had already been examined prior to
+hashing. Per project rules, these runs are classified as exploratory records ("trials whose
+registration was hashed locally but not committed or pushed first"), not pre-registered census trials.
+
+Post-Trial Amendments (All Applied After Reading L55-L59 Trial & Whole Outputs)
+-------------------------------------------------------------------------------
+1. `backend/forced_odd.py` (SHA256SUMS entry intentionally broken; original preserved at commit `5452734`):
+   - Reason: PR review Package 0 & Package 1.
+   - Changes: Removed hardcoded `DEFAULT_MAIN_DATA` (`/home/...`) path and `THEODOLITE_DATA_DIR` fallback in
+     favor of `backend.atlas_index.atlas_dir()`; dropped `scipy.stats` in favor of pure-NumPy
+     `backend.gap_stats.mannwhitney_greater`; added like-for-like Half-C evaluation (`eval_half_c_matched`,
+     replacing asymmetric `_eval_half_c_against_ctl` for future runs); replaced `circuit_mediated`
+     tag semantics with factual own-lens match tracking (`own_lens_match` / `not_own_lens_match`, `None` at L59).
+
+2. `scripts/forced_odd_census.py` (SHA256SUMS entry intentionally broken; original preserved at commit `5452734`):
+   - Reason: PR review Package 0 & Package 1.
+   - Changes: Removed hardcoded `/home/...` `WORKTREE` path in favor of `Path(__file__).resolve().parents[1]`;
+     enforced `prereg/SHA256SUMS` verification at startup of `trial` and `whole` commands; added full
+     provenance fields (`git_commit`, `git_dirty`, `code_sha256`, `started_at`, `finished_at`, `model`,
+     `weights`, `weights_id`, `neuron_ids`); replaced `"circuit_mediated"` / `direct_unembed` labels with
+     own-lens match labels and matched Half-C scoring.
+
+3. `experiments/results/census_forced_odd/prereg/draw_neurons.py` (SHA256SUMS entry intentionally broken; original preserved at commit `5452734`):
+   - Reason: PR review Package 0.
+   - Changes: Removed hardcoded `/home/...` worktree and owner data paths in favor of
+     `Path(__file__).resolve().parents[4]` and `backend.atlas_index.atlas_dir() / "census"`.
+
+4. `experiments/results/census_forced_odd/prereg/RULES.md` (SHA256SUMS entry intentionally broken; original preserved at commit `5452734`):
+   - Reason: PR review Package 0 & Package 1.
+   - Changes: Removed hardcoded `/home/...` path on line 5; added post-trial correction header noting
+     local-only hash timing, L55 prior peeking (retracting "Zero Peeking at L55-L58"), the L57 excluded
+     neuron count (`571`, not `575`), and vacuous gates `F2.2` / `F3`.
+
+Unamended Immutable Hashed Files (Still Matching `SHA256SUMS`)
+--------------------------------------------------------------
+- `neurons_L55.txt` through `neurons_L59.txt`
+- `../dose_ladder.json`

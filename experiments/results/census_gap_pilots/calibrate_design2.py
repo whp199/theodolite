@@ -22,24 +22,20 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
-from scipy import stats
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-MAIN_DATA = Path("/home/eric/bin/ai/theodolite2/atlas_data")
-OUT_DIR = WORKTREE / "experiments/results/census_gap_pilots"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+OUT_DIR = REPO_ROOT / "experiments/results/census_gap_pilots"
 
-sys.path.insert(0, str(WORKTREE))
+sys.path.insert(0, str(REPO_ROOT))
+from backend import atlas_index as ai  # noqa: E402
 from backend import census as cz  # noqa: E402
+from backend.gap_stats import mannwhitney_greater  # noqa: E402
 
 COVS = ("lnw", "d4", "cut", "lp", "dep", "lost")
 
 
 def auc(a: Sequence[float], b: Sequence[float]) -> Tuple[float, float]:
-    a_arr, b_arr = np.asarray(a, float), np.asarray(b, float)
-    if len(a_arr) == 0 or len(b_arr) == 0:
-        return float("nan"), float("nan")
-    u = stats.mannwhitneyu(a_arr, b_arr, alternative="greater")
-    return float(u.statistic / (len(a_arr) * len(b_arr))), float(u.pvalue)
+    return mannwhitney_greater(a, b)
 
 
 def emp_p_map(d: Dict[Tuple[str, int], float]) -> Dict[Tuple[str, int], float]:
@@ -543,15 +539,16 @@ def analyze_file(path: Path, is_trial: bool) -> Dict[str, Any]:
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    data_dir = ai.atlas_dir()
     jobs = [
-        (MAIN_DATA / "census/trials/things_walk/L55-match_things-trial.jsonl", True),
-        (MAIN_DATA / "census/trials/things_walk/L54-match_things-trial.jsonl", True),
-        (MAIN_DATA / "census/trials/things_walk/L53-match_things-trial.jsonl", True),
-        (MAIN_DATA / "census/trials/things_walk/L29-match_things-trial.jsonl", True),
-        (MAIN_DATA / "census/runs/L30-match_things.jsonl", False),
-        (MAIN_DATA / "census/runs/L34-match_ceil.jsonl", False),
-        (MAIN_DATA / "census/runs/L53-match_things.jsonl", False),
-        (MAIN_DATA / "census/runs/L54-match_things.jsonl", False),
+        (data_dir / "census/trials/things_walk/L55-match_things-trial.jsonl", True),
+        (data_dir / "census/trials/things_walk/L54-match_things-trial.jsonl", True),
+        (data_dir / "census/trials/things_walk/L53-match_things-trial.jsonl", True),
+        (data_dir / "census/trials/things_walk/L29-match_things-trial.jsonl", True),
+        (data_dir / "census/runs/L30-match_things.jsonl", False),
+        (data_dir / "census/runs/L34-match_ceil.jsonl", False),
+        (data_dir / "census/runs/L53-match_things.jsonl", False),
+        (data_dir / "census/runs/L54-match_things.jsonl", False),
     ]
     results = []
     for p, is_t in jobs:

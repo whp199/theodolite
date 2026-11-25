@@ -3,7 +3,7 @@
 
 Deterministic seed: 20261124 * 100 + layer.
 Strictly excludes:
-  1. Every non-volunteer census meta under /home/eric/bin/ai/theodolite2/atlas_data/census
+  1. Every non-volunteer census meta under `atlas_dir()/census`
      at that layer (verifying ASKED matches disk exactly, else refusing to draw).
   2. All 64 dose-ladder neurons in experiments/results/census_forced_odd/dose_ladder.json.
   3. At L59, all 1,022 exploratory L59_pilot neurons (rng(11)).
@@ -18,13 +18,14 @@ from pathlib import Path
 
 import numpy as np
 
-WORKTREE = Path(os.environ.get("THEODOLITE_TRIAL_REPO") or "/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
+WORKTREE = Path(os.environ.get("THEODOLITE_TRIAL_REPO") or Path(__file__).resolve().parents[4])
 if str(WORKTREE) not in sys.path:
     sys.path.insert(0, str(WORKTREE))
 
+from backend import atlas_index as ai  # noqa: E402
 from backend import census as cz  # noqa: E402
 
-ATLAS = Path("/home/eric/bin/ai/theodolite2/atlas_data/census")
+ATLAS = ai.atlas_dir() / "census"
 LADDER = WORKTREE / "experiments/results/census_forced_odd/dose_ladder.json"
 LAYERS = (55, 56, 57, 58, 59)
 ASKED = {

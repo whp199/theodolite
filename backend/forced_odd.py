@@ -20,10 +20,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from scipy import stats
 
+from backend import atlas_index as ai
 from backend import atlas_ops as ao
 from backend import census as cz
+from backend.gap_stats import mannwhitney_greater
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right
 from backend.label_gate import label_top_ids
 from backend.theodolite_math import unembed_gemma4
@@ -41,20 +42,13 @@ VAR_FLOOR: float = 0.05  # variance stabilisation (VAR_FLOOR**2 = 0.0025)
 READOUT_MODES: Tuple[str, ...] = ("cent", "proj", "both")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_MAIN_DATA = Path("/home/eric/bin/ai/theodolite2/atlas_data")
 
 
 def resolve_data_dir(data_dir: Optional[Path] = None) -> Path:
-    """Resolve read-only atlas_data root cleanly from argument, env, repo, or main checkout."""
+    """Resolve read-only atlas_data root from explicit argument or backend.atlas_index.atlas_dir()."""
     if data_dir is not None:
-        return Path(data_dir)
-    env = os.environ.get("THEODOLITE_DATA_DIR")
-    if env:
-        return Path(env)
-    local = REPO_ROOT / "atlas_data"
-    if local.exists():
-        return local
-    return DEFAULT_MAIN_DATA
+        return Path(data_dir).expanduser()
+    return ai.atlas_dir()
 
 
 def norm_word(s: str) -> str:
@@ -62,11 +56,7 @@ def norm_word(s: str) -> str:
 
 
 def auc(a: Sequence[float], b: Sequence[float]) -> float:
-    a_arr, b_arr = np.asarray(a, float), np.asarray(b, float)
-    if len(a_arr) == 0 or len(b_arr) == 0:
-        return float("nan")
-    u = stats.mannwhitneyu(a_arr, b_arr, alternative="greater")
-    return float(u.statistic / (len(a_arr) * len(b_arr)))
+    return float(mannwhitney_greater(a, b)[0])
 
 
 def bh(p: Sequence[float]) -> np.ndarray:

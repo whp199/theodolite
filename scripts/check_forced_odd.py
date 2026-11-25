@@ -11,9 +11,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-if str(WORKTREE) not in sys.path:
-    sys.path.insert(0, str(WORKTREE))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from backend import forced_odd as fo  # noqa: E402
 

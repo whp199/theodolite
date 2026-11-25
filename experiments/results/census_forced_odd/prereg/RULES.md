@@ -2,7 +2,7 @@
 
 Registered on `2026-11-24` (exact UTC timestamp in `prereg_at`, repository commit in `repo_commit`, SHA-256 manifest in `SHA256SUMS`), **strictly before any fresh forward pass or trial readout was executed on layers 55–59**.
 
-Layers are indexed from 0 (`0..59`, matching model indices and trial files). All work is conducted on `google/gemma-4-31B-it-qat-w4a16-ct` (`d_ff = 21,504` per layer) in the isolated worktree without modifying `/home/eric/bin/ai/theodolite2/atlas_data/` or `backend/census.py`.
+Layers are indexed from 0 (`0..59`, matching model indices and trial files). All work is conducted on `google/gemma-4-31B-it-qat-w4a16-ct` (`d_ff = 21,504` per layer) in an isolated worktree without modifying the owner's `atlas_data/` (resolved via `THEODOLITE_ATLAS_DIR`) or `backend/census.py`.
 
 ---
 

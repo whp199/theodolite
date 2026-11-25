@@ -16,19 +16,15 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
-from scipy import stats
 
 from backend import census as cz
+from backend.gap_stats import mannwhitney_greater
 
 COVS: Tuple[str, ...] = ("lnw", "d4", "cut", "lp", "dep", "lost")
 
 
 def auc(a: Sequence[float], b: Sequence[float]) -> Tuple[float, float]:
-    a_arr, b_arr = np.asarray(a, float), np.asarray(b, float)
-    if len(a_arr) == 0 or len(b_arr) == 0:
-        return float("nan"), float("nan")
-    u = stats.mannwhitneyu(a_arr, b_arr, alternative="greater")
-    return float(u.statistic / (len(a_arr) * len(b_arr))), float(u.pvalue)
+    return mannwhitney_greater(a, b)
 
 
 def emp_p_map(d: Dict[Tuple[str, int], float]) -> Dict[Tuple[str, int], float]:

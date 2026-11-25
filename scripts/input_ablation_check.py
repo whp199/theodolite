@@ -21,33 +21,25 @@ from typing import Any, Dict, List, Sequence, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from scipy import stats
 
-WORKTREE = Path("/home/eric/.gemini/antigravity/worktrees/theodolite2/weight_space_solution_brief")
-if str(WORKTREE) not in sys.path:
-    sys.path.insert(0, str(WORKTREE))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from backend import atlas_index as ai  # noqa: E402
 from backend import atlas_ops as ao  # noqa: E402
-from backend import forced_odd as fo  # noqa: E402
 from backend import w4a16_fast  # noqa: E402
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right  # noqa: E402
+from backend.gap_stats import mannwhitney_greater, wilcoxon_greater  # noqa: E402
 from backend.runtime_factory import make_runtime  # noqa: E402
 
 
 def _auc(a: Sequence[float], b: Sequence[float]) -> float:
-    a_arr, b_arr = np.asarray(a, float), np.asarray(b, float)
-    if len(a_arr) == 0 or len(b_arr) == 0:
-        return float("nan")
-    return float(stats.mannwhitneyu(a_arr, b_arr, alternative="greater").statistic / (len(a_arr) * len(b_arr)))
+    return float(mannwhitney_greater(a, b)[0])
 
 
 def _wilcoxon_greater(a: Sequence[float], b: Sequence[float]) -> float:
-    diff = np.asarray(a, float) - np.asarray(b, float)
-    if np.all(diff == 0.0):
-        return 1.0
-    res = stats.wilcoxon(a, b, alternative="greater", zero_method="wilcox")
-    return float(res.pvalue)
+    return float(wilcoxon_greater(a, b))
 
 
 def _kl_stats(act: np.ndarray, qui: np.ndarray, n_neurons: int, pass_per_n: int = 4) -> Dict[str, Any]:
@@ -93,8 +85,8 @@ def main() -> None:
 
     t0 = time.time()
     layers = [int(x.strip()) for x in args.layers.split(",") if x.strip()]
-    census_dir = WORKTREE / args.census_dir if not Path(args.census_dir).is_absolute() else Path(args.census_dir)
-    data_dir = fo.resolve_data_dir(Path(args.data_dir) if args.data_dir else None)
+    census_dir = REPO_ROOT / args.census_dir if not Path(args.census_dir).is_absolute() else Path(args.census_dir)
+    data_dir = Path(args.data_dir).expanduser() if args.data_dir else ai.atlas_dir()
 
     P = ai.load_folder(data_dir / "index/passages.d/meta.json")
     act_scale = np.load(data_dir / "index/act_scale.npz")
