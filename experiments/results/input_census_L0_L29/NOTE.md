@@ -71,6 +71,37 @@ Key structural pattern visible in `Top100%` and `OthFaceNull`:
    - Prior `smp_shuf_rate`: **`0.38%` (`L1`, `L11`) to `3.82%` (`L28`)**, NOT `~0.4–1.2%`.
    - Prior quiet-control `ablation_check.json` AUCs: peak AUC **`0.6155–0.7319`** (`L2: 0.6891`, `L14: 0.7319`, `L20: 0.6301`, `L29: 0.6155`), span AUC **`0.6173–0.7187`** (`L2: 0.6519`, `L14: 0.7187`, `L20: 0.6924`, `L29: 0.6173`), NOT `0.6519–0.7319`.
    - Prior `Null05 = 0.00 max 0`: split an exchangeable null 2,048/2,048, which cannot fail by construction and provides no validation of the null.
-2. **Superseded quiet-control ablation & pending GPU rerun**:
-   - The existing `ablation_check.json` / `ablation_check.txt` tested zeroing active `named_fdp05` neurons vs quiet controls (`|act| < 0.05 * extreme`) truncated to `22` context pieces, had no pass criterion (`"PASSED"` / `"verified"` removed), treated `256` passages from `64` neurons as independent, and measured small median KL shifts near the `bf16` floor (`~0.00045`).
-   - `scripts/input_ablation_check.py` has now been updated to pair each neuron with a **random non-dead same-layer control neuron** on the exact same **full-context** passages (`pos 1..min(seq, pk+4)`), reporting neuron-clustered Wilcoxon tests (`N=64` independent neurons), write-norm ratios, and the `bf16` noise floor. It has **not** been executed on GPU and awaits the owner's explicit decision.
+2. **Superseded quiet-control ablation**:
+   - The earlier `ablation_check` tested zeroing active `named_fdp05` neurons vs quiet controls (`|act| < 0.05 * extreme`) truncated to `22` context pieces, had no pass criterion (`"PASSED"` / `"verified"` removed), treated `256` passages from `64` neurons as independent, and measured small median KL shifts near the `bf16` floor (`~0.00045`).
+
+---
+
+## 4. Exploratory GPU Pilots (`L2, L14, L20, L29`, Owner-Authorized)
+
+Both GPU checks below were run after the recomputed CPU tables (`exploratory`, `unregistered`, `gates nothing`; **not** a push census and no layer is counted taken).
+
+### 4a. Fair Full-Context Natural-Firing Ablation (`scripts/input_ablation_check.py`)
+
+Each sampled active neuron (`N=64` per layer, `4` passages each = `256` passages/layer) was paired on **identical full-context passages** (`pos 1..min(seq, pk+4)`) against a **random same-layer non-dead neuron** pushed/zeroed identically (`w_ratio` `0.993–1.007`), with neuron-clustered Wilcoxon tests (`N=64` independent neurons) and measured no-op `forward_from_layer` `bf16` floor (`NoopPk50 = 0.00000`, `NoopSp50 = 0.00000`, `NoopPk90 = 0.00000`, `NoopSp90 = 0.00000`):
+
+| `L` | `W_ratio` | `NoopPk50` | `Pk_Tgt50` | `Pk_Ctl50` | `Pk_AUC (cluster p)` | `Sp_Tgt50` | `Sp_Ctl50` | `Sp_AUC (cluster p)` | `Mean4 Sp > 0.00045` | `Max4 Pk > 0.005` |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **2** | `0.997` | `0.00000` | `0.00057` | `0.00024` | `0.6824 (2.69e-09)` | `0.00098` | `0.00073` | `0.6853 (1.20e-07)` | `95.3%` | `20.3%` |
+| **14** | `1.006` | `0.00000` | `0.00061` | `0.00019` | `0.7832 (4.01e-09)` | `0.00102` | `0.00059` | `0.7634 (6.69e-09)` | `93.8%` | `31.2%` |
+| **20** | `0.993` | `0.00000` | `0.00077` | `0.00038` | `0.7527 (1.01e-09)` | `0.00108` | `0.00057` | `0.7864 (4.81e-10)` | `92.2%` | `34.4%` |
+| **29** | `1.007` | `0.00000` | `0.00112` | `0.00044` | `0.8354 (5.59e-11)` | `0.00096` | `0.00058` | `0.8154 (1.73e-10)` | `95.3%` | `46.9%` |
+
+- **Takeaway**: Zeroing an actively firing neuron shifts full-context output consistently more than zeroing a random same-layer neuron (`AUC 0.682–0.835`, `p <= 1.2e-7`, above the `0.00000` measured no-op floor), confirming real functional participation at natural peak firing (`1.5x–3.2x` median KL over random same-layer neurons). However, typical median single-passage KL remains small (`0.00057–0.00112` nats at peak; `0.00096–0.00108` nats across `4` tokens), so this validates input firing involvement rather than single-neuron word-writing sufficiency.
+
+### 4b. Held-Out Document Corpus Forward Precision (`scripts/input_precision_pilot.py`)
+
+Split `passages.d` strictly by `<eos>` document halves (`seed=20261124`), selected each rank-1 causal `(-1, 0)` trigger on **half 0 ONLY** (`>= 2` distinct half-0 docs, sampling `256` faces/layer), paired each with a same-bin frequency-matched wrong piece at the same offset, and streamed all **`1,553` pure half-1 windows** (`0` half-0 tokens) on GPU measuring `P(signed |act| >= 0.5 * extreme | trigger)`:
+
+| `L` | `Eval/Smp` | `PoolTgt` | `PoolCtl` | `MeanTgt` | `p50Tgt` | `p90Tgt` | `>=0.20 & 3x` | `NonT100 Mean (n)` | `Top100 Mean (n)` | `AUC (Wilcoxon p)` |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **2** | `240/256` | `0.00387` | `0.00000` | `0.0814` | `0.0054` | `0.2515` | **`11.25%`** | `0.1184` (`161`) | `0.0060` (`79`) | `0.8688 (4.28e-31)` |
+| **14** | `246/256` | `0.00347` | `0.00002` | `0.0475` | `0.0011` | `0.1206` | **`5.28%`** | `0.0744` (`137`) | `0.0138` (`109`) | `0.8335 (3.99e-29)` |
+| **20** | `251/256` | `0.00097` | `0.00008` | `0.0489` | `0.0002` | `0.1148` | **`6.37%`** | `0.0853` (`140`) | `0.0029` (`111`) | `0.8031 (4.09e-27)` |
+| **29** | `255/256` | `0.00029` | `0.00000` | `0.0076` | `0.0001` | `0.0023` | **`0.39%`** | `0.0467` (`36`) | `0.0011` (`219`) | `0.8196 (8.49e-29)` |
+
+- **Takeaway**: Forward precision on unseen documents strongly exceeds frequency-matched wrong pieces (`AUC 0.803–0.869`, `p <= 4.1e-27`), but is **sharply concentrated in non-top-100 lexical triggers**: across non-top-100 triggers (`MeanTgt = 0.0467–0.1184`; e.g., `reflection` `22/22 = 1.00`, ` hummus` `13/13 = 1.00`, ` Hurricane` `5/5 = 1.00`), `2.8–16.8%` clear `>= 0.20` precision & `3x` lift, whereas top-100 ubiquitous triggers (`85.9%` of evaluated faces at `L29`) have mean precision `0.0011–0.0138` (`0.0%` clearing `>=0.20 & 3x` at `L2, L20, L29`). Therefore, rank-1 triggers at `L0–L20` capture real lexical detectors for a minority of specific faces, while `L21–L29` ubiquitous triggers describe firing contexts with almost zero forward precision (`0.39%` at `L29`).

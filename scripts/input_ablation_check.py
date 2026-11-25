@@ -87,7 +87,7 @@ def main() -> None:
     ap.add_argument("--layers", default="2,14,20,29")
     ap.add_argument("--census-dir", default="experiments/results/input_census_L0_L29")
     ap.add_argument("--n-neurons", type=int, default=64)
-    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--batch-size", type=int, default=4)
     ap.add_argument("--min-extreme", type=float, default=0.1)
     ap.add_argument("--data-dir", default=None)
     args = ap.parse_args()
@@ -200,6 +200,8 @@ def main() -> None:
         kl_ctl_span = np.zeros(B, dtype=np.float32)
         ctl_norm_act_pk = np.zeros(B, dtype=np.float32)
         active_norm_act_pk = np.zeros(B, dtype=np.float32)
+        noop_pk_vals = np.array([], dtype=np.float32)
+        noop_span_vals = np.array([], dtype=np.float32)
         top_shifts_by_row: List[List[Tuple[str, float]]] = [[] for _ in range(B)]
         eval_offsets = torch.arange(5, device=dev)[None, :]
 
@@ -274,6 +276,15 @@ def main() -> None:
 
             kp_act, ks_act, dp_act = run_span_ablate(active_ns)
             kp_ctl, ks_ctl, _ = run_span_ablate(ctl_ns)
+            if s == 0:
+                with torch.no_grad():
+                    out_noop = ao.forward_from_layer(lm, l, h_in_l, ab, pb)
+                h_n_sel = out_noop[br, pos_mat].reshape(b * 5, D)
+                n_lsm = F.log_softmax(logits_fp32(h_n_sel, W_U), dim=-1).view(b, 5, V)
+                kl_n_pos = (base_lsm.exp() * (base_lsm - n_lsm)).sum(dim=-1)
+                noop_pk_vals = kl_n_pos[:, 0].cpu().numpy()
+                noop_span_vals = ((kl_n_pos * in_span_eval).sum(dim=-1) / in_span_eval.sum(dim=-1).clamp(min=1.0)).cpu().numpy()
+                del out_noop, h_n_sel, n_lsm, kl_n_pos
             kl_act_pk[s:e] = kp_act
             kl_act_span[s:e] = ks_act
             kl_ctl_pk[s:e] = kp_ctl
@@ -283,6 +294,8 @@ def main() -> None:
             for i in range(b):
                 top_shifts_by_row[s + i] = [(vocab[int(top_i[i, k])], round(float(top_v[i, k]), 2)) for k in range(3)]
             del base_lsm, h_in_l, act_all, cap
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
 
         pk_stats = _kl_stats(kl_act_pk, kl_ctl_pk, args.n_neurons, pass_per_n=4)
         span_stats = _kl_stats(kl_act_span, kl_ctl_span, args.n_neurons, pass_per_n=4)
@@ -317,6 +330,10 @@ def main() -> None:
             "control_norm_act_pk_p50": round(float(np.median(ctl_norm_act_pk)), 4),
             "write_norm_ratio_p50": round(float(np.median(write_norm_ratio_by_i)), 4),
             "bf16_noise_floor": BF16_NOISE_FLOOR,
+            "noop_bf16_floor_pk_p50": round(float(np.median(noop_pk_vals)), 5) if noop_pk_vals.size else None,
+            "noop_bf16_floor_pk_p90": round(float(np.percentile(noop_pk_vals, 90)), 5) if noop_pk_vals.size else None,
+            "noop_bf16_floor_span_p50": round(float(np.median(noop_span_vals)), 5) if noop_span_vals.size else None,
+            "noop_bf16_floor_span_p90": round(float(np.percentile(noop_span_vals, 90)), 5) if noop_span_vals.size else None,
             "kl_pk": pk_stats,
             "kl_span": span_stats,
             "elapsed_s": round(time.time() - tl0, 1),
@@ -334,16 +351,18 @@ def main() -> None:
 
     lines = [
         "Exploratory Natural-Firing Ablation vs Random Same-Layer Neuron Control (Full Context, Neuron-Clustered, No Pass Bar)",
-        "-" * 136,
-        f"{'L':>3} {'W_ratio':>7} {'Pk_Tgt50':>10} {'Pk_Ctl50':>10} {'Pk_AUCn':>8} {'Pk_p_n':>10} "
-        f"{'Sp_Tgt50':>10} {'Sp_Ctl50':>10} {'Sp_AUCn':>8} {'Sp_p_n':>10} {'>bf16':>7}",
+        "-" * 158,
+        f"{'L':>3} {'W_ratio':>7} {'NoopPk50':>10} {'Pk_Tgt50':>10} {'Pk_Ctl50':>10} {'Pk_AUCn':>8} {'Pk_p_n':>10} "
+        f"{'NoopSp50':>10} {'Sp_Tgt50':>10} {'Sp_Ctl50':>10} {'Sp_AUCn':>8} {'Sp_p_n':>10} {'>bf16':>7}",
     ]
     for r in layer_reports:
         kp, ks = r["kl_pk"], r["kl_span"]
         lines.append(
             f"{r['layer']:3d} {r['write_norm_ratio_p50']:7.3f} "
+            f"{(r.get('noop_bf16_floor_pk_p50') or 0.0):10.5f} "
             f"{kp['target_p10_p50_p90_max'][1]:10.5f} {kp['control_p10_p50_p90_max'][1]:10.5f} "
             f"{kp['auc_neuron_mean4_vs_random_ctl']:8.4f} {kp['wilcoxon_neuron_mean4_p']:10.2e} "
+            f"{(r.get('noop_bf16_floor_span_p50') or 0.0):10.5f} "
             f"{ks['target_p10_p50_p90_max'][1]:10.5f} {ks['control_p10_p50_p90_max'][1]:10.5f} "
             f"{ks['auc_neuron_mean4_vs_random_ctl']:8.4f} {ks['wilcoxon_neuron_mean4_p']:10.2e} "
             f"{ks['frac_neurons_mean4_gt_bf16_floor']:7.2%}"
