@@ -1,77 +1,139 @@
 {
- "elapsed_total_s": 468.5,
+ "exploratory": true,
+ "registered": false,
+ "gates_nothing": true,
+ "status_note": "Exploratory post-hoc proposal across all 25 whole census layers (L30-L54); fixed alpha=0.05; no page integration.",
+ "alpha": 0.05,
+ "elapsed_total_s": 1350.1,
+ "provenance": {
+  "git_commit": "00365c89cc309f95cb45398c2ec4e9138cd1b304",
+  "git_dirty": true,
+  "code_sha256": {
+   "scripts/census_fdr_read.py": "e57af7185112714aeb8a57bcba7fabc047d15b10a02bbff80e541f63ad0a80fc",
+   "backend/census_fdr.py": "0dd1a53f2363b61dd2e4d3faf1a4ed7a7fc80fd92443f3b4d2afa84e143639d0",
+   "backend/gap_stats.py": "3d3080ceb0923bf6b0dbc7c38919ca0348face8f82dce17e12c21fd68cf0a938",
+   "backend/gap_provenance.py": "3607fad89d5d1a76069bb68aeb1dfd653b9d368117dc80a800a269396107dcc6"
+  },
+  "started_at": "2026-11-25T05:42:47Z",
+  "finished_at": "2026-11-25T06:05:17Z",
+  "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "weights": {
+   "format": "compressed-tensors W4A16",
+   "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+   "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+   "id": "e0a93173c31ed2ec",
+   "linears": "packed",
+   "dtype": "bfloat16",
+   "device": "cuda:0",
+   "runtime": "TheodoliteRuntime"
+  },
+  "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+  "neuron_ids": "all"
+ },
  "runs": [
   {
    "tag": "L30_whole",
    "file": "L30-match_things.jsonl",
    "layer": 30,
    "design": "match_things",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 12,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 88.1,
-   "mass_c_auc": 0.6014,
-   "mass_c_res_auc": 0.6128,
-   "rep_AB_auc": 0.5569,
-   "rep_BA_auc": 0.5522,
-   "rep_AB_res_auc": 0.565,
-   "rep_BA_res_auc": 0.5611,
-   "rep_res_auc": 0.5674,
-   "T_dec_auc": 0.5627,
+   "elapsed_s": 103.6,
+   "mass_c_auc": 0.6276,
+   "mass_c_res_auc": 0.5994,
+   "rep_AB_auc": 0.5763,
+   "rep_BA_auc": 0.5745,
+   "rep_AB_res_auc": 0.5549,
+   "rep_BA_res_auc": 0.5535,
+   "rep_res_auc": 0.5588,
+   "T_dec_auc": 0.5484,
    "readlib_q05": 0,
    "readlib_named": 0,
    "fdp05": {
     "count": 0,
     "threshold": null,
     "fdp": null,
-    "above_max_ctl": 130
+    "above_max_ctl": 60,
+    "controls_above_thresh": 0
    },
-   "fdp10": {
-    "count": 291,
-    "threshold": 4.2079,
-    "fdp": 0.0721,
-    "above_max_ctl": 130
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 0,
+    "p50": 0,
+    "p90": 0,
+    "min": 0,
+    "max": 668,
+    "frac_zero": 0.95
    },
    "n3_covered": {
-    "covered": 20556,
+    "covered": 20732,
     "neurons": 21504,
-    "share_covered": 0.9559,
+    "share_covered": 0.9641,
     "n1_named_inside_covered": 0,
-    "mass_c_auc": 0.6038,
-    "mass_c_res_auc": 0.6091,
-    "rep_AB_auc": 0.5587,
-    "rep_BA_auc": 0.5545,
-    "rep_AB_res_auc": 0.5615,
-    "rep_BA_res_auc": 0.5592,
-    "rep_res_auc": 0.5648,
-    "T_dec_auc": 0.5606,
+    "mass_c_auc": 0.6277,
+    "mass_c_res_auc": 0.5982,
+    "rep_AB_auc": 0.5757,
+    "rep_BA_auc": 0.5745,
+    "rep_AB_res_auc": 0.5532,
+    "rep_BA_res_auc": 0.552,
+    "rep_res_auc": 0.557,
+    "T_dec_auc": 0.5458,
     "readlib_q05": 0,
     "readlib_named": 0,
     "fdp05": {
      "count": 0,
      "threshold": null,
      "fdp": null,
-     "above_max_ctl": 100
+     "above_max_ctl": 44,
+     "controls_above_thresh": 0
     },
-    "fdp10": {
-     "count": 242,
-     "threshold": 4.2083,
-     "fdp": 0.0829,
-     "above_max_ctl": 100
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 0,
+     "p50": 0,
+     "p90": 0,
+     "min": 0,
+     "max": 665,
+     "frac_zero": 0.965
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.5002,
-    "T_dec_auc_max": 0.5274,
+    "T_dec_auc_mean": 0.4981,
+    "T_dec_auc_max": 0.5282,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L30-match_things.collapse.json",
+    "n_collapse_words": 688,
+    "n_glue_wids": 55,
+    "alpha": 0.05
    },
    "oos_3way": {
     "fit_named": 0,
-    "fit_above_max_ctl": 70,
+    "fit_above_max_ctl": 32,
     "c4_auc": null,
     "frac_p05_on_C4": null
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 0,
+    "filtered_fdp05": 0,
+    "dropped_only_by_collapse": 0,
+    "gained_after_collapse_filter": 0
+   },
+   "registered": {
+    "q05": 0,
+    "named": 0,
+    "above_every_control": 49,
+    "page_described": 24,
+    "take_shorter_rule": false
    }
   },
   {
@@ -79,72 +141,301 @@
    "file": "L31-match_wide.jsonl",
    "layer": 31,
    "design": "match_wide",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 12,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 47.1,
-   "mass_c_auc": 0.6402,
-   "mass_c_res_auc": 0.6452,
-   "rep_AB_auc": 0.584,
-   "rep_BA_auc": 0.5859,
-   "rep_AB_res_auc": 0.5828,
-   "rep_BA_res_auc": 0.5861,
-   "rep_res_auc": 0.5933,
-   "T_dec_auc": 0.5918,
-   "readlib_q05": 1892,
-   "readlib_named": 1440,
+   "elapsed_s": 56.0,
+   "mass_c_auc": 0.6674,
+   "mass_c_res_auc": 0.642,
+   "rep_AB_auc": 0.5296,
+   "rep_BA_auc": 0.5333,
+   "rep_AB_res_auc": 0.5189,
+   "rep_BA_res_auc": 0.515,
+   "rep_res_auc": 0.5584,
+   "T_dec_auc": 0.4705,
+   "readlib_q05": 2699,
+   "readlib_named": 1901,
    "fdp05": {
-    "count": 494,
-    "threshold": 5.293,
-    "fdp": 0.0425,
-    "above_max_ctl": 270
+    "count": 1304,
+    "threshold": 21.3013,
+    "fdp": 0.0483,
+    "above_max_ctl": 158,
+    "controls_above_thresh": 5
    },
-   "fdp10": {
-    "count": 647,
-    "threshold": 4.7544,
-    "fdp": 0.0973,
-    "above_max_ctl": 270
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 671,
+    "p50": 1304,
+    "p90": 1609,
+    "min": 0,
+    "max": 1721,
+    "frac_zero": 0.09
    },
    "n3_covered": {
-    "covered": 20746,
+    "covered": 20989,
     "neurons": 21504,
-    "share_covered": 0.9648,
-    "n1_named_inside_covered": 426,
-    "mass_c_auc": 0.6423,
-    "mass_c_res_auc": 0.6419,
-    "rep_AB_auc": 0.5843,
-    "rep_BA_auc": 0.5857,
-    "rep_AB_res_auc": 0.5806,
-    "rep_BA_res_auc": 0.5821,
-    "rep_res_auc": 0.5898,
-    "T_dec_auc": 0.5881,
-    "readlib_q05": 1687,
-    "readlib_named": 1292,
+    "share_covered": 0.9761,
+    "n1_named_inside_covered": 1251,
+    "mass_c_auc": 0.6691,
+    "mass_c_res_auc": 0.6431,
+    "rep_AB_auc": 0.5283,
+    "rep_BA_auc": 0.5328,
+    "rep_AB_res_auc": 0.5143,
+    "rep_BA_res_auc": 0.5121,
+    "rep_res_auc": 0.5548,
+    "T_dec_auc": 0.467,
+    "readlib_q05": 2608,
+    "readlib_named": 1837,
     "fdp05": {
-     "count": 426,
-     "threshold": 5.2948,
-     "fdp": 0.0475,
-     "above_max_ctl": 216
+     "count": 1251,
+     "threshold": 21.3013,
+     "fdp": 0.0491,
+     "above_max_ctl": 140,
+     "controls_above_thresh": 5
     },
-    "fdp10": {
-     "count": 548,
-     "threshold": 4.8203,
-     "fdp": 0.0924,
-     "above_max_ctl": 216
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 632,
+     "p50": 1251,
+     "p90": 1549,
+     "min": 0,
+     "max": 1768,
+     "frac_zero": 0.05
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4958,
-    "T_dec_auc_max": 0.5164,
+    "T_dec_auc_mean": 0.4986,
+    "T_dec_auc_max": 0.5284,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L31-match_wide.collapse.json",
+    "n_collapse_words": 652,
+    "n_glue_wids": 17,
+    "alpha": 0.05
    },
    "oos_3way": {
-    "fit_named": 0,
-    "fit_above_max_ctl": 168,
-    "c4_auc": null,
-    "frac_p05_on_C4": null
+    "fit_named": 743,
+    "fit_above_max_ctl": 659,
+    "c4_auc_vs_paired_ctl": 0.9554,
+    "frac_z_gt_0": 0.8843,
+    "frac_p05_on_C4": 0.969,
+    "median_z_C4": 4.198
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 494,
+    "filtered_fdp05": 1304,
+    "dropped_only_by_collapse": 142,
+    "gained_after_collapse_filter": 952
+   },
+   "registered": {
+    "q05": 1893,
+    "named": 1443,
+    "above_every_control": 250,
+    "page_described": 50,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L32_whole",
+   "file": "L32-match_ceil.jsonl",
+   "layer": 32,
+   "design": "match_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 50.5,
+   "mass_c_auc": 0.7019,
+   "mass_c_res_auc": 0.6692,
+   "rep_AB_auc": 0.5954,
+   "rep_BA_auc": 0.6027,
+   "rep_AB_res_auc": 0.5578,
+   "rep_BA_res_auc": 0.56,
+   "rep_res_auc": 0.5985,
+   "T_dec_auc": 0.524,
+   "readlib_q05": 3070,
+   "readlib_named": 1987,
+   "fdp05": {
+    "count": 1052,
+    "threshold": 21.4576,
+    "fdp": 0.0499,
+    "above_max_ctl": 588,
+    "controls_above_thresh": 4
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 661,
+    "p50": 1052,
+    "p90": 1501,
+    "min": 588,
+    "max": 1686,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 20874,
+    "neurons": 21504,
+    "share_covered": 0.9707,
+    "n1_named_inside_covered": 926,
+    "mass_c_auc": 0.698,
+    "mass_c_res_auc": 0.6642,
+    "rep_AB_auc": 0.5914,
+    "rep_BA_auc": 0.5988,
+    "rep_AB_res_auc": 0.5538,
+    "rep_BA_res_auc": 0.5566,
+    "rep_res_auc": 0.5946,
+    "T_dec_auc": 0.5206,
+    "readlib_q05": 2466,
+    "readlib_named": 1687,
+    "fdp05": {
+     "count": 910,
+     "threshold": 22.1216,
+     "fdp": 0.0448,
+     "above_max_ctl": 510,
+     "controls_above_thresh": 3
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 578,
+     "p50": 926,
+     "p90": 1313,
+     "min": 510,
+     "max": 1519,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4984,
+    "T_dec_auc_max": 0.532,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L32-match_ceil.collapse.json",
+    "n_collapse_words": 253,
+    "n_glue_wids": 2,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 338,
+    "filtered_fdp05": 1052,
+    "dropped_only_by_collapse": 58,
+    "gained_after_collapse_filter": 772
+   },
+   "registered": {
+    "q05": 2946,
+    "named": 2075,
+    "above_every_control": 1245,
+    "page_described": 470,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L33_whole",
+   "file": "L33-match_ceil.jsonl",
+   "layer": 33,
+   "design": "match_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 51.1,
+   "mass_c_auc": 0.741,
+   "mass_c_res_auc": 0.6989,
+   "rep_AB_auc": 0.6546,
+   "rep_BA_auc": 0.6497,
+   "rep_AB_res_auc": 0.5801,
+   "rep_BA_res_auc": 0.5817,
+   "rep_res_auc": 0.6212,
+   "T_dec_auc": 0.5375,
+   "readlib_q05": 5546,
+   "readlib_named": 3691,
+   "fdp05": {
+    "count": 2965,
+    "threshold": 11.1468,
+    "fdp": 0.0496,
+    "above_max_ctl": 531,
+    "controls_above_thresh": 13
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 2328,
+    "p50": 2965,
+    "p90": 3374,
+    "min": 2232,
+    "max": 3642,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 21045,
+    "neurons": 21504,
+    "share_covered": 0.9787,
+    "n1_named_inside_covered": 2860,
+    "mass_c_auc": 0.7404,
+    "mass_c_res_auc": 0.6978,
+    "rep_AB_auc": 0.6534,
+    "rep_BA_auc": 0.6489,
+    "rep_AB_res_auc": 0.5797,
+    "rep_BA_res_auc": 0.5806,
+    "rep_res_auc": 0.6207,
+    "T_dec_auc": 0.5371,
+    "readlib_q05": 5363,
+    "readlib_named": 3559,
+    "fdp05": {
+     "count": 2824,
+     "threshold": 11.2311,
+     "fdp": 0.0473,
+     "above_max_ctl": 502,
+     "controls_above_thresh": 12
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 2319,
+     "p50": 2860,
+     "p90": 3175,
+     "min": 1827,
+     "max": 3584,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4984,
+    "T_dec_auc_max": 0.5352,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L33-match_ceil.collapse.json",
+    "n_collapse_words": 248,
+    "n_glue_wids": 21,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 3070,
+    "filtered_fdp05": 2965,
+    "dropped_only_by_collapse": 896,
+    "gained_after_collapse_filter": 791
+   },
+   "registered": {
+    "q05": 5576,
+    "named": 3600,
+    "above_every_control": 1041,
+    "page_described": 423,
+    "take_shorter_rule": false
    }
   },
   {
@@ -152,66 +443,97 @@
    "file": "L34-match_ceil.jsonl",
    "layer": 34,
    "design": "match_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 6,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 42.3,
-   "mass_c_auc": 0.7604,
-   "mass_c_res_auc": 0.7521,
-   "rep_AB_auc": 0.6932,
-   "rep_BA_auc": 0.6985,
-   "rep_AB_res_auc": 0.6799,
-   "rep_BA_res_auc": 0.6889,
-   "rep_res_auc": 0.7035,
-   "T_dec_auc": 0.6793,
-   "readlib_q05": 0,
-   "readlib_named": 0,
+   "elapsed_s": 51.3,
+   "mass_c_auc": 0.7549,
+   "mass_c_res_auc": 0.7097,
+   "rep_AB_auc": 0.6757,
+   "rep_BA_auc": 0.7008,
+   "rep_AB_res_auc": 0.6207,
+   "rep_BA_res_auc": 0.641,
+   "rep_res_auc": 0.6503,
+   "T_dec_auc": 0.5975,
+   "readlib_q05": 243,
+   "readlib_named": 243,
    "fdp05": {
-    "count": 4061,
-    "threshold": 3.9068,
-    "fdp": 0.0491,
-    "above_max_ctl": 321
+    "count": 3517,
+    "threshold": 7.3624,
+    "fdp": 0.0477,
+    "above_max_ctl": 833,
+    "controls_above_thresh": 15
    },
-   "fdp10": {
-    "count": 5167,
-    "threshold": 2.9465,
-    "fdp": 0.0995,
-    "above_max_ctl": 321
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 3408,
+    "p50": 3517,
+    "p90": 3989,
+    "min": 2271,
+    "max": 4740,
+    "frac_zero": 0.0
    },
    "n3_covered": {
-    "covered": 21077,
+    "covered": 21138,
     "neurons": 21504,
-    "share_covered": 0.9801,
-    "n1_named_inside_covered": 3945,
-    "mass_c_auc": 0.7621,
-    "mass_c_res_auc": 0.7496,
-    "rep_AB_auc": 0.6933,
-    "rep_BA_auc": 0.6987,
-    "rep_AB_res_auc": 0.678,
-    "rep_BA_res_auc": 0.6867,
-    "rep_res_auc": 0.7014,
-    "T_dec_auc": 0.6767,
-    "readlib_q05": 0,
-    "readlib_named": 0,
+    "share_covered": 0.983,
+    "n1_named_inside_covered": 3427,
+    "mass_c_auc": 0.755,
+    "mass_c_res_auc": 0.7078,
+    "rep_AB_auc": 0.6749,
+    "rep_BA_auc": 0.7002,
+    "rep_AB_res_auc": 0.6187,
+    "rep_BA_res_auc": 0.6387,
+    "rep_res_auc": 0.6482,
+    "T_dec_auc": 0.5948,
+    "readlib_q05": 234,
+    "readlib_named": 234,
     "fdp05": {
-     "count": 3945,
-     "threshold": 3.9068,
-     "fdp": 0.0495,
-     "above_max_ctl": 300
+     "count": 3427,
+     "threshold": 7.3624,
+     "fdp": 0.0482,
+     "above_max_ctl": 800,
+     "controls_above_thresh": 15
     },
-    "fdp10": {
-     "count": 5012,
-     "threshold": 2.9651,
-     "fdp": 0.0985,
-     "above_max_ctl": 300
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 3340,
+     "p50": 3427,
+     "p90": 3817,
+     "min": 1810,
+     "max": 4643,
+     "frac_zero": 0.0
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4977,
-    "T_dec_auc_max": 0.5255,
+    "T_dec_auc_mean": 0.4973,
+    "T_dec_auc_max": 0.5384,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L34-match_ceil.collapse.json",
+    "n_collapse_words": 273,
+    "n_glue_wids": 38,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 4068,
+    "filtered_fdp05": 3517,
+    "dropped_only_by_collapse": 1154,
+    "gained_after_collapse_filter": 603
+   },
+   "registered": {
+    "q05": 0,
+    "named": 0,
+    "above_every_control": 110,
+    "page_described": 95,
+    "take_shorter_rule": false
    }
   },
   {
@@ -219,66 +541,97 @@
    "file": "L35-match_ceil.jsonl",
    "layer": 35,
    "design": "match_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 6,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 41.7,
-   "mass_c_auc": 0.6748,
-   "mass_c_res_auc": 0.6493,
-   "rep_AB_auc": 0.6326,
-   "rep_BA_auc": 0.6306,
-   "rep_AB_res_auc": 0.6053,
-   "rep_BA_res_auc": 0.6038,
-   "rep_res_auc": 0.6148,
-   "T_dec_auc": 0.5937,
+   "elapsed_s": 50.8,
+   "mass_c_auc": 0.6645,
+   "mass_c_res_auc": 0.619,
+   "rep_AB_auc": 0.6127,
+   "rep_BA_auc": 0.6151,
+   "rep_AB_res_auc": 0.5566,
+   "rep_BA_res_auc": 0.5688,
+   "rep_res_auc": 0.5766,
+   "T_dec_auc": 0.5335,
    "readlib_q05": 0,
    "readlib_named": 0,
    "fdp05": {
-    "count": 647,
-    "threshold": 7.9736,
-    "fdp": 0.0487,
-    "above_max_ctl": 433
+    "count": 301,
+    "threshold": 19.7173,
+    "fdp": 0.0349,
+    "above_max_ctl": 301,
+    "controls_above_thresh": 0
    },
-   "fdp10": {
-    "count": 1562,
-    "threshold": 5.0169,
-    "fdp": 0.0941,
-    "above_max_ctl": 433
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 301,
+    "p50": 582,
+    "p90": 1067,
+    "min": 301,
+    "max": 2057,
+    "frac_zero": 0.0
    },
    "n3_covered": {
-    "covered": 20619,
+    "covered": 20660,
     "neurons": 21504,
-    "share_covered": 0.9588,
-    "n1_named_inside_covered": 592,
-    "mass_c_auc": 0.6719,
-    "mass_c_res_auc": 0.6475,
-    "rep_AB_auc": 0.6267,
-    "rep_BA_auc": 0.6251,
-    "rep_AB_res_auc": 0.6042,
-    "rep_BA_res_auc": 0.6029,
-    "rep_res_auc": 0.6139,
-    "T_dec_auc": 0.5932,
+    "share_covered": 0.9608,
+    "n1_named_inside_covered": 277,
+    "mass_c_auc": 0.6616,
+    "mass_c_res_auc": 0.6163,
+    "rep_AB_auc": 0.6075,
+    "rep_BA_auc": 0.6108,
+    "rep_AB_res_auc": 0.5565,
+    "rep_BA_res_auc": 0.5677,
+    "rep_res_auc": 0.5763,
+    "T_dec_auc": 0.534,
     "readlib_q05": 0,
     "readlib_named": 0,
     "fdp05": {
-     "count": 536,
-     "threshold": 8.2824,
-     "fdp": 0.0375,
-     "above_max_ctl": 395
+     "count": 277,
+     "threshold": 19.7173,
+     "fdp": 0.0364,
+     "above_max_ctl": 277,
+     "controls_above_thresh": 0
     },
-    "fdp10": {
-     "count": 1433,
-     "threshold": 5.0169,
-     "fdp": 0.0983,
-     "above_max_ctl": 395
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 277,
+     "p50": 330,
+     "p90": 862,
+     "min": 277,
+     "max": 1927,
+     "frac_zero": 0.0
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4969,
-    "T_dec_auc_max": 0.5234,
+    "T_dec_auc_mean": 0.5003,
+    "T_dec_auc_max": 0.5327,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L35-match_ceil.collapse.json",
+    "n_collapse_words": 294,
+    "n_glue_wids": 81,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 647,
+    "filtered_fdp05": 301,
+    "dropped_only_by_collapse": 377,
+    "gained_after_collapse_filter": 31
+   },
+   "registered": {
+    "q05": 0,
+    "named": 0,
+    "above_every_control": 35,
+    "page_described": 12,
+    "take_shorter_rule": false
    }
   },
   {
@@ -286,66 +639,97 @@
    "file": "L36-match_ceil.jsonl",
    "layer": 36,
    "design": "match_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 6,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 41.0,
-   "mass_c_auc": 0.6312,
-   "mass_c_res_auc": 0.65,
-   "rep_AB_auc": 0.5884,
-   "rep_BA_auc": 0.5964,
-   "rep_AB_res_auc": 0.5902,
-   "rep_BA_res_auc": 0.6076,
-   "rep_res_auc": 0.6103,
-   "T_dec_auc": 0.5979,
+   "elapsed_s": 50.4,
+   "mass_c_auc": 0.6256,
+   "mass_c_res_auc": 0.614,
+   "rep_AB_auc": 0.5736,
+   "rep_BA_auc": 0.5879,
+   "rep_AB_res_auc": 0.5448,
+   "rep_BA_res_auc": 0.5691,
+   "rep_res_auc": 0.5655,
+   "T_dec_auc": 0.5407,
    "readlib_q05": 0,
    "readlib_named": 0,
    "fdp05": {
     "count": 0,
     "threshold": null,
     "fdp": null,
-    "above_max_ctl": 16
+    "above_max_ctl": 21,
+    "controls_above_thresh": 0
    },
-   "fdp10": {
-    "count": 1580,
-    "threshold": 4.9123,
-    "fdp": 0.0996,
-    "above_max_ctl": 16
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 0,
+    "p50": 0,
+    "p90": 1096,
+    "min": 0,
+    "max": 1768,
+    "frac_zero": 0.705
    },
    "n3_covered": {
-    "covered": 20870,
+    "covered": 20914,
     "neurons": 21504,
-    "share_covered": 0.9705,
+    "share_covered": 0.9726,
     "n1_named_inside_covered": 0,
-    "mass_c_auc": 0.6286,
-    "mass_c_res_auc": 0.6504,
-    "rep_AB_auc": 0.5837,
-    "rep_BA_auc": 0.592,
-    "rep_AB_res_auc": 0.591,
-    "rep_BA_res_auc": 0.607,
-    "rep_res_auc": 0.611,
-    "T_dec_auc": 0.5989,
+    "mass_c_auc": 0.6228,
+    "mass_c_res_auc": 0.6141,
+    "rep_AB_auc": 0.5689,
+    "rep_BA_auc": 0.5845,
+    "rep_AB_res_auc": 0.5454,
+    "rep_BA_res_auc": 0.5687,
+    "rep_res_auc": 0.5658,
+    "T_dec_auc": 0.5418,
     "readlib_q05": 0,
     "readlib_named": 0,
     "fdp05": {
      "count": 0,
      "threshold": null,
      "fdp": null,
-     "above_max_ctl": 13
+     "above_max_ctl": 18,
+     "controls_above_thresh": 0
     },
-    "fdp10": {
-     "count": 1348,
-     "threshold": 5.2263,
-     "fdp": 0.0982,
-     "above_max_ctl": 13
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 0,
+     "p50": 0,
+     "p90": 876,
+     "min": 0,
+     "max": 1639,
+     "frac_zero": 0.825
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4949,
-    "T_dec_auc_max": 0.5337,
+    "T_dec_auc_mean": 0.4959,
+    "T_dec_auc_max": 0.5273,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L36-match_ceil.collapse.json",
+    "n_collapse_words": 253,
+    "n_glue_wids": 57,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 0,
+    "filtered_fdp05": 0,
+    "dropped_only_by_collapse": 0,
+    "gained_after_collapse_filter": 0
+   },
+   "registered": {
+    "q05": 0,
+    "named": 0,
+    "above_every_control": 18,
+    "page_described": 10,
+    "take_shorter_rule": true
    }
   },
   {
@@ -353,66 +737,1567 @@
    "file": "L37-match_ceil.jsonl",
    "layer": 37,
    "design": "match_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 6,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 41.8,
-   "mass_c_auc": 0.6609,
-   "mass_c_res_auc": 0.6989,
-   "rep_AB_auc": 0.6259,
-   "rep_BA_auc": 0.6293,
-   "rep_AB_res_auc": 0.6347,
-   "rep_BA_res_auc": 0.6407,
-   "rep_res_auc": 0.6476,
-   "T_dec_auc": 0.6387,
-   "readlib_q05": 2330,
-   "readlib_named": 2277,
+   "elapsed_s": 49.9,
+   "mass_c_auc": 0.6566,
+   "mass_c_res_auc": 0.6491,
+   "rep_AB_auc": 0.6243,
+   "rep_BA_auc": 0.6128,
+   "rep_AB_res_auc": 0.5689,
+   "rep_BA_res_auc": 0.6019,
+   "rep_res_auc": 0.5988,
+   "T_dec_auc": 0.5609,
+   "readlib_q05": 245,
+   "readlib_named": 244,
    "fdp05": {
-    "count": 3360,
-    "threshold": 5.4505,
-    "fdp": 0.05,
-    "above_max_ctl": 1295
+    "count": 2596,
+    "threshold": 9.3132,
+    "fdp": 0.0485,
+    "above_max_ctl": 775,
+    "controls_above_thresh": 11
    },
-   "fdp10": {
-    "count": 4333,
-    "threshold": 3.782,
-    "fdp": 0.0969,
-    "above_max_ctl": 1295
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 2043,
+    "p50": 2596,
+    "p90": 2843,
+    "min": 1729,
+    "max": 3109,
+    "frac_zero": 0.0
    },
    "n3_covered": {
-    "covered": 19225,
+    "covered": 19211,
     "neurons": 21504,
-    "share_covered": 0.894,
-    "n1_named_inside_covered": 2511,
-    "mass_c_auc": 0.6463,
-    "mass_c_res_auc": 0.687,
-    "rep_AB_auc": 0.6073,
-    "rep_BA_auc": 0.6093,
-    "rep_AB_res_auc": 0.6251,
-    "rep_BA_res_auc": 0.6302,
-    "rep_res_auc": 0.6382,
-    "T_dec_auc": 0.6315,
-    "readlib_q05": 323,
-    "readlib_named": 323,
+    "share_covered": 0.8934,
+    "n1_named_inside_covered": 1874,
+    "mass_c_auc": 0.6423,
+    "mass_c_res_auc": 0.6326,
+    "rep_AB_auc": 0.6079,
+    "rep_BA_auc": 0.5959,
+    "rep_AB_res_auc": 0.5644,
+    "rep_BA_res_auc": 0.5865,
+    "rep_res_auc": 0.5888,
+    "T_dec_auc": 0.5575,
+    "readlib_q05": 0,
+    "readlib_named": 0,
     "fdp05": {
-     "count": 2347,
-     "threshold": 5.8984,
-     "fdp": 0.048,
-     "above_max_ctl": 906
+     "count": 1590,
+     "threshold": 10.9237,
+     "fdp": 0.0472,
+     "above_max_ctl": 516,
+     "controls_above_thresh": 7
     },
-    "fdp10": {
-     "count": 3101,
-     "threshold": 4.1702,
-     "fdp": 0.0998,
-     "above_max_ctl": 906
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 1210,
+     "p50": 1654,
+     "p90": 1943,
+     "min": 516,
+     "max": 2167,
+     "frac_zero": 0.0
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4961,
+    "T_dec_auc_mean": 0.4965,
+    "T_dec_auc_max": 0.5211,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L37-match_ceil.collapse.json",
+    "n_collapse_words": 292,
+    "n_glue_wids": 171,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 3347,
+    "filtered_fdp05": 2596,
+    "dropped_only_by_collapse": 1103,
+    "gained_after_collapse_filter": 352
+   },
+   "registered": {
+    "q05": 2332,
+    "named": 2279,
+    "above_every_control": 454,
+    "page_described": 147,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L38_whole",
+   "file": "L38-soft_ceil.jsonl",
+   "layer": 38,
+   "design": "soft_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 49.8,
+   "mass_c_auc": 0.681,
+   "mass_c_res_auc": 0.711,
+   "rep_AB_auc": 0.6482,
+   "rep_BA_auc": 0.6317,
+   "rep_AB_res_auc": 0.606,
+   "rep_BA_res_auc": 0.6205,
+   "rep_res_auc": 0.6239,
+   "T_dec_auc": 0.5857,
+   "readlib_q05": 5763,
+   "readlib_named": 4596,
+   "fdp05": {
+    "count": 4422,
+    "threshold": 5.6653,
+    "fdp": 0.0498,
+    "above_max_ctl": 364,
+    "controls_above_thresh": 20
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 3966,
+    "p50": 4422,
+    "p90": 4733,
+    "min": 3642,
+    "max": 5114,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 18286,
+    "neurons": 21504,
+    "share_covered": 0.8504,
+    "n1_named_inside_covered": 2799,
+    "mass_c_auc": 0.6514,
+    "mass_c_res_auc": 0.6785,
+    "rep_AB_auc": 0.6145,
+    "rep_BA_auc": 0.5974,
+    "rep_AB_res_auc": 0.6011,
+    "rep_BA_res_auc": 0.606,
+    "rep_res_auc": 0.6166,
+    "T_dec_auc": 0.5816,
+    "readlib_q05": 3494,
+    "readlib_named": 2727,
+    "fdp05": {
+     "count": 2290,
+     "threshold": 8.511,
+     "fdp": 0.0468,
+     "above_max_ctl": 142,
+     "controls_above_thresh": 11
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 2176,
+     "p50": 2290,
+     "p90": 2872,
+     "min": 0,
+     "max": 3014,
+     "frac_zero": 0.04
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.5,
+    "T_dec_auc_max": 0.5321,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L38-soft_ceil.collapse.json",
+    "n_collapse_words": 256,
+    "n_glue_wids": 143,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5330,
+    "filtered_fdp05": 4422,
+    "dropped_only_by_collapse": 1257,
+    "gained_after_collapse_filter": 349
+   },
+   "registered": {
+    "q05": 7003,
+    "named": 5623,
+    "above_every_control": 358,
+    "page_described": 111,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L39_whole",
+   "file": "L39-break_rel.jsonl",
+   "layer": 39,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 46.1,
+   "mass_c_auc": 0.677,
+   "mass_c_res_auc": 0.7544,
+   "rep_AB_auc": 0.6634,
+   "rep_BA_auc": 0.6382,
+   "rep_AB_res_auc": 0.7123,
+   "rep_BA_res_auc": 0.6894,
+   "rep_res_auc": 0.7156,
+   "T_dec_auc": 0.7103,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 2120,
+    "threshold": 5.8583,
+    "fdp": 0.0495,
+    "above_max_ctl": 663,
+    "controls_above_thresh": 9
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 1689,
+    "p50": 2120,
+    "p90": 2442,
+    "min": 663,
+    "max": 4117,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 20321,
+    "neurons": 21504,
+    "share_covered": 0.945,
+    "n1_named_inside_covered": 1967,
+    "mass_c_auc": 0.6918,
+    "mass_c_res_auc": 0.7478,
+    "rep_AB_auc": 0.6655,
+    "rep_BA_auc": 0.6419,
+    "rep_AB_res_auc": 0.7032,
+    "rep_BA_res_auc": 0.6804,
+    "rep_res_auc": 0.7065,
+    "T_dec_auc": 0.7004,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 1954,
+     "threshold": 5.8765,
+     "fdp": 0.0457,
+     "above_max_ctl": 610,
+     "controls_above_thresh": 8
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 1736,
+     "p50": 1954,
+     "p90": 2273,
+     "min": 610,
+     "max": 3815,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4992,
+    "T_dec_auc_max": 0.5215,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L39-break_rel.collapse.json",
+    "n_collapse_words": 312,
+    "n_glue_wids": 3680,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 2811,
+    "filtered_fdp05": 2120,
+    "dropped_only_by_collapse": 905,
+    "gained_after_collapse_filter": 214
+   },
+   "registered": {
+    "q05": 436,
+    "named": 434,
+    "above_every_control": 87,
+    "page_described": 70,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L40_whole",
+   "file": "L40-break_rel.jsonl",
+   "layer": 40,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 47.0,
+   "mass_c_auc": 0.7684,
+   "mass_c_res_auc": 0.7227,
+   "rep_AB_auc": 0.6947,
+   "rep_BA_auc": 0.6908,
+   "rep_AB_res_auc": 0.64,
+   "rep_BA_res_auc": 0.6338,
+   "rep_res_auc": 0.6358,
+   "T_dec_auc": 0.6142,
+   "readlib_q05": 4202,
+   "readlib_named": 4064,
+   "fdp05": {
+    "count": 5370,
+    "threshold": 4.0481,
+    "fdp": 0.0489,
+    "above_max_ctl": 1351,
+    "controls_above_thresh": 24
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 4746,
+    "p50": 5370,
+    "p90": 5869,
+    "min": 3595,
+    "max": 6119,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 18568,
+    "neurons": 21504,
+    "share_covered": 0.8635,
+    "n1_named_inside_covered": 4543,
+    "mass_c_auc": 0.7897,
+    "mass_c_res_auc": 0.7209,
+    "rep_AB_auc": 0.7001,
+    "rep_BA_auc": 0.6995,
+    "rep_AB_res_auc": 0.6343,
+    "rep_BA_res_auc": 0.6301,
+    "rep_res_auc": 0.6319,
+    "T_dec_auc": 0.6092,
+    "readlib_q05": 4377,
+    "readlib_named": 4141,
+    "fdp05": {
+     "count": 4543,
+     "threshold": 4.0481,
+     "fdp": 0.0499,
+     "above_max_ctl": 1144,
+     "controls_above_thresh": 24
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 4048,
+     "p50": 4551,
+     "p90": 4922,
+     "min": 2793,
+     "max": 5103,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4976,
+    "T_dec_auc_max": 0.5246,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L40-break_rel.collapse.json",
+    "n_collapse_words": 336,
+    "n_glue_wids": 3846,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5347,
+    "filtered_fdp05": 5370,
+    "dropped_only_by_collapse": 802,
+    "gained_after_collapse_filter": 825
+   },
+   "registered": {
+    "q05": 4659,
+    "named": 4336,
+    "above_every_control": 1259,
+    "page_described": 743,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L41_whole",
+   "file": "L41-break_rel.jsonl",
+   "layer": 41,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 46.2,
+   "mass_c_auc": 0.6934,
+   "mass_c_res_auc": 0.7387,
+   "rep_AB_auc": 0.6619,
+   "rep_BA_auc": 0.6584,
+   "rep_AB_res_auc": 0.691,
+   "rep_BA_res_auc": 0.6823,
+   "rep_res_auc": 0.7033,
+   "T_dec_auc": 0.6938,
+   "readlib_q05": 3288,
+   "readlib_named": 3194,
+   "fdp05": {
+    "count": 3914,
+    "threshold": 4.3583,
+    "fdp": 0.0483,
+    "above_max_ctl": 490,
+    "controls_above_thresh": 17
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 3456,
+    "p50": 3914,
+    "p90": 4645,
+    "min": 2992,
+    "max": 5031,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 19722,
+    "neurons": 21504,
+    "share_covered": 0.9171,
+    "n1_named_inside_covered": 3428,
+    "mass_c_auc": 0.7064,
+    "mass_c_res_auc": 0.7336,
+    "rep_AB_auc": 0.6605,
+    "rep_BA_auc": 0.6578,
+    "rep_AB_res_auc": 0.6791,
+    "rep_BA_res_auc": 0.6714,
+    "rep_res_auc": 0.6911,
+    "T_dec_auc": 0.6797,
+    "readlib_q05": 2996,
+    "readlib_named": 2908,
+    "fdp05": {
+     "count": 3416,
+     "threshold": 4.3807,
+     "fdp": 0.0479,
+     "above_max_ctl": 412,
+     "controls_above_thresh": 16
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 2996,
+     "p50": 3416,
+     "p90": 3883,
+     "min": 2527,
+     "max": 4431,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4997,
+    "T_dec_auc_max": 0.5308,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L41-break_rel.collapse.json",
+    "n_collapse_words": 168,
+    "n_glue_wids": 3701,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 4260,
+    "filtered_fdp05": 3914,
+    "dropped_only_by_collapse": 660,
+    "gained_after_collapse_filter": 314
+   },
+   "registered": {
+    "q05": 3534,
+    "named": 3293,
+    "above_every_control": 95,
+    "page_described": 79,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L42_whole",
+   "file": "L42-break_rel.jsonl",
+   "layer": 42,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 45.6,
+   "mass_c_auc": 0.6962,
+   "mass_c_res_auc": 0.7141,
+   "rep_AB_auc": 0.665,
+   "rep_BA_auc": 0.6561,
+   "rep_AB_res_auc": 0.6713,
+   "rep_BA_res_auc": 0.6637,
+   "rep_res_auc": 0.6802,
+   "T_dec_auc": 0.6655,
+   "readlib_q05": 6096,
+   "readlib_named": 5142,
+   "fdp05": {
+    "count": 5381,
+    "threshold": 3.8142,
+    "fdp": 0.0488,
+    "above_max_ctl": 2137,
+    "controls_above_thresh": 24
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 5221,
+    "p50": 5387,
+    "p90": 5682,
+    "min": 4527,
+    "max": 6034,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 19088,
+    "neurons": 21504,
+    "share_covered": 0.8876,
+    "n1_named_inside_covered": 3918,
+    "mass_c_auc": 0.6946,
+    "mass_c_res_auc": 0.695,
+    "rep_AB_auc": 0.6424,
+    "rep_BA_auc": 0.636,
+    "rep_AB_res_auc": 0.6407,
+    "rep_BA_res_auc": 0.6297,
+    "rep_res_auc": 0.6471,
+    "T_dec_auc": 0.6301,
+    "readlib_q05": 4744,
+    "readlib_named": 3961,
+    "fdp05": {
+     "count": 3795,
+     "threshold": 4.0268,
+     "fdp": 0.0491,
+     "above_max_ctl": 1400,
+     "controls_above_thresh": 19
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 3603,
+     "p50": 3798,
+     "p90": 3958,
+     "min": 2736,
+     "max": 4460,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4985,
+    "T_dec_auc_max": 0.5237,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L42-break_rel.collapse.json",
+    "n_collapse_words": 164,
+    "n_glue_wids": 2056,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5702,
+    "filtered_fdp05": 5381,
+    "dropped_only_by_collapse": 780,
+    "gained_after_collapse_filter": 459
+   },
+   "registered": {
+    "q05": 5477,
+    "named": 4648,
+    "above_every_control": 2580,
+    "page_described": 2087,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L43_whole",
+   "file": "L43-break_rel.jsonl",
+   "layer": 43,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 45.7,
+   "mass_c_auc": 0.7383,
+   "mass_c_res_auc": 0.7566,
+   "rep_AB_auc": 0.6975,
+   "rep_BA_auc": 0.6829,
+   "rep_AB_res_auc": 0.706,
+   "rep_BA_res_auc": 0.6902,
+   "rep_res_auc": 0.7084,
+   "T_dec_auc": 0.695,
+   "readlib_q05": 8089,
+   "readlib_named": 6919,
+   "fdp05": {
+    "count": 7736,
+    "threshold": 2.7078,
+    "fdp": 0.0488,
+    "above_max_ctl": 2836,
+    "controls_above_thresh": 35
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 7564,
+    "p50": 7736,
+    "p90": 7959,
+    "min": 6859,
+    "max": 8062,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 18882,
+    "neurons": 21504,
+    "share_covered": 0.8781,
+    "n1_named_inside_covered": 5863,
+    "mass_c_auc": 0.7316,
+    "mass_c_res_auc": 0.7316,
+    "rep_AB_auc": 0.6759,
+    "rep_BA_auc": 0.6608,
+    "rep_AB_res_auc": 0.6734,
+    "rep_BA_res_auc": 0.6573,
+    "rep_res_auc": 0.6754,
+    "T_dec_auc": 0.66,
+    "readlib_q05": 6422,
+    "readlib_named": 5400,
+    "fdp05": {
+     "count": 5736,
+     "threshold": 3.0054,
+     "fdp": 0.0498,
+     "above_max_ctl": 1916,
+     "controls_above_thresh": 30
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5356,
+     "p50": 5736,
+     "p90": 5936,
+     "min": 4354,
+     "max": 6037,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4996,
+    "T_dec_auc_max": 0.5316,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L43-break_rel.collapse.json",
+    "n_collapse_words": 246,
+    "n_glue_wids": 3020,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 7570,
+    "filtered_fdp05": 7736,
+    "dropped_only_by_collapse": 631,
+    "gained_after_collapse_filter": 797
+   },
+   "registered": {
+    "q05": 8070,
+    "named": 6469,
+    "above_every_control": 2543,
+    "page_described": 1909,
+    "take_shorter_rule": true
+   }
+  },
+  {
+   "tag": "L44_whole",
+   "file": "L44-break_rel.jsonl",
+   "layer": 44,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 45.2,
+   "mass_c_auc": 0.7695,
+   "mass_c_res_auc": 0.7838,
+   "rep_AB_auc": 0.7234,
+   "rep_BA_auc": 0.715,
+   "rep_AB_res_auc": 0.7325,
+   "rep_BA_res_auc": 0.7254,
+   "rep_res_auc": 0.7423,
+   "T_dec_auc": 0.722,
+   "readlib_q05": 9920,
+   "readlib_named": 8076,
+   "fdp05": {
+    "count": 8746,
+    "threshold": 3.5027,
+    "fdp": 0.0492,
+    "above_max_ctl": 3946,
+    "controls_above_thresh": 40
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 8473,
+    "p50": 8746,
+    "p90": 8875,
+    "min": 8329,
+    "max": 9145,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 18539,
+    "neurons": 21504,
+    "share_covered": 0.8621,
+    "n1_named_inside_covered": 6454,
+    "mass_c_auc": 0.7569,
+    "mass_c_res_auc": 0.7576,
+    "rep_AB_auc": 0.6947,
+    "rep_BA_auc": 0.6884,
+    "rep_AB_res_auc": 0.6966,
+    "rep_BA_res_auc": 0.6909,
+    "rep_res_auc": 0.7074,
+    "T_dec_auc": 0.6846,
+    "readlib_q05": 7703,
+    "readlib_named": 6112,
+    "fdp05": {
+     "count": 6288,
+     "threshold": 3.9471,
+     "fdp": 0.0489,
+     "above_max_ctl": 2648,
+     "controls_above_thresh": 33
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 6175,
+     "p50": 6314,
+     "p90": 6499,
+     "min": 5805,
+     "max": 6703,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.5054,
     "T_dec_auc_max": 0.5294,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L44-break_rel.collapse.json",
+    "n_collapse_words": 193,
+    "n_glue_wids": 3510,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 8887,
+    "filtered_fdp05": 8746,
+    "dropped_only_by_collapse": 829,
+    "gained_after_collapse_filter": 688
+   },
+   "registered": {
+    "q05": 9133,
+    "named": 7145,
+    "above_every_control": 4794,
+    "page_described": 4478,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L45_whole",
+   "file": "L45-break_rel.jsonl",
+   "layer": 45,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 44.8,
+   "mass_c_auc": 0.7114,
+   "mass_c_res_auc": 0.733,
+   "rep_AB_auc": 0.6649,
+   "rep_BA_auc": 0.663,
+   "rep_AB_res_auc": 0.6738,
+   "rep_BA_res_auc": 0.6739,
+   "rep_res_auc": 0.6843,
+   "T_dec_auc": 0.6674,
+   "readlib_q05": 7620,
+   "readlib_named": 6118,
+   "fdp05": {
+    "count": 6620,
+    "threshold": 3.6838,
+    "fdp": 0.0491,
+    "above_max_ctl": 4264,
+    "controls_above_thresh": 30
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 6452,
+    "p50": 6700,
+    "p90": 6865,
+    "min": 6234,
+    "max": 7153,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 19414,
+    "neurons": 21504,
+    "share_covered": 0.9028,
+    "n1_named_inside_covered": 5094,
+    "mass_c_auc": 0.7034,
+    "mass_c_res_auc": 0.7092,
+    "rep_AB_auc": 0.6427,
+    "rep_BA_auc": 0.6407,
+    "rep_AB_res_auc": 0.6436,
+    "rep_BA_res_auc": 0.6428,
+    "rep_res_auc": 0.6535,
+    "T_dec_auc": 0.6353,
+    "readlib_q05": 6263,
+    "readlib_named": 4928,
+    "fdp05": {
+     "count": 5043,
+     "threshold": 3.8273,
+     "fdp": 0.0488,
+     "above_max_ctl": 3025,
+     "controls_above_thresh": 25
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 4752,
+     "p50": 5043,
+     "p90": 5193,
+     "min": 4480,
+     "max": 5332,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.499,
+    "T_dec_auc_max": 0.5254,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L45-break_rel.collapse.json",
+    "n_collapse_words": 409,
+    "n_glue_wids": 4347,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 6538,
+    "filtered_fdp05": 6620,
+    "dropped_only_by_collapse": 727,
+    "gained_after_collapse_filter": 809
+   },
+   "registered": {
+    "q05": 6308,
+    "named": 5123,
+    "above_every_control": 1580,
+    "page_described": 1023,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L46_whole",
+   "file": "L46-break_rel.jsonl",
+   "layer": 46,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 44.7,
+   "mass_c_auc": 0.7272,
+   "mass_c_res_auc": 0.7464,
+   "rep_AB_auc": 0.7015,
+   "rep_BA_auc": 0.6874,
+   "rep_AB_res_auc": 0.7066,
+   "rep_BA_res_auc": 0.6956,
+   "rep_res_auc": 0.7179,
+   "T_dec_auc": 0.6969,
+   "readlib_q05": 8103,
+   "readlib_named": 6672,
+   "fdp05": {
+    "count": 7495,
+    "threshold": 3.1068,
+    "fdp": 0.049,
+    "above_max_ctl": 4347,
+    "controls_above_thresh": 34
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 7428,
+    "p50": 7507,
+    "p90": 7686,
+    "min": 7041,
+    "max": 7854,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 18982,
+    "neurons": 21504,
+    "share_covered": 0.8827,
+    "n1_named_inside_covered": 5705,
+    "mass_c_auc": 0.7185,
+    "mass_c_res_auc": 0.7226,
+    "rep_AB_auc": 0.6785,
+    "rep_BA_auc": 0.6629,
+    "rep_AB_res_auc": 0.677,
+    "rep_BA_res_auc": 0.6635,
+    "rep_res_auc": 0.687,
+    "T_dec_auc": 0.6645,
+    "readlib_q05": 6554,
+    "readlib_named": 5271,
+    "fdp05": {
+     "count": 5686,
+     "threshold": 3.2118,
+     "fdp": 0.0489,
+     "above_max_ctl": 3084,
+     "controls_above_thresh": 29
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5323,
+     "p50": 5686,
+     "p90": 5758,
+     "min": 4866,
+     "max": 5988,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4968,
+    "T_dec_auc_max": 0.5263,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L46-break_rel.collapse.json",
+    "n_collapse_words": 189,
+    "n_glue_wids": 4141,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 7442,
+    "filtered_fdp05": 7495,
+    "dropped_only_by_collapse": 834,
+    "gained_after_collapse_filter": 887
+   },
+   "registered": {
+    "q05": 6830,
+    "named": 5636,
+    "above_every_control": 2769,
+    "page_described": 2156,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L47_whole",
+   "file": "L47-break_rel.jsonl",
+   "layer": 47,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 43.8,
+   "mass_c_auc": 0.7131,
+   "mass_c_res_auc": 0.7422,
+   "rep_AB_auc": 0.7045,
+   "rep_BA_auc": 0.6894,
+   "rep_AB_res_auc": 0.7027,
+   "rep_BA_res_auc": 0.6958,
+   "rep_res_auc": 0.7132,
+   "T_dec_auc": 0.6934,
+   "readlib_q05": 8457,
+   "readlib_named": 6748,
+   "fdp05": {
+    "count": 7503,
+    "threshold": 4.1822,
+    "fdp": 0.049,
+    "above_max_ctl": 4561,
+    "controls_above_thresh": 34
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 7425,
+    "p50": 7503,
+    "p90": 7720,
+    "min": 7388,
+    "max": 7882,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 17990,
+    "neurons": 21504,
+    "share_covered": 0.8366,
+    "n1_named_inside_covered": 5278,
+    "mass_c_auc": 0.706,
+    "mass_c_res_auc": 0.7152,
+    "rep_AB_auc": 0.6716,
+    "rep_BA_auc": 0.6582,
+    "rep_AB_res_auc": 0.6693,
+    "rep_BA_res_auc": 0.6577,
+    "rep_res_auc": 0.6779,
+    "T_dec_auc": 0.6549,
+    "readlib_q05": 6341,
+    "readlib_named": 4936,
+    "fdp05": {
+     "count": 5225,
+     "threshold": 4.5701,
+     "fdp": 0.0487,
+     "above_max_ctl": 2960,
+     "controls_above_thresh": 28
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5192,
+     "p50": 5225,
+     "p90": 5291,
+     "min": 5104,
+     "max": 5472,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4982,
+    "T_dec_auc_max": 0.5342,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L47-break_rel.collapse.json",
+    "n_collapse_words": 208,
+    "n_glue_wids": 3296,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 7201,
+    "filtered_fdp05": 7503,
+    "dropped_only_by_collapse": 750,
+    "gained_after_collapse_filter": 1052
+   },
+   "registered": {
+    "q05": 7354,
+    "named": 5727,
+    "above_every_control": 2873,
+    "page_described": 2163,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L48_whole",
+   "file": "L48-break_rel.jsonl",
+   "layer": 48,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 42.7,
+   "mass_c_auc": 0.7227,
+   "mass_c_res_auc": 0.7486,
+   "rep_AB_auc": 0.7109,
+   "rep_BA_auc": 0.6987,
+   "rep_AB_res_auc": 0.7133,
+   "rep_BA_res_auc": 0.6989,
+   "rep_res_auc": 0.7244,
+   "T_dec_auc": 0.6973,
+   "readlib_q05": 7637,
+   "readlib_named": 6052,
+   "fdp05": {
+    "count": 7497,
+    "threshold": 5.5216,
+    "fdp": 0.049,
+    "above_max_ctl": 1707,
+    "controls_above_thresh": 34
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 7280,
+    "p50": 7497,
+    "p90": 7657,
+    "min": 7089,
+    "max": 7892,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 20058,
+    "neurons": 21504,
+    "share_covered": 0.9328,
+    "n1_named_inside_covered": 6719,
+    "mass_c_auc": 0.7304,
+    "mass_c_res_auc": 0.7423,
+    "rep_AB_auc": 0.7009,
+    "rep_BA_auc": 0.6899,
+    "rep_AB_res_auc": 0.7019,
+    "rep_BA_res_auc": 0.6864,
+    "rep_res_auc": 0.7131,
+    "T_dec_auc": 0.6824,
+    "readlib_q05": 7098,
+    "readlib_named": 5567,
+    "fdp05": {
+     "count": 6682,
+     "threshold": 5.7242,
+     "fdp": 0.0498,
+     "above_max_ctl": 1453,
+     "controls_above_thresh": 33
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 6480,
+     "p50": 6682,
+     "p90": 6785,
+     "min": 6336,
+     "max": 6912,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4986,
+    "T_dec_auc_max": 0.521,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L48-break_rel.collapse.json",
+    "n_collapse_words": 199,
+    "n_glue_wids": 2858,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 6380,
+    "filtered_fdp05": 7497,
+    "dropped_only_by_collapse": 417,
+    "gained_after_collapse_filter": 1534
+   },
+   "registered": {
+    "q05": 6554,
+    "named": 4885,
+    "above_every_control": 1250,
+    "page_described": 939,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L49_whole",
+   "file": "L49-break_rel.jsonl",
+   "layer": 49,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 43.0,
+   "mass_c_auc": 0.725,
+   "mass_c_res_auc": 0.7564,
+   "rep_AB_auc": 0.7257,
+   "rep_BA_auc": 0.7064,
+   "rep_AB_res_auc": 0.7244,
+   "rep_BA_res_auc": 0.7069,
+   "rep_res_auc": 0.7306,
+   "T_dec_auc": 0.7115,
+   "readlib_q05": 7208,
+   "readlib_named": 5924,
+   "fdp05": {
+    "count": 7851,
+    "threshold": 4.1689,
+    "fdp": 0.0495,
+    "above_max_ctl": 4290,
+    "controls_above_thresh": 36
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 7594,
+    "p50": 7851,
+    "p90": 7994,
+    "min": 7373,
+    "max": 8104,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 20028,
+    "neurons": 21504,
+    "share_covered": 0.9314,
+    "n1_named_inside_covered": 7037,
+    "mass_c_auc": 0.7338,
+    "mass_c_res_auc": 0.752,
+    "rep_AB_auc": 0.7168,
+    "rep_BA_auc": 0.6974,
+    "rep_AB_res_auc": 0.7135,
+    "rep_BA_res_auc": 0.6942,
+    "rep_res_auc": 0.719,
+    "T_dec_auc": 0.6973,
+    "readlib_q05": 6702,
+    "readlib_named": 5458,
+    "fdp05": {
+     "count": 7033,
+     "threshold": 4.2023,
+     "fdp": 0.0486,
+     "above_max_ctl": 3706,
+     "controls_above_thresh": 34
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 6693,
+     "p50": 7033,
+     "p90": 7148,
+     "min": 6380,
+     "max": 7262,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4966,
+    "T_dec_auc_max": 0.5232,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L49-break_rel.collapse.json",
+    "n_collapse_words": 156,
+    "n_glue_wids": 4315,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 7024,
+    "filtered_fdp05": 7851,
+    "dropped_only_by_collapse": 520,
+    "gained_after_collapse_filter": 1347
+   },
+   "registered": {
+    "q05": 5899,
+    "named": 4616,
+    "above_every_control": 1474,
+    "page_described": 1116,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L50_whole",
+   "file": "L50-break_rel.jsonl",
+   "layer": 50,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 42.7,
+   "mass_c_auc": 0.7102,
+   "mass_c_res_auc": 0.7374,
+   "rep_AB_auc": 0.6824,
+   "rep_BA_auc": 0.69,
+   "rep_AB_res_auc": 0.6852,
+   "rep_BA_res_auc": 0.6994,
+   "rep_res_auc": 0.7094,
+   "T_dec_auc": 0.686,
+   "readlib_q05": 6740,
+   "readlib_named": 5376,
+   "fdp05": {
+    "count": 7179,
+    "threshold": 2.303,
+    "fdp": 0.0497,
+    "above_max_ctl": 2268,
+    "controls_above_thresh": 33
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 7051,
+    "p50": 7175,
+    "p90": 7237,
+    "min": 6930,
+    "max": 7359,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 19743,
+    "neurons": 21504,
+    "share_covered": 0.9181,
+    "n1_named_inside_covered": 6070,
+    "mass_c_auc": 0.7129,
+    "mass_c_res_auc": 0.7255,
+    "rep_AB_auc": 0.6682,
+    "rep_BA_auc": 0.6765,
+    "rep_AB_res_auc": 0.6682,
+    "rep_BA_res_auc": 0.681,
+    "rep_res_auc": 0.6916,
+    "T_dec_auc": 0.6668,
+    "readlib_q05": 6025,
+    "readlib_named": 4735,
+    "fdp05": {
+     "count": 6054,
+     "threshold": 2.3547,
+     "fdp": 0.0493,
+     "above_max_ctl": 1709,
+     "controls_above_thresh": 30
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5930,
+     "p50": 6054,
+     "p90": 6088,
+     "min": 5823,
+     "max": 6203,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4985,
+    "T_dec_auc_max": 0.5285,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L50-break_rel.collapse.json",
+    "n_collapse_words": 163,
+    "n_glue_wids": 4508,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5690,
+    "filtered_fdp05": 7179,
+    "dropped_only_by_collapse": 394,
+    "gained_after_collapse_filter": 1883
+   },
+   "registered": {
+    "q05": 5914,
+    "named": 4519,
+    "above_every_control": 584,
+    "page_described": 375,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L51_whole",
+   "file": "L51-break_rel.jsonl",
+   "layer": 51,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 42.8,
+   "mass_c_auc": 0.7481,
+   "mass_c_res_auc": 0.7287,
+   "rep_AB_auc": 0.684,
+   "rep_BA_auc": 0.6735,
+   "rep_AB_res_auc": 0.6665,
+   "rep_BA_res_auc": 0.6538,
+   "rep_res_auc": 0.6762,
+   "T_dec_auc": 0.6484,
+   "readlib_q05": 7873,
+   "readlib_named": 5961,
+   "fdp05": {
+    "count": 6533,
+    "threshold": 3.0202,
+    "fdp": 0.0498,
+    "above_max_ctl": 2470,
+    "controls_above_thresh": 30
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 6383,
+    "p50": 6533,
+    "p90": 6582,
+    "min": 6274,
+    "max": 6656,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 20446,
+    "neurons": 21504,
+    "share_covered": 0.9508,
+    "n1_named_inside_covered": 5778,
+    "mass_c_auc": 0.7414,
+    "mass_c_res_auc": 0.7183,
+    "rep_AB_auc": 0.6737,
+    "rep_BA_auc": 0.6634,
+    "rep_AB_res_auc": 0.6558,
+    "rep_BA_res_auc": 0.6424,
+    "rep_res_auc": 0.6655,
+    "T_dec_auc": 0.6372,
+    "readlib_q05": 7005,
+    "readlib_named": 5238,
+    "fdp05": {
+     "count": 5756,
+     "threshold": 3.0972,
+     "fdp": 0.0485,
+     "above_max_ctl": 2044,
+     "controls_above_thresh": 27
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5586,
+     "p50": 5756,
+     "p90": 5824,
+     "min": 5461,
+     "max": 5873,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4984,
+    "T_dec_auc_max": 0.5228,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L51-break_rel.collapse.json",
+    "n_collapse_words": 311,
+    "n_glue_wids": 8182,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5898,
+    "filtered_fdp05": 6533,
+    "dropped_only_by_collapse": 586,
+    "gained_after_collapse_filter": 1221
+   },
+   "registered": {
+    "q05": 7145,
+    "named": 5126,
+    "above_every_control": 2123,
+    "page_described": 1781,
+    "take_shorter_rule": false
+   }
+  },
+  {
+   "tag": "L52_whole",
+   "file": "L52-soft_ceil.jsonl",
+   "layer": 52,
+   "design": "soft_ceil",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 21504,
+   "controls": 2048,
+   "elapsed_s": 43.8,
+   "mass_c_auc": 0.8141,
+   "mass_c_res_auc": 0.7026,
+   "rep_AB_auc": 0.6471,
+   "rep_BA_auc": 0.6659,
+   "rep_AB_res_auc": 0.604,
+   "rep_BA_res_auc": 0.6193,
+   "rep_res_auc": 0.6394,
+   "T_dec_auc": 0.5803,
+   "readlib_q05": 7659,
+   "readlib_named": 5207,
+   "fdp05": {
+    "count": 5609,
+    "threshold": 5.7944,
+    "fdp": 0.0486,
+    "above_max_ctl": 3468,
+    "controls_above_thresh": 25
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 5497,
+    "p50": 5609,
+    "p90": 5740,
+    "min": 5352,
+    "max": 5893,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 20940,
+    "neurons": 21504,
+    "share_covered": 0.9738,
+    "n1_named_inside_covered": 5318,
+    "mass_c_auc": 0.8154,
+    "mass_c_res_auc": 0.6988,
+    "rep_AB_auc": 0.6429,
+    "rep_BA_auc": 0.6622,
+    "rep_AB_res_auc": 0.5983,
+    "rep_BA_res_auc": 0.6137,
+    "rep_res_auc": 0.6345,
+    "T_dec_auc": 0.5737,
+    "readlib_q05": 7333,
+    "readlib_named": 4936,
+    "fdp05": {
+     "count": 5318,
+     "threshold": 5.7944,
+     "fdp": 0.05,
+     "above_max_ctl": 3243,
+     "controls_above_thresh": 25
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5202,
+     "p50": 5318,
+     "p90": 5447,
+     "min": 5086,
+     "max": 5598,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.5,
+    "T_dec_auc_max": 0.5287,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L52-soft_ceil.collapse.json",
+    "n_collapse_words": 348,
+    "n_glue_wids": 8110,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5090,
+    "filtered_fdp05": 5609,
+    "dropped_only_by_collapse": 263,
+    "gained_after_collapse_filter": 782
+   },
+   "registered": {
+    "q05": 6933,
+    "named": 4814,
+    "above_every_control": 3944,
+    "page_described": 3639,
+    "take_shorter_rule": true
    }
   },
   {
@@ -420,74 +2305,105 @@
    "file": "L53-match_things.jsonl",
    "layer": 53,
    "design": "match_things",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 12,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 73.0,
-   "mass_c_auc": 0.7835,
-   "mass_c_res_auc": 0.6906,
-   "rep_AB_auc": 0.6189,
-   "rep_BA_auc": 0.6259,
-   "rep_AB_res_auc": 0.6611,
-   "rep_BA_res_auc": 0.6432,
-   "rep_res_auc": 0.6657,
-   "T_dec_auc": 0.671,
-   "readlib_q05": 4304,
-   "readlib_named": 3693,
+   "elapsed_s": 87.0,
+   "mass_c_auc": 0.8024,
+   "mass_c_res_auc": 0.613,
+   "rep_AB_auc": 0.6184,
+   "rep_BA_auc": 0.632,
+   "rep_AB_res_auc": 0.5811,
+   "rep_BA_res_auc": 0.5883,
+   "rep_res_auc": 0.607,
+   "T_dec_auc": 0.5654,
+   "readlib_q05": 4936,
+   "readlib_named": 4389,
    "fdp05": {
-    "count": 3438,
-    "threshold": 4.7938,
-    "fdp": 0.0488,
-    "above_max_ctl": 2521
+    "count": 3964,
+    "threshold": 16.3112,
+    "fdp": 0.0477,
+    "above_max_ctl": 2966,
+    "controls_above_thresh": 17
    },
-   "fdp10": {
-    "count": 4049,
-    "threshold": 3.6589,
-    "fdp": 0.0985,
-    "above_max_ctl": 2521
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 3705,
+    "p50": 3964,
+    "p90": 4146,
+    "min": 3406,
+    "max": 4641,
+    "frac_zero": 0.0
    },
    "n3_covered": {
-    "covered": 21285,
+    "covered": 20828,
     "neurons": 21504,
-    "share_covered": 0.9898,
-    "n1_named_inside_covered": 3339,
-    "mass_c_auc": 0.7845,
-    "mass_c_res_auc": 0.6894,
-    "rep_AB_auc": 0.617,
-    "rep_BA_auc": 0.6243,
-    "rep_AB_res_auc": 0.6594,
-    "rep_BA_res_auc": 0.6415,
-    "rep_res_auc": 0.6641,
-    "T_dec_auc": 0.6694,
-    "readlib_q05": 4202,
-    "readlib_named": 3592,
+    "share_covered": 0.9686,
+    "n1_named_inside_covered": 3691,
+    "mass_c_auc": 0.8006,
+    "mass_c_res_auc": 0.611,
+    "rep_AB_auc": 0.6134,
+    "rep_BA_auc": 0.6278,
+    "rep_AB_res_auc": 0.5787,
+    "rep_BA_res_auc": 0.5869,
+    "rep_res_auc": 0.6047,
+    "T_dec_auc": 0.5638,
+    "readlib_q05": 4537,
+    "readlib_named": 4073,
     "fdp05": {
-     "count": 3339,
-     "threshold": 4.7938,
-     "fdp": 0.0498,
-     "above_max_ctl": 2434
+     "count": 3691,
+     "threshold": 16.3112,
+     "fdp": 0.0496,
+     "above_max_ctl": 2728,
+     "controls_above_thresh": 17
     },
-    "fdp10": {
-     "count": 3934,
-     "threshold": 3.6658,
-     "fdp": 0.0977,
-     "above_max_ctl": 2434
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 3503,
+     "p50": 3691,
+     "p90": 3883,
+     "min": 3133,
+     "max": 4383,
+     "frac_zero": 0.0
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4983,
-    "T_dec_auc_max": 0.5251,
+    "T_dec_auc_mean": 0.4964,
+    "T_dec_auc_max": 0.5208,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L53-match_things.collapse.json",
+    "n_collapse_words": 808,
+    "n_glue_wids": 6025,
+    "alpha": 0.05
    },
    "oos_3way": {
-    "fit_named": 3173,
-    "fit_above_max_ctl": 1750,
-    "c4_auc_vs_paired_ctl": 0.9839,
-    "frac_z_gt_0": 0.9805,
-    "frac_p05_on_C4": 0.9581,
-    "median_z_C4": 10.752
+    "fit_named": 3874,
+    "fit_above_max_ctl": 2551,
+    "c4_auc_vs_paired_ctl": 0.9558,
+    "frac_z_gt_0": 0.9174,
+    "frac_p05_on_C4": 0.9481,
+    "median_z_C4": 8.485
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 3386,
+    "filtered_fdp05": 3964,
+    "dropped_only_by_collapse": 205,
+    "gained_after_collapse_filter": 783
+   },
+   "registered": {
+    "q05": 3640,
+    "named": 3289,
+    "above_every_control": 1466,
+    "page_described": 1456,
+    "take_shorter_rule": false
    }
   },
   {
@@ -495,74 +2411,198 @@
    "file": "L54-match_things.jsonl",
    "layer": 54,
    "design": "match_things",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 12,
    "neurons": 21504,
    "controls": 2048,
-   "elapsed_s": 73.8,
-   "mass_c_auc": 0.756,
-   "mass_c_res_auc": 0.7165,
-   "rep_AB_auc": 0.6458,
-   "rep_BA_auc": 0.6462,
-   "rep_AB_res_auc": 0.6841,
-   "rep_BA_res_auc": 0.6789,
-   "rep_res_auc": 0.6907,
-   "T_dec_auc": 0.6997,
-   "readlib_q05": 6031,
-   "readlib_named": 5339,
+   "elapsed_s": 86.9,
+   "mass_c_auc": 0.7742,
+   "mass_c_res_auc": 0.6877,
+   "rep_AB_auc": 0.668,
+   "rep_BA_auc": 0.6793,
+   "rep_AB_res_auc": 0.6936,
+   "rep_BA_res_auc": 0.7159,
+   "rep_res_auc": 0.7136,
+   "T_dec_auc": 0.7002,
+   "readlib_q05": 6419,
+   "readlib_named": 5860,
    "fdp05": {
-    "count": 5293,
-    "threshold": 4.7261,
-    "fdp": 0.0496,
-    "above_max_ctl": 3259
+    "count": 6128,
+    "threshold": 12.5842,
+    "fdp": 0.0497,
+    "above_max_ctl": 3179,
+    "controls_above_thresh": 28
    },
-   "fdp10": {
-    "count": 6062,
-    "threshold": 3.4691,
-    "fdp": 0.0987,
-    "above_max_ctl": 3259
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 5804,
+    "p50": 6128,
+    "p90": 6268,
+    "min": 4910,
+    "max": 6439,
+    "frac_zero": 0.0
    },
    "n3_covered": {
-    "covered": 20932,
+    "covered": 20277,
     "neurons": 21504,
-    "share_covered": 0.9734,
-    "n1_named_inside_covered": 4964,
-    "mass_c_auc": 0.7562,
-    "mass_c_res_auc": 0.7132,
-    "rep_AB_auc": 0.6409,
-    "rep_BA_auc": 0.6415,
-    "rep_AB_res_auc": 0.6816,
-    "rep_BA_res_auc": 0.6767,
-    "rep_res_auc": 0.6887,
-    "T_dec_auc": 0.6983,
-    "readlib_q05": 5682,
-    "readlib_named": 5008,
+    "share_covered": 0.9429,
+    "n1_named_inside_covered": 5512,
+    "mass_c_auc": 0.7702,
+    "mass_c_res_auc": 0.6834,
+    "rep_AB_auc": 0.6589,
+    "rep_BA_auc": 0.6717,
+    "rep_AB_res_auc": 0.6932,
+    "rep_BA_res_auc": 0.7172,
+    "rep_res_auc": 0.7132,
+    "T_dec_auc": 0.7016,
+    "readlib_q05": 5711,
+    "readlib_named": 5226,
     "fdp05": {
-     "count": 4949,
-     "threshold": 4.7808,
-     "fdp": 0.0495,
-     "above_max_ctl": 2989
+     "count": 5448,
+     "threshold": 12.6864,
+     "fdp": 0.049,
+     "above_max_ctl": 2720,
+     "controls_above_thresh": 26
     },
-    "fdp10": {
-     "count": 5692,
-     "threshold": 3.4938,
-     "fdp": 0.0987,
-     "above_max_ctl": 2989
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 5182,
+     "p50": 5448,
+     "p90": 5611,
+     "min": 4370,
+     "max": 5798,
+     "frac_zero": 0.0
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4985,
-    "T_dec_auc_max": 0.5232,
+    "T_dec_auc_mean": 0.4973,
+    "T_dec_auc_max": 0.517,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L54-match_things.collapse.json",
+    "n_collapse_words": 729,
+    "n_glue_wids": 5066,
+    "alpha": 0.05
    },
    "oos_3way": {
-    "fit_named": 4668,
-    "fit_above_max_ctl": 2534,
-    "c4_auc_vs_paired_ctl": 0.9788,
-    "frac_z_gt_0": 0.9704,
-    "frac_p05_on_C4": 0.9599,
-    "median_z_C4": 11.198
+    "fit_named": 5260,
+    "fit_above_max_ctl": 3615,
+    "c4_auc_vs_paired_ctl": 0.9462,
+    "frac_z_gt_0": 0.9097,
+    "frac_p05_on_C4": 0.9437,
+    "median_z_C4": 9.899
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 5313,
+    "filtered_fdp05": 6128,
+    "dropped_only_by_collapse": 223,
+    "gained_after_collapse_filter": 1038
+   },
+   "registered": {
+    "q05": 5481,
+    "named": 4928,
+    "above_every_control": 4254,
+    "page_described": 3909,
+    "take_shorter_rule": false
+   }
+  }
+ ],
+ "extra_checks": [
+  {
+   "tag": "L45_cols_mix_null",
+   "file": "L45-mixes-as-neurons.jsonl",
+   "layer": 45,
+   "design": "break_rel",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "prompts": 6,
+   "neurons": 2048,
+   "controls": 2048,
+   "elapsed_s": 10.4,
+   "mass_c_auc": 0.5023,
+   "mass_c_res_auc": 0.4974,
+   "rep_AB_auc": 0.4916,
+   "rep_BA_auc": 0.4953,
+   "rep_AB_res_auc": 0.4839,
+   "rep_BA_res_auc": 0.4881,
+   "rep_res_auc": 0.4855,
+   "T_dec_auc": 0.4818,
+   "readlib_q05": 0,
+   "readlib_named": 0,
+   "fdp05": {
+    "count": 0,
+    "threshold": null,
+    "fdp": null,
+    "above_max_ctl": 2,
+    "controls_above_thresh": 0
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 0,
+    "p50": 0,
+    "p90": 0,
+    "min": 0,
+    "max": 0,
+    "frac_zero": 1.0
+   },
+   "n3_covered": {
+    "covered": 2044,
+    "neurons": 2048,
+    "share_covered": 0.998,
+    "n1_named_inside_covered": 0,
+    "mass_c_auc": 0.5024,
+    "mass_c_res_auc": 0.4972,
+    "rep_AB_auc": 0.4916,
+    "rep_BA_auc": 0.4958,
+    "rep_AB_res_auc": 0.4839,
+    "rep_BA_res_auc": 0.4885,
+    "rep_res_auc": 0.4858,
+    "T_dec_auc": 0.4819,
+    "readlib_q05": 0,
+    "readlib_named": 0,
+    "fdp05": {
+     "count": 0,
+     "threshold": null,
+     "fdp": null,
+     "above_max_ctl": 2,
+     "controls_above_thresh": 0
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 0,
+     "p50": 0,
+     "p90": 0,
+     "min": 0,
+     "max": 0,
+     "frac_zero": 1.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.499,
+    "T_dec_auc_max": 0.5254,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "explicit",
+    "n_collapse_words": 409,
+    "n_glue_wids": 988,
+    "alpha": 0.05
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 0,
+    "filtered_fdp05": 0,
+    "dropped_only_by_collapse": 0,
+    "gained_after_collapse_filter": 0
    }
   },
   {
@@ -570,72 +2610,96 @@
    "file": "L29-match_things-trial.jsonl",
    "layer": 29,
    "design": "match_things",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 12,
    "neurons": 1022,
    "controls": 1024,
-   "elapsed_s": 10.6,
-   "mass_c_auc": 0.5722,
-   "mass_c_res_auc": 0.5979,
-   "rep_AB_auc": 0.5269,
-   "rep_BA_auc": 0.5188,
-   "rep_AB_res_auc": 0.5494,
-   "rep_BA_res_auc": 0.539,
-   "rep_res_auc": 0.5462,
-   "T_dec_auc": 0.5455,
+   "elapsed_s": 9.7,
+   "mass_c_auc": 0.6211,
+   "mass_c_res_auc": 0.5722,
+   "rep_AB_auc": 0.5573,
+   "rep_BA_auc": 0.5424,
+   "rep_AB_res_auc": 0.5139,
+   "rep_BA_res_auc": 0.5127,
+   "rep_res_auc": 0.5157,
+   "T_dec_auc": 0.4968,
    "readlib_q05": 0,
    "readlib_named": 0,
    "fdp05": {
     "count": 0,
     "threshold": null,
     "fdp": null,
-    "above_max_ctl": 6
+    "above_max_ctl": 6,
+    "controls_above_thresh": 0
    },
-   "fdp10": {
-    "count": 0,
-    "threshold": null,
-    "fdp": null,
-    "above_max_ctl": 6
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 0,
+    "p50": 0,
+    "p90": 0,
+    "min": 0,
+    "max": 24,
+    "frac_zero": 0.995
    },
    "n3_covered": {
-    "covered": 990,
+    "covered": 989,
     "neurons": 1022,
-    "share_covered": 0.9687,
+    "share_covered": 0.9677,
     "n1_named_inside_covered": 0,
-    "mass_c_auc": 0.5703,
-    "mass_c_res_auc": 0.6019,
-    "rep_AB_auc": 0.5231,
-    "rep_BA_auc": 0.5156,
-    "rep_AB_res_auc": 0.5546,
-    "rep_BA_res_auc": 0.5453,
-    "rep_res_auc": 0.5519,
-    "T_dec_auc": 0.5516,
+    "mass_c_auc": 0.6161,
+    "mass_c_res_auc": 0.5717,
+    "rep_AB_auc": 0.5508,
+    "rep_BA_auc": 0.5378,
+    "rep_AB_res_auc": 0.5117,
+    "rep_BA_res_auc": 0.5141,
+    "rep_res_auc": 0.5153,
+    "T_dec_auc": 0.4972,
     "readlib_q05": 0,
     "readlib_named": 0,
     "fdp05": {
      "count": 0,
      "threshold": null,
      "fdp": null,
-     "above_max_ctl": 6
+     "above_max_ctl": 4,
+     "controls_above_thresh": 0
     },
-    "fdp10": {
-     "count": 0,
-     "threshold": null,
-     "fdp": null,
-     "above_max_ctl": 6
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 0,
+     "p50": 0,
+     "p90": 0,
+     "min": 0,
+     "max": 20,
+     "frac_zero": 0.995
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
     "T_dec_auc_mean": 0.499,
-    "T_dec_auc_max": 0.538,
+    "T_dec_auc_max": 0.5378,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L29-match_things-trial.collapse.json",
+    "n_collapse_words": 577,
+    "n_glue_wids": 5,
+    "alpha": 0.05
    },
    "oos_3way": {
     "fit_named": 0,
     "fit_above_max_ctl": 7,
     "c4_auc": null,
     "frac_p05_on_C4": null
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 0,
+    "filtered_fdp05": 0,
+    "dropped_only_by_collapse": 0,
+    "gained_after_collapse_filter": 0
    }
   },
   {
@@ -643,74 +2707,98 @@
    "file": "L55-match_things-trial.jsonl",
    "layer": 55,
    "design": "match_things",
+   "model": "google/gemma-4-31B-it-qat-w4a16-ct",
    "prompts": 12,
    "neurons": 1022,
    "controls": 1024,
-   "elapsed_s": 7.6,
-   "mass_c_auc": 0.7339,
-   "mass_c_res_auc": 0.6435,
-   "rep_AB_auc": 0.5579,
-   "rep_BA_auc": 0.5766,
-   "rep_AB_res_auc": 0.6039,
-   "rep_BA_res_auc": 0.6217,
-   "rep_res_auc": 0.6265,
-   "T_dec_auc": 0.6428,
-   "readlib_q05": 114,
-   "readlib_named": 109,
+   "elapsed_s": 7.9,
+   "mass_c_auc": 0.7705,
+   "mass_c_res_auc": 0.5866,
+   "rep_AB_auc": 0.5913,
+   "rep_BA_auc": 0.5843,
+   "rep_AB_res_auc": 0.6049,
+   "rep_BA_res_auc": 0.572,
+   "rep_res_auc": 0.6067,
+   "T_dec_auc": 0.575,
+   "readlib_q05": 137,
+   "readlib_named": 126,
    "fdp05": {
-    "count": 108,
-    "threshold": 5.2809,
-    "fdp": 0.0462,
-    "above_max_ctl": 97
+    "count": 148,
+    "threshold": 12.9337,
+    "fdp": 0.0472,
+    "above_max_ctl": 91,
+    "controls_above_thresh": 6
    },
-   "fdp10": {
-    "count": 110,
-    "threshold": 4.7635,
-    "fdp": 0.0997,
-    "above_max_ctl": 97
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 103,
+    "p50": 148,
+    "p90": 157,
+    "min": 91,
+    "max": 169,
+    "frac_zero": 0.0
    },
    "n3_covered": {
-    "covered": 982,
+    "covered": 969,
     "neurons": 1022,
-    "share_covered": 0.9609,
-    "n1_named_inside_covered": 102,
-    "mass_c_auc": 0.7397,
-    "mass_c_res_auc": 0.6413,
-    "rep_AB_auc": 0.5545,
-    "rep_BA_auc": 0.5752,
-    "rep_AB_res_auc": 0.6002,
-    "rep_BA_res_auc": 0.6185,
-    "rep_res_auc": 0.6227,
-    "T_dec_auc": 0.6394,
-    "readlib_q05": 108,
-    "readlib_named": 104,
+    "share_covered": 0.9481,
+    "n1_named_inside_covered": 133,
+    "mass_c_auc": 0.7749,
+    "mass_c_res_auc": 0.5821,
+    "rep_AB_auc": 0.5837,
+    "rep_BA_auc": 0.5783,
+    "rep_AB_res_auc": 0.5985,
+    "rep_BA_res_auc": 0.5652,
+    "rep_res_auc": 0.5978,
+    "T_dec_auc": 0.5708,
+    "readlib_q05": 123,
+    "readlib_named": 113,
     "fdp05": {
-     "count": 102,
-     "threshold": 5.2809,
-     "fdp": 0.047,
-     "above_max_ctl": 93
+     "count": 133,
+     "threshold": 12.9337,
+     "fdp": 0.0498,
+     "above_max_ctl": 79,
+     "controls_above_thresh": 6
     },
-    "fdp10": {
-     "count": 103,
-     "threshold": 5.2198,
-     "fdp": 0.0558,
-     "above_max_ctl": 93
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 90,
+     "p50": 133,
+     "p90": 141,
+     "min": 79,
+     "max": 153,
+     "frac_zero": 0.0
     }
    },
-   "null_splits": {
+   "code_symmetry_check": {
     "n": 50,
-    "T_dec_auc_mean": 0.4919,
-    "T_dec_auc_max": 0.5248,
+    "T_dec_auc_mean": 0.4956,
+    "T_dec_auc_max": 0.5365,
     "fdp05_false_mean": 0.0,
-    "fdp05_false_max": 0
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L55-match_things-trial.collapse.json",
+    "n_collapse_words": 357,
+    "n_glue_wids": 608,
+    "alpha": 0.05
    },
    "oos_3way": {
-    "fit_named": 84,
-    "fit_above_max_ctl": 83,
-    "c4_auc_vs_paired_ctl": 0.9998,
-    "frac_z_gt_0": 1.0,
-    "frac_p05_on_C4": 1.0,
-    "median_z_C4": 11.314
+    "fit_named": 102,
+    "fit_above_max_ctl": 78,
+    "c4_auc_vs_paired_ctl": 0.9798,
+    "frac_z_gt_0": 0.951,
+    "frac_p05_on_C4": 0.9608,
+    "median_z_C4": 11.283
+   },
+   "collapse_impact": {
+    "unfiltered_fdp05": 107,
+    "filtered_fdp05": 148,
+    "dropped_only_by_collapse": 7,
+    "gained_after_collapse_filter": 48
    }
   }
  ]

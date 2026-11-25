@@ -1,9 +1,13 @@
-"""Design 2 per-neuron empirical-FDR reader (`T_dec` + `no_thought`) for decoding census runs.
+"""Exploratory per-neuron empirical-FDR decoding reader (`T_dec` + glue/collapse filtering).
 
-Streams `.jsonl` census files with bounded memory, filters out `"thought"`-glued tokens,
-fits 6 survival covariates on controls alone, scores residualized cross-half replication
-`T_dec = min(rz(rep_AB_res), rz(rep_BA_res))`, applies step-up empirical FDP <= 0.05 / 0.10,
-checks N3 covered-neuron subset, runs 50 half-control null splits, and validates on unseen
+Unregistered, post-hoc reader designed after whole layers were read; outputs gate nothing.
+Streams `.jsonl` census files with bounded memory, excludes run collapse words
+(`census.COLLAPSE_RULE`) and trailing/leading `"thought"`-glue tokens (preserving genuine
+English words and baseline answer words) from both counts and the `lnw` covariate, fits 6
+survival covariates on controls alone, scores residualized cross-half replication
+`T_dec = min(rz(rep_AB_res), rz(rep_BA_res))`, applies fixed step-up empirical FDP <= 0.05
+against isotropic controls, checks the N3 covered-neuron subset, computes control bootstrap
+stability, runs an exchangeable half-control code-symmetry check, and evaluates unseen
 4-question splits (12-question runs) via an inverted posting index.
 """
 from __future__ import annotations
@@ -13,7 +17,7 @@ import json
 import math
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
@@ -21,6 +25,54 @@ from backend import census as cz
 from backend.gap_stats import mannwhitney_greater
 
 COVS: Tuple[str, ...] = ("lnw", "d4", "cut", "lp", "dep", "lost")
+
+# Genuine English words/compounds containing "thought" that must never be treated as empty
+# thinking-channel glue.
+ENGLISH_THOUGHT_WORDS: FrozenSet[str] = frozenset(
+    {
+        "thought",
+        "thoughts",
+        "thoughtful",
+        "thoughtfully",
+        "thoughtfulness",
+        "thoughtless",
+        "thoughtlessly",
+        "thoughtlessness",
+        "afterthought",
+        "afterthoughts",
+        "forethought",
+        "forethoughts",
+        "rethought",
+        "unthought",
+        "overthought",
+        "outthought",
+        "freethought",
+        "freethoughts",
+        "thoughtcrime",
+        "thoughtcrimes",
+        "thoughtwork",
+        "thoughtworks",
+        "thoughtscape",
+        "thoughtscapes",
+        "wellthought",
+        "secondthought",
+    }
+)
+
+
+def is_thought_glue(word: str, baseline_words: Optional[Set[str]] = None) -> bool:
+    """True only for glued thinking-channel artefacts like 'bythought' or 'thoughtdepending'.
+
+    Preserves real English words containing 'thought' and any word appearing in baseline answers.
+    """
+    w = str(word).lower()
+    if "thought" not in w:
+        return False
+    if w in ENGLISH_THOUGHT_WORDS:
+        return False
+    if baseline_words and w in baseline_words:
+        return False
+    return w.startswith("thought") or w.endswith("thought")
 
 
 def auc(a: Sequence[float], b: Sequence[float]) -> Tuple[float, float]:
@@ -148,13 +200,21 @@ def emp_fdp_select(
     ctl_vals = np.sort(np.array([scores[u] for u in scores if u[0] == "random"], dtype=np.float64))
     C = len(ctl_vals)
     if len(neu_vals) == 0 or C == 0 or N == 0:
-        return {"count": 0, "threshold": None, "fdp": None, "named": [], "above_max_ctl": 0}
+        return {
+            "count": 0,
+            "threshold": None,
+            "fdp": None,
+            "named": [],
+            "above_max_ctl": 0,
+            "controls_above_thresh": 0,
+        }
     max_ctl = float(ctl_vals[-1])
     above_max = int(np.sum(neu_vals > max_ctl))
     order = np.argsort(-neu_vals)
     sorted_vals = neu_vals[order]
     best_idx = -1
     best_fdp = 1.0
+    best_c_ge = 0
     n_tot = len(sorted_vals)
     i = 0
     while i < n_tot:
@@ -168,9 +228,17 @@ def emp_fdp_select(
         if fdp <= alpha:
             best_idx = j
             best_fdp = fdp
+            best_c_ge = c_ge
         i = j + 1
     if best_idx < 0:
-        return {"count": 0, "threshold": None, "fdp": None, "named": [], "above_max_ctl": above_max}
+        return {
+            "count": 0,
+            "threshold": None,
+            "fdp": None,
+            "named": [],
+            "above_max_ctl": above_max,
+            "controls_above_thresh": 0,
+        }
     thresh = float(sorted_vals[best_idx])
     named = [neu_units[k] for k in order[: best_idx + 1]]
     return {
@@ -179,13 +247,70 @@ def emp_fdp_select(
         "fdp": round(best_fdp, 4),
         "named": named,
         "above_max_ctl": above_max,
+        "controls_above_thresh": int(best_c_ge),
+    }
+
+
+def bootstrap_fdp_stability(
+    scores: Dict[Tuple[str, int], float],
+    positive_ok: Dict[Tuple[str, int], bool],
+    alpha: float = 0.05,
+    n_boot: int = 200,
+    seed: int = 0,
+) -> Optional[Dict[str, Any]]:
+    """Bootstrap the control distribution with replacement to quantify named-count stability."""
+    if n_boot <= 0:
+        return None
+    neu_vals = np.sort(
+        np.array([scores[u] for u in scores if u[0] == "neuron" and positive_ok[u]], dtype=np.float64)
+    )[::-1]
+    ctl_vals = np.array([scores[u] for u in scores if u[0] == "random"], dtype=np.float64)
+    N = sum(1 for u in scores if u[0] == "neuron")
+    C = len(ctl_vals)
+    if C == 0 or N == 0:
+        return None
+    if len(neu_vals) == 0:
+        return {"n_boot": int(n_boot), "p10": 0, "p50": 0, "p90": 0, "min": 0, "max": 0, "frac_zero": 1.0}
+
+    # Unique step-up cutoffs match emp_fdp_select tie handling (group identical neuron scores).
+    diff = np.empty(len(neu_vals), dtype=bool)
+    diff[:-1] = neu_vals[:-1] != neu_vals[1:]
+    diff[-1] = True
+    end_idx = np.flatnonzero(diff)
+    uniq_vals = neu_vals[end_idx]
+    n_ge = (end_idx + 1).astype(np.float64)
+
+    rng = np.random.default_rng(int(seed))
+    counts = np.zeros(int(n_boot), dtype=np.int64)
+    for b in range(int(n_boot)):
+        boot_ctl = np.sort(ctl_vals[rng.integers(0, C, size=C)])
+        c_ge = C - np.searchsorted(boot_ctl, uniq_vals, side="left")
+        fdps = (N / (C + 1.0)) * (1.0 + c_ge) / n_ge
+        ok = np.flatnonzero(fdps <= alpha)
+        counts[b] = int(end_idx[int(ok[-1])] + 1) if len(ok) > 0 else 0
+
+    return {
+        "n_boot": int(n_boot),
+        "p10": int(np.percentile(counts, 10)),
+        "p50": int(np.percentile(counts, 50)),
+        "p90": int(np.percentile(counts, 90)),
+        "min": int(np.min(counts)),
+        "max": int(np.max(counts)),
+        "frac_zero": round(float(np.mean(counts == 0)), 4),
     }
 
 
 class StreamedRun:
     """Memory-bounded representation of a census JSONL run over prompt/dose subsets."""
 
-    def __init__(self, path: Path, subsets: Dict[str, Callable[[str, float], bool]], max_new: int = 48):
+    def __init__(
+        self,
+        path: Path,
+        subsets: Dict[str, Callable[[str, float], bool]],
+        max_new: int = 48,
+        collapse_words: Optional[Iterable[str]] = None,
+        load_collapse: bool = True,
+    ):
         t0 = time.time()
         self.path = Path(path)
         meta_path = cz.meta_path_of(self.path)
@@ -195,34 +320,61 @@ class StreamedRun:
         self.prompts = [q for q in (meta.get("prompts") or {}) if any(p == q for p, _ in meta["design"])]
         self.doses = sorted({abs(float(d)) for _, d in meta["design"]})
 
+        self.collapse_source: Optional[str] = None
+        if collapse_words is not None:
+            self.collapse_words_set: Set[str] = {str(w).lower() for w in collapse_words}
+            self.collapse_source = "explicit"
+        elif load_collapse:
+            cpath = cz.collapse_path_of(self.path)
+            if cpath.exists():
+                cdata = json.loads(cpath.read_text(encoding="utf-8"))
+                self.collapse_words_set = {str(w).lower() for w in (cdata.get("words") or ())}
+                self.collapse_source = cpath.name
+            else:
+                self.collapse_words_set = set()
+        else:
+            self.collapse_words_set = set()
+
         self.vocab: List[str] = []
         self._wid: Dict[str, int] = {}
-        self.thought_wids: Set[int] = set()
+        self.baseline_words: Set[str] = set()
+        self.glue_wids: Set[int] = set()
+        self.collapse_wids: Set[int] = set()
         bases: Dict[str, Dict[str, Any]] = {}
 
-        # Pass 1: full scan for interleaved baseline rows (~2s on 5.6 GB)
+        # Pass 1: collect all interleaved baseline rows so baseline_words is complete before Pass 2.
+        base_rows: List[Dict[str, Any]] = []
         with open(self.path, "rb") as f:
             for line in f:
                 if b'"baseline"' in line and b'"kind": "baseline"' in line:
                     r = json.loads(line)
                     if r.get("kind") == "baseline" and r["prompt"] not in bases:
                         ids = [int(x) for x in (r.get("token_ids") or [])][:max_new]
-                        ws = self._to_wids(cz.words(r["text"]))
-                        bases[r["prompt"]] = {
-                            "wids": set(ws),
-                            "ids": ids,
-                            "d4": cz.distinct4(ids),
-                        }
+                        words_list = [str(w).lower() for w in cz.words(r["text"])]
+                        self.baseline_words.update(words_list)
+                        base_rows.append({"prompt": r["prompt"], "ids": ids, "words": words_list})
+                        bases[r["prompt"]] = {}
 
-        # Pass 2: stream pushed rows into subsets
+        for br in base_rows:
+            ws = self._to_wids(br["words"], in_baseline=True)
+            bases[br["prompt"]] = {
+                "wids": set(ws),
+                "ids": br["ids"],
+                "d4": cz.distinct4(br["ids"]),
+            }
+
+        # Pass 2: stream pushed rows into subsets, tracking lnw both with and without excluded words.
         self.sub_cnt: Dict[str, Dict[Tuple[str, int], collections.Counter]] = {
             name: collections.defaultdict(collections.Counter) for name in subsets
         }
+        # acc slots: [0:nw_11, 1:nw_10, 2:nw_01, 3:nw_00, 4:d4, 5:cut, 6:lp, 7:dep, 8:lost, 9:n]
         self.sub_cov_acc: Dict[str, Dict[Tuple[str, int], List[float]]] = {
-            name: collections.defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]) for name in subsets
+            name: collections.defaultdict(lambda: [0.0] * 10) for name in subsets
         }
         n_rows = 0
         sub_items = list(subsets.items())
+        gw = self.glue_wids
+        cw = self.collapse_wids
         with open(self.path, "rb") as f:
             for line in f:
                 if b'"kind": "baseline"' in line:
@@ -236,11 +388,14 @@ class StreamedRun:
                 d = float(r["dose"])
                 b = bases[p]
                 bw = b["wids"]
-                rw_set = set(self._to_wids(cz.words(r["text"])))
+                rw_set = set(self._to_wids(cz.words(r["text"]), in_baseline=False))
                 new_wids = rw_set - bw
                 ids = (r.get("token_ids") or [])[:max_new]
                 lp = (r.get("logprob") or [])[:max_new]
-                nw = float(len(new_wids))
+                nw_11 = float(sum(1 for wi in new_wids if wi not in gw and wi not in cw))
+                nw_10 = float(sum(1 for wi in new_wids if wi not in gw))
+                nw_01 = float(sum(1 for wi in new_wids if wi not in cw))
+                nw_00 = float(len(new_wids))
                 d4 = cz.distinct4(ids)
                 cut = 1.0 if r.get("finish") == "length" else 0.0
                 lp_m = float(np.mean(lp)) if lp else 0.0
@@ -254,52 +409,83 @@ class StreamedRun:
                         for wi in new_wids:
                             cnt_u[wi] += 1
                         acc = self.sub_cov_acc[sname][u]
-                        acc[0] += nw
-                        acc[1] += d4
-                        acc[2] += cut
-                        acc[3] += lp_m
-                        acc[4] += dep
-                        acc[5] += lost
-                        acc[6] += 1.0
+                        acc[0] += nw_11
+                        acc[1] += nw_10
+                        acc[2] += nw_01
+                        acc[3] += nw_00
+                        acc[4] += d4
+                        acc[5] += cut
+                        acc[6] += lp_m
+                        acc[7] += dep
+                        acc[8] += lost
+                        acc[9] += 1.0
 
-        self.sub_cov: Dict[str, Dict[Tuple[str, int], Dict[str, float]]] = {}
+        self.sub_cov_variants: Dict[Tuple[bool, bool], Dict[str, Dict[Tuple[str, int], Dict[str, float]]]] = {
+            (True, True): {},
+            (True, False): {},
+            (False, True): {},
+            (False, False): {},
+        }
+        variant_slot = {(True, True): 0, (True, False): 1, (False, True): 2, (False, False): 3}
         for sname, acc_map in self.sub_cov_acc.items():
-            cdict = {}
-            for u, acc in acc_map.items():
-                n = max(acc[6], 1.0)
-                cdict[u] = {
-                    "lnw": math.log1p(acc[0] / n),
-                    "d4": acc[1] / n,
-                    "cut": acc[2] / n,
-                    "lp": acc[3] / n,
-                    "dep": acc[4] / n,
-                    "lost": acc[5] / n,
-                }
-            self.sub_cov[sname] = cdict
+            for key, slot in variant_slot.items():
+                cdict = {}
+                for u, acc in acc_map.items():
+                    n = max(acc[9], 1.0)
+                    cdict[u] = {
+                        "lnw": math.log1p(acc[slot] / n),
+                        "d4": acc[4] / n,
+                        "cut": acc[5] / n,
+                        "lp": acc[6] / n,
+                        "dep": acc[7] / n,
+                        "lost": acc[8] / n,
+                    }
+                self.sub_cov_variants[key][sname] = cdict
+        self.sub_cov: Dict[str, Dict[Tuple[str, int], Dict[str, float]]] = self.sub_cov_variants[(True, True)]
         del self.sub_cov_acc
         self.units = sorted(self.sub_cnt[next(iter(subsets))].keys())
         self.neurons = [u for u in self.units if u[0] == "neuron"]
         self.controls = [u for u in self.units if u[0] == "random"]
         self.elapsed_load_s = round(time.time() - t0, 2)
 
-    def _to_wids(self, ws: Iterable[str]) -> List[int]:
+    def _to_wids(self, ws: Iterable[str], in_baseline: bool = False) -> List[int]:
         out: List[int] = []
         for w in ws:
-            wi = self._wid.get(w)
+            w_lo = str(w).lower()
+            wi = self._wid.get(w_lo)
             if wi is None:
-                wi = self._wid[w] = len(self.vocab)
-                self.vocab.append(w)
-                if "thought" in w:
-                    self.thought_wids.add(wi)
+                wi = self._wid[w_lo] = len(self.vocab)
+                self.vocab.append(w_lo)
+                if w_lo in self.collapse_words_set:
+                    self.collapse_wids.add(wi)
+                if not in_baseline and is_thought_glue(w_lo, self.baseline_words):
+                    self.glue_wids.add(wi)
             out.append(wi)
         return out
 
-    def filtered_counts(self, subset: str, strip_thought: bool) -> Dict[Tuple[str, int], collections.Counter]:
+    def covariates(
+        self,
+        subset: str,
+        strip_thought: bool = True,
+        strip_collapse: bool = True,
+    ) -> Dict[Tuple[str, int], Dict[str, float]]:
+        return self.sub_cov_variants[(bool(strip_thought), bool(strip_collapse))][subset]
+
+    def filtered_counts(
+        self,
+        subset: str,
+        strip_thought: bool = True,
+        strip_collapse: bool = True,
+    ) -> Dict[Tuple[str, int], collections.Counter]:
         src = self.sub_cnt[subset]
-        if not strip_thought or not self.thought_wids:
+        drop: Set[int] = set()
+        if strip_thought and self.glue_wids:
+            drop.update(self.glue_wids)
+        if strip_collapse and self.collapse_wids:
+            drop.update(self.collapse_wids)
+        if not drop:
             return src
-        tw = self.thought_wids
-        return {u: collections.Counter({wi: c for wi, c in cnt.items() if wi not in tw}) for u, cnt in src.items()}
+        return {u: collections.Counter({wi: c for wi, c in cnt.items() if wi not in drop}) for u, cnt in src.items()}
 
 
 def _score_subset_dict(
@@ -308,6 +494,7 @@ def _score_subset_dict(
     cnt_B: Dict[Tuple[str, int], collections.Counter],
     cov_all: Dict[Tuple[str, int], Dict[str, float]],
     units_keep: Optional[Set[Tuple[str, int]]] = None,
+    alpha: float = 0.05,
 ) -> Dict[str, Any]:
     if units_keep is not None:
         cnt_all = {u: c for u, c in cnt_all.items() if u[0] == "random" or u in units_keep}
@@ -339,8 +526,7 @@ def _score_subset_dict(
     rz_BA = robust_z(rep_BA_res)
     T_dec = {u: min(rz_AB[u], rz_BA[u]) for u in rep_AB_res}
     pos_ok = {u: (rep_AB_res[u] > 0.0 and rep_BA_res[u] > 0.0) for u in T_dec}
-    sel05 = emp_fdp_select(T_dec, pos_ok, 0.05)
-    sel10 = emp_fdp_select(T_dec, pos_ok, 0.10)
+    sel = emp_fdp_select(T_dec, pos_ok, alpha)
 
     neu = [u for u in T_dec if u[0] == "neuron"]
     ctl = [u for u in T_dec if u[0] == "random"]
@@ -355,10 +541,9 @@ def _score_subset_dict(
         "T_dec_auc": round(auc([T_dec[u] for u in neu], [T_dec[u] for u in ctl])[0], 4),
         "readlib_q05": int(sum(1 for v in q_all.values() if v <= 0.05)),
         "readlib_named": len(readlib_named),
-        "fdp05": {k: v for k, v in sel05.items() if k != "named"},
-        "fdp10": {k: v for k, v in sel10.items() if k != "named"},
-        "_named05": sel05["named"],
-        "_named10": sel10["named"],
+        "fdp05": {k: v for k, v in sel.items() if k != "named"},
+        "_named05": sel["named"],
+        "_pos_ok": pos_ok,
         "_T_dec": T_dec,
         "_rep_AB_res": rep_AB_res,
         "_rep_BA_res": rep_BA_res,
@@ -373,25 +558,28 @@ def eval_pair(
     half_b: str,
     all_sub: str,
     strip_thought: bool = True,
+    strip_collapse: bool = True,
+    alpha: float = 0.05,
     run_null_splits: int = 50,
+    n_boot: int = 200,
     seed: int = 0,
 ) -> Dict[str, Any]:
-    cnt_all = run.filtered_counts(all_sub, strip_thought)
-    cnt_A = run.filtered_counts(half_a, strip_thought)
-    cnt_B = run.filtered_counts(half_b, strip_thought)
-    cov_all = run.sub_cov[all_sub]
+    cnt_all = run.filtered_counts(all_sub, strip_thought=strip_thought, strip_collapse=strip_collapse)
+    cnt_A = run.filtered_counts(half_a, strip_thought=strip_thought, strip_collapse=strip_collapse)
+    cnt_B = run.filtered_counts(half_b, strip_thought=strip_thought, strip_collapse=strip_collapse)
+    cov_all = run.covariates(all_sub, strip_thought=strip_thought, strip_collapse=strip_collapse)
 
-    n1 = _score_subset_dict(cnt_all, cnt_A, cnt_B, cov_all, units_keep=None)
+    n1 = _score_subset_dict(cnt_all, cnt_A, cnt_B, cov_all, units_keep=None, alpha=alpha)
 
     # N3: neurons inside controls' [min, max] range on all 6 covariates
     lo = {k: min(cov_all[u][k] for u in run.controls) for k in COVS}
     hi = {k: max(cov_all[u][k] for u in run.controls) for k in COVS}
     covered = {u for u in run.neurons if not any(cov_all[u][k] < lo[k] or cov_all[u][k] > hi[k] for k in COVS)}
-    n3_raw = _score_subset_dict(cnt_all, cnt_A, cnt_B, cov_all, units_keep=covered) if covered else None
+    n3_raw = _score_subset_dict(cnt_all, cnt_A, cnt_B, cov_all, units_keep=covered, alpha=alpha) if covered else None
     n3_cov_named05 = sum(1 for u in n1["_named05"] if u in covered)
 
-    # 50 random half-control null splits
-    null_res = None
+    # Exchangeable half-control split (code-symmetry sanity check only; not FDR validation)
+    sym_res = None
     if run_null_splits > 0 and len(run.controls) >= 32:
         rng = np.random.default_rng(int(seed))
         ctls = list(run.controls)
@@ -414,13 +602,17 @@ def eval_pair(
             Tn = {u: min(rzA[u], rzB[u]) for u in rzA}
             pok = {u: (rAB_r[u] > 0.0 and rBA_r[u] > 0.0) for u in Tn}
             null_aucs.append(auc([Tn[u] for u in Tn if u[0] == "neuron"], [Tn[u] for u in Tn if u[0] == "random"])[0])
-            null_fd05.append(emp_fdp_select(Tn, pok, 0.05)["count"])
-        null_res = {
+            null_fd05.append(emp_fdp_select(Tn, pok, alpha)["count"])
+        sym_res = {
             "n": int(run_null_splits),
             "T_dec_auc_mean": round(float(np.mean(null_aucs)), 4),
             "T_dec_auc_max": round(float(np.max(null_aucs)), 4),
             "fdp05_false_mean": round(float(np.mean(null_fd05)), 2),
             "fdp05_false_max": int(np.max(null_fd05)),
+            "note": (
+                "Exchangeable half-control split (code-symmetry sanity check only; "
+                "does not test neuron-vs-control exchangeability or validate FDR)."
+            ),
         }
 
     # Build replicated words list for individually named (FDP <= 0.05) neurons
@@ -457,25 +649,47 @@ def eval_pair(
             }
         )
 
+    boot_n1 = bootstrap_fdp_stability(n1["_T_dec"], n1["_pos_ok"], alpha=alpha, n_boot=n_boot, seed=seed + 17)
+    boot_n3 = (
+        bootstrap_fdp_stability(n3_raw["_T_dec"], n3_raw["_pos_ok"], alpha=alpha, n_boot=n_boot, seed=seed + 31)
+        if n3_raw
+        else None
+    )
+
     out = {k: v for k, v in n1.items() if not k.startswith("_")}
+    out["bootstrap_fdp05"] = boot_n1
     out["n3_covered"] = {
         "covered": len(covered),
         "neurons": len(run.neurons),
         "share_covered": round(len(covered) / max(len(run.neurons), 1), 4),
         "n1_named_inside_covered": n3_cov_named05,
         **({k: v for k, v in n3_raw.items() if not k.startswith("_")} if n3_raw else {}),
+        "bootstrap_fdp05": boot_n3,
     }
-    out["null_splits"] = null_res
+    out["code_symmetry_check"] = sym_res
+    out["filter"] = {
+        "strip_thought_glue": bool(strip_thought),
+        "strip_collapse": bool(strip_collapse),
+        "collapse_source": run.collapse_source,
+        "n_collapse_words": len(run.collapse_words_set),
+        "n_glue_wids": len(run.glue_wids),
+        "alpha": float(alpha),
+    }
     out["_named_records"] = named_records
     return out
 
 
-def out_of_sample_3way(run: StreamedRun, strip_thought: bool = True) -> Dict[str, Any]:
+def out_of_sample_3way(
+    run: StreamedRun,
+    strip_thought: bool = True,
+    strip_collapse: bool = True,
+    alpha: float = 0.05,
+) -> Dict[str, Any]:
     """Fit T_dec on A4=q[0:4] vs B4=q[4:8], test replicated words on unseen C4=q[8:12] via inverted postings."""
-    cnt_A4 = run.filtered_counts("A4", strip_thought)
-    cnt_B4 = run.filtered_counts("B4", strip_thought)
-    cnt_C4 = run.filtered_counts("C4", strip_thought)
-    cov_AB8 = run.sub_cov["AB8"]
+    cnt_A4 = run.filtered_counts("A4", strip_thought=strip_thought, strip_collapse=strip_collapse)
+    cnt_B4 = run.filtered_counts("B4", strip_thought=strip_thought, strip_collapse=strip_collapse)
+    cnt_C4 = run.filtered_counts("C4", strip_thought=strip_thought, strip_collapse=strip_collapse)
+    cov_AB8 = run.covariates("AB8", strip_thought=strip_thought, strip_collapse=strip_collapse)
 
     mA4 = mass_from_counts(cnt_A4)
     mB4 = mass_from_counts(cnt_B4)
@@ -484,7 +698,7 @@ def out_of_sample_3way(run: StreamedRun, strip_thought: bool = True) -> Dict[str
     rzA, rzB = robust_z(rAB4), robust_z(rBA4)
     T4 = {u: min(rzA[u], rzB[u]) for u in rzA}
     pok4 = {u: (rAB4[u] > 0.0 and rBA4[u] > 0.0) for u in T4}
-    sel = emp_fdp_select(T4, pok4, 0.05)
+    sel = emp_fdp_select(T4, pok4, alpha)
     named = sel["named"]
     if not named:
         return {"fit_named": 0, "fit_above_max_ctl": sel["above_max_ctl"], "c4_auc": None, "frac_p05_on_C4": None}
