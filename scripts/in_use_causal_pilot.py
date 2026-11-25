@@ -40,7 +40,6 @@ from backend.runtime_factory import make_runtime, weights_card  # noqa: E402
 from backend.theodolite_math import gemma4_rms_norm  # noqa: E402
 from scripts.downstream_pilot import _load_target_universe  # noqa: E402
 from scripts.in_use_common import (  # noqa: E402
-    build_columns_control_dirs,
     build_event_sequence,
     collect_face_events,
     emp_p_values,
@@ -141,8 +140,9 @@ def _run_batch_0_sanity(
     in_span_eval: torch.Tensor,
     span_mask: torch.Tensor,
     y_mlp: torch.Tensor,
-    y_rec: torch.Tensor,
     y_abl: torch.Tensor,
+    y_ctl: torch.Tensor,
+    w_post_l: torch.Tensor,
     rb: torch.Tensor,
     pt_i: torch.Tensor,
     post_rec: torch.Tensor,
@@ -151,7 +151,7 @@ def _run_batch_0_sanity(
     lsm_rec_combined: torch.Tensor,
     lsm_abl_combined: torch.Tensor,
 ) -> Dict[str, float]:
-    """Verify full-model vs split-layer reconstruction and single-rounding fp32 span ablation vs down_proj hook."""
+    """Verify bit-exact F.linear activation-space ablation vs down_proj zeroing hook and control norm match."""
     b, T = ib.shape
     D = int(post_rec.shape[-1])
     V = int(W_U.shape[0])
@@ -167,7 +167,6 @@ def _run_batch_0_sanity(
     h_full = out_full.last_hidden_state[br, pos_mat].reshape(b * 4, D)
     lsm_full = F.log_softmax(logits_fp32(h_full, W_U), dim=-1).view(b, 4, V)
 
-    # Verify same-batch (b) exactness first so cuBLAS batch-tiling differences don't mask formula checks.
     out_rec_b = ao.forward_from_layer(lm, layer + 1, post_rec, ab, pb)
     h_rec_b = out_rec_b[br, pos_mat].reshape(b * 4, D)
     lsm_rec_b = F.log_softmax(logits_fp32(h_rec_b, W_U), dim=-1).view(b, 4, V)
@@ -175,7 +174,6 @@ def _run_batch_0_sanity(
     kl_noop_comb = float((lsm_full.exp() * (lsm_full - lsm_rec_combined)).sum(-1).mean().item())
     max_lsm_noop = float((lsm_full - lsm_rec_b).abs().max().item())
 
-    # Compare single-rounding y_abl (at batch b) against live down_proj pre-hook zeroing from layer input (at batch b).
     t_idx = torch.tensor(target_ns, dtype=torch.long, device=ib.device)
     rows_i = torch.arange(b, device=ib.device)
     cap_y: Dict[str, torch.Tensor] = {}
@@ -194,9 +192,11 @@ def _run_batch_0_sanity(
         hk_z.remove()
         hk_y.remove()
 
-    delta_alg = y_rec[rb, pt_i].float() - y_abl[rb, pt_i].float()
-    delta_hook = y_mlp[rb, pt_i].float() - cap_y["y_hook"][rb, pt_i].float()
-    rel_delta_y_err = float(((delta_alg - delta_hook).norm(dim=-1) / delta_hook.norm(dim=-1).clamp(min=1e-6)).mean().item())
+    y_abl_vs_hook_max_abs = float((y_abl - cap_y["y_hook"]).abs().max().item())
+    wp_f = w_post_l.to(device=y_mlp.device, dtype=torch.float32)
+    ctl_norm = ((y_mlp[rb, pt_i].float() - y_ctl[rb, pt_i].float()) * wp_f).norm(dim=-1)
+    abl_norm = ((y_mlp[rb, pt_i].float() - y_abl[rb, pt_i].float()) * wp_f).norm(dim=-1)
+    achieved_ratio_med = float((ctl_norm / abl_norm.clamp(min=1e-6)).median().item())
 
     out_abl_b = ao.forward_from_layer(lm, layer + 1, post_abl, ab, pb)
     h_abl_b = out_abl_b[br, pos_mat].reshape(b * 4, D)
@@ -215,10 +215,11 @@ def _run_batch_0_sanity(
         "noop_kl_same_batch": round(kl_noop_same_b, 8),
         "noop_kl_combined_3b": round(kl_noop_comb, 8),
         "noop_max_lsm_diff_same_batch": round(max_lsm_noop, 6),
-        "rel_delta_y_err": round(rel_delta_y_err, 6),
-        "mean_kl_alg_vs_hook_same_batch": round(mean_kl_diff_same_b, 6),
-        "max_kl_alg_vs_hook_same_batch": round(max_kl_diff_same_b, 6),
-        "max_kl_alg_3b_vs_hook_b": round(max_kl_comb_diff, 6),
+        "y_abl_vs_hook_max_abs": round(y_abl_vs_hook_max_abs, 6),
+        "achieved_ctl_over_abl_post_norm_median": round(achieved_ratio_med, 6),
+        "mean_kl_alg_vs_hook_same_batch": round(mean_kl_diff_same_b, 8),
+        "max_kl_alg_vs_hook_same_batch": round(max_kl_diff_same_b, 8),
+        "max_kl_alg_3b_vs_hook_b": round(max_kl_comb_diff, 8),
     }
 
 
@@ -294,14 +295,24 @@ def main() -> None:
         s_l = float(w_ops.scalars[l])
         post_ffn_ln = lm.layers[l].post_feedforward_layernorm
 
-        w_tgt_cols = w_down_l.index_select(1, torch.tensor(nids, dtype=torch.long, device=dev)).T.float()  # [N, D]
-        w_ctl_dirs = build_columns_control_dirs(w_down_l, w_post_l, nids, seed=2026112501 + 1000 + l, mix_k=256)  # [N, D]
-        w_down_T_fp32 = w_down_l.float().T.contiguous()  # [D_ff, D] (~462 MB) for exact single-rounding span sums
+        mix_k = 64
+        rng_ctl = np.random.default_rng(2026112501 + 1000 + l)
+        ctl_col_idx = torch.from_numpy(
+            np.stack([rng_ctl.choice(w_ops.d_ff, size=mix_k, replace=False) for _ in range(N)], axis=0)
+        ).to(device=dev, dtype=torch.long)  # [N, 64]
+        ctl_coeffs = torch.from_numpy(rng_ctl.standard_normal((N, mix_k)).astype(np.float32)).to(device=dev)
+        w_ctl_dirs = torch.empty((N, D), dtype=torch.float32, device=dev)
+        wp_f = w_post_l.float()
+        for i in range(N):
+            tn = (w_down_l[:, nids[i]].float() * wp_f).norm().clamp(min=1e-30)
+            v_raw = w_down_l.index_select(1, ctl_col_idx[i]).float() @ ctl_coeffs[i]
+            scale_i = tn / (v_raw * wp_f).norm().clamp(min=1e-30)
+            ctl_coeffs[i] = ctl_coeffs[i] * scale_i
+            w_ctl_dirs[i] = v_raw * scale_i
 
         # Pre-fixed eye_10 IDs for real neurons and exact matched control directions
         eye_neu = np.stack([lens[f"eye_{p['face']}"][l, p["n"], :10] for p in picked], axis=0).astype(np.int32)
         eye_ctl = _control_eye_ids(w_ctl_dirs, faces, w_post_l, fnw, W_U, k=10)
-        del w_down_l
 
         # Build 8 sequences per neuron: first 4 fit (pure_h0), next 4 test (pure_h1)
         seqs: List[List[int]] = []
@@ -403,33 +414,33 @@ def main() -> None:
                 max_act_diff = max(max_act_diff, abs(float(pk_act_measured[i].item()) - ev_act) / max(abs(ev_act), 1e-3))
 
             loc_t = torch.tensor(loc_ns, dtype=torch.long, device=dev)
-            w_t = w_tgt_cols.index_select(0, loc_t)  # [b, D]
-            w_c = w_ctl_dirs.index_select(0, loc_t)  # [b, D]
 
-            # Exact float32 sum over the <=32 active span positions so abl/ctl round once to bfloat16 (no 1-ULP double-rounding)
+            # Bit-exact activation-space perturbations through the same F.linear(..., w_down_l) kernel
             flat_idx = torch.nonzero(span_mask, as_tuple=False)  # [M_tok, 2]
             rb, pt_i = flat_idx[:, 0], flat_idx[:, 1]
-            x_span = act_all[rb, pt_i, :].float()  # [M_tok, D_ff]
-            y_base_sp = x_span @ w_down_T_fp32  # [M_tok, D]
-            a_tok = act_sel[rb, pt_i].float().unsqueeze(-1)  # [M_tok, 1]
-            wt_tok = w_t.index_select(0, rb)  # [M_tok, D]
-            wc_tok = w_c.index_select(0, rb)  # [M_tok, D]
+            loc_rb = loc_t.index_select(0, rb)  # [M_tok]
+            tgt_rb = t_idx.index_select(0, rb)  # [M_tok]
+            a_tok = act_all[rb, pt_i, tgt_rb].float()  # [M_tok]
 
-            y_rec = y_mlp.clone()
-            y_abl = y_mlp.clone()
-            y_ctl = y_mlp.clone()
-            y_rec[rb, pt_i, :] = y_base_sp.to(y_mlp.dtype)
-            y_abl[rb, pt_i, :] = (y_base_sp - a_tok * wt_tok).to(y_mlp.dtype)
-            y_ctl[rb, pt_i, :] = (y_base_sp - a_tok * wc_tok).to(y_mlp.dtype)
+            x_abl = act_all.clone()
+            x_abl[rb, pt_i, tgt_rb] = 0
+            y_abl = F.linear(x_abl, w_down_l)
+            del x_abl
 
-            post_rec_orig = (resid_mid + post_ffn_ln(y_mlp)) * s_l
-            max_rec_diff = max(max_rec_diff, float((layer_out - post_rec_orig).abs().max().item()))
+            x_ctl = act_all.clone()
+            c_cols_tok = ctl_col_idx.index_select(0, loc_rb)  # [M_tok, 64]
+            c_coef_tok = ctl_coeffs.index_select(0, loc_rb)  # [M_tok, 64]
+            cur_vals = x_ctl[rb[:, None], pt_i[:, None], c_cols_tok].float()
+            x_ctl[rb[:, None], pt_i[:, None], c_cols_tok] = (cur_vals - a_tok[:, None] * c_coef_tok).to(act_all.dtype)
+            y_ctl = F.linear(x_ctl, w_down_l)
+            del x_ctl
+
+            post_rec = (resid_mid + post_ffn_ln(y_mlp)) * s_l
+            max_rec_diff = max(max_rec_diff, float((layer_out - post_rec).abs().max().item()))
             if max_rec_diff >= 0.05:
                 raise RuntimeError(f"L{l} layer output reconstruction mismatch max_abs={max_rec_diff:.4f}")
-            post_rec = (resid_mid + post_ffn_ln(y_rec)) * s_l
             post_abl = (resid_mid + post_ffn_ln(y_abl)) * s_l
             post_ctl = (resid_mid + post_ffn_ln(y_ctl)) * s_l
-            del post_rec_orig, x_span, y_base_sp, a_tok, wt_tok, wc_tok
 
             pos_mat = torch.minimum(pk_t[:, None] + eval_offsets, (seq_lens - 1)[:, None])  # [b, 4]
             in_span_eval = ((pk_t[:, None] + eval_offsets) < seq_lens[:, None]).float()  # [b, 4]
@@ -476,18 +487,14 @@ def main() -> None:
 
             if li == 0 and s == 0:
                 sanity_report = _run_batch_0_sanity(
-                    lm, W_U, l, ib, ab, pb, pos_mat, in_span_eval, span_mask, y_mlp, y_rec, y_abl, rb, pt_i, post_rec, post_abl, tgt_ns, lsm[0], lsm[1]
+                    lm, W_U, l, ib, ab, pb, pos_mat, in_span_eval, span_mask, y_mlp, y_abl, y_ctl, w_post_l, rb, pt_i, post_rec, post_abl, tgt_ns, lsm[0], lsm[1]
                 )
                 sanity_report["layer"] = int(l)
                 print(f"Batch-0 sanity at L{l}: {sanity_report}", flush=True)
-                if (
-                    sanity_report["noop_kl_same_batch"] >= 1e-4
-                    or sanity_report["mean_kl_alg_vs_hook_same_batch"] >= 1e-4
-                    or sanity_report["max_kl_alg_vs_hook_same_batch"] >= 5e-4
-                ):
+                if sanity_report["noop_kl_same_batch"] >= 1e-5 or sanity_report["max_kl_alg_vs_hook_same_batch"] >= 1e-5:
                     raise RuntimeError(f"Sanity check failed at L{l}: {sanity_report}")
 
-            del y_mlp, y_rec, y_abl, y_ctl, rb, pt_i, flat_idx
+            del y_mlp, y_abl, y_ctl, rb, pt_i, flat_idx, loc_rb, tgt_rb, a_tok, c_cols_tok, c_coef_tok, cur_vals
 
             p_all = lsm.exp()
             p_rec, p_abl, p_ctl = p_all[0], p_all[1], p_all[2]
@@ -661,7 +668,7 @@ def main() -> None:
             flush=True,
         )
 
-        del dp_pk_neu, dp_pk_ctl, dp_sp_neu, dp_sp_ctl, eye_neu, eye_ctl, w_down_T_fp32, w_tgt_cols, w_ctl_dirs
+        del dp_pk_neu, dp_pk_ctl, dp_sp_neu, dp_sp_ctl, eye_neu, eye_ctl, w_down_l, ctl_col_idx, ctl_coeffs, w_ctl_dirs
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

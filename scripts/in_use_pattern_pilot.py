@@ -485,6 +485,57 @@ def main() -> None:
         best_apref = "Answer: "
     print(f"Using assistant_prefix={best_apref!r} for single-prefill judging", flush=True)
 
+    # --- Pre-flight Arm A1 (Claude-pattern + Gemma-prefill-judge on 196 Group A pairs) before authoring ---
+    group_a_order = list(pats_json.keys())
+    items_a: List[Dict[str, Any]] = []
+    for k in group_a_order:
+        bn = blind_near_json.get(k)
+        if not bn or "by_pair" not in bn:
+            continue
+        other_k = bn["other_pattern_of"]
+        layer_k = int(pats_json[k]["layer"])
+        for pr in bn["by_pair"]:
+            f_win, f_at, f_s, f_e = pr["fires"]["window"], pr["fires"]["at"], pr["fires"]["span"][0], pr["fires"]["span"][1]
+            q_win, q_at, q_s, q_e = pr["quiet"]["window"], pr["quiet"]["at"], pr["quiet"]["span"][0], pr["quiet"]["span"][1]
+            f_txt = _snippet_span_text(tok, _window_ids(windows, f_win), f_s, f_e, f_at)
+            q_txt = _snippet_span_text(tok, _window_ids(windows, q_win), q_s, q_e, q_at)
+            tr = pr["truth"]
+            a_txt, b_txt = (f_txt, q_txt) if tr == "a" else (q_txt, f_txt)
+            items_a.append(
+                {
+                    "face_key": k,
+                    "other_key": other_k,
+                    "layer": layer_k,
+                    "truth": tr,
+                    "match": pr["quiet"]["match"],
+                    "a_txt": a_txt,
+                    "b_txt": b_txt,
+                }
+            )
+
+    def _encode_judge_items(items: Sequence[Dict[str, Any]], pat_map: Dict[str, str], use_other: bool) -> List[List[int]]:
+        out_p: List[List[int]] = []
+        for it in items:
+            pk = it["other_key"] if use_other else it["face_key"]
+            msg = _single_pair_prompt(pat_map[pk], it["a_txt"], it["b_txt"])
+            out_p.append(rt.tokenize_prompt(rt.compose_prompt(msg, system=SINGLE_PAIR_SYSTEM, chat=True, thinking=False, assistant_prefix=best_apref)))
+        return out_p
+
+    t_a1 = time.time()
+    claude_pat_map = {k: v["pattern"] for k, v in pats_json.items()}
+    a1_own_sc = _score_ab_prefills(rt, lm, _encode_judge_items(items_a, claude_pat_map, False), ab_ids, batch_size=16)
+    a1_oth_sc = _score_ab_prefills(rt, lm, _encode_judge_items(items_a, claude_pat_map, True), ab_ids, batch_size=16)
+    arm_a1 = _evaluate_ab_scores(items_a, a1_own_sc, a1_oth_sc)
+    print(
+        f"Arm A1 fail-fast check ({time.time()-t_a1:.1f}s): own={arm_a1['own_share']} vs other={arm_a1['other_share']}, "
+        f"median_p_ab_mass={arm_a1['median_p_ab_mass']}",
+        flush=True,
+    )
+    if arm_a1["own_share"] < 0.62 or arm_a1["median_p_ab_mass"] < 0.50:
+        raise RuntimeError(
+            f"Re-plan sign #3: Arm A1 own_share={arm_a1['own_share']} median_p_ab_mass={arm_a1['median_p_ab_mass']}"
+        )
+
     # --- 1. Sample 24 fresh Group B faces (L2, L14, L26) ---
     group_b_faces: List[Dict[str, Any]] = []
     for l in (2, 14, 26):
@@ -672,48 +723,8 @@ def main() -> None:
     gemma_patterns: Dict[str, str] = {j[1]: txt for j, txt in zip(author_jobs, gemma_texts)}
     print(f"Gemma authored {len(gemma_patterns)} patterns in {time.time()-t_auth:.1f}s", flush=True)
 
-    # --- 4. Single-prefill blind_near scoring: Arm A1 (Claude pat), Arm A2 (Gemma pat), Arm B (Group B Gemma pat) ---
-    group_a_order = list(pats_json.keys())
-    items_a: List[Dict[str, Any]] = []
-    for k in group_a_order:
-        bn = blind_near_json.get(k)
-        if not bn or "by_pair" not in bn:
-            continue
-        other_k = bn["other_pattern_of"]
-        layer_k = int(pats_json[k]["layer"])
-        for pr in bn["by_pair"]:
-            f_win, f_at, f_s, f_e = pr["fires"]["window"], pr["fires"]["at"], pr["fires"]["span"][0], pr["fires"]["span"][1]
-            q_win, q_at, q_s, q_e = pr["quiet"]["window"], pr["quiet"]["at"], pr["quiet"]["span"][0], pr["quiet"]["span"][1]
-            f_txt = _snippet_span_text(tok, _window_ids(windows, f_win), f_s, f_e, f_at)
-            q_txt = _snippet_span_text(tok, _window_ids(windows, q_win), q_s, q_e, q_at)
-            tr = pr["truth"]
-            a_txt, b_txt = (f_txt, q_txt) if tr == "a" else (q_txt, f_txt)
-            items_a.append(
-                {
-                    "face_key": k,
-                    "other_key": other_k,
-                    "layer": layer_k,
-                    "truth": tr,
-                    "match": pr["quiet"]["match"],
-                    "a_txt": a_txt,
-                    "b_txt": b_txt,
-                }
-            )
-
-    def _encode_judge_items(items: Sequence[Dict[str, Any]], pat_map: Dict[str, str], use_other: bool) -> List[List[int]]:
-        out_p: List[List[int]] = []
-        for it in items:
-            pk = it["other_key"] if use_other else it["face_key"]
-            msg = _single_pair_prompt(pat_map[pk], it["a_txt"], it["b_txt"])
-            out_p.append(rt.tokenize_prompt(rt.compose_prompt(msg, system=SINGLE_PAIR_SYSTEM, chat=True, thinking=False, assistant_prefix=best_apref)))
-        return out_p
-
+    # --- 4. Single-prefill blind_near scoring: Arm A2 (Gemma pat on Group A) and Arm B (Fresh Group B Gemma pat) ---
     t_judge = time.time()
-    claude_pat_map = {k: v["pattern"] for k, v in pats_json.items()}
-    a1_own_sc = _score_ab_prefills(rt, lm, _encode_judge_items(items_a, claude_pat_map, False), ab_ids, batch_size=16)
-    a1_oth_sc = _score_ab_prefills(rt, lm, _encode_judge_items(items_a, claude_pat_map, True), ab_ids, batch_size=16)
-    arm_a1 = _evaluate_ab_scores(items_a, a1_own_sc, a1_oth_sc)
-
     a2_own_sc = _score_ab_prefills(rt, lm, _encode_judge_items(items_a, gemma_patterns, False), ab_ids, batch_size=16)
     a2_oth_sc = _score_ab_prefills(rt, lm, _encode_judge_items(items_a, gemma_patterns, True), ab_ids, batch_size=16)
     arm_a2 = _evaluate_ab_scores(items_a, a2_own_sc, a2_oth_sc)
