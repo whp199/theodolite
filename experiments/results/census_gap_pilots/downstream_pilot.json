@@ -1,0 +1,1298 @@
+{
+ "git_commit": "7c89c5af058e86696b449d7e6e50f2812f87355d",
+ "git_dirty": true,
+ "code_sha256": {
+  "scripts/downstream_pilot.py": "03c0d2bdc13ddd302066f3a249e0eea21d8cec4375bd2259cd46100d9167d3a5",
+  "backend/forced_odd.py": "0bd3420db5cac0c295789f2c03b2753fe3da06092ceca300a9721b2f1489c8fd"
+ },
+ "started_at": "2026-11-25T06:50:42Z",
+ "finished_at": "2026-11-25T07:00:47Z",
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "weights": {
+  "format": "compressed-tensors W4A16",
+  "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+  "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+  "id": "e0a93173c31ed2ec",
+  "linears": "packed",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "runtime": "TheodoliteRuntime"
+ },
+ "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+ "neuron_ids": {
+  "25": [
+   4,
+   55,
+   104,
+   110,
+   251,
+   309,
+   322,
+   417,
+   428,
+   502,
+   507,
+   565,
+   573,
+   669,
+   683,
+   1057,
+   1066,
+   1119,
+   1130,
+   1266,
+   1316,
+   1374,
+   1397,
+   1446,
+   1615,
+   1704,
+   1844,
+   2152,
+   2412,
+   2439,
+   2720,
+   2839,
+   2964,
+   3154,
+   3212,
+   3243,
+   3706,
+   4036,
+   4225,
+   4280,
+   4292,
+   4363,
+   4460,
+   4470,
+   4497,
+   4592,
+   4695,
+   4946,
+   5036,
+   5094,
+   5140,
+   5150,
+   5176,
+   5216,
+   5295,
+   5303,
+   5316,
+   5369,
+   5460,
+   5541,
+   5586,
+   5767,
+   6025,
+   6146,
+   6167,
+   6266,
+   6272,
+   6309,
+   6355,
+   6391,
+   6572,
+   6590,
+   6722,
+   6823,
+   6990,
+   7055,
+   7063,
+   7151,
+   7222,
+   7250,
+   7263,
+   7529,
+   7532,
+   7634,
+   7731,
+   7745,
+   7904,
+   7929,
+   8107,
+   8183,
+   8255,
+   8310,
+   8367,
+   8400,
+   8419,
+   8452,
+   8512,
+   8624,
+   8741,
+   8848,
+   8872,
+   9052,
+   9143,
+   9371,
+   9486,
+   9568,
+   9617,
+   9709,
+   9773,
+   9863,
+   9945,
+   9975,
+   10097,
+   10306,
+   10345,
+   10611,
+   10616,
+   10655,
+   10680,
+   10918,
+   10924,
+   10949,
+   11010,
+   11034,
+   11105,
+   11182,
+   11230,
+   11234,
+   11278,
+   11339,
+   11370,
+   11375,
+   11439,
+   11470,
+   11538,
+   11576,
+   11598,
+   11711,
+   11730,
+   11907,
+   12191,
+   12198,
+   12292,
+   12442,
+   12449,
+   12614,
+   12854,
+   12939,
+   12970,
+   13022,
+   13184,
+   13279,
+   13317,
+   13401,
+   13422,
+   13650,
+   13780,
+   13805,
+   14212,
+   14223,
+   14404,
+   14414,
+   14482,
+   14518,
+   14687,
+   14733,
+   14737,
+   14821,
+   14827,
+   14935,
+   14969,
+   15126,
+   15191,
+   15209,
+   15421,
+   15495,
+   15507,
+   15562,
+   15596,
+   15736,
+   15899,
+   15984,
+   15990,
+   16032,
+   16056,
+   16172,
+   16307,
+   16488,
+   16545,
+   16623,
+   16635,
+   16683,
+   16842,
+   16915,
+   16924,
+   17007,
+   17119,
+   17282,
+   17336,
+   17363,
+   17541,
+   17685,
+   17689,
+   17702,
+   17703,
+   17769,
+   17780,
+   17979,
+   18031,
+   18047,
+   18093,
+   18182,
+   18207,
+   18258,
+   18264,
+   18517,
+   18526,
+   18705,
+   18763,
+   18813,
+   18821,
+   18846,
+   18944,
+   18958,
+   19018,
+   19112,
+   19215,
+   19415,
+   19423,
+   19547,
+   19549,
+   19583,
+   19803,
+   19996,
+   20029,
+   20067,
+   20145,
+   20320,
+   20376,
+   20412,
+   20437,
+   20783,
+   20858,
+   20906,
+   20980,
+   20982,
+   20986,
+   21006,
+   21023,
+   21044,
+   21288,
+   21372,
+   21385,
+   21453,
+   21475,
+   21487
+  ],
+  "29": [
+   38,
+   80,
+   149,
+   206,
+   298,
+   323,
+   333,
+   372,
+   559,
+   594,
+   673,
+   726,
+   811,
+   905,
+   1041,
+   1404,
+   1453,
+   1720,
+   1886,
+   2030,
+   2119,
+   2321,
+   2327,
+   2335,
+   2364,
+   2446,
+   2684,
+   3063,
+   3114,
+   3138,
+   3197,
+   3212,
+   3300,
+   3311,
+   3480,
+   3537,
+   3698,
+   3775,
+   3813,
+   3901,
+   3921,
+   3948,
+   3952,
+   4230,
+   4522,
+   4612,
+   4625,
+   4769,
+   4815,
+   4905,
+   4959,
+   4987,
+   5072,
+   5094,
+   5212,
+   5429,
+   5560,
+   5777,
+   5822,
+   5868,
+   6027,
+   6082,
+   6194,
+   6362,
+   6374,
+   6479,
+   6521,
+   6531,
+   6668,
+   6737,
+   6738,
+   6765,
+   6788,
+   6887,
+   7178,
+   7199,
+   7307,
+   7341,
+   7350,
+   7449,
+   7467,
+   7526,
+   7538,
+   7547,
+   7618,
+   8059,
+   8173,
+   8197,
+   8312,
+   8326,
+   8454,
+   8464,
+   8580,
+   8592,
+   8644,
+   8707,
+   8804,
+   8918,
+   8966,
+   9085,
+   9199,
+   9365,
+   9382,
+   9398,
+   9569,
+   9626,
+   9665,
+   9747,
+   9835,
+   9893,
+   9991,
+   10043,
+   10054,
+   10083,
+   10150,
+   10231,
+   10244,
+   10263,
+   10317,
+   10323,
+   10582,
+   10586,
+   10670,
+   10863,
+   10925,
+   11104,
+   11166,
+   11172,
+   11417,
+   11495,
+   11687,
+   11696,
+   11757,
+   11894,
+   12035,
+   12041,
+   12186,
+   12299,
+   12311,
+   12441,
+   12518,
+   12523,
+   12562,
+   12732,
+   12771,
+   12782,
+   12856,
+   12874,
+   12928,
+   12948,
+   13000,
+   13018,
+   13022,
+   13371,
+   13510,
+   13559,
+   13612,
+   13614,
+   13642,
+   13762,
+   13826,
+   13987,
+   14141,
+   14181,
+   14210,
+   14249,
+   14289,
+   14441,
+   14459,
+   14573,
+   14928,
+   15029,
+   15186,
+   15280,
+   15339,
+   15367,
+   15379,
+   15385,
+   15447,
+   15660,
+   15664,
+   15690,
+   15748,
+   15974,
+   15980,
+   16487,
+   16507,
+   16524,
+   16548,
+   16555,
+   16581,
+   16755,
+   16847,
+   16892,
+   17045,
+   17068,
+   17133,
+   17137,
+   17159,
+   17203,
+   17338,
+   17339,
+   17406,
+   17426,
+   17444,
+   17491,
+   17557,
+   17595,
+   17709,
+   17882,
+   18033,
+   18056,
+   18157,
+   18258,
+   18504,
+   18623,
+   18683,
+   18693,
+   18775,
+   18921,
+   19071,
+   19095,
+   19098,
+   19147,
+   19192,
+   19202,
+   19211,
+   19315,
+   19350,
+   19432,
+   19554,
+   19575,
+   19591,
+   19689,
+   19729,
+   19742,
+   19775,
+   19890,
+   19992,
+   20177,
+   20222,
+   20311,
+   20403,
+   20459,
+   20476,
+   20591,
+   20773,
+   20818,
+   20912,
+   20923,
+   21081,
+   21152,
+   21266,
+   21349,
+   21373,
+   21394
+  ]
+ },
+ "exploratory": true,
+ "registered": false,
+ "gates_nothing": true,
+ "m_targets": 29265,
+ "elapsed_total_s": 604.4,
+ "layers": [
+  {
+   "layer": 25,
+   "dose_ceil": 1.55,
+   "n_neurons": 256,
+   "n_cols": 512,
+   "m_targets": 29265,
+   "auc_T": 0.5405,
+   "auc_r_AB_res": 0.5531,
+   "auc_r_BA_res": 0.5455,
+   "fdp05": {
+    "count": 0,
+    "above_max_ctl": 2,
+    "threshold": null,
+    "fdp": null
+   },
+   "half_c_matched": {
+    "evaluated": 64,
+    "matched": true,
+    "half_c_auc": 0.6167,
+    "frac_gt_0": 1.0,
+    "frac_p05_vs_ctl": 0.0625,
+    "median_score_C": 15.841,
+    "ctl_median_score_C": 14.568
+   },
+   "kill_criterion_triggered": true,
+   "kill_rule": "T_auc <= 0.55 or FDP05 <= 5/256",
+   "top_examples": [
+    {
+     "src_neuron": 15191,
+     "T_down": 3.109,
+     "named_fdp05": false,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 33,
+       "n": 16897,
+       "words": [
+        "per",
+        "una",
+        "ecco",
+        "del"
+       ]
+      },
+      {
+       "layer": 48,
+       "n": 6855,
+       "words": [
+        "crafted",
+        "hand",
+        "made",
+        "custom"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 37,
+       "n": 4373,
+       "words": [
+        "m\u1ed9t",
+        "th\u1ec3",
+        "b\u1ea1n",
+        "sau"
+       ]
+      },
+      {
+       "layer": 40,
+       "n": 20925,
+       "words": [
+        "difference",
+        "there",
+        "between",
+        "night"
+       ]
+      },
+      {
+       "layer": 52,
+       "n": 8998,
+       "words": [
+        "information",
+        "info",
+        "informationally",
+        "yellow"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 17780,
+     "T_down": 2.732,
+     "named_fdp05": false,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 20961,
+       "words": [
+        "aqu\u00ed",
+        "tienes",
+        "una",
+        "detallada"
+       ]
+      },
+      {
+       "layer": 53,
+       "n": 5100,
+       "words": [
+        "dependendo",
+        "tr\u00eas",
+        "est\u00e3o",
+        "aqui"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 30,
+       "n": 8108,
+       "words": [
+        "disclaimer",
+        "consult",
+        "doctor",
+        "healthcare"
+       ]
+      },
+      {
+       "layer": 42,
+       "n": 2105,
+       "words": [
+        "feeling",
+        "hint",
+        "curiosity",
+        "considering"
+       ]
+      },
+      {
+       "layer": 40,
+       "n": 16618,
+       "words": [
+        "range",
+        "wide",
+        "spectrum",
+        "from"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 16915,
+     "T_down": 2.041,
+     "named_fdp05": false,
+     "pos_targets": [
+      {
+       "layer": 53,
+       "n": 5100,
+       "words": [
+        "dependendo",
+        "tr\u00eas",
+        "est\u00e3o",
+        "aqui"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4124,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "tienes"
+       ]
+      },
+      {
+       "layer": 42,
+       "n": 17847,
+       "words": [
+        "idea",
+        "term",
+        "date",
+        "period"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 42,
+       "n": 2038,
+       "words": [
+        "coordinates",
+        "list",
+        "give",
+        "detailed"
+       ]
+      },
+      {
+       "layer": 52,
+       "n": 8998,
+       "words": [
+        "information",
+        "info",
+        "informationally",
+        "yellow"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 4363,
+     "T_down": 1.982,
+     "named_fdp05": false,
+     "pos_targets": [
+      {
+       "layer": 40,
+       "n": 3551,
+       "words": [
+        "aqu\u00ed",
+        "que",
+        "una",
+        "para"
+       ]
+      },
+      {
+       "layer": 33,
+       "n": 5817,
+       "words": [
+        "comes",
+        "better",
+        "quality",
+        "always"
+       ]
+      },
+      {
+       "layer": 42,
+       "n": 15456,
+       "words": [
+        "afternoon",
+        "time",
+        "quiet",
+        "lazy"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4124,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "tienes"
+       ]
+      },
+      {
+       "layer": 53,
+       "n": 5100,
+       "words": [
+        "dependendo",
+        "tr\u00eas",
+        "est\u00e3o",
+        "aqui"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 8183,
+     "T_down": 1.936,
+     "named_fdp05": false,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 39,
+       "n": 16020,
+       "words": [
+        "extent",
+        "law",
+        "allowed",
+        "permitted"
+       ]
+      },
+      {
+       "layer": 52,
+       "n": 12968,
+       "words": [
+        "world",
+        "magic",
+        "journey",
+        "circular"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 37,
+       "n": 4373,
+       "words": [
+        "m\u1ed9t",
+        "th\u1ec3",
+        "b\u1ea1n",
+        "sau"
+       ]
+      },
+      {
+       "layer": 44,
+       "n": 16881,
+       "words": [
+        "difference",
+        "change",
+        "differences",
+        "changing"
+       ]
+      },
+      {
+       "layer": 48,
+       "n": 19148,
+       "words": [
+        "que",
+        "tienes",
+        "aqu\u00ed",
+        "para"
+       ]
+      }
+     ]
+    }
+   ],
+   "elapsed_s": 305.5
+  },
+  {
+   "layer": 29,
+   "dose_ceil": 1.047,
+   "n_neurons": 256,
+   "n_cols": 512,
+   "m_targets": 29265,
+   "auc_T": 0.5948,
+   "auc_r_AB_res": 0.5867,
+   "auc_r_BA_res": 0.6149,
+   "fdp05": {
+    "count": 25,
+    "above_max_ctl": 15,
+    "threshold": 2.0759,
+    "fdp": 0.0399
+   },
+   "half_c_matched": {
+    "evaluated": 25,
+    "matched": true,
+    "half_c_auc": 0.9541,
+    "frac_gt_0": 1.0,
+    "frac_p05_vs_ctl": 0.72,
+    "median_score_C": 26.244,
+    "ctl_median_score_C": 19.545
+   },
+   "kill_criterion_triggered": false,
+   "kill_rule": "T_auc <= 0.55 or FDP05 <= 5/256",
+   "top_examples": [
+    {
+     "src_neuron": 19147,
+     "T_down": 5.602,
+     "named_fdp05": true,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 13046,
+       "words": [
+        "adalah",
+        "berikut",
+        "sederhana",
+        "yang"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 12625,
+       "words": [
+        "para",
+        "que",
+        "una",
+        "tienes"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 32,
+       "n": 2130,
+       "words": [
+        "other",
+        "languages",
+        "equivalent",
+        "direct"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 15375,
+       "words": [
+        "pour",
+        "abord",
+        "faut",
+        "pas"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 12627,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "fundamentales"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 14289,
+     "T_down": 4.869,
+     "named_fdp05": true,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 12625,
+       "words": [
+        "para",
+        "que",
+        "una",
+        "tienes"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4901,
+       "words": [
+        "para",
+        "que",
+        "una",
+        "dos"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 30,
+       "n": 12627,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "fundamentales"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 10941,
+       "words": [
+        "une",
+        "est",
+        "voici",
+        "pour"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4124,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "tienes"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 9893,
+     "T_down": 4.691,
+     "named_fdp05": true,
+     "pos_targets": [
+      {
+       "layer": 32,
+       "n": 1354,
+       "words": [
+        "ein",
+        "die",
+        "wenn",
+        "ist"
+       ]
+      },
+      {
+       "layer": 32,
+       "n": 2130,
+       "words": [
+        "other",
+        "languages",
+        "equivalent",
+        "direct"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 13046,
+       "words": [
+        "adalah",
+        "berikut",
+        "sederhana",
+        "yang"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4124,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "tienes"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 12625,
+       "words": [
+        "para",
+        "que",
+        "una",
+        "tienes"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 15379,
+     "T_down": 4.137,
+     "named_fdp05": true,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 4124,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "tienes"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 53,
+       "n": 5100,
+       "words": [
+        "dependendo",
+        "tr\u00eas",
+        "est\u00e3o",
+        "aqui"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 30,
+       "n": 10634,
+       "words": [
+        "aqu\u00ed",
+        "tienes",
+        "una",
+        "para"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 8548,
+       "words": [
+        "para",
+        "uma",
+        "voc\u00ea",
+        "est\u00e3o"
+       ]
+      },
+      {
+       "layer": 37,
+       "n": 4373,
+       "words": [
+        "m\u1ed9t",
+        "th\u1ec3",
+        "b\u1ea1n",
+        "sau"
+       ]
+      }
+     ]
+    },
+    {
+     "src_neuron": 19689,
+     "T_down": 4.103,
+     "named_fdp05": true,
+     "pos_targets": [
+      {
+       "layer": 30,
+       "n": 20453,
+       "words": [
+        "berikut",
+        "adalah",
+        "yang",
+        "untuk"
+       ]
+      },
+      {
+       "layer": 31,
+       "n": 7488,
+       "words": [
+        "elements",
+        "five",
+        "shui",
+        "feng"
+       ]
+      },
+      {
+       "layer": 32,
+       "n": 2130,
+       "words": [
+        "other",
+        "languages",
+        "equivalent",
+        "direct"
+       ]
+      }
+     ],
+     "neg_targets": [
+      {
+       "layer": 33,
+       "n": 13783,
+       "words": [
+        "tres",
+        "una",
+        "tienes",
+        "aqu\u00ed"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4901,
+       "words": [
+        "para",
+        "que",
+        "una",
+        "dos"
+       ]
+      },
+      {
+       "layer": 30,
+       "n": 4124,
+       "words": [
+        "para",
+        "que",
+        "aqu\u00ed",
+        "tienes"
+       ]
+      }
+     ]
+    }
+   ],
+   "elapsed_s": 254.1
+  }
+ ]
+}
