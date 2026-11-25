@@ -1,0 +1,1933 @@
+{
+ "git_commit": "e9fa15dd7d3d23d3aadbb959049ff7f98dd564d2",
+ "git_dirty": false,
+ "code_sha256": {
+  "scripts/in_use_pattern_pilot.py": "35ae46dceebf2cbfda503c95591c0718582a7b5b6723c31cec38804ae132c2f8",
+  "scripts/in_use_common.py": "27d42078f6f1bc3a7d43b7e4e4669b9ea740dba2cfeea5d5c86c3406fde7b218",
+  "backend/pattern_tests.py": "b42ae98935548ed70880234e0c075a657f404d88848cad61de2e45378abb6944"
+ },
+ "started_at": "2026-11-25T19:09:25Z",
+ "finished_at": "2026-11-25T19:15:38Z",
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "weights": {
+  "format": "compressed-tensors W4A16",
+  "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+  "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+  "id": "e0a93173c31ed2ec",
+  "linears": "packed",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "runtime": "TheodoliteRuntime"
+ },
+ "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+ "neuron_ids": {
+  "group_a": [
+   "L2-n16560p",
+   "L2-n18138m",
+   "L2-n2099p",
+   "L14-n11687m",
+   "L14-n16551m",
+   "L14-n19793p",
+   "L26-n14541m",
+   "L26-n4644m",
+   "L26-n4837p",
+   "L31-n13214p",
+   "L31-n20806p",
+   "L31-n7731p",
+   "L36-n12896p",
+   "L36-n13610p",
+   "L36-n15041m",
+   "L45-n16700m",
+   "L45-n4812p",
+   "L45-n8497p",
+   "L56-n12115m",
+   "L56-n19940m",
+   "L56-n3342p"
+  ],
+  "group_b": [
+   "L2-n11m",
+   "L2-n6200m",
+   "L2-n6282m",
+   "L2-n8447m",
+   "L2-n17569p",
+   "L2-n19255p",
+   "L2-n20616m",
+   "L2-n21189p",
+   "L14-n406p",
+   "L14-n5201m",
+   "L14-n5443p",
+   "L14-n7027m",
+   "L14-n8658p",
+   "L14-n12937m",
+   "L14-n14305p",
+   "L14-n20120p",
+   "L26-n4670p",
+   "L26-n7622m",
+   "L26-n8907p",
+   "L26-n9772p",
+   "L26-n10103m",
+   "L26-n13906m",
+   "L26-n17321p",
+   "L26-n18889m"
+  ]
+ },
+ "elapsed_s": 372.94,
+ "judge_assistant_prefix": "",
+ "arm_a1_claude_pat_gemma_judge": {
+  "faces": 21,
+  "pairs": 196,
+  "own_right": 146,
+  "own_share": 0.7449,
+  "own_binom_p": 0.0,
+  "other_right": 100,
+  "other_share": 0.5102,
+  "other_binom_p": 0.41519628,
+  "own_minus_other": 0.2347,
+  "faces_p_lt_005_own": 7,
+  "faces_p_lt_005_other": 0,
+  "median_p_ab_mass": 0.9981,
+  "by_match": {
+   "phrase": {
+    "pairs": 64,
+    "own_right": 42,
+    "other_right": 31,
+    "own_share": 0.6562,
+    "other_share": 0.4844
+   },
+   "before": {
+    "pairs": 60,
+    "own_right": 43,
+    "other_right": 29,
+    "own_share": 0.7167,
+    "other_share": 0.4833
+   },
+   "after": {
+    "pairs": 37,
+    "own_right": 31,
+    "other_right": 20,
+    "own_share": 0.8378,
+    "other_share": 0.5405
+   },
+   "word": {
+    "pairs": 28,
+    "own_right": 26,
+    "other_right": 17,
+    "own_share": 0.9286,
+    "other_share": 0.6071
+   },
+   "anywhere": {
+    "pairs": 7,
+    "own_right": 4,
+    "other_right": 3,
+    "own_share": 0.5714,
+    "other_share": 0.4286
+   }
+  },
+  "per_face": {
+   "L2-n16560p": {
+    "layer": 2,
+    "pairs": 12,
+    "own_right": 12,
+    "own_p": 0.0002,
+    "other_right": 6,
+    "other_p": 0.6128
+   },
+   "L2-n18138m": {
+    "layer": 2,
+    "pairs": 10,
+    "own_right": 9,
+    "own_p": 0.0107,
+    "other_right": 2,
+    "other_p": 0.9893
+   },
+   "L2-n2099p": {
+    "layer": 2,
+    "pairs": 8,
+    "own_right": 8,
+    "own_p": 0.0039,
+    "other_right": 3,
+    "other_p": 0.8555
+   },
+   "L14-n11687m": {
+    "layer": 14,
+    "pairs": 10,
+    "own_right": 7,
+    "own_p": 0.1719,
+    "other_right": 4,
+    "other_p": 0.8281
+   },
+   "L14-n16551m": {
+    "layer": 14,
+    "pairs": 7,
+    "own_right": 7,
+    "own_p": 0.0078,
+    "other_right": 3,
+    "other_p": 0.7734
+   },
+   "L14-n19793p": {
+    "layer": 14,
+    "pairs": 9,
+    "own_right": 8,
+    "own_p": 0.0195,
+    "other_right": 4,
+    "other_p": 0.7461
+   },
+   "L26-n14541m": {
+    "layer": 26,
+    "pairs": 11,
+    "own_right": 8,
+    "own_p": 0.1133,
+    "other_right": 5,
+    "other_p": 0.7256
+   },
+   "L26-n4644m": {
+    "layer": 26,
+    "pairs": 9,
+    "own_right": 5,
+    "own_p": 0.5,
+    "other_right": 5,
+    "other_p": 0.5
+   },
+   "L26-n4837p": {
+    "layer": 26,
+    "pairs": 12,
+    "own_right": 9,
+    "own_p": 0.073,
+    "other_right": 7,
+    "other_p": 0.3872
+   },
+   "L31-n13214p": {
+    "layer": 31,
+    "pairs": 10,
+    "own_right": 7,
+    "own_p": 0.1719,
+    "other_right": 7,
+    "other_p": 0.1719
+   },
+   "L31-n20806p": {
+    "layer": 31,
+    "pairs": 12,
+    "own_right": 5,
+    "own_p": 0.8062,
+    "other_right": 4,
+    "other_p": 0.927
+   },
+   "L31-n7731p": {
+    "layer": 31,
+    "pairs": 8,
+    "own_right": 5,
+    "own_p": 0.3633,
+    "other_right": 6,
+    "other_p": 0.1445
+   },
+   "L36-n12896p": {
+    "layer": 36,
+    "pairs": 8,
+    "own_right": 4,
+    "own_p": 0.6367,
+    "other_right": 5,
+    "other_p": 0.3633
+   },
+   "L36-n13610p": {
+    "layer": 36,
+    "pairs": 9,
+    "own_right": 5,
+    "own_p": 0.5,
+    "other_right": 4,
+    "other_p": 0.7461
+   },
+   "L36-n15041m": {
+    "layer": 36,
+    "pairs": 12,
+    "own_right": 8,
+    "own_p": 0.1938,
+    "other_right": 8,
+    "other_p": 0.1938
+   },
+   "L45-n16700m": {
+    "layer": 45,
+    "pairs": 7,
+    "own_right": 5,
+    "own_p": 0.2266,
+    "other_right": 5,
+    "other_p": 0.2266
+   },
+   "L45-n4812p": {
+    "layer": 45,
+    "pairs": 8,
+    "own_right": 8,
+    "own_p": 0.0039,
+    "other_right": 4,
+    "other_p": 0.6367
+   },
+   "L45-n8497p": {
+    "layer": 45,
+    "pairs": 11,
+    "own_right": 8,
+    "own_p": 0.1133,
+    "other_right": 6,
+    "other_p": 0.5
+   },
+   "L56-n12115m": {
+    "layer": 56,
+    "pairs": 7,
+    "own_right": 7,
+    "own_p": 0.0078,
+    "other_right": 5,
+    "other_p": 0.2266
+   },
+   "L56-n19940m": {
+    "layer": 56,
+    "pairs": 6,
+    "own_right": 3,
+    "own_p": 0.6562,
+    "other_right": 3,
+    "other_p": 0.6562
+   },
+   "L56-n3342p": {
+    "layer": 56,
+    "pairs": 10,
+    "own_right": 8,
+    "own_p": 0.0547,
+    "other_right": 4,
+    "other_p": 0.8281
+   }
+  }
+ },
+ "arm_a2_gemma_pat_gemma_judge": {
+  "faces": 21,
+  "pairs": 196,
+  "own_right": 133,
+  "own_share": 0.6786,
+  "own_binom_p": 3.2e-07,
+  "other_right": 91,
+  "other_share": 0.4643,
+  "other_binom_p": 0.85802612,
+  "own_minus_other": 0.2143,
+  "faces_p_lt_005_own": 6,
+  "faces_p_lt_005_other": 0,
+  "median_p_ab_mass": 0.9991,
+  "by_match": {
+   "phrase": {
+    "pairs": 64,
+    "own_right": 39,
+    "other_right": 26,
+    "own_share": 0.6094,
+    "other_share": 0.4062
+   },
+   "before": {
+    "pairs": 60,
+    "own_right": 34,
+    "other_right": 29,
+    "own_share": 0.5667,
+    "other_share": 0.4833
+   },
+   "after": {
+    "pairs": 37,
+    "own_right": 29,
+    "other_right": 16,
+    "own_share": 0.7838,
+    "other_share": 0.4324
+   },
+   "word": {
+    "pairs": 28,
+    "own_right": 25,
+    "other_right": 18,
+    "own_share": 0.8929,
+    "other_share": 0.6429
+   },
+   "anywhere": {
+    "pairs": 7,
+    "own_right": 6,
+    "other_right": 2,
+    "own_share": 0.8571,
+    "other_share": 0.2857
+   }
+  },
+  "per_face": {
+   "L2-n16560p": {
+    "layer": 2,
+    "pairs": 12,
+    "own_right": 12,
+    "own_p": 0.0002,
+    "other_right": 5,
+    "other_p": 0.8062
+   },
+   "L2-n18138m": {
+    "layer": 2,
+    "pairs": 10,
+    "own_right": 6,
+    "own_p": 0.377,
+    "other_right": 3,
+    "other_p": 0.9453
+   },
+   "L2-n2099p": {
+    "layer": 2,
+    "pairs": 8,
+    "own_right": 7,
+    "own_p": 0.0352,
+    "other_right": 4,
+    "other_p": 0.6367
+   },
+   "L14-n11687m": {
+    "layer": 14,
+    "pairs": 10,
+    "own_right": 7,
+    "own_p": 0.1719,
+    "other_right": 3,
+    "other_p": 0.9453
+   },
+   "L14-n16551m": {
+    "layer": 14,
+    "pairs": 7,
+    "own_right": 7,
+    "own_p": 0.0078,
+    "other_right": 3,
+    "other_p": 0.7734
+   },
+   "L14-n19793p": {
+    "layer": 14,
+    "pairs": 9,
+    "own_right": 8,
+    "own_p": 0.0195,
+    "other_right": 5,
+    "other_p": 0.5
+   },
+   "L26-n14541m": {
+    "layer": 26,
+    "pairs": 11,
+    "own_right": 6,
+    "own_p": 0.5,
+    "other_right": 5,
+    "other_p": 0.7256
+   },
+   "L26-n4644m": {
+    "layer": 26,
+    "pairs": 9,
+    "own_right": 4,
+    "own_p": 0.7461,
+    "other_right": 7,
+    "other_p": 0.0898
+   },
+   "L26-n4837p": {
+    "layer": 26,
+    "pairs": 12,
+    "own_right": 8,
+    "own_p": 0.1938,
+    "other_right": 4,
+    "other_p": 0.927
+   },
+   "L31-n13214p": {
+    "layer": 31,
+    "pairs": 10,
+    "own_right": 5,
+    "own_p": 0.623,
+    "other_right": 3,
+    "other_p": 0.9453
+   },
+   "L31-n20806p": {
+    "layer": 31,
+    "pairs": 12,
+    "own_right": 5,
+    "own_p": 0.8062,
+    "other_right": 8,
+    "other_p": 0.1938
+   },
+   "L31-n7731p": {
+    "layer": 31,
+    "pairs": 8,
+    "own_right": 6,
+    "own_p": 0.1445,
+    "other_right": 5,
+    "other_p": 0.3633
+   },
+   "L36-n12896p": {
+    "layer": 36,
+    "pairs": 8,
+    "own_right": 3,
+    "own_p": 0.8555,
+    "other_right": 3,
+    "other_p": 0.8555
+   },
+   "L36-n13610p": {
+    "layer": 36,
+    "pairs": 9,
+    "own_right": 6,
+    "own_p": 0.2539,
+    "other_right": 2,
+    "other_p": 0.9805
+   },
+   "L36-n15041m": {
+    "layer": 36,
+    "pairs": 12,
+    "own_right": 7,
+    "own_p": 0.3872,
+    "other_right": 7,
+    "other_p": 0.3872
+   },
+   "L45-n16700m": {
+    "layer": 45,
+    "pairs": 7,
+    "own_right": 4,
+    "own_p": 0.5,
+    "other_right": 3,
+    "other_p": 0.7734
+   },
+   "L45-n4812p": {
+    "layer": 45,
+    "pairs": 8,
+    "own_right": 8,
+    "own_p": 0.0039,
+    "other_right": 5,
+    "other_p": 0.3633
+   },
+   "L45-n8497p": {
+    "layer": 45,
+    "pairs": 11,
+    "own_right": 7,
+    "own_p": 0.2744,
+    "other_right": 6,
+    "other_p": 0.5
+   },
+   "L56-n12115m": {
+    "layer": 56,
+    "pairs": 7,
+    "own_right": 5,
+    "own_p": 0.2266,
+    "other_right": 5,
+    "other_p": 0.2266
+   },
+   "L56-n19940m": {
+    "layer": 56,
+    "pairs": 6,
+    "own_right": 3,
+    "own_p": 0.6562,
+    "other_right": 1,
+    "other_p": 0.9844
+   },
+   "L56-n3342p": {
+    "layer": 56,
+    "pairs": 10,
+    "own_right": 9,
+    "own_p": 0.0107,
+    "other_right": 4,
+    "other_p": 0.8281
+   }
+  }
+ },
+ "arm_b_fresh_group_b": {
+  "faces": 24,
+  "pairs": 157,
+  "own_right": 124,
+  "own_share": 0.7898,
+  "own_binom_p": 0.0,
+  "other_right": 89,
+  "other_share": 0.5669,
+  "other_binom_p": 0.05507863,
+  "own_minus_other": 0.2229,
+  "faces_p_lt_005_own": 9,
+  "faces_p_lt_005_other": 1,
+  "median_p_ab_mass": 0.9997,
+  "by_match": {
+   "phrase": {
+    "pairs": 20,
+    "own_right": 15,
+    "other_right": 13,
+    "own_share": 0.75,
+    "other_share": 0.65
+   },
+   "before": {
+    "pairs": 43,
+    "own_right": 35,
+    "other_right": 22,
+    "own_share": 0.814,
+    "other_share": 0.5116
+   },
+   "after": {
+    "pairs": 39,
+    "own_right": 30,
+    "other_right": 22,
+    "own_share": 0.7692,
+    "other_share": 0.5641
+   },
+   "word": {
+    "pairs": 40,
+    "own_right": 31,
+    "other_right": 24,
+    "own_share": 0.775,
+    "other_share": 0.6
+   },
+   "anywhere": {
+    "pairs": 15,
+    "own_right": 13,
+    "other_right": 8,
+    "own_share": 0.8667,
+    "other_share": 0.5333
+   }
+  },
+  "per_face": {
+   "L2-n11m": {
+    "layer": 2,
+    "pairs": 5,
+    "own_right": 5,
+    "own_p": 0.0312,
+    "other_right": 5,
+    "other_p": 0.0312
+   },
+   "L2-n6200m": {
+    "layer": 2,
+    "pairs": 7,
+    "own_right": 5,
+    "own_p": 0.2266,
+    "other_right": 5,
+    "other_p": 0.2266
+   },
+   "L2-n6282m": {
+    "layer": 2,
+    "pairs": 7,
+    "own_right": 7,
+    "own_p": 0.0078,
+    "other_right": 5,
+    "other_p": 0.2266
+   },
+   "L2-n8447m": {
+    "layer": 2,
+    "pairs": 7,
+    "own_right": 7,
+    "own_p": 0.0078,
+    "other_right": 2,
+    "other_p": 0.9375
+   },
+   "L2-n17569p": {
+    "layer": 2,
+    "pairs": 4,
+    "own_right": 4,
+    "own_p": 0.0625,
+    "other_right": 2,
+    "other_p": 0.6875
+   },
+   "L2-n19255p": {
+    "layer": 2,
+    "pairs": 7,
+    "own_right": 5,
+    "own_p": 0.2266,
+    "other_right": 4,
+    "other_p": 0.5
+   },
+   "L2-n20616m": {
+    "layer": 2,
+    "pairs": 5,
+    "own_right": 5,
+    "own_p": 0.0312,
+    "other_right": 4,
+    "other_p": 0.1875
+   },
+   "L2-n21189p": {
+    "layer": 2,
+    "pairs": 8,
+    "own_right": 2,
+    "own_p": 0.9648,
+    "other_right": 2,
+    "other_p": 0.9648
+   },
+   "L14-n406p": {
+    "layer": 14,
+    "pairs": 6,
+    "own_right": 5,
+    "own_p": 0.1094,
+    "other_right": 2,
+    "other_p": 0.8906
+   },
+   "L14-n5201m": {
+    "layer": 14,
+    "pairs": 4,
+    "own_right": 4,
+    "own_p": 0.0625,
+    "other_right": 0,
+    "other_p": 1.0
+   },
+   "L14-n5443p": {
+    "layer": 14,
+    "pairs": 8,
+    "own_right": 6,
+    "own_p": 0.1445,
+    "other_right": 6,
+    "other_p": 0.1445
+   },
+   "L14-n7027m": {
+    "layer": 14,
+    "pairs": 6,
+    "own_right": 6,
+    "own_p": 0.0156,
+    "other_right": 3,
+    "other_p": 0.6562
+   },
+   "L14-n8658p": {
+    "layer": 14,
+    "pairs": 8,
+    "own_right": 7,
+    "own_p": 0.0352,
+    "other_right": 3,
+    "other_p": 0.8555
+   },
+   "L14-n12937m": {
+    "layer": 14,
+    "pairs": 6,
+    "own_right": 6,
+    "own_p": 0.0156,
+    "other_right": 5,
+    "other_p": 0.1094
+   },
+   "L14-n14305p": {
+    "layer": 14,
+    "pairs": 7,
+    "own_right": 5,
+    "own_p": 0.2266,
+    "other_right": 5,
+    "other_p": 0.2266
+   },
+   "L14-n20120p": {
+    "layer": 14,
+    "pairs": 8,
+    "own_right": 7,
+    "own_p": 0.0352,
+    "other_right": 3,
+    "other_p": 0.8555
+   },
+   "L26-n4670p": {
+    "layer": 26,
+    "pairs": 6,
+    "own_right": 4,
+    "own_p": 0.3438,
+    "other_right": 5,
+    "other_p": 0.1094
+   },
+   "L26-n7622m": {
+    "layer": 26,
+    "pairs": 6,
+    "own_right": 4,
+    "own_p": 0.3438,
+    "other_right": 4,
+    "other_p": 0.3438
+   },
+   "L26-n8907p": {
+    "layer": 26,
+    "pairs": 6,
+    "own_right": 5,
+    "own_p": 0.1094,
+    "other_right": 3,
+    "other_p": 0.6562
+   },
+   "L26-n9772p": {
+    "layer": 26,
+    "pairs": 7,
+    "own_right": 6,
+    "own_p": 0.0625,
+    "other_right": 3,
+    "other_p": 0.7734
+   },
+   "L26-n10103m": {
+    "layer": 26,
+    "pairs": 8,
+    "own_right": 8,
+    "own_p": 0.0039,
+    "other_right": 5,
+    "other_p": 0.3633
+   },
+   "L26-n13906m": {
+    "layer": 26,
+    "pairs": 6,
+    "own_right": 3,
+    "own_p": 0.6562,
+    "other_right": 5,
+    "other_p": 0.1094
+   },
+   "L26-n17321p": {
+    "layer": 26,
+    "pairs": 7,
+    "own_right": 3,
+    "own_p": 0.7734,
+    "other_right": 4,
+    "other_p": 0.5
+   },
+   "L26-n18889m": {
+    "layer": 26,
+    "pairs": 8,
+    "own_right": 5,
+    "own_p": 0.3633,
+    "other_right": 4,
+    "other_p": 0.6367
+   }
+  }
+ },
+ "group_b_behind_summary": {
+  "faces_attempted": 24,
+  "faces_own_holds_gt_0.5": 24,
+  "written_texts": 72,
+  "written_fired": 25,
+  "written_fire_rate": 0.3472,
+  "beat_corpus": 0,
+  "near_misses": 72,
+  "near_misses_fired": 2,
+  "near_miss_false_rate": 0.0278,
+  "faces_with_fired_gt0": 10,
+  "faces_clean_2of3_and_0quiet": 8,
+  "mean_apart": 0.8103,
+  "median_apart": 0.889,
+  "elapsed_s": 88.0
+ },
+ "gemma_patterns": {
+  "L2-n16560p": "The word-piece \" a\" occurring immediately after the verb \"plays\" (or \"play\") and immediately before an adjective like \"vital,\" \"crucial,\" or the noun \"part,\" typically within the phrase \"plays a [vital/crucial/important] role\" or \"plays a part.\"",
+  "L2-n18138m": "The word 'such' used as a determiner or to introduce examples, or a comma that marks the end of a long introductory phrase before the main clause.",
+  "L2-n2099p": "The word-pieces \"be\" or \"a\" (and occasionally \"for\") when they immediately follow the phrase \"way to\" or \"way for,\" typically in the context of describing a means to achieve a specific state or goal.",
+  "L14-n11687m": "The word-piece marking the end of a proper noun referring to a specific geographic location, institution, or landmark, such as a city, monastery, or cemetery.",
+  "L14-n16551m": "The word-piece immediately following the prefix \"un-\" in an adjective or participle, or the word \"by\" when it follows a passive construction starting with \"unrivalled.\"",
+  "L14-n19793p": "The marked word-piece when it serves as the final part of a proper noun phrase, specifically the name of a business, organization, or professional entity.",
+  "L26-n14541m": "The marked word-pieces appear as the first part of a word or a common function word occurring immediately after a line break or a new paragraph.",
+  "L26-n4644m": "Common first-person plural pronouns or modal verbs (can, our, we, need, understanding) used in the context of professional, technical, or health-related goals and collective improvements.",
+  "L26-n4837p": "The word-pieces [[usually]], [[that]], [[second]], [[Secondly]], or [[it]] when they function as the first word of a new sentence or paragraph.",
+  "L31-n13214p": "The neuron fires on common functional words or short nouns (ships, to, tot, ., that, 1) when they appear in the context of narrative storytelling or descriptive summaries.",
+  "L31-n20806p": "The word-piece marking the end of a word ending in \"-s\", \"-ly\", or \"-ing\" when it functions as the main verb or a primary adverb in a clause.",
+  "L31-n7731p": "Punctuation marks or short functional words (like 'and') that act as delimiters or separators within structured data, code syntax, or technical lists.",
+  "L36-n12896p": "The first word of a sentence or paragraph that introduces a concluding summary, a final point, or a general synthesis of the preceding text.",
+  "L36-n13610p": "Common function words or short verbs that appear immediately after the word \"and\" or \"be\" in a variety of narrative or descriptive contexts.",
+  "L36-n15041m": "Common function words (the, and, hand, a, few, of) appearing at the start of a phrase or clause that introduces a specific physical object or a descriptive detail within a set of instructions or a narrative.",
+  "L45-n16700m": "The word-piece \"to\" (or other pronouns/nouns) when it introduces an infinitive verb phrase expressing a purpose, goal, or function.",
+  "L45-n4812p": "The word-piece \"points\" or a digit immediately preceding the word \"points\" when referring to a numerical score, index value, or point-based reward system.",
+  "L45-n8497p": "Technical terms related to computer science inputs, outputs, and data processing, such as \"collision probability,\" \"input list,\" \"cin,\" or the \"#\" symbol used to denote output in code examples.",
+  "L56-n12115m": "The word-piece \"ib\", \"ob\", \"bol\", or \"hib\" occurring as part of a proper noun or a specialized technical term (such as chemical, botanical, or culinary terms).",
+  "L56-n19940m": "Common functional words or punctuation marks that appear at the end of a line or a specific data field in a structured list or technical description.",
+  "L56-n3342p": "Common function words (is, the, and, ,, video) appearing in contexts discussing surveillance, technology, and systemic control.",
+  "L2-n11m": "The word-piece following the adjective \"private\" when it modifies a noun to describe a personal, confidential, or non-public entity or domain.",
+  "L2-n6200m": "The word-piece \"of\" (or the suffix \"eses\") when it immediately follows the verb \"dispose\" in the context of discarding waste, trash, or biological residues.",
+  "L2-n6282m": "The word-piece \"years\" when it immediately follows the adjective \"recent,\" typically appearing in the phrase \"in recent years.\"",
+  "L2-n8447m": "The word-piece following the preposition \"by\" when it introduces a means, method, or location (e.g., \"by side\", \"by following\", \"by suicide\").",
+  "L2-n17569p": "The word-piece occurring as the final segment of a word that is part of a proper noun or a specialized technical term.",
+  "L2-n19255p": "The hyphen [[-]] used to create a compound adjective, specifically when it connects a noun or adjective to a following modifier like \"based,\" \"bright,\" or \"physiological.\"",
+  "L2-n20616m": "The word-piece \"in\" (or other tokens like \"attack\" and \"taken\") when it follows the word \"life\" or \"heart,\" specifically in contexts describing a state of being, a medical event, or a location.",
+  "L2-n21189p": "The word-piece at the end of a proper noun or a question mark ending a sentence.",
+  "L14-n406p": "The word-piece appearing as the final part of a professional title, a noun describing a business process, or a preposition following a professional role or responsibility.",
+  "L14-n5201m": "The word-pieces \"programs\", \"program\", \"groups\", \"group\", \"communities\", or a comma, occurring specifically as the object of the verb \"join\" or in the context of joining a collective organization or network.",
+  "L14-n5443p": "The marked word-piece is a verb of existence or location (such as lived, have, reside, were, are, situated, currently) that introduces the subject or location of a place or group in a descriptive context.",
+  "L14-n7027m": "The marked word-pieces are nouns or noun-fragments referring to corporate, organizational, or institutional entities and their attributes (e.g., mandate, share, portfolio) within a business or formal reporting context.",
+  "L14-n8658p": "Function words (whose, or, what, and, is) that introduce a second, parallel clause or a coordinating phrase within a list of questions or descriptive attributes.",
+  "L14-n12937m": "The word-piece \" as\" (or \"helplessly\") when it follows a verb of perception like \"watched\" to introduce a subordinate clause describing an unfolding event.",
+  "L14-n14305p": "The neuron fires on common nouns, numbers, or punctuation marks that appear at the end of a phrase or sentence, often immediately preceding a newline or a punctuation mark.",
+  "L14-n20120p": "The marked word-piece when it appears as a technical identifier, variable name, method call, or specific technical term (like SPF) within code, SQL queries, or structured technical documentation.",
+  "L26-n4670p": "The word-piece following the indefinite article \"a\" when it introduces a noun phrase that is further modified by a prepositional phrase or a relative clause.",
+  "L26-n7622m": "The neuron fires on a diverse set of tokens that appear to be the final word or punctuation mark of a sentence or phrase immediately preceding a line break or a new section.",
+  "L26-n8907p": "Common function words or short terms (updated, talk, :, and, have, tell) that immediately precede a colon, a code block, or a specific reference to a file or resource.",
+  "L26-n9772p": "The marked word-piece is a noun or verb appearing as the final word of a phrase or sentence, specifically when it serves as the object of a measurement, a quantitative value, or a technical property.",
+  "L26-n10103m": "Technical terms or keywords (such as \"attribute\", \"endpoints\", \"bearer\", or \"leaflet\") appearing within the context of software documentation, API specifications, or source code.",
+  "L26-n13906m": "The suffix of a proper noun or adjective used as a possessive or to denote a specific ideology, nationality, or affiliation.",
+  "L26-n17321p": "The first word of a proper noun phrase or a descriptive noun phrase that serves as the head of a prepositional phrase.",
+  "L26-n18889m": "The word-piece [[/$]] or [[ ==]] occurring within technical code snippets, specifically as part of variable interpolation or comparison operators in PowerShell and Python."
+ },
+ "group_b_behind_details": {
+  "L2-n11m": {
+   "layer": 2,
+   "own_ending_rel": 1.0,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.087,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.009,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece following the adjective \"private\" when it modifies a noun to describe a personal, confidential, or non-public entity or domain.",
+   "synthetic_fire": [
+    {
+     "text": " share private data securely across different departments.",
+     "rel": 0.087
+    },
+    {
+     "text": " manage private information within a secure environment.",
+     "rel": 0.012
+    },
+    {
+     "text": " maintain private records for internal organizational use.",
+     "rel": 0.087
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " share public data securely across different departments.",
+     "rel": 0.009
+    },
+    {
+     "text": " manage general information within a secure environment.",
+     "rel": 0.001
+    },
+    {
+     "text": " maintain open records for internal organizational use.",
+     "rel": 0.005
+    }
+   ]
+  },
+  "L2-n6200m": {
+   "layer": 2,
+   "own_ending_rel": 1.005,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.891,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.22,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece \"of\" (or the suffix \"eses\") when it immediately follows the verb \"dispose\" in the context of discarding waste, trash, or biological residues.",
+   "synthetic_fire": [
+    {
+     "text": " designed to dispose of the ancient religious texts.",
+     "rel": 0.865
+    },
+    {
+     "text": " meant to dispose of the sacred biological relics.",
+     "rel": 0.891
+    },
+    {
+     "text": " intended to dispose of the waste from the temples.",
+     "rel": 0.885
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " designed to dispose the ancient religious texts.",
+     "rel": 0.089
+    },
+    {
+     "text": " meant to dispose the sacred biological relics.",
+     "rel": 0.075
+    },
+    {
+     "text": " intended to dispose the waste from the temples.",
+     "rel": 0.22
+    }
+   ]
+  },
+  "L2-n6282m": {
+   "layer": 2,
+   "own_ending_rel": 0.961,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.948,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.295,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece \"years\" when it immediately follows the adjective \"recent,\" typically appearing in the phrase \"in recent years.\"",
+   "synthetic_fire": [
+    {
+     "text": " in recent years, which has boosted the local economy.",
+     "rel": 0.948
+    },
+    {
+     "text": " in recent years, attracting many new tech startups.",
+     "rel": 0.948
+    },
+    {
+     "text": " in recent years, leading to significant infrastructure upgrades.",
+     "rel": 0.948
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " in previous years, which has boosted the local economy.",
+     "rel": 0.295
+    },
+    {
+     "text": " in several years, attracting many new tech startups.",
+     "rel": 0.02
+    },
+    {
+     "text": " in later years, leading to significant infrastructure upgrades.",
+     "rel": 0.168
+    }
+   ]
+  },
+  "L2-n8447m": {
+   "layer": 2,
+   "own_ending_rel": 1.0,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 1,
+    "beat_corpus": 0,
+    "strongest": 0.646,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.002,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece following the preposition \"by\" when it introduces a means, method, or location (e.g., \"by side\", \"by following\", \"by suicide\").",
+   "synthetic_fire": [
+    {
+     "text": " and by chance, he realized she felt the same way.",
+     "rel": 0.181
+    },
+    {
+     "text": " and by looking at her, he knew it was true.",
+     "rel": 0.646
+    },
+    {
+     "text": " and by some miracle, she turned and smiled at him.",
+     "rel": 0.189
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " and he realized she felt the same way too.",
+     "rel": 0.002
+    },
+    {
+     "text": " and looking at her, he knew it was true.",
+     "rel": 0.0
+    },
+    {
+     "text": " and some miracle made her turn and smile at him.",
+     "rel": 0.001
+    }
+   ]
+  },
+  "L2-n17569p": {
+   "layer": 2,
+   "own_ending_rel": 1.0,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.975,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.0,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece occurring as the final segment of a word that is part of a proper noun or a specialized technical term.",
+   "synthetic_fire": [
+    {
+     "text": " the application of natron.",
+     "rel": 0.95
+    },
+    {
+     "text": " the use of natron.",
+     "rel": 0.975
+    },
+    {
+     "text": " the process of natron.",
+     "rel": 0.965
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " the application of salt.",
+     "rel": 0.0
+    },
+    {
+     "text": " the use of sand.",
+     "rel": 0.0
+    },
+    {
+     "text": " the process of drying.",
+     "rel": 0.0
+    }
+   ]
+  },
+  "L2-n19255p": {
+   "layer": 2,
+   "own_ending_rel": 0.96,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.276,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.018,
+    "apart": 0.778,
+    "fires_at": 0.5
+   },
+   "pattern": "The hyphen [[-]] used to create a compound adjective, specifically when it connects a noun or adjective to a following modifier like \"based,\" \"bright,\" or \"physiological.\"",
+   "synthetic_fire": [
+    {
+     "text": " This is a brain-based mechanism for rapid movement.",
+     "rel": 0.034
+    },
+    {
+     "text": " Such a response is a signal-based reaction.",
+     "rel": 0.006
+    },
+    {
+     "text": " This reflects a physiological-based process in the body.",
+     "rel": 0.276
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " This is a brain based mechanism for rapid movement.",
+     "rel": 0.018
+    },
+    {
+     "text": " Such a response is a signal based reaction.",
+     "rel": 0.006
+    },
+    {
+     "text": " This reflects a physiological based process in the body.",
+     "rel": 0.006
+    }
+   ]
+  },
+  "L2-n20616m": {
+   "layer": 2,
+   "own_ending_rel": 0.934,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 2,
+    "beat_corpus": 0,
+    "strongest": 0.934,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.169,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece \"in\" (or other tokens like \"attack\" and \"taken\") when it follows the word \"life\" or \"heart,\" specifically in contexts describing a state of being, a medical event, or a location.",
+   "synthetic_fire": [
+    {
+     "text": " times more likely to lose their life in an accident.",
+     "rel": 0.671
+    },
+    {
+     "text": " times more likely to have a heart attack during stress.",
+     "rel": 0.934
+    },
+    {
+     "text": " times more likely to find their life taken in violence.",
+     "rel": 0.463
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " times more likely to lose their way in an accident.",
+     "rel": 0.024
+    },
+    {
+     "text": " times more likely to have a heart failure during stress.",
+     "rel": 0.169
+    },
+    {
+     "text": " times more likely to find their home taken in violence.",
+     "rel": 0.139
+    }
+   ]
+  },
+  "L2-n21189p": {
+   "layer": 2,
+   "own_ending_rel": 0.975,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": -0.0,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.004,
+    "apart": 0.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece at the end of a proper noun or a question mark ending a sentence.",
+   "synthetic_fire": [
+    {
+     "text": " their lives in Mumbai?",
+     "rel": -0.0
+    },
+    {
+     "text": " their lives in Delhi?",
+     "rel": -0.0
+    },
+    {
+     "text": " their lives in Paris?",
+     "rel": -0.0
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " their lives in cities.",
+     "rel": 0.001
+    },
+    {
+     "text": " their lives in towns.",
+     "rel": 0.001
+    },
+    {
+     "text": " their lives in villages.",
+     "rel": 0.004
+    }
+   ]
+  },
+  "L14-n406p": {
+   "layer": 14,
+   "own_ending_rel": 0.916,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.118,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.009,
+    "apart": 0.778,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece appearing as the final part of a professional title, a noun describing a business process, or a preposition following a professional role or responsibility.",
+   "synthetic_fire": [
+    {
+     "text": " of the gallery.",
+     "rel": 0.118
+    },
+    {
+     "text": " for the exhibition.",
+     "rel": 0.106
+    },
+    {
+     "text": " in the department.",
+     "rel": -0.0
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " who is talented.",
+     "rel": 0.009
+    },
+    {
+     "text": " and a friend.",
+     "rel": 0.001
+    },
+    {
+     "text": " since last year.",
+     "rel": -0.001
+    }
+   ]
+  },
+  "L14-n5201m": {
+   "layer": 14,
+   "own_ending_rel": 1.0,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.876,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.241,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-pieces \"programs\", \"program\", \"groups\", \"group\", \"communities\", or a comma, occurring specifically as the object of the verb \"join\" or in the context of joining a collective organization or network.",
+   "synthetic_fire": [
+    {
+     "text": " can join groups of similar business owners.",
+     "rel": 0.638
+    },
+    {
+     "text": " can join programs that help you scale.",
+     "rel": 0.681
+    },
+    {
+     "text": " can join communities of professional marketers.",
+     "rel": 0.876
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " can join calls with our support team.",
+     "rel": 0.19
+    },
+    {
+     "text": " can join meetings to discuss your plan.",
+     "rel": 0.221
+    },
+    {
+     "text": " can join a call to learn more.",
+     "rel": 0.241
+    }
+   ]
+  },
+  "L14-n5443p": {
+   "layer": 14,
+   "own_ending_rel": 0.77,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.345,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.306,
+    "apart": 0.667,
+    "fires_at": 0.5
+   },
+   "pattern": "The marked word-piece is a verb of existence or location (such as lived, have, reside, were, are, situated, currently) that introduces the subject or location of a place or group in a descriptive context.",
+   "synthetic_fire": [
+    {
+     "text": " where there were ruins of ancient homes.",
+     "rel": 0.345
+    },
+    {
+     "text": " where many lived amidst the crumbling stone.",
+     "rel": 0.292
+    },
+    {
+     "text": " where a few resided in hidden cellars.",
+     "rel": 0.191
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " where ruins stood of ancient homes.",
+     "rel": 0.28
+    },
+    {
+     "text": " where many slept amidst the crumbling stone.",
+     "rel": 0.306
+    },
+    {
+     "text": " where a few hid in hidden cellars.",
+     "rel": 0.049
+    }
+   ]
+  },
+  "L14-n7027m": {
+   "layer": 14,
+   "own_ending_rel": 1.008,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.201,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.029,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The marked word-pieces are nouns or noun-fragments referring to corporate, organizational, or institutional entities and their attributes (e.g., mandate, share, portfolio) within a business or formal reporting context.",
+   "synthetic_fire": [
+    {
+     "text": " portfolio and expand its corporate mandate across new markets. ",
+     "rel": 0.201
+    },
+    {
+     "text": " share price and overall institutional portfolio performance. ",
+     "rel": 0.07
+    },
+    {
+     "text": " corporate strategy to optimize its current asset portfolio. ",
+     "rel": 0.162
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " feeling and expand its general mood across new markets. ",
+     "rel": 0.005
+    },
+    {
+     "text": " price and overall personal portfolio performance. ",
+     "rel": 0.022
+    },
+    {
+     "text": " general strategy to optimize its current personal assets. ",
+     "rel": 0.029
+    }
+   ]
+  },
+  "L14-n8658p": {
+   "layer": 14,
+   "own_ending_rel": 0.92,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 2,
+    "beat_corpus": 0,
+    "strongest": 0.891,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.004,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "Function words (whose, or, what, and, is) that introduce a second, parallel clause or a coordinating phrase within a list of questions or descriptive attributes.",
+   "synthetic_fire": [
+    {
+     "text": " or what was his relation to the local lords?",
+     "rel": 0.576
+    },
+    {
+     "text": " and is he the same man mentioned in the charter?",
+     "rel": 0.412
+    },
+    {
+     "text": " whose lineage is debated, or what was his true title?",
+     "rel": 0.891
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " during the siege of the castle in the north?",
+     "rel": 0.001
+    },
+    {
+     "text": " because he was a soldier in the royal army?",
+     "rel": 0.004
+    },
+    {
+     "text": " while he fought against the forces of the king?",
+     "rel": 0.001
+    }
+   ]
+  },
+  "L14-n12937m": {
+   "layer": 14,
+   "own_ending_rel": 0.978,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.953,
+    "quiet": 3,
+    "quiet_fired": 1,
+    "quiet_strongest": 0.539,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece \" as\" (or \"helplessly\") when it follows a verb of perception like \"watched\" to introduce a subordinate clause describing an unfolding event.",
+   "synthetic_fire": [
+    {
+     "text": " crowd watched as the historic speech began to echo.",
+     "rel": 0.909
+    },
+    {
+     "text": " public watched as the laws were finally put into effect.",
+     "rel": 0.953
+    },
+    {
+     "text": " world watched as the movement marched toward the capital.",
+     "rel": 0.836
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " crowd watched the historic speech begin to echo.",
+     "rel": 0.539
+    },
+    {
+     "text": " public watched the laws be put into effect.",
+     "rel": 0.478
+    },
+    {
+     "text": " world watched the movement march toward the capital.",
+     "rel": 0.468
+    }
+   ]
+  },
+  "L14-n14305p": {
+   "layer": 14,
+   "own_ending_rel": 0.931,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.038,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.064,
+    "apart": 0.556,
+    "fires_at": 0.5
+   },
+   "pattern": "The neuron fires on common nouns, numbers, or punctuation marks that appear at the end of a phrase or sentence, often immediately preceding a newline or a punctuation mark.",
+   "synthetic_fire": [
+    {
+     "text": " 9. ",
+     "rel": 0.007
+    },
+    {
+     "text": " 8! ",
+     "rel": 0.022
+    },
+    {
+     "text": " models. ",
+     "rel": 0.038
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " is ",
+     "rel": 0.019
+    },
+    {
+     "text": " very ",
+     "rel": 0.003
+    },
+    {
+     "text": " and ",
+     "rel": 0.064
+    }
+   ]
+  },
+  "L14-n20120p": {
+   "layer": 14,
+   "own_ending_rel": 0.861,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 2,
+    "beat_corpus": 0,
+    "strongest": 0.62,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.363,
+    "apart": 0.667,
+    "fires_at": 0.5
+   },
+   "pattern": "The marked word-piece when it appears as a technical identifier, variable name, method call, or specific technical term (like SPF) within code, SQL queries, or structured technical documentation.",
+   "synthetic_fire": [
+    {
+     "text": "c = a & b;",
+     "rel": 0.553
+    },
+    {
+     "text": "assign out = a | b;",
+     "rel": 0.62
+    },
+    {
+     "text": "initial begin a = 0; end",
+     "rel": 0.062
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": "The result is a sum.",
+     "rel": 0.24
+    },
+    {
+     "text": "Wait for ten seconds now.",
+     "rel": 0.363
+    },
+    {
+     "text": "This is a simple test.",
+     "rel": 0.076
+    }
+   ]
+  },
+  "L26-n4670p": {
+   "layer": 26,
+   "own_ending_rel": 0.989,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.002,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.001,
+    "apart": 0.722,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece following the indefinite article \"a\" when it introduces a noun phrase that is further modified by a prepositional phrase or a relative clause.",
+   "synthetic_fire": [
+    {
+     "text": " mix that contains vitamins.",
+     "rel": -0.001
+    },
+    {
+     "text": " treat which is organic.",
+     "rel": 0.002
+    },
+    {
+     "text": " snack with added minerals.",
+     "rel": 0.001
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " mix of vitamins.",
+     "rel": -0.001
+    },
+    {
+     "text": " treat that is organic.",
+     "rel": 0.001
+    },
+    {
+     "text": " snack with minerals.",
+     "rel": -0.001
+    }
+   ]
+  },
+  "L26-n7622m": {
+   "layer": 26,
+   "own_ending_rel": 0.855,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.469,
+    "quiet": 3,
+    "quiet_fired": 1,
+    "quiet_strongest": 0.6,
+    "apart": 0.556,
+    "fires_at": 0.5
+   },
+   "pattern": "The neuron fires on a diverse set of tokens that appear to be the final word or punctuation mark of a sentence or phrase immediately preceding a line break or a new section.",
+   "synthetic_fire": [
+    {
+     "text": " into a panic.",
+     "rel": 0.393
+    },
+    {
+     "text": " screaming.",
+     "rel": 0.469
+    },
+    {
+     "text": " reeling.",
+     "rel": 0.357
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " into a panic, but",
+     "rel": 0.371
+    },
+    {
+     "text": " screaming for help now",
+     "rel": 0.6
+    },
+    {
+     "text": " reeling from the shock and",
+     "rel": 0.336
+    }
+   ]
+  },
+  "L26-n8907p": {
+   "layer": 26,
+   "own_ending_rel": 0.992,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.095,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.031,
+    "apart": 0.667,
+    "fires_at": 0.5
+   },
+   "pattern": "Common function words or short terms (updated, talk, :, and, have, tell) that immediately precede a colon, a code block, or a specific reference to a file or resource.",
+   "synthetic_fire": [
+    {
+     "text": " image: image.png ",
+     "rel": 0.001
+    },
+    {
+     "text": " file: config.json ",
+     "rel": 0.092
+    },
+    {
+     "text": " updated: version 2 ",
+     "rel": 0.095
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " image of a cat ",
+     "rel": 0.018
+    },
+    {
+     "text": " file in the folder ",
+     "rel": 0.01
+    },
+    {
+     "text": " updated the version 2 ",
+     "rel": 0.031
+    }
+   ]
+  },
+  "L26-n9772p": {
+   "layer": 26,
+   "own_ending_rel": 0.738,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 3,
+    "beat_corpus": 0,
+    "strongest": 0.852,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.133,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The marked word-piece is a noun or verb appearing as the final word of a phrase or sentence, specifically when it serves as the object of a measurement, a quantitative value, or a technical property.",
+   "synthetic_fire": [
+    {
+     "text": " 60% carbohydrate, 20% protein, and 20% fat. ",
+     "rel": 0.781
+    },
+    {
+     "text": " 55% carbohydrates, 25% protein, and 20% fat. ",
+     "rel": 0.852
+    },
+    {
+     "text": " 60% carbs, 20% protein, and 20% lipids. ",
+     "rel": 0.805
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " balanced across all three major nutrient groups. ",
+     "rel": 0.007
+    },
+    {
+     "text": " adjusted based on the daily training volume. ",
+     "rel": 0.133
+    },
+    {
+     "text": " carefully managed to ensure optimal athletic performance. ",
+     "rel": 0.089
+    }
+   ]
+  },
+  "L26-n10103m": {
+   "layer": 26,
+   "own_ending_rel": 0.859,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.231,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.188,
+    "apart": 0.778,
+    "fires_at": 0.5
+   },
+   "pattern": "Technical terms or keywords (such as \"attribute\", \"endpoints\", \"bearer\", or \"leaflet\") appearing within the context of software documentation, API specifications, or source code.",
+   "synthetic_fire": [
+    {
+     "text": " attribute is mapped to the final output.",
+     "rel": 0.17
+    },
+    {
+     "text": " endpoints are defined in the API spec.",
+     "rel": 0.231
+    },
+    {
+     "text": " bearer token is required for this request.",
+     "rel": 0.223
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " value is mapped to the final output.",
+     "rel": 0.179
+    },
+    {
+     "text": " links are defined in the API spec.",
+     "rel": 0.188
+    },
+    {
+     "text": " secret key is required for this request.",
+     "rel": 0.056
+    }
+   ]
+  },
+  "L26-n13906m": {
+   "layer": 26,
+   "own_ending_rel": 0.965,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.03,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.053,
+    "apart": 0.611,
+    "fires_at": 0.5
+   },
+   "pattern": "The suffix of a proper noun or adjective used as a possessive or to denote a specific ideology, nationality, or affiliation.",
+   "synthetic_fire": [
+    {
+     "text": " which would be a Cossack-led territory. ",
+     "rel": 0.01
+    },
+    {
+     "text": " reflecting a pro-German ideology. ",
+     "rel": 0.03
+    },
+    {
+     "text": " under a new Cossack-style administration. ",
+     "rel": 0.009
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " which would be a Cossack territory. ",
+     "rel": 0.006
+    },
+    {
+     "text": " reflecting a German ideology. ",
+     "rel": 0.053
+    },
+    {
+     "text": " under a new Cossack administration. ",
+     "rel": 0.009
+    }
+   ]
+  },
+  "L26-n17321p": {
+   "layer": 26,
+   "own_ending_rel": 0.829,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.146,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.005,
+    "apart": 1.0,
+    "fires_at": 0.5
+   },
+   "pattern": "The first word of a proper noun phrase or a descriptive noun phrase that serves as the head of a prepositional phrase.",
+   "synthetic_fire": [
+    {
+     "text": " the Sabah region.",
+     "rel": 0.146
+    },
+    {
+     "text": " the Malaysian army.",
+     "rel": 0.018
+    },
+    {
+     "text": " the remote jungle.",
+     "rel": 0.012
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": " the area.",
+     "rel": 0.004
+    },
+    {
+     "text": " the place.",
+     "rel": 0.004
+    },
+    {
+     "text": " the land.",
+     "rel": 0.005
+    }
+   ]
+  },
+  "L26-n18889m": {
+   "layer": 26,
+   "own_ending_rel": 1.008,
+   "own_holds_gt_0.5": true,
+   "result": {
+    "kind": "written",
+    "fire": 3,
+    "fired": 0,
+    "beat_corpus": 0,
+    "strongest": 0.099,
+    "quiet": 3,
+    "quiet_fired": 0,
+    "quiet_strongest": 0.034,
+    "apart": 0.667,
+    "fires_at": 0.5
+   },
+   "pattern": "The word-piece [[/$]] or [[ ==]] occurring within technical code snippets, specifically as part of variable interpolation or comparison operators in PowerShell and Python.",
+   "synthetic_fire": [
+    {
+     "text": "Format == \"png\" }",
+     "rel": -0.002
+    },
+    {
+     "text": "Format -eq \"jpg\" }",
+     "rel": 0.048
+    },
+    {
+     "text": "Format.ToString() == \"png\" }",
+     "rel": 0.099
+    }
+   ],
+   "synthetic_quiet": [
+    {
+     "text": "Format -like \"png\" }",
+     "rel": -0.0
+    },
+    {
+     "text": "Format.Contains(\"png\") }",
+     "rel": 0.034
+    },
+    {
+     "text": "Format -match \"png\" }",
+     "rel": 0.005
+    }
+   ]
+  }
+ }
+}
