@@ -4,8 +4,8 @@ Kit 7 (census-kit-7). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
-| 0–28 | 1–29 | not taken |  |  |  | no push strengths have passed a trial here: not taken |
-| 29 | 30 | not taken |  |  |  | its trial failed, 18 November 2026 (match_things): not taken |
+| 0–28 | 1–29 | not taken |  |  |  | no push strength has passed a trial here; still shut after the gap study of 25 November 2026: not taken |
+| 29 | 30 | not taken |  |  |  | its trials failed, 18 and 23 November 2026 (match_things, edge_things); still shut after the 25 Nov gap study: not taken |
 | 30 | 31 | done | anon 6413bb68 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 18-20 Nov 2026, its own card class, spot-checked; read whole, missed both its trial's gates on one figure, 0.553 vs 0.57 |
 | 31 | 32 | done | anon eda6b586 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 18 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole |
 | 32 | 33 | done | anon 943783a3 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 17-18 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
@@ -31,8 +31,8 @@ Kit 7 (census-kit-7). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 52 | 53 | done | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 53 | 54 | done | anon 7ce4c92d | NVIDIA GeForce RTX 5090 32 GB |  | 19-20 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's two gates, read whole |
 | 54 | 55 | done | anon 0471bd29 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 20-22 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole |
-| 55 | 56 | not taken |  |  |  | its trial failed, 19 November 2026 (match_things): not taken |
-| 56–59 | 57–60 | not taken |  |  |  | not trialled with this kit's push strengths: not taken |
+| 55 | 56 | not taken |  |  |  | its trial failed, 19 November 2026 (match_things); still shut after the gap study of 25 November 2026: not taken |
+| 56–59 | 57–60 | not taken |  |  |  | not trialled with this kit's push strengths; still shut after the gap study of 25 November 2026: not taken |
 
 Judged:
 
@@ -56,4 +56,4 @@ Judged:
 - L53 anon 7ce4c92d: accepted (home bits (NVIDIA GeForce RTX 5090), spot-checked)
 - L54 anon 0471bd29: accepted (own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-22T16:07Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-25T15:18Z.
