@@ -44,8 +44,10 @@ November 2026). It failed at layer 30, and so did the same twelve questions at b
 30 a third design passed (18 November): both pushes, on twelve other questions of the kinds whose answers took a
 push's words up there. The same design then passed at layers 53 and 54 and failed at 29 and 55 (18 and 19
 November). No push strengths have passed a trial by layer 45's gates at layers 0 to 29 or 55 to 59. None of those
-layers is taken yet. **The board says which layers are open.** Layers count from 0, as every script counts them (the
-app's page = layer + 1).
+layers is taken yet, and following the exploratory census layer-gap study and GPU kill-pilots
+([`ANSWER.md`](experiments/results/census_layer_gap/ANSWER.md)), layers 0 to 29 and 55 to 59 remain shut and are not
+offered to volunteers (only layers 30 to 54 have been taken, keeping 29,265 page-described neurons). **The board says
+which layers are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
 
 **Kit 7, the kit to use now, is kit 6 with layers 53 and 54 added** (19 November 2026), each taken with the design
 for layer 30 at its own push strengths (above). Every other layer is taken exactly as under kit 6. **Layers 30, 53 and

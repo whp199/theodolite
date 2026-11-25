@@ -1,0 +1,200 @@
+{
+ "tag": "L54",
+ "layer": 54,
+ "neurons": 1022,
+ "columns_controls": 1024,
+ "isotropic_controls": 256,
+ "dose_ceil": 1.421,
+ "elapsed_s": 468.1,
+ "kl_neurons": {
+  "p10": 0.0456,
+  "p50": 0.0578,
+  "p90": 0.3321
+ },
+ "kl_columns": {
+  "p10": 0.0439,
+  "p50": 0.0522,
+  "p90": 0.0712
+ },
+ "eo_cent_p50": 0.393,
+ "alpha_abs_p50": 0.02,
+ "alpha_abs_p90": 0.0308,
+ "combos": {
+  "cent/LEX_L2_cent": {
+   "vs_columns": {
+    "auc_r_AB": 0.8278,
+    "auc_r_BA": 0.8161,
+    "auc_r_AB_res": 0.8304,
+    "auc_r_BA_res": 0.8199,
+    "auc_T": 0.8267,
+    "fdp05": {
+     "count": 555,
+     "above_max_ctl": 415,
+     "threshold": 1.8134,
+     "fdp": 0.0485
+    },
+    "fdp10": {
+     "count": 599,
+     "above_max_ctl": 415,
+     "threshold": 1.4779,
+     "fdp": 0.0999
+    }
+   },
+   "vs_isotropic": {
+    "auc_r_AB": 0.8864,
+    "auc_r_BA": 0.8812,
+    "auc_r_AB_res": 0.8491,
+    "auc_r_BA_res": 0.8469,
+    "auc_T": 0.8486,
+    "fdp05": {
+     "count": 585,
+     "above_max_ctl": 542,
+     "threshold": 2.0301,
+     "fdp": 0.0476
+    },
+    "fdp10": {
+     "count": 629,
+     "above_max_ctl": 542,
+     "threshold": 1.5859,
+     "fdp": 0.0948
+    }
+   },
+   "dual_named_count": 548,
+   "iso_false_vs_cols": 0,
+   "iso_vs_cols_auc_T": 0.3839,
+   "null_splits": {
+    "n": 50,
+    "auc_mean": 0.4983,
+    "auc_min": 0.4512,
+    "auc_max": 0.5418,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "decoding_overlap": {
+    "checked": 555,
+    "used_fdp05": true,
+    "all": {
+     "ref_neurons": 21348,
+     "checked_in_ref": 552,
+     "matched": 242,
+     "frac_of_checked": 0.4384,
+     "frac_of_cand": 0.436,
+     "shuf_matched": 1,
+     "shuf_frac": 0.0018
+    },
+    "q05": {
+     "ref_neurons": 5460,
+     "checked_in_ref": 225,
+     "matched": 181,
+     "frac_of_checked": 0.8044,
+     "frac_of_cand": 0.3261,
+     "shuf_matched": 1,
+     "shuf_frac": 0.0018
+    }
+   },
+   "weight_word_diag": {
+    "auc_own_word_vs_own_ctl": 0.7198,
+    "ctl_frac_gt0": 1.0,
+    "neu_frac_gt0": 0.999,
+    "direct_q05_count": 392,
+    "direct_among_named": 347
+   },
+   "half_c": {
+    "evaluated": 300,
+    "were_fdp05_named": true,
+    "half_c_auc": 1.0,
+    "frac_gt_0": 1.0,
+    "frac_p05_vs_ctl": 1.0,
+    "median_score_C": 4.819
+   }
+  },
+  "proj/LEX_L2_cent": {
+   "vs_columns": {
+    "auc_r_AB": 0.8281,
+    "auc_r_BA": 0.8156,
+    "auc_r_AB_res": 0.8303,
+    "auc_r_BA_res": 0.8205,
+    "auc_T": 0.8262,
+    "fdp05": {
+     "count": 553,
+     "above_max_ctl": 415,
+     "threshold": 1.8344,
+     "fdp": 0.0487
+    },
+    "fdp10": {
+     "count": 605,
+     "above_max_ctl": 415,
+     "threshold": 1.4782,
+     "fdp": 0.0939
+    }
+   },
+   "vs_isotropic": {
+    "auc_r_AB": 0.8868,
+    "auc_r_BA": 0.8791,
+    "auc_r_AB_res": 0.8512,
+    "auc_r_BA_res": 0.8435,
+    "auc_T": 0.8478,
+    "fdp05": {
+     "count": 578,
+     "above_max_ctl": 523,
+     "threshold": 1.9363,
+     "fdp": 0.0482
+    },
+    "fdp10": {
+     "count": 640,
+     "above_max_ctl": 523,
+     "threshold": 1.466,
+     "fdp": 0.0994
+    }
+   },
+   "dual_named_count": 544,
+   "iso_false_vs_cols": 0,
+   "iso_vs_cols_auc_T": 0.3871,
+   "null_splits": {
+    "n": 50,
+    "auc_mean": 0.4991,
+    "auc_min": 0.4495,
+    "auc_max": 0.5432,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0
+   },
+   "decoding_overlap": {
+    "checked": 553,
+    "used_fdp05": true,
+    "all": {
+     "ref_neurons": 21348,
+     "checked_in_ref": 550,
+     "matched": 242,
+     "frac_of_checked": 0.44,
+     "frac_of_cand": 0.4376,
+     "shuf_matched": 0,
+     "shuf_frac": 0.0
+    },
+    "q05": {
+     "ref_neurons": 5460,
+     "checked_in_ref": 225,
+     "matched": 180,
+     "frac_of_checked": 0.8,
+     "frac_of_cand": 0.3255,
+     "shuf_matched": 0,
+     "shuf_frac": 0.0
+    }
+   },
+   "weight_word_diag": {
+    "auc_own_word_vs_own_ctl": 0.72,
+    "ctl_frac_gt0": 1.0,
+    "neu_frac_gt0": 0.999,
+    "direct_q05_count": 391,
+    "direct_among_named": 345
+   },
+   "half_c": {
+    "evaluated": 300,
+    "were_fdp05_named": true,
+    "half_c_auc": 1.0,
+    "frac_gt_0": 1.0,
+    "frac_p05_vs_ctl": 1.0,
+    "median_score_C": 4.824
+   }
+  }
+ }
+}

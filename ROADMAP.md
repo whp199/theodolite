@@ -2100,6 +2100,27 @@ layers, the determinism run and the sampled push on 29 October). In this section
   repetition penalty (`backend/sampler_request.py` says why: the penalty counts the prompt, the end-of-turn mark with
   it, and can smooth away the loops a push is read by); its neuronary.org tools (recipes for Qwen3.5-4B’s neurons,
   published as the person by a model, which the scientist’s reach rules would not allow) and its Chinese interface.
+- **Why the gap layers stay shut, and exploratory atlas views** (24–25 November 2026;
+  [`ANSWER.md`](experiments/results/census_layer_gap/ANSWER.md)): after `weight_space_solution_brief` investigated the
+  twenty-five taken layers (31–55, board 30–54) against 1–30 and 56–60, all three owner-authorized choices stand as
+  follows: (1) **Open Decision 1 kept**: the census keeps `.units.jsonl`'s 29,265 page-described neurons at layers
+  31–55, and `census_fdr_sweep` (`T_dec` / `fdr_rescue`) stays out of `/arch`, `/hover`, `/census/regime/*` and every
+  page; (2) **Pilot 2 (`forced_odd_kill_pilot.py`) killed fixed-text `forced_odd` as a new census for 56–60**: on 18
+  unseen prompts `A'/B'/C'` at layers 46, 55, 59 and 60 (0-based 45, 54, 58, 59; `N = 256`, `C_cols = 512`, `C_iso = 512`),
+  layer 60 triggered Kill Criterion 1 (`iso->col` `0.3145`, `161/512`), layer 55 triggered Kill Criterion 2a
+  (equal-budget `5+5` `forced_odd` +1.45% incremental decoding accuracy over `lens.npz`, `< +3%`; `75.4%` vs `lens`
+  `85.5%`), and probability-weighted `Delta p` stayed in the zero-probability tail (`p_base` p50/p90 `0.0`, top-20 entry
+  `<= 1.09%`), though layer 59 retained a genuine `12.5%` carried residual (`cos(tot, dir) = 0.875`); (3) **Pilots 3a
+  and 3b kept 1–30 exploratory only**: full-context natural-firing ablation (`L2, L14, L20, L29`, `N = 64` vs random
+  same-layer neurons, `bf16` no-op floor `0.00000`) confirmed small real participation (`Pk_AUC` `0.6824–0.8354`, `Sp_AUC`
+  `0.6853–0.8154`, `p <= 1.2e-7`, median peak KL `0.00057–0.00112` nats), held-out `<eos>` document-half forward
+  precision (`1,553` pure half-1 windows) cleared `>= 0.20 & 3x` for `11.25%` (`L2`), `5.28%` (`L14`), `6.37%` (`L20`)
+  and `0.39%` (`L29`) concentrated in non-top-100 lexical triggers, and Direction-3 downstream activation
+  (`downstream_pilot.py`) triggered `KILL` at `L25` (`T_auc = 0.5405`, `FDP05 = 0/256`) and numerical `SURVIVE` at
+  `L29` (`T_auc = 0.5948`, `FDP05 = 25/256`) driven almost solely by immediate `L30–L32` multilingual/opener hubs. The
+  atlas exposes read-only exploratory views (`/api/atlas/census/regime/*`, optional `/hover` `regime` and `/arch`
+  `supplementary_census`) strictly with always-visible red caveats (`exploratory: true`, `not_taken: true`, never
+  marking layers 1–30 or 56–60 taken and never exposing `fdr_rescue` or `circuit_mediated`).
 
 <br>
 

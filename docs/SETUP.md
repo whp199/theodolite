@@ -166,6 +166,18 @@ process at a time):
 .venv/bin/python scripts/census_tools.py spread 45                   # its answers laid out by what they say (CPU)
 ```
 
+Exploratory gap scripts (produce **exploratory, unregistered** readings only; they do not take any layer as a census, and `L1–L30` / `L56–L60` remain shut):
+
+```bash
+.venv/bin/python -I scripts/forced_odd_census.py --layers 55-59       # fixed-text push readout + lens overlap (GPU)
+.venv/bin/python -I scripts/forced_odd_kill_pilot.py --layers 45,54,58,59  # Design-A fresh-text & direct-vs-carried pilot (GPU)
+.venv/bin/python -I scripts/build_input_census.py --layers 0-29       # document-disjoint causal (-1, 0) firing triggers on passages.d (CPU)
+.venv/bin/python -I scripts/input_ablation_check.py --layers 2,14,20,29    # fair full-context natural-firing ablation check (GPU)
+.venv/bin/python -I scripts/input_precision_pilot.py --layers 2,14,20,29   # held-out document forward-precision pilot (GPU)
+.venv/bin/python -I scripts/downstream_pilot.py --layers 25,29        # Direction-3 L25/L29 -> L30-L54 downstream activation pilot (GPU)
+.venv/bin/python -I scripts/census_fdr_read.py --layers 30-54         # research-only N1/N3 FDR sweep on existing logs (CPU; not served in UI)
+```
+
 They go to `$THEODOLITE_ATLAS_DIR` (else `atlas_data/`, which git ignores). The costs in each script’s help were
 measured in a pilot on one RTX 5090 where they say so (27 October 2026), and are worked out from the arithmetic
 elsewhere: time a pilot with `--layers` or `--neurons 0-255` on any other card first (COMPUTE.md). Names and notes are

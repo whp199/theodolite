@@ -1,0 +1,30 @@
+forced_odd vs Weight-Lens Agreement (eye_pos/eye_neg top-12 in lens.npz, whole layers L55-L59)
+--------------------------------------------------------------------------------------------------------------------
+  L  Dual05  Pos>=1  Pos>=3  Both>=1  Both>=3   Top1 Shuf+>=1  UnnBoth>=1 corr(LEX,sw)
+ 55    8086   0.797   0.418    0.960    0.781  0.581    0.000       0.820        0.662
+ 56    9997   0.835   0.468    0.971    0.822  0.612    0.000       0.840        0.681
+ 57   10486   0.851   0.445    0.967    0.800  0.608    0.000       0.849        0.713
+ 58   15441   0.860   0.498    0.964    0.825  0.643    0.000       0.832        0.706
+ 59   10845   0.917   0.770    0.995    0.967  0.834    0.002       0.978        0.689
+
+Worked CJK eye_pos -> English cognate forced-shift examples:
+  L55 n=19328 (T_min=19.56): eye_pos=[' 熱', ' Hot', 'Hot', ' hot', 'heat'] -> forced=[' Hot', ' hot', 'Hot', ' hotter', 'heating']
+  L55 n= 8870 (T_min=17.552): eye_pos=[' terbuka', ' abiertos', ' abiertas', '开放', ' откры'] -> forced=[' откры', ' terbuka', ' відкри', ' otev', 'open']
+  L55 n=19957 (T_min=17.367): eye_pos=[' 신', '신', ' tín', ' sin', '信号'] -> forced=[' signals', ' сигнала', 'sin', ' Signals', 'signals']
+  L56 n= 8706 (T_min=18.89): eye_pos=['高', 'high', ' yüksek', ' wysok', ' high'] -> forced=[' high', 'high', ' highest', ' High', ' wysok']
+  L56 n= 5930 (T_min=18.278): eye_pos=['hashes', ' હાઉસ', 'ட்டிக்', ' HAZ', '镕'] -> forced=['Hamilton', 'hashes', 'Hoe', 'halle', 'Hooks']
+  L56 n=12023 (T_min=16.685): eye_pos=[' 한', '汉', ' Han', ' Hans', 'ハン'] -> forced=['han', ' Handbook', ' Hanover', ' handbook', ' Han']
+  L57 n=11546 (T_min=19.364): eye_pos=[' 관리', '관리', ' gestion', ' Gestión', '的管理'] -> forced=[' gestion', ' Gestion', '的管理', 'Gestion', ' Yönet']
+  L57 n=11192 (T_min=19.181): eye_pos=[' части', ' Partially', '的部分', 'Partial', ' partially'] -> forced=[' partially', ' Partial', ' partial', '部分的', ' части']
+  L57 n=11659 (T_min=18.653): eye_pos=[' climbing', ' Upload', 'Upload', ' climb', '上昇'] -> forced=[' climbing', ' climbed', ' climb', ' ανε', 'Upload']
+  L58 n=20296 (T_min=18.993): eye_pos=['non', '非', ' Non', ' non', 'Non'] -> forced=[' غیر', ' non', ' غير', ' Non', 'non']
+  L58 n= 5546 (T_min=18.418): eye_pos=['计划', '計劃', '計画', ' planificación', ' plans'] -> forced=[' planned', ' rencana', ' Plans', 'Plans', ' planificación']
+  L58 n=  521 (T_min=17.67): eye_pos=[' perception', ' восприя', ' 인식', '认知', ' पाहून'] -> forced=[' восприя', ' perception', ' Perception', ' percib', ' perceber']
+  L59 n=  208 (T_min=12.571): eye_pos=['ities', 'ত্ব', 'ism', 'istically', '有一個'] -> forced=['ities', 'ism', 'istically', '有一個', 'ization']
+  L59 n= 7510 (T_min=12.056): eye_pos=['愛', 'love', ' love', 'Love', '爱'] -> forced=[' любовь', 'Love', 'love', ' love', ' Love']
+  L59 n=14407 (T_min=11.951): eye_pos=[' jadi', ' deviennent', '變成', '变成', ' Jadi'] -> forced=[' jadi', ' deviennent', ' Jadi', ' become', ' became']
+
+Stage-1 Calibration decoding-census overlap (proj/LEX_L2_cent):
+  L37: checked=193 | vs q05 census-named: 17/51 (cond=0.3333, uncond=0.0881) | vs all shown_words: 29/192 (uncond=0.1503)
+  L45: checked=536 | vs q05 census-named: 283/288 (cond=0.9826, uncond=0.528) | vs all shown_words: 401/536 (uncond=0.7481)
+  L54: checked=553 | vs q05 census-named: 180/225 (cond=0.8, uncond=0.3255) | vs all shown_words: 242/550 (uncond=0.4376)

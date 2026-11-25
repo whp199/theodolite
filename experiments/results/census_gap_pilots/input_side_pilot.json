@@ -1,0 +1,712 @@
+{
+ "part3a_split_half_lift": [
+  {
+   "layer": 2,
+   "sample_neurons": 1024,
+   "eligible_faces": 2021,
+   "total_faces": 2048,
+   "peak_rep_pct": 62.44,
+   "null_peak_rep_pct": 0.25,
+   "peak_lift3x_pct": 62.44,
+   "null_peak_lift3x_pct": 0.25,
+   "ctx_rep_pct": 73.92,
+   "null_ctx_rep_pct": 1.14,
+   "ctx_lift3x_pct": 73.92,
+   "fdp05_faces_of_2048": 1494,
+   "fdp05_share_of_eligible": 73.92
+  },
+  {
+   "layer": 14,
+   "sample_neurons": 1024,
+   "eligible_faces": 2020,
+   "total_faces": 2048,
+   "peak_rep_pct": 42.92,
+   "null_peak_rep_pct": 0.3,
+   "peak_lift3x_pct": 42.92,
+   "null_peak_lift3x_pct": 0.3,
+   "ctx_rep_pct": 60.25,
+   "null_ctx_rep_pct": 0.84,
+   "ctx_lift3x_pct": 60.25,
+   "fdp05_faces_of_2048": 1217,
+   "fdp05_share_of_eligible": 60.25
+  },
+  {
+   "layer": 20,
+   "sample_neurons": 1024,
+   "eligible_faces": 2016,
+   "total_faces": 2048,
+   "peak_rep_pct": 24.36,
+   "null_peak_rep_pct": 0.79,
+   "peak_lift3x_pct": 24.36,
+   "null_peak_lift3x_pct": 0.79,
+   "ctx_rep_pct": 37.0,
+   "null_ctx_rep_pct": 1.64,
+   "ctx_lift3x_pct": 37.0,
+   "fdp05_faces_of_2048": 746,
+   "fdp05_share_of_eligible": 37.0
+  },
+  {
+   "layer": 29,
+   "sample_neurons": 1024,
+   "eligible_faces": 2008,
+   "total_faces": 2048,
+   "peak_rep_pct": 15.89,
+   "null_peak_rep_pct": 0.15,
+   "peak_lift3x_pct": 15.89,
+   "null_peak_lift3x_pct": 0.15,
+   "ctx_rep_pct": 25.1,
+   "null_ctx_rep_pct": 1.2,
+   "ctx_lift3x_pct": 25.1,
+   "fdp05_faces_of_2048": 504,
+   "fdp05_share_of_eligible": 25.1
+  }
+ ],
+ "part3b_natural_firing_ablation": {
+  "layers": [
+   {
+    "layer": 14,
+    "neurons": 64,
+    "passages_per_neuron": 4,
+    "active_kl_per_passage": {
+     "p50": 0.00321,
+     "p90": 0.05051,
+     "max": 0.67595
+    },
+    "quiet_ctl_kl_per_passage": {
+     "p50": 0.00114,
+     "p90": 0.00335,
+     "max": 0.53724
+    },
+    "active_max_of_4_p50": 0.01734,
+    "active_max_of_4_p90": 0.17591,
+    "frac_neurons_max_kl_gt_0.005": 0.7031,
+    "frac_neurons_max_kl_gt_0.00045_bf16_floor": 1.0
+   },
+   {
+    "layer": 20,
+    "neurons": 64,
+    "passages_per_neuron": 4,
+    "active_kl_per_passage": {
+     "p50": 0.00189,
+     "p90": 0.02483,
+     "max": 0.33521
+    },
+    "quiet_ctl_kl_per_passage": {
+     "p50": 0.00089,
+     "p90": 0.00225,
+     "max": 0.09982
+    },
+    "active_max_of_4_p50": 0.01076,
+    "active_max_of_4_p90": 0.0655,
+    "frac_neurons_max_kl_gt_0.005": 0.6875,
+    "frac_neurons_max_kl_gt_0.00045_bf16_floor": 1.0
+   }
+  ],
+  "examples": {
+   "14": [
+    {
+     "neuron": 7647,
+     "face": "neg",
+     "act": -25.0,
+     "peak_tok": "BS",
+     "max_kl": 0.6759,
+     "quiet_kl": 0.0031,
+     "top_promoted_at_peak": [
+      [
+       "cig",
+       11.13
+      ],
+      [
+       " \u0627\u0644\u0623\u062d",
+       10.78
+      ],
+      [
+       "CBS",
+       10.61
+      ],
+      [
+       " \ucef4",
+       10.44
+      ],
+      [
+       "Pitch",
+       10.43
+      ]
+     ]
+    },
+    {
+     "neuron": 3227,
+     "face": "neg",
+     "act": -111.5,
+     "peak_tok": "2",
+     "max_kl": 0.4528,
+     "quiet_kl": 0.0015,
+     "top_promoted_at_peak": [
+      [
+       "NESS",
+       3.02
+      ],
+      [
+       " AMR",
+       2.83
+      ],
+      [
+       " INF",
+       2.79
+      ],
+      [
+       "JRE",
+       2.71
+      ],
+      [
+       " INVESTMENT",
+       2.62
+      ]
+     ]
+    },
+    {
+     "neuron": 8344,
+     "face": "neg",
+     "act": -37.25,
+     "peak_tok": "rid",
+     "max_kl": 0.3629,
+     "quiet_kl": 0.002,
+     "top_promoted_at_peak": [
+      [
+       " Doubles",
+       1.86
+      ],
+      [
+       " Zit",
+       1.68
+      ],
+      [
+       " doubles",
+       1.67
+      ],
+      [
+       " doubly",
+       1.57
+      ],
+      [
+       " Arabs",
+       1.54
+      ]
+     ]
+    },
+    {
+     "neuron": 9480,
+     "face": "neg",
+     "act": -60.5,
+     "peak_tok": " crop",
+     "max_kl": 0.3012,
+     "quiet_kl": 0.0016,
+     "top_promoted_at_peak": [
+      [
+       "\u0447\u0438\u043d\u0438",
+       2.2
+      ],
+      [
+       " CP",
+       2.09
+      ],
+      [
+       " \u0922\u0942\u0902",
+       2.04
+      ],
+      [
+       "\u0326",
+       2.01
+      ],
+      [
+       " gegr\u00fcndet",
+       1.98
+      ]
+     ]
+    },
+    {
+     "neuron": 115,
+     "face": "neg",
+     "act": -21.12,
+     "peak_tok": " slept",
+     "max_kl": 0.2905,
+     "quiet_kl": 0.2917,
+     "top_promoted_at_peak": [
+      [
+       "swf",
+       0.46
+      ],
+      [
+       "erat",
+       0.43
+      ],
+      [
+       "xlsx",
+       0.43
+      ],
+      [
+       "UAGE",
+       0.42
+      ],
+      [
+       "Clip",
+       0.42
+      ]
+     ]
+    },
+    {
+     "neuron": 7113,
+     "face": "neg",
+     "act": -51.75,
+     "peak_tok": " spread",
+     "max_kl": 0.1981,
+     "quiet_kl": 0.0031,
+     "top_promoted_at_peak": [
+      [
+       " soir",
+       5.71
+      ],
+      [
+       " Invit",
+       5.57
+      ],
+      [
+       " Spins",
+       5.56
+      ],
+      [
+       " Sni",
+       5.56
+      ],
+      [
+       " Sp",
+       5.51
+      ]
+     ]
+    },
+    {
+     "neuron": 9821,
+     "face": "pos",
+     "act": 153.0,
+     "peak_tok": "starch",
+     "max_kl": 0.1763,
+     "quiet_kl": 0.0022,
+     "top_promoted_at_peak": [
+      [
+       "ATION",
+       1.37
+      ],
+      [
+       "ET",
+       1.05
+      ],
+      [
+       "akta",
+       1.05
+      ],
+      [
+       "Dr",
+       1.01
+      ],
+      [
+       "Ex",
+       1.01
+      ]
+     ]
+    },
+    {
+     "neuron": 7198,
+     "face": "pos",
+     "act": 159.0,
+     "peak_tok": " Latex",
+     "max_kl": 0.1751,
+     "quiet_kl": 0.0008,
+     "top_promoted_at_peak": [
+      [
+       " naturale",
+       2.31
+      ],
+      [
+       " puedan",
+       2.23
+      ],
+      [
+       " nat\u00fcrliche",
+       2.01
+      ],
+      [
+       " priming",
+       1.98
+      ],
+      [
+       "natural",
+       1.96
+      ]
+     ]
+    },
+    {
+     "neuron": 3050,
+     "face": "pos",
+     "act": 87.5,
+     "peak_tok": " Butterfly",
+     "max_kl": 0.163,
+     "quiet_kl": 0.0031,
+     "top_promoted_at_peak": [
+      [
+       "\u0142e",
+       1.56
+      ],
+      [
+       "\u0627\u0631\u0629",
+       1.56
+      ],
+      [
+       "\u064a\u0632\u0629",
+       1.46
+      ],
+      [
+       "\u5219",
+       1.46
+      ],
+      [
+       "\u0e04\u0e30",
+       1.46
+      ]
+     ]
+    },
+    {
+     "neuron": 5335,
+     "face": "pos",
+     "act": 77.0,
+     "peak_tok": " strain",
+     "max_kl": 0.1492,
+     "quiet_kl": 0.1698,
+     "top_promoted_at_peak": [
+      [
+       "()%",
+       0.61
+      ],
+      [
+       "\u0abf\u0aaf",
+       0.6
+      ],
+      [
+       " leur",
+       0.59
+      ],
+      [
+       ",:",
+       0.58
+      ],
+      [
+       " \u0446\u0438",
+       0.56
+      ]
+     ]
+    }
+   ],
+   "20": [
+    {
+     "neuron": 7892,
+     "face": "pos",
+     "act": 17.62,
+     "peak_tok": "less",
+     "max_kl": 0.3352,
+     "quiet_kl": 0.0005,
+     "top_promoted_at_peak": [
+      [
+       " \u043a\u0435\u0439",
+       1.16
+      ],
+      [
+       "cell",
+       1.14
+      ],
+      [
+       "col",
+       1.04
+      ],
+      [
+       "ta",
+       1.03
+      ],
+      [
+       "chair",
+       1.03
+      ]
+     ]
+    },
+    {
+     "neuron": 7813,
+     "face": "neg",
+     "act": -11.19,
+     "peak_tok": " in",
+     "max_kl": 0.1219,
+     "quiet_kl": 0.0006,
+     "top_promoted_at_peak": [
+      [
+       "('-');",
+       2.7
+      ],
+      [
+       "(':",
+       2.66
+      ],
+      [
+       ".$;",
+       2.55
+      ],
+      [
+       " petitioned",
+       2.53
+      ],
+      [
+       " %#",
+       2.53
+      ]
+     ]
+    },
+    {
+     "neuron": 2304,
+     "face": "neg",
+     "act": -6.16,
+     "peak_tok": " you",
+     "max_kl": 0.1208,
+     "quiet_kl": 0.0436,
+     "top_promoted_at_peak": [
+      [
+       "/_",
+       0.31
+      ],
+      [
+       "\u6cf5",
+       0.3
+      ],
+      [
+       "\u9e45",
+       0.28
+      ],
+      [
+       "pump",
+       0.28
+      ],
+      [
+       "/'",
+       0.27
+      ]
+     ]
+    },
+    {
+     "neuron": 3254,
+     "face": "neg",
+     "act": -23.62,
+     "peak_tok": "ized",
+     "max_kl": 0.1172,
+     "quiet_kl": 0.0014,
+     "top_promoted_at_peak": [
+      [
+       "/\"",
+       2.74
+      ],
+      [
+       "/\",",
+       2.67
+      ],
+      [
+       "/\";",
+       2.59
+      ],
+      [
+       "\u3002\u201d",
+       2.57
+      ],
+      [
+       ".\"",
+       2.51
+      ]
+     ]
+    },
+    {
+     "neuron": 5992,
+     "face": "pos",
+     "act": 16.25,
+     "peak_tok": " pads",
+     "max_kl": 0.0909,
+     "quiet_kl": 0.0998,
+     "top_promoted_at_peak": [
+      [
+       " LOG",
+       3.7
+      ],
+      [
+       " BON",
+       3.67
+      ],
+      [
+       " MediaPlayer",
+       3.58
+      ],
+      [
+       "IDING",
+       3.53
+      ],
+      [
+       " \"[",
+       3.5
+      ]
+     ]
+    },
+    {
+     "neuron": 357,
+     "face": "pos",
+     "act": 10.5,
+     "peak_tok": " Hitt",
+     "max_kl": 0.0781,
+     "quiet_kl": 0.0008,
+     "top_promoted_at_peak": [
+      [
+       "FRS",
+       0.86
+      ],
+      [
+       "Records",
+       0.85
+      ],
+      [
+       "ALS",
+       0.83
+      ],
+      [
+       "BERS",
+       0.8
+      ],
+      [
+       " conso",
+       0.78
+      ]
+     ]
+    },
+    {
+     "neuron": 1702,
+     "face": "neg",
+     "act": -12.06,
+     "peak_tok": " gun",
+     "max_kl": 0.0659,
+     "quiet_kl": 0.0029,
+     "top_promoted_at_peak": [
+      [
+       "ogical",
+       1.61
+      ],
+      [
+       "taj",
+       1.51
+      ],
+      [
+       " trainee",
+       1.42
+      ],
+      [
+       " peck",
+       1.42
+      ],
+      [
+       " Vespa",
+       1.34
+      ]
+     ]
+    },
+    {
+     "neuron": 4934,
+     "face": "pos",
+     "act": 3.55,
+     "peak_tok": "spot",
+     "max_kl": 0.0647,
+     "quiet_kl": 0.0016,
+     "top_promoted_at_peak": [
+      [
+       "\n",
+       4.93
+      ],
+      [
+       "#",
+       4.53
+      ],
+      [
+       "\u0e43\u0e01\u0e25\u0e49",
+       4.31
+      ],
+      [
+       " dueDate",
+       4.17
+      ],
+      [
+       ");",
+       4.12
+      ]
+     ]
+    },
+    {
+     "neuron": 2584,
+     "face": "pos",
+     "act": 23.0,
+     "peak_tok": " -",
+     "max_kl": 0.062,
+     "quiet_kl": 0.0014,
+     "top_promoted_at_peak": [
+      [
+       " ****\",",
+       10.79
+      ],
+      [
+       "cycle",
+       10.76
+      ],
+      [
+       "step",
+       10.72
+      ],
+      [
+       "}$",
+       10.6
+      ],
+      [
+       "\u21d2",
+       10.59
+      ]
+     ]
+    },
+    {
+     "neuron": 8852,
+     "face": "neg",
+     "act": -19.62,
+     "peak_tok": "1",
+     "max_kl": 0.0611,
+     "quiet_kl": 0.0008,
+     "top_promoted_at_peak": [
+      [
+       "scm",
+       2.35
+      ],
+      [
+       "Against",
+       2.2
+      ],
+      [
+       "held",
+       2.12
+      ],
+      [
+       " \u0627\u0644\u0641\u0631",
+       2.07
+      ],
+      [
+       "\u014d",
+       2.06
+      ]
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,5 @@
+Exploratory Direction-3 Downstream Activation Kill-Pilot (Targets: 29265 Page-Described L30-L54 Neurons)
+--------------------------------------------------------------------------------------------------------------------
+  L  DoseC       N/C   rABr   rBAr  T_auc  FDP05  HC_AUC  HC_p05   Kill?
+ 25  1.550 256/512   0.5531 0.5455 0.5405      0  0.6167  0.0625    KILL
+ 29  1.047 256/512   0.5867 0.6149 0.5948     25  0.9541  0.7200 SURVIVE

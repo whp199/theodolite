@@ -1,0 +1,37 @@
+Part 3A: Split-Half Input-Side Replication (top passages per face, 1024 neurons x 2 faces/layer)
+------------------------------------------------------------------------------------------------------------------
+  L  Faces>=4+4  PeakRep% NullPeak% Lift3xPeak%  CtxRep% NullCtx% FDP05_cnt
+  2  2021/ 2048      62.4       0.2        62.4     73.9      1.1      1494
+ 14  2020/ 2048      42.9       0.3        42.9     60.2      0.8      1217
+ 20  2016/ 2048      24.4       0.8        24.4     37.0      1.6       746
+ 29  2008/ 2048      15.9       0.1        15.9     25.1      1.2       504
+
+Part 3B: Natural-Firing Ablation KL (`mul 0` at [peak..peak+4] vs matched quiet neuron)
+----------------------------------------------------------------------------------------------------
+  L   Act_p50   Act_p90  Max4_p50  Max4_p90   Qui_p50   Qui_p90  >0.005
+ 14   0.00321   0.05051   0.01734   0.17591   0.00114   0.00335  70.31%
+ 20   0.00189   0.02483   0.01076   0.06550   0.00089   0.00225  68.75%
+
+Top 10 L14 ablation examples:
+  n= 7647(neg) act=-25.00 on 'BS' -> KL=0.6759 (quiet=0.00310) promoted=[('cig', 11.13), (' الأح', 10.78), ('CBS', 10.61)]
+  n= 3227(neg) act=-111.50 on '2' -> KL=0.4528 (quiet=0.00150) promoted=[('NESS', 3.02), (' AMR', 2.83), (' INF', 2.79)]
+  n= 8344(neg) act=-37.25 on 'rid' -> KL=0.3629 (quiet=0.00200) promoted=[(' Doubles', 1.86), (' Zit', 1.68), (' doubles', 1.67)]
+  n= 9480(neg) act=-60.50 on ' crop' -> KL=0.3012 (quiet=0.00160) promoted=[('чини', 2.2), (' CP', 2.09), (' ढूं', 2.04)]
+  n=  115(neg) act=-21.12 on ' slept' -> KL=0.2905 (quiet=0.29170) promoted=[('swf', 0.46), ('erat', 0.43), ('xlsx', 0.43)]
+  n= 7113(neg) act=-51.75 on ' spread' -> KL=0.1981 (quiet=0.00310) promoted=[(' soir', 5.71), (' Invit', 5.57), (' Spins', 5.56)]
+  n= 9821(pos) act=153.00 on 'starch' -> KL=0.1763 (quiet=0.00220) promoted=[('ATION', 1.37), ('ET', 1.05), ('akta', 1.05)]
+  n= 7198(pos) act=159.00 on ' Latex' -> KL=0.1751 (quiet=0.00080) promoted=[(' naturale', 2.31), (' puedan', 2.23), (' natürliche', 2.01)]
+  n= 3050(pos) act=87.50 on ' Butterfly' -> KL=0.1630 (quiet=0.00310) promoted=[('łe', 1.56), ('ارة', 1.56), ('يزة', 1.46)]
+  n= 5335(pos) act=77.00 on ' strain' -> KL=0.1492 (quiet=0.16980) promoted=[('()%', 0.61), ('િય', 0.6), (' leur', 0.59)]
+
+Top 10 L20 ablation examples:
+  n= 7892(pos) act=17.62 on 'less' -> KL=0.3352 (quiet=0.00050) promoted=[(' кей', 1.16), ('cell', 1.14), ('col', 1.04)]
+  n= 7813(neg) act=-11.19 on ' in' -> KL=0.1219 (quiet=0.00060) promoted=[("('-');", 2.7), ("(':", 2.66), ('.$;', 2.55)]
+  n= 2304(neg) act=-6.16 on ' you' -> KL=0.1208 (quiet=0.04360) promoted=[('/_', 0.31), ('泵', 0.3), ('鹅', 0.28)]
+  n= 3254(neg) act=-23.62 on 'ized' -> KL=0.1172 (quiet=0.00140) promoted=[('/"', 2.74), ('/",', 2.67), ('/";', 2.59)]
+  n= 5992(pos) act=16.25 on ' pads' -> KL=0.0909 (quiet=0.09980) promoted=[(' LOG', 3.7), (' BON', 3.67), (' MediaPlayer', 3.58)]
+  n=  357(pos) act=10.50 on ' Hitt' -> KL=0.0781 (quiet=0.00080) promoted=[('FRS', 0.86), ('Records', 0.85), ('ALS', 0.83)]
+  n= 1702(neg) act=-12.06 on ' gun' -> KL=0.0659 (quiet=0.00290) promoted=[('ogical', 1.61), ('taj', 1.51), (' trainee', 1.42)]
+  n= 4934(pos) act= 3.55 on 'spot' -> KL=0.0647 (quiet=0.00160) promoted=[('\n', 4.93), ('#', 4.53), ('ใกล้', 4.31)]
+  n= 2584(pos) act=23.00 on ' -' -> KL=0.0620 (quiet=0.00140) promoted=[(' ****",', 10.79), ('cycle', 10.76), ('step', 10.72)]
+  n= 8852(neg) act=-19.62 on '1' -> KL=0.0611 (quiet=0.00080) promoted=[('scm', 2.35), ('Against', 2.2), ('held', 2.12)]

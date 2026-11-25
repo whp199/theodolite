@@ -139,6 +139,9 @@ export interface Arch {
   census: Record<string, string>;
   /** layers whose only census is not read, and why (a run taken before the controls were shaped as neurons' writes) */
   census_refused?: Record<string, string>;
+  /** exploratory supplementary readings (push on set text L55-L59, corpus firing L0-L29); never counts layers taken */
+  supplementary_census?: SupplementaryCensus;
+  supplementary_refused?: Record<string, string>;
   push: {
     modes: string[];
     units: Record<string, string>;
@@ -234,6 +237,7 @@ export interface Hover {
   faces: Record<"+" | "-", FaceWords>;
   links: { down: Link[]; up: Link[] } | null;
   name: string;
+  regime?: HoverRegime;
   ready: boolean;
 }
 export interface ActRange {
@@ -907,4 +911,276 @@ export function halfToFloat(h: number): number {
   const e = (h >> 10) & 0x1f;
   const m = h & 0x3ff;
   return e === 0 ? s * m * 2 ** -24 : e === 31 ? (m ? NaN : s * Infinity) : s * (1 + m / 1024) * 2 ** (e - 15);
+}
+
+/* ------------------------------------------------------------------------------- exploratory supplementary regimes */
+
+export type SupplementaryRegimeId = "forced_odd" | "input_census";
+
+export const causalOffsetLabel = (offset: number): string =>
+  offset === -1 ? "after" : offset === 0 ? "fires on" : `+${offset}`;
+
+export interface SupplementaryCensus {
+  forced_odd: number[];
+  input_census: number[];
+}
+
+export interface ForcedOddPiece {
+  tok: string;
+  score: number;
+  id: number;
+}
+
+export interface ForcedOddMeta {
+  layer: number;
+  d_ff: number;
+  exploratory: boolean;
+  not_taken: boolean;
+  doses_uncalibrated?: boolean;
+  doses_note?: string;
+  piece_filter?: string;
+  readout_mode: string | null;
+  dose_ceil: number | null;
+  dose_stat: string | null;
+  target_kl: number | null;
+  n_cols: number | null;
+  n_iso: number | null;
+  dual05_count: number;
+  dual05_pct: number;
+  dual10_count: number | null;
+  iso_false_vs_cols?: number | null;
+  kl_p50?: number | null;
+  kl_p90?: number | null;
+  vs_columns: {
+    auc_T?: number | null;
+    fdp05?: { count?: number; above_max_ctl?: number; threshold?: number | null; fdp?: number | null } | null;
+    null_splits_columns?: { n?: number; auc_mean?: number; auc_min?: number; auc_max?: number; fdp05_false_mean?: number; fdp05_false_max?: number } | null;
+  } | null;
+  vs_isotropic: {
+    auc_T?: number | null;
+    fdp05?: { count?: number; above_max_ctl?: number; threshold?: number | null; fdp?: number | null } | null;
+    null_splits_isotropic?: { n?: number; auc_mean?: number; auc_min?: number; auc_max?: number; fdp05_false_mean?: number; fdp05_false_max?: number } | null;
+  } | null;
+  half_c?: {
+    evaluated?: number;
+    matched?: boolean;
+    were_dual05_named?: boolean;
+    vs_columns?: { evaluated?: number; half_c_auc?: number | null; frac_gt_0?: number | null; frac_p05_vs_ctl?: number | null; median_score_C?: number | null } | null;
+    vs_isotropic?: { evaluated?: number; half_c_auc?: number | null; frac_gt_0?: number | null; frac_p05_vs_ctl?: number | null; median_score_C?: number | null } | null;
+  } | null;
+  weight_lens_agreement?: {
+    available?: boolean;
+    n_evaluated?: number;
+    pos_ge1?: number;
+    pos_ge1_rate?: number;
+    pos_ge1_shuf_rate?: number;
+    both_ge1?: number;
+    both_ge1_rate?: number;
+  } | null;
+}
+
+export interface ForcedOddNeuron {
+  regime: "forced_odd";
+  label: string;
+  exploratory: boolean;
+  not_taken: boolean;
+  named_dual05: boolean;
+  named_dual10: boolean;
+  named_col05: boolean;
+  named_iso05: boolean;
+  T_col: number;
+  T_iso: number;
+  T_min: number;
+  r_ab_res_col: number | null;
+  r_ba_res_col: number | null;
+  kl_mean: number | null;
+  alpha_abs: number | null;
+  rank: number | null;
+  n_named: number;
+  own_lens_match: boolean | null;
+  q_own_lens: number | null;
+  own_lens_note: string | null;
+  pos: ForcedOddPiece[];
+  neg: ForcedOddPiece[];
+  why_no_words?: string;
+  meta: ForcedOddMeta;
+}
+
+export interface InputTrigger {
+  tok: string;
+  id: number;
+  offset: number;
+  offset_label: string;
+  cnt_e: number;
+  cnt_o: number;
+  lift: number;
+}
+
+export interface InputFaceRecord {
+  eligible: boolean;
+  named: boolean;
+  named_2plus2?: boolean;
+  named_fdp10?: boolean;
+  rank: number | null;
+  score: number;
+  bigram_rep: boolean;
+  smp_hits: number;
+  smp_total: number;
+  triggers: InputTrigger[];
+  next_pieces?: InputTrigger[];
+}
+
+export interface InputAblationLayer {
+  layer: number;
+  neurons: number | null;
+  passages: number | null;
+  control_kind?: string | null;
+  noop_bf16_floor_pk_p50?: number | null;
+  kl_pk?: { auc_active_vs_control?: number | null; wilcoxon_p?: number | null; frac_neurons_max4_gt_0_005?: number | null; target_p50?: number | null; control_p50?: number | null };
+  kl_span?: { auc_active_vs_control?: number | null; wilcoxon_p?: number | null; frac_neurons_max4_gt_0_005?: number | null; target_p50?: number | null; control_p50?: number | null };
+}
+
+export interface InputPrecisionLayer {
+  layer: number;
+  evaluated?: number | null;
+  sampled?: number | null;
+  face_prec50_trig_p50?: number | null;
+  face_prec50_trig_mean?: number | null;
+  frac_prec20_and_lift3x?: number | null;
+  auc_vs_freq_ctl?: number | null;
+}
+
+export interface InputCensusMeta {
+  layer: number;
+  exploratory: boolean;
+  not_taken: boolean;
+  split_kind?: string;
+  triggers_note?: string;
+  no_passages_stored?: boolean;
+  total_faces: number;
+  eligible_faces: number;
+  named_2plus2_count: number;
+  named_fdp05_count: number;
+  named_fdp05_pct_elig: number | null;
+  named_fdp05_pct_total: number | null;
+  named_fdp10_count: number | null;
+  threshold_05?: number | null;
+  bigram_rep_pct_elig: number | null;
+  other_face_null_rate?: number | null;
+  smp_named_hits?: number | null;
+  smp_named_tot?: number | null;
+  smp_named_rate?: number | null;
+  smp_freq_rate?: number | null;
+  smp_shuf_rate?: number | null;
+  ablation_sampled?: boolean;
+  ablation_sample_neurons?: number | null;
+  ablation_control_kind?: string | null;
+  ablation_check?: InputAblationLayer | null;
+  ablation_sampled_layers?: number[];
+  precision_pilot?: InputPrecisionLayer | null;
+}
+
+export interface InputCensusNeuron {
+  regime: "input_census";
+  label: string;
+  exploratory: boolean;
+  not_taken: boolean;
+  no_passages_stored: boolean;
+  faces: Record<"+" | "-", InputFaceRecord>;
+  n_named_faces: number;
+  meta: InputCensusMeta;
+}
+
+export interface RegimeNeuron {
+  layer: number;
+  n: number;
+  exploratory: boolean;
+  not_taken: boolean;
+  forced_odd: ForcedOddNeuron | null;
+  input_census: InputCensusNeuron | null;
+  stale?: string;
+}
+
+export interface RegimeUnitRow {
+  n: number;
+  rank: number;
+  name: string;
+  T_min?: number;
+  T_col?: number;
+  T_iso?: number;
+  own_lens_match?: boolean | null;
+  q_own_lens?: number | null;
+  own_lens_note?: string | null;
+  pos?: [string, number][];
+  neg?: [string, number][];
+  face?: "+" | "-";
+  score?: number;
+  bigram_rep?: boolean;
+  smp_hits?: number;
+  smp_total?: number;
+  triggers?: InputTrigger[];
+  next_pieces?: InputTrigger[];
+}
+
+export interface RegimeUnitsReply {
+  regime: SupplementaryRegimeId;
+  label: string;
+  exploratory: boolean;
+  not_taken: boolean;
+  layer: number;
+  available: boolean;
+  no_passages_stored?: boolean;
+  meta: ForcedOddMeta | InputCensusMeta | null;
+  total: number;
+  matched: number;
+  rows: RegimeUnitRow[];
+  stale?: string;
+}
+
+export interface RegimeLayersReply {
+  exploratory: boolean;
+  not_taken: boolean;
+  labels: Record<SupplementaryRegimeId, string>;
+  forced_odd: ForcedOddMeta[];
+  input_census: InputCensusMeta[];
+  input_ablation_check: { control_kind: string | null; note: string; layers: InputAblationLayer[] } | null;
+  input_precision_pilot?: { note: string; layers: InputPrecisionLayer[] } | null;
+  refused?: Record<string, string>;
+  stale?: string;
+}
+
+export interface HoverRegime {
+  forced_odd?: { exploratory: boolean; not_taken: boolean; own_lens_match: boolean | null; is_last_layer: boolean; pos: string[]; neg: string[] };
+  input_census?: { exploratory: boolean; not_taken: boolean; faces: Partial<Record<"+" | "-", { tok: string; offset: number; offset_label: string; lift: number }[]>> };
+  stale?: string;
+}
+
+export const regimeCaveat = (regime: SupplementaryRegimeId, layer: number, brief = false): string =>
+  regime === "forced_odd"
+    ? `Exploratory · read after the data were seen · not a registered census · layer ${layer + 1} is not taken. Doses set by this study’s own rule (0.25 nats at the 90th percentile); not calibrated on this model.${layer === 59 ? " At layer 60 this is the weight lens by construction." : ""}`
+    : `Exploratory · unregistered · read on the existing passages index · not a push census · layer ${layer + 1} is not taken.${brief ? " No passages are stored; only single word-pieces from them are shown." : " Shows what makes a face fire on corpus text, not what pushing it does; no passages are stored, only single word-pieces from them."}`;
+
+const pct1 = (v: number | null | undefined, digits = 1): string => (v != null ? `${(100 * v).toFixed(digits)}%` : "—");
+
+export function forcedOddMetaText(m: ForcedOddMeta, detailed = false): string {
+  const prefix = detailed && (m.doses_note || m.piece_filter) ? `${m.doses_note ?? ""} ${m.piece_filter ?? ""} ` : "";
+  const extra = detailed
+    ? `, columns AUC ${m.vs_columns?.auc_T ?? "—"}, isotropic AUC ${m.vs_isotropic?.auc_T ?? "—"}` +
+      (m.half_c?.vs_columns?.half_c_auc != null ? `, Half-C AUC ${m.half_c.vs_columns.half_c_auc} (matched=${Boolean(m.half_c.matched)})` : "")
+    : "";
+  const wl =
+    m.weight_lens_agreement?.available && m.weight_lens_agreement.pos_ge1_rate != null
+      ? ` Lens Pos≥1 ${pct1(m.weight_lens_agreement.pos_ge1_rate)} (shuf ${pct1(m.weight_lens_agreement.pos_ge1_shuf_rate ?? 0)}).`
+      : "";
+  return `${prefix}Layer ${m.layer + 1}: ${m.dual05_count.toLocaleString()} / ${m.d_ff.toLocaleString()} (${m.dual05_pct}%) above cols (${m.n_cols ?? "—"}) & iso (${m.n_iso ?? "—"}) at FDR ≤ 5%; iso→col ${m.iso_false_vs_cols ?? "—"}; dose ${m.dose_ceil ?? "—"}× ceil (KL p50/p90 ${m.kl_p50 ?? "—"} / ${m.kl_p90 ?? "—"})${extra}.${wl}`;
+}
+
+export function inputCensusMetaText(m: InputCensusMeta, detailed = false): string {
+  const ab = m.ablation_check
+    ? ` Full-context ablation (${m.ablation_check.neurons} neurons vs random): Pk AUC ${m.ablation_check.kl_pk?.auc_active_vs_control ?? "—"}, Span AUC ${m.ablation_check.kl_span?.auc_active_vs_control ?? "—"}${detailed ? ` (p=${m.ablation_check.kl_span?.wilcoxon_p ?? "—"}, bf16 floor ${m.ablation_check.noop_bf16_floor_pk_p50 ?? 0})` : ""}.`
+    : "";
+  const pr = m.precision_pilot
+    ? ` Held-out doc precision: mean ${m.precision_pilot.face_prec50_trig_mean ?? "—"}, ≥20% & 3× ${pct1(m.precision_pilot.frac_prec20_and_lift3x)}${detailed ? `, AUC ${m.precision_pilot.auc_vs_freq_ctl ?? "—"}` : ""}.`
+    : "";
+  return `Layer ${m.layer + 1}: ${m.eligible_faces.toLocaleString()} / ${m.total_faces.toLocaleString()} eligible faces; ${m.named_2plus2_count.toLocaleString()} replicated ≥2 docs/half (${m.split_kind ?? "document_disjoint"}); unseen-doc recall ${pct1(m.smp_named_rate)} (shuf ${pct1(m.smp_shuf_rate, 2)}).${ab}${pr}`;
 }

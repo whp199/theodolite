@@ -44,6 +44,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, StrictInt
 
+from backend import atlas_gap_views as agv
 from backend import atlas_ops as ao
 from backend import census as cz
 from backend import field_notes as fn
@@ -683,14 +684,19 @@ def links_card(a: Atlas) -> Dict[str, Any]:
 
 @router.get("/arch")
 async def arch() -> Dict[str, Any]:
-    """The model's shape, which indexes are built, which layers have a census, how links are read and what their
-    measured check found (`links`), and the cards every reply follows."""
+    """The model's shape, which indexes are built, which layers have a census, exploratory supplementary regimes
+    (`supplementary_census`, `supplementary_refused`), how links are read and what their measured check found (`links`),
+    and the cards every reply follows."""
     a = atlas()
     sc = await asyncio.to_thread(a._scales_if_ready)
     status = await asyncio.to_thread(a.index.status)
     links = await asyncio.to_thread(links_card, a)
     refused: Dict[int, str] = {}
     await asyncio.to_thread(cz.layer_runs, None, a.rt.model_id, refused)
+    supp_refused: Dict[str, str] = {}
+    supp = await asyncio.to_thread(
+        agv.available_regimes, agv.supplementary_dir(), getattr(a.rt, "model_id", None), a.index.weights, supp_refused
+    )
     return {
         "model": getattr(a.rt, "model_id", None),
         "stand_in": bool(getattr(a.rt, "atlas_stand_in", False)),
@@ -704,6 +710,8 @@ async def arch() -> Dict[str, Any]:
         "indexes": status,
         "census": {str(l): p.name for l, p in sorted(cz.layer_runs(model=a.rt.model_id).items())},
         "census_refused": {str(l): why for l, why in sorted(refused.items())},
+        "supplementary_census": supp,
+        "supplementary_refused": {k: why for k, why in sorted(supp_refused.items())},
         "push": {"modes": list(ao.PUSH_MODES), "spare_bos": True, "units": {
             "add": "a share of the stream's median length leaving the layer, along the neuron's write direction",
             "mul": "a factor on the neuron's own activation (0 silences it)",
@@ -1300,6 +1308,83 @@ async def census_spread(layer: int) -> Any:
     if not sp.exists():
         return JSONResponse({})
     return Response(sp.read_bytes(), media_type="application/json", headers={"X-Census-Stale": "1"} if census_stale(a) else None)
+
+
+VALID_REGIMES = tuple(agv.REGIME_LABELS)
+
+
+def _check_regime(regime: str) -> str:
+    if regime not in VALID_REGIMES:
+        raise HTTPException(status_code=400, detail=f"regime must be one of {list(VALID_REGIMES)}, not {regime!r}.")
+    return regime
+
+
+@router.get("/census/regime/layers")
+async def census_regime_layers() -> Dict[str, Any]:
+    """Per-layer summaries and provenance for exploratory supplementary regimes (`forced_odd`, `input_census`)."""
+    a = atlas()
+    data = await asyncio.to_thread(
+        agv.layer_summaries, agv.supplementary_dir(), getattr(a.rt, "model_id", None), a.index.weights
+    )
+    return {**data, **agv.regime_stale(a.edited())}
+
+
+@router.get("/census/regime/units")
+async def census_regime_units(
+    layer: int,
+    regime: str,
+    q: str = "",
+    limit: int = 600,
+    face: str = "both",
+) -> Dict[str, Any]:
+    """Read-only ranked units for exploratory `(layer, regime)`; attaches regime-specific `stale` on vault edits."""
+    a = atlas()
+    if not (0 <= int(layer) < a.L):
+        raise HTTPException(status_code=400, detail=f"Layers count from 0 to {a.L - 1} on this model, not {layer}.")
+    _check_regime(regime)
+    if face not in ("both", "+", "-"):
+        raise HTTPException(status_code=400, detail='face must be "both", "+", or "-".')
+    notes = (await fn.all_notes())["neurons"]
+    lim = max(1, min(int(limit), 2000))
+    data = await asyncio.to_thread(
+        agv.list_units,
+        agv.supplementary_dir(),
+        int(layer),
+        regime,
+        a.vocab(),
+        notes,
+        q,
+        lim,
+        face,
+        getattr(a.rt, "model_id", None),
+        a.index.weights,
+        a.L,
+    )
+    return {**data, **agv.regime_stale(a.edited(), regime=regime, layer=int(layer))}
+
+
+@router.get("/census/regime/neuron")
+async def census_regime_neuron(layer: int, n: int) -> Dict[str, Any]:
+    """Read-only exploratory supplementary record for one neuron across `forced_odd` and `input_census`."""
+    a = atlas()
+    _check_neuron(a, layer, n)
+    data = await asyncio.to_thread(
+        agv.neuron_view,
+        agv.supplementary_dir(),
+        int(layer),
+        int(n),
+        a.vocab(),
+        getattr(a.rt, "model_id", None),
+        a.index.weights,
+        a.L,
+    )
+    stale = agv.regime_stale(
+        a.edited(),
+        layer=int(layer),
+        has_forced_odd=data.get("forced_odd") is not None,
+        has_input_census=data.get("input_census") is not None,
+    )
+    return {**data, **stale}
 
 
 # -- a neuron's words, wiring and heads
@@ -2106,16 +2191,41 @@ async def neuron_tests(layer: int, n: int) -> Dict[str, Any]:
 @router.get("/hover")
 async def hover(layer: int, n: int) -> Dict[str, Any]:
     """What the map's tooltip shows, from the indexes alone (no GPU): both faces' words with their checks, the steer
-    lens, its sixteen strongest links each way and its name."""
+    lens, its sixteen strongest links each way, its name, and optional exploratory `regime` summary (`forced_odd` or
+    `input_census`, model-checked, with `stale` under vault edits; never returns `fdr_rescue` or `circuit_mediated`)."""
     a = atlas()
     _check_neuron(a, layer, n)
     edited = a.edited()
     notes = (await fn.all_notes())["neurons"]
 
     def work() -> Dict[str, Any]:
+        reg_info: Dict[str, Any] = {}
+        try:
+            reg = agv.hover_summary(
+                agv.supplementary_dir(),
+                layer,
+                n,
+                a.vocab(),
+                model=getattr(a.rt, "model_id", None),
+                weights=a.index.weights,
+                n_layers=a.L,
+            )
+            if reg:
+                stale = agv.regime_stale(
+                    edited,
+                    layer=layer,
+                    has_forced_odd="forced_odd" in reg,
+                    has_input_census="input_census" in reg,
+                )
+                if stale:
+                    reg["stale"] = stale["stale"]
+                reg_info["regime"] = reg
+        except Exception:
+            reg_info = {}
         return {"layer": layer, "n": n, "faces": {s: a.face(layer, n, s, 6, edited) for s in ("+", "-")},
                 "links": a.index.links(layer, n, 16), "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", ""),
                 **({"links_stale": STALE_WEB} if (layer, n) in edited else {}),
+                **reg_info,
                 "ready": a.index.get("lens") is not None}
 
     return await asyncio.to_thread(work)

@@ -1,0 +1,10 @@
+Whole-Layer forced_odd Census: Layer 57 (N=21504, C_cols=4096, C_iso=2048)
+------------------------------------------------------------------------------------------------
+Dose ceiling      : 0.9707 (kl_p90=0.25), proj/LEX_L2_cent
+KL (p10/p50/p90)  : 0.0169 / 0.0238 / 0.3481 (cols p50=0.0211, iso p50=0.0331)
+Dual05 yield      : 10486 / 21504 (48.76%) | Dual10=11410 (53.06%)
+vs columns        : FDP05=10681, T_auc=0.7914, rABr=0.7926, rBAr=0.7911, Null05=0.00 (max=0)
+vs isotropic      : FDP05=11884, T_auc=0.7874, rABr=0.7908, rBAr=0.7903, Null05=0.00 (max=0)
+Half C replication: 300 named evaluated -> vs_cols=1.0, vs_iso=1.0 (AUCs=1.0/1.0)
+Weight-word tag   : {'auc_own_word_vs_own_ctl': 0.5108, 'ctl_frac_gt0': 1.0, 'neu_frac_gt0': 0.9956, 'direct_q05_count': 3191, 'direct_among_dual05': 2955}
+Elapsed           : 1894.4s

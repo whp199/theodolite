@@ -13,13 +13,21 @@ import { useAtlas } from "./state";
 export const CensusTab: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const unit = useAtlas((s) => s.unit);
+  const rn = useAtlas((s) => s.regimeNeuron);
   const [open, setOpen] = useState<Set<string>>(new Set());
   if (!f || f.kind !== "neuron") return null;
   if (!unit || unit.layer !== f.layer || unit.n !== f.n) return <p className="muted atlas-small atlas-pad">reading the census…</p>;
   if (!unit.rollouts?.length) {
+    const myRn = rn && rn.layer === f.layer && rn.n === f.n ? rn : null;
+    const suppNote = myRn?.forced_odd
+      ? "Its exploratory reading under pushes on set text appears on the Details tab."
+      : myRn?.input_census
+        ? "Its exploratory corpus-firing reading appears on the Details tab."
+        : null;
     return (
       <p className="muted atlas-pad">
-        This neuron has not been through the census: no answers were written with it pushed. The details and the push work all the same.
+        Layer {f.layer + 1} has not been through the census: no rollout answers were written with this neuron pushed. The details and the push
+        work all the same.{suppNote ? ` ${suppNote}` : ""}
       </p>
     );
   }

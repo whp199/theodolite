@@ -1,0 +1,171 @@
+{
+ "layer": 59,
+ "d_ff": 21504,
+ "readout_mode": "proj/LEX_L2_cent",
+ "dose_stat": "kl_p90",
+ "target_kl": 0.25,
+ "dose_ceil": 0.2482,
+ "n_cols": 4096,
+ "n_iso": 2048,
+ "seed_cols": 7159,
+ "seed_iso": 8159,
+ "preflight": {
+  "A": {
+   "min_ans_lp": -0.1338,
+   "max_diffs": {
+    "29": 0.0,
+    "59": 0.0
+   }
+  },
+  "B": {
+   "min_ans_lp": -0.143,
+   "max_diffs": {
+    "29": 0.0,
+    "59": 0.0
+   }
+  },
+  "C": {
+   "min_ans_lp": -0.1469,
+   "max_diffs": {
+    "29": 0.0,
+    "59": 0.0
+   }
+  }
+ },
+ "kl_neurons": {
+  "p10": 0.0048,
+  "p50": 0.0075,
+  "p90": 0.1924
+ },
+ "kl_columns": {
+  "p10": 0.0047,
+  "p50": 0.0064,
+  "p90": 0.0099
+ },
+ "kl_isotropic": {
+  "p10": 0.0044,
+  "p50": 0.0071,
+  "p90": 0.0133
+ },
+ "alpha_abs_p50": 0.0112,
+ "alpha_abs_p90": 0.0281,
+ "dual05_count": 10845,
+ "dual05_pct": 50.43,
+ "dual10_count": 12283,
+ "dual10_pct": 57.12,
+ "vs_columns": {
+  "auc_r_AB": 0.9121,
+  "auc_r_BA": 0.9123,
+  "auc_r_AB_res": 0.9146,
+  "auc_r_BA_res": 0.9147,
+  "auc_T": 0.9147,
+  "fdp05": {
+   "count": 16577,
+   "above_max_ctl": 13005,
+   "threshold": 1.9155,
+   "fdp": 0.0494
+  },
+  "fdp10": {
+   "count": 17340,
+   "above_max_ctl": 13005,
+   "threshold": 1.4724,
+   "fdp": 0.0999
+  }
+ },
+ "vs_isotropic": {
+  "auc_r_AB": 0.8349,
+  "auc_r_BA": 0.833,
+  "auc_r_AB_res": 0.8161,
+  "auc_r_BA_res": 0.8148,
+  "auc_T": 0.8163,
+  "fdp05": {
+   "count": 10865,
+   "above_max_ctl": 5735,
+   "threshold": 2.1785,
+   "fdp": 0.0493
+  },
+  "fdp10": {
+   "count": 12308,
+   "above_max_ctl": 5735,
+   "threshold": 1.7175,
+   "fdp": 0.0998
+  }
+ },
+ "iso_false_vs_cols": 596,
+ "iso_vs_cols_auc_T": 0.7047,
+ "null_splits_columns": {
+  "n": 50,
+  "auc_mean": 0.5027,
+  "auc_min": 0.477,
+  "auc_max": 0.5339,
+  "fdp05_false_mean": 0.0,
+  "fdp05_false_max": 0
+ },
+ "null_splits_isotropic": {
+  "n": 50,
+  "auc_mean": 0.4967,
+  "auc_min": 0.4597,
+  "auc_max": 0.5261,
+  "fdp05_false_mean": 0.0,
+  "fdp05_false_max": 0
+ },
+ "half_c": {
+  "evaluated": 300,
+  "vs_columns": {
+   "evaluated": 300,
+   "half_c_auc": 1.0,
+   "frac_gt_0": 1.0,
+   "frac_p05_vs_ctl": 1.0,
+   "median_score_C": 5.39
+  },
+  "vs_isotropic": {
+   "evaluated": 300,
+   "half_c_auc": 1.0,
+   "frac_gt_0": 1.0,
+   "frac_p05_vs_ctl": 1.0,
+   "median_score_C": 5.392
+  },
+  "were_dual05_named": true
+ },
+ "weight_word_diag": {
+  "auc_own_word_vs_own_ctl": 0.6097,
+  "ctl_frac_gt0": 1.0,
+  "neu_frac_gt0": 0.9856,
+  "direct_q05_count": 6938,
+  "direct_among_dual05": 5677
+ },
+ "git_commit": "16570312ed0961779629a171b4d5a2fa768678ba",
+ "elapsed_s": 1356.9,
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "weights": {
+  "format": "compressed-tensors W4A16",
+  "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+  "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+  "id": "e0a93173c31ed2ec",
+  "linears": "packed",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "runtime": "TheodoliteRuntime"
+ },
+ "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+ "design_name": "forced_odd",
+ "neuron_count": 21504,
+ "neuron_ids": "all",
+ "weight_lens_agreement": {
+  "named": {
+   "count": 10845,
+   "pos_ge1_rate": 0.9174,
+   "pos_ge3_rate": 0.7704,
+   "pos_top1_in_eye_rate": 0.8337,
+   "pos_mean_share_in_eye": 0.7547,
+   "pos_sign_flip_rate": 0.0,
+   "both_ge1_rate": 0.9948,
+   "both_ge3_rate": 0.967,
+   "shuf_pos_ge1_rate": 0.0021,
+   "shuf_both_ge1_rate": 0.0042
+  },
+  "unnamed_both_ge1_rate": 0.9779
+ },
+ "legacy_git_commit_note": "Originally run locally atop base 16570312; code & registration committed at 5452734; see prereg/AMENDMENTS.txt."
+}
