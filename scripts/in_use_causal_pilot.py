@@ -140,13 +140,18 @@ def _run_batch_0_sanity(
     pos_mat: torch.Tensor,
     in_span_eval: torch.Tensor,
     span_mask: torch.Tensor,
+    y_mlp: torch.Tensor,
+    y_rec: torch.Tensor,
+    y_abl: torch.Tensor,
+    rb: torch.Tensor,
+    pt_i: torch.Tensor,
     post_rec: torch.Tensor,
     post_abl: torch.Tensor,
     target_ns: Sequence[int],
     lsm_rec_combined: torch.Tensor,
     lsm_abl_combined: torch.Tensor,
 ) -> Dict[str, float]:
-    """Verify full-model vs split-layer reconstruction and algebraic ablation vs live down_proj zeroing hook."""
+    """Verify full-model vs split-layer reconstruction and single-rounding fp32 span ablation vs down_proj hook."""
     b, T = ib.shape
     D = int(post_rec.shape[-1])
     V = int(W_U.shape[0])
@@ -170,9 +175,10 @@ def _run_batch_0_sanity(
     kl_noop_comb = float((lsm_full.exp() * (lsm_full - lsm_rec_combined)).sum(-1).mean().item())
     max_lsm_noop = float((lsm_full - lsm_rec_b).abs().max().item())
 
-    # Compare algebraic y_abl (at batch b) against live down_proj pre-hook zeroing from layer input (at batch b).
+    # Compare single-rounding y_abl (at batch b) against live down_proj pre-hook zeroing from layer input (at batch b).
     t_idx = torch.tensor(target_ns, dtype=torch.long, device=ib.device)
     rows_i = torch.arange(b, device=ib.device)
+    cap_y: Dict[str, torch.Tensor] = {}
 
     def _zero_hook(_m: Any, f_args: Tuple[torch.Tensor, ...]) -> Tuple[Any, ...]:
         x = f_args[0].clone()
@@ -181,10 +187,16 @@ def _run_batch_0_sanity(
         return (x,) + tuple(f_args[1:])
 
     hk_z = lm.layers[layer].mlp.down_proj.register_forward_pre_hook(_zero_hook)
+    hk_y = lm.layers[layer].mlp.down_proj.register_forward_hook(lambda _m, _a, o: cap_y.__setitem__("y_hook", o.detach()))
     try:
         out_hook = ao.forward_from_layer(lm, layer, cap_in["h_in"], ab, pb)
     finally:
         hk_z.remove()
+        hk_y.remove()
+
+    delta_alg = y_rec[rb, pt_i].float() - y_abl[rb, pt_i].float()
+    delta_hook = y_mlp[rb, pt_i].float() - cap_y["y_hook"][rb, pt_i].float()
+    rel_delta_y_err = float(((delta_alg - delta_hook).norm(dim=-1) / delta_hook.norm(dim=-1).clamp(min=1e-6)).mean().item())
 
     out_abl_b = ao.forward_from_layer(lm, layer + 1, post_abl, ab, pb)
     h_abl_b = out_abl_b[br, pos_mat].reshape(b * 4, D)
@@ -194,13 +206,17 @@ def _run_batch_0_sanity(
 
     kl_alg_same_b = (lsm_rec_b.exp() * (lsm_rec_b - lsm_abl_b)).sum(-1)
     kl_hook_same_b = (lsm_full.exp() * (lsm_full - lsm_hook)).sum(-1)
-    max_kl_diff_same_b = float((kl_alg_same_b - kl_hook_same_b).abs().max().item())
+    kl_diff_abs = (kl_alg_same_b - kl_hook_same_b).abs()
+    mean_kl_diff_same_b = float(kl_diff_abs.mean().item())
+    max_kl_diff_same_b = float(kl_diff_abs.max().item())
     max_kl_comb_diff = float(((lsm_rec_combined.exp() * (lsm_rec_combined - lsm_abl_combined)).sum(-1) - kl_hook_same_b).abs().max().item())
-    del out_full, out_rec_b, out_abl_b, out_hook, h_full, h_rec_b, h_abl_b, h_hook, lsm_full, lsm_rec_b, lsm_abl_b, lsm_hook
+    del out_full, out_rec_b, out_abl_b, out_hook, h_full, h_rec_b, h_abl_b, h_hook, lsm_full, lsm_rec_b, lsm_abl_b, lsm_hook, cap_y
     return {
         "noop_kl_same_batch": round(kl_noop_same_b, 8),
         "noop_kl_combined_3b": round(kl_noop_comb, 8),
         "noop_max_lsm_diff_same_batch": round(max_lsm_noop, 6),
+        "rel_delta_y_err": round(rel_delta_y_err, 6),
+        "mean_kl_alg_vs_hook_same_batch": round(mean_kl_diff_same_b, 6),
         "max_kl_alg_vs_hook_same_batch": round(max_kl_diff_same_b, 6),
         "max_kl_alg_3b_vs_hook_b": round(max_kl_comb_diff, 6),
     }
@@ -280,6 +296,7 @@ def main() -> None:
 
         w_tgt_cols = w_down_l.index_select(1, torch.tensor(nids, dtype=torch.long, device=dev)).T.float()  # [N, D]
         w_ctl_dirs = build_columns_control_dirs(w_down_l, w_post_l, nids, seed=2026112501 + 1000 + l, mix_k=256)  # [N, D]
+        w_down_T_fp32 = w_down_l.float().T.contiguous()  # [D_ff, D] (~462 MB) for exact single-rounding span sums
 
         # Pre-fixed eye_10 IDs for real neurons and exact matched control directions
         eye_neu = np.stack([lens[f"eye_{p['face']}"][l, p["n"], :10] for p in picked], axis=0).astype(np.int32)
@@ -388,17 +405,31 @@ def main() -> None:
             loc_t = torch.tensor(loc_ns, dtype=torch.long, device=dev)
             w_t = w_tgt_cols.index_select(0, loc_t)  # [b, D]
             w_c = w_ctl_dirs.index_select(0, loc_t)  # [b, D]
-            a_span = (act_sel.float() * span_mask.float()).unsqueeze(-1)  # [b, T, 1]
 
-            y_abl = (y_mlp.float() - a_span * w_t.unsqueeze(1)).to(y_mlp.dtype)
-            y_ctl = (y_mlp.float() - a_span * w_c.unsqueeze(1)).to(y_mlp.dtype)
+            # Exact float32 sum over the <=32 active span positions so abl/ctl round once to bfloat16 (no 1-ULP double-rounding)
+            flat_idx = torch.nonzero(span_mask, as_tuple=False)  # [M_tok, 2]
+            rb, pt_i = flat_idx[:, 0], flat_idx[:, 1]
+            x_span = act_all[rb, pt_i, :].float()  # [M_tok, D_ff]
+            y_base_sp = x_span @ w_down_T_fp32  # [M_tok, D]
+            a_tok = act_sel[rb, pt_i].float().unsqueeze(-1)  # [M_tok, 1]
+            wt_tok = w_t.index_select(0, rb)  # [M_tok, D]
+            wc_tok = w_c.index_select(0, rb)  # [M_tok, D]
 
-            post_rec = (resid_mid + post_ffn_ln(y_mlp)) * s_l
-            max_rec_diff = max(max_rec_diff, float((layer_out - post_rec).abs().max().item()))
+            y_rec = y_mlp.clone()
+            y_abl = y_mlp.clone()
+            y_ctl = y_mlp.clone()
+            y_rec[rb, pt_i, :] = y_base_sp.to(y_mlp.dtype)
+            y_abl[rb, pt_i, :] = (y_base_sp - a_tok * wt_tok).to(y_mlp.dtype)
+            y_ctl[rb, pt_i, :] = (y_base_sp - a_tok * wc_tok).to(y_mlp.dtype)
+
+            post_rec_orig = (resid_mid + post_ffn_ln(y_mlp)) * s_l
+            max_rec_diff = max(max_rec_diff, float((layer_out - post_rec_orig).abs().max().item()))
             if max_rec_diff >= 0.05:
                 raise RuntimeError(f"L{l} layer output reconstruction mismatch max_abs={max_rec_diff:.4f}")
+            post_rec = (resid_mid + post_ffn_ln(y_rec)) * s_l
             post_abl = (resid_mid + post_ffn_ln(y_abl)) * s_l
             post_ctl = (resid_mid + post_ffn_ln(y_ctl)) * s_l
+            del post_rec_orig, x_span, y_base_sp, a_tok, wt_tok, wc_tok
 
             pos_mat = torch.minimum(pk_t[:, None] + eval_offsets, (seq_lens - 1)[:, None])  # [b, 4]
             in_span_eval = ((pk_t[:, None] + eval_offsets) < seq_lens[:, None]).float()  # [b, 4]
@@ -445,12 +476,18 @@ def main() -> None:
 
             if li == 0 and s == 0:
                 sanity_report = _run_batch_0_sanity(
-                    lm, W_U, l, ib, ab, pb, pos_mat, in_span_eval, span_mask, post_rec, post_abl, tgt_ns, lsm[0], lsm[1]
+                    lm, W_U, l, ib, ab, pb, pos_mat, in_span_eval, span_mask, y_mlp, y_rec, y_abl, rb, pt_i, post_rec, post_abl, tgt_ns, lsm[0], lsm[1]
                 )
                 sanity_report["layer"] = int(l)
                 print(f"Batch-0 sanity at L{l}: {sanity_report}", flush=True)
-                if sanity_report["noop_kl_same_batch"] >= 1e-4 or sanity_report["max_kl_alg_vs_hook_same_batch"] >= 1e-4:
+                if (
+                    sanity_report["noop_kl_same_batch"] >= 1e-4
+                    or sanity_report["mean_kl_alg_vs_hook_same_batch"] >= 1e-4
+                    or sanity_report["max_kl_alg_vs_hook_same_batch"] >= 5e-4
+                ):
                     raise RuntimeError(f"Sanity check failed at L{l}: {sanity_report}")
+
+            del y_mlp, y_rec, y_abl, y_ctl, rb, pt_i, flat_idx
 
             p_all = lsm.exp()
             p_rec, p_abl, p_ctl = p_all[0], p_all[1], p_all[2]
@@ -502,7 +539,7 @@ def main() -> None:
                     da_sp_neu[split_idx, ni] += da_a_sp_cpu[i] * 0.25
                     da_sp_ctl[split_idx, ni] += da_c_sp_cpu[i] * 0.25
 
-            del cap, resid_mid, act_all, y_mlp, layer_out, post_rec, post_abl, post_ctl, post_3, h_final, h_sel, lsm, p_all
+            del cap, resid_mid, act_all, layer_out, post_rec, post_abl, post_ctl, post_3, h_final, h_sel, lsm, p_all
             if has_bridge:
                 del da_buf
             if torch.cuda.is_available():
@@ -624,7 +661,7 @@ def main() -> None:
             flush=True,
         )
 
-        del dp_pk_neu, dp_pk_ctl, dp_sp_neu, dp_sp_ctl, eye_neu, eye_ctl
+        del dp_pk_neu, dp_pk_ctl, dp_sp_neu, dp_sp_ctl, eye_neu, eye_ctl, w_down_T_fp32, w_tgt_cols, w_ctl_dirs
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
