@@ -785,6 +785,7 @@ def _input_census_neuron(
     if not (0 <= n < int(arrays["named_fdp05"].shape[1])):
         return None
     ab_map, ab_layers = _ablation_by_layer(root, model=model, weights=weights, refused=refused)
+    prec_map, _ = _precision_by_layer(root, model=model, weights=weights, refused=refused)
     faces: Dict[str, Any] = {}
     for s_idx, sg in ((0, "+"), (1, "-")):
         elig = bool(arrays["eligible"][s_idx, n])
@@ -820,7 +821,7 @@ def _input_census_neuron(
         "no_passages_stored": True,
         "faces": faces,
         "n_named_faces": len(ic["named_order"]),
-        "meta": _ic_layer_meta(root, ic, ab_map, ab_layers),
+        "meta": _ic_layer_meta(root, ic, ab_map, ab_layers, prec_map=prec_map),
     }
 
 
@@ -972,7 +973,7 @@ def hover_summary(
             faces: Dict[str, Any] = {}
             for s_idx, sg in ((0, "+"), (1, "-")):
                 if bool(arrays["named_fdp05"][s_idx, n]):
-                    trigs, _ = _extract_input_pieces(arrays, s_idx, n, vocab, k=2)
+                    trigs, _ = _extract_input_pieces(arrays, s_idx, n, vocab)
                     if trigs:
                         faces[sg] = [
                             {"tok": t["tok"], "offset": t["offset"], "offset_label": t["offset_label"], "lift": t["lift"]}
@@ -1095,6 +1096,7 @@ def list_units(
         }
     arrays = ic["arrays"]
     ab_map, ab_layers = _ablation_by_layer(root, model=model, weights=weights, refused=ref_map)
+    prec_map, _ = _precision_by_layer(root, model=model, weights=weights, refused=ref_map)
     want_s = None if face == "both" else (0 if face == "+" else 1)
     rows = []
     matched = 0
@@ -1135,7 +1137,7 @@ def list_units(
         "layer": int(layer),
         "available": True,
         "no_passages_stored": True,
-        "meta": _ic_layer_meta(root, ic, ab_map, ab_layers),
+        "meta": _ic_layer_meta(root, ic, ab_map, ab_layers, prec_map=prec_map),
         "refused": ref_map,
         "total": total_face,
         "matched": matched,
