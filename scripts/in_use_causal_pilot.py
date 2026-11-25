@@ -314,21 +314,15 @@ def main() -> None:
         eye_neu = np.stack([lens[f"eye_{p['face']}"][l, p["n"], :10] for p in picked], axis=0).astype(np.int32)
         eye_ctl = _control_eye_ids(w_ctl_dirs, faces, w_post_l, fnw, W_U, k=10)
 
-        # Build 8 sequences per neuron: first 4 fit (pure_h0), next 4 test (pure_h1)
-        seqs: List[List[int]] = []
-        peak_pos: List[int] = []
-        row_meta: List[Tuple[int, int, str]] = []  # (local_neuron_idx, split_0fit_1test, face)
+        # Build 8 sequences per neuron (4 fit + 4 test), sorted by length for per-batch right-padding
+        raw_rows: List[Tuple[int, List[int], int, int, int, int, float]] = []
         for ni, p in enumerate(picked):
             for split_idx, split_key in ((0, "fit"), (1, "test")):
-                for ev in p[split_key]:
+                for j_ev, ev in enumerate(p[split_key]):
                     sq, pk = build_event_sequence(windows, ev["win"], ev["at"], bos_id=bos_id, pad_tail=3)
-                    seqs.append(sq)
-                    peak_pos.append(pk)
-                    row_meta.append((ni, split_idx, p["face"]))
-
-        inp, att, _, _ = pad_right(seqs, dev)
-        pos_t = (att.cumsum(-1) - 1).clamp(min=0)
-        B_tot = len(seqs)
+                    raw_rows.append((len(sq), sq, pk, ni, split_idx, split_idx * 4 + j_ev, float(ev["act"])))
+        raw_rows.sort(key=lambda r: r[0])
+        B_tot = len(raw_rows)
         eval_offsets = torch.arange(4, device=dev)[None, :]
 
         # Accumulators across fit (split=0) and test (split=1) for N=64 neurons and C=64 paired controls
@@ -336,7 +330,6 @@ def main() -> None:
         kl_ctl_pk = np.zeros((N, 8), dtype=np.float64)
         kl_abl_span = np.zeros((N, 8), dtype=np.float64)
         kl_ctl_span = np.zeros((N, 8), dtype=np.float64)
-        cnt_row = np.zeros(N, dtype=np.int32)
 
         dp_pk_neu = np.zeros((2, N, V), dtype=np.float32)
         dp_pk_ctl = np.zeros((2, N, V), dtype=np.float32)
@@ -359,9 +352,11 @@ def main() -> None:
         max_act_diff = 0.0
         for s in range(0, B_tot, int(args.batch_size)):
             e = min(B_tot, s + int(args.batch_size))
-            ib, ab, pb = inp[s:e], att[s:e], pos_t[s:e]
+            batch_rows = raw_rows[s:e]
+            ib, ab, _, _ = pad_right([r[1] for r in batch_rows], dev)
+            pb = (ab.cumsum(-1) - 1).clamp(min=0)
             b = e - s
-            pk_t = torch.tensor(peak_pos[s:e], dtype=torch.long, device=dev)
+            pk_t = torch.tensor([r[2] for r in batch_rows], dtype=torch.long, device=dev)
             seq_lens = ab.sum(dim=1)
             end_t = torch.minimum(pk_t + 3, seq_lens - 1)
             T_b = int(ib.shape[1])
@@ -397,7 +392,7 @@ def main() -> None:
             y_mlp = cap["y_mlp"]
             layer_out = cap["layer_out"]
 
-            loc_ns = [row_meta[s + i][0] for i in range(b)]
+            loc_ns = [r[3] for r in batch_rows]
             tgt_ns = [nids[loc] for loc in loc_ns]
             t_idx = torch.tensor(tgt_ns, dtype=torch.long, device=dev)
             rows_i = torch.arange(b, device=dev)
@@ -406,11 +401,7 @@ def main() -> None:
             # Record activation ratio fidelity at peak
             pk_act_measured = act_sel[rows_i, pk_t].float()
             for i in range(b):
-                ni = loc_ns[i]
-                split_idx = row_meta[s + i][1]
-                k_slot = cnt_row[ni]
-                evs = picked[ni]["fit"] if split_idx == 0 else picked[ni]["test"]
-                ev_act = evs[k_slot % 4]["act"]
+                ev_act = batch_rows[i][6]
                 max_act_diff = max(max_act_diff, abs(float(pk_act_measured[i].item()) - ev_act) / max(abs(ev_act), 1e-3))
 
             loc_t = torch.tensor(loc_ns, dtype=torch.long, device=dev)
@@ -522,9 +513,9 @@ def main() -> None:
                 da_c_sp_cpu = ((da_v[0] - da_v[2]) * span_w).sum(dim=1).cpu().numpy()
 
             for i in range(b):
-                ni, split_idx, _ = row_meta[s + i]
-                slot_k = int(cnt_row[ni])
-                cnt_row[ni] += 1
+                ni = batch_rows[i][3]
+                split_idx = batch_rows[i][4]
+                slot_k = batch_rows[i][5]
                 kl_abl_pk[ni, slot_k] = float(kl_a_pk[i])
                 kl_ctl_pk[ni, slot_k] = float(kl_c_pk[i])
                 kl_abl_span[ni, slot_k] = float(kl_a_sp[i])
@@ -546,7 +537,7 @@ def main() -> None:
                     da_sp_neu[split_idx, ni] += da_a_sp_cpu[i] * 0.25
                     da_sp_ctl[split_idx, ni] += da_c_sp_cpu[i] * 0.25
 
-            del cap, resid_mid, act_all, layer_out, post_rec, post_abl, post_ctl, post_3, h_final, h_sel, lsm, p_all
+            del cap, ib, ab, pb, resid_mid, act_all, layer_out, post_rec, post_abl, post_ctl, post_3, h_final, h_sel, lsm, p_all
             if has_bridge:
                 del da_buf
             if torch.cuda.is_available():
