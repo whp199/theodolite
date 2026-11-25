@@ -1,0 +1,1009 @@
+{
+ "git_commit": "e555c4b81b0292a67b30873d0e979f47fc9d209b",
+ "git_dirty": true,
+ "code_sha256": {
+  "scripts/analyze_forced_lens_agreement.py": "9bb6572aa161c1f2dce8bc5e449abfecdcb5b44da052ccc73935404c5089b8bb",
+  "backend/forced_odd.py": "0bd3420db5cac0c295789f2c03b2753fe3da06092ceca300a9721b2f1489c8fd"
+ },
+ "started_at": "2026-11-25T05:25:43Z",
+ "finished_at": "2026-11-25T05:25:45Z",
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "weights": {
+  "format": "compressed-tensors W4A16",
+  "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+  "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+  "id": "e0a93173c31ed2ec",
+  "linears": "packed",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "runtime": "TheodoliteRuntime"
+ },
+ "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+ "neuron_ids": {
+  "range": [
+   0,
+   21504
+  ],
+  "layers": [
+   55,
+   56,
+   57,
+   58,
+   59
+  ]
+ },
+ "elapsed_s": 1.75,
+ "layers": [
+  {
+   "layer": 55,
+   "d_ff": 21504,
+   "named_dual05": 8086,
+   "kl_neurons": {
+    "p10": 0.0287,
+    "p50": 0.0362,
+    "p90": 0.1537
+   },
+   "named": {
+    "count": 8086,
+    "pos_ge1_rate": 0.7972,
+    "pos_ge3_rate": 0.4184,
+    "pos_top1_in_eye_rate": 0.5814,
+    "pos_mean_share_in_eye": 0.4512,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.9598,
+    "both_ge3_rate": 0.7806,
+    "shuf_pos_ge1_rate": 0.0004,
+    "shuf_both_ge1_rate": 0.0006
+   },
+   "unnamed": {
+    "count": 13418,
+    "pos_ge1_rate": 0.6103,
+    "pos_ge3_rate": 0.0631,
+    "pos_top1_in_eye_rate": 0.2958,
+    "pos_mean_share_in_eye": 0.1865,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.8195,
+    "both_ge3_rate": 0.2977,
+    "shuf_pos_ge1_rate": 0.0003,
+    "shuf_both_ge1_rate": 0.0008
+   },
+   "corr_eye_lex_share_vs_sw": 0.6616,
+   "ols_fitted_term_span_cols": 0.7087,
+   "ols_fitted_term_p10_p90": [
+    4.0775,
+    4.1245
+   ]
+  },
+  {
+   "layer": 56,
+   "d_ff": 21504,
+   "named_dual05": 9997,
+   "kl_neurons": {
+    "p10": 0.0255,
+    "p50": 0.0346,
+    "p90": 0.3095
+   },
+   "named": {
+    "count": 9997,
+    "pos_ge1_rate": 0.8347,
+    "pos_ge3_rate": 0.4679,
+    "pos_top1_in_eye_rate": 0.612,
+    "pos_mean_share_in_eye": 0.4836,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.971,
+    "both_ge3_rate": 0.8218,
+    "shuf_pos_ge1_rate": 0.0003,
+    "shuf_both_ge1_rate": 0.0004
+   },
+   "unnamed": {
+    "count": 11507,
+    "pos_ge1_rate": 0.6422,
+    "pos_ge3_rate": 0.0859,
+    "pos_top1_in_eye_rate": 0.3204,
+    "pos_mean_share_in_eye": 0.2066,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.8401,
+    "both_ge3_rate": 0.3637,
+    "shuf_pos_ge1_rate": 0.0002,
+    "shuf_both_ge1_rate": 0.0004
+   },
+   "corr_eye_lex_share_vs_sw": 0.681,
+   "ols_fitted_term_span_cols": 0.8184,
+   "ols_fitted_term_p10_p90": [
+    3.9956,
+    4.1321
+   ]
+  },
+  {
+   "layer": 57,
+   "d_ff": 21504,
+   "named_dual05": 10486,
+   "kl_neurons": {
+    "p10": 0.0169,
+    "p50": 0.0238,
+    "p90": 0.3481
+   },
+   "named": {
+    "count": 10486,
+    "pos_ge1_rate": 0.8507,
+    "pos_ge3_rate": 0.4449,
+    "pos_top1_in_eye_rate": 0.6077,
+    "pos_mean_share_in_eye": 0.4688,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.967,
+    "both_ge3_rate": 0.8004,
+    "shuf_pos_ge1_rate": 0.0003,
+    "shuf_both_ge1_rate": 0.0005
+   },
+   "unnamed": {
+    "count": 11018,
+    "pos_ge1_rate": 0.6661,
+    "pos_ge3_rate": 0.1076,
+    "pos_top1_in_eye_rate": 0.3522,
+    "pos_mean_share_in_eye": 0.2252,
+    "pos_sign_flip_rate": 0.0002,
+    "both_ge1_rate": 0.8494,
+    "both_ge3_rate": 0.4209,
+    "shuf_pos_ge1_rate": 0.0002,
+    "shuf_both_ge1_rate": 0.0005
+   },
+   "corr_eye_lex_share_vs_sw": 0.7128,
+   "ols_fitted_term_span_cols": 0.8257,
+   "ols_fitted_term_p10_p90": [
+    4.0015,
+    4.0811
+   ]
+  },
+  {
+   "layer": 58,
+   "d_ff": 21504,
+   "named_dual05": 15441,
+   "kl_neurons": {
+    "p10": 0.0086,
+    "p50": 0.0123,
+    "p90": 0.4461
+   },
+   "named": {
+    "count": 15441,
+    "pos_ge1_rate": 0.8599,
+    "pos_ge3_rate": 0.4984,
+    "pos_top1_in_eye_rate": 0.643,
+    "pos_mean_share_in_eye": 0.5064,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.964,
+    "both_ge3_rate": 0.8249,
+    "shuf_pos_ge1_rate": 0.0004,
+    "shuf_both_ge1_rate": 0.0007
+   },
+   "unnamed": {
+    "count": 6063,
+    "pos_ge1_rate": 0.6995,
+    "pos_ge3_rate": 0.186,
+    "pos_top1_in_eye_rate": 0.4255,
+    "pos_mean_share_in_eye": 0.2758,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.8316,
+    "both_ge3_rate": 0.5581,
+    "shuf_pos_ge1_rate": 0.0002,
+    "shuf_both_ge1_rate": 0.001
+   },
+   "corr_eye_lex_share_vs_sw": 0.7062,
+   "ols_fitted_term_span_cols": 0.7133,
+   "ols_fitted_term_p10_p90": [
+    4.1483,
+    4.2192
+   ]
+  },
+  {
+   "layer": 59,
+   "d_ff": 21504,
+   "named_dual05": 10845,
+   "kl_neurons": {
+    "p10": 0.0048,
+    "p50": 0.0075,
+    "p90": 0.1924
+   },
+   "named": {
+    "count": 10845,
+    "pos_ge1_rate": 0.9174,
+    "pos_ge3_rate": 0.7704,
+    "pos_top1_in_eye_rate": 0.8337,
+    "pos_mean_share_in_eye": 0.7547,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.9948,
+    "both_ge3_rate": 0.967,
+    "shuf_pos_ge1_rate": 0.0021,
+    "shuf_both_ge1_rate": 0.0042
+   },
+   "unnamed": {
+    "count": 10659,
+    "pos_ge1_rate": 0.8765,
+    "pos_ge3_rate": 0.7547,
+    "pos_top1_in_eye_rate": 0.8381,
+    "pos_mean_share_in_eye": 0.7273,
+    "pos_sign_flip_rate": 0.0,
+    "both_ge1_rate": 0.9779,
+    "both_ge3_rate": 0.9426,
+    "shuf_pos_ge1_rate": 0.002,
+    "shuf_both_ge1_rate": 0.0037
+   },
+   "corr_eye_lex_share_vs_sw": 0.6888,
+   "ols_fitted_term_span_cols": 3.6416,
+   "ols_fitted_term_p10_p90": [
+    4.1303,
+    4.3059
+   ]
+  }
+ ],
+ "cjk_cognate_examples": {
+  "55": [
+   {
+    "layer": 55,
+    "neuron": 19328,
+    "T_min": 19.56,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " \u71b1",
+     " Hot",
+     "Hot",
+     " hot",
+     "heat",
+     "\u71b1",
+     "hot",
+     " hei\u00df"
+    ],
+    "forced_pos_top5": [
+     " Hot",
+     " hot",
+     "Hot",
+     " hotter",
+     "heating"
+    ]
+   },
+   {
+    "layer": 55,
+    "neuron": 8870,
+    "T_min": 17.552,
+    "is_direct": false,
+    "eye_pos_top8": [
+     " terbuka",
+     " abiertos",
+     " abiertas",
+     "\u5f00\u653e",
+     " \u043e\u0442\u043a\u0440\u044b",
+     " otvore",
+     " abierta",
+     "\u958b\u653e"
+    ],
+    "forced_pos_top5": [
+     " \u043e\u0442\u043a\u0440\u044b",
+     " terbuka",
+     " \u0432\u0456\u0434\u043a\u0440\u0438",
+     " otev",
+     "open"
+    ]
+   },
+   {
+    "layer": 55,
+    "neuron": 19957,
+    "T_min": 17.367,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " \uc2e0",
+     "\uc2e0",
+     " t\u00edn",
+     " sin",
+     "\u4fe1\u53f7",
+     "\u4fe1",
+     "sin",
+     "Sin"
+    ],
+    "forced_pos_top5": [
+     " signals",
+     " \u0441\u0438\u0433\u043d\u0430\u043b\u0430",
+     "sin",
+     " Signals",
+     "signals"
+    ]
+   },
+   {
+    "layer": 55,
+    "neuron": 11809,
+    "T_min": 17.026,
+    "is_direct": true,
+    "eye_pos_top8": [
+     "similar",
+     "Such",
+     " Such",
+     "\u7c7b\u4f3c\u7684",
+     " Similar",
+     "Similar",
+     " similar",
+     " \u00e4hn"
+    ],
+    "forced_pos_top5": [
+     "similar",
+     " \ube44\uc2b7\ud55c",
+     "\u7c7b\u4f3c\u7684",
+     " Similar",
+     " \u00e4hn"
+    ]
+   },
+   {
+    "layer": 55,
+    "neuron": 17069,
+    "T_min": 16.887,
+    "is_direct": true,
+    "eye_pos_top8": [
+     "\u4e09\u4e2a",
+     "\u4e09\u500b",
+     "\u56db\u4e2a",
+     "\u5169\u500b",
+     " certains",
+     "\u4e94\u4e2a",
+     "\u51e0\u4e2a",
+     "Estos"
+    ],
+    "forced_pos_top5": [
+     " everyone",
+     " todos",
+     "everyone",
+     " Everyone",
+     "Everyone"
+    ]
+   },
+   {
+    "layer": 55,
+    "neuron": 20228,
+    "T_min": 16.883,
+    "is_direct": true,
+    "eye_pos_top8": [
+     "ystyrene",
+     "\u9549",
+     " PTC",
+     "truck",
+     " \ub9e1",
+     " Timeout",
+     " menik",
+     " tok"
+    ],
+    "forced_pos_top5": [
+     "tki",
+     "tres",
+     "tractor",
+     "truck",
+     "tku"
+    ]
+   }
+  ],
+  "56": [
+   {
+    "layer": 56,
+    "neuron": 8706,
+    "T_min": 18.89,
+    "is_direct": true,
+    "eye_pos_top8": [
+     "\u9ad8",
+     "high",
+     " y\u00fcksek",
+     " wysok",
+     " high",
+     " \u0909\u091a\u094d\u091a",
+     " \u9ad8",
+     " h\u00f6g"
+    ],
+    "forced_pos_top5": [
+     " high",
+     "high",
+     " highest",
+     " High",
+     " wysok"
+    ]
+   },
+   {
+    "layer": 56,
+    "neuron": 5930,
+    "T_min": 18.278,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "hashes",
+     " \u0ab9\u0abe\u0a89\u0ab8",
+     "\u0b9f\u0bcd\u0b9f\u0bbf\u0b95\u0bcd",
+     " HAZ",
+     "\u9555",
+     " HAPP",
+     " Tsuen",
+     " Storia"
+    ],
+    "forced_pos_top5": [
+     "Hamilton",
+     "hashes",
+     "Hoe",
+     "halle",
+     "Hooks"
+    ]
+   },
+   {
+    "layer": 56,
+    "neuron": 12023,
+    "T_min": 16.685,
+    "is_direct": false,
+    "eye_pos_top8": [
+     " \ud55c",
+     "\u6c49",
+     " Han",
+     " Hans",
+     "\u30cf\u30f3",
+     " han",
+     "\ud55c",
+     "\u0e2b\u0e19"
+    ],
+    "forced_pos_top5": [
+     "han",
+     " Handbook",
+     " Hanover",
+     " handbook",
+     " Han"
+    ]
+   },
+   {
+    "layer": 56,
+    "neuron": 907,
+    "T_min": 16.175,
+    "is_direct": false,
+    "eye_pos_top8": [
+     " des",
+     " diesel",
+     "\u9891\u9053",
+     " \u0e21\u0e2d\u0e07",
+     "\u6803",
+     " \u0935\u0947\u0926",
+     "\u8306",
+     " l\u00e9z"
+    ],
+    "forced_pos_top5": [
+     " des",
+     "openia",
+     "ackle",
+     "derivative",
+     " depot"
+    ]
+   },
+   {
+    "layer": 56,
+    "neuron": 14166,
+    "T_min": 16.153,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "\u30f4\u30a9",
+     "\u30a6\u30a9",
+     "\u6c83",
+     "\u0412\u043e",
+     " \u0412\u043e",
+     "\u6c83\u5c14",
+     " Wol",
+     "Wol"
+    ],
+    "forced_pos_top5": [
+     " Wolfe",
+     " Wol",
+     " woh",
+     " Wolff",
+     " Wolver"
+    ]
+   },
+   {
+    "layer": 56,
+    "neuron": 3403,
+    "T_min": 15.984,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " Red",
+     "Red",
+     " red",
+     "\u7ea2",
+     "red",
+     " RED",
+     "RED",
+     "\u30ec\u30c3\u30c9"
+    ],
+    "forced_pos_top5": [
+     " redd",
+     " reda",
+     "\u0e41\u0e14\u0e07",
+     "red",
+     " Redox"
+    ]
+   }
+  ],
+  "57": [
+   {
+    "layer": 57,
+    "neuron": 11546,
+    "T_min": 19.364,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " \uad00\ub9ac",
+     "\uad00\ub9ac",
+     " gestion",
+     " Gesti\u00f3n",
+     "\u7684\u7ba1\u7406",
+     " Gestion",
+     "Gestion",
+     " gestionar"
+    ],
+    "forced_pos_top5": [
+     " gestion",
+     " Gestion",
+     "\u7684\u7ba1\u7406",
+     "Gestion",
+     " Y\u00f6net"
+    ]
+   },
+   {
+    "layer": 57,
+    "neuron": 11192,
+    "T_min": 19.181,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " \u0447\u0430\u0441\u0442\u0438",
+     " Partially",
+     "\u7684\u90e8\u5206",
+     "Partial",
+     " partially",
+     " \u0447\u0430\u0441\u0442\u0438\u0447\u043d\u043e",
+     " Partial",
+     "\u90e8\u5206"
+    ],
+    "forced_pos_top5": [
+     " partially",
+     " Partial",
+     " partial",
+     "\u90e8\u5206\u7684",
+     " \u0447\u0430\u0441\u0442\u0438"
+    ]
+   },
+   {
+    "layer": 57,
+    "neuron": 11659,
+    "T_min": 18.653,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " climbing",
+     " Upload",
+     "Upload",
+     " climb",
+     "\u4e0a\u6607",
+     " upload",
+     " Naik",
+     " \u03b1\u03bd\u03b5"
+    ],
+    "forced_pos_top5": [
+     " climbing",
+     " climbed",
+     " climb",
+     " \u03b1\u03bd\u03b5",
+     "Upload"
+    ]
+   },
+   {
+    "layer": 57,
+    "neuron": 19252,
+    "T_min": 15.928,
+    "is_direct": false,
+    "eye_pos_top8": [
+     " estable",
+     " \u0443\u0441\u0442\u043e\u0439\u0447\u0438",
+     " stable",
+     "\u1004\u103a",
+     "\u7a33\u5b9a",
+     "\u8c32",
+     "strip",
+     "STREAM"
+    ],
+    "forced_pos_top5": [
+     "stable",
+     " stable",
+     " estable",
+     "STR",
+     " \u0443\u0441\u0442\u043e\u0439\u0447\u0438"
+    ]
+   },
+   {
+    "layer": 57,
+    "neuron": 2086,
+    "T_min": 15.226,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "\u7acb\u3061",
+     " standing",
+     " stands",
+     " STAND",
+     " Stand",
+     " stand",
+     " Standing",
+     "Stand"
+    ],
+    "forced_pos_top5": [
+     "stands",
+     " stand",
+     "stand",
+     " stands",
+     "Stand"
+    ]
+   },
+   {
+    "layer": 57,
+    "neuron": 5022,
+    "T_min": 15.221,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "4",
+     " four",
+     "\u56db",
+     " \u56db",
+     "\u2084",
+     " \u09ea",
+     "\uff14",
+     " \u096a"
+    ],
+    "forced_pos_top5": [
+     " quadru",
+     " quatre",
+     " \u0447\u0435\u0442",
+     " b\u1ed1n",
+     " apat"
+    ]
+   }
+  ],
+  "58": [
+   {
+    "layer": 58,
+    "neuron": 20296,
+    "T_min": 18.993,
+    "is_direct": true,
+    "eye_pos_top8": [
+     "non",
+     "\u975e",
+     " Non",
+     " non",
+     "Non",
+     " \u063a\u064a\u0631",
+     " \u975e",
+     "NON"
+    ],
+    "forced_pos_top5": [
+     " \u063a\u06cc\u0631",
+     " non",
+     " \u063a\u064a\u0631",
+     " Non",
+     "non"
+    ]
+   },
+   {
+    "layer": 58,
+    "neuron": 5546,
+    "T_min": 18.418,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "\u8ba1\u5212",
+     "\u8a08\u5283",
+     "\u8a08\u753b",
+     " planificaci\u00f3n",
+     " plans",
+     " \u092f\u094b\u091c\u0928\u093e",
+     " rencana",
+     " planning"
+    ],
+    "forced_pos_top5": [
+     " planned",
+     " rencana",
+     " Plans",
+     "Plans",
+     " planificaci\u00f3n"
+    ]
+   },
+   {
+    "layer": 58,
+    "neuron": 521,
+    "T_min": 17.67,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " perception",
+     " \u0432\u043e\u0441\u043f\u0440\u0438\u044f",
+     " \uc778\uc2dd",
+     "\u8ba4\u77e5",
+     " \u092a\u093e\u0939\u0942\u0928",
+     "\u8a8d\u8b58",
+     " Perception",
+     " considered"
+    ],
+    "forced_pos_top5": [
+     " \u0432\u043e\u0441\u043f\u0440\u0438\u044f",
+     " perception",
+     " Perception",
+     " percib",
+     " perceber"
+    ]
+   },
+   {
+    "layer": 58,
+    "neuron": 19641,
+    "T_min": 17.649,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " p\u0159es",
+     " Predator",
+     "\u4e88\u6e2c",
+     " predicate",
+     "\u0561\u0580\u056f",
+     "Predicate",
+     "asal",
+     " precinct"
+    ],
+    "forced_pos_top5": [
+     " Pr\u00e4",
+     "prefix",
+     " precinct",
+     " Predator",
+     " prefix"
+    ]
+   },
+   {
+    "layer": 58,
+    "neuron": 13190,
+    "T_min": 17.274,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " \u0432\u044b\u0441\u043e\u043a\u043e",
+     "\u9ad8",
+     "high",
+     " high",
+     " \u0432\u0438\u0441\u043e\u043a\u043e",
+     " High",
+     "High",
+     " \u9ad8"
+    ],
+    "forced_pos_top5": [
+     " \u0432\u044b\u0441\u043e\u043a\u043e",
+     " high",
+     " low",
+     " hoch",
+     " \u0432\u0438\u0441\u043e\u043a\u043e"
+    ]
+   },
+   {
+    "layer": 58,
+    "neuron": 14184,
+    "T_min": 16.652,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "Des",
+     " Des",
+     "des",
+     "\u8131",
+     " \u8131",
+     "DES",
+     " des",
+     " DES"
+    ],
+    "forced_pos_top5": [
+     " des",
+     " Des",
+     "Des",
+     "des",
+     " DES"
+    ]
+   }
+  ],
+  "59": [
+   {
+    "layer": 59,
+    "neuron": 208,
+    "T_min": 12.571,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "ities",
+     "\u09a4\u09cd\u09ac",
+     "ism",
+     "istically",
+     "\u6709\u4e00\u500b",
+     "\u0924\u093e\u0913\u0902",
+     "\u0d24\u0d4d\u0d35",
+     "\u09a4\u09cd\u09ac\u09c7\u09b0"
+    ],
+    "forced_pos_top5": [
+     "ities",
+     "ism",
+     "istically",
+     "\u6709\u4e00\u500b",
+     "ization"
+    ]
+   },
+   {
+    "layer": 59,
+    "neuron": 7510,
+    "T_min": 12.056,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "\u611b",
+     "love",
+     " love",
+     "Love",
+     "\u7231",
+     " \uc0ac\ub791",
+     " Love",
+     " \u043b\u044e\u0431\u043e\u0432\u044c"
+    ],
+    "forced_pos_top5": [
+     " \u043b\u044e\u0431\u043e\u0432\u044c",
+     "Love",
+     "love",
+     " love",
+     " Love"
+    ]
+   },
+   {
+    "layer": 59,
+    "neuron": 14407,
+    "T_min": 11.951,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " jadi",
+     " deviennent",
+     "\u8b8a\u6210",
+     "\u53d8\u6210",
+     " Jadi",
+     " become",
+     "jadi",
+     " devient"
+    ],
+    "forced_pos_top5": [
+     " jadi",
+     " deviennent",
+     " Jadi",
+     " become",
+     " became"
+    ]
+   },
+   {
+    "layer": 59,
+    "neuron": 18865,
+    "T_min": 11.811,
+    "is_direct": false,
+    "eye_pos_top8": [
+     " \u098f\u0995\u099f\u09bf",
+     "//",
+     " own",
+     "\u7684\u4e00\u500b",
+     " \u098f\u0995\u099f\u09be",
+     "\u7684\u4e00\u4e2a",
+     " unui",
+     " isang"
+    ],
+    "forced_pos_top5": [
+     "\u7684\u4e00\u500b",
+     "\u7684\u4e00\u4e2a",
+     " unui",
+     " isang",
+     " own"
+    ]
+   },
+   {
+    "layer": 59,
+    "neuron": 2606,
+    "T_min": 11.621,
+    "is_direct": true,
+    "eye_pos_top8": [
+     " \u516b",
+     " Eight",
+     " SIX",
+     " six",
+     " \u0434\u0435\u0432\u044f",
+     " Nine",
+     "\u516d",
+     " be\u015f"
+    ],
+    "forced_pos_top5": [
+     " Eight",
+     " six",
+     " SIX",
+     " Nine",
+     " \u0434\u0435\u0432\u044f"
+    ]
+   },
+   {
+    "layer": 59,
+    "neuron": 8946,
+    "T_min": 11.33,
+    "is_direct": false,
+    "eye_pos_top8": [
+     "\u5c55",
+     " \u0639\u0631\u0636",
+     "\u0639\u0631\u0636",
+     " Exhibit",
+     " Exhibition",
+     " EXHIB",
+     " exhibition",
+     "\u0631\u0636"
+    ],
+    "forced_pos_top5": [
+     " Exhibition",
+     " Exhibit",
+     " \u0639\u0631\u0636",
+     "\u0639\u0631\u0636",
+     " EXHIB"
+    ]
+   }
+  ]
+ },
+ "calibration_decoding_overlap": {
+  "L37": {
+   "checked": 193,
+   "used_fdp05": true,
+   "all": {
+    "ref_neurons": 21152,
+    "checked_in_ref": 192,
+    "matched": 29,
+    "frac_of_checked": 0.151,
+    "frac_of_cand": 0.1503,
+    "shuf_matched": 1,
+    "shuf_frac": 0.0052
+   },
+   "q05": {
+    "ref_neurons": 2310,
+    "checked_in_ref": 51,
+    "matched": 17,
+    "frac_of_checked": 0.3333,
+    "frac_of_cand": 0.0881,
+    "shuf_matched": 0,
+    "shuf_frac": 0.0
+   }
+  },
+  "L45": {
+   "checked": 536,
+   "used_fdp05": true,
+   "all": {
+    "ref_neurons": 21487,
+    "checked_in_ref": 536,
+    "matched": 401,
+    "frac_of_checked": 0.7481,
+    "frac_of_cand": 0.7481,
+    "shuf_matched": 3,
+    "shuf_frac": 0.0056
+   },
+   "q05": {
+    "ref_neurons": 6307,
+    "checked_in_ref": 288,
+    "matched": 283,
+    "frac_of_checked": 0.9826,
+    "frac_of_cand": 0.528,
+    "shuf_matched": 2,
+    "shuf_frac": 0.0037
+   }
+  },
+  "L54": {
+   "checked": 553,
+   "used_fdp05": true,
+   "all": {
+    "ref_neurons": 21348,
+    "checked_in_ref": 550,
+    "matched": 242,
+    "frac_of_checked": 0.44,
+    "frac_of_cand": 0.4376,
+    "shuf_matched": 0,
+    "shuf_frac": 0.0
+   },
+   "q05": {
+    "ref_neurons": 5460,
+    "checked_in_ref": 225,
+    "matched": 180,
+    "frac_of_checked": 0.8,
+    "frac_of_cand": 0.3255,
+    "shuf_matched": 0,
+    "shuf_frac": 0.0
+   }
+  }
+ }
+}

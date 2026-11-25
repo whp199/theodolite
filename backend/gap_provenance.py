@@ -115,10 +115,15 @@ def build_provenance(
         "weights_id": wid,
     }
     if neuron_ids is not None:
-        if isinstance(neuron_ids, dict):
+        if isinstance(neuron_ids, str):
+            prov["neuron_ids"] = neuron_ids
+        elif isinstance(neuron_ids, dict):
             prov["neuron_ids"] = neuron_ids
         else:
             nlist = [int(x) for x in neuron_ids]
             prov["neuron_count"] = len(nlist)
-            prov["neuron_ids"] = nlist
+            if len(nlist) >= 4 and nlist == list(range(nlist[0], nlist[0] + len(nlist))):
+                prov["neuron_ids"] = f"{nlist[0]}-{nlist[-1]}"
+            else:
+                prov["neuron_ids"] = ",".join(str(x) for x in nlist)
     return prov

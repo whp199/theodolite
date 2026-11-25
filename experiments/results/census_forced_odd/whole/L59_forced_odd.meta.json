@@ -135,5 +135,37 @@
   "direct_among_dual05": 5677
  },
  "git_commit": "16570312ed0961779629a171b4d5a2fa768678ba",
- "elapsed_s": 1356.9
+ "elapsed_s": 1356.9,
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "weights": {
+  "format": "compressed-tensors W4A16",
+  "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+  "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+  "id": "e0a93173c31ed2ec",
+  "linears": "packed",
+  "dtype": "bfloat16",
+  "device": "cuda:0",
+  "runtime": "TheodoliteRuntime"
+ },
+ "weights_id": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+ "design_name": "forced_odd",
+ "neuron_count": 21504,
+ "neuron_ids": "all",
+ "weight_lens_agreement": {
+  "named": {
+   "count": 10845,
+   "pos_ge1_rate": 0.9174,
+   "pos_ge3_rate": 0.7704,
+   "pos_top1_in_eye_rate": 0.8337,
+   "pos_mean_share_in_eye": 0.7547,
+   "pos_sign_flip_rate": 0.0,
+   "both_ge1_rate": 0.9948,
+   "both_ge3_rate": 0.967,
+   "shuf_pos_ge1_rate": 0.0021,
+   "shuf_both_ge1_rate": 0.0042
+  },
+  "unnamed_both_ge1_rate": 0.9779
+ },
+ "legacy_git_commit_note": "Originally run locally atop base 16570312; code & registration committed at 5452734; see prereg/AMENDMENTS.txt."
 }

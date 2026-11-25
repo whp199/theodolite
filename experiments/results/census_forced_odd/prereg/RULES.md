@@ -1,14 +1,14 @@
-# Pre-Registration: Controlled Antisymmetric Forced Logit Census (`forced_odd`) at Layers 55–59
+# Exploratory Registration Record: `forced_odd` at Layers 55–59 (Hashed Locally, Not Pushed First)
 
-Registered on `2026-11-24` (exact UTC timestamp in `prereg_at`, repository commit in `repo_commit`, SHA-256 manifest in `SHA256SUMS`), **strictly before any fresh forward pass or trial readout was executed on layers 55–59**.
+> **Post-Trial Status & Disclosure (see `AMENDMENTS.txt`)**: These rules were hashed locally on `2026-11-24T23:52:42Z` (`SHA256SUMS` at commit `5452734`), **not** committed or pushed before running, while original run metas recorded the base commit `16570312` lacking the new code. Prior pilots had already evaluated `L59` (`rng(11)`, retuned from `T_auc = 0.472` to `0.931`) and `L55` (`T_auc = 0.700`, `290` FDP05, `census_gap_pilots/forced_odd_summary.txt`), so Section 1's earlier `"Zero Peeking at L55–L58"` wording was inaccurate for `L55`. Furthermore, two Section 3 gates (`F2.2` exchangeable control splits and `F3` asymmetric Half-C) were vacuous by construction, and the `circuit_mediated` label in Section 5 is retracted. Accordingly, the L55–L59 runs are **exploratory records** that gate nothing; original hashed versions remain preserved at commit `5452734`.
 
 Layers are indexed from 0 (`0..59`, matching model indices and trial files). All work is conducted on `google/gemma-4-31B-it-qat-w4a16-ct` (`d_ff = 21,504` per layer) in an isolated worktree without modifying the owner's `atlas_data/` (resolved via `THEODOLITE_ATLAS_DIR`) or `backend/census.py`.
 
 ---
 
-## 1. Motivation & Stage-1 Open-Layer Calibration (Zero Peeking at L55–L58)
+## 1. Motivation & Stage-1 Calibration Record (`L55` and `L59` Were Piloted Earlier)
 
-Standard autoregressive census decoding (`match_things`, 48 generated tokens) failed at L55 and above (`L55` gave `108/1,022` empirical-FDR hits and failed cross-half decoding bars because greedy rollout trajectories compound into the final RMSNorm / unembedding boundary cliff).
+Standard autoregressive census decoding (`match_things`, 48 generated tokens) failed to meet registered cross-half bars at L55 and above (`L55` gave `108/1,022` empirical-FDR hits; one candidate hypothesis is that greedy rollout trajectories compound downstream into final-norm/unembedding sensitivity, though that mechanism was not tested here).
 
 Instead of waiting for multi-step rollouts to stay uncorrupted across 48 generated steps, **`forced_odd`** holds fixed 12-chat-prompt + greedy-answer prefixes (`HALVES`: A = `bicycle, walk, chair, kettle, sleep, lamp`, B = `clock, rice, vase, lock, money, blanket`, 16 post-prompt positions each) plus out-of-sample held-out Half C (`bridge, windmill, camera, boot, mug, winter`) and applies antisymmetric `+/-` write-ceiling residual pushes leaving `layer` (sparing BOS).
 
@@ -39,7 +39,7 @@ Key findings baked into the frozen method:
   - **L58**: `0.5818`
   - **L59**: `0.2482`
 - **Fresh disjoint neurons (`N = 1,022` per layer)**: drawn via `draw_neurons.py` (seed `20261124 * 100 + layer`) into `neurons_L55.txt .. neurons_L59.txt`, strictly excluding:
-  - Every non-volunteer `atlas_data/census/**/*.meta.json` at that layer (`L55`: `L55-match_things-trial.meta.json`, 1,022 neurons; `L57`: `L57-break_rel-probe.meta.json`, `L57-calib_rel.meta.json`, `L57-calib_ceil.meta.json`, 575 unique neurons; `L56, L58, L59`: none),
+  - Every non-volunteer `atlas_data/census/**/*.meta.json` at that layer (`L55`: `L55-match_things-trial.meta.json`, 1,022 neurons; `L57`: `L57-calib_ceil.meta.json` (64), `L57-calib_rel.meta.json` (64), `L57-break_rel-probe.meta.json` (507) -> `571` unique excluded neurons; `L56, L58, L59`: none),
   - All `64` dose-ladder neurons from `../dose_ladder.json` at each of `L55..L59`,
   - All `1,022` exploratory `L59_pilot` neurons (`rng(11)`) at `L59`.
 - **Fresh controls per layer**: `n_cols = 1,024` `columns` controls (`seed = 5100 + layer`) and `n_iso = 1,024` `isotropic` controls (`seed = 6100 + layer`).
@@ -48,7 +48,7 @@ Key findings baked into the frozen method:
 
 ---
 
-## 3. Pre-Registered Pass / Fail Gates (Applied Independently to Each Layer `55–59`)
+## 3. Original Pass / Fail Gates (Note: `F2.2` and Asymmetric `F3` Were Vacuous)
 
 A layer **PASSES** if and only if ALL THREE gates (**F1**, **F2**, and **F3**) hold simultaneously under `proj/LEX_L2_cent`:
 
@@ -76,7 +76,7 @@ No gate or bar may be loosened after inspecting any fresh trial output.
 
 1. **Dual-null gating for displayed words**: Next-piece shifts are displayed **ONLY** for neurons individually clearing `Dual05` (`FDP <= 0.05` vs both `columns` and `isotropic`). Non-passing neurons are never labeled with words.
 2. **Honest naming**: Passing `forced_odd` neurons are labeled **`forced next-piece shift (FDR <= 5%, dual-null)`** — explicitly distinct from free-running autoregressive decoding (`L30–L54`) and from input-side corpus firing (`L0–L29`).
-3. **Secondary mechanistic tag**: Every neuron additionally carries the corrected own-word unembed diagnostic tag (`W(u_n)` vs control's own naked-eye `W(u_c)`, BH `q <= 0.05` & `sw_neu > 0`), tagging each passing neuron as `[direct_unembed]` or `[circuit_mediated]` without censoring non-direct circuit neurons.
+3. **Own-lens agreement diagnostic (replacing `[circuit_mediated]`)**: Earlier outputs tagged passing neurons `[direct_unembed]` vs `[circuit_mediated]`. Post-trial audit: failing BH `q <= 0.05` on `3+`-letter lens tokens reflects LEX masking and short/non-Latin lens tokens (`corr ~ 0.66–0.71`), and at `L59` no downstream transformer layers exist. The `[circuit_mediated]` label is retired in favor of factual `own_lens_match` (`True` / `False`, `None` at `L59`).
 
 ---
 

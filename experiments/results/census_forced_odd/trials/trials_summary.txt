@@ -1,4 +1,4 @@
-forced_odd Pre-Registered Trials Summary (proj/LEX_L2_cent, kl_p90=0.25, C_cols=1024, C_iso=1024)
+Exploratory forced_odd Trials Summary (registration hashed locally, not pushed first; proj/LEX_L2_cent, kl_p90=0.25, C_cols=1024, C_iso=1024)
 --------------------------------------------------------------------------------------------------------------------------------------------------
   L Verdict Gates      DoseC     KL50/90 rABr_c rBAr_c rABr_i rBAr_i  Col05  Iso05 Dual05  NullC  NullI      HC_c/i   Direct
  55 PASS    1/1/1      1.178   0.04/0.16  0.742  0.737  0.769  0.761    403    436    403   0.00   0.00   1.00/1.00  215/403

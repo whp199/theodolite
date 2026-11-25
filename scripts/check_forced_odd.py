@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from backend import forced_odd as fo  # noqa: E402
+from backend import gap_provenance as gp  # noqa: E402
 
 
 def test_mean_centering_invariance() -> None:
@@ -289,6 +290,82 @@ def test_dual_null_assembly() -> None:
     print(f"[PASS] dual-null streaming assembly (col={sel_col['count']}, iso={sel_iso['count']}, dual={len(dual_set)}, null_dual={n_dual_null})")
 
 
+def test_half_c_matched_rejects_relabelled_controls() -> None:
+    rng = np.random.default_rng(303)
+    C, N_fake, N_sig, V = 128, 64, 32, 300
+
+    # Symmetrical pure-random units: each unit's A/B choice correlates at ~0.9 with its own Half-C vector.
+    ctl_c = rng.normal(0.0, 1.0, size=(C, V))
+    ctl_a = 0.9 * ctl_c + rng.normal(0.0, 0.35, size=(C, V))
+    ctl_c /= np.sqrt(np.mean(ctl_c * ctl_c, axis=1, keepdims=True))
+
+    fake_c = rng.normal(0.0, 1.0, size=(N_fake, V))
+    fake_a = 0.9 * fake_c + rng.normal(0.0, 0.35, size=(N_fake, V))
+    fake_c /= np.sqrt(np.mean(fake_c * fake_c, axis=1, keepdims=True))
+
+    def _top_pairs(mat: np.ndarray) -> List[tuple[List[int], List[int]]]:
+        pairs = []
+        for i in range(mat.shape[0]):
+            ord_i = np.argsort(mat[i])
+            pairs.append((ord_i[-5:].tolist(), ord_i[:5].tolist()))
+        return pairs
+
+    ctl_pairs = _top_pairs(ctl_a)
+    fake_pairs = _top_pairs(fake_a)
+
+    # Like-for-like matched evaluation MUST reject relabelled controls
+    res_fake = fo.score_half_c_matched(ctl_c, ctl_pairs, fake_c, fake_pairs)
+    assert res_fake["matched"] is True
+    assert 0.35 <= res_fake["half_c_auc"] <= 0.65, f"Relabelled controls had unexpected AUC: {res_fake}"
+    assert res_fake["frac_p05_vs_ctl"] <= 0.15, f"Relabelled controls falsely passed matched Half C: {res_fake}"
+
+    # Verify old asymmetric bug would have passed relabelled controls
+    asym = fo._eval_half_c_against_ctl(
+        torch.from_numpy(ctl_c).float(),
+        torch.from_numpy(fake_c).float(),
+        fake_pairs,
+        torch.ones(V, dtype=torch.bool),
+        zscore_var=False,
+    )
+    assert asym["frac_p05_vs_ctl"] >= 0.80, f"Expected legacy asymmetric test to falsely pass controls: {asym}"
+
+    # Planted excess neurons must pass like-for-like Half C
+    sig_c = rng.normal(0.0, 1.0, size=(N_sig, V))
+    sig_pairs = []
+    for i in range(N_sig):
+        p = list(range(10 + 5 * (i % 4), 15 + 5 * (i % 4)))
+        n = list(range(60 + 5 * (i % 4), 65 + 5 * (i % 4)))
+        sig_c[i, p] += 4.5
+        sig_c[i, n] -= 4.5
+        sig_pairs.append((p, n))
+    sig_c /= np.sqrt(np.mean(sig_c * sig_c, axis=1, keepdims=True))
+    res_sig = fo.score_half_c_matched(ctl_c, ctl_pairs, sig_c, sig_pairs)
+    assert res_sig["frac_p05_vs_ctl"] >= 0.90 and res_sig["half_c_auc"] >= 0.90, f"Planted signal failed matched Half C: {res_sig}"
+    print(
+        f"[PASS] matched Half-C rejects relabelled controls (auc={res_fake['half_c_auc']}, "
+        f"p05={res_fake['frac_p05_vs_ctl']} vs legacy_asym={asym['frac_p05_vs_ctl']}; planted_p05={res_sig['frac_p05_vs_ctl']})"
+    )
+
+
+def test_prereg_sha256_refusal() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        f = d / "RULES.md"
+        f.write_text("original rule\n", encoding="utf-8")
+        sums = d / "SHA256SUMS"
+        sums.write_text(f"{gp.file_sha256(f)}  RULES.md\n", encoding="utf-8")
+        verified = gp.verify_sha256sums(sums)
+        assert "RULES.md" in verified
+        f.write_text("tampered rule\n", encoding="utf-8")
+        raised = False
+        try:
+            gp.verify_sha256sums(sums)
+        except RuntimeError:
+            raised = True
+        assert raised, "verify_sha256sums must refuse when a hashed file is modified"
+    print("[PASS] pre-registration SHA256SUMS check enforces integrity and refuses on mismatch")
+
+
 def main() -> None:
     test_mean_centering_invariance()
     test_temperature_projection_invariance()
@@ -296,6 +373,8 @@ def main() -> None:
     test_fdp_and_ladder()
     test_weight_word_streaming_exactness()
     test_dual_null_assembly()
+    test_half_c_matched_rejects_relabelled_controls()
+    test_prereg_sha256_refusal()
     print("\nAll forced_odd CPU checks passed.")
 
 

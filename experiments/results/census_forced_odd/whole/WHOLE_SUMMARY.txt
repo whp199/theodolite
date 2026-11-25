@@ -1,4 +1,4 @@
-Whole-Layer forced_odd Census Summary: Layers 55-59 (N=21,504/layer, C_cols=4,096, C_iso=2,048, proj/LEX_L2_cent)
+Whole-Layer forced_odd Exploratory Record: Layers 55-59 (N=21,504/layer, C_cols=4,096, C_iso=2,048, proj/LEX_L2_cent; F2.2/F3 vacuous — see trials/RESULT.md)
 ------------------------------------------------------------------------------------------------------------------------------------------------------
   L  DoseC     KL50/90 rABr_c rBAr_c   Tcol rABr_i rBAr_i   Tiso  Col05  Iso05  Dual05  Dual%  Dual10  NullC  NullI    HC_c/i     Direct    Time
  55 1.1780 0.036/0.154 0.7584 0.7559 0.7569 0.7815 0.7815 0.7804   8166   9114    8086 37.60%    9127   0.00   0.00 1.00/1.00 4176/8086  2393.3s

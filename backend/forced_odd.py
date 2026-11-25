@@ -991,17 +991,14 @@ def deserialize_control_model(d: Dict[str, Any], dev: torch.device) -> ControlMo
     )
 
 
-def _eval_half_c_against_ctl(
+def _normalize_half_c(
     oddC_ctl: torch.Tensor,
     oddC_neu: torch.Tensor,
-    piece_pairs: Sequence[Tuple[Sequence[int], Sequence[int]]],
     mask_gpu: torch.Tensor,
     zscore_var: bool,
-) -> Dict[str, Any]:
-    """Evaluate Half C replicated piece-pair scores against one control pool with exact LOO centering."""
+) -> Tuple[np.ndarray, np.ndarray]:
+    """LOO-center controls and non-LOO-center units on Half C, returning masked RMS-normalized vectors."""
     nc = int(oddC_ctl.shape[0])
-    if nc == 0 or len(piece_pairs) == 0:
-        return {"evaluated": 0, "half_c_auc": None, "frac_gt_0": None, "frac_p05_vs_ctl": None, "median_score_C": None}
     mask_f = mask_gpu.float()
     M_mask = float(mask_f.sum().item())
     vfloor2 = VAR_FLOOR * VAR_FLOOR
@@ -1022,6 +1019,65 @@ def _eval_half_c_against_ctl(
     c_neu = c_neu * mask_f[None]
     normC_ctl = (c_ctl / torch.sqrt((c_ctl * c_ctl).sum(-1, keepdim=True) / M_mask + 1e-8)).cpu().numpy()
     normC_neu = (c_neu / torch.sqrt((c_neu * c_neu).sum(-1, keepdim=True) / M_mask + 1e-8)).cpu().numpy()
+    return normC_ctl, normC_neu
+
+
+def _piece_pair_score(vec_1d: np.ndarray, p_ids: Sequence[int], n_ids: Sequence[int]) -> float:
+    p_idx = [int(x) for x in p_ids]
+    n_idx = [int(x) for x in n_ids]
+    denom = max(len(p_idx) + len(n_idx), 1)
+    pos_s = float(vec_1d[p_idx].sum()) if p_idx else 0.0
+    neg_s = float(vec_1d[n_idx].sum()) if n_idx else 0.0
+    return (pos_s - neg_s) / denom
+
+
+def score_half_c_matched(
+    normC_ctl: np.ndarray,
+    ctl_piece_pairs: Sequence[Tuple[Sequence[int], Sequence[int]]],
+    normC_neu: np.ndarray,
+    neu_piece_pairs: Sequence[Tuple[Sequence[int], Sequence[int]]],
+) -> Dict[str, Any]:
+    """Like-for-like Half-C scoring: each unit AND each control is scored on its own A/B chosen pieces."""
+    nc = int(normC_ctl.shape[0])
+    nn = int(normC_neu.shape[0])
+    if nc == 0 or nn == 0 or len(ctl_piece_pairs) != nc or len(neu_piece_pairs) != nn:
+        return {
+            "evaluated": 0,
+            "matched": True,
+            "half_c_auc": None,
+            "frac_gt_0": None,
+            "frac_p05_vs_ctl": None,
+            "median_score_C": None,
+            "ctl_median_score_C": None,
+        }
+    ctl_scores = np.array([_piece_pair_score(normC_ctl[c], *ctl_piece_pairs[c]) for c in range(nc)], dtype=np.float64)
+    neu_scores = np.array([_piece_pair_score(normC_neu[j], *neu_piece_pairs[j]) for j in range(nn)], dtype=np.float64)
+    ctl_sorted = np.sort(ctl_scores)
+    ge = nc - np.searchsorted(ctl_sorted, neu_scores, side="left")
+    p_vals = (1.0 + ge) / (nc + 1.0)
+    return {
+        "evaluated": nn,
+        "matched": True,
+        "half_c_auc": round(auc(neu_scores, ctl_scores), 4),
+        "frac_gt_0": round(float(np.mean(neu_scores > 0.0)), 4),
+        "frac_p05_vs_ctl": round(float(np.mean(p_vals <= 0.05)), 4),
+        "median_score_C": round(float(np.median(neu_scores)), 3),
+        "ctl_median_score_C": round(float(np.median(ctl_scores)), 3),
+    }
+
+
+def _eval_half_c_against_ctl(
+    oddC_ctl: torch.Tensor,
+    oddC_neu: torch.Tensor,
+    piece_pairs: Sequence[Tuple[Sequence[int], Sequence[int]]],
+    mask_gpu: torch.Tensor,
+    zscore_var: bool,
+) -> Dict[str, Any]:
+    """Legacy (asymmetric) Half-C evaluator kept for backward compatibility; prefer ``score_half_c_matched``."""
+    nc = int(oddC_ctl.shape[0])
+    if nc == 0 or len(piece_pairs) == 0:
+        return {"evaluated": 0, "half_c_auc": None, "frac_gt_0": None, "frac_p05_vs_ctl": None, "median_score_C": None}
+    normC_ctl, normC_neu = _normalize_half_c(oddC_ctl, oddC_neu, mask_gpu, zscore_var)
 
     sc_c_vals: List[float] = []
     sc_c_ctl: List[float] = []
@@ -1030,7 +1086,7 @@ def _eval_half_c_against_ctl(
         p_idx = [int(x) for x in p_ids]
         n_idx = [int(x) for x in n_ids]
         denom = max(len(p_idx) + len(n_idx), 1)
-        val_n = float((normC_neu[j, p_idx].sum() - normC_neu[j, n_idx].sum()) / denom)
+        val_n = _piece_pair_score(normC_neu[j], p_idx, n_idx)
         ctl_sc = (normC_ctl[:, p_idx].sum(1) - normC_ctl[:, n_idx].sum(1)) / denom
         sc_c_vals.append(val_n)
         sc_c_ctl.append(float(ctl_sc[j % nc]))
@@ -1039,6 +1095,7 @@ def _eval_half_c_against_ctl(
 
     return {
         "evaluated": len(piece_pairs),
+        "matched": False,
         "half_c_auc": round(auc(sc_c_vals, sc_c_ctl), 4),
         "frac_gt_0": round(float(np.mean([v > 0.0 for v in sc_c_vals])), 4),
         "frac_p05_vs_ctl": round(float(np.mean([p <= 0.05 for p in p_c_list])), 4),
@@ -1061,7 +1118,7 @@ def eval_half_c_dual(
     piece_pairs: Sequence[Tuple[Sequence[int], Sequence[int]]],
     zscore_var: bool = False,
 ) -> Dict[str, Any]:
-    """Evaluate held-out Half C out-of-sample replication against BOTH columns and isotropic control pools."""
+    """Legacy Half-C evaluator (asymmetric control scoring); prefer ``eval_half_c_matched``."""
     dev = model_device(lm)
     W_U = rt.lm_head_weight
     n_cols = int(deltas_cols_c.shape[0])
@@ -1086,7 +1143,56 @@ def eval_half_c_dual(
     res_cols = _eval_half_c_against_ctl(oddC_cols, oddC_neu, piece_pairs, lex_gpu, zscore_var=zscore_var)
     res_iso = _eval_half_c_against_ctl(oddC_iso, oddC_neu, piece_pairs, lex_gpu, zscore_var=zscore_var)
     del oddC
-    return {"evaluated": len(piece_pairs), "vs_columns": res_cols, "vs_isotropic": res_iso}
+    return {"evaluated": len(piece_pairs), "matched": False, "vs_columns": res_cols, "vs_isotropic": res_iso}
+
+
+@torch.no_grad()
+def eval_half_c_matched(
+    rt: Any,
+    lm: nn.Module,
+    layer: int,
+    texts: Dict[str, Any],
+    lex_gpu: torch.Tensor,
+    batch_units: int,
+    readout_mode: str,
+    deltas_cols_c: torch.Tensor,
+    deltas_iso_c: torch.Tensor,
+    deltas_neu_c: torch.Tensor,
+    neu_piece_pairs: Sequence[Tuple[Sequence[int], Sequence[int]]],
+    ctl_piece_pairs_col: Sequence[Tuple[Sequence[int], Sequence[int]]],
+    ctl_piece_pairs_iso: Sequence[Tuple[Sequence[int], Sequence[int]]],
+    zscore_var: bool = False,
+) -> Dict[str, Any]:
+    """Evaluate Half C like-for-like against both control pools (each control scored on its own A/B pieces)."""
+    dev = model_device(lm)
+    W_U = rt.lm_head_weight
+    n_cols = int(deltas_cols_c.shape[0])
+    n_iso = int(deltas_iso_c.shape[0])
+    n_neu = int(deltas_neu_c.shape[0])
+    if n_neu == 0 or len(neu_piece_pairs) == 0:
+        return {"evaluated": 0, "matched": True, "vs_columns": None, "vs_isotropic": None}
+    if n_neu != len(neu_piece_pairs):
+        raise ValueError(f"deltas_neu_c rows ({n_neu}) must match len(neu_piece_pairs) ({len(neu_piece_pairs)})")
+    if n_cols != len(ctl_piece_pairs_col) or n_iso != len(ctl_piece_pairs_iso):
+        raise ValueError("control piece pairs length must match control delta rows")
+
+    sub_deltas = torch.cat([deltas_cols_c.to(dev), deltas_iso_c.to(dev), deltas_neu_c.to(dev)], dim=0)
+    grpC = prepare_group_cache(rt, lm, layer, texts, "C")
+    resC = run_forward_half(lm, W_U, layer, grpC, sub_deltas, batch_units, readout_mode=readout_mode)
+    del grpC, sub_deltas
+
+    oddC = resC[f"odd_{readout_mode}"].to(device=dev, dtype=torch.float32)
+    del resC
+    oddC_cols = oddC[:n_cols]
+    oddC_iso = oddC[n_cols : n_cols + n_iso]
+    oddC_neu = oddC[n_cols + n_iso :]
+
+    nc_col, nn_col = _normalize_half_c(oddC_cols, oddC_neu, lex_gpu, zscore_var=zscore_var)
+    res_cols = score_half_c_matched(nc_col, ctl_piece_pairs_col, nn_col, neu_piece_pairs)
+    nc_iso, nn_iso = _normalize_half_c(oddC_iso, oddC_neu, lex_gpu, zscore_var=zscore_var)
+    res_iso = score_half_c_matched(nc_iso, ctl_piece_pairs_iso, nn_iso, neu_piece_pairs)
+    del oddC
+    return {"evaluated": len(neu_piece_pairs), "matched": True, "vs_columns": res_cols, "vs_isotropic": res_iso}
 
 
 @torch.no_grad()
@@ -1223,7 +1329,7 @@ def corrected_weight_word_tag(
     dev: torch.device,
     data_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Corrected W(u_n) vs own-word W(u_c) diagnostic tag for direct-unembed vs circuit-mediated neurons."""
+    """Corrected W(u_n) vs own-word W(u_c) diagnostic checking own weight-lens agreement."""
     dd = resolve_data_dir(data_dir)
     lens_path = dd / "index/lens.npz"
     if not lens_path.exists():

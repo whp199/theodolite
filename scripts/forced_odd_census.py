@@ -713,8 +713,9 @@ def _build_dual_examples_and_named(
     auc_T_iso: float,
     header_tag: str,
 ) -> Tuple[List[str], List[Dict[str, Any]]]:
-    """Format strictly dual-null FDP <= 0.05 named neurons (`forced next-piece shift`) and controls."""
+    """Format dual-null 5% named units (`exploratory forced next-piece shift`) and controls."""
     has_ww = bool(tag_info and tag_info.get("available"))
+    is_last = int(layer) == 59
     T_dual_score = np.minimum(sc_col["T"][offset_col:], T_iso_neu)
     dual_sorted = sorted(dual_named_local, key=lambda li: -float(T_dual_score[int(li)]))
 
@@ -722,8 +723,8 @@ def _build_dual_examples_and_named(
         f"=== {header_tag}: Layer {layer} (dose={dose_ceil:.4f} ceil, KL_n p10/p50/p90="
         f"{kl_neurons['p10']:.3f}/{kl_neurons['p50']:.3f}/{kl_neurons['p90']:.3f}, "
         f"T_auc_col={auc_T_col:.4f}, T_auc_iso={auc_T_iso:.4f}, Dual05={len(dual_sorted)}/{len(neurons)}) ===",
-        "Display rule: words shown ONLY for neurons clearing empirical FDP <= 0.05 against BOTH columns & isotropic controls.",
-        "Label: forced next-piece shift (FDR <= 5%, dual-null).",
+        "Display rule: words shown ONLY for neurons clearing empirical FDP <= 0.05 against BOTH columns & isotropic controls (exploratory).",
+        "Label: exploratory forced next-piece shift (3+-letter pieces exceeding 5% dual-control cut).",
     ]
 
     named_records: List[Dict[str, Any]] = []
@@ -731,21 +732,32 @@ def _build_dual_examples_and_named(
         nid = int(neurons[int(loc_i)])
         gu = offset_col + int(loc_i)
         ps = fo.extract_replicated_pieces(sc_col, gu, raw_str, k=5)
-        is_dir = bool(tag_info["is_direct"][int(loc_i)]) if has_ww else False
-        ww_tag = ("direct_unembed" if is_dir else "circuit_mediated") if has_ww else "unknown"
-        q_dir = round(float(tag_info["q_direct"][int(loc_i)]), 5) if has_ww else None
+        if is_last:
+            own_match: Optional[bool] = None
+            own_tag = "n/a_last_layer"
+            q_dir = None
+        elif has_ww:
+            is_dir = bool(tag_info["is_direct"][int(loc_i)])
+            own_match = is_dir
+            own_tag = "own_lens_match" if is_dir else "not_own_lens_match"
+            q_dir = round(float(tag_info["q_direct"][int(loc_i)]), 5)
+        else:
+            own_match = None
+            own_tag = "unknown"
+            q_dir = None
         named_records.append(
             {
                 "neuron": nid,
-                "label": "forced next-piece shift (FDR <= 5%, dual-null)",
+                "label": "exploratory forced next-piece shift (3+-letter pieces)",
                 "T_col": round(float(sc_col["T"][gu]), 4),
                 "T_iso": round(float(T_iso_neu[int(loc_i)]), 4),
                 "r_ab_res_col": round(float(sc_col["r_ab_res"][gu]), 4),
                 "r_ba_res_col": round(float(sc_col["r_ba_res"][gu]), 4),
                 "r_ab_res_iso": round(float(r_ab_res_iso_neu[int(loc_i)]), 4),
                 "r_ba_res_iso": round(float(r_ba_res_iso_neu[int(loc_i)]), 4),
-                "tag": ww_tag,
-                "q_direct": q_dir,
+                "own_lens_match": own_match,
+                "own_lens_label": own_tag,
+                "q_own_lens": q_dir,
                 "pos": [(w0, sc0, int(pid)) for w0, sc0, pid in ps["pos"]],
                 "neg": [(w0, sc0, int(pid)) for w0, sc0, pid in ps["neg"]],
             }
@@ -759,8 +771,8 @@ def _build_dual_examples_and_named(
             pos_s = [(w0, sc0) for w0, sc0, _ in rec["pos"][:4]]
             neg_s = [(w0, sc0) for w0, sc0, _ in rec["neg"][:4]]
             lines.append(
-                f"  n={rec['neuron']:5d} [{rec['tag']:<16}] T_col={rec['T_col']:6.2f} T_iso={rec['T_iso']:6.2f} "
-                f"| forced next-piece shift (FDR <= 5%, dual-null) | +{pos_s} -{neg_s}"
+                f"  n={rec['neuron']:5d} [{rec['own_lens_label']:<18}] T_col={rec['T_col']:6.2f} T_iso={rec['T_iso']:6.2f} "
+                f"| exploratory forced next-piece shift | +{pos_s} -{neg_s}"
             )
 
     if n_cols > 0 and "topA_p" in sc_col:
@@ -872,7 +884,7 @@ def cmd_trial(args: argparse.Namespace) -> None:
         B_mat = resB[f"odd_{args.readout_mode}"]
 
         sc_col = fo.score_odd_pair_gpu(A_mat, B_mat, col_mask, cov, lex_gpu, False, dev, keep_words=True, top_k=5)
-        sc_iso = fo.score_odd_pair_gpu(A_mat, B_mat, iso_mask, cov, lex_gpu, False, dev, keep_words=False)
+        sc_iso = fo.score_odd_pair_gpu(A_mat, B_mat, iso_mask, cov, lex_gpu, False, dev, keep_words=True, top_k=5)
         ev_col = fo.eval_split_metrics(sc_col, neu_mask, col_mask)
         ev_iso = fo.eval_split_metrics(sc_iso, neu_mask, iso_mask)
         ev_iso_vs_col = fo.eval_split_metrics(sc_col, iso_mask, col_mask)
@@ -886,7 +898,7 @@ def cmd_trial(args: argparse.Namespace) -> None:
             sc_col["_control_model"], lex_gpu, dev, data_dir=data_dir,
         )
 
-        # Half C dual-null check
+        # Matched like-for-like Half C dual-null check (controls also scored on their own A/B pieces)
         pick_local, were_dual05_named = _select_half_c_indices(
             dual_named_local, sc_col["T"][offset:], sc_iso["T"][offset:], layer, max_n=args.half_c_max
         )
@@ -894,10 +906,19 @@ def cmd_trial(args: argparse.Namespace) -> None:
         for li in pick_local:
             ps = fo.extract_replicated_pieces(sc_col, offset + int(li), raw_str, k=5)
             piece_pairs.append(([pid for _, _, pid in ps["pos"]], [nid0 for _, _, nid0 in ps["neg"]]))
-        hc = fo.eval_half_c_dual(
+        n_hc_col, n_hc_iso = min(256, n_cols), min(256, n_iso)
+        ctl_pairs_col = []
+        for ci in range(n_hc_col):
+            ps = fo.extract_replicated_pieces(sc_col, ci, raw_str, k=5)
+            ctl_pairs_col.append(([pid for _, _, pid in ps["pos"]], [nid0 for _, _, nid0 in ps["neg"]]))
+        ctl_pairs_iso = []
+        for ci in range(n_hc_iso):
+            ps = fo.extract_replicated_pieces(sc_iso, n_cols + ci, raw_str, k=5)
+            ctl_pairs_iso.append(([pid for _, _, pid in ps["pos"]], [nid0 for _, _, nid0 in ps["neg"]]))
+        hc = fo.eval_half_c_matched(
             rt, lm, layer, texts, lex_gpu, batch_units, args.readout_mode,
-            all_deltas[: min(256, n_cols)], all_deltas[n_cols : n_cols + min(256, n_iso)], all_deltas[offset + pick_local],
-            piece_pairs, zscore_var=False,
+            all_deltas[:n_hc_col], all_deltas[n_cols : n_cols + n_hc_iso], all_deltas[offset + pick_local],
+            piece_pairs, ctl_pairs_col, ctl_pairs_iso, zscore_var=False,
         )
         hc["were_dual05_named"] = were_dual05_named
 
@@ -979,8 +1000,9 @@ def cmd_trial(args: argparse.Namespace) -> None:
                 finished_at=tl_end_iso,
                 model_id=model_id,
                 weights=w_card,
-                neuron_ids=neurons,
+                neuron_ids=",".join(str(x) for x in neurons),
             ),
+            "neuron_count": len(neurons),
             "elapsed_s": round(time.time() - tl0, 1),
         }
         verdicts.append(verdict)
@@ -1139,8 +1161,8 @@ def cmd_whole(args: argparse.Namespace) -> None:
         A_col, B_col = resA_col[odd_k], resB_col[odd_k]
         A_iso, B_iso = resA_iso[odd_k], resB_iso[odd_k]
 
-        model_col = fo.fit_control_model(A_col, B_col, cov_col, lex_gpu, False, dev, keep_words=False)
-        model_iso = fo.fit_control_model(A_iso, B_iso, cov_iso, lex_gpu, False, dev, keep_words=False)
+        model_col = fo.fit_control_model(A_col, B_col, cov_col, lex_gpu, False, dev, keep_words=True, top_k=5)
+        model_iso = fo.fit_control_model(A_iso, B_iso, cov_iso, lex_gpu, False, dev, keep_words=True, top_k=5)
 
         sc_iso_on_col = fo.score_chunk_against_controls(A_iso, B_iso, cov_iso, model_col, lex_gpu, dev, keep_words=False)
         pok_ic = (sc_iso_on_col["r_ab_res"] > 0) & (sc_iso_on_col["r_ba_res"] > 0)
@@ -1305,10 +1327,28 @@ def cmd_whole(args: argparse.Namespace) -> None:
     for ni in pick_idx:
         ps = fo.extract_replicated_pieces(full_arr, int(ni), raw_str, k=5)
         piece_pairs.append(([pid for _, _, pid in ps["pos"]], [nid0 for _, _, nid0 in ps["neg"]]))
-    hc = fo.eval_half_c_dual(
+    n_hc_col = int(ctl_state["deltas_cols_c"].shape[0])
+    n_hc_iso = int(ctl_state["deltas_iso_c"].shape[0])
+    w_ctl_col = model_col.words_ctl or {}
+    w_ctl_iso = model_iso.words_ctl or {}
+    ctl_pairs_col = [
+        (
+            [pid for _, _, pid in fo.extract_replicated_pieces(w_ctl_col, ci, raw_str, k=5)["pos"]],
+            [nid0 for _, _, nid0 in fo.extract_replicated_pieces(w_ctl_col, ci, raw_str, k=5)["neg"]],
+        )
+        for ci in range(n_hc_col)
+    ] if w_ctl_col else [([], []) for _ in range(n_hc_col)]
+    ctl_pairs_iso = [
+        (
+            [pid for _, _, pid in fo.extract_replicated_pieces(w_ctl_iso, ci, raw_str, k=5)["pos"]],
+            [nid0 for _, _, nid0 in fo.extract_replicated_pieces(w_ctl_iso, ci, raw_str, k=5)["neg"]],
+        )
+        for ci in range(n_hc_iso)
+    ] if w_ctl_iso else [([], []) for _ in range(n_hc_iso)]
+    hc = fo.eval_half_c_matched(
         rt, lm, layer, texts, lex_gpu, batch_units, args.readout_mode,
         ctl_state["deltas_cols_c"].to(dev), ctl_state["deltas_iso_c"].to(dev), deltas_hc,
-        piece_pairs, zscore_var=False,
+        piece_pairs, ctl_pairs_col, ctl_pairs_iso, zscore_var=False,
     )
     hc["were_dual05_named"] = were_dual05_named
     del u_hc, c_hc, deltas_hc
@@ -1366,7 +1406,15 @@ def cmd_whole(args: argparse.Namespace) -> None:
         r_ab_res_iso=full_arr["r_ab_res_iso"],
         r_ba_res_iso=full_arr["r_ba_res_iso"],
         T_ctl_col=model_col.T_ctl,
+        r_ab_ctl_col=model_col.r_ab_ctl,
+        r_ba_ctl_col=model_col.r_ba_ctl,
+        r_ab_res_ctl_col=model_col.r_ab_res_ctl,
+        r_ba_res_ctl_col=model_col.r_ba_res_ctl,
         T_ctl_iso=model_iso.T_ctl,
+        r_ab_ctl_iso=model_iso.r_ab_ctl,
+        r_ba_ctl_iso=model_iso.r_ba_ctl,
+        r_ab_res_ctl_iso=model_iso.r_ab_res_ctl,
+        r_ba_res_ctl_iso=model_iso.r_ba_res_ctl,
         named_dual05=named_dual05,
         named_dual10=named_dual10,
         named_col05=named_col05,
@@ -1429,8 +1477,9 @@ def cmd_whole(args: argparse.Namespace) -> None:
             finished_at=gp.utc_iso(),
             model_id=model_id,
             weights=w_card,
-            neuron_ids=list(range(N_ff)),
+            neuron_ids="all",
         ),
+        "neuron_count": N_ff,
         "elapsed_s": round(time.time() - t0, 1),
     }
     (out_dir / f"L{layer}_forced_odd.meta.json").write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
