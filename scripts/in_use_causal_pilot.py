@@ -162,12 +162,15 @@ def _run_batch_0_sanity(
     h_full = out_full.last_hidden_state[br, pos_mat].reshape(b * 4, D)
     lsm_full = F.log_softmax(logits_fp32(h_full, W_U), dim=-1).view(b, 4, V)
 
-    # Compare full model vs post_rec passed through forward_from_layer(layer+1) inside combined [rec, abl, ctl]
-    kl_noop = float((lsm_full.exp() * (lsm_full - lsm_rec_combined)).sum(-1).mean().item())
-    max_logit_noop = float((logits_fp32(h_full, W_U) - lsm_rec_combined.view(b * 4, V)).abs().max().item()) if False else 0.0
-    max_lsm_noop = float((lsm_full - lsm_rec_combined).abs().max().item())
+    # Verify same-batch (b) exactness first so cuBLAS batch-tiling differences don't mask formula checks.
+    out_rec_b = ao.forward_from_layer(lm, layer + 1, post_rec, ab, pb)
+    h_rec_b = out_rec_b[br, pos_mat].reshape(b * 4, D)
+    lsm_rec_b = F.log_softmax(logits_fp32(h_rec_b, W_U), dim=-1).view(b, 4, V)
+    kl_noop_same_b = float((lsm_full.exp() * (lsm_full - lsm_rec_b)).sum(-1).mean().item())
+    kl_noop_comb = float((lsm_full.exp() * (lsm_full - lsm_rec_combined)).sum(-1).mean().item())
+    max_lsm_noop = float((lsm_full - lsm_rec_b).abs().max().item())
 
-    # Compare algebraic y_abl against live down_proj pre-hook zeroing from layer input
+    # Compare algebraic y_abl (at batch b) against live down_proj pre-hook zeroing from layer input (at batch b).
     t_idx = torch.tensor(target_ns, dtype=torch.long, device=ib.device)
     rows_i = torch.arange(b, device=ib.device)
 
@@ -183,16 +186,23 @@ def _run_batch_0_sanity(
     finally:
         hk_z.remove()
 
+    out_abl_b = ao.forward_from_layer(lm, layer + 1, post_abl, ab, pb)
+    h_abl_b = out_abl_b[br, pos_mat].reshape(b * 4, D)
+    lsm_abl_b = F.log_softmax(logits_fp32(h_abl_b, W_U), dim=-1).view(b, 4, V)
     h_hook = out_hook[br, pos_mat].reshape(b * 4, D)
     lsm_hook = F.log_softmax(logits_fp32(h_hook, W_U), dim=-1).view(b, 4, V)
-    kl_alg_per_tok = (lsm_rec_combined.exp() * (lsm_rec_combined - lsm_abl_combined)).sum(-1)
-    kl_hook_per_tok = (lsm_full.exp() * (lsm_full - lsm_hook)).sum(-1)
-    max_kl_diff = float((kl_alg_per_tok - kl_hook_per_tok).abs().max().item())
-    del out_full, out_hook, h_full, h_hook, lsm_full, lsm_hook
+
+    kl_alg_same_b = (lsm_rec_b.exp() * (lsm_rec_b - lsm_abl_b)).sum(-1)
+    kl_hook_same_b = (lsm_full.exp() * (lsm_full - lsm_hook)).sum(-1)
+    max_kl_diff_same_b = float((kl_alg_same_b - kl_hook_same_b).abs().max().item())
+    max_kl_comb_diff = float(((lsm_rec_combined.exp() * (lsm_rec_combined - lsm_abl_combined)).sum(-1) - kl_hook_same_b).abs().max().item())
+    del out_full, out_rec_b, out_abl_b, out_hook, h_full, h_rec_b, h_abl_b, h_hook, lsm_full, lsm_rec_b, lsm_abl_b, lsm_hook
     return {
-        "noop_kl_mean": round(kl_noop, 8),
-        "noop_max_lsm_diff": round(max_lsm_noop, 6),
-        "max_kl_alg_vs_hook_diff": round(max_kl_diff, 6),
+        "noop_kl_same_batch": round(kl_noop_same_b, 8),
+        "noop_kl_combined_3b": round(kl_noop_comb, 8),
+        "noop_max_lsm_diff_same_batch": round(max_lsm_noop, 6),
+        "max_kl_alg_vs_hook_same_batch": round(max_kl_diff_same_b, 6),
+        "max_kl_alg_3b_vs_hook_b": round(max_kl_comb_diff, 6),
     }
 
 
@@ -439,7 +449,7 @@ def main() -> None:
                 )
                 sanity_report["layer"] = int(l)
                 print(f"Batch-0 sanity at L{l}: {sanity_report}", flush=True)
-                if sanity_report["noop_kl_mean"] >= 1e-4 or sanity_report["max_kl_alg_vs_hook_diff"] >= 1e-4:
+                if sanity_report["noop_kl_same_batch"] >= 1e-4 or sanity_report["max_kl_alg_vs_hook_same_batch"] >= 1e-4:
                     raise RuntimeError(f"Sanity check failed at L{l}: {sanity_report}")
 
             p_all = lsm.exp()
