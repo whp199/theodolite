@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build full L0-L29 Input-Side Firing Census from stored passages.d (CPU-only)."""
+"""Build exploratory L0-L29 document-disjoint causal token-trigger tables from passages.d (CPU-only)."""
 from __future__ import annotations
 
 import argparse
@@ -16,8 +16,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from backend import atlas_index as ai  # noqa: E402
+from backend import gap_provenance as gp  # noqa: E402
 from backend import input_census as ic  # noqa: E402
-
 
 EXAMPLE_LAYERS = {0, 2, 8, 14, 20, 25, 29}
 
@@ -38,7 +38,7 @@ def parse_layers_arg(spec: str) -> List[int]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Build input-side firing census for specified layers")
+    ap = argparse.ArgumentParser(description="Build exploratory input-side firing tables for specified layers")
     ap.add_argument("--layers", default="0-29", help="Layer list/ranges (default: 0-29)")
     ap.add_argument("--out-dir", default="experiments/results/input_census_L0_L29")
     ap.add_argument("--n-null", type=int, default=4096)
@@ -47,19 +47,26 @@ def main() -> None:
     args = ap.parse_args()
 
     t0 = time.time()
+    t0_iso = gp.utc_iso(t0)
     layers = parse_layers_arg(args.layers)
     out_dir = REPO_ROOT / args.out_dir if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     data_dir = Path(args.data_dir).expanduser() if args.data_dir else ai.atlas_dir()
 
     P = ai.load_folder(data_dir / "index/passages.d/meta.json")
+    p_meta = P.get("meta") if isinstance(P.get("meta"), dict) else {}
+    model_id = p_meta.get("model")
+    weights = p_meta.get("weights")
     vocab = json.loads((data_dir / "index/vocab.json").read_text(encoding="utf-8"))["vocab"]
     windows = np.asarray(P["windows"])
     unigram = np.asarray(P["unigram"])
+    N_ff = int(P["pos_win"].shape[1])
     has_smp = "pos_smp_win" in P and "neg_smp_win" in P
 
     layer_summaries: List[Dict[str, Any]] = []
-    example_lines: List[str] = ["Input-Side Firing Census Top-10 Named Faces (piece/offset/counts/lift only, no corpus text)"]
+    example_lines: List[str] = [
+        "Exploratory Input-Side Token-Trigger Examples (document-disjoint, causal offsets -1/0 only; +1 shown separately)"
+    ]
 
     for l in layers:
         tl = time.time()
@@ -86,17 +93,17 @@ def main() -> None:
         layer_summaries.append(st)
         print(
             f"Input L{l:2d} ({st['elapsed_s']}s): elig={st['eligible_faces']}/{st['total_faces']} | "
-            f"FDP05={st['named_fdp05_count']} ({st['named_fdp05_pct_elig']}%) | "
-            f"Null05={st['null_split_false_mean']} | smp={st['smp_named_rate']} (shuf={st['smp_shuf_rate']})",
+            f"raw_2+2={st['raw_2plus2_count']} ({st['raw_2plus2_pct_elig']}%) | "
+            f"randFDP05={st['named_fdp05_count']} | otherFaceNull={st['other_face_null_rate']:.3f} | "
+            f"smp={st['smp_named_rate']} (freq={st['smp_freq_rate']}, shuf={st['smp_shuf_rate']})",
             flush=True,
         )
 
         if l in EXAMPLE_LAYERS:
-            named_idx = np.nonzero(res["named_fdp05"].reshape(-1))[0]
+            named_idx = np.nonzero(res["raw_2plus2"].reshape(-1))[0]
             scores_flat = res["score"].reshape(-1)
             order = named_idx[np.argsort(-scores_flat[named_idx])[:10]] if len(named_idx) else []
-            N_ff = res["score"].shape[1]
-            example_lines.append(f"\n=== Layer {l} (named={st['named_fdp05_count']}/{st['eligible_faces']}) ===")
+            example_lines.append(f"\n=== Layer {l} (raw_2+2={st['raw_2plus2_count']}/{st['eligible_faces']}) ===")
             for flat_i in order:
                 si = int(flat_i) // N_ff
                 ni = int(flat_i) % N_ff
@@ -112,34 +119,60 @@ def main() -> None:
                     lift = float(res["top_lift"][si, ni, k])
                     piece = vocab[tid] if tid < len(vocab) else f"#{tid}"
                     toks.append(f"{piece!r}@{off:+d}({ce}/{co}, {lift:.0f}x)")
+                nxts = []
+                for k in range(2):
+                    tid = int(res["next_token_id"][si, ni, k])
+                    if tid < 0:
+                        break
+                    nxts.append(f"{vocab[tid] if tid < len(vocab) else f'#{tid}'!r}({int(res['next_cnt_e'][si, ni, k])}/{int(res['next_cnt_o'][si, ni, k])})")
                 sh = int(res["smp_hits"][si, ni])
+                fh = int(res["smp_freq_hits"][si, ni])
                 st_n = int(res["smp_total"][si, ni])
+                nxt_s = f" | next(+1)={nxts}" if nxts else ""
                 example_lines.append(
                     f"  n={ni:5d}{sign} sc={float(res['score'][si, ni]):5.2f} "
-                    f"smp={sh}/{st_n} [{' ; '.join(toks)}]"
+                    f"smp={sh}/{st_n}(freq={fh}) [{' ; '.join(toks)}]{nxt_s}"
                 )
 
-    (out_dir / "summary.json").write_text(
-        json.dumps({"elapsed_total_s": round(time.time() - t0, 1), "layers": layer_summaries}, indent=1) + "\n",
-        encoding="utf-8",
+    prov = gp.build_provenance(
+        REPO_ROOT,
+        [REPO_ROOT / "backend" / "input_census.py", Path(__file__)],
+        started_at=t0_iso,
+        finished_at=gp.utc_iso(),
+        model_id=model_id,
+        weights=weights,
+        neuron_ids="all",
     )
+    summary_payload = {
+        **prov,
+        "exploratory": True,
+        "split_kind": "document_disjoint",
+        "eos_id": 1,
+        "offsets": [-1, 0],
+        "passages_corpus": p_meta.get("corpus"),
+        "neuron_count": N_ff,
+        "elapsed_total_s": round(time.time() - t0, 1),
+        "layers": layer_summaries,
+    }
+    (out_dir / "summary.json").write_text(json.dumps(summary_payload, indent=1) + "\n", encoding="utf-8")
     (out_dir / "examples.txt").write_text("\n".join(example_lines) + "\n", encoding="utf-8")
 
     lines = [
-        f"Input-Side Firing Census Summary (passages.d split-half even vs odd, C_null={args.n_null}, FDP <= 0.05)",
-        "-" * 118,
-        f"{'L':>3} {'Elig/Total':>13} {'FDP05':>7} {'Elig%':>6} {'Tot%':>6} {'FDP10':>7} "
-        f"{'Null05':>7} {'Bigram%':>8} {'SmpHit':>7} {'SmpShuf':>8} {'NonNmd':>7}",
+        f"Exploratory Input-Side Token Triggers (passages.d document-disjoint, causal offsets -1/0, C_null={args.n_null})",
+        "-" * 134,
+        f"{'L':>3} {'Elig/Total':>13} {'Raw2+2':>7} {'Elig%':>6} {'RandFDP05':>9} {'OthFaceNull':>11} "
+        f"{'Top100%':>7} {'Bigram%':>8} {'Next+1%':>8} {'SmpHit':>7} {'SmpFreq':>8} {'SmpShuf':>8}",
     ]
     for s in layer_summaries:
         el_s = f"{s['eligible_faces']}/{s['total_faces']}"
         smp_n = f"{s['smp_named_rate']:.3f}" if s.get("smp_named_rate") is not None else "-"
+        smp_f = f"{s['smp_freq_rate']:.3f}" if s.get("smp_freq_rate") is not None else "-"
         smp_s = f"{s['smp_shuf_rate']:.3f}" if s.get("smp_shuf_rate") is not None else "-"
-        smp_o = f"{s['smp_non_named_rate']:.3f}" if s.get("smp_non_named_rate") is not None else "-"
         lines.append(
-            f"{s['layer']:3d} {el_s:>13} {s['named_fdp05_count']:7d} {s['named_fdp05_pct_elig']:6.1f} "
-            f"{s['named_fdp05_pct_total']:6.1f} {s['named_fdp10_count']:7d} {s['null_split_false_mean']:7.2f} "
-            f"{s['bigram_rep_pct_elig']:8.1f} {smp_n:>7} {smp_s:>8} {smp_o:>7}"
+            f"{s['layer']:3d} {el_s:>13} {s['raw_2plus2_count']:7d} {s['raw_2plus2_pct_elig']:6.1f} "
+            f"{s['named_fdp05_count']:9d} {s['other_face_null_rate']:11.3f} "
+            f"{100.0 * s['top1_in_top100_common_share']:7.1f} {s['bigram_rep_pct_elig']:8.1f} "
+            f"{s['next_p1_rep_elig_pct']:8.1f} {smp_n:>7} {smp_f:>8} {smp_s:>8}"
         )
     txt = "\n".join(lines) + "\n"
     (out_dir / "summary.txt").write_text(txt, encoding="utf-8")
