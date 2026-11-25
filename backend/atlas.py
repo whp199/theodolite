@@ -44,6 +44,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, StrictInt
 
+from backend import atlas_gap_views as agv
 from backend import atlas_ops as ao
 from backend import census as cz
 from backend import field_notes as fn
@@ -691,6 +692,7 @@ async def arch() -> Dict[str, Any]:
     links = await asyncio.to_thread(links_card, a)
     refused: Dict[int, str] = {}
     await asyncio.to_thread(cz.layer_runs, None, a.rt.model_id, refused)
+    supp = await asyncio.to_thread(agv.available_regimes, cz.census_dir())
     return {
         "model": getattr(a.rt, "model_id", None),
         "stand_in": bool(getattr(a.rt, "atlas_stand_in", False)),
@@ -704,6 +706,7 @@ async def arch() -> Dict[str, Any]:
         "indexes": status,
         "census": {str(l): p.name for l, p in sorted(cz.layer_runs(model=a.rt.model_id).items())},
         "census_refused": {str(l): why for l, why in sorted(refused.items())},
+        "supplementary_census": supp,
         "push": {"modes": list(ao.PUSH_MODES), "spare_bos": True, "units": {
             "add": "a share of the stream's median length leaving the layer, along the neuron's write direction",
             "mul": "a factor on the neuron's own activation (0 silences it)",
@@ -1300,6 +1303,66 @@ async def census_spread(layer: int) -> Any:
     if not sp.exists():
         return JSONResponse({})
     return Response(sp.read_bytes(), media_type="application/json", headers={"X-Census-Stale": "1"} if census_stale(a) else None)
+
+
+VALID_REGIMES = ("forced_odd", "input_census", "fdr_rescue")
+
+
+def _check_regime(regime: str) -> str:
+    if regime not in VALID_REGIMES:
+        raise HTTPException(status_code=400, detail=f"regime must be one of {list(VALID_REGIMES)}, not {regime!r}.")
+    return regime
+
+
+@router.get("/census/regime/layers")
+async def census_regime_layers() -> Dict[str, Any]:
+    """Per-layer summaries and provenance for supplementary census regimes (forced_odd, input_census, fdr_rescue)."""
+    a = atlas()
+    data = await asyncio.to_thread(agv.layer_summaries, cz.census_dir())
+    return {**data, **census_stale(a)}
+
+
+@router.get("/census/regime/units")
+async def census_regime_units(
+    layer: int,
+    regime: str,
+    q: str = "",
+    limit: int = 600,
+    face: str = "both",
+) -> Dict[str, Any]:
+    """Read-only ranked units for `(layer, regime)` gated at FDR <= 5%; attaches `stale` when vault edits are active."""
+    a = atlas()
+    if not (0 <= int(layer) < a.L):
+        raise HTTPException(status_code=400, detail=f"Layers count from 0 to {a.L - 1} on this model, not {layer}.")
+    _check_regime(regime)
+    if face not in ("both", "+", "-"):
+        raise HTTPException(status_code=400, detail='face must be "both", "+", or "-".')
+    notes = (await fn.all_notes())["neurons"]
+    lim = max(1, min(int(limit), 2000))
+    data = await asyncio.to_thread(agv.list_units, cz.census_dir(), int(layer), regime, a.vocab(), notes, q, lim, face)
+    return {**data, **census_stale(a)}
+
+
+@router.get("/census/regime/neuron")
+async def census_regime_neuron(layer: int, n: int) -> Dict[str, Any]:
+    """Read-only supplementary census record for one neuron across forced_odd, input_census, and fdr_rescue."""
+    a = atlas()
+    _check_neuron(a, layer, n)
+    data = await asyncio.to_thread(agv.neuron_view, cz.census_dir(), int(layer), int(n), a.vocab())
+    return {**data, **census_stale(a)}
+
+
+@router.get("/census/regime/search")
+async def census_regime_search(regime: str, q: str, limit: int = 200) -> Dict[str, Any]:
+    """Read-only cross-layer search within one supplementary census regime (`forced_odd`, `input_census`, or `fdr_rescue`)."""
+    a = atlas()
+    _check_regime(regime)
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="Search query q must be non-empty.")
+    notes = (await fn.all_notes())["neurons"]
+    lim = max(1, min(int(limit), 500))
+    data = await asyncio.to_thread(agv.search_regime, cz.census_dir(), regime, q, a.vocab(), notes, lim)
+    return {**data, **census_stale(a)}
 
 
 # -- a neuron's words, wiring and heads
@@ -2113,9 +2176,11 @@ async def hover(layer: int, n: int) -> Dict[str, Any]:
     notes = (await fn.all_notes())["neurons"]
 
     def work() -> Dict[str, Any]:
+        reg = agv.hover_summary(cz.census_dir(), layer, n, a.vocab())
         return {"layer": layer, "n": n, "faces": {s: a.face(layer, n, s, 6, edited) for s in ("+", "-")},
                 "links": a.index.links(layer, n, 16), "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", ""),
                 **({"links_stale": STALE_WEB} if (layer, n) in edited else {}),
+                **({"regime": {**reg, **census_stale(a)}} if reg is not None else {}),
                 "ready": a.index.get("lens") is not None}
 
     return await asyncio.to_thread(work)

@@ -139,6 +139,8 @@ export interface Arch {
   census: Record<string, string>;
   /** layers whose only census is not read, and why (a run taken before the controls were shaped as neurons' writes) */
   census_refused?: Record<string, string>;
+  /** supplementary read-only census regimes (forced_odd L55-L59, input_census L0-L29, fdr_rescue L30-L54) */
+  supplementary_census?: SupplementaryCensus;
   push: {
     modes: string[];
     units: Record<string, string>;
@@ -234,6 +236,7 @@ export interface Hover {
   faces: Record<"+" | "-", FaceWords>;
   links: { down: Link[]; up: Link[] } | null;
   name: string;
+  regime?: HoverRegime;
   ready: boolean;
 }
 export interface ActRange {
@@ -890,6 +893,228 @@ export interface PastChat {
   profile?: string;
   model?: string;
   effort?: string;
+}
+
+export interface SupplementaryCensus {
+  forced_odd: number[];
+  input_census: number[];
+  fdr_rescue: number[];
+}
+
+export interface ForcedOddPiece {
+  tok: string;
+  score: number;
+  id: number;
+}
+
+export interface ForcedOddMeta {
+  layer: number;
+  d_ff: number;
+  readout_mode: string | null;
+  dose_ceil: number | null;
+  dose_stat: string | null;
+  target_kl: number | null;
+  n_cols: number | null;
+  n_iso: number | null;
+  dual05_count: number;
+  dual05_pct: number;
+  dual10_count: number | null;
+  direct_among_dual05: number;
+  vs_columns: {
+    auc_T?: number | null;
+    fdp05?: { count?: number; above_max_ctl?: number; threshold?: number | null; fdp?: number | null } | null;
+    null_splits_columns?: { n?: number; auc_mean?: number; auc_min?: number; auc_max?: number; fdp05_false_mean?: number; fdp05_false_max?: number } | null;
+  } | null;
+  vs_isotropic: {
+    auc_T?: number | null;
+    fdp05?: { count?: number; above_max_ctl?: number; threshold?: number | null; fdp?: number | null } | null;
+    null_splits_isotropic?: { n?: number; auc_mean?: number; auc_min?: number; auc_max?: number; fdp05_false_mean?: number; fdp05_false_max?: number } | null;
+  } | null;
+  half_c?: {
+    evaluated?: number;
+    were_dual05_named?: boolean;
+    vs_columns?: { evaluated?: number; half_c_auc?: number | null; frac_gt_0?: number | null; frac_p05_vs_ctl?: number | null; median_score_C?: number | null } | null;
+    vs_isotropic?: { evaluated?: number; half_c_auc?: number | null; frac_gt_0?: number | null; frac_p05_vs_ctl?: number | null; median_score_C?: number | null } | null;
+  } | null;
+}
+
+export interface ForcedOddNeuron {
+  regime: "forced_odd";
+  label: string;
+  named_dual05: boolean;
+  named_dual10: boolean;
+  named_col05: boolean;
+  named_iso05: boolean;
+  T_col: number;
+  T_iso: number;
+  T_min: number;
+  r_ab_res_col: number | null;
+  r_ba_res_col: number | null;
+  kl_mean: number | null;
+  alpha_abs: number | null;
+  rank: number | null;
+  n_named: number;
+  tag: "direct_unembed" | "circuit_mediated" | null;
+  q_direct: number | null;
+  pos: ForcedOddPiece[];
+  neg: ForcedOddPiece[];
+  why_no_words?: string;
+  meta: ForcedOddMeta;
+}
+
+export interface InputTrigger {
+  tok: string;
+  id: number;
+  offset: number;
+  offset_label: string;
+  cnt_e: number;
+  cnt_o: number;
+  lift: number;
+}
+
+export interface InputFaceRecord {
+  eligible: boolean;
+  named_fdp05: boolean;
+  named_fdp10: boolean;
+  rank: number | null;
+  score: number;
+  bigram_rep: boolean;
+  smp_hits: number;
+  smp_total: number;
+  triggers: InputTrigger[];
+}
+
+export interface InputAblationLayer {
+  layer: number;
+  neurons: number | null;
+  passages: number | null;
+  quiet_thresh: number | null;
+  quiet_max_norm_act_max: number | null;
+  all_quiet_under_thresh: boolean | null;
+  kl_pk?: { auc_active_vs_quiet?: number | null; wilcoxon_p?: number | null; frac_neurons_max4_gt_0_005?: number | null; [k: string]: number | null | undefined };
+  kl_span?: { auc_active_vs_quiet?: number | null; wilcoxon_p?: number | null; [k: string]: number | null | undefined };
+}
+
+export interface InputCensusMeta {
+  layer: number;
+  total_faces: number;
+  eligible_faces: number;
+  named_fdp05_count: number;
+  named_fdp05_pct_elig: number | null;
+  named_fdp05_pct_total: number | null;
+  named_fdp10_count: number | null;
+  threshold_05: number | null;
+  bigram_rep_pct_elig: number | null;
+  null_split_false_mean: number | null;
+  null_split_false_max: number | null;
+  smp_named_hits: number | null;
+  smp_named_tot: number | null;
+  smp_named_rate: number | null;
+  smp_shuf_rate: number | null;
+  ablation_verified: boolean;
+  ablation_check: InputAblationLayer | null;
+  ablation_checked_layers: number[];
+}
+
+export interface InputCensusNeuron {
+  regime: "input_census";
+  label: string;
+  no_raw_text: boolean;
+  faces: Record<"+" | "-", InputFaceRecord>;
+  n_named_faces: number;
+  meta: InputCensusMeta;
+}
+
+export interface FdrRescueMeta {
+  layer: number;
+  tag: string | null;
+  design: string | null;
+  neurons: number | null;
+  controls: number | null;
+  readlib_named: number | null;
+  fdp05: { count?: number; threshold?: number | null; fdp?: number | null; above_max_ctl?: number } | null;
+  fdp10: { count?: number; threshold?: number | null; fdp?: number | null; above_max_ctl?: number } | null;
+  n3_covered: { covered?: number; neurons?: number; share_covered?: number; n1_named_inside_covered?: number } | null;
+  null_splits: { n?: number; fdp05_false_mean?: number; fdp05_false_max?: number } | null;
+  oos_3way?: { fit_named?: number; c4_auc?: number | null; frac_p05_on_C4?: number | null } | null;
+  has_named_file: boolean;
+}
+
+export interface FdrRescueNeuron {
+  regime: "fdr_rescue";
+  label: string;
+  named_fdp05: boolean;
+  rank?: number;
+  n_named: number;
+  T_dec?: number;
+  rep_AB_res?: number;
+  rep_BA_res?: number;
+  covered?: boolean;
+  rep_words_AB?: [string, number][];
+  rep_words_BA?: [string, number][];
+  meta: FdrRescueMeta;
+}
+
+export interface RegimeNeuron {
+  layer: number;
+  n: number;
+  forced_odd: ForcedOddNeuron | null;
+  input_census: InputCensusNeuron | null;
+  fdr_rescue: FdrRescueNeuron | null;
+  stale?: string;
+}
+
+export interface RegimeUnitRow {
+  n: number;
+  rank: number;
+  name: string;
+  T_min?: number;
+  T_col?: number;
+  T_iso?: number;
+  tag?: "direct_unembed" | "circuit_mediated";
+  q_direct?: number | null;
+  pos?: [string, number][];
+  neg?: [string, number][];
+  face?: "+" | "-";
+  score?: number;
+  bigram_rep?: boolean;
+  smp_hits?: number;
+  smp_total?: number;
+  triggers?: InputTrigger[];
+  T_dec?: number;
+  rep_AB_res?: number;
+  rep_BA_res?: number;
+  covered?: boolean;
+  words?: [string, number][];
+}
+
+export interface RegimeUnitsReply {
+  regime: "forced_odd" | "input_census" | "fdr_rescue";
+  label: string;
+  layer: number;
+  available: boolean;
+  no_raw_text?: boolean;
+  meta: ForcedOddMeta | InputCensusMeta | FdrRescueMeta | null;
+  total: number;
+  matched: number;
+  rows: RegimeUnitRow[];
+  stale?: string;
+}
+
+export interface RegimeLayersReply {
+  labels: Record<"forced_odd" | "input_census" | "fdr_rescue", string>;
+  forced_odd: ForcedOddMeta[];
+  input_census: InputCensusMeta[];
+  input_ablation_check: { quiet_thresh: number | null; min_extreme: number | null; layers: InputAblationLayer[] } | null;
+  fdr_rescue: FdrRescueMeta[];
+  stale?: string;
+}
+
+export interface HoverRegime {
+  forced_odd?: { label: string; tag: "direct_unembed" | "circuit_mediated"; T_min: number; pos: string[]; neg: string[] };
+  input_census?: { label: string; faces: Partial<Record<"+" | "-", { tok: string; offset_label: string; lift: number }[]>> };
+  fdr_rescue?: { label: string; T_dec: number; covered: boolean; words: string[] };
+  stale?: string;
 }
 
 export const noteKey = (layer: number, n: number) => `${layer}:${n}`;

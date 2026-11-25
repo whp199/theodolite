@@ -4,6 +4,7 @@
  */
 import React, { useLayoutEffect, useRef } from "react";
 import { create } from "zustand";
+import { wp } from "../../lib/words";
 import { get, type HeadInfo, type Hover, type NeuronHeads } from "./api";
 import type { Pick } from "./map";
 import { FaceLine, NameMark } from "./parts";
@@ -75,6 +76,27 @@ function neuronBody(layer: number, n: number) {
       {u && censusShown ? (
         <div className="atlas-twords">
           <span className="atlas-src">census</span> {u.words.join("  ")}
+        </div>
+      ) : null}
+      {h?.regime?.forced_odd ? (
+        <div className="atlas-twords">
+          <span className="atlas-src">forced shift · {h.regime.forced_odd.tag === "direct_unembed" ? "direct" : "circuit"}</span>{" "}
+          {h.regime.forced_odd.pos.length ? `+ ${h.regime.forced_odd.pos.map((t) => wp(t)).join("  ")}` : ""}
+          {h.regime.forced_odd.neg.length ? `  − ${h.regime.forced_odd.neg.map((t) => wp(t)).join("  ")}` : ""}
+        </div>
+      ) : null}
+      {h?.regime?.input_census ? (
+        <div className="atlas-twords">
+          <span className="atlas-src">input firing</span>{" "}
+          {(["+", "-"] as const)
+            .filter((sg) => h.regime?.input_census?.faces[sg]?.length)
+            .map((sg) => `${sg} ${(h.regime?.input_census?.faces[sg] ?? []).map((t) => `${wp(t.tok)}(${t.offset_label})`).join(" ")}`)
+            .join("  ")}
+        </div>
+      ) : null}
+      {h?.regime?.fdr_rescue && !censusShown ? (
+        <div className="atlas-twords">
+          <span className="atlas-src">fdr rescue</span> {h.regime.fdr_rescue.words.join("  ")}
         </div>
       ) : null}
       {h ? (
