@@ -369,8 +369,10 @@ def evaluate_track_2a(
 
     n_iso_pool = int(iso_vs_col_res["n3_covered"]["neurons"])
     n_col_pool = int(col_vs_iso_res["n3_covered"]["neurons"])
-    i2c_frac = int(iso_vs_col_res["fdp05_count"]) / max(n_iso_pool, 1)
-    c2i_frac = int(col_vs_iso_res["fdp05_count"]) / max(n_col_pool, 1)
+    i2c_cnt = int(iso_vs_col_res["fdp05_count"] if "fdp05_count" in iso_vs_col_res else iso_vs_col_res["fdp05"]["count"])
+    c2i_cnt = int(col_vs_iso_res["fdp05_count"] if "fdp05_count" in col_vs_iso_res else col_vs_iso_res["fdp05"]["count"])
+    i2c_frac = i2c_cnt / max(n_iso_pool, 1)
+    c2i_frac = c2i_cnt / max(n_col_pool, 1)
     g_cross = (i2c_frac <= 0.02) and (c2i_frac <= 0.02)
 
     g_c4 = (
@@ -398,9 +400,9 @@ def evaluate_track_2a(
         "c4_vs_col": c4_col,
         "c4_vs_iso": c4_iso,
         "cross_pool": {
-            "iso_false_vs_col_count": int(iso_vs_col_res["fdp05_count"]),
+            "iso_false_vs_col_count": i2c_cnt,
             "iso_false_vs_col_frac": round(i2c_frac, 4),
-            "col_false_vs_iso_count": int(col_vs_iso_res["fdp05_count"]),
+            "col_false_vs_iso_count": c2i_cnt,
             "col_false_vs_iso_frac": round(c2i_frac, 4),
         },
         "top20_named_examples": [

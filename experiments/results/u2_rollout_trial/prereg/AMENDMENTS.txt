@@ -1,0 +1,7 @@
+# Pre-Registration Amendment — Path 2 (`u2_rollout`)
+
+- **Date**: 2026-11-26
+- **Prior Commit**: `f5a68a7` (`prereg` unchanged since `49876e23b173`)
+- **Reason**: After `L55` GPU rollouts finished completely (`98,220` + `49,164` answers written cleanly), `scripts/u2_rollout_read.py:372` raised `KeyError: 'fdp05_count'` because `backend/census_fdr.eval_pair()` returns nested `out["fdp05"]["count"]` rather than flat `fdp05_count`.
+- **Change**: Updated `evaluate_track_2a` in `scripts/u2_rollout_read.py` lines `372–403` to read `res["fdp05"]["count"]` when `fdp05_count` is absent (preserving backwards compatibility with synthetic mock tests in `scripts/check_in_use_trials.py`).
+- **Scope**: Zero `L*_verdict.json` files were written prior to this fix. Zero changes to drawn neurons (`neurons_L55..57.txt`), already-generated `L55` `.jsonl` rollouts, `RULES.md`, gates, or `in_use_lens_trial/prereg/` / `in_use_pattern_trial/prereg/`.

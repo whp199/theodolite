@@ -15,6 +15,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from backend import pattern_tests as pt  # noqa: E402
 from scripts import check_in_use_trials as ct  # noqa: E402
+from scripts import u2_rollout_read as ur  # noqa: E402
 
 FORBIDDEN_CORPUS_KEYS = ('"kept_tail"', '"fit_snippets"', '"a_txt"', '"b_txt"')
 
@@ -25,6 +26,40 @@ def test_binom_tail_large_n() -> None:
     assert pt.binom_tail(0, 1209) == 1.0
     assert pt.binom_tail(1210, 1209) == 0.0
     assert abs(pt.binom_tail(8, 10) - 56 / 1024) < 1e-12
+
+
+def test_u2_eval_pair_nested_fdp05_schema() -> None:
+    base_res = {
+        "n3_covered": {"neurons": 1022, "share_covered": 0.65, "bootstrap_fdp05": {"p10": 80, "frac_zero": 0.0}},
+        "_named_records": [{"neuron": i, "covered": True} for i in range(100)],
+        "code_symmetry_check": {"fdp05_false_max": 0},
+    }
+    c4_ok = {"fit_named": 60, "frac_p05_on_C4": 0.90, "c4_auc_vs_paired_ctl": 0.92}
+    xp_ok = {"n3_covered": {"neurons": 1024}, "fdp05": {"count": 5}}
+    xp_bad = {"n3_covered": {"neurons": 1024}, "fdp05": {"count": 30}}
+    v_ok = ur.evaluate_track_2a(
+        res_col=base_res,
+        res_iso=base_res,
+        c4_col=c4_ok,
+        c4_iso=c4_ok,
+        iso_vs_col_res=xp_ok,
+        col_vs_iso_res=xp_ok,
+        baseline_match_ok=True,
+        complete_ok=True,
+    )
+    assert v_ok["gates"]["G_CrossPool"] is True and v_ok["pass"] is True
+    assert v_ok["cross_pool"]["iso_false_vs_col_count"] == 5
+    v_bad = ur.evaluate_track_2a(
+        res_col=base_res,
+        res_iso=base_res,
+        c4_col=c4_ok,
+        c4_iso=c4_ok,
+        iso_vs_col_res=xp_bad,
+        col_vs_iso_res=xp_ok,
+        baseline_match_ok=True,
+        complete_ok=True,
+    )
+    assert v_bad["gates"]["G_CrossPool"] is False and v_bad["pass"] is False
 
 
 def _sha256_file(path: Path) -> str:
@@ -93,6 +128,7 @@ def verify_recorded_trial_outputs() -> None:
 def main() -> None:
     core_tests = [
         test_binom_tail_large_n,
+        test_u2_eval_pair_nested_fdp05_schema,
         ct.test_p1_gates_and_cross_pool,
         ct.test_p2_u2_track2a_and_track2b,
         ct.test_p3_derangement_doc_isolation_and_gates,
