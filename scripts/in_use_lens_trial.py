@@ -310,6 +310,9 @@ def _run_layer_batch0_sanity(
     ctl_col_idx_b: torch.Tensor,
     ctl_coeffs_b: torch.Tensor,
     v_iso_b: torch.Tensor,
+    w_down_l: torch.Tensor,
+    w_post_l: torch.Tensor,
+    s_l: float,
 ) -> Dict[str, Any]:
     """Verify bit-exact activation-space F.linear ablation vs eager down_proj zero hook on 4 events."""
     dev = model_device(lm)
@@ -321,9 +324,6 @@ def _run_layer_batch0_sanity(
     rows_i = torch.arange(b, device=dev)
     t_idx = torch.tensor(tgt_ns, dtype=torch.long, device=dev)
     post_ffn_ln = lm.layers[layer].post_feedforward_layernorm
-    w_down_l = lm.layers[layer].mlp.down_proj.weight.detach()
-    w_post_l = post_ffn_ln.weight.detach()
-    s_l = float(lm.layers[layer].layer_scalar.detach().float().item()) if hasattr(lm.layers[layer], "layer_scalar") else 1.0
     D = int(w_down_l.shape[0])
     V = int(W_U.shape[0])
 
@@ -579,6 +579,9 @@ def main() -> None:
             ctl_col_idx.index_select(0, b0_ni_t),
             ctl_coeffs.index_select(0, b0_ni_t),
             w_iso_dirs.index_select(0, b0_ni_t),
+            w_down_l,
+            w_post_l,
+            float(w_ops.scalars[l]),
         )
         sanity["lens_overlap_pos_20"] = ov_pos
         sanity["lens_overlap_neg_20"] = ov_neg
