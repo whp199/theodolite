@@ -13,9 +13,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from backend import pattern_tests as pt  # noqa: E402
 from scripts import check_in_use_trials as ct  # noqa: E402
 
 FORBIDDEN_CORPUS_KEYS = ('"kept_tail"', '"fit_snippets"', '"a_txt"', '"b_txt"')
+
+
+def test_binom_tail_large_n() -> None:
+    assert pt.binom_tail(900, 1209) < 1e-6
+    assert 0.45 < pt.binom_tail(605, 1209) < 0.55
+    assert pt.binom_tail(0, 1209) == 1.0
+    assert pt.binom_tail(1210, 1209) == 0.0
+    assert abs(pt.binom_tail(8, 10) - 56 / 1024) < 1e-12
 
 
 def _sha256_file(path: Path) -> str:
@@ -83,6 +92,7 @@ def verify_recorded_trial_outputs() -> None:
 
 def main() -> None:
     core_tests = [
+        test_binom_tail_large_n,
         ct.test_p1_gates_and_cross_pool,
         ct.test_p2_u2_track2a_and_track2b,
         ct.test_p3_derangement_doc_isolation_and_gates,

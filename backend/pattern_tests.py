@@ -88,7 +88,15 @@ def binom_tail(right: int, n: int) -> float:
     """The chance of `right` or more of `n` pairs picked rightly by guessing."""
     if n <= 0:
         return 1.0
-    return sum(math.comb(n, k) for k in range(max(0, int(right)), n + 1)) / 2.0 ** n
+    r = max(0, int(right))
+    if r == 0:
+        return 1.0
+    if r > n:
+        return 0.0
+    s = sum(math.comb(n, k) for k in range(r, n + 1))
+    if n <= 1023:
+        return s / 2.0 ** n
+    return float(min(1.0, math.exp(min(0.0, math.log(s) - n * math.log(2.0)))))
 
 
 def written_result(fire: Sequence[Dict[str, Any]], quiet: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
