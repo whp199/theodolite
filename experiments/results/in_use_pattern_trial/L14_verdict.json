@@ -1,0 +1,94 @@
+{
+ "layer": 14,
+ "n_faces": 128,
+ "pass": false,
+ "gates": {
+  "G1_blind_near_pooled_and_null": false,
+  "G2_blind_near_individual_yield": true,
+  "G3_unseen_behind_causality": false
+ },
+ "blind_near": {
+  "pairs": 1231,
+  "own_right": 910,
+  "own_share": 0.7392,
+  "own_binom_p": 0.0,
+  "other_shares_k3": [
+   0.4898,
+   0.4809,
+   0.4777
+  ],
+  "mean_other_share": 0.4828,
+  "own_minus_mean_other": 0.2564,
+  "wilcoxon_face_p": 1.005e-17,
+  "median_p_ab_mass": 0.8378,
+  "faces_ge8_pairs": 128,
+  "frac_faces_ge8_pairs": 1.0,
+  "faces_p05_own_ge8": 51,
+  "frac_p05_own_ge8": 0.3984,
+  "faces_q10_own_ge8": 51,
+  "frac_q10_own_ge8": 0.3984,
+  "other_p05_counts_ge8": [
+   8,
+   1,
+   4
+  ],
+  "mean_other_p05_rate_ge8": 0.0339,
+  "len_ratio_median": 1.0,
+  "len_ratio_iqr": [
+   0.9693,
+   1.0356
+  ]
+ },
+ "behind_unseen": {
+  "faces_attempted": 128,
+  "faces_own_holds_gt_0.5": 126,
+  "own_holds_rate": 0.9844,
+  "written_texts": 375,
+  "written_fired": 84,
+  "written_fire_rate": 0.224,
+  "near_misses": 374,
+  "near_misses_fired": 29,
+  "near_miss_false_rate": 0.0775,
+  "other_face_texts": 375,
+  "other_face_fired": 4,
+  "other_pattern_fire_rate": 0.0107,
+  "faces_clean_2of3_and_0quiet": 15,
+  "clean_2of3_and_0quiet_rate": 0.119,
+  "mean_apart": 0.7163
+ },
+ "prereg": {
+  "git_head": "965fa1e959270d1cf9485d1953a1fa2543bb1086",
+  "repo_commit": "47fd7f4c0484c6df82d40103a3c88c2945112e90",
+  "prereg_at": "2026-11-26T16:43:21Z",
+  "prereg_sha256": "4e743333219cbe86288e40632933d82303afe7bd003647a572e11f0d2137c28a"
+ },
+ "elapsed_s": 1508.08,
+ "git_dirty": false,
+ "code_sha256": {
+  "scripts/in_use_pattern_trial.py": "8a149e691f9e76bc00bc85b7873e0b3419a49f248fc324932c021985f33f4086",
+  "scripts/in_use_common.py": "27d42078f6f1bc3a7d43b7e4e4669b9ea740dba2cfeea5d5c86c3406fde7b218",
+  "experiments/results/in_use_pattern_trial/prereg/SHA256SUMS": "4e743333219cbe86288e40632933d82303afe7bd003647a572e11f0d2137c28a"
+ },
+ "patterns_sample_20": {
+  "L14-n75m": "Common nouns or possessives that function as the head of a noun phrase following a preposition (such as \"of\", \"in\", or \"from\").",
+  "L14-n203p": "The word-piece \" had\" when it functions as the auxiliary verb in a past perfect construction, specifically following a subject and preceding a past participle to describe a completed achievement or survival.",
+  "L14-n427m": "Words like [[possibilities]], [[potential]], [[capabilities]], or [[potentially]] when used to describe the capacity, power, or range of a system, technology, or field of study.",
+  "L14-n508m": "The triple backtick [[```]] used as a closing delimiter for a code block, typically followed by a newline and a transition back to natural language explanation.",
+  "L14-n540m": "The word-piece ending a term describing a material property or technical specification (such as -proof, -plastic, -point, -ield, -grip, -rule, or -less) when used in a technical, industrial, or descriptive context.",
+  "L14-n678p": "The word-piece is a present participle (ending in -ing) or a noun following the word \"before\" to indicate a prerequisite action or state.",
+  "L14-n976m": "Nouns referring to tools, features, or data sources (such as Survey, Mate, map, comments, cart, or rout) when they function as the object of a preposition or a verb in a technical or business instructional context.",
+  "L14-n989p": "The marked word-pieces when they appear as part of a formal academic field, scientific discipline, or the name of a professional journal.",
+  "L14-n1223m": "The word-pieces [[them]], [[country]], [[world]], or [[there]] when they serve as the object of a preposition (like \"to\", \"across\", or \"out\") at the end of a phrase or clause.",
+  "L14-n1281m": "The marked word-piece follows the preposition \"to\" or \"the\" in a phrase describing a relative position, measurement, or comparison (e.g., \"near record levels,\" \"above the average,\" \"close to a ball\").",
+  "L14-n1446p": "Common function words (the, quantities, Yet, way, of) that appear immediately before a descriptive phrase or clause specifying a limit, measurement, or manner.",
+  "L14-n1478m": "The word-pieces [[hybridization]], [[condition]], [[Blanch]], or [[an]] when they appear as the first word of a list item or a concise instructional step.",
+  "L14-n1524p": "The word-pieces \"of\", \"many\", \"tribulations\", \"poems\", or \"habits\" when they appear as part of a formal title, book name, or a structured list of thematic categories.",
+  "L14-n1585p": "The word-piece appearing as part of a compound modifier or a specific noun phrase related to health, diet, or technical specifications (e.g., \"low carb\", \"mindfulness-based\", \"Breakfast Burrito\").",
+  "L14-n1815m": "Possessive adjectives (his, my, our, its, her) or the definite article (the) when they immediately precede a descriptive adjective or a specific noun phrase that introduces a new topic or detail.",
+  "L14-n2011m": "The word-pieces [[heard]], [[the]], [[hearing]], [[sense]], or [[hear]] when they function as the main verb or head of a phrase describing the perception of sound or an intuitive feeling.",
+  "L14-n2141p": "The word-piece appearing as the first word of a proper noun, title, or specific term (such as \"Language Learning,\" \"How Mindful Eating,\" or \"aroma therapy\") when it introduces a specialized subject or course.",
+  "L14-n2336m": "The word-piece following a noun describing something that has been destroyed, lost, or diminished, typically introducing a relative clause or a modifying adjective to describe its former state or function.",
+  "L14-n2433m": "The word-piece following the verb \"take\" when it is used as a transitive verb meaning to adopt, accept, or carry.",
+  "L14-n2768m": "The marked word-pieces when they refer to specific food items, ingredients, or culinary preparations, typically appearing in lists, recipes, or descriptions of dishes."
+ }
+}

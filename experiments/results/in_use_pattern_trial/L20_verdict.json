@@ -1,0 +1,94 @@
+{
+ "layer": 20,
+ "n_faces": 64,
+ "pass": false,
+ "gates": {
+  "G1_blind_near_pooled_and_null": false,
+  "G2_blind_near_individual_yield": false,
+  "G3_unseen_behind_causality": false
+ },
+ "blind_near": {
+  "pairs": 608,
+  "own_right": 427,
+  "own_share": 0.7023,
+  "own_binom_p": 0.0,
+  "other_shares_k3": [
+   0.5099,
+   0.4934,
+   0.5296
+  ],
+  "mean_other_share": 0.511,
+  "own_minus_mean_other": 0.1913,
+  "wilcoxon_face_p": 2.488e-09,
+  "median_p_ab_mass": 0.9995,
+  "faces_ge8_pairs": 63,
+  "frac_faces_ge8_pairs": 0.9844,
+  "faces_p05_own_ge8": 14,
+  "frac_p05_own_ge8": 0.2222,
+  "faces_q10_own_ge8": 11,
+  "frac_q10_own_ge8": 0.1746,
+  "other_p05_counts_ge8": [
+   0,
+   1,
+   1
+  ],
+  "mean_other_p05_rate_ge8": 0.0106,
+  "len_ratio_median": 1.0,
+  "len_ratio_iqr": [
+   0.9721,
+   1.048
+  ]
+ },
+ "behind_unseen": {
+  "faces_attempted": 64,
+  "faces_own_holds_gt_0.5": 64,
+  "own_holds_rate": 1.0,
+  "written_texts": 191,
+  "written_fired": 30,
+  "written_fire_rate": 0.1571,
+  "near_misses": 189,
+  "near_misses_fired": 11,
+  "near_miss_false_rate": 0.0582,
+  "other_face_texts": 191,
+  "other_face_fired": 3,
+  "other_pattern_fire_rate": 0.0157,
+  "faces_clean_2of3_and_0quiet": 1,
+  "clean_2of3_and_0quiet_rate": 0.0156,
+  "mean_apart": 0.6852
+ },
+ "prereg": {
+  "git_head": "965fa1e959270d1cf9485d1953a1fa2543bb1086",
+  "repo_commit": "47fd7f4c0484c6df82d40103a3c88c2945112e90",
+  "prereg_at": "2026-11-26T16:43:21Z",
+  "prereg_sha256": "4e743333219cbe86288e40632933d82303afe7bd003647a572e11f0d2137c28a"
+ },
+ "elapsed_s": 706.8,
+ "git_dirty": false,
+ "code_sha256": {
+  "scripts/in_use_pattern_trial.py": "8a149e691f9e76bc00bc85b7873e0b3419a49f248fc324932c021985f33f4086",
+  "scripts/in_use_common.py": "27d42078f6f1bc3a7d43b7e4e4669b9ea740dba2cfeea5d5c86c3406fde7b218",
+  "experiments/results/in_use_pattern_trial/prereg/SHA256SUMS": "4e743333219cbe86288e40632933d82303afe7bd003647a572e11f0d2137c28a"
+ },
+ "patterns_sample_20": {
+  "L20-n246m": "The marked word-piece is a present participle (ending in -ing) used as the main verb in a continuous verb phrase (e.g., \"is adding\", \"was losing\").",
+  "L20-n937m": "Nouns or verbs appearing in a technical, scientific, or medical context, specifically when describing biological processes, anatomy, or chemical properties.",
+  "L20-n1558p": "The marked word-piece occurs as the final word of a clause or sentence that functions as a predicate or a modifier, typically preceding a punctuation mark or a line break.",
+  "L20-n1788p": "Words referring to the edge or immediate vicinity of a body of water, or adjectives describing the scenery of such locations.",
+  "L20-n1937p": "The marked word-piece is the first part of a compound adjective or a noun phrase modifier that is immediately followed by a hyphen or a modifying noun.",
+  "L20-n1947m": "Common function words or nouns that appear as the first word of a noun phrase following a verb or adjective, specifically in the context of technical, instructional, or professional descriptions.",
+  "L20-n2996p": "Prepositions or adverbs of location, time, or means (such as [[nearby]], [[now]], [[through]], [[around]], [[surrounding]], or [[over]]) that immediately precede a relative clause or a noun phrase acting as a modifier.",
+  "L20-n3015p": "The word-piece \"organizing\" in the context of community activism, or the name \"Day\" when referring to Dorothy Day and the Catholic Worker movement.",
+  "L20-n3309m": "The neuron fires on tokens that act as delimiters or markers within structured lists, ranges, or technical specifications, such as the start of a list item, a range separator, or a specific noun in a technical configuration.",
+  "L20-n3342p": "The marked word-pieces occur as the final word of a phrase or line in structured, technical, or instructional text, such as YAML keys, geological names, bibliographic IDs, or step-by-step guides.",
+  "L20-n4118p": "Common verbs or function words used in the opening phrases of polite, instructional, or formal correspondence and requests.",
+  "L20-n4480p": "The word-piece [[society]] or [[societal]] when used in the phrase \"individuals and society/societal,\" or the word-piece [[S]] in \"U.S. Department,\" or [[the]] in \"the field.\"",
+  "L20-n4868p": "The word-piece appearing as the final token of a phrase or sentence, specifically when it functions as a functional stop or a transition point in a descriptive or narrative list.",
+  "L20-n5332p": "Common nouns acting as the head of a noun phrase that serves as the object of a preposition, typically appearing at the end of a phrase or sentence.",
+  "L20-n6284m": "The token \"1\", \"3\", or a comma appearing as a standalone element within a structured list, table, or data-like sequence.",
+  "L20-n6902p": "The marked word-piece occurs as the final word of a noun phrase that serves as the object of a preposition (e.g., \"on,\" \"by,\" \"in\").",
+  "L20-n6997p": "The marked word-piece when it serves as the final noun of a phrase describing a substance or material being removed, added, or used in a specific physical state or process, particularly in cooking or scientific contexts.",
+  "L20-n7695m": "The marked word-piece occurs as the head of a noun phrase or adjective describing a state of escalation, danger, or uncontrolled flow, often in contexts of conflict, natural disasters, or environmental systems.",
+  "L20-n8120p": "The marked word-piece when it appears as part of a URL, a website domain, or a technical reference identifier.",
+  "L20-n8125p": "The marked word-pieces are nouns or keywords appearing as the final word of a proper noun phrase, a technical UI element, or a specific named entity."
+ }
+}
