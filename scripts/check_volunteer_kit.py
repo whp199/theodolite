@@ -162,11 +162,11 @@ def run_checks(tmp: Path) -> int:
                                and kit5_counted <= set(counted) <= kit5_counted | {30, 53, 54}),
           f"kit 7: kit 6's layers and designs, and layers 53 and 54 with match_things; doses counted calibrated at kit 5's "
           f"eleven, and at 30, 53 and 54 once the owner has said so ({by_design}, {counted})")
-    check(real["KIT"] != 8 or (by_design == {"match_things": [30, 53, 54, 55, 56, 57], "match_wide": [31], "match_ceil": [32, 33, 34, 35, 36, 37],
-                                             "soft_ceil": [38, 52, 58, 59], "break_rel": [39, 51]}
-                               and kit5_counted <= set(counted) <= kit5_counted | {30, 53, 54, 55, 56, 57}),
-          f"kit 8: kit 7's layers and designs, and layers 55, 56 and 57 with match_things; doses counted calibrated at kit 5's "
-          f"eleven, and at 30, 53, 54, 55, 56 and 57 once the owner has said so ({by_design}, {counted})")
+    check(real["KIT"] != 8 or (by_design == {"match_things": [30, 53, 54, 55, 56, 57, 58, 59], "match_wide": [31],
+                                             "match_ceil": [32, 33, 34, 35, 36, 37], "soft_ceil": [38, 52], "break_rel": [39, 51]}
+                               and kit5_counted <= set(counted) <= kit5_counted | {30, 53, 54, 55, 56, 57, 58, 59}),
+          f"kit 8: kit 7's layers and designs, and layers 55 to 59 with match_things; doses counted calibrated at kit 5's "
+          f"eleven, and at 30 and 53 to 59 once the owner has said so ({by_design}, {counted})")
     # a kit prepared and not yet cut (no tag of its number): the board is still the kit before it's, which volunteers
     # reserve under until the cut
     repo_board = json.loads((ROOT_DIR / "volunteers" / "board.json").read_text())
@@ -607,6 +607,10 @@ def run_checks(tmp: Path) -> int:
     measured += (json.loads(kit8.read_text()).get("table") or []) if kit8.exists() else []
     check(all((cv.accept_bars("match_things", l_) is None) == (not kit8.exists()) for l_ in (55, 56, 57)),
           "a run of another card class at 55, 56 or 57 under match_things is judged only once their bars are measured")
+    kit8_ext = kit4.parent.parent / "kit8_ext" / "bars.json"  # 58 and 59 under match_things, measured by their own registration
+    measured += (json.loads(kit8_ext.read_text()).get("table") or []) if kit8_ext.exists() else []
+    check(all((cv.accept_bars("match_things", l_) is None) == (not kit8_ext.exists()) for l_ in (58, 59)),
+          "a run of another card class at 58 or 59 under match_things is judged only once their bars are measured")
     in_code = [e for e in cv.OTHER_CLASS_BARS if e["measured"] != "2026-10-31"]
     real_kit = cv.read_kit()
     open_layers = [31, 32, 33, 34, 35, 37, 38, 39, 51, 52]

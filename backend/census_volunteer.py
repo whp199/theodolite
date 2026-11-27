@@ -131,7 +131,7 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
 # batches of 61), and its trial run is the one named. Kit 7 takes it at 53 and 54 too: no push enters an unpushed answer,
 # and the walk's trials there wrote the same twelve as 30's bit for bit (experiments/results/census_things_walk).
 # Kit 8 takes it at 55, 56 and 57 too: the dual-control U2 rollout trials there wrote the same twelve as 30's bit for
-# bit (experiments/results/u2_rollout_trial).
+# bit (experiments/results/u2_rollout_trial), and at 58 and 59 too (experiments/results/u2_rollout_L58_L59).
 DESIGN_BASELINES: Dict[str, str] = {"match_wide": "trials/wide/L31-match_wide-trial.jsonl",
                                     "match_things": "trials/things/L30-match_things-trial.jsonl"}
 
