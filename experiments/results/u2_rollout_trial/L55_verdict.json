@@ -1,0 +1,964 @@
+{
+ "layer": 55,
+ "git_commit": "fcaa21c9a0f765920906cf55fae61ddce5ad4ca3",
+ "git_dirty": false,
+ "code_sha256": {
+  "scripts/u2_rollout_read.py": "4c1f086bbfcfa68046025aa364dc1e671f86cb27982e9850d299f0262c1f1e60",
+  "backend/census_fdr.py": "0dd1a53f2363b61dd2e4d3faf1a4ed7a7fc80fd92443f3b4d2afa84e143639d0",
+  "experiments/results/u2_rollout_trial/prereg/SHA256SUMS": "b7228a4e15d4cd6ba80a3f2c815c964c7f0b16ff2603196fa5c745c922646bc7"
+ },
+ "prereg": {
+  "git_head": "fcaa21c9a0f765920906cf55fae61ddce5ad4ca3",
+  "repo_commit": "47fd7f4c0484c6df82d40103a3c88c2945112e90",
+  "prereg_at": "2026-11-26T16:43:21Z",
+  "prereg_sha256": "b7228a4e15d4cd6ba80a3f2c815c964c7f0b16ff2603196fa5c745c922646bc7"
+ },
+ "elapsed_s": 107.91,
+ "join_rows": 98220,
+ "pass_track_2a": true,
+ "pass_track_2b": true,
+ "pass_either": true,
+ "pass": true,
+ "track_2a_u2_tdec": {
+  "pass": true,
+  "gates": {
+   "G_Yield": true,
+   "G_CrossPool": true,
+   "G_C4": true,
+   "G_Sanity": true
+  },
+  "dual05_n3_count": 94,
+  "dual05_n3_min_bar": 82,
+  "vs_col": {
+   "mass_c_auc": 0.6366,
+   "mass_c_res_auc": 0.6436,
+   "rep_AB_auc": 0.6148,
+   "rep_BA_auc": 0.6138,
+   "rep_AB_res_auc": 0.5913,
+   "rep_BA_res_auc": 0.6139,
+   "rep_res_auc": 0.6121,
+   "T_dec_auc": 0.6019,
+   "readlib_q05": 137,
+   "readlib_named": 134,
+   "fdp05": {
+    "count": 136,
+    "threshold": 16.1961,
+    "fdp": 0.044,
+    "above_max_ctl": 81,
+    "controls_above_thresh": 5
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 114,
+    "p50": 136,
+    "p90": 148,
+    "min": 81,
+    "max": 165,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 939,
+    "neurons": 1022,
+    "share_covered": 0.9188,
+    "n1_named_inside_covered": 110,
+    "mass_c_auc": 0.6436,
+    "mass_c_res_auc": 0.6361,
+    "rep_AB_auc": 0.5995,
+    "rep_BA_auc": 0.5999,
+    "rep_AB_res_auc": 0.5824,
+    "rep_BA_res_auc": 0.5934,
+    "rep_res_auc": 0.5991,
+    "T_dec_auc": 0.5902,
+    "readlib_q05": 111,
+    "readlib_named": 108,
+    "fdp05": {
+     "count": 110,
+     "threshold": 16.1961,
+     "fdp": 0.05,
+     "above_max_ctl": 61,
+     "controls_above_thresh": 5
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 89,
+     "p50": 110,
+     "p90": 119,
+     "min": 61,
+     "max": 137,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4963,
+    "T_dec_auc_max": 0.545,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L55-match_things-u2-cols.collapse.json",
+    "n_collapse_words": 325,
+    "n_glue_wids": 507,
+    "alpha": 0.05
+   }
+  },
+  "vs_iso": {
+   "mass_c_auc": 0.7729,
+   "mass_c_res_auc": 0.5825,
+   "rep_AB_auc": 0.5799,
+   "rep_BA_auc": 0.5876,
+   "rep_AB_res_auc": 0.5034,
+   "rep_BA_res_auc": 0.5386,
+   "rep_res_auc": 0.5336,
+   "T_dec_auc": 0.5009,
+   "readlib_q05": 150,
+   "readlib_named": 143,
+   "fdp05": {
+    "count": 120,
+    "threshold": 19.446,
+    "fdp": 0.0415,
+    "above_max_ctl": 101,
+    "controls_above_thresh": 4
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 111,
+    "p50": 120,
+    "p90": 137,
+    "min": 109,
+    "max": 145,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 994,
+    "neurons": 1022,
+    "share_covered": 0.9726,
+    "n1_named_inside_covered": 113,
+    "mass_c_auc": 0.7816,
+    "mass_c_res_auc": 0.5836,
+    "rep_AB_auc": 0.5744,
+    "rep_BA_auc": 0.584,
+    "rep_AB_res_auc": 0.4945,
+    "rep_BA_res_auc": 0.5322,
+    "rep_res_auc": 0.5267,
+    "T_dec_auc": 0.4918,
+    "readlib_q05": 144,
+    "readlib_named": 137,
+    "fdp05": {
+     "count": 113,
+     "threshold": 19.446,
+     "fdp": 0.0429,
+     "above_max_ctl": 95,
+     "controls_above_thresh": 4
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 104,
+     "p50": 113,
+     "p90": 130,
+     "min": 95,
+     "max": 138,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4948,
+    "T_dec_auc_max": 0.5266,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L55-match_things-u2-vs-iso.collapse.json",
+    "n_collapse_words": 408,
+    "n_glue_wids": 676,
+    "alpha": 0.05
+   }
+  },
+  "c4_vs_col": {
+   "fit_named": 83,
+   "fit_above_max_ctl": 66,
+   "c4_auc_vs_paired_ctl": 0.9887,
+   "frac_z_gt_0": 0.988,
+   "frac_p05_on_C4": 1.0,
+   "median_z_C4": 9.899
+  },
+  "c4_vs_iso": {
+   "fit_named": 100,
+   "fit_above_max_ctl": 66,
+   "c4_auc_vs_paired_ctl": 0.966,
+   "frac_z_gt_0": 0.94,
+   "frac_p05_on_C4": 0.96,
+   "median_z_C4": 8.485
+  },
+  "cross_pool": {
+   "iso_false_vs_col_count": 0,
+   "iso_false_vs_col_frac": 0.0,
+   "col_false_vs_iso_count": 0,
+   "col_false_vs_iso_frac": 0.0
+  },
+  "top20_named_examples": [
+   {
+    "neuron": 306,
+    "T_dec": 228.7938,
+    "rep_AB_res": 40.0145,
+    "rep_BA_res": 40.8984,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "brown",
+      15.11
+     ],
+     [
+      "black",
+      14.14
+     ],
+     [
+      "white",
+      10.92
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "brown",
+      16.95
+     ],
+     [
+      "black",
+      14.14
+     ],
+     [
+      "white",
+      9.9
+     ]
+    ]
+   },
+   {
+    "neuron": 6569,
+    "T_dec": 166.9753,
+    "rep_AB_res": 29.1575,
+    "rep_BA_res": 29.1777,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "crusty",
+      12.73
+     ],
+     [
+      "crust",
+      12.73
+     ],
+     [
+      "old",
+      2.56
+     ],
+     [
+      "crustal",
+      1.41
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "crusty",
+      14.14
+     ],
+     [
+      "crust",
+      8.49
+     ],
+     [
+      "heart",
+      1.39
+     ],
+     [
+      "hearty",
+      1.41
+     ],
+     [
+      "old",
+      3.99
+     ]
+    ]
+   },
+   {
+    "neuron": 19011,
+    "T_dec": 166.0691,
+    "rep_AB_res": 29.5098,
+    "rep_BA_res": 28.137,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "joy",
+      12.73
+     ],
+     [
+      "humor",
+      15.56
+     ],
+     [
+      "joyous",
+      1.41
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "humor",
+      14.14
+     ],
+     [
+      "joy",
+      14.14
+     ]
+    ]
+   },
+   {
+    "neuron": 5365,
+    "T_dec": 141.3373,
+    "rep_AB_res": 25.2477,
+    "rep_BA_res": 23.9251,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "gay",
+      11.31
+     ],
+     [
+      "gaily",
+      4.24
+     ],
+     [
+      "gai",
+      2.83
+     ],
+     [
+      "gaiety",
+      4.24
+     ],
+     [
+      "gaygai",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "gay",
+      14.14
+     ],
+     [
+      "gaily",
+      4.24
+     ],
+     [
+      "gaiety",
+      2.83
+     ],
+     [
+      "gai",
+      2.83
+     ]
+    ]
+   },
+   {
+    "neuron": 20095,
+    "T_dec": 140.2162,
+    "rep_AB_res": 25.0993,
+    "rep_BA_res": 23.7342,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "sam",
+      12.73
+     ],
+     [
+      "sameness",
+      2.83
+     ],
+     [
+      "samely",
+      9.86
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "sam",
+      9.9
+     ],
+     [
+      "samely",
+      4.24
+     ],
+     [
+      "samest",
+      1.41
+     ],
+     [
+      "sameness",
+      8.34
+     ]
+    ]
+   },
+   {
+    "neuron": 7987,
+    "T_dec": 136.9072,
+    "rep_AB_res": 23.8767,
+    "rep_BA_res": 25.4003,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "pitch",
+      16.97
+     ],
+     [
+      "jet",
+      7.07
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "pitch",
+      16.97
+     ],
+     [
+      "jet",
+      8.49
+     ]
+    ]
+   },
+   {
+    "neuron": 5463,
+    "T_dec": 130.6301,
+    "rep_AB_res": 24.866,
+    "rep_BA_res": 22.1016,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "dividing",
+      16.97
+     ],
+     [
+      "divide",
+      8.29
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "dividing",
+      12.73
+     ],
+     [
+      "divide",
+      9.9
+     ]
+    ]
+   },
+   {
+    "neuron": 17240,
+    "T_dec": 123.7583,
+    "rep_AB_res": 27.5871,
+    "rep_BA_res": 20.9313,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "express",
+      15.56
+     ],
+     [
+      "create",
+      2.51
+     ],
+     [
+      "flash",
+      7.07
+     ],
+     [
+      "expressing",
+      1.41
+     ],
+     [
+      "expressiveness",
+      1.41
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "express",
+      15.56
+     ],
+     [
+      "flash",
+      4.24
+     ],
+     [
+      "\u044d\u043a\u0441",
+      1.41
+     ]
+    ]
+   },
+   {
+    "neuron": 12814,
+    "T_dec": 119.7105,
+    "rep_AB_res": 20.8565,
+    "rep_BA_res": 22.3712,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "rudimentary",
+      7.07
+     ],
+     [
+      "rud",
+      8.49
+     ],
+     [
+      "ruddy",
+      4.24
+     ],
+     [
+      "rudrudimentary",
+      1.41
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "rudder",
+      1.41
+     ],
+     [
+      "rud",
+      5.66
+     ],
+     [
+      "rudimentary",
+      7.07
+     ],
+     [
+      "ruddy",
+      5.66
+     ],
+     [
+      "rudthoughtruddy",
+      2.83
+     ]
+    ]
+   },
+   {
+    "neuron": 2441,
+    "T_dec": 116.7401,
+    "rep_AB_res": 22.5313,
+    "rep_BA_res": 19.7361,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "particle",
+      16.97
+     ],
+     [
+      "fiber",
+      5.66
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "particle",
+      16.97
+     ],
+     [
+      "fiber",
+      2.83
+     ]
+    ]
+   },
+   {
+    "neuron": 7576,
+    "T_dec": 112.2152,
+    "rep_AB_res": 19.5401,
+    "rep_BA_res": 28.1207,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "bill",
+      12.67
+     ],
+     [
+      "billtan",
+      4.24
+     ],
+     [
+      "low",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "bill",
+      15.56
+     ],
+     [
+      "billions",
+      1.41
+     ],
+     [
+      "billtan",
+      8.49
+     ],
+     [
+      "low",
+      2.82
+     ]
+    ]
+   },
+   {
+    "neuron": 9561,
+    "T_dec": 112.0979,
+    "rep_AB_res": 19.5195,
+    "rep_BA_res": 19.6141,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "field",
+      16.97
+     ],
+     [
+      "tested",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "field",
+      16.97
+     ],
+     [
+      "tested",
+      2.82
+     ]
+    ]
+   },
+   {
+    "neuron": 20871,
+    "T_dec": 112.0054,
+    "rep_AB_res": 19.5033,
+    "rep_BA_res": 19.5885,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "soon",
+      16.97
+     ],
+     [
+      "soonest",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "soon",
+      15.56
+     ],
+     [
+      "soonest",
+      4.24
+     ]
+    ]
+   },
+   {
+    "neuron": 5488,
+    "T_dec": 111.4129,
+    "rep_AB_res": 19.3992,
+    "rep_BA_res": 26.6241,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "stress",
+      12.71
+     ],
+     [
+      "stresses",
+      2.83
+     ],
+     [
+      "stressing",
+      1.41
+     ],
+     [
+      "stressor",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "stress",
+      15.56
+     ],
+     [
+      "stressor",
+      2.83
+     ],
+     [
+      "stresses",
+      8.49
+     ]
+    ]
+   },
+   {
+    "neuron": 633,
+    "T_dec": 108.7919,
+    "rep_AB_res": 23.883,
+    "rep_BA_res": 18.3825,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "showing",
+      14.08
+     ],
+     [
+      "show",
+      4.23
+     ],
+     [
+      "showed",
+      5.66
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "showing",
+      12.73
+     ],
+     [
+      "showed",
+      2.83
+     ],
+     [
+      "show",
+      2.83
+     ]
+    ]
+   },
+   {
+    "neuron": 7427,
+    "T_dec": 107.5842,
+    "rep_AB_res": 21.0373,
+    "rep_BA_res": 18.1768,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "incident",
+      16.97
+     ],
+     [
+      "incidently",
+      4.24
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "incident",
+      15.56
+     ],
+     [
+      "incidently",
+      2.83
+     ]
+    ]
+   },
+   {
+    "neuron": 5875,
+    "T_dec": 99.2831,
+    "rep_AB_res": 19.6916,
+    "rep_BA_res": 16.7631,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "blue",
+      15.56
+     ],
+     [
+      "blueprints",
+      4.24
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "blue",
+      12.73
+     ],
+     [
+      "blueprints",
+      4.24
+     ]
+    ]
+   },
+   {
+    "neuron": 16069,
+    "T_dec": 96.794,
+    "rep_AB_res": 16.8317,
+    "rep_BA_res": 16.913,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "elite",
+      16.97
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "elite",
+      16.97
+     ]
+    ]
+   },
+   {
+    "neuron": 16362,
+    "T_dec": 96.7899,
+    "rep_AB_res": 16.831,
+    "rep_BA_res": 16.9276,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "pres",
+      16.97
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "pres",
+      16.97
+     ]
+    ]
+   },
+   {
+    "neuron": 15947,
+    "T_dec": 96.4189,
+    "rep_AB_res": 16.7659,
+    "rep_BA_res": 16.4251,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "organization",
+      16.97
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "organization",
+      16.97
+     ]
+    ]
+   }
+  ]
+ },
+ "track_2b_u2_weight_words": {
+  "neurons": 1022,
+  "c_col": 1024,
+  "c_iso": 1024,
+  "rho_AB_neurons": 0.7925,
+  "subsets": {
+   "whole": {
+    "auc_vs_col": 0.675,
+    "q05_vs_col": 177,
+    "above_max_col": 109,
+    "auc_vs_iso": 0.6856,
+    "q05_vs_iso": 234,
+    "above_max_iso": 146,
+    "dual_q05": 177,
+    "shuf_auc_vs_col": 0.4766,
+    "mean_own_n": 0.02335,
+    "mean_own_col": 0.00049,
+    "mean_own_iso": 0.0003,
+    "cross_pool": {
+     "iso_false_q05_vs_col": 0,
+     "iso_false_frac": 0.0,
+     "col_false_q05_vs_iso": 0,
+     "col_false_frac": 0.0
+    }
+   },
+   "half A": {
+    "auc_vs_col": 0.6621,
+    "q05_vs_col": 157,
+    "above_max_col": 101,
+    "auc_vs_iso": 0.6746,
+    "q05_vs_iso": 230,
+    "above_max_iso": 151,
+    "dual_q05": 157,
+    "shuf_auc_vs_col": 0.4839,
+    "mean_own_n": 0.02401,
+    "mean_own_col": 0.00049,
+    "mean_own_iso": 0.00027
+   },
+   "half B": {
+    "auc_vs_col": 0.6547,
+    "q05_vs_col": 171,
+    "above_max_col": 121,
+    "auc_vs_iso": 0.6571,
+    "q05_vs_iso": 227,
+    "above_max_iso": 130,
+    "dual_q05": 171,
+    "shuf_auc_vs_col": 0.4878,
+    "mean_own_n": 0.02269,
+    "mean_own_col": 0.00049,
+    "mean_own_iso": 0.00033
+   },
+   "lower": {
+    "auc_vs_col": 0.656,
+    "q05_vs_col": 162,
+    "above_max_col": 126,
+    "auc_vs_iso": 0.6634,
+    "q05_vs_iso": 205,
+    "above_max_iso": 130,
+    "dual_q05": 162,
+    "shuf_auc_vs_col": 0.4815,
+    "mean_own_n": 0.02167,
+    "mean_own_col": 0.00044,
+    "mean_own_iso": 0.00034
+   },
+   "upper": {
+    "auc_vs_col": 0.6667,
+    "q05_vs_col": 190,
+    "above_max_col": 79,
+    "auc_vs_iso": 0.6787,
+    "q05_vs_iso": 248,
+    "above_max_iso": 148,
+    "dual_q05": 190,
+    "shuf_auc_vs_col": 0.4829,
+    "mean_own_n": 0.02503,
+    "mean_own_col": 0.00054,
+    "mean_own_iso": 0.00026
+   }
+  },
+  "gates": {
+   "G_WW_Lead": true,
+   "G_WW_Yield": true
+  },
+  "pass": true,
+  "lens_overlap_pos_20": 200,
+  "dual_q05_top20": [
+   128,
+   178,
+   306,
+   421,
+   569,
+   632,
+   633,
+   905,
+   988,
+   1021,
+   1233,
+   1268,
+   1694,
+   1754,
+   2048,
+   2282,
+   2311,
+   2374,
+   2389,
+   2441
+  ]
+ }
+}
