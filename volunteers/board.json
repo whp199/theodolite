@@ -1,5 +1,5 @@
 {
- "kit": 7,
+ "kit": 8,
  "repo": "whp199/theodolite",
  "issue": 1,
  "seen_comments": [
@@ -110,7 +110,8 @@
   7084903662,
   7089974058,
   7140046310,
-  7140854888
+  7140854888,
+  7173792542
  ],
  "claims": [
   {
@@ -1652,25 +1653,25 @@
    "note": "20-22 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole"
   },
   "55": {
-   "state": "stopped",
-   "note": "its trial failed, 19 November 2026 (match_things); still shut after the gap study of 25 November 2026: not taken"
+   "state": "open",
+   "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   },
   "56": {
-   "state": "stopped",
-   "note": "not trialled with this kit's push strengths; still shut after the gap study of 25 November 2026: not taken"
+   "state": "open",
+   "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   },
   "57": {
-   "state": "stopped",
-   "note": "not trialled with this kit's push strengths; still shut after the gap study of 25 November 2026: not taken"
+   "state": "open",
+   "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   },
   "58": {
    "state": "stopped",
-   "note": "not trialled with this kit's push strengths; still shut after the gap study of 25 November 2026: not taken"
+   "note": "not yet passed a rollout trial under match_things; still shut after the gap study of 25 November 2026: not taken"
   },
   "59": {
    "state": "stopped",
-   "note": "not trialled with this kit's push strengths; still shut after the gap study of 25 November 2026: not taken"
+   "note": "not yet passed a rollout trial under match_things; still shut after the gap study of 25 November 2026: not taken"
   }
  },
- "updated_at": "2026-11-25T15:18Z"
+ "updated_at": "2026-11-27T11:53Z"
 }

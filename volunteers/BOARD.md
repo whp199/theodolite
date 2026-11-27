@@ -1,6 +1,6 @@
 # The census: which layer is whose
 
-Kit 7 (census-kit-7). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and none of this kit's push strengths has passed a trial there.
+Kit 8 (census-kit-8). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1). A layer marked *not taken* is not offered: each layer outside 40–50 is trialled on the home card (about 70 minutes) before it is offered, and none of this kit's push strengths has passed a trial there.
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
@@ -31,8 +31,10 @@ Kit 7 (census-kit-7). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 52 | 53 | done | eigentactics c40b4d3a | NVIDIA GeForce RTX 3090 24 GB |  | 16-17 Nov 2026, its own card class, spot-checked; passed its trial's three gates, read whole |
 | 53 | 54 | done | anon 7ce4c92d | NVIDIA GeForce RTX 5090 32 GB |  | 19-20 Nov 2026, the home card's bits, spot-checked bit for bit; passed its trial's two gates, read whole |
 | 54 | 55 | done | anon 0471bd29 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB |  | 20-22 Nov 2026, its own card class, spot-checked; passed its trial's two gates, read whole |
-| 55 | 56 | not taken |  |  |  | its trial failed, 19 November 2026 (match_things); still shut after the gap study of 25 November 2026: not taken |
-| 56–59 | 57–60 | not taken |  |  |  | not trialled with this kit's push strengths; still shut after the gap study of 25 November 2026: not taken |
+| 55 | 56 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
+| 56 | 57 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
+| 57 | 58 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
+| 58–59 | 59–60 | not taken |  |  |  | not yet passed a rollout trial under match_things; still shut after the gap study of 25 November 2026: not taken |
 
 Judged:
 
@@ -56,4 +58,4 @@ Judged:
 - L53 anon 7ce4c92d: accepted (home bits (NVIDIA GeForce RTX 5090), spot-checked)
 - L54 anon 0471bd29: accepted (own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-25T15:18Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-27T11:53Z.

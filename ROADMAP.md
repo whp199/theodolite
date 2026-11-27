@@ -1763,6 +1763,34 @@ layers, the determinism run and the sampled push on 29 October). In this section
       words did not carry; at 29 and 30 it reads almost nothing (0.53 to 0.57, no neuron at q ≤ 0.05). At the top
       layers this is close to built in, a narrower claim than the census’s. Judging a layer by it would need a fresh
       trial and bars of its own, and whether a layer read only so counts as taken is the owner’s word.
+  - **Kit 8: kit 7 with layers 55, 56 and 57 added** (cut 27 November 2026, tag `census-kit-8`, after the
+    pre-registered dual-control `U2` rollout walk in [`u2_rollout_trial/`](experiments/results/u2_rollout_trial/RESULT.md)
+    cleared all three layers 3-for-3). Layers 55, 56 and 57 are taken with `match_things`, on layer 30’s twelve
+    questions at each layer’s own two counts (±1.95 and ±2.14 ceilings at 55, ±1.96 and ±2.11 at 56, ±1.55 and ±1.68
+    at 57; `MATCH_CEIL`): 48 answers a unit, 1,130,508 a layer, about 30 to 33 hours on a 5090. Their doses are not
+    counted calibrated there (`DOSES_CALIBRATED` unchanged). Every other layer is taken as under kit 7.
+    - **The `u2_rollout` validation (`L55 -> L56 -> L57`, 26–27 November)** evaluated `1,022` fresh neurons per layer
+      against dual paired controls (`1,024 columns` seed=21 and `1,024 isotropic` seed=22) on both Track 2A
+      (`U2-T_dec`: `94`, `134`, `82` dual `FDP <= 0.05` `N >= 3`; `C4` `1.000`, `0.975`, `0.937`) and corrected Track 2B
+      (`U2-weight_words`: `177`, `307`, `382` dual `q <= 0.05`), with `0 / 1,024` cross-pool false discoveries at every
+      layer.
+    - **The answers and 24 GB headroom.** All 16 carried-over home canaries of kit 7, taken again under kit 8, matched
+      bit for bit; `L55`, `L56` and `L57` under `match_things` were added (`9243f99`, 82 files in
+      `volunteers/home_canaries/`). Held to `23,900 MiB` free on the home 5090 (`measure_batches.py --hold-mib`), all
+      12 longest batches were written at each layer (`22.14 GiB` net allocated, `walk` the tightest): `169 MiB` spare
+      at 55, `157 MiB` at 56, and `453 MiB` at 57.
+    - **Their unpushed answers** are layer 30’s (`census_volunteer.DESIGN_BASELINES`): no push enters them, and the
+      `u2_rollout` trials at 55, 56 and 57 wrote the same twelve bit for bit.
+    - **Their bars for another card class**, registered before anything was measured
+      ([`census_other_card_bars/kit8/prereg/RULES.md`](experiments/results/census_other_card_bars/kit8/prereg/RULES.md),
+      `7011bae`, measured `dacbade`). At each layer all 12 unpushed answers matched `u2_rollout` bit for bit (T1), and
+      the near-tie bar stayed `0.6` (`24/132` arithmetic-only partings per layer, surest `0.5194`; T2). On the pooled
+      chunk 0 of all three layers (`2,304` answers a variant), the home card’s arithmetic moves the median to `0.0037`
+      and the 99th percentile to `0.1118`; the bars are `0.0086` (catching a push 5% off) and `0.25` (10% off), and
+      `0.90` of first word-pieces (lowest arithmetic `0.9925`). None of the three layers’ own floors reaches the
+      group’s bars (`1173a0b`).
+    - **The board** is kit 8’s with 55, 56 and 57 open (`25` layers done, `30–54`, `19` by volunteers; `0–29` and
+      `58–59` shut / not taken). Any run begun under kit 7 finishes on kit 7 (`census_volunteer.earlier_kit`).
 - **A pattern put to the test, without a push** (built 14 November 2026 on the stand-in, and tried on the 31B the
   same day, below; the owner’s words that day, “Start on the first two ideas from the article”, then “Pause 36, try
   now”). The census

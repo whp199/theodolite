@@ -31,9 +31,9 @@ code { font-size:16.5px; background:rgba(160,122,46,.10); padding:0 4px; }
 
 <h1>Take a layer of the census</h1>
 <p class="sub">Gemma-4-31B. Every MLP neuron of a layer pushed along its own direction and read against 2,048 random
-ones. Twenty-five layers are done (30–54), two of them on a 24 GB card. None is being taken, and none is open.
-Each layer offered passed a trial on our card with the push strengths the script uses there. Kit 7 adds layers 53
-and 54, asked layer 30's twelve questions at two pushes: twice the answers, about 30 hours on a 5090. The board says which are open; a
+ones. Twenty-five layers are done (30–54), two of them on a 24 GB card. None is being taken, and 55, 56 and 57 are open.
+Each layer offered passed a trial on our card with the push strengths the script uses there. Kit 8 adds layers 55,
+56 and 57, asked layer 30's twelve questions at two pushes: twice the answers, about 30 hours on a 5090. The board says which are open; a
 claim that lapses opens its layer again.</p>
 
 <h2>what you get, when the atlas is published</h2>
@@ -58,7 +58,7 @@ claim that lapses opens its layer again.</p>
 </ul>
 <ul>
 <li>about <b>60 GB</b> of disk, 32 GB of memory</li>
-<li>about <b>13 hours</b> a layer on a 5090 (30, 53 and 54 about 30 to 33), about 43 on a 3090, plus an hour of setup; it stops and resumes</li>
+<li>about <b>13 hours</b> a layer on a 5090 (30 and 53–57 about 30 to 33), about 43 on a 3090, plus an hour of setup; it stops and resumes</li>
 </ul>
 </div>
 <p class="rub">No account, token or payment. Leave the machine otherwise quiet while it runs.</p>
@@ -66,22 +66,22 @@ claim that lapses opens its layer again.</p>
 <h2>do this</h2>
 <ol class="steps">
 <li><div><pre>git clone https://github.com/whp199/theodolite
-cd theodolite &amp;&amp; git checkout census-kit-7
+cd theodolite &amp;&amp; git checkout census-kit-8
 scripts/volunteer/census.sh check</pre></div></li>
-<li><div><pre>scripts/volunteer/census.sh reserve 53 --name you</pre>
+<li><div><pre>scripts/volunteer/census.sh reserve 55 --name you</pre>
 <p class="say">Pick an <b>open</b> layer on the board (the script checks). <span class="rub">Post the <code>CENSUS RESERVE</code>
 line it prints, in the thread or on the board issue, and wait to see it on the board.</span></p></div></li>
 <li><div><pre>scripts/volunteer/census.sh setup</pre>
 <p class="say">The pinned venv, Google's checkpoint, the lens files and the stats index, all under <code>~/theodolite-census</code>.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh canary 53</pre>
+<li><div><pre>scripts/volunteer/census.sh canary 55</pre>
 <p class="say">One batch set against our card's: the same bits, or a card class of its own. Both are fine.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh run 53</pre>
+<li><div><pre>scripts/volunteer/census.sh run 55</pre>
 <p class="say"><span class="rub">Post the <code>START</code> line.</span> It runs detached. If it stops, the same command
 continues it answer for answer.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh status 53</pre>
+<li><div><pre>scripts/volunteer/census.sh status 55</pre>
 <p class="say"><span class="rub">Post a <code>PROGRESS</code> line now and then;</span> it keeps your claim.</p></div></li>
-<li><div><pre>scripts/volunteer/census.sh pack 53</pre>
-<p class="say">About 500 MB in <code>outbox/</code> (twice that at 30, 53 and 54). Upload it anywhere that keeps it a week. <span class="rub">Post the
+<li><div><pre>scripts/volunteer/census.sh pack 55</pre>
+<p class="say">About 500 MB in <code>outbox/</code> (twice that at 30 and 53–57). Upload it anywhere that keeps it a week. <span class="rub">Post the
 <code>DONE</code> line with the link.</span></p></div></li>
 </ol>
 
@@ -93,17 +93,17 @@ continues it answer for answer.</p></div></li>
 <li>change nothing: code, settings, batch (it refuses to run off the kit's tag)</li>
 <li>one card from start to finish</li>
 <li>a claim holds 36 h to <code>START</code>, then until your <code>PROGRESS</code> end time plus 24 h; 10 days at most</li>
-<li>can't finish? <code>census.sh release 53</code>, post the line</li>
+<li>can't finish? <code>census.sh release 55</code>, post the line</li>
 </ul>
 </div>
 <div>
 <h2>how it is checked</h2>
 <ul>
-<li>every setting and all 565,254 answers (565,260 at layer 31, 1,130,508 at 30, 53, 54), the claim's secret, the commit</li>
-<li>5 of the run's 737 chunks (1,473 at 30, 53, 54), drawn after it arrives, written again on our 5090</li>
+<li>every setting and all 565,254 answers (565,260 at layer 31, 1,130,508 at 30, 53–57), the claim's secret, the commit</li>
+<li>5 of the run's 737 chunks (1,473 at 30, 53–57), drawn after it arrives, written again on our 5090</li>
 <li>same bits as ours: must match exactly; another card: rules fixed beforehand (first word-piece, log-probabilities)</li>
 <li>you send the answers, your card's name and versions, a claim code; no logs or paths</li>
-<li>ran an earlier kit? <code>git fetch --tags &amp;&amp; git checkout census-kit-7</code>: your downloads are reused; a layer already running under kit 6 is finished on kit 6</li>
+<li>ran an earlier kit? <code>git fetch --tags &amp;&amp; git checkout census-kit-8</code>: your downloads are reused; a layer already running under kit 7 is finished on kit 7</li>
 </ul>
 </div>
 </div>
