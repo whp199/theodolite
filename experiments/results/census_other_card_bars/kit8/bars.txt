@@ -1,0 +1,26 @@
+census bars, measured 20261127T095814Z on NVIDIA GeForce RTX 5090, kit 8, layers 55 56 57
+
+match_things (the push in the ceiling unit), layers 55 56 57
+variant              answers  same  first prefix pieces  median     p99     max
+control                 2304  2304 1.0000 48.0000  82337  0.0000  0.0000  0.0000
+batch16                  576     0 0.9948 48.0000  16503  0.0035  0.1118  1.1072
+batch32                 1152     0 0.9957 48.0000  35195  0.0037  0.1113  0.8451
+batch48                 1728   432 0.9925 48.0000  55396  0.0010  0.1029  0.7873
+batch64-full-sums       2304     0 0.9961 48.0000  70042  0.0035  0.1109  1.1113
+push+1%                 2304    36 0.9922 48.0000  68867  0.0056  0.1118  0.4281
+push-1%                 2304    36 0.9905 48.0000  69760  0.0052  0.1106  0.4252
+push+2%                 2304    36 0.9874 48.0000  62544  0.0117  0.1780  0.6489
+push-2%                 2304    36 0.9874 48.0000  63792  0.0102  0.1717  0.7294
+push+5%                 2304    36 0.9657 32.0000  46736  0.0279  0.3739  1.4790
+push-5%                 2304    36 0.9779 41.0000  50972  0.0201  0.3563  1.3848
+push+10%                2304    36 0.9301 13.0000  30823  0.0588  0.6926  1.9432
+push-10%                2304    36 0.9644 24.0000  39551  0.0290  0.5725  2.1595
+lp_median: floor 0.0037 (batch32); near misses 1% 0.0052, 2% 0.0102, 5% 0.0201 ok, 10% 0.0290 ok -> by the rule 0.0086, built to catch a push 5% off
+lp_p99: floor 0.1118 (batch16); near misses 1% 0.1106, 2% 0.1717, 5% 0.3563, 10% 0.5725 ok -> by the rule 0.25, built to catch a push 10% off
+first piece: the arithmetic-only variants keep at least 0.9925; the near misses at most 1% 0.9922, 2% 0.9874, 5% 0.9779, 10% 0.9644 -> 0.9 (stands)
+  layer 55 alone: lp_median floor 0.0039, by the rule 0.0092; lp_p99 floor 0.1116, by the rule 0.25
+  layer 56 alone: lp_median floor 0.0038, by the rule 0.0087; lp_p99 floor 0.1087, by the rule 0.26
+  layer 57 alone: lp_median floor 0.0036, by the rule 0.0081; lp_p99 floor 0.1227, by the rule 0.26
+
+what census_volunteer.OTHER_CLASS_BARS takes (a layer's own entry stands before its group's):
+  match_things at 55 56 57: first piece 0.9, lp_median 0.0086, lp_p99 0.25 (the group's own bars by the rule)
