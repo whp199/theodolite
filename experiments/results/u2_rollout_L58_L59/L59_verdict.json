@@ -1,0 +1,892 @@
+{
+ "layer": 59,
+ "git_commit": "c22c25432688ccd10775181ed39195d4f67e37f6",
+ "git_dirty": false,
+ "code_sha256": {
+  "scripts/u2_rollout_read.py": "4c1f086bbfcfa68046025aa364dc1e671f86cb27982e9850d299f0262c1f1e60",
+  "backend/census_fdr.py": "0dd1a53f2363b61dd2e4d3faf1a4ed7a7fc80fd92443f3b4d2afa84e143639d0",
+  "experiments/results/u2_rollout_L58_L59/prereg/SHA256SUMS": "a663a8db63b7b1db0c58c578ac3f00f7dbd96c019dee43e3cdaffde856f84df3"
+ },
+ "prereg": {
+  "git_head": "c22c25432688ccd10775181ed39195d4f67e37f6",
+  "repo_commit": "d485c57fa460ac4b8f309f551464de2c3f547f43",
+  "prereg_at": "2026-11-27T07:50:25Z",
+  "prereg_sha256": "a663a8db63b7b1db0c58c578ac3f00f7dbd96c019dee43e3cdaffde856f84df3"
+ },
+ "elapsed_s": 161.81,
+ "join_rows": 98220,
+ "pass_track_2a": true,
+ "pass_track_2b": false,
+ "pass_either": true,
+ "pass": true,
+ "track_2a_u2_tdec": {
+  "pass": true,
+  "gates": {
+   "G_Yield": true,
+   "G_CrossPool": true,
+   "G_C4": true,
+   "G_Sanity": true
+  },
+  "dual05_n3_count": 112,
+  "dual05_n3_min_bar": 82,
+  "vs_col": {
+   "mass_c_auc": 0.6959,
+   "mass_c_res_auc": 0.5762,
+   "rep_AB_auc": 0.7244,
+   "rep_BA_auc": 0.7085,
+   "rep_AB_res_auc": 0.5348,
+   "rep_BA_res_auc": 0.5572,
+   "rep_res_auc": 0.541,
+   "T_dec_auc": 0.5221,
+   "readlib_q05": 395,
+   "readlib_named": 329,
+   "fdp05": {
+    "count": 366,
+    "threshold": 1.7199,
+    "fdp": 0.0463,
+    "above_max_ctl": 206,
+    "controls_above_thresh": 16
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 337,
+    "p50": 366,
+    "p90": 366,
+    "min": 320,
+    "max": 379,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 721,
+    "neurons": 1022,
+    "share_covered": 0.7055,
+    "n1_named_inside_covered": 148,
+    "mass_c_auc": 0.6455,
+    "mass_c_res_auc": 0.5135,
+    "rep_AB_auc": 0.6535,
+    "rep_BA_auc": 0.6247,
+    "rep_AB_res_auc": 0.4494,
+    "rep_BA_res_auc": 0.455,
+    "rep_res_auc": 0.4482,
+    "T_dec_auc": 0.4302,
+    "readlib_q05": 146,
+    "readlib_named": 122,
+    "fdp05": {
+     "count": 117,
+     "threshold": 14.8422,
+     "fdp": 0.0481,
+     "above_max_ctl": 46,
+     "controls_above_thresh": 7
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 107,
+     "p50": 117,
+     "p90": 146,
+     "min": 100,
+     "max": 148,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.4951,
+    "T_dec_auc_max": 0.5265,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L59-match_things-u2-cols.collapse.json",
+    "n_collapse_words": 118,
+    "n_glue_wids": 56,
+    "alpha": 0.05
+   }
+  },
+  "vs_iso": {
+   "mass_c_auc": 0.7134,
+   "mass_c_res_auc": 0.5951,
+   "rep_AB_auc": 0.7202,
+   "rep_BA_auc": 0.7147,
+   "rep_AB_res_auc": 0.5668,
+   "rep_BA_res_auc": 0.5431,
+   "rep_res_auc": 0.5533,
+   "T_dec_auc": 0.5445,
+   "readlib_q05": 391,
+   "readlib_named": 334,
+   "fdp05": {
+    "count": 321,
+    "threshold": 6.233,
+    "fdp": 0.0497,
+    "above_max_ctl": 7,
+    "controls_above_thresh": 15
+   },
+   "bootstrap_fdp05": {
+    "n_boot": 200,
+    "p10": 316,
+    "p50": 321,
+    "p90": 344,
+    "min": 303,
+    "max": 350,
+    "frac_zero": 0.0
+   },
+   "n3_covered": {
+    "covered": 906,
+    "neurons": 1022,
+    "share_covered": 0.8865,
+    "n1_named_inside_covered": 276,
+    "mass_c_auc": 0.7231,
+    "mass_c_res_auc": 0.6108,
+    "rep_AB_auc": 0.7103,
+    "rep_BA_auc": 0.7045,
+    "rep_AB_res_auc": 0.5695,
+    "rep_BA_res_auc": 0.5474,
+    "rep_res_auc": 0.5574,
+    "T_dec_auc": 0.5486,
+    "readlib_q05": 324,
+    "readlib_named": 288,
+    "fdp05": {
+     "count": 273,
+     "threshold": 6.6399,
+     "fdp": 0.0486,
+     "above_max_ctl": 7,
+     "controls_above_thresh": 14
+    },
+    "bootstrap_fdp05": {
+     "n_boot": 200,
+     "p10": 270,
+     "p50": 273,
+     "p90": 292,
+     "min": 260,
+     "max": 298,
+     "frac_zero": 0.0
+    }
+   },
+   "code_symmetry_check": {
+    "n": 50,
+    "T_dec_auc_mean": 0.5045,
+    "T_dec_auc_max": 0.5347,
+    "fdp05_false_mean": 0.0,
+    "fdp05_false_max": 0,
+    "note": "Exchangeable half-control split (code-symmetry sanity check only; does not test neuron-vs-control exchangeability or validate FDR)."
+   },
+   "filter": {
+    "strip_thought_glue": true,
+    "strip_collapse": true,
+    "collapse_source": "L59-match_things-u2-vs-iso.collapse.json",
+    "n_collapse_words": 113,
+    "n_glue_wids": 56,
+    "alpha": 0.05
+   }
+  },
+  "c4_vs_col": {
+   "fit_named": 328,
+   "fit_above_max_ctl": 177,
+   "c4_auc_vs_paired_ctl": 0.9622,
+   "frac_z_gt_0": 0.9299,
+   "frac_p05_on_C4": 0.9421,
+   "median_z_C4": 11.314
+  },
+  "c4_vs_iso": {
+   "fit_named": 304,
+   "fit_above_max_ctl": 7,
+   "c4_auc_vs_paired_ctl": 0.9788,
+   "frac_z_gt_0": 0.9605,
+   "frac_p05_on_C4": 0.9671,
+   "median_z_C4": 11.314
+  },
+  "cross_pool": {
+   "iso_false_vs_col_count": 0,
+   "iso_false_vs_col_frac": 0.0,
+   "col_false_vs_iso_count": 0,
+   "col_false_vs_iso_frac": 0.0
+  },
+  "top20_named_examples": [
+   {
+    "neuron": 9609,
+    "T_dec": 153.3523,
+    "rep_AB_res": 23.1909,
+    "rep_BA_res": 31.7592,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "ability",
+      12.71
+     ],
+     [
+      "idea",
+      5.66
+     ],
+     [
+      "ness",
+      4.24
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "ability",
+      15.56
+     ],
+     [
+      "idea",
+      8.47
+     ],
+     [
+      "rest",
+      1.41
+     ],
+     [
+      "ness",
+      5.56
+     ]
+    ]
+   },
+   {
+    "neuron": 12601,
+    "T_dec": 144.479,
+    "rep_AB_res": 21.8475,
+    "rep_BA_res": 28.6659,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "readily",
+      14.14
+     ],
+     [
+      "ganz",
+      8.49
+     ],
+     [
+      "available",
+      7.07
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "readily",
+      16.97
+     ],
+     [
+      "ganz",
+      11.31
+     ],
+     [
+      "available",
+      5.66
+     ]
+    ]
+   },
+   {
+    "neuron": 4158,
+    "T_dec": 124.6027,
+    "rep_AB_res": 18.8384,
+    "rep_BA_res": 17.127,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "haven",
+      16.97
+     ],
+     [
+      "hasn",
+      11.31
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "haven",
+      11.31
+     ],
+     [
+      "hasn",
+      11.31
+     ]
+    ]
+   },
+   {
+    "neuron": 7315,
+    "T_dec": 117.4465,
+    "rep_AB_res": 17.755,
+    "rep_BA_res": 15.8511,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "coats",
+      14.14
+     ],
+     [
+      "suits",
+      2.83
+     ],
+     [
+      "faces",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "coats",
+      7.07
+     ],
+     [
+      "faces",
+      2.83
+     ],
+     [
+      "suits",
+      7.07
+     ]
+    ]
+   },
+   {
+    "neuron": 14161,
+    "T_dec": 116.6499,
+    "rep_AB_res": 17.6344,
+    "rep_BA_res": 17.0357,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "season",
+      14.14
+     ],
+     [
+      "seasoned",
+      2.83
+     ],
+     [
+      "seasoning",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "season",
+      8.49
+     ],
+     [
+      "seasoned",
+      5.66
+     ],
+     [
+      "seasoning",
+      4.24
+     ]
+    ]
+   },
+   {
+    "neuron": 15906,
+    "T_dec": 113.0567,
+    "rep_AB_res": 17.0904,
+    "rep_BA_res": 16.071,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "more",
+      16.97
+     ],
+     [
+      "specific",
+      1.86
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "more",
+      15.47
+     ],
+     [
+      "handedly",
+      1.41
+     ]
+    ]
+   },
+   {
+    "neuron": 6149,
+    "T_dec": 112.0684,
+    "rep_AB_res": 16.9408,
+    "rep_BA_res": 18.9632,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "values",
+      12.73
+     ],
+     [
+      "value",
+      5.66
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "values",
+      14.14
+     ],
+     [
+      "value",
+      5.66
+     ]
+    ]
+   },
+   {
+    "neuron": 15865,
+    "T_dec": 110.2418,
+    "rep_AB_res": 16.6642,
+    "rep_BA_res": 18.011,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "baby",
+      15.56
+     ],
+     [
+      "steps",
+      4.24
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "baby",
+      16.97
+     ],
+     [
+      "steps",
+      2.83
+     ]
+    ]
+   },
+   {
+    "neuron": 5761,
+    "T_dec": 104.4165,
+    "rep_AB_res": 15.7823,
+    "rep_BA_res": 21.819,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "jewish",
+      16.97
+     ],
+     [
+      "jud",
+      16.97
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "jewish",
+      16.97
+     ],
+     [
+      "jud",
+      16.97
+     ]
+    ]
+   },
+   {
+    "neuron": 20941,
+    "T_dec": 97.507,
+    "rep_AB_res": 18.8843,
+    "rep_BA_res": 13.0869,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "kunnen",
+      1.41
+     ],
+     [
+      "konnten",
+      11.31
+     ],
+     [
+      "poder\u00e3o",
+      5.66
+     ],
+     [
+      "could",
+      2.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "konnten",
+      8.49
+     ],
+     [
+      "poder\u00e3o",
+      5.66
+     ]
+    ]
+   },
+   {
+    "neuron": 14857,
+    "T_dec": 94.9019,
+    "rep_AB_res": 14.3419,
+    "rep_BA_res": 15.7553,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "voor",
+      14.14
+     ],
+     [
+      "\u0434\u043b\u044f",
+      5.66
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "voor",
+      11.31
+     ],
+     [
+      "\u0434\u043b\u044f",
+      7.07
+     ]
+    ]
+   },
+   {
+    "neuron": 7115,
+    "T_dec": 85.8544,
+    "rep_AB_res": 12.9721,
+    "rep_BA_res": 15.1393,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "set",
+      14.07
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "set",
+      15.52
+     ]
+    ]
+   },
+   {
+    "neuron": 5794,
+    "T_dec": 85.5057,
+    "rep_AB_res": 12.9193,
+    "rep_BA_res": 14.1786,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "driver",
+      15.56
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "driver",
+      14.14
+     ],
+     [
+      "racing",
+      1.41
+     ]
+    ]
+   },
+   {
+    "neuron": 16676,
+    "T_dec": 83.5443,
+    "rep_AB_res": 12.6224,
+    "rep_BA_res": 13.8917,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "kind",
+      16.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "kind",
+      16.83
+     ]
+    ]
+   },
+   {
+    "neuron": 12698,
+    "T_dec": 82.8292,
+    "rep_AB_res": 12.5141,
+    "rep_BA_res": 17.0804,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "egyptian",
+      7.07
+     ],
+     [
+      "turkish",
+      12.73
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "turkish",
+      9.9
+     ],
+     [
+      "egyptian",
+      11.31
+     ]
+    ]
+   },
+   {
+    "neuron": 6540,
+    "T_dec": 81.0305,
+    "rep_AB_res": 17.4665,
+    "rep_BA_res": 10.8714,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "uploading",
+      5.66
+     ],
+     [
+      "downloading",
+      5.66
+     ],
+     [
+      "purchase",
+      7.07
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "purchase",
+      2.83
+     ],
+     [
+      "downloading",
+      2.83
+     ],
+     [
+      "uploading",
+      5.66
+     ]
+    ]
+   },
+   {
+    "neuron": 9726,
+    "T_dec": 80.1186,
+    "rep_AB_res": 12.1038,
+    "rep_BA_res": 15.9703,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "\u0644\u0644\u0637",
+      8.49
+     ],
+     [
+      "\u0644\u0644\u0637p",
+      4.24
+     ],
+     [
+      "\u0628\u0627\u0644\u0637",
+      2.83
+     ],
+     [
+      "\u0644\u0644\u0637\u0631\u064a\u0642\u0629",
+      1.41
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "\u0644\u0644\u0637",
+      14.14
+     ],
+     [
+      "\u0644\u0644\u0637p",
+      4.24
+     ]
+    ]
+   },
+   {
+    "neuron": 6960,
+    "T_dec": 77.6066,
+    "rep_AB_res": 11.7235,
+    "rep_BA_res": 10.6168,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "bulund",
+      16.97
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "bulund",
+      14.14
+     ]
+    ]
+   },
+   {
+    "neuron": 20050,
+    "T_dec": 75.9581,
+    "rep_AB_res": 11.4739,
+    "rep_BA_res": 13.3606,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "kind",
+      16.83
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "kind",
+      16.83
+     ]
+    ]
+   },
+   {
+    "neuron": 1570,
+    "T_dec": 75.5208,
+    "rep_AB_res": 19.3706,
+    "rep_BA_res": 10.1305,
+    "covered": true,
+    "rep_words_AB": [
+     [
+      "level",
+      7.07
+     ],
+     [
+      "\u0440\u0456\u0432",
+      11.31
+     ],
+     [
+      "detail",
+      5.66
+     ],
+     [
+      "kullan\u0131c\u0131",
+      1.41
+     ]
+    ],
+    "rep_words_BA": [
+     [
+      "\u0440\u0456\u0432",
+      2.83
+     ],
+     [
+      "level",
+      8.49
+     ],
+     [
+      "detail",
+      2.83
+     ]
+    ]
+   }
+  ]
+ },
+ "track_2b_u2_weight_words": {
+  "neurons": 1022,
+  "c_col": 1024,
+  "c_iso": 1024,
+  "rho_AB_neurons": 0.9578,
+  "subsets": {
+   "whole": {
+    "auc_vs_col": 0.776,
+    "q05_vs_col": 551,
+    "above_max_col": 3,
+    "auc_vs_iso": 0.647,
+    "q05_vs_iso": 432,
+    "above_max_iso": 23,
+    "dual_q05": 432,
+    "shuf_auc_vs_col": 0.4169,
+    "mean_own_n": 0.22424,
+    "mean_own_col": 0.00399,
+    "mean_own_iso": 0.02252,
+    "cross_pool": {
+     "iso_false_q05_vs_col": 0,
+     "iso_false_frac": 0.0,
+     "col_false_q05_vs_iso": 0,
+     "col_false_frac": 0.0
+    }
+   },
+   "half A": {
+    "auc_vs_col": 0.775,
+    "q05_vs_col": 556,
+    "above_max_col": 3,
+    "auc_vs_iso": 0.6639,
+    "q05_vs_iso": 427,
+    "above_max_iso": 15,
+    "dual_q05": 427,
+    "shuf_auc_vs_col": 0.4329,
+    "mean_own_n": 0.22717,
+    "mean_own_col": 0.00395,
+    "mean_own_iso": 0.02282
+   },
+   "half B": {
+    "auc_vs_col": 0.7643,
+    "q05_vs_col": 537,
+    "above_max_col": 3,
+    "auc_vs_iso": 0.6392,
+    "q05_vs_iso": 435,
+    "above_max_iso": 34,
+    "dual_q05": 435,
+    "shuf_auc_vs_col": 0.435,
+    "mean_own_n": 0.22131,
+    "mean_own_col": 0.00404,
+    "mean_own_iso": 0.02222
+   },
+   "lower": {
+    "auc_vs_col": 0.7692,
+    "q05_vs_col": 541,
+    "above_max_col": 3,
+    "auc_vs_iso": 0.6408,
+    "q05_vs_iso": 429,
+    "above_max_iso": 25,
+    "dual_q05": 429,
+    "shuf_auc_vs_col": 0.4222,
+    "mean_own_n": 0.21716,
+    "mean_own_col": 0.00378,
+    "mean_own_iso": 0.02036
+   },
+   "upper": {
+    "auc_vs_col": 0.7756,
+    "q05_vs_col": 561,
+    "above_max_col": 0,
+    "auc_vs_iso": 0.649,
+    "q05_vs_iso": 435,
+    "above_max_iso": 17,
+    "dual_q05": 435,
+    "shuf_auc_vs_col": 0.4147,
+    "mean_own_n": 0.23133,
+    "mean_own_col": 0.00421,
+    "mean_own_iso": 0.02468
+   }
+  },
+  "gates": {
+   "G_WW_Lead": false,
+   "G_WW_Yield": true
+  },
+  "pass": false,
+  "lens_overlap_pos_20": 200,
+  "dual_q05_top20": [
+   31,
+   97,
+   130,
+   210,
+   267,
+   313,
+   369,
+   376,
+   407,
+   493,
+   516,
+   520,
+   533,
+   562,
+   581,
+   640,
+   721,
+   779,
+   806,
+   842
+  ]
+ }
+}
