@@ -299,6 +299,10 @@
   "answers": 64,
   "sha256": "6e631922fa527183b2403484912f1f1a9fd16616b21fc2892e111a6e5a92d8b0"
  },
+ "L58-match_things.canary.jsonl": {
+  "answers": 64,
+  "sha256": "45a9ed79c5366b1230622ddd6d8db8b7b95142c04d1311f61596f2b88fd28948"
+ },
  "L58-soft_ceil.canary.jsonl": {
   "answers": 64,
   "sha256": "73f2da94d8ea377e770489764084df782f3586285eefb191de16a1183c415c16"
@@ -306,6 +310,10 @@
  "L59-break_rel.canary.jsonl": {
   "answers": 64,
   "sha256": "e75fdf92209139f0f1d0dbb7a45fc5e839b957e2d0101d97e7163180c1e10508"
+ },
+ "L59-match_things.canary.jsonl": {
+  "answers": 64,
+  "sha256": "3346a365b8feb35b7ffce7d6fff3d80507506eefc15adf058da52ae2a46d3050"
  },
  "L59-soft_ceil.canary.jsonl": {
   "answers": 64,
