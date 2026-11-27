@@ -93,6 +93,13 @@ LP_SURE = -0.01
 # floor reaches the group's bars, so they stand at both. The twelve unpushed answers are the walk's trial runs' bit for
 # bit at both layers, and no arithmetic-only variant parts at a piece written at 0.6 or more (the surest at 0.52), so
 # baseline_tie stays 0.6.
+# Kit 8's (27 November 2026, experiments/results/census_other_card_bars/kit8/bars.json, by the rules registered in
+# kit8/prereg before the measurement): match_things at layers 55, 56 and 57, measured on each layer's plan chunk 0 (768
+# answers a layer, the three pooled as one group). The home card's own arithmetic moves the median by 0.0037 and the
+# 99th percentile by 0.1118, so the bars are 0.0086 (catching a push 5% off) and 0.25 (10% off). None of the three
+# layers' own floors reaches the group's bars, so they stand at all three. The twelve unpushed answers are the u2_rollout
+# trial runs' bit for bit at all three layers, and no arithmetic-only variant parts at a piece written at 0.6 or more
+# (the surest at 0.52), so baseline_tie stays 0.6.
 OTHER_CLASS_BARS: List[Dict[str, Any]] = [
     {"design": "break_rel", "layers": tuple(range(40, 51)), "measured": "2026-10-31", "bars": {}},
     {"design": "match_ceil", "layers": (32, 33, 34, 35, 36, 37), "measured": "2026-11-14",
@@ -107,6 +114,8 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
      "bars": {"lp_median": 0.013, "lp_p99": 0.26, "first_piece": 0.9}},
     {"design": "match_things", "layers": (53, 54), "measured": "2026-11-19",
      "bars": {"lp_median": 0.0091, "lp_p99": 0.26, "first_piece": 0.9}},
+    {"design": "match_things", "layers": (55, 56, 57), "measured": "2026-11-27",
+     "bars": {"lp_median": 0.0086, "lp_p99": 0.25, "first_piece": 0.9}},
 ]
 
 
