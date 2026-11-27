@@ -1,0 +1,10 @@
+# Pre-Registration Amendment — Path 2 Extension (`u2_rollout_L58_L59`, L59 Dose Unlock)
+
+- **Date**: 2026-11-27
+- **Prior Commit**: `9fa5b8d06fe220a12137655e3ba58c4a4d20eb6a` (`prereg/` frozen at `80d8c518`, `L58` rollout + verdict recorded at `9db0f1d8`)
+- **Reason**: `L58` passed (`pass_either = True`, Track 2B `dual_q05 = 483 / 1,022`, `walk.L58.done = 2026-11-27T16:55:38Z`), and `walk.sh` cleanly gated `L59` because `59` was absent from `backend/census.py:MATCH_CEIL` (`fine_pilot_high.json` bottomed at `5.85` nats). The 18-rung `fine` ladder dose pilot (`0.29..0.9159` of stream, `128` neurons, `seed=0`, `rising=True`) was then run on `L59` (`experiments/results/census_scaled_design/fine_pilot_L59.json`, `2026-11-27T16:57:03Z`), measuring `1.0` and `1.4` nat targets at `(0.61, 0.64)` ceilings (`0.3680, 0.3867` of stream).
+- **Change**:
+  1. Recorded `experiments/results/census_scaled_design/fine_pilot_L59.json`.
+  2. Added `59: (0.61, 0.64)` to `backend/census.py:MATCH_CEIL` (leaving `0..58` untouched).
+  3. Removed `experiments/results/u2_rollout_L58_L59/walk.up.blocked_no_doses` and refreshed `prereg/CODE_SHA256SUMS` + `prereg/SHA256SUMS`.
+- **Scope**: Zero `L59` rollout rows or `L59_verdict.json` exist prior to this amendment. Zero changes to `neurons_L58.txt`, `neurons_L59.txt`, `RULES.md`, `draw_neurons.py`, `night.sh`, `read.sh`, `walk.sh`, `L58_verdict.json`, or historical `u2_rollout_trial/prereg/`, `in_use_lens_trial/prereg/`, and `in_use_pattern_trial/prereg/`.
