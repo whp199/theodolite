@@ -1,6 +1,6 @@
-# Stage 2 Next-Steps Addendum: `P3` Calibration Probe, `P1` `L58` Symmetric Null, and `P2` `L58` Rollout Extension
+# Stage 2 Next-Steps Addendum: `P3` Calibration Probe, `P1` `L58` Symmetric Null, and `P2` `L58–L59` Rollout Completion
 
-Addendum to [`SUMMARY.md`](file:///home/eric/.gemini/antigravity/worktrees/e873cf45-021c-4fb7-9ecc-313e97b7aa99/swarm-next-steps-author-643f920b/experiments/results/in_use_prereg_summary/SUMMARY.md) on branch `swarm-next-steps-author-643f920b`, following Stage 2 GPU diagnostics and extension runs on `google/gemma-4-31B-it-qat-w4a16-ct` (`weights_id = e0a93173c31ed2ec`).
+Addendum to [`SUMMARY.md`](file:///home/eric/.gemini/antigravity/worktrees/e873cf45-021c-4fb7-9ecc-313e97b7aa99/swarm-next-steps-author-643f920b/experiments/results/in_use_prereg_summary/SUMMARY.md) on branch `swarm-next-steps-author-643f920b`, following Stage 2 GPU diagnostics and `u2_rollout_L58_L59` completion on `google/gemma-4-31B-it-qat-w4a16-ct` (`weights_id = e0a93173c31ed2ec`).
 
 ---
 
@@ -42,19 +42,17 @@ Full GPU re-run at `L58` (`1,024` frozen neurons × `8` events, `815.31 s`) via 
 
 ---
 
-## 3. Path 2 (`u2_rollout_L58_L59`): `L58` Dual-Control Rollout & `L59` Fine-Ladder Pilot
+## 3. Path 2 (`u2_rollout_L58_L59`): `L55–L59` All Pass (`L58` Track 2B + `L59` Track 2A)
 
-See [`u2_rollout_L58_L59/RESULT.md`](file:///home/eric/.gemini/antigravity/worktrees/e873cf45-021c-4fb7-9ecc-313e97b7aa99/swarm-next-steps-author-643f920b/experiments/results/u2_rollout_L58_L59/RESULT.md) for the full `L55–L58` table:
-- **`L58` passes `pass_either = True` via Track 2B (`U2-weight_words`)**: **`483 / 1,022 (47.3%)`** dual `q <= 0.05` (`AUC = 0.7743` vs `col` / `0.7704` vs `iso`, `rho_AB = 0.8418`, `mean_own_n = 0.15042` = **`518.7x` `columns` / `278.6x` `isotropic`**, `0 / 1,024` cross-pool).
-- **Track 2A (`U2-T_dec`)**: `all-N>=1` `fdp05` reaches **`424 / 1,022`** (`vs_col`) and **`388 / 1,022`** (`vs_iso`, `C4 = 0.9426`), while `N>=3` coverage drops to `0.5117 / 0.5000` (`dual05_n3 = 42 / 1,022 < 82`), reflecting sharp token specialization one block before `lm.norm`.
-- **`L59` fine-ladder dose pilot (`18` rungs `0.29..0.9159`, `rising = True`)**: measured `1.0` and `1.4` nat targets at **`(0.61, 0.64)` ceilings** (`0.3680, 0.3867` of stream); `L59` rollout remains cleanly gated on `59 in MATCH_CEIL`.
+See [`u2_rollout_L58_L59/RESULT.md`](file:///home/eric/.gemini/antigravity/worktrees/e873cf45-021c-4fb7-9ecc-313e97b7aa99/swarm-next-steps-author-643f920b/experiments/results/u2_rollout_L58_L59/RESULT.md) for the complete `L55–L59` progression table:
+- **`L58` (`(1.16, 1.27)` ceilings, `pass_either = True`)**: Clears **Track 2B (`U2-weight_words`, `2/2`)** at **`483 / 1,022 (47.3%)`** dual `q <= 0.05` (`AUC = 0.7743 / 0.7704`, `rho_AB = 0.8418`, `mean_own_n = 0.15042` = `518.7x` `columns` / `278.6x` `isotropic`, `0 / 1,024` cross-pool), while Track 2A `all-N>=1` `fdp05` reaches `424 / 1,022` (`vs_col`, `C4 = 0.9426 / 0.9602`) and `N>=3` dips to `42 / 1,022`.
+- **`L59` (`(0.61, 0.64)` ceilings via `fine_pilot_L59.json`, `pass_either = True`, `walk.done`)**: Clears **Track 2A (`U2-T_dec`, `4/4`)** cleanly with **`dual05_n3_count = 112 / 1,022`** (`>= 82`, `vs_col` `N>=3 = 117`, `p10 = 107`; `vs_iso` `N>=3 = 273`, `p10 = 270`; `all-N>=1 = 366 / 321`; `C4 = 0.9421 / 0.9622` vs `col` and `0.9671 / 0.9788` vs `iso`; `0 / 1,024` cross-pool), while Track 2B achieves `G_WW_Yield = True` (**`dual_q05 = 432 / 1,022 = 42.3%`**, `rho_AB = 0.9578`, `AUC = 0.7760 / 0.6470`) and misses `G_WW_Lead` solely because `shuf_auc_vs_col = 0.4169 < 0.47` (`mean_own_col` rises `13.8x` to `0.00399` and `mean_own_iso` rises `41.7x` to `0.02252` at `L59`, making shuffled-neuron vs own-control asymmetric).
+- **5-for-5 (`L55–L59`) U2 Clearance**: Every layer from `L55` through `L59` now passes dual-control `match_things` (`Kit 8` expands to `L55–L59`, closing the entire upper half `L30–L59`).
 
 ---
 
 ## 4. Updated Whole-Model Coverage (`L0..L59`)
 
-- **`L55–L57`**: Cleared for volunteer census under `match_things` (Kit 8, dual-control `U2` verified `L55–L57` on both Track 2A & Track 2B).
-- **`L58`**: Confirmed via **both** `P1` (`in_use_lens`: `156/1,024 = 15.23%`, `5/5` gates with symmetric `G5`) and `P2` (`U2-weight_words`: `483/1,022 = 47.3%`, `all-N>=1` `T_dec`: `424/1,022`).
-- **`L59`**: `P1` fails single-token `vs_iso`; `L59` fine-ladder doses are now measured at `(0.61, 0.64)` ceilings for a future `P2` `match_things` test.
-- **`L0–L14`**: `P3` `blind_near` reads `~39–40%` (`q<=0.10`) with `own_median_p_ab_mass = 1.0000` (`C4_strict_empty` `0.9569/0.9766` pooled).
-- **`L16–L29`**: Remains open for multi-turn / longer-context causal naming (`L20` failed `0/3` on short local snippets).
+- **`L30–L59` (Upper Half — CLOSED)**: `L30–L54` already on volunteer atlas (`Kit 1–7`); **`L55–L59` all cleared under dual-control `U2` (`match_things`)** for `Kit 8` expansion (`L58` additionally confirmed `5/5` by `P1` `in_use_lens` with symmetric `G5`).
+- **`L0–L14` (Early Layers)**: `P3` `blind_near` reads `~39–40%` (`q<=0.10`) with `own_median_p_ab_mass = 1.0000` (`C4_strict_empty` `0.9569/0.9766` pooled).
+- **`L16–L29` (Middle Gap)**: Remains open for multi-turn / longer-context causal naming (`L20` failed `0/3` on short local snippets).
