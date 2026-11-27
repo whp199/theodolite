@@ -1,0 +1,7 @@
+# Pre-Registration Amendment — Path 3 (`in_use_pattern`)
+
+- **Date**: 2026-11-26
+- **Prior Commit**: `d80a71673884` (`prereg` unchanged since `49876e23b173`)
+- **Reason**: Initial `P3` launch (`task-3205`) finished `L2` authoring, GPU quiet verification (`1,209/1,209`), `blind_near` scoring (`1,209` pairs x4), and `behind` counterfactuals, then crashed inside `backend/pattern_tests.py:binom_tail` (`sum(...) / 2.0 ** 1209`) with `OverflowError: (34, 'Numerical result out of range')` because IEEE 754 float64 overflows at `2.0 ** 1024`.
+- **Change**: Updated `binom_tail(right, n)` in `backend/pattern_tests.py` to evaluate `exp(log(s) - n * log(2))` for `n > 1023` (keeping `n <= 1023` identical).
+- **Scope**: Zero verdict files were written before the crash. Zero changes to drawn faces (`faces_L2.txt`, `faces_L14.txt`, `faces_L20.txt`), `RULES.md`, prompts, statistical gates (`G1–G3`), or `in_use_lens_trial/prereg/` / `u2_rollout_trial/prereg/`.

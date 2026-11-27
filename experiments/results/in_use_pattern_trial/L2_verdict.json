@@ -1,0 +1,94 @@
+{
+ "layer": 2,
+ "n_faces": 128,
+ "pass": false,
+ "gates": {
+  "G1_blind_near_pooled_and_null": false,
+  "G2_blind_near_individual_yield": true,
+  "G3_unseen_behind_causality": false
+ },
+ "blind_near": {
+  "pairs": 1209,
+  "own_right": 911,
+  "own_share": 0.7535,
+  "own_binom_p": 0.0,
+  "other_shares_k3": [
+   0.5095,
+   0.5294,
+   0.5161
+  ],
+  "mean_other_share": 0.5183,
+  "own_minus_mean_other": 0.2352,
+  "wilcoxon_face_p": 3.855e-16,
+  "median_p_ab_mass": 0.8687,
+  "faces_ge8_pairs": 128,
+  "frac_faces_ge8_pairs": 1.0,
+  "faces_p05_own_ge8": 50,
+  "frac_p05_own_ge8": 0.3906,
+  "faces_q10_own_ge8": 50,
+  "frac_q10_own_ge8": 0.3906,
+  "other_p05_counts_ge8": [
+   3,
+   4,
+   4
+  ],
+  "mean_other_p05_rate_ge8": 0.0286,
+  "len_ratio_median": 1.0,
+  "len_ratio_iqr": [
+   0.9885,
+   1.019
+  ]
+ },
+ "behind_unseen": {
+  "faces_attempted": 128,
+  "faces_own_holds_gt_0.5": 128,
+  "own_holds_rate": 1.0,
+  "written_texts": 384,
+  "written_fired": 136,
+  "written_fire_rate": 0.3542,
+  "near_misses": 383,
+  "near_misses_fired": 23,
+  "near_miss_false_rate": 0.0601,
+  "other_face_texts": 384,
+  "other_face_fired": 0,
+  "other_pattern_fire_rate": 0.0,
+  "faces_clean_2of3_and_0quiet": 30,
+  "clean_2of3_and_0quiet_rate": 0.2344,
+  "mean_apart": 0.737
+ },
+ "prereg": {
+  "git_head": "965fa1e959270d1cf9485d1953a1fa2543bb1086",
+  "repo_commit": "47fd7f4c0484c6df82d40103a3c88c2945112e90",
+  "prereg_at": "2026-11-26T16:43:21Z",
+  "prereg_sha256": "4e743333219cbe86288e40632933d82303afe7bd003647a572e11f0d2137c28a"
+ },
+ "elapsed_s": 1429.6,
+ "git_dirty": false,
+ "code_sha256": {
+  "scripts/in_use_pattern_trial.py": "8a149e691f9e76bc00bc85b7873e0b3419a49f248fc324932c021985f33f4086",
+  "scripts/in_use_common.py": "27d42078f6f1bc3a7d43b7e4e4669b9ea740dba2cfeea5d5c86c3406fde7b218",
+  "experiments/results/in_use_pattern_trial/prereg/SHA256SUMS": "4e743333219cbe86288e40632933d82303afe7bd003647a572e11f0d2137c28a"
+ },
+ "patterns_sample_20": {
+  "L2-n166p": "The word-piece \"back\" or \"that\" following a form of the verb \"report\" (e.g., report back, reported that), specifically when introducing a result, finding, or statement.",
+  "L2-n314p": "Nouns referring to physical dimensions, areas, or quantities (such as space, text, cut, acreage, or line) when they function as the direct object of a phrase describing a measurement, amount, or specific physical extent.",
+  "L2-n351m": "The hyphen [[-]] used to form a compound adjective or noun phrase, specifically when modifying a technical, scientific, or nutritional quality (e.g., radiation-intensive, nutrient-dense, acid-base).",
+  "L2-n428m": "The word-piece occurring at the end of a word that is part of a proper noun or a specific technical term (e.g., polders, potting soil, Powai, Popol Vuh).",
+  "L2-n548m": "The marked word-piece appearing as the final token of a noun phrase or a specific character in a technical/linguistic context, typically occurring immediately before a punctuation mark or a line break.",
+  "L2-n1083m": "The opening quote or identifier (like \"message\", \"count\", or \"input\") immediately following an assignment or attribute key such as \"id:\", \"for=\", or \"isdigit(\".",
+  "L2-n1092p": "The word-piece appearing as the end of a word, specifically when that word is part of a technical, academic, or specialized description (such as in mathematics, linguistics, geography, or engineering).",
+  "L2-n1184m": "Punctuation marks (periods, hyphens, or apostrophes) that immediately follow a word ending in \"s\" or \"n\" in a list, dictionary entry, or descriptive text.",
+  "L2-n1270m": "The word-piece \"ine\", \"iners\", \"ind\", or \"-\" when it is part of a verb prefix \"re-\" (as in refine, remind, re-engage, or refiners) used in an instructional or professional context.",
+  "L2-n1324p": "The word-piece marks the start of a noun or noun phrase that serves as a label, category, or formal object name within a structured list, technical description, or academic heading.",
+  "L2-n1527p": "The word-piece \"at\" (or \"stood\") when used as a preposition or verb to specify a location or time, particularly in the context of describing a setting or a state of being.",
+  "L2-n1630p": "The word-piece occurring as the final character or suffix of a word that is immediately followed by a punctuation mark (such as a period, comma, or quotation mark).",
+  "L2-n1943p": "The word-piece [[-]] or [[udy]] when it functions as a hyphen or internal component of a proper noun or technical term (such as K-12, K-means, or kudyapi) specifically within the context of historical names, educational systems, or specialized terminology.",
+  "L2-n2514p": "The hyphen word-piece [[-]] used as a connector in compound nouns or proper names, specifically when referring to historical, geographical, or ethnic groups (e.g., Shatt-il-Arab, Hill-Romans).",
+  "L2-n2556m": "The word-piece \"two\", \"five\", \"six\", or \"these\" when it follows the phrase \"one of\" to introduce a member of a specific group or set.",
+  "L2-n2645p": "The word-piece following the word \"air\" (as in \"air travel\" or \"air temperatures\"), or the suffix \"-men\" or \"-ist\" in nouns describing professions or roles (such as \"watermen\" or \"publicist\").",
+  "L2-n2659m": "The word-piece \"else\" or \"=\" when appearing as part of a programming language's control flow or variable assignment, specifically when followed by an opening curly brace or a require statement.",
+  "L2-n3019p": "The hyphen [[-]] or the word [[functions]] when they serve as connectors or modifiers in compound nouns, specifically in technical, medical, or software contexts.",
+  "L2-n3138p": "The word-piece [[money]] or [[and]] when it follows the word \"time\" as part of a list of resources or requirements (e.g., \"time and money\" or \"time and practice\").",
+  "L2-n3812p": "The word-pieces \"number\", \"value\", or \"(\" when they immediately follow the word \"input\" in the context of programming code or technical descriptions of data inputs."
+ }
+}

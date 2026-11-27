@@ -1,0 +1,7 @@
+# Pre-Registration Amendment — Path 1 (`in_use_lens`)
+
+- **Date**: 2026-11-26
+- **Prior Prereg Commit**: `49876e23b173a17bcee37c29d323bea434edd5a9`
+- **Reason**: Initial launch (`run.sh`) failed before evaluating any neuron or event inside `_run_layer_batch0_sanity` (`scripts/in_use_lens_trial.py:324`) with `AttributeError: 'Linear' object has no attribute 'weight'`, because Gemma-4 W4A16 uses `compressed-tensors` packed linears without an unpacked `.weight` attribute.
+- **Change**: Updated `_run_layer_batch0_sanity` and its call site in `scripts/in_use_lens_trial.py` to accept unpacked `w_down_l` (`w_ops.w_down(l)`), `w_post_l` (`w_ops.norm(l, "post_feedforward")`), and `s_l` (`float(w_ops.scalars[l])`) already computed in `main()`.
+- **Scope**: Zero changes to drawn neurons (`neurons_L59.txt`, `neurons_L58.txt`, `neurons_L57.txt`), `RULES.md`, statistical gates (`G1–G5`), controls, RNG seeds, `u2_rollout_trial/prereg/`, or `in_use_pattern_trial/prereg/`. Zero events were evaluated prior to this fix.

@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""Standalone verifier for confirmatory trial outputs without modifying locked CODE_SHA256SUMS."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import sys
+from pathlib import Path
+from typing import Dict
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from backend import pattern_tests as pt  # noqa: E402
+from scripts import check_in_use_trials as ct  # noqa: E402
+from scripts import u2_rollout_read as ur  # noqa: E402
+
+FORBIDDEN_CORPUS_KEYS = ('"kept_tail"', '"fit_snippets"', '"a_txt"', '"b_txt"')
+
+
+def test_binom_tail_large_n() -> None:
+    assert pt.binom_tail(900, 1209) < 1e-6
+    assert 0.45 < pt.binom_tail(605, 1209) < 0.55
+    assert pt.binom_tail(0, 1209) == 1.0
+    assert pt.binom_tail(1210, 1209) == 0.0
+    assert abs(pt.binom_tail(8, 10) - 56 / 1024) < 1e-12
+
+
+def test_u2_eval_pair_nested_fdp05_schema() -> None:
+    base_res = {
+        "n3_covered": {"neurons": 1022, "share_covered": 0.65, "bootstrap_fdp05": {"p10": 80, "frac_zero": 0.0}},
+        "_named_records": [{"neuron": i, "covered": True} for i in range(100)],
+        "code_symmetry_check": {"fdp05_false_max": 0},
+    }
+    c4_ok = {"fit_named": 60, "frac_p05_on_C4": 0.90, "c4_auc_vs_paired_ctl": 0.92}
+    xp_ok = {"n3_covered": {"neurons": 1024}, "fdp05": {"count": 5}}
+    xp_bad = {"n3_covered": {"neurons": 1024}, "fdp05": {"count": 30}}
+    v_ok = ur.evaluate_track_2a(
+        res_col=base_res,
+        res_iso=base_res,
+        c4_col=c4_ok,
+        c4_iso=c4_ok,
+        iso_vs_col_res=xp_ok,
+        col_vs_iso_res=xp_ok,
+        baseline_match_ok=True,
+        complete_ok=True,
+    )
+    assert v_ok["gates"]["G_CrossPool"] is True and v_ok["pass"] is True
+    assert v_ok["cross_pool"]["iso_false_vs_col_count"] == 5
+    v_bad = ur.evaluate_track_2a(
+        res_col=base_res,
+        res_iso=base_res,
+        c4_col=c4_ok,
+        c4_iso=c4_ok,
+        iso_vs_col_res=xp_bad,
+        col_vs_iso_res=xp_ok,
+        baseline_match_ok=True,
+        complete_ok=True,
+    )
+    assert v_bad["gates"]["G_CrossPool"] is False and v_bad["pass"] is False
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _load_code_sums(path: Path) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        digest, rel = line.split(None, 1)
+        out[rel.strip()] = digest.strip()
+    return out
+
+
+def _verify_provenance_obj(obj: dict, label: Path, code_sums: Dict[str, str], shasums_sha: str, *, require_clean_dirty: bool) -> None:
+    prereg = obj.get("prereg")
+    assert prereg, f"{label} missing prereg block"
+    if require_clean_dirty:
+        assert obj.get("git_dirty") is False, f"{label} has git_dirty={obj.get('git_dirty')}"
+    csums = obj.get("code_sha256")
+    assert isinstance(csums, dict) and csums, f"{label} missing code_sha256 block"
+    for rel, recorded_sha in csums.items():
+        if rel.endswith("prereg/SHA256SUMS"):
+            assert recorded_sha == shasums_sha, f"{label} SHA256SUMS digest mismatch: {recorded_sha} != {shasums_sha}"
+        elif rel in code_sums:
+            assert recorded_sha == code_sums[rel], f"{label} code_sha256 mismatch for {rel}: {recorded_sha} != {code_sums[rel]}"
+        else:
+            fpath = REPO_ROOT / rel
+            assert fpath.is_file(), f"{label} references missing file {fpath}"
+            actual = _sha256_file(fpath)
+            assert recorded_sha == actual, f"{label} file digest mismatch for {rel}: {recorded_sha} != {actual}"
+
+
+def verify_recorded_trial_outputs() -> None:
+    trials = [
+        ("in_use_lens_trial", False),
+        ("in_use_pattern_trial", True),
+        ("u2_rollout_trial", True),
+    ]
+    for dirname, is_pattern_or_u2 in trials:
+        rdir = REPO_ROOT / "experiments/results" / dirname
+        if not rdir.is_dir():
+            continue
+        pdir = rdir / "prereg"
+        code_sums = _load_code_sums(pdir / "CODE_SHA256SUMS")
+        shasums_sha = _sha256_file(pdir / "SHA256SUMS")
+
+        for p in sorted(rdir.glob("*.json")):
+            raw = p.read_text(encoding="utf-8")
+            for forbidden in FORBIDDEN_CORPUS_KEYS:
+                assert forbidden not in raw, f"{p} leaked raw corpus key {forbidden}"
+            obj = json.loads(raw)
+
+            if p.name == "verdict.json":
+                # P1 & P3 top-level verdict.json calls build_provenance after writing L*_verdict.json
+                _verify_provenance_obj(obj, p, code_sums, shasums_sha, require_clean_dirty=False)
+            elif p.name.startswith("L") and p.name.endswith("_verdict.json") and is_pattern_or_u2:
+                _verify_provenance_obj(obj, p, code_sums, shasums_sha, require_clean_dirty=True)
+            elif p.name.startswith("L") and p.name.endswith("_verdict.json"):
+                assert "layer" in obj and "gates" in obj and "pass" in obj, f"{p} malformed per-layer verdict"
+
+
+def main() -> None:
+    core_tests = [
+        test_binom_tail_large_n,
+        test_u2_eval_pair_nested_fdp05_schema,
+        ct.test_p1_gates_and_cross_pool,
+        ct.test_p2_u2_track2a_and_track2b,
+        ct.test_p3_derangement_doc_isolation_and_gates,
+        ct.test_sha_tamper_detection,
+    ]
+    for fn in core_tests:
+        fn()
+        print(f"PASS {fn.__name__}")
+    verify_recorded_trial_outputs()
+    print("PASS verify_recorded_trial_outputs")
+    print(f"All {len(core_tests) + 1} standalone trial verifications passed.")
+
+
+if __name__ == "__main__":
+    main()
