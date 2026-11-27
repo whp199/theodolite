@@ -19,7 +19,12 @@
 #               things_read.py, reads each dose alone and two readings on three questions a half itself, reported
 #               layers 53, 54 census/trials/things_walk/prereg (the walk of 18 November 2026; kit 7): the same
 #               things_read.py, byte for byte
-# A layer with no trial here (55-59, should one pass later) is read with PREREG=<its trial's folder>.
+#               layers 55-57  validated by experiments/results/u2_rollout_trial/prereg (scripts/u2_rollout_read.py,
+#               dual paired columns + isotropic controls, Track 2A U2-T_dec + Track 2B U2-weight_words; kit 8).
+#               read_whole.sh runs census/trials/things_walk/prereg/things_read.py on a single whole-layer file there
+#               (note: L55 failed things_read.py N1/N3 in things_walk; confirmatory u2_rollout reading requires paired
+#               columns + isotropic runs via scripts/u2_rollout_read.py).
+# A layer with no trial here (58-59, should one pass later) is read with PREREG=<its trial's folder>.
 # For break_rel (39, 51, and 40-50) the reader is experiments/results/census_neighbour_trials/read_whole.sh.
 #
 #     bash read_whole.sh 36                              # atlas_data/census/runs/L36-match_ceil.jsonl
@@ -60,7 +65,7 @@ if [ -z "$P" ]; then
         soft_ceil:52)      P=$T/soft/prereg_L52 ;;
         match_wide:31)     P=$T/wide/prereg ;;
         match_things:30)   P=$T/things/prereg ;;
-        match_things:5[34]) P=$T/things_walk/prereg ;;
+        match_things:5[3-7]) P=$T/things_walk/prereg ;;
         break_rel:*)       echo "layer $L was taken with break_rel: read it with experiments/results/census_neighbour_trials/read_whole.sh"; exit 2 ;;
         *)                 echo "no trial of $DESIGN at layer $L is known here: give PREREG=<its trial's folder of registered files>"; exit 2 ;;
     esac
