@@ -1,0 +1,552 @@
+{
+ "what": "plan batch 0 of L56-match_things.jsonl, written alone (census_run.py --canary-only), to compare with the same batch written on another card (census_tools.py canary)",
+ "written_at": "2026-11-27T08:11:41Z",
+ "answers": 64,
+ "meta": {
+  "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "layer": 56,
+  "prompts": {
+   "bicycle": "Explain how a bicycle works.",
+   "walk": "Give me three tips for a long walk.",
+   "chair": "Describe a wooden chair.",
+   "kettle": "Explain how a kettle works.",
+   "sleep": "Give me three tips for sleeping well.",
+   "lamp": "Describe a brass lamp.",
+   "clock": "Explain how a clock works.",
+   "rice": "Give me three tips for cooking rice.",
+   "vase": "Describe a glass vase.",
+   "lock": "Explain how a lock works.",
+   "money": "Give me three tips for saving money.",
+   "blanket": "Describe a wool blanket."
+  },
+  "prompt_ids": {
+   "bicycle": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    30979,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "walk": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    496,
+    1440,
+    3727,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "chair": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    7116,
+    9048,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "kettle": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    71603,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "sleep": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    20537,
+    1388,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "lamp": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    28575,
+    15123,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "clock": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    11072,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "rice": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    14049,
+    12878,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "vase": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    4896,
+    37468,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "lock": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    6623,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "money": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    16011,
+    3273,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "blanket": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    26112,
+    30195,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ]
+  },
+  "design_name": "match_things",
+  "design": [
+   [
+    "bicycle",
+    -1.96
+   ],
+   [
+    "bicycle",
+    1.96
+   ],
+   [
+    "bicycle",
+    -2.11
+   ],
+   [
+    "bicycle",
+    2.11
+   ],
+   [
+    "walk",
+    -1.96
+   ],
+   [
+    "walk",
+    1.96
+   ],
+   [
+    "walk",
+    -2.11
+   ],
+   [
+    "walk",
+    2.11
+   ],
+   [
+    "chair",
+    -1.96
+   ],
+   [
+    "chair",
+    1.96
+   ],
+   [
+    "chair",
+    -2.11
+   ],
+   [
+    "chair",
+    2.11
+   ],
+   [
+    "kettle",
+    -1.96
+   ],
+   [
+    "kettle",
+    1.96
+   ],
+   [
+    "kettle",
+    -2.11
+   ],
+   [
+    "kettle",
+    2.11
+   ],
+   [
+    "sleep",
+    -1.96
+   ],
+   [
+    "sleep",
+    1.96
+   ],
+   [
+    "sleep",
+    -2.11
+   ],
+   [
+    "sleep",
+    2.11
+   ],
+   [
+    "lamp",
+    -1.96
+   ],
+   [
+    "lamp",
+    1.96
+   ],
+   [
+    "lamp",
+    -2.11
+   ],
+   [
+    "lamp",
+    2.11
+   ],
+   [
+    "clock",
+    -1.96
+   ],
+   [
+    "clock",
+    1.96
+   ],
+   [
+    "clock",
+    -2.11
+   ],
+   [
+    "clock",
+    2.11
+   ],
+   [
+    "rice",
+    -1.96
+   ],
+   [
+    "rice",
+    1.96
+   ],
+   [
+    "rice",
+    -2.11
+   ],
+   [
+    "rice",
+    2.11
+   ],
+   [
+    "vase",
+    -1.96
+   ],
+   [
+    "vase",
+    1.96
+   ],
+   [
+    "vase",
+    -2.11
+   ],
+   [
+    "vase",
+    2.11
+   ],
+   [
+    "lock",
+    -1.96
+   ],
+   [
+    "lock",
+    1.96
+   ],
+   [
+    "lock",
+    -2.11
+   ],
+   [
+    "lock",
+    2.11
+   ],
+   [
+    "money",
+    -1.96
+   ],
+   [
+    "money",
+    1.96
+   ],
+   [
+    "money",
+    -2.11
+   ],
+   [
+    "money",
+    2.11
+   ],
+   [
+    "blanket",
+    -1.96
+   ],
+   [
+    "blanket",
+    1.96
+   ],
+   [
+    "blanket",
+    -2.11
+   ],
+   [
+    "blanket",
+    2.11
+   ]
+  ],
+  "max_new": 48,
+  "top_k": 5,
+  "seed": 7,
+  "random_controls": 2048,
+  "neurons": "all",
+  "push": "add: dose x the neuron's write ceiling (s_l sqrt(D) ||w_post * unit(W_down[:, n])||, the most it can write by itself) along unit(w_post * W_down[:, n]) (a control: dose x the ceiling of the neuron it is paired with, along unit(w_post * r), r isotropic), at the stream leaving the layer, every word-piece but the start mark",
+  "controls": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+  "dose_unit": "ceiling",
+  "ceilings": "each pushed answer records its unit's write ceiling (`ceiling`; a control's is that of the neuron it is paired with, `ref_neuron`), the push's own unit",
+  "control_kind": "isotropic",
+  "version": 2,
+  "read_gain": {
+   "neurons": 0.658,
+   "controls": 0.7034,
+   "ratio": 1.069,
+   "read_by": "the next layer's input norm (the final norm after the last layer)"
+  },
+  "doses_from": "two counts of each neuron's own write ceiling that differ by layer, match_ceil's (the pushes that move the next word-piece by 1.0 and by 1.4 nats), each asked on twelve questions of three genres, how a thing works, three tips and an object, read as two halves of six, 48 answers a unit. match_both, the same doses on questions half of which asked who the model is, about colours and to write as it likes, failed its trial at layer 31 (as the pages count them): a neuron's words came back less on those questions than on these three genres'. So this asks these genres alone, and none of the questions the census asks at other layers but bicycle, walk and chair. Its trial gates the answers of both doses together and of neither dose alone. Not calibrated at any layer until a trial of it passes there",
+  "p50": 90.92105865478516,
+  "p50_source": "the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces)",
+  "stop_ids": [
+   1,
+   106,
+   50
+  ],
+  "greedy": true,
+  "chat": "thinking off",
+  "lens": "jpp-base",
+  "stand_in": false,
+  "unpacker": {
+   "mode": "compiled",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ],
+   "self_test": {
+    "linears": 410,
+    "same_bits": true,
+    "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+    "table_nan_payloads": 0,
+    "seconds": 2.48
+   },
+   "install_s": 2.48
+  },
+  "d_ff": 21504,
+  "neuron_ids": "0-21503",
+  "batch": 64,
+  "runtime": {
+   "device": "NVIDIA GeForce RTX 5090",
+   "torch": "2.14.1+cu130",
+   "cuda": "13.0",
+   "transformers": "5.20.0",
+   "interp_engine": "1.14.0",
+   "compressed_tensors": "0.19.0",
+   "git": "7011bae0927793d38e4fc4562d9a40c6c064688f",
+   "git_clean": true,
+   "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+  },
+  "weights": {
+   "format": "compressed-tensors W4A16",
+   "repo": "google/gemma-4-31B-it-qat-w4a16-ct",
+   "snapshot": "52f3f65bc7a02d555763bc923bd1d9094898219d",
+   "files_sha256": "e0a93173c31ed2ec0672ed99336bbac4d609dc426bbb19c293a25963da85d7af",
+   "id": "e0a93173c31ed2ec",
+   "linears": "packed",
+   "dtype": "bfloat16",
+   "device": "cuda:0",
+   "runtime": "TheodoliteRuntime"
+  },
+  "plan": "12 x batch",
+  "jobs": {
+   "n": 1130508,
+   "sha256": "0f4129a818a28baa"
+  }
+ }
+}

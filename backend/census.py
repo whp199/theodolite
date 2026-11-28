@@ -178,17 +178,19 @@ MATCH_NATS = (1.0, 1.4)
 # to 38, each pair as `census_dose_pilot.py doses --targets 1.0,1.4` gave it. Layer 45, the pilot's reference, had
 # none there: its ladder ended under 1.0 nats. The same pilot on its rungs carried higher (--ladder high, 0.53 to 2.2
 # of the stream) on 16 November 2026 (15:47Z; fine_pilot_high.json) gave 45 and 53 to 58 theirs by the same rule;
-# layer 59's ladder starts above both targets (5.85 nats at its lowest rung), so 59 has none. The fine ladder again at
+# layer 59's high-ladder run started above both targets (5.85 nats at its lowest rung). The fine ladder again at
 # 25 to 29 on 18 November 2026 (15:52Z; fine_pilot_low.json) gave those five theirs by the same rule, for the walk of
-# experiments/results/census_things_walk. Below 29 the next word-piece moves 1.6 to 2.8 times as far for a push 7%
-# larger near the lower target (1.26 to 1.55 at 29 to 38), so the two counts there are 2% to 6% apart; at 25 the ladder
-# dips once, at its top rung (10.77 to 10.76 nats), far past both targets
+# experiments/results/census_things_walk. On 27 November 2026 (16:57Z; fine_pilot_L59.json), the 18-rung fine ladder
+# (0.29 to 0.9159 of the stream, rising all the way) gave layer 59 its pair (0.61, 0.64) by the same rule. Below 29
+# the next word-piece moves 1.6 to 2.8 times as far for a push 7% larger near the lower target (1.26 to 1.55 at 29 to
+# 38), so the two counts there are 2% to 6% apart; at 25 the ladder dips once, at its top rung (10.77 to 10.76 nats),
+# far past both targets
 MATCH_CEIL: Dict[int, Tuple[float, float]] = {
     25: (2.15, 2.20), 26: (2.05, 2.12), 27: (2.03, 2.13), 28: (2.04, 2.16), 29: (2.10, 2.32),
     30: (2.42, 2.67), 31: (2.58, 2.76), 32: (2.21, 2.44), 33: (2.31, 2.51), 34: (2.62, 2.79),
     35: (2.27, 2.41), 36: (2.27, 2.46), 37: (2.41, 2.55), 38: (2.14, 2.30),
     45: (2.77, 2.95), 53: (2.24, 2.42), 54: (2.18, 2.34), 55: (1.95, 2.14), 56: (1.96, 2.11), 57: (1.55, 1.68),
-    58: (1.16, 1.27),
+    58: (1.16, 1.27), 59: (0.61, 0.64),
 }
 # match_wide is match_ceil with one dose and twice the questions (16 November 2026, once match_ceil's walk downward had
 # stopped at layer 31; experiments/results/census_question_count): its lower dose alone, the push that moves the next

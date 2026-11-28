@@ -93,6 +93,20 @@ LP_SURE = -0.01
 # floor reaches the group's bars, so they stand at both. The twelve unpushed answers are the walk's trial runs' bit for
 # bit at both layers, and no arithmetic-only variant parts at a piece written at 0.6 or more (the surest at 0.52), so
 # baseline_tie stays 0.6.
+# Kit 8's (27 November 2026, experiments/results/census_other_card_bars/kit8/bars.json, by the rules registered in
+# kit8/prereg before the measurement): match_things at layers 55, 56 and 57, measured on each layer's plan chunk 0 (768
+# answers a layer, the three pooled as one group). The home card's own arithmetic moves the median by 0.0037 and the
+# 99th percentile by 0.1118, so the bars are 0.0086 (catching a push 5% off) and 0.25 (10% off). None of the three
+# layers' own floors reaches the group's bars, so they stand at all three. The twelve unpushed answers are the u2_rollout
+# trial runs' bit for bit at all three layers, and no arithmetic-only variant parts at a piece written at 0.6 or more
+# (the surest at 0.52), so baseline_tie stays 0.6.
+# Kit 8 extension's (27 November 2026, experiments/results/census_other_card_bars/kit8_ext/bars.json, by the rules
+# registered in kit8_ext/prereg before the measurement): match_things at layers 58 and 59, measured on each layer's
+# plan chunk 0 (768 answers a layer, the two pooled as one group). The home card's own arithmetic moves the median by
+# 0.0043, so the bar is 0.0098 (catching a push 10% off); it moves the 99th percentile by 0.3226, where no near miss is
+# caught cleanly, so lp_p99 is None (dropped by the rule). Neither layer's own floor reaches the group's bar, so it
+# stands at both. The twelve unpushed answers are the u2_rollout_L58_L59 trial runs' bit for bit at both layers, and no
+# arithmetic-only variant parts at a piece written at 0.6 or more (the surest at 0.52), so baseline_tie stays 0.6.
 OTHER_CLASS_BARS: List[Dict[str, Any]] = [
     {"design": "break_rel", "layers": tuple(range(40, 51)), "measured": "2026-10-31", "bars": {}},
     {"design": "match_ceil", "layers": (32, 33, 34, 35, 36, 37), "measured": "2026-11-14",
@@ -107,6 +121,10 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
      "bars": {"lp_median": 0.013, "lp_p99": 0.26, "first_piece": 0.9}},
     {"design": "match_things", "layers": (53, 54), "measured": "2026-11-19",
      "bars": {"lp_median": 0.0091, "lp_p99": 0.26, "first_piece": 0.9}},
+    {"design": "match_things", "layers": (55, 56, 57), "measured": "2026-11-27",
+     "bars": {"lp_median": 0.0086, "lp_p99": 0.25, "first_piece": 0.9}},
+    {"design": "match_things", "layers": (58, 59), "measured": "2026-11-27",
+     "bars": {"lp_median": 0.0098, "lp_p99": None, "first_piece": 0.9}},
 ]
 
 
@@ -121,6 +139,8 @@ OTHER_CLASS_BARS: List[Dict[str, Any]] = [
 # trial's plan and a whole layer's write each unpushed answer in the same shape (nine in batches of 64, the last three in
 # batches of 61), and its trial run is the one named. Kit 7 takes it at 53 and 54 too: no push enters an unpushed answer,
 # and the walk's trials there wrote the same twelve as 30's bit for bit (experiments/results/census_things_walk).
+# Kit 8 takes it at 55, 56 and 57 too: the dual-control U2 rollout trials there wrote the same twelve as 30's bit for
+# bit (experiments/results/u2_rollout_trial), and at 58 and 59 too (experiments/results/u2_rollout_L58_L59).
 DESIGN_BASELINES: Dict[str, str] = {"match_wide": "trials/wide/L31-match_wide-trial.jsonl",
                                     "match_things": "trials/things/L30-match_things-trial.jsonl"}
 

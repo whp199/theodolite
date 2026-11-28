@@ -1,0 +1,1343 @@
+{
+ "taken_at": "20261127T224429Z",
+ "layer": 59,
+ "design": "match_things",
+ "kit": 8,
+ "stand_in": false,
+ "reference": "L59-match_things-u2-cols.jsonl",
+ "rule": {
+  "tie": 0.6,
+  "step": 0.05,
+  "batches": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   24,
+   32,
+   40,
+   48,
+   56,
+   64
+  ]
+ },
+ "runtime": {
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "transformers": "5.20.0",
+  "interp_engine": "1.14.0",
+  "compressed_tensors": "0.19.0",
+  "git": "eecca220d51ecb01deae27eb884300b1209cd199",
+  "git_clean": true,
+  "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+ },
+ "parts": [
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "chair",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "money",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "control",
+   "group": "control",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 46,
+   "n": 48,
+   "p": 0.3246,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch1",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 27,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch2",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch4",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 20,
+   "n": 48,
+   "p": 0.3772,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 37,
+   "n": 48,
+   "p": 0.4642,
+   "identical": false
+  },
+  {
+   "variant": "batch8",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 27,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch16",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 20,
+   "n": 48,
+   "p": 0.3772,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch24",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 13,
+   "n": 48,
+   "p": 0.4375,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch32",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 13,
+   "n": 48,
+   "p": 0.4375,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch40",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 24,
+   "n": 48,
+   "p": 0.5194,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 27,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch48",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 13,
+   "n": 48,
+   "p": 0.4375,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": true
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 37,
+   "n": 48,
+   "p": 0.4642,
+   "identical": false
+  },
+  {
+   "variant": "batch56",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "bicycle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "walk",
+   "k": 24,
+   "n": 48,
+   "p": 0.5194,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "chair",
+   "k": 27,
+   "n": 48,
+   "p": 0.4999,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "kettle",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "sleep",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "lamp",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "clock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "rice",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "vase",
+   "k": 27,
+   "n": 48,
+   "p": 0.5,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "lock",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "money",
+   "k": 38,
+   "n": 48,
+   "p": 0.4873,
+   "identical": false
+  },
+  {
+   "variant": "batch64-full-sums",
+   "group": "arithmetic",
+   "question": "blanket",
+   "k": 48,
+   "n": 48,
+   "p": null,
+   "identical": false
+  }
+ ],
+ "control_identical": true,
+ "verdict": {
+  "bar": 0.6,
+  "raised": false,
+  "surest": 0.5194
+ },
+ "old_bar": {
+  "baseline_shared": 16
+ }
+}

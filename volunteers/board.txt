@@ -26,9 +26,12 @@ L51 done (eigentactics 6d708804)
 L52 done (eigentactics c40b4d3a)
 L53 done (anon 7ce4c92d)
 L54 done (anon 0471bd29)
-L55 not taken
-L56–59 not taken
+L55 OPEN
+L56 OPEN
+L57 OPEN
+L58 OPEN
+L59 OPEN
 
-0 open; a claim that lapses opens again: https://github.com/whp199/theodolite/issues/1
+5 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints
