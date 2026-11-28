@@ -1,0 +1,25 @@
+census bars, measured 20261127T232409Z on NVIDIA GeForce RTX 5090, kit 8, layers 58 59
+
+match_things (the push in the ceiling unit), layers 58 59
+variant              answers  same  first prefix pieces  median     p99     max
+control                 1536  1536 1.0000 48.0000  44414  0.0000  0.0000  0.0000
+batch16                  384     0 1.0000 48.0000   9888  0.0043  0.3226  2.0380
+batch32                  768     0 0.9961 48.0000  19237  0.0040  0.2200  1.2615
+batch48                 1152   288 0.9983 48.0000  28790  0.0010  0.1557  1.4615
+batch64-full-sums       1536     0 0.9948 48.0000  40296  0.0037  0.1474  1.5430
+push+1%                 1536    24 0.9922 48.0000  40138  0.0033  0.0874  0.3720
+push-1%                 1536    24 0.9935 48.0000  40154  0.0033  0.0905  0.4169
+push+2%                 1536    24 0.9889 48.0000  38360  0.0082  0.1350  0.5218
+push-2%                 1536    24 0.9896 48.0000  38180  0.0079  0.1368  0.5598
+push+5%                 1536    24 0.9805 48.0000  33818  0.0178  0.2720  1.0086
+push-5%                 1536    24 0.9740 48.0000  33545  0.0154  0.2957  1.3478
+push+10%                1536    24 0.9629 48.0000  29362  0.0311  0.4598  1.9810
+push-10%                1536    24 0.9590 48.0000  27978  0.0224  0.5055  2.1130
+lp_median: floor 0.0043 (batch16); near misses 1% 0.0033, 2% 0.0079, 5% 0.0154, 10% 0.0224 ok -> by the rule 0.0098, built to catch a push 10% off
+lp_p99: floor 0.3226 (batch16); near misses 1% 0.0874, 2% 0.1350, 5% 0.2720, 10% 0.4598 -> by the rule None, dropped
+first piece: the arithmetic-only variants keep at least 0.9948; the near misses at most 1% 0.9935, 2% 0.9896, 5% 0.9805, 10% 0.9629 -> 0.9 (stands)
+  layer 58 alone: lp_median floor 0.0058, by the rule 0.012; lp_p99 floor 0.4120, by the rule None
+  layer 59 alone: lp_median floor 0.0042, by the rule 0.0092; lp_p99 floor 0.1172, by the rule None
+
+what census_volunteer.OTHER_CLASS_BARS takes (a layer's own entry stands before its group's):
+  match_things at 58 59: first piece 0.9, lp_median 0.0098, lp_p99 None (the group's own bars by the rule)
