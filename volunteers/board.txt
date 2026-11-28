@@ -29,8 +29,9 @@ L54 done (anon 0471bd29)
 L55 OPEN
 L56 OPEN
 L57 OPEN
-L58–59 not taken
+L58 OPEN
+L59 OPEN
 
-3 open. To take one: https://github.com/whp199/theodolite/issues/1
+5 open. To take one: https://github.com/whp199/theodolite/issues/1
 guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

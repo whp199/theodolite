@@ -35,6 +35,7 @@ neuron can write by itself, its *write ceiling*:
 | 39 and 51 | ±1 and ±2 of the stream, as at layers 40 to 50 | passed at each, 12 November 2026 |
 | 53 and 54 | layer 30's twelve questions at two counts, set for each layer as at 30 (2.24 and 2.42 ceilings at 53, 2.18 and 2.34 at 54) | passed at each, 18 and 19 November 2026 |
 | 55, 56 and 57 | layer 30's twelve questions at two counts, set for each layer as at 30 (1.95 and 2.14 ceilings at 55, 1.96 and 2.11 at 56, 1.55 and 1.68 at 57) | passed dual-control U2 rollout (`columns` + `isotropic`), 26 and 27 November 2026 |
+| 58 and 59 | layer 30's twelve questions at two counts, set for each layer as at 30 (1.16 and 1.27 ceilings at 58, 0.61 and 0.64 at 59) | passed dual-control U2 rollout (`columns` + `isotropic`), 27 November 2026 |
 
 The script picks the right one for the layer you take; there is nothing to choose. The trials did not pass equally:
 layer 34 passed by the most, and layer 36 by a thousandth on one of its three checks
@@ -44,22 +45,23 @@ with these push strengths. At layer 31 the design that asks twice the questions 
 November 2026). It failed at layer 30, and so did the same twelve questions at both pushes (17 November). At layer
 30 a third design passed (18 November): both pushes, on twelve other questions of the kinds whose answers took a
 push's words up there. The same design then passed at layers 53 and 54 and failed at 29 and 55 on its single-control
-walk (18 and 19 November), then passed at layers 55, 56 and 57 on the dual-control `U2` rollout walk (`columns` +
-`isotropic` controls, `experiments/results/u2_rollout_trial/`, 26 and 27 November 2026). No push strengths have passed
-a trial at layers 0 to 29 or a rollout trial at 58 or 59. Following the exploratory census layer-gap study and GPU
-kill-pilots ([`ANSWER.md`](experiments/results/census_layer_gap/ANSWER.md)), layers 0 to 29 and 58 to 59 remain shut
-and are not offered to volunteers (layers 30 to 54 have been taken, keeping 29,265 page-described neurons, and 55 to 57
-are open under kit 8). **The board says
+walk (18 and 19 November), then passed at layers 55, 56, 57, 58 and 59 on the dual-control `U2` rollout walks
+(`columns` + `isotropic` controls, `experiments/results/u2_rollout_trial/` and `experiments/results/u2_rollout_L58_L59/`,
+26 and 27 November 2026), closing the upper half (30 to 59). No push strengths have passed a trial at layers 0 to 29.
+Following the exploratory census layer-gap study and GPU kill-pilots
+([`ANSWER.md`](experiments/results/census_layer_gap/ANSWER.md)), layers 0 to 29 remain shut and are not offered to
+volunteers (layers 30 to 54 have been taken, keeping 29,265 page-described neurons, and 55 to 59 are open under kit 8).
+**The board says
 which layers are open.** Layers count from 0, as every script counts them (the app's page = layer + 1).
 
-**Kit 8, the kit to use now, is kit 7 with layers 55, 56 and 57 added** (27 November 2026), each taken with the design
-for layer 30 at its own push strengths (above). Every other layer is taken exactly as under kit 7. **Layers 30 and 53
-to 57 are twice the others**: 48 answers a neuron, not 24, so 1,130,508 in all. That is about 30 to 33 hours on a 5090
-(by our trials' pace at 30 and 53–54). Kit 7 (19 November 2026) added layers 53 and 54, kit 6 (18 November) layer 30,
-and kit 5 (17 November) layer 31. Kit 4 opened the census to 24 GB cards (14 November 2026, from a contributor's pull
-request): the loader keeps a part of the model the census never reads off the card, and `census.sh check` asks how much
-of the card is free. **If a layer of yours is running under kit 7, finish it with kit 7**: do not switch its checkout.
-Its bundle is checked by kit 7's own rules.
+**Kit 8, the kit to use now, is kit 7 with layers 55, 56, 57, 58 and 59 added** (27 November 2026), each taken with
+the design for layer 30 at its own push strengths (above). Every other layer is taken exactly as under kit 7. **Layers
+30 and 53 to 59 are twice the others**: 48 answers a neuron, not 24, so 1,130,508 in all. That is about 30 to 33 hours
+on a 5090 (by our trials' pace at 30 and 53–54). Kit 7 (19 November 2026) added layers 53 and 54, kit 6 (18 November)
+layer 30, and kit 5 (17 November) layer 31. Kit 4 opened the census to 24 GB cards (14 November 2026, from a contributor's
+pull request): the loader keeps a part of the model the census never reads off the card, and `census.sh check` asks how
+much of the card is free. **If a layer of yours is running under kit 7, finish it with kit 7**: do not switch its
+checkout. Its bundle is checked by kit 7's own rules.
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 
@@ -76,15 +78,15 @@ layer on:
 - **Point your own local model at the map.** The scientist works with any OpenAI-compatible endpoint (LM Studio,
   Ollama, llama.cpp's server). It runs pushes and texts, names what it finds, and points at it on the map.
 - **Your name on the first public map of a 31B's neurons.** We found none published, only sparse autoencoders
-  (`REFERENCES.md` §J). Your layer is credited to the name you gave, and you name the strongest neurons of your layer
+  (`REFERENCES.md` §J). Your layer is credited to the name you gave, and you name your layer's strongest neurons
   in the published atlas.
-- **Open data**: every answer of every layer, 565,254 a layer (twice that at layers 30 and 53 to 57), to be published
+- **Open data**: every answer of every layer, 565,254 a layer (twice that at layers 30 and 53 to 59), to be published
   with the project.
 - **Ready now: a neuron in your own frontend.** Any neuron exports as a llama.cpp control vector, for `llama-server`
   and SillyTavern or anything else on it. Keep the scale near ±1 (*Use a neuron in your own setup*, below).
 
 A census rank says what a neuron's push does to six fixed questions at four strengths (at layer 31, twelve at two;
-at layers 30 and 53 to 57, twelve others at four).
+at layers 30 and 53 to 59, twelve others at four).
 What it does in your own chats, you try for yourself.
 
 ## What you need
@@ -93,15 +95,15 @@ What it does in your own chats, you try for yourself.
   L40S, A100, H100 or H200. The 4-bit model rests at about 18 GiB on the card and a batch of answers takes up to about
   4.2 GiB more; it is not split across cards. **A 24 GB card must be headless**: no desktop or other process on it,
   since the longest batches leave under a GiB of its free memory: about 800 MiB on a headless RTX 3090, and about
-  157 to 453 MiB on our own 5090 held down to the 23,900 MiB free that `census.sh check` asks for (169, 157 and 453 MiB
-  at layers 55, 56 and 57). A run that runs out of
+  157 to 453 MiB on our own 5090 held down to the 23,900 MiB free that `census.sh check` asks for (169, 157, 453, 438
+  and 204 MiB at layers 55, 56, 57, 58 and 59). A run that runs out of
   memory stops and is continued by the same command; it never changes its batch. A 3090 has been measured; a 4090
   has not yet been tried.
 - **A driver for CUDA 13**: `nvidia-smi` shows `CUDA Version: 13.0` or later (driver 580 or newer).
 - **Linux**, about **60 GB** free disk, 32 GB of memory, and `git`, `curl`, `zstd`, `tar` and `flock` (util-linux),
   and a C compiler (`gcc`), which Triton may need for its kernels.
 - **Time**: about 13 hours for a layer on a 5090, plus about an hour of setup, mostly downloading about 35 GB. Layers
-  30 and 53 to 57 have twice the answers: about 30 to 33 hours on a 5090 (by our trials' pace at 30 and 53–54).
+  30 and 53 to 59 have twice the answers: about 30 to 33 hours on a 5090 (by our trials' pace at 30 and 53–54).
   Other cards will differ (an RTX 3090 held at its 83 °C limit wrote a sixteenth of layer 45 at 3.7 answers a
   second: about 43 hours for a layer, and perhaps four or five days for one of those), and the status line tells
   you yours. The run can be stopped and continued at any point.
@@ -184,7 +186,7 @@ scripts/volunteer/census.sh check                      # can this machine take a
    ```
 
    It checks the run is whole and taken with the kit's settings, then packs about 500 MB (about twice that at layers
-   30 and 53 to 57) into `~/theodolite-census/outbox/L55-match_things-<claim>.tar` (the name carries the layer's
+   30 and 53 to 59) into `~/theodolite-census/outbox/L55-match_things-<claim>.tar` (the name carries the layer's
    design). Upload that somewhere anyone can download it for a week or more: a Hugging Face dataset, a torrent, a
    file host. Post the `CENSUS DONE` line with your link in it.
 
@@ -228,12 +230,12 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
    - every setting, the job list, the stats index and the push strength must match ours at that layer;
    - the commit must be the kit's tag, from a clean checkout;
    - every one of the layer's 565,254 answers must be there exactly once (565,260 at layer 31, 1,130,508 at layers
-     30 and 53 to 57).
+     30 and 53 to 59).
 3. **The canary**:
    - against your own run's first batch (the same card writing the same batch);
    - against ours (the same bits, or a class of its own);
-   - your six unpushed answers against ours (twelve at layers 30, 31 and 53 to 57).
-4. **The spot-check**: when the bundle arrives, 5 of the run's 737 chunks (1,473 at layers 30 and 53 to 57) are drawn at
+   - your six unpushed answers against ours (twelve at layers 30, 31 and 53 to 59).
+4. **The spot-check**: when the bundle arrives, 5 of the run's 737 chunks (1,473 at layers 30 and 53 to 59) are drawn at
    random, so nobody can know them in advance. Each is written again on our 5090, about a minute a chunk. Then:
    - **The same bits as ours**: every spot answer must match bit for bit.
    - **A card class of its own**: the run must meet all of these:
@@ -250,6 +252,7 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
        | 39–51 | `break_rel` | 0.028 | 0.37 |
        | 53 and 54 | `match_things` | 0.0091 | 0.26 |
        | 55–57 | `match_things` | 0.0086 | 0.25 |
+       | 58 and 59 | `match_things` | 0.0098 | — |
 
      - each unpushed answer is ours, or parts from ours only at a word-piece we wrote with probability below 0.6 (a
        near-tie).
@@ -283,7 +286,7 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
    RTX PRO 6000 under `match_ceil` and accepted on 16 November 2026, came to medians of 0.0051 and 0.0046 and 99th
    percentiles of 0.115 and 0.110, where our own arithmetic gave 0.0050 and 0.117 (layers 33 and 32, from the same
    card on 17 and 18 November, 0.0055 and 0.116, and 0.0052 and 0.117); and layer 51, from an RTX 3090 under
-   `break_rel`, to 0.0111 and 0.150. A layer with no measured bars (0 to 29 and 58 to 59, which are shut) is not judged
+   `break_rel`, to 0.0111 and 0.150. A layer with no measured bars (0 to 29, which are shut) is not judged
    until they are measured.
 
    **Amended 17 November 2026: kit 5's layer 31.** Layer 31 is taken with `match_wide`, which no earlier kit measured.
@@ -332,6 +335,20 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
      matched them bit for bit. The near-tie bar stays 0.6 (24 of 132 arithmetic-only answers parted per layer, the
      surest at 0.52).
 
+   **Amended 27 November 2026: kit 8's layers 58 and 59.** They are taken with `match_things` too, at pushes of their
+   own (±1.16 and ±1.27 ceilings at 58, ±0.61 and ±0.64 at 59), after passing the dual-control `U2` rollout walk
+   (`columns` + `isotropic`, `experiments/results/u2_rollout_L58_L59/`). Before they opened under kit 8, their bars
+   were measured on our 5090, by the same rule, under a registration committed before the measurement
+   ([`census_other_card_bars/kit8_ext/prereg/RULES.md`](experiments/results/census_other_card_bars/kit8_ext/prereg/RULES.md)).
+   The measurement used 768 answers a layer, the two layers pooled (1,536 answers a variant).
+   - Our own arithmetic moves the median to 0.0043, so the median bar is 0.0098 (catching a push 10% off); it moves the
+     99th percentile to 0.3226, where no near miss is caught cleanly, so the 99th-percentile bar is dropped (`None`) by
+     the rule. Neither layer's own floor reaches the group's bar, and the first-piece bar stays 0.90 (lowest arithmetic
+     0.9948).
+   - Their twelve unpushed answers are layer 30's: no push enters them, and the `u2_rollout_L58_L59` runs at 58 and 59
+     matched them bit for bit. The near-tie bar stays 0.6 (24 of 132 arithmetic-only answers parted per layer, the
+     surest at 0.52).
+
    **Amended 31 October 2026: the unpushed answers.** The first rule asked each to share at least 16 word-pieces with
    ours. That first volunteer's whole run kept three of the six word for word. The other three parted sooner, at
    pieces 5, 21 and 27, each a near-tie: we had written that piece with probability 0.50, 0.41 or 0.50, and their card
@@ -353,10 +370,10 @@ text survives as the random directions' does (the rules are in `experiments/resu
 `census_soft_trials/prereg/`, `census_match_trials/prereg/` and `census_match_walk/prereg/`). The trials at 30, 31,
 53 and 54 had two of them, the whole reading and the neurons the random directions cover, and those layers are read
 by those two (`census_wide_trials/prereg/`, `census_things_trial/prereg/` and `census_things_walk/prereg/`). The
-push strengths are counted calibrated at eleven of the seventeen layers whose trial passed. Kit 3 opened nine of them,
+push strengths are counted calibrated at eleven of the nineteen layers whose trial passed. Kit 3 opened nine of them,
 layer 36 was held for our own card and taken there, kit 5 added layer 31, kit 6 layer 30, kit 7 added 53 and 54, and
-kit 8 adds 55, 56 and 57.
-At those six (30 and 53 to 57) they are not counted calibrated yet: that is the owner's to decide, and nothing has
+kit 8 adds 55 to 59.
+At those eight (30 and 53 to 59) they are not counted calibrated yet: that is the owner's to decide, and nothing has
 been changed.
 Read whole by these checks (16 to 22 November 2026), layers 32 to 35, 37 to 39, 51 and 52 pass all three, layers 31,
 53 and 54 pass their two, layer 36 passes two and misses the gentler push's check on one figure, 0.564 against 0.57, and

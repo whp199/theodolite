@@ -53,10 +53,12 @@ a thing works, for three tips or about an object. Kit 6 offered it there, and re
 short of its trial on one figure, how its words carry between question halves (0.553 against a bar of 0.57). Read
 against the random directions every whole layer is read against, the trial's own neurons fall short too: the
 trial's draw of random directions was a kind one. Its doses are not counted calibrated. The same design passed at 54 and 55 (53 and 54 on the board) on 18 and 19 November and failed at 30 and 56 on its
-single-control walk; kit 7 offered it at 54 and 55. On 26–27 November it passed at 56–58 (55–57 on the board) under the
-dual-control `U2` rollout walk (`columns` + `isotropic`, [`experiments/results/u2_rollout_trial/`](../experiments/results/u2_rollout_trial/));
-since 27 November kit 8 offers it at 56–58, its doses not counted calibrated there either. The other thirty-two layers
-(1–30 and 59–60) have no design that passed there. Where a census’s doses are not counted calibrated the atlas
+single-control walk; kit 7 offered it at 54 and 55. On 26–27 November it passed at 56–60 (55–59 on the board) under the
+dual-control `U2` rollout walks (`columns` + `isotropic`, [`experiments/results/u2_rollout_trial/`](../experiments/results/u2_rollout_trial/)
+and [`experiments/results/u2_rollout_L58_L59/`](../experiments/results/u2_rollout_L58_L59/));
+since 27 November kit 8 offers it at 56–60, closing the upper half (31–60; 30–59 on the board), its doses not counted
+calibrated there either. The other thirty layers
+(1–30) have no design that passed there. Where a census’s doses are not counted calibrated the atlas
 marks it “doses not calibrated at this layer” and inks it without gilt.
 
 Eleven layers of the second round are in. Three volunteers took layers 35, 36, 40 and 52 (34, 35, 39 and 51 on the
@@ -93,10 +95,10 @@ and says little of single neurons: none has q ≤ 0.05 and 49 beat all 2,048.
 On 22 November 55 (54) came home from the RTX PRO 6000 that took 31–36, and passes both of its trial's checks read
 whole, a little above its trial: it leads by 0.727 (0.712), its words carry by 0.621 and 0.625, 5,481 have q ≤ 0.05
 and 4,254 beat all 2,048, and its strongest random directions stand 6 deviations out writing “thought” run together.
-The steer lens agrees with it, now the highest layer it has been checked at. None is being taken and 56–58 (55–57 on
-the board) are open under kit 8. Every figure is in ROADMAP §vi.
+The steer lens agrees with it, now the highest layer it has been checked at. None is being taken and 56–60 (55–59 on
+the board) are open under kit 8, closing the upper half. Every figure is in ROADMAP §vi.
 
-After the census layer-gap study and its three GPU kill-pilots ([`ANSWER.md`](../experiments/results/census_layer_gap/ANSWER.md)), layers 31–55 (0–based 30–54, keeping `.units.jsonl`'s 29,265 page-described neurons) remain the twenty-five taken census layers until 56–58 arrive, and layers 1–30 and 59–60 (0–based 0–29 and 58–59) remain shut / not taken. Where supplementary files are present, the atlas surfaces exploratory readings on those un-taken layers strictly beside always-visible red caveats: pushed on set text (`forced_odd`, 0.25-nat uncalibrated doses) at layers 56–60 and document-disjoint causal `(-1, 0)` corpus firing (`input_census`, read on the existing `passages.d` index without storing passages) at layers 1–30; neither is served as a taken census, and `fdr_rescue` / `circuit_mediated` are not shown in the interface.
+After the census layer-gap study and its three GPU kill-pilots ([`ANSWER.md`](../experiments/results/census_layer_gap/ANSWER.md)), layers 31–55 (0–based 30–54, keeping `.units.jsonl`'s 29,265 page-described neurons) remain the twenty-five taken census layers until 56–60 arrive, and layers 1–30 (0–based 0–29) remain shut / not taken. Where supplementary files are present, the atlas surfaces exploratory readings on those un-taken layers strictly beside always-visible red caveats: pushed on set text (`forced_odd`, 0.25-nat uncalibrated doses) at layers 56–60 and document-disjoint causal `(-1, 0)` corpus firing (`input_census`, read on the existing `passages.d` index without storing passages) at layers 1–30; neither is served as a taken census, and `fdr_rescue` / `circuit_mediated` are not shown in the interface.
 
 <table>
   <tr>

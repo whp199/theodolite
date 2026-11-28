@@ -613,16 +613,19 @@ def run_checks(tmp: Path) -> int:
           "a run of another card class at 58 or 59 under match_things is judged only once their bars are measured")
     in_code = [e for e in cv.OTHER_CLASS_BARS if e["measured"] != "2026-10-31"]
     real_kit = cv.read_kit()
-    open_layers = [31, 32, 33, 34, 35, 37, 38, 39, 51, 52]
+    open_layers = [30, 31, 32, 33, 34, 35, 37, 38, 39, 51, 52, 53, 54, 55, 56, 57, 58, 59]
     check([(e["design"], list(e["layers"]), e["measured"], e["bars"]) for e in in_code]
           == [(e["design"], list(e["layers"]), e["measured"], e["bars"]) for e in measured]
           and all(cv.accept_bars(cv.kit_design(real_kit, l), l) is not None for l in open_layers)
+          and cv.accept_bars("match_things", 55)["lp_p99"] == 0.25
+          and cv.accept_bars("match_things", 58)["lp_p99"] is None
           and cv.accept_bars("soft_ceil", 53) is None and cv.accept_bars("break_rel", 45) == cv.ACCEPT_OTHER_CLASS
           and cv.accept_bars("match_ceil", 34)["lp_median"] < cv.ACCEPT_OTHER_CLASS["lp_median"],
           f"kits 4's to 8's bars in the code are their measurements' tables, and every layer open on the board has bars ({[e['bars'] for e in in_code]})")
     far = {**ok_cmp, "lp_median": 0.03, "lp_p99": 0.9}
     check(not cv.judge(far, False)[0] and cv.judge(far, False, None, cv.accept_bars("match_ceil", 34, table))[1] != []
           and cv.judge({**far, "lp_p99": 0.1}, False, None, cv.accept_bars("match_ceil", 34, table))[0]
+          and cv.judge({**ok_cmp, "lp_p99": 0.9}, False, None, cv.accept_bars("match_things", 58))[0]
           and not cv.judge(far, False, None, cv.accept_bars("match_ceil", 33, table))[0]
           and cv.judge({**far, "lp_median": 0.01}, False, None, cv.accept_bars("match_ceil", 33, table))[0],
           "a run is judged by the bars it is given, and a bar that was dropped is not asked")

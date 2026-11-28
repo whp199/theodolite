@@ -34,7 +34,8 @@ Kit 8 (census-kit-8). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | 55 | 56 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
 | 56 | 57 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
 | 57 | 58 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
-| 58–59 | 59–60 | not taken |  |  |  | not yet passed a rollout trial under match_things; still shut after the gap study of 25 November 2026: not taken |
+| 58 | 59 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
+| 59 | 60 | OPEN |  |  |  | match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090 |
 
 Judged:
 
@@ -58,4 +59,4 @@ Judged:
 - L53 anon 7ce4c92d: accepted (home bits (NVIDIA GeForce RTX 5090), spot-checked)
 - L54 anon 0471bd29: accepted (own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-27T11:53Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-28T00:57Z.

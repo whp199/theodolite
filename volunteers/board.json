@@ -1665,13 +1665,13 @@
    "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   },
   "58": {
-   "state": "stopped",
-   "note": "not yet passed a rollout trial under match_things; still shut after the gap study of 25 November 2026: not taken"
+   "state": "open",
+   "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   },
   "59": {
-   "state": "stopped",
-   "note": "not yet passed a rollout trial under match_things; still shut after the gap study of 25 November 2026: not taken"
+   "state": "open",
+   "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   }
  },
- "updated_at": "2026-11-27T11:53Z"
+ "updated_at": "2026-11-28T00:57Z"
 }
