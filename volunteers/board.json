@@ -111,7 +111,10 @@
   7089974058,
   7140046310,
   7140854888,
-  7173792542
+  7173792542,
+  7231791954,
+  7233184284,
+  7240616501
  ],
  "claims": [
   {
@@ -1379,6 +1382,74 @@
    "size": "951MB",
    "link": "https://github.com/Asynonymous/theodolite/releases/download/L54-match_things-0471bd29/L54-match_things-0471bd29.tar",
    "note": "own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+  },
+  {
+   "code": "22d92e2e",
+   "layer": 55,
+   "name": "anon",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "8",
+   "via": "github",
+   "at": "2026-11-28T03:34Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-28T03:34Z",
+     "via": "github",
+     "what": "claim=22d92e2e card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB name=anon kit=8",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-28T03:34Z",
+     "via": "github",
+     "what": "claim=22d92e2e bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-28T03:34Z",
+     "via": "github",
+     "what": "claim=22d92e2e done=0% eta=2026-11-29T05:58Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-28T03:34Z",
+   "bits": "own",
+   "done": "0%",
+   "eta": "2026-11-29T05:58Z"
+  },
+  {
+   "code": "cee4f84c",
+   "layer": 59,
+   "name": "anon",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "kit": "8",
+   "via": "github",
+   "at": "2026-11-28T14:22Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-11-28T14:22Z",
+     "via": "github",
+     "what": "claim=cee4f84c card=NVIDIA GeForce RTX 5090 32 GB name=anon kit=8",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-11-28T14:22Z",
+     "via": "github",
+     "what": "claim=cee4f84c bits=home card=NVIDIA GeForce RTX 5090 32 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-11-28T14:22Z",
+     "via": "github",
+     "what": "claim=cee4f84c done=0% eta=2026-11-29T17:39Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-11-28T14:22Z",
+   "bits": "home",
+   "done": "0%",
+   "eta": "2026-11-29T17:39Z"
   }
  ],
  "layers": {
@@ -1673,5 +1744,5 @@
    "note": "match_things; dual-control U2 rollout passed, 27 Nov 2026; twice the answers, about 30 h on a 5090"
   }
  },
- "updated_at": "2026-11-28T00:57Z"
+ "updated_at": "2026-11-28T16:12Z"
 }
